@@ -22,6 +22,7 @@ class QueryRelationshipAttributePath(BaseModel):
 
 class QueryAttributePath(BaseModel):
     attribute_name: str
+    attribute_kind: str
     property_name: str | None = Field(default=None)
     value: Any | None = Field(default=None)
 
@@ -57,6 +58,23 @@ class NodeUniquenessQueryRequest(BaseModel):
                 for q in self.relationship_attribute_paths
             )
         )
+
+
+class QueryRelationshipPathValued(BaseModel):
+    relationship_schema: RelationshipSchema
+    peer_id: str | None
+    attribute_name: str | None
+    attribute_value: str | bool | int | float | None
+
+
+class QueryAttributePathValued(BaseModel):
+    attribute_name: str
+    value: str | bool | int | float
+
+
+class NodeUniquenessQueryRequestValued(BaseModel):
+    kind: str
+    unique_valued_paths: list[QueryAttributePathValued | QueryRelationshipPathValued]
 
 
 class NonUniqueRelatedAttribute(BaseModel):

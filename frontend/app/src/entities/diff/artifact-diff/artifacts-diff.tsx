@@ -1,16 +1,22 @@
+import { useAtom } from "jotai";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
+
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useAtom } from "jotai";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
+
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import "react-diff-view/style/index.css";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
+
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
 export const ArtifactsDiff = forwardRef((_, ref) => {

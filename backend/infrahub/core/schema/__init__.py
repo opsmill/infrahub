@@ -21,7 +21,8 @@ from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
 from .template_schema import TemplateSchema
 
-MainSchemaTypes: TypeAlias = NodeSchema | GenericSchema | ProfileSchema | TemplateSchema
+NonGenericSchemaTypes: TypeAlias = NodeSchema | ProfileSchema | TemplateSchema
+MainSchemaTypes: TypeAlias = NonGenericSchemaTypes | GenericSchema
 
 
 # -----------------------------------------------------
@@ -45,6 +46,7 @@ class SchemaExtension(HashableModel):
 
 class SchemaRoot(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
     version: str | None = Field(default=None)
     generics: list[GenericSchema] = Field(default_factory=list)
     nodes: list[NodeSchema] = Field(default_factory=list)
@@ -91,6 +93,10 @@ class SchemaRoot(BaseModel):
     def merge(self, schema: SchemaRoot) -> SchemaRoot:
         """Return a new `SchemaRoot` after merging `self` with `schema`."""
         return SchemaRoot.model_validate(deep_merge_dict(dicta=self.model_dump(), dictb=schema.model_dump()))
+
+    def duplicate(self) -> SchemaRoot:
+        """Return a duplicate of the current schema."""
+        return SchemaRoot.model_validate(self.model_dump())
 
 
 internal_schema = internal.to_dict()

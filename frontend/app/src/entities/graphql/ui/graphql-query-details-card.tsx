@@ -1,10 +1,8 @@
+import { Icon } from "@iconify-icon/react";
+
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
-import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
-import { NodeSchema } from "@/entities/schema/types";
+
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -13,11 +11,15 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
+
+import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
+import { ModelSchema } from "@/entities/schema/types";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;
-  schema: NodeSchema;
+  schema: ModelSchema;
   refetch: () => Promise<unknown>;
   permission: Permission;
 };
@@ -29,7 +31,7 @@ const GraphqlQueryDetailsCard = ({
   permission,
 }: GraphqlQueryDetailsCardProps) => {
   return (
-    <Card className="p-0 overflow-x-hidden">
+    <Card className="overflow-x-hidden p-0">
       <GraphqlQueryDetailsTitle
         data={data}
         schema={schema}
@@ -138,7 +140,7 @@ const GraphqlQueryPropertyList = ({
             name: relationshipSchema.label || relationshipSchema.name,
             value: relationshipData?.map(({ node, properties }: any) => (
               <div key={node.id} className="flex items-center justify-between">
-                <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
                   {node?.display_label}
                 </Link>
 
@@ -167,7 +169,7 @@ const GraphqlQueryPropertyList = ({
           name: relationshipSchema.label || relationshipSchema.name,
           value: relationshipData && (
             <div className="flex items-center justify-between">
-              <Link to={getObjectDetailsUrl2(relationshipData.__typename, relationshipData.id)}>
+              <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
                 {relationshipData?.display_label}
               </Link>
 

@@ -26,25 +26,21 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import config, lock
+from infrahub.constants.database import DatabaseType, Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .constants import DatabaseType, Neo4jRuntime
-from .memgraph import DatabaseManagerMemgraph
 from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
-from .neo4j import DatabaseManagerNeo4j
 
 if TYPE_CHECKING:
     from types import TracebackType
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
-
-    from .manager import DatabaseManager
 
 validated_database = {}
 R = TypeVar("R")
@@ -95,6 +91,15 @@ class DatabaseSchemaManager:
 
         raise ValueError("The selected node is not of type NodeSchema")
 
+    def get_generic_schema(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
+    ) -> GenericSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if schema.is_generic_schema:
+            return schema
+
+        raise ValueError("The selected node is not of type GenericSchema")
+
     def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
@@ -134,7 +139,6 @@ class InfrahubDatabase:
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         db_type: DatabaseType | None = None,
         default_neo4j_runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT,
-        db_manager: DatabaseManager | None = None,
         schemas: list[SchemaBranch] | None = None,
         session: AsyncSession | None = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
@@ -160,14 +164,6 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
-
-        if db_manager:
-            self.manager = db_manager
-            self.manager.db = self
-        elif self.db_type == DatabaseType.NEO4J:
-            self.manager = DatabaseManagerNeo4j(db=self)
-        elif self.db_type == DatabaseType.MEMGRAPH:
-            self.manager = DatabaseManagerMemgraph(db=self)
 
     def __del__(self) -> None:
         if not self._session or not self._is_session_local or self._session.closed():
@@ -205,6 +201,16 @@ class InfrahubDatabase:
     def add_schema(self, schema: SchemaBranch, name: str | None = None) -> None:
         self._schemas[name or schema.name] = schema
 
+    def purge_inactive_schemas(self, active_branches: list[str]) -> list[str]:
+        """Return non active schema branches that were purged."""
+        removed_branches: list[str] = []
+        for branch_name in list(self._schemas.keys()):
+            if branch_name not in active_branches:
+                del self._schemas[branch_name]
+                removed_branches.append(branch_name)
+
+        return removed_branches
+
     def start_session(self, read_only: bool = False, schemas: list[SchemaBranch] | None = None) -> InfrahubDatabase:
         """Create a new InfrahubDatabase object in Session mode."""
         session_mode = InfrahubDatabaseSessionMode.WRITE
@@ -218,7 +224,6 @@ class InfrahubDatabase:
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
             schemas=schemas or self._schemas.values(),
-            db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
             queries_names_to_config=self.queries_names_to_config,
@@ -233,7 +238,6 @@ class InfrahubDatabase:
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
             schemas=schemas or self._schemas.values(),
-            db_manager=self.manager,
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
@@ -289,9 +293,10 @@ class InfrahubDatabase:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            return await self._session.close()
+            await self._session.close()
+            return
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             if exc_type is not None:
@@ -335,7 +340,7 @@ class InfrahubDatabase:
         CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
 
         if config.SETTINGS.database.max_concurrent_queries:
-            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:  # noqa: ASYNC110
+            while connpool_usage > config.SETTINGS.database.max_concurrent_queries:
                 await asyncio.sleep(config.SETTINGS.database.max_concurrent_queries_delay)
                 connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
 
@@ -384,8 +389,10 @@ class InfrahubDatabase:
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
                 response = await self.run_query(query=query, params=params, name=name)
                 if response is None:
+                    span.set_attribute("rows", "empty")
                     return [], {}
                 results = [item async for item in response]
+                span.set_attribute("rows", len(results))
                 return results, response._metadata or {}
 
     async def run_query(
@@ -479,8 +486,6 @@ async def validate_database(
 
 
 async def get_db(retry: int = 0) -> AsyncDriver:
-    URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
-
     trusted_certificates = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
         trusted_certificates = TrustAll()
@@ -488,11 +493,13 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
 
     driver = AsyncGraphDatabase.driver(
-        URI,
+        config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
-        notifications_disabled_categories=[NotificationDisabledCategory.UNRECOGNIZED],
+        notifications_disabled_categories=[
+            NotificationDisabledCategory.UNRECOGNIZED,
+        ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )
 

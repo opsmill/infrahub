@@ -25,6 +25,21 @@ from .m020_duplicate_edges import Migration020
 from .m021_missing_hierarchy_merge import Migration021
 from .m022_add_generate_template_attr import Migration022
 from .m023_deduplicate_cardinality_one_relationships import Migration023
+from .m024_missing_hierarchy_backfill import Migration024
+from .m025_uniqueness_nulls import Migration025
+from .m026_0000_prefix_fix import Migration026
+from .m027_delete_isolated_nodes import Migration027
+from .m028_delete_diffs import Migration028
+from .m029_duplicates_cleanup import Migration029
+from .m030_illegal_edges import Migration030
+from .m031_check_number_attributes import Migration031
+from .m032_cleanup_orphaned_branch_relationships import Migration032
+from .m033_deduplicate_relationship_vertices import Migration033
+from .m034_find_orphaned_schema_fields import Migration034
+from .m035_orphan_relationships import Migration035
+from .m036_drop_attr_value_index import Migration036
+from .m037_index_attr_vals import Migration037
+from .m038_redo_0000_prefix_fix import Migration038
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -55,6 +70,21 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration021,
     Migration022,
     Migration023,
+    Migration024,
+    Migration025,
+    Migration026,
+    Migration027,
+    Migration028,
+    Migration029,
+    Migration030,
+    Migration031,
+    Migration032,
+    Migration033,
+    Migration034,
+    Migration035,
+    Migration036,
+    Migration037,
+    Migration038,
 ]
 
 
@@ -69,3 +99,23 @@ async def get_graph_migrations(
         applicable_migrations.append(migration)
 
     return applicable_migrations
+
+
+def get_migration_by_number(
+    migration_number: int | str,
+) -> GraphMigration | InternalSchemaMigration | ArbitraryMigration:
+    # Convert to string and pad with zeros if needed
+    try:
+        num = int(migration_number)
+        migration_str = f"{num:03d}"
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"Invalid migration number: {migration_number}") from exc
+
+    migration_name = f"Migration{migration_str}"
+
+    # Find the migration in the MIGRATIONS list
+    for migration_class in MIGRATIONS:
+        if migration_class.__name__ == migration_name:
+            return migration_class.init()
+
+    raise ValueError(f"Migration {migration_number} not found")

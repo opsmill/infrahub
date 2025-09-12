@@ -1,14 +1,26 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { saveScreenshotForDocs } from "../../utils";
+import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("Account management - CRUD", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 
+  const BRANCH_NAME = generateRandomBranchName();
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
   test("Should create an account ", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management");
+      await page.goto(`/role-management?branch=${BRANCH_NAME}`);
     });
 
     await test.step("create account", async () => {
@@ -27,9 +39,9 @@ test.describe("Account management - CRUD", () => {
     });
   });
 
-  test("Should create an group ", async ({ page }) => {
+  test("Should create an group", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management/groups");
+      await page.goto(`/role-management/groups?branch=${BRANCH_NAME}`);
     });
 
     await test.step("create group", async () => {
@@ -38,7 +50,7 @@ test.describe("Account management - CRUD", () => {
       await page.getByRole("textbox", { name: "Name *" }).fill("New Group");
 
       await page.getByRole("combobox", { name: "Type" }).click();
-      await page.getByText("default").click();
+      await page.getByRole("option", { name: "default" }).click();
       await page.getByTestId("side-panel-container").getByText("Roles").click();
       await page.getByTestId("side-panel-container").getByText("Own branches read-write").click();
       await page.getByTestId("side-panel-container").getByText("Members").click();
@@ -51,7 +63,7 @@ test.describe("Account management - CRUD", () => {
     });
 
     await test.step("verify group creation", async () => {
-      await expect(page.getByRole("cell", { name: "New Group" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "New Group" }).first()).toBeVisible();
     });
   });
   // TODO: Update and Delete Tests

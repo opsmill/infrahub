@@ -1,5 +1,3 @@
-import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import {
   Button as AriaButton,
@@ -12,6 +10,9 @@ import {
   SearchFieldProps as AriaSearchFieldProps,
   composeRenderProps,
 } from "react-aria-components";
+
+import { focusWithinStyle, inputStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
 
 export function SearchField({ className, ...props }: AriaSearchFieldProps) {
   return (
@@ -27,7 +28,7 @@ export function SearchFieldInput({ className, ...props }: AriaInputProps) {
     <AriaInput
       className={composeRenderProps(className, (className) =>
         classNames(
-          "border-none outline-none min-w-0 flex-1 px-2 py-1.5 placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden",
+          "min-w-0 flex-1 border-none px-2 py-1.5 outline-hidden placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden",
           className
         )
       )}
@@ -43,8 +44,8 @@ export function SearchFieldGroup({ className, ...props }: AriaGroupProps) {
         classNames(
           inputStyle,
           focusWithinStyle,
-          "overflow-hidden min-h-0 h-10",
-          "data-[disabled]:opacity-50",
+          "h-10 min-h-0 overflow-hidden",
+          "data-disabled:opacity-50",
           className
         )
       )}
@@ -58,10 +59,10 @@ export function SearchFieldClear({ className, ...props }: AriaButtonProps) {
     <AriaButton
       className={composeRenderProps(className, (className) =>
         classNames(
-          "inline-flex rounded-sm opacity-70 transition-opacity",
-          "data-[hovered]:opacity-100",
-          "data-[disabled]:pointer-events-none",
-          "group-data-[empty]:invisible",
+          "inline-flex rounded-xs opacity-70 transition-opacity",
+          "data-hovered:opacity-100",
+          "data-disabled:pointer-events-none",
+          "group-data-empty:invisible",
           className
         )
       )}

@@ -6,7 +6,7 @@ from deepdiff import DeepDiff
 from infrahub import __version__, config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot
@@ -121,156 +121,6 @@ async def test_simple_query_with_offset_and_limit(
     assert len(result.data["TestCriticality"]["edges"]) == 1
 
 
-async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "display_labels": ["label__value"],
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "label", "kind": "Text", "optional": True},
-        ],
-    }
-    tmp_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
-    obj1 = await Node.init(db=db, schema=schema)
-    await obj1.new(db=db, name="low")
-    await obj1.save(db=db)
-
-    query = """
-    query {
-        TestCriticality {
-            edges {
-                node {
-                    id
-                    display_label
-                }
-            }
-        }
-    }
-    """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert len(result.data["TestCriticality"]["edges"]) == 1
-    assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == "Low"
-
-
-async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "display_labels": ["name__value", "level__value"],
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "level", "kind": "Number", "optional": True},
-        ],
-    }
-
-    tmp_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
-
-    obj1 = await Node.init(db=db, schema=schema)
-    await obj1.new(db=db, name="low", level=4)
-    await obj1.save(db=db)
-    obj2 = await Node.init(db=db, schema=schema)
-    await obj2.new(db=db, name="medium", level=3)
-    await obj2.save(db=db)
-
-    query = """
-    query {
-        TestCriticality {
-            edges {
-                node {
-                    id
-                    display_label
-                }
-            }
-        }
-    }
-    """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert len(result.data["TestCriticality"]["edges"]) == 2
-    assert sorted([node["node"]["display_label"] for node in result.data["TestCriticality"]["edges"]]) == [
-        "low 4",
-        "medium 3",
-    ]
-
-
-async def test_display_label_default_value(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "level", "kind": "Number", "optional": True},
-        ],
-    }
-
-    tmp_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
-
-    obj1 = await Node.init(db=db, schema=schema)
-    await obj1.new(db=db, name="low")
-    await obj1.save(db=db)
-
-    query = """
-    query {
-        TestCriticality {
-            edges {
-                node {
-                    id
-                    display_label
-                }
-            }
-        }
-    }
-    """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert len(result.data["TestCriticality"]["edges"]) == 1
-    assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == f"TestCriticality(ID: {obj1.id})"
-
-
 async def test_display_hfid(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -369,51 +219,6 @@ async def test_display_hfid_related_node(
             "hfid": ["Jack"],
         },
     }
-
-
-async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch):
-    person_schema = animal_person_schema.get(name="TestPerson")
-    dog_schema = animal_person_schema.get(name="TestDog")
-    cat_schema = animal_person_schema.get(name="TestCat")
-
-    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
-    await person1.new(db=db, name="Jack")
-    await person1.save(db=db)
-
-    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
-    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
-    await dog1.save(db=db)
-
-    cat1 = await Node.init(db=db, schema=cat_schema, branch=default_branch)
-    await cat1.new(db=db, name="Kitty", breed="Persian", owner=person1)
-    await cat1.save(db=db)
-
-    query = """
-    query {
-        TestAnimal {
-            edges {
-                node {
-                    display_label
-                }
-            }
-        }
-    }
-    """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert len(result.data["TestAnimal"]["edges"]) == 2
-    expected_results = ["Kitty Persian #444444", "Rocky Labrador"]
-    assert sorted([item["node"]["display_label"] for item in result.data["TestAnimal"]["edges"]]) == expected_results
 
 
 async def test_all_attributes(
@@ -752,52 +557,82 @@ async def test_nested_query_single_relationship(
     assert result.data["InfraDevice"]["edges"][1]["node"]["location"] == expected_location_data
 
 
-async def test_display_label_nested_query(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
-):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+async def test_nested_generic_query_many_relationship(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> None:
+    """Validates that nested GraphQL fragments work for cardinality=many relationships."""
+    raw_schema = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "Generic",
+                "namespace": "Location",
+                "hierarchical": True,
+                "attributes": [{"name": "name", "optional": False, "kind": "Text"}],
+                "relationships": [{"name": "devices", "peer": "InfraDevice", "cardinality": "many", "optional": True}],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Infra",
+                "attributes": [{"name": "name", "kind": "Text", "optional": False}],
+                "relationships": [
+                    {"name": "location", "peer": "LocationGeneric", "optional": False, "cardinality": "one"}
+                ],
+            },
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["LocationGeneric"],
+                "attributes": [{"name": "description", "optional": False, "kind": "Text"}],
+            },
+        ],
+    }
+    schema = SchemaRoot(**raw_schema)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    p1 = await Node.init(db=db, schema=person)
-    await p1.new(db=db, name="John", height=180)
-    await p1.save(db=db)
-    p2 = await Node.init(db=db, schema=person)
-    await p2.new(db=db, name="Jane", height=170)
-    await p2.save(db=db)
+    site_schema = schema_branch.get_node(name="LocationSite")
+    device_schema = schema_branch.get_node(name="InfraDevice")
 
-    c1 = await Node.init(db=db, schema=car)
-    await c1.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1)
-    await c1.save(db=db)
-    c2 = await Node.init(db=db, schema=car)
-    await c2.new(db=db, name="bolt", nbr_seats=4, is_electric=True, owner=p1)
-    await c2.save(db=db)
-    c3 = await Node.init(db=db, schema=car)
-    await c3.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
-    await c3.save(db=db)
+    site1 = await Node.init(db=db, schema=site_schema, branch=default_branch)
+    await site1.new(db=db, name="site1", description="test")
+    await site1.save(db=db)
+
+    device1 = await Node.init(db=db, schema=device_schema, branch=default_branch)
+    await device1.new(db=db, name="device1", location=site1)
+    await device1.save(db=db)
+
+    device2 = await Node.init(db=db, schema=device_schema, branch=default_branch)
+    await device2.new(db=db, name="device2", location=site1)
+    await device2.save(db=db)
 
     query = """
-    query {
-        TestPerson(name__value: "John") {
+    fragment DeviceData on InfraDevice {
+        name {
+            value
+        }
+    }
+
+    fragment LocationData on LocationSite {
+        name {
+            value
+        }
+        devices {
             edges {
-                node {
-                    name {
-                        value
-                    }
-                    cars {
-                        edges {
-                            node {
-                                id
-                                display_label
-                                owner {
-                                    node {
-                                        id
-                                        display_label
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            node {
+                ...DeviceData
+            }
+            }
+        }
+    }
+
+    query {
+        LocationSite {
+            edges {
+            node {
+                ...LocationData
+            }
             }
         }
     }
@@ -815,39 +650,23 @@ async def test_display_label_nested_query(
 
     assert result.errors is None
 
-    expected_result = {
-        "cars": {
+    assert result.data == {
+        "LocationSite": {
             "edges": [
                 {
                     "node": {
-                        "display_label": "volt #444444",
-                        "id": str(c1.id),
-                        "owner": {
-                            "node": {
-                                "display_label": "John",
-                                "id": str(p1.id),
-                            }
+                        "name": {"value": "site1"},
+                        "devices": {
+                            "edges": [
+                                {"node": {"name": {"value": "device1"}}},
+                                {"node": {"name": {"value": "device2"}}},
+                            ]
                         },
                     }
-                },
-                {
-                    "node": {
-                        "display_label": "bolt #444444",
-                        "id": str(c2.id),
-                        "owner": {
-                            "node": {
-                                "display_label": "John",
-                                "id": str(p1.id),
-                            }
-                        },
-                    }
-                },
-            ],
-        },
-        "name": {"value": "John"},
+                }
+            ]
+        }
     }
-
-    assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
 
 
 async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
@@ -1653,7 +1472,6 @@ async def test_query_filter_relationship_id(
         ("mylist__value: 2", ["obj2", "obj3", "obj5"]),
         ('mylist__value: "one", level__value: 2', ["obj2"]),
         ('mylist__values: ["one"]', ["obj1", "obj2", "obj3"]),
-        ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
         ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
         ('mylist__values: ["one", 5]', ["obj1", "obj2", "obj3", "obj4"]),
         ("mylist__value: true", ["obj3"]),

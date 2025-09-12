@@ -1,5 +1,6 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+
+import { classNames } from "@/shared/utils/common";
 
 type tRetryProps = {
   isLoading?: boolean;
@@ -28,9 +29,9 @@ export const Retry = (props: tRetryProps) => {
   return (
     <div
       className={classNames(
-        "flex justify-center items-center p-1 rounded-full cursor-pointer",
+        "flex cursor-pointer items-center justify-center rounded-full p-1",
         isLoading ? "animate-spin" : "",
-        isLoading || isDisabled ? "!cursor-not-allowed" : ""
+        isLoading || isDisabled ? "cursor-not-allowed!" : ""
       )}
       onClick={handleClick}
     >

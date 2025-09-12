@@ -24,3 +24,5 @@ class MemoryCache(InfrahubCache):
     async def set(self, key: str, value: str, expires: int | None = None, not_exists: bool = False) -> bool | None:
         self.storage[key] = value
         return True
+
+    async def close_connection(self) -> None: ...

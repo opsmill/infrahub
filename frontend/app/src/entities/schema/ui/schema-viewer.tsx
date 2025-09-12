@@ -1,4 +1,15 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { CSSProperties } from "react";
+import { TabList, Tabs } from "react-aria-components";
+import { ArrayParam, useQueryParam } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
+
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Badge } from "@/shared/components/ui/badge";
+import { classNames } from "@/shared/utils/common";
+
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -10,14 +21,7 @@ import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
 import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { Badge } from "@/shared/components/ui/badge";
-import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { CSSProperties } from "react";
-import { TabList, Tabs } from "react-aria-components";
-import { ArrayParam, useQueryParam } from "use-query-params";
+
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";
 import { SchemaHelpMenu } from "./schema-help-menu";
@@ -44,7 +48,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
         return kind ? (
           <SchemaViewer
             key={kind + index}
-            className="absolute top-0 w-full max-h-full"
+            className="absolute top-0 max-h-full w-full"
             schema={schema}
             onClose={() => {
               const nextKinds = [...selectedKind];
@@ -78,12 +82,12 @@ export const SchemaViewer = ({
     <section
       style={style}
       className={classNames(
-        "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
+        "flex flex-col space-y-4 overflow-hidden rounded-md border border-gray-200 bg-white p-4 shadow-lg",
         className
       )}
       data-testid="schema-viewer"
     >
-      <div className="flex justify-between items-start">
+      <div className="flex items-start justify-between">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
           <Badge>{isGenericSchema(schema) ? "Generic" : "Node"}</Badge>
@@ -112,13 +116,13 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
       {schema.icon && (
         <Icon
           icon={schema.icon}
-          className="text-xl p-2 self-start rounded text-custom-blue-600 border border-custom-blue-100"
+          className="self-start rounded-sm border border-custom-blue-100 p-2 text-custom-blue-600 text-xl"
         />
       )}
 
       <div>
         <h1 className="font-semibold">{schema.label}</h1>
-        <p className="text-sm text-gray-600">{schema.description}</p>
+        <p className="text-gray-600 text-sm">{schema.description}</p>
       </div>
     </header>
   );
@@ -143,7 +147,7 @@ const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
             <AttributeDisplay key={attribute.id} attribute={attribute} />
           ))
         ) : (
-          <div className="h-32 flex items-center justify-center">No attribute</div>
+          <div className="flex h-32 items-center justify-center">No attribute</div>
         )}
       </TabPanelStyled>
 
@@ -160,7 +164,7 @@ const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
 
 const Properties = ({ schema }: { schema: ModelSchema }) => {
   return (
-    <div className="p-2 divide-y">
+    <div className="divide-y divide-gray-200 p-2">
       <div>
         <PropertyRow title="ID" value={schema.id} />
         <PropertyRow title="Namespace" value={schema.namespace} />

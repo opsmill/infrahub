@@ -5,12 +5,13 @@ from infrahub_sdk.schema.main import RelationshipDirection
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph import Migration023
+from infrahub.core.migrations.graph.m023_deduplicate_cardinality_one_relationships import Migration023
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
-
 # redis is required as we will call `initialization` later
+
+
 async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, redis):
     """
     Reproduce corrupted state where two nodes would be connected by multiple relationships while relationship

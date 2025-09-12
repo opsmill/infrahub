@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
@@ -21,6 +21,8 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
+from .enums import BranchStatus
+
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
@@ -29,7 +31,7 @@ class Branch(StandardNode):
     name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
-    status: str = "OPEN"  # OPEN, CLOSED
+    status: BranchStatus = BranchStatus.OPEN
     description: str = ""
     origin_branch: str = "main"
     branched_from: Optional[str] = Field(default=None, validate_default=True)
@@ -131,14 +133,17 @@ class Branch(StandardNode):
         return True
 
     @classmethod
-    async def get_by_name(cls, name: str, db: InfrahubDatabase) -> Branch:
+    async def get_by_name(cls, name: str, db: InfrahubDatabase, ignore_deleting: bool = True) -> Branch:
         query = """
         MATCH (n:Branch)
         WHERE n.name = $name
+        AND NOT n.status IN $ignore_statuses
         RETURN n
         """
 
-        params = {"name": name}
+        params: dict[str, Any] = {"name": name}
+        if ignore_deleting:
+            params["ignore_statuses"] = [BranchStatus.DELETING.value]
 
         results = await db.execute_query(query=query, params=params, name="branch_get_by_name", type=QueryType.READ)
 
@@ -146,6 +151,20 @@ class Branch(StandardNode):
             raise BranchNotFoundError(identifier=name)
 
         return cls.from_db(results[0].values()[0])
+
+    @classmethod
+    async def get_list(
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> list[Self]:
+        branches = await super().get_list(db=db, limit=limit, ids=ids, name=name, **kwargs)
+        branches = [branch for branch in branches if branch.status != BranchStatus.DELETING]
+
+        return branches
 
     @classmethod
     def isinstance(cls, obj: Any) -> bool:
@@ -248,9 +267,13 @@ class Branch(StandardNode):
             raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
         if self.is_global:
             raise ValidationError(f"Unable to delete {self.name} this is an internal branch.")
-        await super().delete(db=db)
+
+        self.status = BranchStatus.DELETING
+        await self.save(db=db)
+
         query = await DeleteBranchRelationshipsQuery.init(db=db, branch_name=self.name)
         await query.execute(db=db)
+        await super().delete(db=db)
 
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
@@ -295,6 +318,7 @@ class Branch(StandardNode):
         is_isolated: bool = True,
         branch_agnostic: bool = False,
         variable_name: str = "r",
+        params_prefix: str = "",
     ) -> tuple[str, dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
@@ -306,30 +330,28 @@ class Branch(StandardNode):
 
             There is a currently an assumption that the relationship in the path will be named 'r'
         """
-
+        pp = params_prefix
         params: dict[str, Any] = {}
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = (
-                f"{variable_name}.from <= $time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= $time1)"
-            )
-            params["time1"] = at_str
+            filter_str = f"{variable_name}.from <= ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            params[f"{pp}time1"] = at_str
             return filter_str, params
 
         branches_times = self.get_branches_and_times_to_query_global(at=at_str, is_isolated=is_isolated)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            params[f"branch{idx}"] = list(branch_name)
-            params[f"time{idx}"] = time_to_query
+            params[f"{pp}branch{idx}"] = list(branch_name)
+            params[f"{pp}time{idx}"] = time_to_query
 
         filters = []
         for idx in range(len(branches_times)):
             filters.append(
-                f"({variable_name}.branch IN $branch{idx} AND {variable_name}.from <= $time{idx} AND {variable_name}.to IS NULL)"
+                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
-                f"({variable_name}.branch IN $branch{idx} AND {variable_name}.from <= $time{idx} AND {variable_name}.to >= $time{idx})"
+                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"

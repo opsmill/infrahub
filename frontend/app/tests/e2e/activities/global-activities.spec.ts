@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe.fixme("Global Activities - List view and filter usage", () => {
+test.describe("Global Activities - List view and filter usage", () => {
   test.describe.configure({ mode: "parallel" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();

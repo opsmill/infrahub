@@ -12,7 +12,7 @@ from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.log import clear_log_context, get_log_data
+from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -21,10 +21,11 @@ from infrahub.worker import WORKER_IDENTITY
 if TYPE_CHECKING:
     from infrahub.config import BrokerSettings
     from infrahub.message_bus.types import MessageTTL
-    from infrahub.services import InfrahubServices
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
 ResponseClass = TypeVar("ResponseClass")
+
+publish_tasks = set()
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -36,7 +37,6 @@ class NATSMessageBus(InfrahubMessageBus):
     def __init__(self, component_type: ComponentType, settings: BrokerSettings | None = None) -> None:
         self.settings = settings or config.SETTINGS.broker
 
-        self.service: InfrahubServices
         self.connection: nats.NATS
         self.jetstream: nats.js.JetStreamContext
         self.callback_queue: nats.js.api.StreamInfo
@@ -100,9 +100,9 @@ class NATSMessageBus(InfrahubMessageBus):
 
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
-                    await execute_message(routing_key=message.subject, message_body=message.data, service=self.service)
+                    await execute_message(routing_key=message.subject, message_body=message.data, message_bus=self)
                 else:
-                    self.service.log.error("Invalid message received", message=f"{message!r}")
+                    get_logger().error("Invalid message received", message=f"{message!r}")
         finally:
             if is_instrumentation_enabled() and message.headers:
                 context.detach(token)
@@ -119,12 +119,12 @@ class NATSMessageBus(InfrahubMessageBus):
                 clear_log_context()
                 if message.subject in messages.MESSAGE_MAP:
                     delay = await execute_message(
-                        routing_key=message.subject, message_body=message.data, service=self.service
+                        routing_key=message.subject, message_body=message.data, message_bus=self
                     )
                     if delay:
                         return await message.nak(delay / 1000)
                 else:
-                    self.service.log.error("Invalid message received", message=f"{message!r}")
+                    get_logger().error("Invalid message received", message=f"{message!r}")
 
                 return await message.ack()
         finally:
@@ -223,7 +223,9 @@ class NATSMessageBus(InfrahubMessageBus):
                     # Delayed retries are directly handled in the callback using Nack
                     return
                 # Use asyncio task for delayed publish since NATS does not support that out of the box
-                asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
+                task = asyncio.create_task(self._publish_with_delay(message, routing_key, delay))
+                publish_tasks.add(task)
+                task.add_done_callback(publish_tasks.discard)
                 return
 
             for enricher in self.message_enrichers:
@@ -288,7 +290,7 @@ class NATSMessageBus(InfrahubMessageBus):
             request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.config.name
         )
 
-        await self.service.message_bus.send(message=message)
+        await self.send(message=message)
 
         response: nats.aio.msg.Msg = await future
         data = ujson.loads(response.data)

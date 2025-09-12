@@ -15,7 +15,7 @@ export const generateNodeSchema = (
     state: "present",
     name: "Tag",
     namespace: "Builtin",
-    description: "Standard Tag object to attached to other objects to provide some context.",
+    description: "Standard Tag object to attach to other objects to provide some context.",
     label: "Tag",
     branch: "aware",
     default_filter: "name__value",
@@ -50,6 +50,12 @@ export const generateNodeSchema = (
         inherited: false,
         allow_override: "any",
         deprecation: null,
+        parameters: {
+          state: "present",
+          regex: null,
+          min_length: null,
+          max_length: null,
+        },
       },
       {
         id: "18262e04-2276-99bd-3f45-c514f0b9917c",
@@ -73,6 +79,12 @@ export const generateNodeSchema = (
         inherited: false,
         allow_override: "any",
         deprecation: null,
+        parameters: {
+          state: "present",
+          regex: null,
+          min_length: null,
+          max_length: null,
+        },
       },
     ],
     relationships: [
@@ -512,7 +524,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         cardinality: "many",
         min_count: 0,
         max_count: 0,
-        order_weight: 10000,
+        order_weight: 10_000,
         optional: true,
         branch: "aware",
         inherited: false,
@@ -535,7 +547,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         cardinality: "many",
         min_count: 0,
         max_count: 0,
-        order_weight: 11000,
+        order_weight: 11_000,
         optional: true,
         branch: "aware",
         inherited: false,
@@ -558,7 +570,7 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
         cardinality: "many",
         min_count: 0,
         max_count: 0,
-        order_weight: 12000,
+        order_weight: 12_000,
         optional: true,
         branch: "aware",
         inherited: false,
@@ -910,12 +922,16 @@ export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): A
     inherited: false,
     read_only: false,
     deprecation: null,
+    parameters: {
+      id: null,
+      state: "present",
+    },
     ...overrides,
   };
 };
 
 export const generateRelationshipSchema = (
-  overrides: Partial<RelationshipSchema>
+  overrides?: Partial<RelationshipSchema>
 ): RelationshipSchema => ({
   id: "test-id",
   state: "present",

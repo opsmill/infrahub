@@ -1,8 +1,12 @@
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { toast } from "react-toastify";
+
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
-import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
-import { branchesState } from "@/entities/branches/stores";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
@@ -18,12 +22,12 @@ import { List } from "@/shared/components/table/list";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
+import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
+import { branchesState } from "@/entities/branches/stores";
+
 import {
   BRANCH_MERGE_WORKFLOW,
   BRANCH_REBASE_WORKFLOW,
@@ -41,6 +45,7 @@ export const BranchDetails = () => {
   const [branches, setBranches] = useAtom(branchesState);
 
   const [displayModal, setDisplayModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -48,6 +53,8 @@ export const BranchDetails = () => {
     if (!branchName) return;
 
     try {
+      setIsLoading(true);
+
       await graphqlClient.mutate({
         mutation,
         variables: {
@@ -62,9 +69,11 @@ export const BranchDetails = () => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
         toastId: "alert-success",
       });
+      setIsLoading(false);
     } catch (error) {
       console.error(error);
       toast(<Alert type={ALERT_TYPES.ERROR} message={errorMessage} />);
+      setIsLoading(false);
     }
   };
 
@@ -122,7 +131,7 @@ export const BranchDetails = () => {
         <div>
           {branch?.name && (
             <>
-              <div className="flex flex-1 flex-col md:flex-row gap-4">
+              <div className="flex flex-1 flex-col gap-4 md:flex-row">
                 <BranchMergeButton branch={branch} />
 
                 <LinkButton
@@ -132,7 +141,7 @@ export const BranchDetails = () => {
                     }
                   }}
                   className={classNames(
-                    (!isAuthenticated || branch.is_default) && "opacity-50 cursor-not-allowed"
+                    (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
                   )}
                   to={constructPath("/proposed-changes/new", [
                     { name: QSP.SOURCE_BRANCH, value: branch?.name },
@@ -202,6 +211,7 @@ export const BranchDetails = () => {
           }}
           open={displayModal}
           setOpen={() => setDisplayModal(false)}
+          isLoading={isLoading}
         />
       )}
     </div>

@@ -1,0 +1,10 @@
+---
+replicaCount: 3
+auth:
+  username: infrahub
+  password: infrahub
+metrics:
+  enabled: true
+startupProbe:
+  enabled: true
+podAntiAffinityPreset: hard

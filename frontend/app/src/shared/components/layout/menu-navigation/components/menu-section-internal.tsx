@@ -1,3 +1,7 @@
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+import { Link } from "react-router";
+
 import { constructPath } from "@/shared/api/rest/fetch";
 import { CollapsedButton } from "@/shared/components/layout/menu-navigation/components/collapsed-button";
 import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
@@ -12,9 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React from "react";
-import { Link } from "react-router";
 
 export interface MenuSectionInternalProps {
   items: MenuItem[];
@@ -26,7 +27,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
     return (
       <DropdownMenuItem asChild>
         <Link to={constructPath(item.path)}>
-          <Icon icon={item.icon} className="min-w-4" />
+          <Icon icon={item.icon} className="size-4" />
           {item.label}
         </Link>
       </DropdownMenuItem>
@@ -36,7 +37,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>
-        <Icon icon={item.icon} className="min-w-4" />
+        <Icon icon={item.icon} className="size-4" />
         {item.label}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
@@ -56,8 +57,8 @@ const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
 
 const ExpandedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
   <Link to={constructPath(item.path)} className={classNames(menuNavigationItemStyle, "h-10")}>
-    <Icon icon={item.icon} className="min-w-4" />
-    <span className="text-sm truncate">{item.label}</span>
+    <Icon icon={item.icon} className="size-4" />
+    <span className="truncate text-sm">{item.label}</span>
     <Icon
       icon="mdi:arrow-top-right"
       className="m-1 ml-auto text-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
@@ -77,8 +78,8 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
       <CollapsedButton tooltipContent={item.label} icon={item.icon} />
     ) : (
       <>
-        <Icon icon={item.icon} className="min-w-4" />
-        <span className="text-sm truncate">{item.label}</span>
+        <Icon icon={item.icon} className="size-4" />
+        <span className="truncate text-sm">{item.label}</span>
         <Icon
           icon="mdi:dots-vertical"
           className="m-1 ml-auto opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
@@ -90,7 +91,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
 
 export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalProps) {
   return (
-    <div className="flex flex-col mb-auto">
+    <div className="mb-auto flex flex-col">
       {items.map((item) => {
         if (!item.children?.length) {
           return isCollapsed ? (

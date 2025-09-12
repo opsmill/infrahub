@@ -97,9 +97,9 @@ class AggregatedConstraintChecker:
                 error_detail_str += f"={data_path.value!r}"
                 error_detail_str_list.append(error_detail_str)
             if data_path.peer_id:
-                error_detail_str += f"{data_path.field_name}.id={data_path.peer_id}"
+                error_detail_str = f"{data_path.field_name}.id={data_path.peer_id}"
                 error_detail_str_list.append(error_detail_str)
-            if error_detail_str:
+            if error_detail_str_list:
                 error_str += " The error relates to field "
                 error_str += ",".join(error_detail_str_list)
                 error_str += "."

@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.query.node import NodeGetListQuery
-from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_ENTERPRISE_IMAGE
 from tests.helpers.query_benchmark.benchmark_config import BenchmarkConfig

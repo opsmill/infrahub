@@ -1,7 +1,10 @@
+import { NetworkStatus } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { ReactNode, useState } from "react";
+
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -19,21 +22,23 @@ import { BadgeCopy } from "@/shared/components/ui/badge-copy";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { NetworkStatus } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { ReactNode, useState } from "react";
+import usePagination from "@/shared/hooks/usePagination";
+
+import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 import { objectDecisionOptions } from "../constants";
 
 const icons: Record<string, ReactNode> = {
   allow: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-green-500/40">
+    <Pill className="flex h-6 w-6 items-center justify-center bg-green-500/40">
       <Icon icon={"mdi:lock-open-check-outline"} className="text-green-900" />
     </Pill>
   ),
   deny: (
-    <Pill className="flex items-center justify-center w-6 h-6 bg-red-500/40">
+    <Pill className="flex h-6 w-6 items-center justify-center bg-red-500/40">
       <Icon icon={"mdi:lock-remove-outline"} className="text-red-900" />
     </Pill>
   ),
@@ -42,6 +47,8 @@ const icons: Record<string, ReactNode> = {
 function Permissions() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
+  const [{ offset, limit }] = usePagination();
+
   const {
     loading,
     networkStatus,
@@ -50,7 +57,7 @@ function Permissions() {
     error,
     refetch,
   } = useQuery(GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS, {
-    variables: { search: searchDebounced },
+    variables: { search: searchDebounced, offset, limit },
     notifyOnNetworkStatusChange: true,
   });
   const data = latestData || previousData;
@@ -153,7 +160,7 @@ function Permissions() {
       return <UnauthorizedScreen message={message} />;
     }
 
-    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+    return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
   if (networkStatus === NetworkStatus.loading) {
@@ -177,14 +184,14 @@ function Permissions() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search object permissions"
             className="border-none focus-visible:ring-0"
-            containerClassName="flex-grow"
+            containerClassName="grow"
           />
 
           <Button
@@ -224,8 +231,8 @@ function Permissions() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel="New"
-              title={`Create ${schema.label}`}
+              currentObjectLabel={rowToUpdate?.name?.value ?? "New"}
+              title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />
           }
@@ -241,6 +248,7 @@ function Permissions() {
               setShowDrawer(false);
             }}
             onSuccess={() => {
+              setRowToUpdate(null);
               setShowDrawer(false);
               globalRefetch();
             }}

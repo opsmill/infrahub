@@ -9,11 +9,14 @@ on:
         description: "Directory in which poetry check will be executed"
         default: "./"
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   poetry_check:
+    needs: prepare-environment
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Set up Python"
@@ -22,7 +25,7 @@ jobs:
           python-version: "3.12"
       - name: "Setup environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
       - name: "Validate pyproject.toml and consistency with poetry.lock"
         run: |
           poetry check

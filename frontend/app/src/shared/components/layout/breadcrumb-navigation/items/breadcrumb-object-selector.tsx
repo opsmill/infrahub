@@ -1,10 +1,11 @@
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { ModelSchema } from "@/entities/schema/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-loading";
-import { NetworkStatus } from "@apollo/client";
+
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { ModelSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export default function BreadcrumbObjectSelector({
   kind,
@@ -31,25 +32,15 @@ const ObjectSelector = ({
   id: string;
   className?: string;
 }) => {
-  const { data, error, networkStatus } = useObjectDetails(schema, id);
+  const { data, error, isPending } = useGetObject({ objectSchema: schema, objectId: id });
 
-  if (networkStatus === NetworkStatus.loading) return <BreadcrumbLoading />;
+  if (isPending) return <BreadcrumbLoading />;
 
   if (error) return null;
 
-  const objectList = data?.[schema.kind!].edges.map((edge: any) => edge.node);
-  if (!objectList || objectList.length === 0) return null;
-
-  const currentObject = objectList.find((node: any) => node.id === id);
-
-  if (!currentObject) return null;
-
   return (
-    <BreadcrumbLink
-      to={getObjectDetailsUrl2(currentObject.__typename, currentObject.id)}
-      {...props}
-    >
-      {currentObject.display_label}
+    <BreadcrumbLink to={getObjectDetailsUrl(data.__typename, data.id)} {...props}>
+      {getNodeLabel(data)}
     </BreadcrumbLink>
   );
 };

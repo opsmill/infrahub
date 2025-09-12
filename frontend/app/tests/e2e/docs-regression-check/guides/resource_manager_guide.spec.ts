@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { saveScreenshotForDocs } from "../../../utils";
 
@@ -44,6 +45,8 @@ test.describe.fixme("Guide - Resources Manager", () => {
 
       await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_ip");
       await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page.getByText("IP address pool created")).toBeVisible();
     });
 
     await test.step("Use Pool to allocate IP on Device", async () => {

@@ -2,6 +2,7 @@
 # STAGE : Base Python Image
 # ****************************************************************
 ARG PYTHON_VER=3.12
+ARG POETRY_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED 1
@@ -24,18 +25,22 @@ RUN apt-get update && \
     tee /etc/apt/sources.list.d/docker.list > /dev/null && \
     apt-get update && \
     apt-get install --no-install-recommends -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
-    curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - && \
+    curl -sSL https://install.python-poetry.org | POETRY_VERSION=$POETRY_VER python3 - && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
 RUN poetry config virtualenvs.create false
+# Poetry 2.1 workaround
+ENV POETRY_VIRTUALENVS_CREATE=false
 
 # ****************************************************************
 # STAGE : Frontend
 # ****************************************************************
-FROM docker.io/node:20-slim AS frontend
+FROM docker.io/node:22-slim AS frontend
+ARG CI_ARG
+ENV CI=$CI_ARG
 
 RUN mkdir /source
 
@@ -83,7 +88,8 @@ RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/i
 
 WORKDIR /source
 
-ENV PREFECT_WORKER_QUERY_SECONDS="2"
+ENV PREFECT_WORKER_QUERY_SECONDS="2" \
+    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500
 
 # --------------------------------------------
 # Import Frontend Build

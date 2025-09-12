@@ -1,14 +1,17 @@
-import { INFRAHUB_DOC_LOCAL } from "@/config/config";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
+import { Pressable } from "react-aria-components";
+
+import { INFRAHUB_DOC_LOCAL } from "@/config/config";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import {
+  Menu,
+  MenuItem,
+  MenuPopover,
+  MenuSection,
+  MenuTrigger,
+} from "@/shared/components/aria/menu";
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 
 interface ObjectHelpButtonProps extends ButtonProps {
   className?: string;
@@ -24,29 +27,37 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
     : "";
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <MenuTrigger>
+      <Pressable>
         <Button variant="outline" size="icon" {...props}>
           ?
         </Button>
-      </DropdownMenuTrigger>
+      </Pressable>
 
-      <DropdownMenuContent align="end" className="z-10">
-        <DropdownMenuItem disabled={!documentationUrl} asChild>
-          <Link to={docFullUrl} target="_blank" rel="noreferrer">
-            <Icon icon="mdi:book-open-variant-outline" className="text-lg" />
-            Documentation
-            <Icon icon="mdi:open-in-new" />
-          </Link>
-        </DropdownMenuItem>
+      <MenuPopover placement="bottom end">
+        <Menu>
+          <MenuSection>
+            <MenuItem
+              isDisabled={!documentationUrl}
+              href={docFullUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Icon icon="mdi:book-open-variant-outline" className="text-lg" />
+              Documentation
+              <Icon icon="mdi:open-in-new" />
+            </MenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link to={constructPath("/schema", [{ name: "kind", value: kind }])}>
-            <Icon icon="mdi:code-json" className="text-lg" />
-            Schema
-          </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MenuItem
+              isDisabled={!kind}
+              href={constructPath("/schema", [{ name: "kind", value: kind }])}
+            >
+              <Icon icon="mdi:code-json" className="text-lg" />
+              Schema
+            </MenuItem>
+          </MenuSection>
+        </Menu>
+      </MenuPopover>
+    </MenuTrigger>
   );
 };

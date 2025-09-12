@@ -73,8 +73,17 @@ class RelationshipPeerData:
     source_id: UUID
     """UUID of the Source Node."""
 
+    source_db_id: str
+    """Internal DB ID of the Source Node."""
+
+    source_kind: str
+    """Kind of the Source Node."""
+
     peer_id: UUID
     """UUID of the Peer Node."""
+
+    peer_db_id: str
+    """Internal DB ID of the Peer Node."""
 
     peer_kind: str
     """Kind of the Peer Node."""
@@ -84,9 +93,6 @@ class RelationshipPeerData:
 
     rel_node_id: UUID | None = None
     """UUID of the Relationship Node."""
-
-    peer_db_id: str | None = None
-    """Internal DB ID of the Peer Node."""
 
     rel_node_db_id: str | None = None
     """Internal DB ID of the Relationship Node."""
@@ -196,6 +202,64 @@ class RelationshipQuery(Query):
             rel_prop_dict["hierarchy"] = self.schema.hierarchical
         return rel_prop_dict
 
+    def add_source_match_to_query(self, source_branch: Branch) -> None:
+        self.params["source_id"] = self.source_id or self.source.get_id()
+        if source_branch.is_global or source_branch.is_default:
+            source_query_match = """
+            MATCH (s:Node { uuid: $source_id })-[source_e:IS_PART_OF {branch: $source_branch, status: "active"}]->(:Root)
+            WHERE source_e.from <= $at AND (source_e.to IS NULL OR source_e.to > $at)
+            OPTIONAL MATCH (s)-[delete_edge:IS_PART_OF {status: "deleted", branch: $source_branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH *, s WHERE delete_edge IS NULL
+            """
+            self.params["source_branch"] = source_branch.name
+        else:
+            source_filter, source_filter_params = source_branch.get_query_filter_path(
+                at=self.at, variable_name="r", params_prefix="src_"
+            )
+            source_query_match = """
+            MATCH (s:Node { uuid: $source_id })
+            CALL (s) {
+                MATCH (s)-[r:IS_PART_OF]->(:Root)
+                WHERE %(source_filter)s
+                RETURN r.status = "active" AS s_is_active
+                ORDER BY r.from DESC
+                LIMIT 1
+            }
+            WITH *, s WHERE s_is_active = TRUE
+                """ % {"source_filter": source_filter}
+            self.params.update(source_filter_params)
+        self.add_to_query(source_query_match)
+
+    def add_dest_match_to_query(self, destination_branch: Branch, destination_id: str) -> None:
+        self.params["destination_id"] = destination_id
+        if destination_branch.is_global or destination_branch.is_default:
+            destination_query_match = """
+            MATCH (d:Node { uuid: $destination_id })-[dest_e:IS_PART_OF {branch: $destination_branch, status: "active"}]->(:Root)
+            WHERE dest_e.from <= $at AND (dest_e.to IS NULL OR dest_e.to > $at)
+            OPTIONAL MATCH (d)-[delete_edge:IS_PART_OF {status: "deleted", branch: $destination_branch}]->(:Root)
+            WHERE delete_edge.from <= $at
+            WITH *, d WHERE delete_edge IS NULL
+            """
+            self.params["destination_branch"] = destination_branch.name
+        else:
+            destination_filter, destination_filter_params = destination_branch.get_query_filter_path(
+                at=self.at, variable_name="r", params_prefix="dst_"
+            )
+            destination_query_match = """
+            MATCH (d:Node { uuid: $destination_id })
+            CALL (d) {
+                MATCH (d)-[r:IS_PART_OF]->(:Root)
+                WHERE %(destination_filter)s
+                RETURN r.status = "active" AS d_is_active
+                ORDER BY r.from DESC
+                LIMIT 1
+            }
+            WITH *, d WHERE d_is_active = TRUE
+            """ % {"destination_filter": destination_filter}
+            self.params.update(destination_filter_params)
+        self.add_to_query(destination_query_match)
+
 
 class RelationshipCreateQuery(RelationshipQuery):
     name = "relationship_create"
@@ -214,8 +278,6 @@ class RelationshipCreateQuery(RelationshipQuery):
         super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
         self.params["branch_support"] = self.schema.branch.value
 
@@ -228,12 +290,11 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["is_protected"] = self.rel.is_protected
         self.params["is_visible"] = self.rel.is_visible
 
-        query_match = """
-        MATCH (s:Node { uuid: $source_id })
-        MATCH (d:Node { uuid: $destination_id })
-        """
-        self.add_to_query(query_match)
-
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(
+            destination_branch=self.destination.get_branch_based_on_support_type(),
+            destination_id=self.destination_id or self.destination.get_id(),
+        )
         self.query_add_all_node_property_match()
 
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.ACTIVE)
@@ -378,7 +439,6 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["name"] = self.schema.identifier
         self.params["branch"] = self.branch.name
@@ -388,9 +448,10 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         # -----------------------------------------------------------------------
         # Match all nodes, including properties
         # -----------------------------------------------------------------------
+
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(destination_branch=self.branch, destination_id=self.data.peer_id)
         query = """
-        MATCH (s:Node { uuid: $source_id })
-        MATCH (d:Node { uuid: $destination_id })
         MATCH (rl:Relationship { uuid: $rel_node_id })
         """
         self.add_to_query(query)
@@ -442,8 +503,6 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
-        self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
@@ -454,15 +513,19 @@ class RelationshipDeleteQuery(RelationshipQuery):
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(
+            destination_branch=self.destination.get_branch_based_on_support_type(),
+            destination_id=self.destination_id or self.destination.get_id(),
+        )
         query = """
-        MATCH (s:Node { uuid: $source_id })-[:IS_RELATED]-(rl:Relationship {uuid: $rel_id})-[:IS_RELATED]-(d:Node { uuid: $destination_id })
-        WITH s, rl, d
+        MATCH (s)-[:IS_RELATED]-(rl:Relationship {uuid: $rel_id})-[:IS_RELATED]-(d)
+        WITH DISTINCT s, rl, d
         LIMIT 1
         CREATE (s)%(r1)s(rl)
         CREATE (rl)%(r2)s(d)
         WITH rl
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:IS_VISIBLE]->(visible)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, visible
@@ -473,8 +536,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
             WHERE edge.branch = $branch
             SET edge.to = $at
         }
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:IS_PROTECTED]->(protected)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, protected
@@ -485,8 +547,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
             WHERE edge.branch = $branch
             SET edge.to = $at
         }
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, owner_node
@@ -497,8 +558,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
             WHERE edge.branch = $branch
             SET edge.to = $at
         }
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, source_node
@@ -583,44 +643,40 @@ class RelationshipGetPeerQuery(Query):
 
         arrows = self.schema.get_query_arrows()
 
-        path_str = (
-            f"{arrows.left.start}[:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[:IS_RELATED]{arrows.right.end}"
-        )
+        path_str = f"{arrows.left.start}[r1:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[r2:IS_RELATED]{arrows.right.end}"
 
         branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
-        froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
         query = """
         MATCH (source_node:Node)%(arrow_left_start)s[:IS_RELATED]%(arrow_left_end)s(rl:Relationship { name: $rel_identifier })
         WHERE source_node.uuid IN $source_ids
         WITH DISTINCT source_node, rl
-        CALL {
-            WITH rl, source_node
+        CALL (rl, source_node) {
             MATCH path = (source_node)%(path)s(peer:Node)
             WHERE
                 $source_kind IN LABELS(source_node) AND
                 peer.uuid <> source_node.uuid AND
                 $peer_kind IN LABELS(peer) AND
-                all(r IN relationships(path) WHERE (%(branch_filter)s))
-            WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s AS froms
-            RETURN peer as peer, rels, rl as rl1
-            ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+                all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            WITH source_node, peer, rl, r1, r2, %(branch_level)s AS branch_level
+            RETURN peer as peer, r1.status = "active" AND r2.status = "active" AS is_active, [r1, r2] AS rels
+            // status is required as a tiebreaker for migrated-kind nodes
+            ORDER BY branch_level DESC, r2.from DESC, r2.status ASC, r1.from DESC, r1.status ASC
             LIMIT 1
         }
-        WITH peer, rl1 as rl, rels, source_node
+        WITH peer, rl, is_active, rels, source_node
         """ % {
             "path": path_str,
             "branch_filter": branch_filter,
             "branch_level": branch_level_str,
-            "froms": froms_str,
             "arrow_left_start": arrows.left.start,
             "arrow_left_end": arrows.left.end,
         }
 
         self.add_to_query(query)
-        where_clause = ['all(r IN rels WHERE r.status = "active")']
+        where_clause = ["is_active = TRUE"]
         clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
 
-        if clean_filters and "id" in clean_filters or "ids" in clean_filters:
+        if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
             self.params["peer_ids"] = clean_filters.get("ids", [])
             if clean_filters.get("id", None):
@@ -663,22 +719,19 @@ class RelationshipGetPeerQuery(Query):
             with_str = ", ".join(
                 [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
             )
-            self.add_subquery(subquery=subquery, with_clause=with_str)
-
+            self.add_subquery(subquery=subquery, node_alias="peer", with_clause=with_str)
         # ----------------------------------------------------------------------------
         # QUERY Properties
         # ----------------------------------------------------------------------------
         query = """
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
             WHERE %(branch_filter)s
             RETURN r AS rel_is_visible, is_visible
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[r:IS_PROTECTED]-(is_protected)
             WHERE %(branch_filter)s
             RETURN r AS rel_is_protected, is_protected
@@ -695,8 +748,7 @@ class RelationshipGetPeerQuery(Query):
         # We must query them one by one otherwise the second one won't return
         for node_prop in ["source", "owner"]:
             query = """
-        CALL {
-            WITH rl
+        CALL (rl) {
             OPTIONAL MATCH (rl)-[r:HAS_%(node_prop_type)s]-(%(node_prop)s)
             WHERE %(branch_filter)s
             RETURN r AS rel_%(node_prop)s, %(node_prop)s
@@ -737,7 +789,7 @@ class RelationshipGetPeerQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                self.add_subquery(subquery=subquery)
+                self.add_subquery(subquery=subquery, node_alias="peer")
 
                 order_cnt += 1
 
@@ -752,10 +804,15 @@ class RelationshipGetPeerQuery(Query):
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
         for result in self.get_results_group_by(("peer", "uuid"), ("source_node", "uuid")):
             rels = result.get("rels")
+            source_node = result.get_node("source_node")
+            peer_node = result.get_node("peer")
             data = RelationshipPeerData(
-                source_id=result.get_node("source_node").get("uuid"),
-                peer_id=result.get_node("peer").get("uuid"),
-                peer_kind=result.get_node("peer").get("kind"),
+                source_id=source_node.get("uuid"),
+                source_db_id=source_node.element_id,
+                source_kind=source_node.get("kind"),
+                peer_id=peer_node.get("uuid"),
+                peer_db_id=peer_node.element_id,
+                peer_kind=peer_node.get("kind"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=rels[0]["from"],
@@ -793,8 +850,6 @@ class RelationshipGetQuery(RelationshipQuery):
     type: QueryType = QueryType.READ
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["source_id"] = self.source_id
-        self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
         self.params["branch"] = self.branch.name
 
@@ -808,9 +863,12 @@ class RelationshipGetQuery(RelationshipQuery):
         r1 = f"{arrows.left.start}[r1:{self.rel.rel_type}]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel.rel_type}]{arrows.right.end}"
 
+        self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
+        self.add_dest_match_to_query(
+            destination_branch=self.destination.get_branch_based_on_support_type(),
+            destination_id=self.destination_id or self.destination.get_id(),
+        )
         query = """
-        MATCH (s:Node { uuid: $source_id })
-        MATCH (d:Node { uuid: $destination_id })
         MATCH (s)%s(rl:Relationship { name: $name })%s(d)
         WHERE %s
         """ % (
@@ -870,8 +928,7 @@ class RelationshipGetByIdentifierQuery(Query):
         query = """
         MATCH (rl:Relationship)
         WHERE rl.name IN $identifiers
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
             WHERE (size($full_identifiers) = 0 OR [src.kind, rl.name, dst.kind] in $full_identifiers)
             AND NOT src.namespace IN $excluded_namespaces
@@ -934,8 +991,7 @@ class RelationshipCountPerNodeQuery(Query):
         query = """
         MATCH (peer_node:Node)%(path)s(rl:Relationship { name: $rel_identifier })
         WHERE peer_node.uuid IN $peer_ids AND %(branch_filter)s
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH path = (peer_node:Node)%(path)s(rl)
             WHERE peer_node.uuid IN $peer_ids AND %(branch_filter)s
             RETURN peer_node as peer, r as r1
@@ -979,7 +1035,7 @@ class RelationshipDeleteAllQuery(Query):
         self.node_id = node_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["source_id"] = kwargs["node_id"]
         self.params["branch"] = self.branch.name
 
@@ -1013,8 +1069,7 @@ class RelationshipDeleteAllQuery(Query):
         for arrow_left, arrow_right in (("<-", "-"), ("-", "->")):
             for edge_type in edge_types:
                 sub_query = """
-                    CALL {
-                        WITH rl
+                    CALL (rl) {
                         MATCH (rl)%(arrow_left)s[active_edge:%(edge_type)s]%(arrow_right)s(n)
                         WHERE %(active_rel_filter)s AND active_edge.status ="active"
                         CREATE (rl)%(arrow_left)s[deleted_edge:%(edge_type)s $rel_prop]%(arrow_right)s(n)
@@ -1034,10 +1089,13 @@ class RelationshipDeleteAllQuery(Query):
 
         # We only want to return uuid/kind of `Node` connected through `IS_RELATED` edges.
         query += """
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[active_edge:IS_RELATED]->(n)
-            WHERE %(active_rel_filter)s AND active_edge.status ="active"
+            WHERE %(active_rel_filter)s
+            WITH rl, active_edge, n
+            ORDER BY %(id_func)s(rl), %(id_func)s(n), active_edge.from DESC
+            WITH rl, n, head(collect(active_edge)) AS active_edge
+            WHERE active_edge.status = "active"
             CREATE (rl)-[deleted_edge:IS_RELATED $rel_prop]->(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
             WITH rl, active_edge, n
@@ -1050,10 +1108,13 @@ class RelationshipDeleteAllQuery(Query):
                 "outbound" as rel_direction
 
             UNION
-
             WITH rl
             MATCH (rl)<-[active_edge:IS_RELATED]-(n)
-            WHERE %(active_rel_filter)s AND active_edge.status ="active"
+            WHERE %(active_rel_filter)s
+            WITH rl, active_edge, n
+            ORDER BY %(id_func)s(rl), %(id_func)s(n), active_edge.from DESC
+            WITH rl, n, head(collect(active_edge)) AS active_edge
+            WHERE active_edge.status = "active"
             CREATE (rl)<-[deleted_edge:IS_RELATED $rel_prop]-(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
             WITH rl, active_edge, n
@@ -1066,9 +1127,7 @@ class RelationshipDeleteAllQuery(Query):
                 "inbound" as rel_direction
         }
         RETURN DISTINCT uuid, kind, rel_identifier, rel_direction
-        """ % {
-            "active_rel_filter": active_rel_filter,
-        }
+        """ % {"active_rel_filter": active_rel_filter, "id_func": db.get_id_function_name()}
 
         self.add_to_query(query)
 
@@ -1118,3 +1177,40 @@ class RelationshipDeleteAllQuery(Query):
             changelog_mapper.delete_relationship(peer_id=peer_uuid, peer_kind=kind, rel_schema=deleted_rel_schema)
 
         return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]
+
+
+class GetAllPeersIds(Query):
+    """
+    Return all peers ids connected to input node. Some peers can be excluded using `exclude_identifiers`.
+    """
+
+    name = "get_peers_ids"
+    type: QueryType = QueryType.READ
+    insert_return = False
+
+    def __init__(self, node_id: str, exclude_identifiers: list[str], **kwargs):
+        self.node_id = node_id
+        self.exclude_identifiers = exclude_identifiers
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["source_id"] = kwargs["node_id"]
+        self.params["branch"] = self.branch.name
+        self.params["exclude_identifiers"] = self.exclude_identifiers
+
+        active_rel_filter, rel_params = self.branch.get_query_filter_path(
+            at=self.at, variable_name="e1", branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(rel_params)
+
+        query = """
+            MATCH (node:Node { uuid: $source_id })-[e1:IS_RELATED]-(rl:Relationship)-[e2:IS_RELATED]-(peer:Node)
+            WHERE %(active_rel_filter)s AND peer.uuid <> node.uuid AND NOT (rl.name IN $exclude_identifiers)
+            WITH DISTINCT(peer.uuid) as uuid
+            RETURN uuid
+        """ % {"active_rel_filter": active_rel_filter}
+
+        self.add_to_query(query)
+
+    def get_peers_uuids(self) -> list[str]:
+        return [row.data["uuid"] for row in self.results]  # type: ignore

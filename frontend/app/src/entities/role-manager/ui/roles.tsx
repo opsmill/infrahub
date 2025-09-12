@@ -1,31 +1,37 @@
-import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
-import { Table, tRowValue } from "@/shared/components/table/table";
-import { Pagination } from "@/shared/components/ui/pagination";
+import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
+import { Table, tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
+import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { NetworkStatus } from "@apollo/client";
+import usePagination from "@/shared/hooks/usePagination";
+
+import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 
 function Roles() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
+  const [{ offset, limit }] = usePagination();
+
   const {
     loading,
     networkStatus,
@@ -34,7 +40,7 @@ function Roles() {
     error,
     refetch,
   } = useQuery(GET_ROLE_MANAGEMENT_ROLES, {
-    variables: { search: searchDebounced },
+    variables: { search: searchDebounced, offset, limit },
     notifyOnNetworkStatusChange: true,
   });
   const data = latestData || previousData;
@@ -103,7 +109,7 @@ function Roles() {
       return <UnauthorizedScreen message={message} />;
     }
 
-    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+    return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
   if (networkStatus === NetworkStatus.loading) {
@@ -122,14 +128,14 @@ function Roles() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search roles"
             className="border-none focus-visible:ring-0"
-            containerClassName="flex-grow"
+            containerClassName="grow"
           />
 
           <Button
@@ -169,8 +175,8 @@ function Roles() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel="New"
-              title={`Create ${schema.label}`}
+              currentObjectLabel={rowToUpdate?.name?.value ?? "New"}
+              title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />
           }
@@ -186,6 +192,7 @@ function Roles() {
               setShowDrawer(false);
             }}
             onSuccess={() => {
+              setRowToUpdate(null);
               setShowDrawer(false);
               globalRefetch();
             }}

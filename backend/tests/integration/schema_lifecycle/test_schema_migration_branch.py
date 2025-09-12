@@ -9,6 +9,7 @@ from infrahub.core.initialization import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from infrahub.exceptions import InitializationError, SchemaNotFoundError
 
 from ..shared import load_schema
@@ -54,6 +55,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
 
+        deleted_bob = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_bob.new(db=db, name="Deleted Bob", height=175, description="He's not here")
+        await deleted_bob.save(db=db)
+        await deleted_bob.delete(db=db)
+
         renault = await Node.init(schema=MANUFACTURER_KIND_01, db=db)
         await renault.new(
             db=db, name="renault", description="Groupe Renault is a French multinational automobile manufacturer"
@@ -84,6 +90,11 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         richard = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
+
+        deleted_chuck = await Node.init(schema=PERSON_KIND, db=db, branch=branch1)
+        await deleted_chuck.new(db=db, name="Deleted Chuck", height=175, description="He's not here")
+        await deleted_chuck.save(db=db)
+        await deleted_chuck.delete(db=db)
 
         mercedes = await Node.init(schema=MANUFACTURER_KIND_01, db=db, branch=branch1)
         await mercedes.new(
@@ -176,6 +187,8 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                                 },
                                 "removed": {},
                             },
+                            "uniqueness_constraints": None,
+                            "human_friendly_id": None,
                         },
                         "removed": {},
                     },
@@ -433,3 +446,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         updated_interiors_schema = updated_schema_branch.get(name="TestingInterior", duplicate=False)
         assert updated_interiors_schema.attribute_names == ["material"]
         assert "cars" in updated_interiors_schema.relationship_names
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

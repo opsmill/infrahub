@@ -1,7 +1,9 @@
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import TreeViewPrimitive, { INodeRendererProps, ITreeViewProps } from "react-accessible-treeview";
+
+import { classNames } from "@/shared/utils/common";
+
 import { TreeSkeleton } from "./tree-sheleton";
 
 export type TreeItemProps = Pick<INodeRendererProps, "element">;
@@ -28,8 +30,8 @@ export const Tree = ({ itemContent, className, loading, ...props }: TreeProps) =
         </TreeItemWrapper>
       )}
       className={classNames(
-        "text-sm w-fit min-w-0",
-        "[&_li:focus-visible]:rounded [&_li:focus-visible]:outline-none [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-custom-blue-500 [&_li:focus-visible]:ring-offset-2",
+        "w-fit min-w-0 text-sm",
+        "[&_li:focus-visible]:rounded-sm [&_li:focus-visible]:outline-hidden [&_li:focus-visible]:ring-2 [&_li:focus-visible]:ring-custom-blue-500 [&_li:focus-visible]:ring-offset-2",
         className
       )}
     />
@@ -44,9 +46,9 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
       style={{ paddingLeft: (level - 1) * 20 }}
       className={classNames(
         "flex items-center",
-        "text-gray-600 rounded whitespace-nowrap mix-blend-multiply",
-        "h-8 px-1.5 cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500",
+        "whitespace-nowrap rounded-sm text-gray-600 mix-blend-multiply",
+        "h-8 cursor-pointer px-1.5",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-500",
         isSelected ? "bg-gray-200" : "hover:bg-gray-100",
         isHalfSelected && "bg-gray-50"
       )}

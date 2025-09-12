@@ -1,13 +1,14 @@
-import { classNames } from "@/shared/utils/common";
-import { VariantProps, cva } from "class-variance-authority";
+import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
+import { classNames } from "@/shared/utils/common";
+
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold",
+  "inline-flex items-center rounded-md border border-gray-200 px-1.5 py-0.5 font-semibold text-xs",
   {
     variants: {
       variant: {
-        white: "border-transparent bg-custom-white text-gray-900",
+        white: "border-transparent bg-white text-gray-900",
         gray: "border-transparent bg-gray-100 text-gray-900",
         "dark-gray": "border-transparent bg-gray-300 text-gray-900",
         green: "border-transparent bg-green-700/10 text-green-900",
@@ -15,11 +16,11 @@ const badgeVariants = cva(
         blue: "border-transparent bg-custom-blue-700/10 text-custom-blue-700",
         yellow: "border-transparent bg-yellow-100 text-yellow-900",
         purple: "border-transparent bg-purple-50 text-purple-900",
-        "gray-outline": "bg-custom-white border-gray-400 text-gray-900",
-        "blue-outline": "bg-custom-white border-custom-blue-700 text-custom-blue-700",
-        "yellow-outline": "bg-custom-white border-yellow-100 text-yellow-900",
-        "green-outline": "border-2 text-green-700 border-green-500",
-        "red-outline": "border-2 text-red-700 border-red-500",
+        "gray-outline": "border-gray-400 bg-white text-gray-700",
+        "blue-outline": "border-custom-blue-700 bg-white text-custom-blue-700",
+        "yellow-outline": "border-yellow-100 bg-white text-yellow-900",
+        "green-outline": "border-2 border-green-500 text-green-700",
+        "red-outline": "border-2 border-red-500 text-red-700",
       },
     },
     defaultVariants: {

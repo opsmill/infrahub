@@ -23,7 +23,7 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
-from infrahub.database.constants import DatabaseType
+from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 
 if TYPE_CHECKING:
@@ -46,6 +46,11 @@ def default_cors_allow_headers() -> list[str]:
 
 def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
+
+
+class EnterpriseFeatures(str, Enum):
+    PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
+    REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
 
 
 class UserInfoMethod(str, Enum):
@@ -115,10 +120,42 @@ class BrokerDriver(str, Enum):
     RabbitMQ = "rabbitmq"
     NATS = "nats"
 
+    @property
+    def driver_module_path(self) -> str:
+        match self:
+            case BrokerDriver.NATS:
+                return "infrahub.services.adapters.message_bus.nats"
+            case BrokerDriver.RabbitMQ:
+                return "infrahub.services.adapters.message_bus.rabbitmq"
+
+    @property
+    def driver_class_name(self) -> str:
+        match self:
+            case BrokerDriver.NATS:
+                return "NATSMessageBus"
+            case BrokerDriver.RabbitMQ:
+                return "RabbitMQMessageBus"
+
 
 class CacheDriver(str, Enum):
     Redis = "redis"
     NATS = "nats"
+
+    @property
+    def driver_module_path(self) -> str:
+        match self:
+            case CacheDriver.NATS:
+                return "infrahub.services.adapters.cache.nats"
+            case CacheDriver.Redis:
+                return "infrahub.services.adapters.cache.redis"
+
+    @property
+    def driver_class_name(self) -> str:
+        match self:
+            case CacheDriver.NATS:
+                return "NATSCache"
+            case CacheDriver.Redis:
+                return "RedisCache"
 
 
 class WorkflowDriver(str, Enum):
@@ -237,6 +274,7 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    policy: str | None = Field(default=None, description="Routing policy for database connections")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -262,6 +300,14 @@ class DatabaseSettings(BaseSettings):
     )
 
     @property
+    def database_uri(self) -> str:
+        """Constructs the database URI based on the configuration settings."""
+        base_uri = f"{self.protocol}://{self.address}:{self.port}"
+        if self.policy is not None:
+            return f"{base_uri}?policy={self.policy}"
+        return base_uri
+
+    @property
     def database_name(self) -> str:
         return self.database or self.db_type.value
 
@@ -275,9 +321,15 @@ class DevelopmentSettings(BaseSettings):
         default=False,
         description="Indicates of the frontend should be responsible for the SSO redirection",
     )
+    allow_enterprise_configuration: bool = Field(
+        default=False,
+        description="Allow enterprise configuration in development mode, this will not enable the features just allow the configuration.",
+    )
 
 
 class BrokerSettings(BaseSettings):
+    """Configuration settings for the message bus."""
+
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -391,9 +443,7 @@ class GitSettings(BaseSettings):
 
 
 class HTTPSettings(BaseSettings):
-    """The HTTP settings control how Infrahub interacts with external HTTP servers
-
-    This can be things like webhooks and OAuth2 providers"""
+    """The HTTP settings control how Infrahub interacts with external HTTP servers. This can be things like webhooks and OAuth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_HTTP_")
     timeout: int = Field(default=10, description="Default connection timeout in seconds")
@@ -495,6 +545,14 @@ class SecurityOIDCGoogle(SecurityOIDCSettings):
     discovery_url: str = Field(default="https://accounts.google.com/.well-known/openid-configuration")
     icon: str = Field(default="mdi:google")
     display_label: str = Field(default="Google")
+    fetch_groups: bool = Field(
+        default=False,
+        description="Whether to use Cloud Identity API to fetch user groups. Note: requires additional scope: https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+    )
+    cloudidentity_url: str = Field(
+        default="https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchDirectGroups",
+        description="Google Cloud endpoint for Cloud Identity. Using searchDirectGroups by default because it is available for the Free plan",
+    )
 
 
 class SecurityOIDCProvider1(SecurityOIDCSettings):
@@ -555,6 +613,14 @@ class SecurityOAuth2Google(SecurityOAuth2Settings):
     userinfo_url: str = Field(default="https://www.googleapis.com/oauth2/v3/userinfo")
     icon: str = Field(default="mdi:google")
     display_label: str = Field(default="Google")
+    fetch_groups: bool = Field(
+        default=False,
+        description="Whether to use Cloud Identity API to fetch user groups. Note: requires additional scopes: https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+    )
+    cloudidentity_url: str = Field(
+        default="https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchDirectGroups",
+        description="Google Cloud endpoint for Cloud Identity. Using searchDirectGroups by default because it is available for the Free plan",
+    )
 
 
 class SecurityOAuth2ProviderSettings(BaseModel):
@@ -597,6 +663,10 @@ class AnalyticsSettings(BaseSettings):
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
+    value_db_index: bool = Field(
+        default=False,
+        deprecated="This setting has no effect and will be removed in a future version.",
+    )
 
 
 class SecuritySettings(BaseSettings):
@@ -612,6 +682,9 @@ class SecuritySettings(BaseSettings):
     oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)
     oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
     oidc_provider_settings: SecurityOIDCProviderSettings = Field(default_factory=SecurityOIDCProviderSettings)
+    restrict_untrusted_jinja2_filters: bool = Field(
+        default=True, description="Indicates if untrusted Jinja2 filters should be disallowed for computed attributes"
+    )
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
     sso_user_default_group: str | None = Field(
@@ -721,6 +794,30 @@ class TraceSettings(BaseSettings):
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
 
 
+class PolicySettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_POLICY_")
+    required_proposed_change_approvals: int = Field(
+        default=0,
+        ge=0,
+        description="Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)",
+    )
+    revoke_proposed_change_approvals: bool = Field(
+        default=False,
+        description="Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals."
+        " (Enterprise only: not available in the community version.)",
+    )
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns a list of enterprise features that are enabled based on the settings."""
+        features = []
+        if self.required_proposed_change_approvals > 0:
+            features.append(EnterpriseFeatures.PROPOSED_CHANGE_REQUIRE_APPROVAL)
+        if self.revoke_proposed_change_approvals:
+            features.append(EnterpriseFeatures.REVOKE_PROPOSED_CHANGE_APPROVALS)
+        return features
+
+
 @dataclass
 class Override:
     message_bus: InfrahubMessageBus | None = None
@@ -813,6 +910,10 @@ class ConfiguredSettings:
         return self.active_settings.analytics
 
     @property
+    def policy(self) -> PolicySettings:
+        return self.active_settings.policy
+
+    @property
     def security(self) -> SecuritySettings:
         return self.active_settings.security
 
@@ -827,6 +928,11 @@ class ConfiguredSettings:
     @property
     def experimental_features(self) -> ExperimentalFeaturesSettings:
         return self.active_settings.experimental_features
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns a list of enterprise features that are enabled based on the settings."""
+        return self.active_settings.enterprise_features
 
 
 class Settings(BaseSettings):
@@ -845,16 +951,22 @@ class Settings(BaseSettings):
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
     initial: InitialSettings = InitialSettings()
+    policy: PolicySettings = PolicySettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns a list of enterprise features that are enabled based on the settings."""
+        return self.policy.enterprise_features
+
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:
     """Load configuration.
 
-    Configuration is loaded from a config file in toml format that contains the settings,
+    Configuration is loaded from a configuration file in toml format that contains the settings,
     or from a dictionary of those settings passed in as "config_data"
     """
     config_file = Path(config_file_name)

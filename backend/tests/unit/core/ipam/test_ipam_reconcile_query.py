@@ -2,10 +2,12 @@ import ipaddress
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch, get_default_ipnamespace
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -561,3 +563,97 @@ async def test_adjacent_parents_and_addresses(
         await query.execute(db=db)
         assert prefix_id_map[query.get_calculated_parent_uuid()] == "192.0.2.0/29"
         assert query.get_calculated_children_uuids() == []
+
+
+async def test_root_ip_prefix_exists_reconcile(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ip_namespace.new(db=db, name="ns1")
+    await ip_namespace.save(db=db)
+    root_prefix_node = await Node.init(db=db, schema=prefix_schema)
+    await root_prefix_node.new(db=db, prefix="0.0.0.0/0", ip_namespace=ip_namespace)
+    await root_prefix_node.save(db=db)
+
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("192.168.0.0/16")
+    )
+    await query.execute(db=db)
+    assert query.get_calculated_parent_uuid() == root_prefix_node.id
+    assert query.get_calculated_children_uuids() == []
+
+
+async def test_root_ip_prefix_added_reconcile(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ip_namespace.new(db=db, name="ns1")
+    await ip_namespace.save(db=db)
+    child_prefix_node = await Node.init(db=db, schema=prefix_schema)
+    await child_prefix_node.new(db=db, prefix="192.168.0.0/16", ip_namespace=ip_namespace)
+    await child_prefix_node.save(db=db)
+
+    query = await IPPrefixReconcileQuery.init(
+        db=db, branch=default_branch, namespace=ip_namespace.id, ip_value=ipaddress.ip_network("0.0.0.0/0")
+    )
+    await query.execute(db=db)
+    assert query.get_calculated_parent_uuid() is None
+    assert query.get_calculated_children_uuids() == [child_prefix_node.id]
+
+
+async def test_reconcile_query_on_migrated_kind_node(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+    registry.default_ipnamespace = default_ipnamespace.id
+    prefix_140 = ip_dataset_01["net140"]
+    namespace = ip_dataset_01["ns1"]
+
+    branch = await create_branch(db=db, branch_name="migrated-branch")
+
+    # update IpamIPPrefix schema name
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch, duplicate=True)
+    prefix_schema.name = "IPPrefixTwo"
+    assert prefix_schema.kind == "IpamIPPrefixTwo"
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch),
+        new_node_schema=prefix_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="IpamIPPrefixTwo", field_name="name"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    registry.schema.set(name="IpamIPPrefixTwo", schema=prefix_schema, branch=branch.name)
+    wrong_parent = await Node.init(db=db, schema=prefix_schema, branch=branch)
+    await wrong_parent.new(db=db, prefix="192.168.0.0/16", ip_namespace=namespace)
+    await wrong_parent.save(db=db)
+    wrong_child = await Node.init(db=db, schema=prefix_schema, branch=branch)
+    await wrong_child.new(db=db, prefix="192.168.0.0/24", ip_namespace=namespace)
+    await wrong_child.save(db=db)
+    branch_net_140 = await NodeManager.get_one(db=db, branch=branch, id=prefix_140.id)
+    await branch_net_140.parent.update(db=db, data=wrong_parent.id)
+    await branch_net_140.children.update(db=db, data=[wrong_child.id])
+    await branch_net_140.ip_addresses.update(db=db, data=[None])
+    await branch_net_140.save(db=db)
+
+    ip_network = ipaddress.ip_network(prefix_140.prefix.value)
+    query = await IPPrefixReconcileQuery.init(db=db, branch=branch, ip_value=ip_network, namespace=namespace)
+    await query.execute(db=db)
+
+    assert query.get_ip_node_uuid() == prefix_140.id
+    # the wrong parent and wrong child confirm that we retrieved the correct Node from the database: the IpamIPPrefixTwo instance
+    assert query.get_current_parent_uuid() == wrong_parent.id
+    assert set(query.get_current_children_uuids()) == {wrong_child.id}
+    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
+    assert set(query.get_calculated_children_uuids()) == {
+        ip_dataset_01["net142"].id,
+        ip_dataset_01["net144"].id,
+        ip_dataset_01["net145"].id,
+        ip_dataset_01["address10"].id,
+    }

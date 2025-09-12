@@ -1,16 +1,20 @@
+import { Icon } from "@iconify-icon/react";
+import { Pressable } from "react-aria-components";
+
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
 import { MENU_EXCLUDELIST } from "@/config/constants";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { ModelSchema } from "@/entities/schema/types";
-import { Button } from "@/shared/components/buttons/button-primitive";
+
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
+  Menu,
+  MenuItem,
+  MenuPopover,
+  MenuSection,
+  MenuTrigger,
+} from "@/shared/components/aria/menu";
+import { Button } from "@/shared/components/buttons/button-primitive";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { ModelSchema } from "@/entities/schema/types";
 
 type SchemaHelpMenuProps = {
   schema: ModelSchema;
@@ -24,29 +28,32 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
     : INFRAHUB_DOC_LOCAL;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <MenuTrigger>
+      <Pressable>
         <Button size="icon" variant="outline" data-testid="schema-help-menu-trigger">
           ?
         </Button>
-      </DropdownMenuTrigger>
+      </Pressable>
 
-      <DropdownMenuContent data-testid="schema-help-menu-content">
-        <DropdownMenuItem disabled={!schema.documentation} asChild>
-          <Link to={documentationUrl} target="_blank" className="flex gap-2">
-            <Icon icon="mdi:book-open-variant-outline" className="text-lg text-custom-blue-700" />
-            Documentation
-            <Icon icon="mdi:open-in-new" />
-          </Link>
-        </DropdownMenuItem>
+      <MenuPopover placement="bottom end">
+        <Menu data-testid="schema-help-menu-content">
+          <MenuSection>
+            <MenuItem isDisabled={!schema.documentation} href={documentationUrl} target="_blank">
+              <Icon icon="mdi:book-open-variant-outline" className="text-custom-blue-700 text-lg" />
+              Documentation
+              <Icon icon="mdi:open-in-new" />
+            </MenuItem>
 
-        <DropdownMenuItem disabled={isListViewDisabled} asChild>
-          <Link to={getObjectDetailsUrl2(schema.kind as string)} className="flex gap-2">
-            <Icon icon="mdi:table-eye" className="text-lg text-custom-blue-700" />
-            Open list view
-          </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MenuItem
+              isDisabled={isListViewDisabled}
+              href={getObjectDetailsUrl(schema.kind as string)}
+            >
+              <Icon icon="mdi:table-eye" className="text-custom-blue-700 text-lg" />
+              Open list view
+            </MenuItem>
+          </MenuSection>
+        </Menu>
+      </MenuPopover>
+    </MenuTrigger>
   );
 };

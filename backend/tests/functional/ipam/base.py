@@ -41,11 +41,16 @@ class TestIpamReconcileBase(TestIpam):
         db: InfrahubDatabase,
         initialize_registry: None,
         register_ipam_schema,
+        default_branch,
     ) -> dict[str, Node]:
-        default_branch = registry.default_branch
+        # Update database state as later merging operations may trigger a refresh registry from database.
+        schema_branch_main = registry.schema.get_schema_branch(name=default_branch.name)
+        await registry.schema.update_schema_branch(schema=schema_branch_main, db=db)
+        default_branch.update_schema_hash()
+        await default_branch.save(db=db)
 
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch.name)
+        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch.name)
 
         # -----------------------
         # Namespace NS1

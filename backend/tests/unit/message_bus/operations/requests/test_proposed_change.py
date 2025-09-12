@@ -1,6 +1,8 @@
+from uuid import uuid4
+
 import pytest
 import ujson
-from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.diff import NodeDiff
 from pytest_httpx import HTTPXMock
 
 from infrahub.core import registry
@@ -9,27 +11,18 @@ from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
 from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.types import ProposedChangeBranchDiff
+from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestProposedChangeSchemaIntegrity
 from infrahub.proposed_change.tasks import (
     _get_proposed_change_schema_integrity_constraints,
     run_proposed_change_schema_integrity_check,
 )
-from infrahub.services import InfrahubServices
+from infrahub.workers.dependencies import build_cache
+from tests.adapters.cache import MemoryCache
 from tests.conftest import TestHelper
-
-
-@pytest.fixture
-async def service_all(db: InfrahubDatabase, helper: TestHelper) -> InfrahubServices:
-    config = Config(address="http://mock", insert_tracker=True)
-    client = InfrahubClient(config=config)
-    bus_simulator = await helper.get_message_bus_simulator()
-    service = await InfrahubServices.new(message_bus=bus_simulator, client=client, database=db)
-    bus_simulator.service = service
-
-    return service
-
 
 SOURCE_BRANCH_A = "branch2"
 DST_BRANCH_A = "main"
@@ -46,53 +39,58 @@ async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTT
 @pytest.fixture
 def branch_diff_01() -> ProposedChangeBranchDiff:
     diff = ProposedChangeBranchDiff(
-        diff_summary=[
-            {
-                "branch": "branch2",
-                "action": "updated",
-                "kind": "TestPerson",
-                "id": "11111111-1111-1111-1111-111111111111",
-                "display_label": "",
-                "elements": [
-                    {
-                        "name": "name",
-                        "element_type": DiffElementType.ATTRIBUTE.value,
-                        "action": DiffAction.UPDATED.value,
-                        "summary": {"added": 0, "updated": 1, "removed": 0},
-                    }
-                ],
-            },
-            {
-                "branch": "main",
-                "action": "updated",
-                "kind": "TestPerson",
-                "id": "22222222-2222-2222-2222-222222222222",
-                "display_label": "",
-                "elements": [
-                    {
-                        "name": "height",
-                        "element_type": DiffElementType.ATTRIBUTE.value,
-                        "action": DiffAction.UPDATED.value,
-                        "summary": {"added": 0, "updated": 1, "removed": 0},
-                    },
-                    {
-                        "name": "cars",
-                        "element_type": DiffElementType.RELATIONSHIP_MANY.value,
-                        "action": DiffAction.UPDATED.value,
-                        "summary": {"added": 0, "updated": 1, "removed": 0},
-                        "peers": [
-                            {"action": DiffAction.REMOVED.value, "summary": {"added": 0, "updated": 0, "removed": 1}},
-                            {"action": DiffAction.ADDED.value, "summary": {"added": 1, "updated": 0, "removed": 0}},
-                        ],
-                    },
-                ],
-            },
-        ],
+        pipeline_id=uuid4(),
         repositories=[],
         subscribers=[],
     )
 
     return diff
+
+
+@pytest.fixture
+def branch_diff_01_summary() -> list[NodeDiff]:
+    return [
+        {
+            "branch": "branch2",
+            "action": "updated",
+            "kind": "TestPerson",
+            "id": "11111111-1111-1111-1111-111111111111",
+            "display_label": "",
+            "elements": [
+                {
+                    "name": "name",
+                    "element_type": DiffElementType.ATTRIBUTE.value,
+                    "action": DiffAction.UPDATED.value,
+                    "summary": {"added": 0, "updated": 1, "removed": 0},
+                }
+            ],
+        },
+        {
+            "branch": "main",
+            "action": "updated",
+            "kind": "TestPerson",
+            "id": "22222222-2222-2222-2222-222222222222",
+            "display_label": "",
+            "elements": [
+                {
+                    "name": "height",
+                    "element_type": DiffElementType.ATTRIBUTE.value,
+                    "action": DiffAction.UPDATED.value,
+                    "summary": {"added": 0, "updated": 1, "removed": 0},
+                },
+                {
+                    "name": "cars",
+                    "element_type": DiffElementType.RELATIONSHIP_MANY.value,
+                    "action": DiffAction.UPDATED.value,
+                    "summary": {"added": 0, "updated": 1, "removed": 0},
+                    "peers": [
+                        {"action": DiffAction.REMOVED.value, "summary": {"added": 0, "updated": 0, "removed": 1}},
+                        {"action": DiffAction.ADDED.value, "summary": {"added": 1, "updated": 0, "removed": 0}},
+                    ],
+                },
+            ],
+        },
+    ]
 
 
 @pytest.fixture
@@ -118,14 +116,20 @@ async def schema_integrity_01(
 
 
 async def test_get_proposed_change_schema_integrity_constraints(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema, schema_integrity_01
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema,
+    schema_integrity_01,
+    branch_diff_01_summary: list[NodeDiff],
 ):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
-    constraints = await _get_proposed_change_schema_integrity_constraints(model=schema_integrity_01, schema=schema)
+    constraints = await _get_proposed_change_schema_integrity_constraints(
+        schema=schema, diff_summary=branch_diff_01_summary
+    )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 184
-    assert len(non_generate_profile_constraints) == 110
+    assert len(constraints) == 217
+    assert len(non_generate_profile_constraints) == 130
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -264,40 +268,64 @@ async def test_schema_integrity(
     default_branch,
     register_core_models_schema,
     car_person_schema,
-    schema_integrity_01,
-    service_all,
+    schema_integrity_01: RequestProposedChangeSchemaIntegrity,
+    branch_diff_01_summary: list[NodeDiff],
+    dependency_provider,
     car_accord_main: Node,
     car_volt_main: Node,
-    person_john_main,
+    person_john_main: Node,
 ):
-    branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
+    cache = MemoryCache()
+    with dependency_provider.scope(build_cache, lambda: cache):
+        branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
-    person = await Node.init(db=db, schema="TestPerson", branch=branch2)
-    await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
-    await person.save(db=db)
+        person = await Node.init(db=db, schema="TestPerson", branch=branch2)
+        await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+        await person.save(db=db)
 
-    branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
-    person_schema = branch2_schema.get(name="TestPerson")
-    name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
-    branch2_schema.set(name="TestPerson", schema=person_schema)
+        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        person_schema = branch2_schema.get(name="TestPerson")
+        name_attr = person_schema.get_attribute(name="name")
+        name_attr.parameters.regex = r"^[A-Z]+$"
+        branch2_schema.set(name="TestPerson", schema=person_schema)
 
-    await run_proposed_change_schema_integrity_check(model=schema_integrity_01, service=service_all)
+        await set_diff_summary_cache(
+            pipeline_id=schema_integrity_01.branch_diff.pipeline_id, diff_summary=branch_diff_01_summary, cache=cache
+        )
 
-    checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
-    assert len(checks) == 1
-    check = checks[0]
-    assert check.conclusion.value.value == "failure"
+        await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
 
-    assert check.conflicts.value == [
-        {
-            "branch": "placeholder",
-            "id": person_john_main.id,
-            "kind": "TestPerson",
-            "name": "schema/TestPerson/name/regex",
-            "path": "schema/TestPerson/name/regex",
-            "type": "attribute.regex.update",
-            # ruff: noqa: E501
-            "value": f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id}) is not compliant. The error relates to field name='{person_john_main.name.value}'.",
-        }
-    ]
+        checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
+        assert len(checks) == 2
+        assert checks[0].conclusion.value.value == "failure"
+        assert checks[1].conclusion.value.value == "failure"
+
+        all_conflicts = [c.conflicts.value for c in checks]
+        assert [
+            {
+                "branch": "placeholder",
+                "id": person_john_main.id,
+                "kind": "TestPerson",
+                "name": "schema/TestPerson/name/parameters.regex",
+                "path": "schema/TestPerson/name/parameters.regex",
+                "type": ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
+                "value": (
+                    f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id})"
+                    f" is not compliant. The error relates to field name='{person_john_main.name.value}'."
+                ),
+            }
+        ] in all_conflicts
+        assert [
+            {
+                "branch": "placeholder",
+                "id": person_john_main.id,
+                "kind": "TestPerson",
+                "name": "schema/TestPerson/name/kind",
+                "path": "schema/TestPerson/name/kind",
+                "type": "attribute.kind.update",
+                "value": (
+                    f"Attribute-level 'kind' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id})"
+                    f" is not compliant. The error relates to field name='{person_john_main.name.value}'."
+                ),
+            }
+        ] in all_conflicts

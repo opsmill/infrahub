@@ -147,6 +147,23 @@ def upgrade_infrahub(context: Context, database: str, namespace: Namespace) -> N
         execute_command(context=context, command=command)
 
 
+def mask_sensitive_data(data_dict):
+    """Mask sensitive data in a dictionary."""
+    sensitive_keywords = ["password", "secret", "token", "key"]
+
+    if not isinstance(data_dict, dict):
+        return data_dict
+
+    masked_dict = data_dict.copy()
+    for key in masked_dict.keys():
+        if any(sensitive in key.lower() for sensitive in sensitive_keywords):
+            masked_dict[key] = "********"
+        elif isinstance(masked_dict[key], dict):
+            masked_dict[key] = mask_sensitive_data(masked_dict[key])
+
+    return masked_dict
+
+
 def format_bytes(bytes_value: int) -> str:
     """Convert bytes to human readable format."""
     for unit in ["B", "KB", "MB", "GB", "TB"]:
@@ -262,7 +279,7 @@ def display_container_status(
     from rich.table import Table
     import time
 
-    console = Console()
+    console = Console(force_terminal=True, color_system="auto")
     if not project_name:
         projects = discover_infrahub_projects(context)
         display_infrahub_projects(projects)
@@ -361,7 +378,7 @@ def collect_database_logs(
     """Collect logs from database container using docker cp."""
     from rich.console import Console
 
-    console = Console()
+    console = Console(force_terminal=True, color_system="auto")
 
     if not project_name:
         projects = discover_infrahub_projects(context)
@@ -402,7 +419,7 @@ def collect_message_queue_status(
     """Collect message queues status and metrics."""
     from rich.console import Console
 
-    console = Console()
+    console = Console(force_terminal=True, color_system="auto")
     if not project_name:
         projects = discover_infrahub_projects(context)
         display_infrahub_projects(projects)
@@ -446,7 +463,7 @@ def collect_cache_status(
     """Collect cache status and metrics."""
     from rich.console import Console
 
-    console = Console()
+    console = Console(force_terminal=True, color_system="auto")
     if not project_name:
         projects = discover_infrahub_projects(context)
         display_infrahub_projects(projects)
@@ -491,7 +508,7 @@ def collect_task_worker_status(
     """Collect task workers status and metrics."""
     from rich.console import Console
 
-    console = Console()
+    console = Console(force_terminal=True, color_system="auto")
     if not project_name:
         projects = discover_infrahub_projects(context)
         display_infrahub_projects(projects)
@@ -535,14 +552,23 @@ def collect_support_data(
     namespace: Namespace,
     include_queries: bool = False,
     log_lines: int = None,
+    benchmark: bool = True,
+    metrics_interval: int = 30,
 ) -> None:
     """Collect all logs from each service and create a support archive."""
     from rich.console import Console
 
-    console = Console()
+    console = Console(force_terminal=True, color_system="auto")
     projects = discover_infrahub_projects(context)
     display_infrahub_projects(projects)
     project = select_infrahub_project(projects)
+
+    if metrics_interval < 1:
+        metrics_interval = 1
+
+    console.print(
+        f"[yellow]Will collect metrics every {metrics_interval} seconds throughout the collection process[/yellow]"
+    )
 
     if not project:
         console.print("[bold red]No InfraHub projects found or selected. Exiting.[/bold red]")
@@ -550,6 +576,7 @@ def collect_support_data(
 
     project_name = project["name"]
     available_services = project["services"]
+    server_name = project.get("server_name", "server")
 
     log_lines = 100000 if log_lines is None else log_lines
     console.print(f"[bold yellow]Collecting up to {log_lines} lines of logs per container[/bold yellow]")
@@ -558,8 +585,32 @@ def collect_support_data(
     logs_dir = Path(f"support_logs_{timestamp}")
     logs_dir.mkdir(parents=True, exist_ok=True)
 
+    metrics_collection_context = None
+    if server_name in available_services:
+        metrics_collection_context = collect_prometheus_metrics(
+            context=context,
+            project_name=project_name,
+            server_name=server_name,
+            output_dir=logs_dir,
+            interval_seconds=metrics_interval,
+        )
+
+    if benchmark:
+        console.print("[bold yellow]Running performance benchmark...[/bold yellow]")
+        collect_benchmark(context=context, logs_dir=logs_dir)
+    else:
+        console.print("[yellow]Skipping performance benchmark (disabled)[/yellow]")
+
     project_info_file = logs_dir / "project_info.json"
     project_info_file.write_text(json.dumps(project, indent=2), encoding="utf-8")
+
+    if "task-manager" in available_services:
+        server_with_curl = server_name
+        collect_task_manager_info(
+            context=context, project_name=project_name, server_name=server_with_curl, output_dir=logs_dir
+        )
+    else:
+        console.print("[yellow]Task manager service not found. Skipping Prefect API collection.[/yellow]")
 
     for service in available_services:
         console.print(f"[bold yellow]Collecting logs for service:[/bold yellow] {service}")
@@ -594,6 +645,7 @@ def collect_support_data(
     collect_task_worker_status(
         context=context, database=database, namespace=namespace, logs_dir=str(logs_dir), project_name=project_name
     )
+    collect_server_info(context=context, project_name=project_name, logs_dir=str(logs_dir), server_name=server_name)
 
     console.print("[bold yellow]Collecting system metrics[/bold yellow]")
     sys_metrics = collect_system_metrics()
@@ -606,6 +658,9 @@ def collect_support_data(
     if stats_result and stats_result.stdout:
         container_metrics_file = Path(logs_dir) / f"container_metrics_{timestamp}.json"
         container_metrics_file.write_text(stats_result.stdout, encoding="utf-8")
+
+    if metrics_collection_context:
+        stop_and_save_metrics(metrics_collection_context)
 
     export_dir = Path("exports")
     export_dir.mkdir(parents=True, exist_ok=True)
@@ -712,3 +767,403 @@ def select_infrahub_project(projects: Dict[str, Dict]) -> Optional[Dict]:
 
     print("\nExiting. Please run the command again with a specific project.")
     return None
+
+
+def collect_server_info(context: Context, project_name: str, server_name: str, logs_dir: Path) -> None:
+    """Collect environment, version, API info, and installed packages from server."""
+    from rich.console import Console
+    import json
+    import re
+
+    console = Console(force_terminal=True, color_system="auto")
+    server_info_dir = Path(logs_dir) / "server"
+    server_info_dir.mkdir(parents=True, exist_ok=True)
+
+    console.print(f"[bold yellow]Collecting information from {server_name}...[/bold yellow]")
+
+    version_cmd = f"docker compose -p {project_name} exec {server_name} infrahubctl version"
+    version_result = execute_command(context=context, command=version_cmd, hide=True)
+    if version_result and version_result.stdout:
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+        clean_version_output = ansi_escape.sub("", version_result.stdout)
+
+        version_data = {}
+        for line in clean_version_output.strip().split("\n"):
+            if ":" in line:
+                key, value = [x.strip() for x in line.split(":", 1)]
+                version_data[key] = value
+
+        version_file = server_info_dir / "version_info.json"
+        version_file.write_text(json.dumps(version_data, indent=2), encoding="utf-8")
+
+        console.print(f"[green]Version information collected as JSON.[/green]")
+    else:
+        console.print(f"[red]Failed to collect version information.[/red]")
+
+    console.print(f"[bold yellow]Collecting installed Python packages...[/bold yellow]")
+
+    pip_freeze_cmd = f"docker compose -p {project_name} exec {server_name} pip freeze"
+    pip_freeze_result = execute_command(context=context, command=pip_freeze_cmd, hide=True)
+
+    if pip_freeze_result and pip_freeze_result.stdout:
+        packages = {}
+        for line in pip_freeze_result.stdout.strip().split("\n"):
+            if "==" in line:
+                name, version = line.split("==", 1)
+                packages[name.strip()] = version.strip()
+            elif line:
+                packages[line] = ""
+
+        pip_packages_json = server_info_dir / "pip_packages.json"
+        pip_packages_json.write_text(json.dumps(packages, indent=2), encoding="utf-8")
+
+        console.print(f"[green]Installed Python packages list collected as JSON.[/green]")
+    else:
+        console.print(f"[red]Failed to collect installed Python packages list.[/red]")
+
+    env_cmd = f"docker compose -p {project_name} exec {server_name} env"
+    env_result = execute_command(context=context, command=env_cmd, hide=True)
+    if env_result and env_result.stdout:
+        env_vars = {}
+        for line in env_result.stdout.strip().split("\n"):
+            if "=" in line:
+                key, value = line.split("=", 1)
+                env_vars[key] = value
+        env_vars = mask_sensitive_data(env_vars)
+        env_file = server_info_dir / "environment.json"
+        env_file.write_text(json.dumps(env_vars, indent=2), encoding="utf-8")
+        console.print(f"[green]Environment information collected (with sensitive data masked).[/green]")
+    else:
+        console.print(f"[red]Failed to collect environment information.[/red]")
+
+    container_id_cmd = f"docker compose -p {project_name} ps -q {server_name}"
+    container_id_result = execute_command(context=context, command=container_id_cmd, hide=True)
+
+    if container_id_result and container_id_result.stdout:
+        container_id = container_id_result.stdout.strip()
+        api_endpoints = ["/api/info", "/api/config", "/api/schema"]
+
+        for endpoint in api_endpoints:
+            endpoint_name = endpoint.split("/")[-1]
+            console.print(f"[bold yellow]Collecting {endpoint_name} API information...[/bold yellow]")
+
+            curl_cmd = f"docker exec {container_id} curl -s http://localhost:8000{endpoint}"
+            curl_result = execute_command(context=context, command=curl_cmd, hide=True)
+
+            if curl_result and curl_result.stdout and curl_result.stdout.strip():
+                try:
+                    data = json.loads(curl_result.stdout)
+                    if isinstance(data, dict):
+                        for key in list(data.keys()):
+                            if any(sensitive in key.lower() for sensitive in ["password", "secret", "token", "key"]):
+                                data[key] = "********"
+
+                    api_file = server_info_dir / f"api_{endpoint_name}.json"
+                    api_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                    console.print(f"[green]API {endpoint_name} information collected.[/green]")
+                    continue
+                except json.JSONDecodeError:
+                    api_file = server_info_dir / f"api_{endpoint_name}.txt"
+                    api_file.write_text(curl_result.stdout, encoding="utf-8")
+                    console.print(f"[green]API {endpoint_name} information collected (as text).[/green]")
+                    continue
+
+            port_cmd = f"docker port {container_id} 8000"
+            port_result = execute_command(context=context, command=port_cmd, hide=True)
+
+            if port_result and port_result.stdout:
+                host_port = port_result.stdout.strip().split(":")[-1]
+                host_curl_cmd = f"curl -s http://localhost:{host_port}{endpoint}"
+                host_curl_result = execute_command(context=context, command=host_curl_cmd, hide=True)
+
+                if host_curl_result and host_curl_result.stdout and host_curl_result.stdout.strip():
+                    try:
+                        data = json.loads(host_curl_result.stdout)
+                        if isinstance(data, dict):
+                            data = mask_sensitive_data(data)
+
+                        api_file = server_info_dir / f"api_{endpoint_name}.json"
+                        api_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                        console.print(f"[green]API {endpoint_name} information collected via host port.[/green]")
+                    except json.JSONDecodeError:
+                        api_file = server_info_dir / f"api_{endpoint_name}.txt"
+                        api_file.write_text(host_curl_result.stdout, encoding="utf-8")
+                        console.print(
+                            f"[green]API {endpoint_name} information collected via host port (as text).[/green]"
+                        )
+                else:
+                    console.print(f"[red]Failed to collect API {endpoint_name} information via host port.[/red]")
+            else:
+                console.print(f"[red]Failed to determine port mapping for API {endpoint_name} access.[/red]")
+    else:
+        console.print(f"[red]Failed to get container ID for {server_name}.[/red]")
+
+
+def collect_benchmark(context: Context, logs_dir: Path) -> None:
+    """Run performance benchmark and collect results in JSON format."""
+    from rich.console import Console
+    import json
+    import re
+
+    console = Console(force_terminal=True, color_system="auto")
+    benchmark_cmd = "docker run --pull always --rm registry.opsmill.io/opsmill/bench"
+    benchmark_result = execute_command(context=context, command=benchmark_cmd, hide=True)
+
+    if not benchmark_result or not benchmark_result.stdout:
+        console.print("[red]Failed to run benchmark.[/red]")
+        return
+
+    pattern = r"(\w+(?:\s\w+)*): (\d+)(?: MB)? - Required: (\d+)(?: MB)? : (\w+)"
+    matches = re.findall(pattern, benchmark_result.stdout)
+
+    benchmark_data = {"raw_output": benchmark_result.stdout, "results": {}}
+
+    for match in matches:
+        category, value, required, status = match
+        category_key = category.lower().replace(" ", "_")
+
+        benchmark_data["results"][category_key] = {"value": int(value), "required": int(required), "status": status}
+
+    benchmark_file = Path(logs_dir) / "benchmark.json"
+    benchmark_file.write_text(json.dumps(benchmark_data, indent=2), encoding="utf-8")
+
+    console.print(f"[green]Benchmark results saved to {benchmark_file}[/green]")
+
+
+def collect_prometheus_metrics(
+    context: Context, project_name: str, server_name: str, output_dir: Path, interval_seconds: int = 30
+) -> None:
+    """Collect Prometheus metrics from the server at regular intervals."""
+    from rich.console import Console
+    import time
+    from datetime import datetime
+    import threading
+    import queue
+
+    console = Console(force_terminal=True, color_system="auto")
+    metrics_dir = output_dir / "prometheus-metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+
+    console.print(
+        f"[bold yellow]Starting Prometheus metrics collection at {interval_seconds}-second intervals[/bold yellow]"
+    )
+
+    container_id_cmd = f"docker compose -p {project_name} ps -q {server_name}"
+    container_id_result = execute_command(context=context, command=container_id_cmd, hide=True)
+
+    if not container_id_result or not container_id_result.stdout:
+        console.print(f"[red]Failed to get container ID for {server_name}.[/red]")
+        return
+
+    container_id = container_id_result.stdout.strip()
+
+    metrics_queue = queue.Queue()
+    exit_flag = threading.Event()
+
+    def metrics_collector():
+        sample_count = 0
+        while not exit_flag.is_set():
+            try:
+                timestamp = datetime.now()
+                formatted_time = timestamp.strftime("%Y%m%d-%H%M%S")
+
+                metrics_cmd = f"docker exec {container_id} curl -s http://localhost:8000/metrics"
+                metrics_result = execute_command(context=context, command=metrics_cmd, hide=True)
+
+                if metrics_result and metrics_result.stdout and metrics_result.stdout.strip():
+                    metrics_queue.put(
+                        {
+                            "timestamp": timestamp.isoformat(),
+                            "formatted_time": formatted_time,
+                            "metrics_text": metrics_result.stdout,
+                            "sample_number": sample_count + 1,
+                        }
+                    )
+                    sample_count += 1
+                else:
+                    port_cmd = f"docker port {container_id} 8000"
+                    port_result = execute_command(context=context, command=port_cmd, hide=True)
+
+                    if port_result and port_result.stdout:
+                        host_port = port_result.stdout.strip().split(":")[-1]
+                        host_curl_cmd = f"curl -s http://localhost:{host_port}/metrics"
+                        host_metrics_result = execute_command(context=context, command=host_curl_cmd, hide=True)
+
+                        if host_metrics_result and host_metrics_result.stdout and host_metrics_result.stdout.strip():
+                            metrics_queue.put(
+                                {
+                                    "timestamp": timestamp.isoformat(),
+                                    "formatted_time": formatted_time,
+                                    "metrics_text": host_metrics_result.stdout,
+                                    "sample_number": sample_count + 1,
+                                }
+                            )
+                            sample_count += 1
+                        else:
+                            console.print(f"[red]Failed to collect metrics (sample {sample_count + 1})[/red]")
+                    else:
+                        console.print(f"[red]Failed to get port mapping for {server_name}.[/red]")
+                time.sleep(interval_seconds)
+            except Exception as e:
+                console.print(f"[red]Error collecting metrics: {str(e)}[/red]")
+                time.sleep(interval_seconds)
+
+    metrics_thread = threading.Thread(target=metrics_collector)
+    metrics_thread.daemon = True
+    metrics_thread.start()
+
+    console.print("[green]Metrics collection started in the background.[/green]")
+
+    return {
+        "metrics_queue": metrics_queue,
+        "exit_flag": exit_flag,
+        "metrics_thread": metrics_thread,
+        "metrics_dir": metrics_dir,
+        "start_time": datetime.now(),
+    }
+
+
+def stop_and_save_metrics(collection_context):
+    """Stop the metrics collection and save all samples to files."""
+    from rich.console import Console
+    from datetime import datetime
+    import time
+
+    console = Console(force_terminal=True, color_system="auto")
+    metrics_queue = collection_context["metrics_queue"]
+    exit_flag = collection_context["exit_flag"]
+    metrics_thread = collection_context["metrics_thread"]
+    metrics_dir = collection_context["metrics_dir"]
+    start_time = collection_context["start_time"]
+    exit_flag.set()
+    time.sleep(2)
+    metrics_thread.join(timeout=5)
+    sample_count = 0
+    all_samples_meta = []
+
+    console.print("[yellow]Saving collected metrics samples...[/yellow]")
+
+    while not metrics_queue.empty():
+        metrics_data = metrics_queue.get()
+        sample_number = metrics_data["sample_number"]
+        formatted_time = metrics_data["formatted_time"]
+        metrics_text = metrics_data["metrics_text"]
+
+        metrics_file = metrics_dir / f"metrics_sample_{sample_number}_{formatted_time}.txt"
+        metrics_file.write_text(metrics_text, encoding="utf-8")
+
+        all_samples_meta.append(
+            {
+                "sample_number": sample_number,
+                "timestamp": metrics_data["timestamp"],
+                "formatted_time": formatted_time,
+                "file_path": str(metrics_file.relative_to(metrics_dir.parent)),
+            }
+        )
+
+        sample_count += 1
+
+    if all_samples_meta:
+        index_data = {
+            "total_samples": sample_count,
+            "start_time": start_time.isoformat(),
+            "end_time": datetime.now().isoformat(),
+            "samples": sorted(all_samples_meta, key=lambda x: x["sample_number"]),
+        }
+
+        import json
+
+        index_file = metrics_dir / "metrics_samples_index.json"
+        index_file.write_text(json.dumps(index_data, indent=2), encoding="utf-8")
+
+    console.print(f"[green]Saved {sample_count} metrics samples to {metrics_dir}[/green]")
+
+
+def collect_task_manager_info(context: Context, project_name: str, server_name: str, output_dir: Path) -> None:
+    """Collect detailed information from the Prefect task manager API."""
+    from rich.console import Console
+    import json
+    from datetime import datetime, timedelta
+
+    console = Console(force_terminal=True, color_system="auto")
+    task_manager_info_dir = output_dir / "task-manager"
+    task_manager_info_dir.mkdir(parents=True, exist_ok=True)
+
+    console.print("[bold yellow]Collecting information from task-manager (Prefect server)...[/bold yellow]")
+
+    container_id_cmd = f"docker compose -p {project_name} ps -q {server_name}"
+    container_id_result = execute_command(context=context, command=container_id_cmd, hide=True)
+
+    if not container_id_result or not container_id_result.stdout:
+        console.print(f"[red]{server_name} container not found. Cannot use curl.[/red]")
+        return
+
+    server_container_id = container_id_result.stdout.strip()
+
+    task_manager_host = "task-manager"
+    task_manager_port = "4200"
+
+    api_endpoints = [
+        {"name": "events", "path": "/api/events/filter", "method": "POST", "body": {}},
+        {"name": "work_pools", "path": "/api/work_pools/filter", "method": "POST", "body": {}},
+        {"name": "work_queues", "path": "/api/work_queues/filter", "method": "POST", "body": {}},
+        {
+            "name": "flow_runs_24h",
+            "path": "/api/flow_runs/filter",
+            "method": "POST",
+            "body": {"created_after": (datetime.now() - timedelta(days=1)).isoformat()},
+        },
+        {
+            "name": "work_queues_24h",
+            "path": "/api/work_queues/filter",
+            "method": "POST",
+            "body": {"created_after": (datetime.now() - timedelta(days=1)).isoformat()},
+        },
+        {"name": "automations", "path": "/api/automations/filter", "method": "POST", "body": {}},
+    ]
+
+    for endpoint in api_endpoints:
+        name = endpoint["name"]
+        path = endpoint["path"]
+        method = endpoint["method"]
+        body = endpoint["body"]
+
+        console.print(f"[yellow]Collecting {name} data...[/yellow]")
+
+        body_json = json.dumps(body)
+
+        if method == "POST":
+            escaped_body = body_json.replace('"', '\\"')
+            curl_cmd = f'docker exec {server_container_id} curl -s -X POST -H "Content-Type: application/json" -d "{escaped_body}" http://{task_manager_host}:{task_manager_port}{path}'
+        else:
+            curl_cmd = f"docker exec {server_container_id} curl -s http://{task_manager_host}:{task_manager_port}{path}"
+
+        result = execute_command(context=context, command=curl_cmd, hide=True)
+
+        if result and result.stdout:
+            try:
+                data = json.loads(result.stdout)
+                json_file = task_manager_info_dir / f"{name}.json"
+                json_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                console.print(f"[green]Successfully collected {name} data.[/green]")
+            except json.JSONDecodeError:
+                console.print(f"[red]Failed to parse {name} response as JSON.[/red]")
+                raw_file = task_manager_info_dir / f"{name}_raw.txt"
+                raw_file.write_text(result.stdout, encoding="utf-8")
+                console.print(f"[yellow]Saved raw {name} response as text.[/yellow]")
+        else:
+            console.print(f"[red]Failed to collect {name} data.[/red]")
+
+    service_info_cmd = f"docker compose -p {project_name} ps task-manager --format json"
+    service_info_result = execute_command(context=context, command=service_info_cmd, hide=True)
+
+    if service_info_result and service_info_result.stdout:
+        try:
+            service_info = json.loads(service_info_result.stdout)
+            service_info_file = task_manager_info_dir / "service_info.json"
+            service_info_file.write_text(json.dumps(service_info, indent=2), encoding="utf-8")
+            console.print("[green]Collected task-manager service information.[/green]")
+        except json.JSONDecodeError:
+            console.print("[red]Failed to parse task-manager service information.[/red]")
+
+    console.print("[green]Task manager data collection completed.[/green]")

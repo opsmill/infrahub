@@ -13,11 +13,13 @@
 #   curl https://infrahub.opsmill.io/collect | sh [options]
 #
 # Options:
-#   --include-queries     Pass an extra flag to collect database queries logs
-#   --version VERSION     Specify the version of the Infrahub image to use (default: latest)
-#   --project PROJECT     Specify the Infrahub project name to collect from
-#   --list-only           Only list available Infrahub projects, don't collect data
-#   --log-lines LINES     Number of log lines to collect per container (default: 100000)
+#   --include-queries             Pass an extra flag to collect database queries logs
+#   --version VERSION             Specify the version of the Infrahub image to use (default: latest)
+#   --project PROJECT             Specify the Infrahub project name to collect from
+#   --list-only                   Only list available Infrahub projects, don't collect data
+#   --log-lines LINES             Number of log lines to collect per container (default: 100000)
+#   --no-benchmark                Skip running performance benchmark (default: benchmark is run)
+#   --metrics-interval SECONDS    Interval between metrics samples in seconds (default: 30)   
 #
 # Environment Variables:
 #   INFRAHUB_BUILD_NAME   Name of the Infrahub build (default: discover automatically)
@@ -40,6 +42,7 @@ fi
 EXTRA_OPTS=""
 PROJECT_NAME=""
 LIST_ONLY=0
+RUN_BENCHMARK=1
 
 # Process command-line options
 while [ "$#" -gt 0 ]; do
@@ -71,6 +74,19 @@ while [ "$#" -gt 0 ]; do
       EXTRA_OPTS="$EXTRA_OPTS --log-lines $2"
       shift
       ;;
+    --metrics-interval)
+      if [ -z "$2" ]; then
+        echo "Error: --metrics-interval requires an argument."
+        exit 1
+      fi
+      METRICS_INTERVAL="$2"
+      EXTRA_OPTS="$EXTRA_OPTS --metrics-interval $2"
+      shift
+      ;;
+    --no-benchmark)
+      RUN_BENCHMARK=0
+      EXTRA_OPTS="$EXTRA_OPTS --no-benchmark"
+      ;;
     --list-only)
       LIST_ONLY=1
       ;;
@@ -78,11 +94,13 @@ while [ "$#" -gt 0 ]; do
       echo "Usage: sh collect.sh [options]"
       echo ""
       echo "Options:"
-      echo "  --include-queries      Pass an extra flag to collect database queries logs"
-      echo "  --version VERSION      Specify the version of the Infrahub image to use (default: latest)"
-      echo "  --project PROJECT      Specify the Infrahub project name to collect from"
-      echo "  --list-only            Only list available Infrahub projects, don't collect data"
-      echo "  --log-lines LINES      Number of log lines to collect per container (default: 100000)"
+      echo "  --include-queries             Pass an extra flag to collect database queries logs"
+      echo "  --version VERSION             Specify the version of the Infrahub image to use (default: latest)"
+      echo "  --project PROJECT             Specify the Infrahub project name to collect from"
+      echo "  --list-only                   Only list available Infrahub projects, don't collect data"
+      echo "  --log-lines LINES             Number of log lines to collect per container (default: 100000)"
+      echo "  --no-benchmark                Skip running performance benchmark (default: benchmark is run)"
+      echo "  --metrics-interval SECONDS    Interval between metrics samples in seconds (default: 30)"
       exit 0
       ;;
     *)
@@ -144,6 +162,12 @@ fi
 # Complete the command
 DOCKER_CMD="$DOCKER_CMD \
   registry.opsmill.io/opsmill/infrahub:${VERSION} invoke bundle.collect $EXTRA_OPTS"
+
+if [ $RUN_BENCHMARK -eq 1 ]; then
+    echo "Performance benchmark will be run (use --no-benchmark to skip)"
+else
+    echo "Performance benchmark will be skipped"
+fi
 
 echo "Running command with image version: ${VERSION}"
 echo "$DOCKER_CMD"

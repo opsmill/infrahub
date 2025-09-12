@@ -1,7 +1,6 @@
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
-import { NodeObject } from "@/entities/nodes/types";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
@@ -10,8 +9,11 @@ import {
 } from "@/shared/api/graphql/utils";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
+import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
+import { NodeObject } from "@/entities/nodes/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -43,13 +45,11 @@ export const getObjects: GetObjects = async ({
   const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);
 
   const schemaKind = schema.kind as string;
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
 
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${schemaKind}`,
-      [schemaKindToQuery]: {
+      [schemaKind]: {
         __args: {
           limit,
           offset,
@@ -77,5 +77,5 @@ export const getObjects: GetObjects = async ({
     },
   });
 
-  return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
+  return data[schemaKind]?.edges?.map((edge: any) => edge.node) ?? [];
 };

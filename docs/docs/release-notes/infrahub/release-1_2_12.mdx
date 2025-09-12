@@ -1,0 +1,48 @@
+---
+title: Release 1.2.12
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.12</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>June 3rd, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago, Patch #12</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.12](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.12)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.12
+
+This release brings some changes and bug-fixes to resolve issues found in Infrahub v1.2.11 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Fixed
+
+- Remove uniqueness constraint on generic templates to support upsert mutations ([#6478](https://github.com/opsmill/infrahub/issues/6478))
+- Add a migration to clean up duplicated data from improper merges of branches containing node schemas with an updated kind or inheritance ([#6502](https://github.com/opsmill/infrahub/issues/6502))
+- Update the cypher query that saves a diff to use less memory. ([#6568](https://github.com/opsmill/infrahub/issues/6568))
+- Add missing database session instantiations
+- Display generic relationships with cardinality one in the object detail view.
+- Fixes schema migration to add new attributes, so that it no longer adds that attribute to nodes that have been deleted. Includes a migration to clean up those illegal edges.
+
+## Upgrade guide
+
+Please refer to the Upgrade Guide in the documentation for more information on how to upgrade your Infrahub instance.
+
+https://docs.infrahub.app/guides/upgrade
+
+**After the upgrade, it is strongly recommended to rebase any open branches in Infrahub once the system is online again.**

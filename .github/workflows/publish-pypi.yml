@@ -28,12 +28,15 @@ on:
         default: false
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   publish_to_pypi:
     name: "Publish Infrahub-Server and Infrahub-Testcontainers to PyPI"
     runs-on: "ubuntu-22.04"
     strategy:
       matrix:
         package_dir: ["", "python_testcontainers"]
+    needs: prepare-environment
     steps:
       - name: "Set up Python"
         uses: "actions/setup-python@v5"
@@ -42,12 +45,12 @@ jobs:
       - name: "Install Poetry"
         uses: "snok/install-poetry@v1"
         with:
-          version: 1.8.5
+          version: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Install Dependencies"

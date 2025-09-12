@@ -1,13 +1,16 @@
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
-import { ModelSchema } from "@/entities/schema/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
+import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import Content from "@/shared/components/layout/content";
 import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
+
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { NodeAttribute } from "@/entities/nodes/types";
+import { ModelSchema } from "@/entities/schema/types";
 
 type ObjectHeaderProps = {
   schema: ModelSchema;
@@ -29,12 +32,13 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
     isPending,
     isRefetching,
     isError,
-  } = useObjectsCount({ schemaKind: schema.kind as string, filters });
+  } = useObjectsCount({
+    objectKind: schema.kind as string,
+    filters: removeFiltersNotInSchema(filters, schema),
+  });
 
-  const refetchObjects = () => {
-    queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey.includes("objects"),
-    });
+  const refetchObjects = async () => {
+    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
   };
 
   return (
@@ -57,13 +61,16 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
 };
 
 const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectId: string }) => {
-  const { data, loading, error } = useObjectDetails(schema, objectId);
+  const {
+    data: objectDetailsData,
+    isPending,
+    isRefetching,
+    error,
+  } = useGetObject({ objectSchema: schema, objectId });
 
   if (error) return null;
 
-  const objectDetailsData = data?.[schema.kind!]?.edges[0]?.node;
-
-  const title = loading ? (
+  const title = isPending ? (
     <Skeleton className="h-6 w-60" />
   ) : (
     <div className="flex items-center gap-3">
@@ -79,11 +86,12 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
   return (
     <Content.CardTitle
       title={title}
-      description={objectDetailsData?.description?.value ?? schema.description}
-      isReloadLoading={loading}
-      reload={() => {
-        graphqlClient.refetchQueries({ include: [schema.kind!] });
-        queryClient.invalidateQueries({ queryKey: ["events", [objectId]] });
+      description={
+        (objectDetailsData?.description as NodeAttribute | undefined)?.value ?? schema.description
+      }
+      isReloadLoading={isRefetching}
+      reload={async () => {
+        await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       }}
       end={
         objectDetailsData?.hfid &&

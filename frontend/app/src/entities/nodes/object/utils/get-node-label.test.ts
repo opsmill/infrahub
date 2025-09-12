@@ -1,6 +1,8 @@
+import { describe, expect, it, vi } from "vitest";
+
 import { NodeCore } from "@/entities/nodes/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
-import { describe, expect, it, vi } from "vitest";
+
 import { generateNodeSchema } from "../../../../../tests/fake/schema";
 import { getNodeLabel } from "./get-node-label";
 
@@ -10,6 +12,7 @@ vi.mock("@/entities/schema/domain/get-schema", () => ({
     isGeneric: false,
     isNode: true,
     isProfile: false,
+    isTemplate: false,
   })),
 }));
 
@@ -81,6 +84,7 @@ describe("getNodeLabel", () => {
       isGeneric: false,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
     const node: NodeCore = {
       ...baseNode,

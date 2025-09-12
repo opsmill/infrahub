@@ -1,6 +1,7 @@
 from enum import Enum
 
 from infrahub.core.constants import BranchConflictKeep, InfrahubKind
+from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -74,7 +75,7 @@ class DiffDataCheckSynchronizer:
                 retrieved_diff_conflicts_only = await self.diff_repository.get_one(
                     diff_branch_name=enriched_diff.diff_branch_name,
                     diff_id=enriched_diff.uuid,
-                    filters={"only_conflicted": True},
+                    filters=EnrichedDiffQueryFilters(only_conflicted=True),
                 )
                 enriched_diff_all_conflicts = retrieved_diff_conflicts_only
                 # if `enriched_diff` is an EnrichedDiffRootsMetadata, then there have been no changes to the diff and
@@ -116,7 +117,7 @@ class DiffDataCheckSynchronizer:
     def _update_diff_conflicts(self, updated_diff: EnrichedDiffRoot, retrieved_diff: EnrichedDiffRoot) -> None:
         for updated_node in updated_diff.nodes:
             try:
-                retrieved_node = retrieved_diff.get_node(node_uuid=updated_node.uuid)
+                retrieved_node = retrieved_diff.get_node(node_identifier=updated_node.identifier)
             except ValueError:
                 retrieved_node = None
             if not retrieved_node:

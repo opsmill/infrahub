@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
+from infrahub.constants.database import IndexType
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.database import DatabaseType
-from infrahub.database.constants import IndexType
 from infrahub.database.index import IndexItem
+from infrahub.database.neo4j import IndexManagerNeo4j
 
 from ..shared import GraphMigration
 
@@ -29,13 +30,13 @@ class Migration014(GraphMigration):
         if db.db_type != DatabaseType.NEO4J:
             return result
 
-        async with db.start_transaction() as ts:
-            try:
-                ts.manager.index.init(nodes=[INDEX_TO_DELETE], rels=[])
-                await ts.manager.index.drop()
-            except Exception as exc:
-                result.errors.append(str(exc))
-                return result
+        try:
+            index_manager = IndexManagerNeo4j(db=db)
+            index_manager.init(nodes=[INDEX_TO_DELETE], rels=[])
+            await index_manager.drop()
+        except Exception as exc:
+            result.errors.append(str(exc))
+            return result
 
         return result
 

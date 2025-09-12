@@ -10,6 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 
 from ..shared import load_schema
 from .shared import (
@@ -107,6 +108,11 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         president = await Node.init(schema=PERSON_KIND, db=db)
         await president.new(db=db, name="Laura", height=175, description="President", homeworld="Caprica")
         await president.save(db=db)
+
+        deleted_person = await Node.init(schema=PERSON_KIND, db=db)
+        await deleted_person.new(db=db, name="Deleted", height=175, homeworld="Caprica")
+        await deleted_person.save(db=db)
+        await deleted_person.delete(db=db)
 
         gaius = await Node.init(schema=PERSON_KIND, db=db)
         await gaius.new(
@@ -426,3 +432,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                     f" The error relates to field {field}.value='{value}'"
                 )
                 assert expected_error_msg in exc.value.errors[0]["message"]
+
+    async def test_final_validate(self, db: InfrahubDatabase):
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)

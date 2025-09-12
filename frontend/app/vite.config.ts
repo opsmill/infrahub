@@ -1,5 +1,6 @@
 /// <reference types="vite" />
 /// <reference types="vitest" />
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
@@ -14,7 +15,10 @@ export default defineConfig({
     port: 3000,
     host: "0.0.0.0",
   },
-  plugins: [react(), svgr(), tsconfigPaths()],
+  worker: {
+    format: "es",
+  },
+  plugins: [tailwindcss(), react(), svgr(), tsconfigPaths()],
   test: {
     browser: {
       enabled: true,
@@ -24,6 +28,10 @@ export default defineConfig({
           browser: "chromium",
         },
       ],
+      viewport: {
+        width: 1280,
+        height: 720,
+      },
     },
     exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
     globals: true,
@@ -32,7 +40,6 @@ export default defineConfig({
       exclude: [
         "node_modules/",
         "mocks/",
-        "cypress/",
         "**/**.d.ts",
         "**/tests/**",
         "**/**component-preview",

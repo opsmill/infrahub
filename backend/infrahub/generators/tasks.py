@@ -21,25 +21,29 @@ from infrahub.generators.models import (
 )
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
-from infrahub.services import InfrahubServices  # noqa: TC001 needed for prefect flow
+from infrahub.workers.dependencies import get_client, get_workflow
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN, REQUEST_GENERATOR_RUN
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
 
+    from infrahub_sdk.client import InfrahubClient
+
 
 @flow(
     name="generator-run",
     flow_run_name="Run generator {model.generator_definition.definition_name}",
 )
-async def run_generator(model: RequestGeneratorRun, service: InfrahubServices) -> None:
+async def run_generator(model: RequestGeneratorRun) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
 
+    client = get_client()
+
     repository = await get_initialized_repo(
+        client=client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
@@ -60,7 +64,7 @@ async def run_generator(model: RequestGeneratorRun, service: InfrahubServices) -
         repo_directory=repository.directory_root,
         worktree_directory=commit_worktree.directory,
     )
-    generator_instance = await _define_instance(model=model, service=service)
+    generator_instance = await _define_instance(model=model, client=client)
 
     try:
         generator_class = generator_definition.load_class(
@@ -69,7 +73,7 @@ async def run_generator(model: RequestGeneratorRun, service: InfrahubServices) -
 
         generator = generator_class(
             query=generator_definition.query,
-            client=service.client,
+            client=client,
             branch=model.branch_name,
             params=model.variables,
             generator_instance=generator_instance.id,
@@ -87,11 +91,9 @@ async def run_generator(model: RequestGeneratorRun, service: InfrahubServices) -
 
 
 @task(name="generator-define-instance", task_run_name="Define Instance", cache_policy=NONE)  # type: ignore[arg-type]
-async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
+async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -> CoreGeneratorInstance:
     if model.generator_instance:
-        instance = await service.client.get(
-            kind=CoreGeneratorInstance, id=model.generator_instance, branch=model.branch_name
-        )
+        instance = await client.get(kind=CoreGeneratorInstance, id=model.generator_instance, branch=model.branch_name)
         instance.status.value = GeneratorInstanceStatus.PENDING.value
         await instance.update(do_full_update=True)
 
@@ -99,7 +101,7 @@ async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices
         async with lock.registry.get(
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
-            instances = await service.client.filters(
+            instances = await client.filters(
                 kind=CoreGeneratorInstance,
                 definition__ids=[model.generator_definition.definition_id],
                 object__ids=[model.target_id],
@@ -110,7 +112,7 @@ async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices
                 instance.status.value = GeneratorInstanceStatus.PENDING.value
                 await instance.update(do_full_update=True)
             else:
-                instance = await service.client.create(
+                instance = await client.create(
                     kind=CoreGeneratorInstance,
                     branch=model.branch_name,
                     data={
@@ -125,10 +127,10 @@ async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices
 
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
-async def run_generator_definition(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+async def run_generator_definition(branch: str, context: InfrahubContext) -> None:
     await add_tags(branches=[branch])
 
-    generators = await service.client.filters(
+    generators = await get_client().filters(
         kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
@@ -150,7 +152,7 @@ async def run_generator_definition(branch: str, context: InfrahubContext, servic
 
     for generator_definition in generator_definitions:
         model = RequestGeneratorDefinitionRun(branch=branch, generator_definition=generator_definition)
-        await service.workflow.submit_workflow(
+        await get_workflow().submit_workflow(
             workflow=REQUEST_GENERATOR_DEFINITION_RUN, context=context, parameters={"model": model}
         )
 
@@ -160,11 +162,22 @@ async def run_generator_definition(branch: str, context: InfrahubContext, servic
     flow_run_name="Execute generator {model.generator_definition.definition_name}",
 )
 async def request_generator_definition_run(
-    model: RequestGeneratorDefinitionRun, context: InfrahubContext, service: InfrahubServices
+    model: RequestGeneratorDefinitionRun, context: InfrahubContext
 ) -> State[Any]:
     await add_tags(branches=[model.branch], nodes=[model.generator_definition.definition_id])
 
-    group = await service.client.get(
+    client = get_client()
+
+    # Needs to be fetched before fetching group members otherwise `object` relationship would override
+    # existing node in client store without the `name` attribute due to #521
+    existing_instances = await client.filters(
+        kind=InfrahubKind.GENERATORINSTANCE,
+        definition__ids=[model.generator_definition.definition_id],
+        include=["object"],
+        branch=model.branch,
+    )
+
+    group = await client.get(
         kind=InfrahubKind.GENERICGROUP,
         prefetch_relationships=True,
         populate_store=True,
@@ -173,24 +186,18 @@ async def request_generator_definition_run(
     )
     await group.members.fetch()
 
-    existing_instances = await service.client.filters(
-        kind=InfrahubKind.GENERATORINSTANCE,
-        definition__ids=[model.generator_definition.definition_id],
-        include=["object"],
-        branch=model.branch,
-    )
     instance_by_member = {}
     for instance in existing_instances:
         instance_by_member[instance.object.peer.id] = instance.id
 
-    repository = await service.client.get(
+    repository = await client.get(
         kind=InfrahubKind.REPOSITORY,
         branch=model.branch,
         id=model.generator_definition.repository_id,
         raise_when_missing=False,
     )
     if not repository:
-        repository = await service.client.get(
+        repository = await client.get(
             kind=InfrahubKind.READONLYREPOSITORY,
             branch=model.branch,
             id=model.generator_definition.repository_id,
@@ -214,12 +221,12 @@ async def request_generator_definition_run(
             repository_kind=repository.typename,
             branch_name=model.branch,
             query=model.generator_definition.query_name,
-            variables=member.extract(params=model.generator_definition.parameters),
+            variables=await member.extract(params=model.generator_definition.parameters),
             target_id=member.id,
             target_name=member.display_label,
         )
         tasks.append(
-            service.workflow.execute_workflow(
+            get_workflow().execute_workflow(
                 workflow=REQUEST_GENERATOR_RUN, context=context, parameters={"model": request_generator_run_model}
             )
         )

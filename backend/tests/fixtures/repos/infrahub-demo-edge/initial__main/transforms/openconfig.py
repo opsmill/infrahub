@@ -1,13 +1,11 @@
-from typing import Any
-
 from infrahub_sdk.transforms import InfrahubTransform
 
 
 class OCInterfaces(InfrahubTransform):
     query = "oc_interfaces"
 
-    async def transform(self, data: dict) -> dict:
-        response_payload: dict[str, Any] = {}
+    async def transform(self, data):
+        response_payload = {}
         response_payload["openconfig-interfaces:interface"] = []
 
         for intf in data["InfraDevice"]["edges"][0]["node"]["interfaces"]["edges"]:
@@ -55,8 +53,8 @@ class OCBGPNeighbors(InfrahubTransform):
     query = "oc_bgp_neighbors"
     url = "openconfig/network-instances/network-instance/protocols/protocol/bgp/neighbors"
 
-    async def transform(self, data: dict) -> dict:
-        response_payload: dict[str, Any] = {}
+    async def transform(self, data):
+        response_payload = {}
 
         response_payload["openconfig-bgp:neighbors"] = {"neighbor": []}
 

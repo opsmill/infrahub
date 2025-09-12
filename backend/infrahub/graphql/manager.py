@@ -25,6 +25,7 @@ from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
+from .mutations.action import InfrahubTriggerRuleMatchMutation, InfrahubTriggerRuleMutation
 from .mutations.artifact_definition import InfrahubArtifactDefinitionMutation
 from .mutations.ipam import (
     InfrahubIPAddressMutation,
@@ -39,6 +40,7 @@ from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
 )
 from .mutations.webhook import InfrahubWebhookMutation
+from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -56,8 +58,8 @@ from .types import (
     InfrahubObject,
     PaginatedObjectPermission,
     RelatedIPAddressNodeInput,
+    RelatedIPPrefixNodeInput,
     RelatedNodeInput,
-    RelatedPrefixNodeInput,
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
@@ -112,6 +114,16 @@ class GraphQLSchemaManager:
     @classmethod
     def clear_cache(cls) -> None:
         cls._branch_details_by_name = {}
+
+    @classmethod
+    def purge_inactive(cls, active_branches: list[str]) -> set[str]:
+        """Return inactive branches that were purged"""
+        inactive_branches: set[str] = set()
+        for branch_name in list(cls._branch_details_by_name):
+            if branch_name not in active_branches:
+                inactive_branches.add(branch_name)
+                del cls._branch_details_by_name[branch_name]
+        return inactive_branches
 
     @classmethod
     def _cache_branch(
@@ -332,14 +344,10 @@ class GraphQLSchemaManager:
 
     def _get_related_input_type(self, relationship: RelationshipSchema) -> type[RelatedNodeInput]:
         peer_schema = self.schema.get(name=relationship.peer, duplicate=False)
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_prefix()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPPREFIX
-        ):
-            return RelatedPrefixNodeInput
+        if peer_schema.is_ip_prefix:
+            return RelatedIPPrefixNodeInput
 
-        if (isinstance(peer_schema, NodeSchema) and peer_schema.is_ip_address()) or (
-            isinstance(peer_schema, GenericSchema) and relationship.peer == InfrahubKind.IPADDRESS
-        ):
+        if peer_schema.is_ip_address:
             return RelatedIPAddressNodeInput
 
         return RelatedNodeInput
@@ -484,7 +492,9 @@ class GraphQLSchemaManager:
 
             class_attrs[node_schema.kind] = graphene.Field(
                 node_type,
-                resolver=default_paginated_list_resolver,
+                resolver=default_paginated_list_resolver
+                if node_name not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]
+                else ipam_paginated_list_resolver,
                 required=True,
                 **node_filters,
             )
@@ -514,11 +524,14 @@ class GraphQLSchemaManager:
                 InfrahubKind.MENUITEM: InfrahubCoreMenuMutation,
                 InfrahubKind.STANDARDWEBHOOK: InfrahubWebhookMutation,
                 InfrahubKind.CUSTOMWEBHOOK: InfrahubWebhookMutation,
+                InfrahubKind.NODETRIGGERRULE: InfrahubTriggerRuleMutation,
+                InfrahubKind.NODETRIGGERATTRIBUTEMATCH: InfrahubTriggerRuleMatchMutation,
+                InfrahubKind.NODETRIGGERRELATIONSHIPMATCH: InfrahubTriggerRuleMatchMutation,
             }
 
-            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix():
+            if isinstance(node_schema, NodeSchema) and node_schema.is_ip_prefix:
                 base_class = InfrahubIPPrefixMutation
-            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address():
+            elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address:
                 base_class = InfrahubIPAddressMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
@@ -897,6 +910,11 @@ class GraphQLSchemaManager:
         if top_level:
             filters.update(get_attribute_type().get_graphql_filters(name="any"))
             filters["partial_match"] = graphene.Boolean()
+
+            if schema.kind in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
+                # This is only available for IPAM generics
+                filters["include_available"] = graphene.Boolean()
+                filters["kinds"] = graphene.List(graphene.NonNull(graphene.String))
 
         if not top_level:
             return filters

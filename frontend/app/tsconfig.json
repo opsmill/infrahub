@@ -5,7 +5,11 @@
     },
     "target": "ESNext",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "types": ["vite/client", "vitest/globals", "@vitest/browser/providers/playwright", "cypress"],
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "@vitest/browser/providers/playwright"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": false,
@@ -20,13 +24,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    // Sentry options
     "sourceMap": true,
     "inlineSources": true,
-    // Set `sourceRoot` to  `/` to strip the build path prefix from
-    // generated source code references. This allows Sentry to match source files
-    // relative to your source root folder.
-    "sourceRoot": "/"
+    "sourceRoot": "/",
+    "strictNullChecks": true
   },
   "include": [
     "src",

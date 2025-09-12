@@ -1,5 +1,6 @@
-import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
-import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import { Icon } from "@iconify-icon/react";
+import React, { forwardRef, HTMLAttributes, useState } from "react";
+
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -17,8 +18,10 @@ import {
 } from "@/shared/components/ui/combobox";
 import { CommandItem } from "@/shared/components/ui/command";
 import { classNames, getTextColor } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import React, { forwardRef, HTMLAttributes, useState } from "react";
+
+import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
+import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 
 export type DropdownOption = {
   value: string;
@@ -56,7 +59,7 @@ export const DropdownItem = React.forwardRef<
 
   return (
     <ComboboxItem ref={ref} className={classNames("rounded-none", className)} {...props}>
-      <div className="overflow-hidden w-full">
+      <div className="w-full overflow-hidden">
         <div className="flex items-center justify-between">
           <Badge className="font-medium" style={getDropdownStyle(item.color)}>
             {item.label}
@@ -68,7 +71,7 @@ export const DropdownItem = React.forwardRef<
             </Badge>
           )}
         </div>
-        <p className="text-xs truncate">{item.description}</p>
+        <p className="truncate text-xs">{item.description}</p>
       </div>
 
       {schema && fieldSchema && (
@@ -77,7 +80,7 @@ export const DropdownItem = React.forwardRef<
             tabIndex={-1}
             variant="ghost"
             size="sm"
-            className="ml-auto text-red-800 h-6"
+            className="ml-auto h-6 text-red-800"
             onClick={(e) => {
               e.stopPropagation();
               setShowDeleteModal(true);
@@ -143,17 +146,21 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
   field,
   addOption,
 }) => {
+  const namespace = useNamespace(schema.namespace);
   const [open, setOpen] = useState(false);
   const [addDropdownItem] = useMutation(DROPDOWN_ADD_MUTATION);
 
   return (
     <div className="p-2 pt-0">
-      <Button
-        className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-        onClick={() => setOpen(!open)}
-      >
-        + Add option
-      </Button>
+      {namespace?.user_editable && (
+        <Button
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+          onClick={() => setOpen(!open)}
+          data-testid="add-option-button"
+        >
+          + Add option
+        </Button>
+      )}
 
       <SlideOver
         title={
@@ -275,7 +282,7 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
 );
 
 export function getDropdownStyle(color?: string | null) {
-  if (!color) return undefined;
+  if (!color) return;
 
   return {
     backgroundColor: color,

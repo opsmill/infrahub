@@ -2,12 +2,14 @@ from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRootMetadata, NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
@@ -16,6 +18,7 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import SchemaNotFoundError
 
 
 class TestDiffCoordinator:
@@ -78,6 +81,66 @@ class TestDiffCoordinator:
                 assert prop_diff.action is DiffAction.REMOVED
                 assert prop_diff.conflict is None
                 assert prop_diff.new_value is None
+
+    async def test_node_added_diff_updated_node_removed(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ):
+        main_person_2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await main_person_2.new(db=db, name="Rex", height=190)
+        await main_person_2.save(db=db)
+        branch = await create_branch(db=db, branch_name="branch")
+        # new person
+        branch_person_1 = await Node.init(db=db, schema="TestPerson", branch=branch)
+        await branch_person_1.new(db=db, name="Ray", height=180)
+        await branch_person_1.save(db=db)
+        # updated person
+        branch_person_2 = await NodeManager.get_one(db=db, branch=branch, id=main_person_2.id)
+        branch_person_2.height.value += 1
+        await branch_person_2.save(db=db)
+        # updated person
+        branch_john = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+        branch_john.height.value += 1
+        await branch_john.save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_repository.get_one(
+            diff_branch_name=diff_metadata.diff_branch_name, diff_id=diff_metadata.uuid
+        )
+
+        assert diff.base_branch_name == default_branch.name
+        assert diff.diff_branch_name == branch.name
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+        assert set(nodes_by_id.keys()) == {branch_person_1.id, main_person_2.id, person_john_main.id}
+        branch_node_diff_1 = nodes_by_id[branch_person_1.id]
+        assert branch_node_diff_1.action is DiffAction.ADDED
+        branch_node_diff_2 = nodes_by_id[main_person_2.id]
+        assert branch_node_diff_2.action is DiffAction.UPDATED
+        branch_john_diff = nodes_by_id[person_john_main.id]
+        assert branch_john_diff.action is DiffAction.UPDATED
+
+        # delete on branch to remove from diff
+        fresh_branch_person_1 = await NodeManager.get_one(db=db, branch=branch, id=branch_person_1.id)
+        await fresh_branch_person_1.delete(db=db)
+        # update on main, validate not removed from diff
+        fresh_main_person_2 = await NodeManager.get_one(db=db, branch=default_branch, id=main_person_2.id)
+        fresh_main_person_2.height.value += 1
+        await fresh_main_person_2.save(db=db)
+
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_repository.get_one(
+            diff_branch_name=diff_metadata.diff_branch_name, diff_id=diff_metadata.uuid
+        )
+        assert diff.base_branch_name == default_branch.name
+        assert diff.diff_branch_name == branch.name
+        nodes_by_id = {n.uuid: n for n in diff.nodes}
+        assert set(nodes_by_id.keys()) == {person_john_main.id, fresh_main_person_2.id}
+        branch_node_diff_2 = nodes_by_id[main_person_2.id]
+        assert branch_node_diff_2.action is DiffAction.UPDATED
+        branch_john_diff = nodes_by_id[person_john_main.id]
+        assert branch_john_diff.action is DiffAction.UPDATED
 
     async def test_overlapping_diffs(self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node):
         branch = await create_branch(db=db, branch_name="branch")
@@ -222,13 +285,17 @@ class TestDiffCoordinator:
         assert no_changes_diff_metadata.from_time == diff_with_data.from_time
         assert no_changes_diff_metadata.to_time > diff_with_data.to_time
 
+        expected_previous_node_specifiers = NodeFieldSpecifierMap()
+        expected_previous_node_specifiers.add_entry(
+            node_uuid=person_john_main.id, kind=person_john_main.get_kind(), field_name="height"
+        )
         wrapped_diff_coordinator.diff_calculator.calculate_diff.assert_awaited_once_with(
             base_branch=default_branch,
             diff_branch=branch,
             from_time=diff_with_data.to_time,
             to_time=no_changes_diff_metadata.to_time,
             include_unchanged=True,
-            previous_node_specifiers={person_john_main.id: {"height"}},
+            previous_node_specifiers=expected_previous_node_specifiers,
         )
         wrapped_diff_coordinator.diff_repo.get_one.assert_not_awaited()
         wrapped_diff_coordinator.diff_repo.save.assert_awaited_once()
@@ -301,3 +368,44 @@ class TestDiffCoordinator:
         assert rel_diffs == {("cars", DiffAction.UPDATED)}
         attr_diffs = {(a.name, a.action) for a in updated_person_diff.attributes}
         assert attr_diffs == {("height", DiffAction.UPDATED)}
+
+    async def test_schema_deleted_on_source_and_target_branches(
+        self,
+        db: InfrahubDatabase,
+        register_internal_models_schema,
+        default_branch: Branch,
+        person_john_main,
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="branch1")
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+
+        # delete john on the default branch
+        john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+        await john_main.delete(db=db)
+
+        # delete john on the branch
+        john_branch = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
+        await john_branch.delete(db=db)
+
+        # delete the schema on the default branch
+        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        main_schema_branch.delete(name="TestPerson")
+
+        # delete the schema on the branch, it might not exist b/c it was just deleted above
+        branch_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        try:
+            branch_schema_branch.delete(name="TestPerson")
+        except SchemaNotFoundError:
+            pass
+
+        # calculate the diff
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        enriched_diff = await diff_repository.get_one(diff_branch_name=branch.name, diff_id=diff_metadata.uuid)
+
+        assert len(enriched_diff.nodes) == 1
+        nodes_by_id = {n.uuid: n for n in enriched_diff.nodes}
+        assert set(nodes_by_id.keys()) == {person_john_main.id}
+        john_diff = nodes_by_id[person_john_main.id]
+        assert john_diff.action is DiffAction.REMOVED

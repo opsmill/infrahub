@@ -23,9 +23,14 @@ env:
   INFRAHUB_IMAGE_VER: "local"
   INFRAHUB_SERVER_PORT: 0
   INFRAHUB_DB_BACKUP_PORT: 0
+  INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+  INFRAHUB_SCHEMA_STRICT_MODE: "false"
+  INFRAHUB_TIMEOUT: 180
   VMAGENT_PORT: 0
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   migration-tests:
     strategy:
       fail-fast: false
@@ -34,15 +39,18 @@ jobs:
         include:
           - name: From 1.1.0
             source_version: 1.1.0
+            neo4j_image: "neo4j:5.20.0-enterprise"
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
     timeout-minutes: 120
+    needs: prepare-environment
     env:
       INFRAHUB_DB_TYPE: neo4j
+      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -51,8 +59,8 @@ jobs:
           python-version: 3.12
       - name: "Setup python environment"
         run: |
-          pipx install poetry==1.8.5
-          poetry config virtualenvs.prefer-active-python true
+          pipx install -f poetry==${{ env.POETRY_VERSION }}
+          poetry config virtualenvs.create true --local
           pip install invoke toml
       - name: "Install Package"
         run: "poetry install"
@@ -68,21 +76,41 @@ jobs:
     # Initialize the demo environment with the Source Version
       - name: Pull External Docker Images
         run: invoke demo.pull
+        env:
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+
       - name: Initialize Demo
         id: init-demo
         run: invoke demo.start demo.load-infra-schema
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+
       - name: Check Demo Status
         run: invoke demo.status
+        env:
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+
       - name: Load Infra Data
         run: invoke demo.load-infra-data
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+
       - name: Run infra data patch scripts
         run: invoke demo.run-infra-patch-scripts
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
+          NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+
+      - name: Set infrahub address
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+
+      - name: Load custom data
+        run: echo "DATA_NAME=$(poetry run invoke dev.test-add-dummy-data)" >> $GITHUB_ENV
+
       - name: Stop Demo
         run: invoke demo.stop
 
@@ -99,6 +127,14 @@ jobs:
 
       - name: Start Demo
         run: invoke dev.start
+
+      - name: Set infrahub address
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+
+      - name: Test branch rebase
+        run: poetry run invoke dev.test-branch-rebase --branch atl1-delete-upstream --data-to-check $DATA_NAME
 
       - name: Containers after tests
         if: always()

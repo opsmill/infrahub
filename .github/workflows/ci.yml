@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:truthy rule:truthy rule:line-length
+# yamllint disable rule:truthy rule:line-length
 name: "CI"
 on:
   pull_request:
@@ -25,12 +25,14 @@ env:
   VMAGENT_PORT: 0
   PYTEST_XDIST_WORKER_COUNT: 4
   INFRAHUB_USE_TEST_CONTAINERS: 1
-  VALE_VERSION: "3.7.1"
+  VALE_VERSION: "3.12.0"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
   METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
 
 jobs:
-   # ------------------------------------------ Check Files Changes  ------------------------------------------
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
+  # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
     name: Detect which file has changed
     runs-on: ubuntu-latest
@@ -48,9 +50,10 @@ jobs:
       infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
+      testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Check for file changes
@@ -60,7 +63,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-filters.yml
 
- # ------------------------------------------ All Linter  ------------------------------------------
+  # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
@@ -68,7 +71,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Setup environment"
@@ -77,20 +80,25 @@ jobs:
         run: "yamllint -s ."
 
   javascript-lint:
+    defaults:
+      run:
+        working-directory: ./frontend/app
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          submodules: true
-      - name: Setup Biome
-        uses: biomejs/setup-biome@v2
-        with:
-          version: 1.9.4
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install dependencies
+        run: npm ci
       - name: Run Biome
-        working-directory: ./frontend/app
-        run: biome ci .
+        run: npx biome ci .
 
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
@@ -99,11 +107,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Setup environment"
-        run: "pip install ruff==0.11.0"
+        run: "pip install ruff==0.11.9"
       - name: "Linting: ruff check"
         run: "ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
@@ -112,17 +120,18 @@ jobs:
   markdown-lint:
     if: |
       needs.files-changed.outputs.documentation == 'true' ||
-      needs.files-changed.outputs.release == 'true'
+      needs.files-changed.outputs.release == 'true' ||
+      needs.files-changed.outputs.github_workflows
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v19
+        uses: DavidAnson/markdownlint-cli2-action@v20
         with:
           config: .markdownlint.yaml
           globs: |
@@ -135,7 +144,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Check workflow files
@@ -159,25 +168,28 @@ jobs:
 
   infrahub-testcontainers-check:
     if: needs.files-changed.outputs.infrahub_poetry_files == 'true'
-    needs: ["files-changed"]
+    needs: ["prepare-environment", "files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
 
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: "Setup Python environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
 
       - name: Compare package versions
         run: |
@@ -196,59 +208,17 @@ jobs:
             exit 1
           fi
 
-  # TODO NEED TO REVISIT THIS ONE
-  # python-sdk-poetry-check:
-  #   if: |
-  #     needs.files-changed.outputs.python_sdk_poetry_files == 'true' ||
-  #     github.ref_name == 'stable' ||
-  #     github.ref_name == 'develop'
-  #   needs:
-  #     - "files-changed"
-  #   uses: "./.github/workflows/poetry-check.yml"
-  #   with:
-  #     directory: "./python-sdk/"
+  infrahub-testcontainers-poetry-check:
+    if: |
+      needs.files-changed.outputs.infrahub_poetry_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    uses: "./.github/workflows/poetry-check.yml"
+    with:
+      directory: "./python_testcontainers"
 
-  # TODO NEED TO REVISIT THIS ONE
-  # python-sdk-integration-tests:
-  #   if: |
-  #     always() && !cancelled() &&
-  #     !contains(needs.*.result, 'failure') &&
-  #     !contains(needs.*.result, 'cancelled')
-  #   needs: ["python-sdk-unit-tests"]
-  #   runs-on:
-  #     group: huge-runners
-  #   timeout-minutes: 30
-  #   env:
-  #     INFRAHUB_DB_TYPE: memgraph
-  #   steps:
-  #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v4"
-  #       with:
-  #         submodules: true
-  #     - name: "Install Invoke"
-  #       run: "pip install invoke toml"
-
-  #     - name: "Set environment variables"
-  #       run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-  #     - name: "Set environment variables"
-  #       run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-  #     - name: "Clear docker environment"
-  #       run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-  #     - name: "Build Test Image"
-  #       run: "invoke dev.build"
-  #     - name: "Pull External Docker Images"
-  #       run: "invoke dev.pull"
-  #     - name: "Integration Tests"
-  #       run: "invoke sdk.test-integration"
-  #     - name: "Coveralls : Integration Tests"
-  #       uses: coverallsapp/github-action@v2
-  #       continue-on-error: true
-  #       env:
-  #         COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-  #       with:
-  #         flag-name: python-sdk-integration
-  #         parallel: true
 
   backend-tests-unit:
     if: |
@@ -264,7 +234,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -317,7 +287,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -363,7 +333,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -400,17 +370,19 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+      (needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.testcontainers == 'true')
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
       PYTEST_XDIST_WORKER_COUNT: 1
+      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Set up Python
@@ -434,8 +406,10 @@ jobs:
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_IMAGE="opsmill/infrahub" >> $GITHUB_ENV
+      - name: Install Invoke
+        run: pip install invoke toml
       - name: "Build container"
-        run: "inv dev.build"
+        run: "invoke dev.build"
       - name: "Setup Python environment"
         run: |
           poetry config virtualenvs.create true --local
@@ -477,7 +451,7 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v4"
+  #       uses: "actions/checkout@v5"
   #       with:
   #         submodules: true
   #     - name: Set up Python
@@ -506,23 +480,25 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.documentation == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-          pip install invoke toml
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install Package"
         run: "poetry install"
       - name: "Run validator"
@@ -539,13 +515,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Install NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: frontend/app/package-lock.json
       - name: "Install frontend"
@@ -557,21 +533,6 @@ jobs:
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "npm run test:coverage"
-      - name: "Run integration tests"
-        working-directory: ./frontend/app
-        run: "npm run cypress:run"
-      - name: Upload cypress screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: docs/docs/media/*
-      - name: Upload cypress videos
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: frontend/app/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -590,31 +551,40 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.documentation == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+      (needs.files-changed.outputs.release == 'true') || (needs.files-changed.outputs.documentation == 'true')
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       - name: Install NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - name: "Install dependencies"
+      - name: "Setup python environment"
+        run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
+      - name: "Install Poetry packages"
+        run: "poetry install"
+      - name: "Install npm dependencies"
+        working-directory: ./docs
         run: npm install
-      - name: "Setup Python environment"
-        run: "pip install invoke toml"
-      - name: "Build website"
-        run: "invoke docs.build"
+      - name: "Build docs"
+        run: "poetry run invoke docs.build"
 
   validate-generated-documentation:
     if: |
@@ -622,27 +592,34 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: docs/package-lock.json
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: "Setup Python environment"
         run: |
-          pipx install poetry==1.8.5
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
-      - name: "Setup environment"
-        run: "pip install invoke toml"
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
@@ -657,9 +634,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
+
       # The official GitHub Action for Vale doesn't work, installing manually instead:
       # https://github.com/errata-ai/vale-action/issues/103
       - name: Download Vale
@@ -669,7 +647,7 @@ jobs:
         env:
           VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate documentation style"
-        run: ./vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+        run: ./vale --config=./.vale.ini $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 
   validate-release-notes-style:
     if: |
@@ -682,7 +660,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -694,7 +672,7 @@ jobs:
         env:
           VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate release notes style"
-        run: ./vale $(find ./changelog ./docs/docs/release-notes/infrahub -type f \( -name '*.mdx' -o -name '*.md' \)) CHANGELOG.md
+        run: ./vale --config=./.vale.ini $(find ./changelog ./docs/docs/release-notes/infrahub -type f \( -name '*.mdx' -o -name '*.md' \)) CHANGELOG.md
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
@@ -702,6 +680,7 @@ jobs:
       run:
         working-directory: ./frontend/app
     needs:
+      - prepare-environment
       - javascript-lint
       - files-changed
       - yaml-lint
@@ -710,7 +689,8 @@ jobs:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
     timeout-minutes: 40
@@ -721,6 +701,7 @@ jobs:
           - name: E2E-testing-playwright
             env:
               INFRAHUB_DB_TYPE: neo4j
+              POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           # - name: E2E-testing-playwright-nats
           #   env:
           #     INFRAHUB_DB_TYPE: neo4j
@@ -734,13 +715,13 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Install NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: frontend/app/package-lock.json
       - name: Set up Python
@@ -804,7 +785,15 @@ jobs:
         run: npm install
 
       - name: Install Playwright Browsers
-        run: npx playwright install chromium
+        run: npx playwright install chromium --no-shell
+
+      # Make chromium ignore netlink messages by returning ReadMessages early
+      - name: Chrome path
+        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run --no-shell | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
+      - name: Chrome func offset
+        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
+      - name: Patch chromium
+        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
 
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -897,12 +886,13 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      github.base_ref == 'stable'
+      github.base_ref == 'stable' &&
+      needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -971,7 +961,8 @@ jobs:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.e2e == 'true'
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
@@ -993,7 +984,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Set up Python

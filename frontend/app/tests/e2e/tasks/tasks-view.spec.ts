@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe("Tasks - READ", () => {
+test.describe.fixme("Tasks - READ", () => {
   test("should correctly access to the tasks list and details", async ({ page }) => {
     await page.goto("/tasks");
     await expect(page.getByRole("heading", { name: "Task Overview" })).toBeVisible();

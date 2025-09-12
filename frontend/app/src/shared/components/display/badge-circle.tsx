@@ -1,5 +1,7 @@
-import { classNames } from "@/shared/utils/common";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+
+import { classNames } from "@/shared/utils/common";
+
 import { Circle } from "./circle";
 
 export enum CIRCLE_BADGE_TYPES {
@@ -12,7 +14,7 @@ export enum CIRCLE_BADGE_TYPES {
 
 // type BadgeProps = {}
 
-const DEFAULT_CLASS = "flex items-center font-medium mr-2 pl-2 last:mr-0 rounded";
+const DEFAULT_CLASS = "flex items-center font-medium mr-2 pl-2 last:mr-0 rounded-sm";
 
 const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
   switch (type) {
@@ -36,7 +38,7 @@ const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
     }
     case CIRCLE_BADGE_TYPES.LIGHT: {
       return `
-        bg-custom-white text-gray-800
+        bg-white text-gray-800
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }

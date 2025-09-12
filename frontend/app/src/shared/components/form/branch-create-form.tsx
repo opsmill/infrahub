@@ -1,6 +1,7 @@
+import { StringParam, useQueryParam } from "use-query-params";
+
 import { QSP } from "@/config/qsp";
-import { BRANCH_CREATE } from "@/entities/branches/api/createBranch";
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
+
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
@@ -9,7 +10,9 @@ import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import { isMinLength, isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { StringParam, useQueryParam } from "use-query-params";
+
+import { BRANCH_CREATE } from "@/entities/branches/api/createBranch";
+import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
 
 type BranchFormData = {
   name: string;
@@ -49,7 +52,7 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
 
   return (
     <Form
-      className="p-2 space-y-4"
+      className="space-y-4 p-2"
       onSubmit={async (data) => {
         const branchData: BranchFormData = {
           name: data.name.value as string,
@@ -84,7 +87,7 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
           Cancel
         </Button>
 
-        <FormSubmit>Create a new branch</FormSubmit>
+        <FormSubmit data-testid="submit-create-new-branch">Create a new branch</FormSubmit>
       </div>
     </Form>
   );

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.validators.uniqueness.model import (
     NodeUniquenessQueryRequest,
@@ -11,7 +12,6 @@ from infrahub.core.validators.uniqueness.model import (
 )
 from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database import QueryConfig
-from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAGE
 from tests.helpers.query_benchmark.benchmark_config import BenchmarkConfig
@@ -81,20 +81,23 @@ async def benchmark_uniqueness_query(
     "query_request",
     [
         NodeUniquenessQueryRequest(
-            kind="TestCar", unique_attribute_paths={QueryAttributePath(attribute_name="name", property_name="value")}
-        ),
-        NodeUniquenessQueryRequest(
             kind="TestCar",
             unique_attribute_paths={
-                QueryAttributePath(attribute_name="name", property_name="value"),
-                QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value")
             },
         ),
         NodeUniquenessQueryRequest(
             kind="TestCar",
             unique_attribute_paths={
-                QueryAttributePath(attribute_name="name", property_name="value"),
-                QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
+            },
+        ),
+        NodeUniquenessQueryRequest(
+            kind="TestCar",
+            unique_attribute_paths={
+                QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+                QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
             },
             relationship_attribute_paths={
                 QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")
@@ -130,8 +133,8 @@ async def test_single_constraint_multiple_runtimes(benchmark_config, car_person_
     query_request = NodeUniquenessQueryRequest(
         kind="TestCar",
         unique_attribute_paths={
-            QueryAttributePath(attribute_name="name", property_name="value"),
-            QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+            QueryAttributePath(attribute_name="name", attribute_kind="Text", property_name="value"),
+            QueryAttributePath(attribute_name="nbr_seats", attribute_kind="Number", property_name="value"),
         },
         relationship_attribute_paths={
             QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")

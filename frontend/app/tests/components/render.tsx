@@ -9,7 +9,7 @@ import { render as renderFromVitest } from "vitest-browser-react";
 
 import { BranchContext } from "../../src/entities/branches/ui/branches-provider";
 import { queryClient } from "../../src/shared/api/rest/client";
-import { ReactRouter7Adapter } from "../../src/shared/lib/use-query-params";
+import { ReactRouter7Adapter } from "../../src/shared/libs/use-query-params";
 import { store } from "../../src/shared/stores";
 import { generateBranch } from "../fake/branch";
 

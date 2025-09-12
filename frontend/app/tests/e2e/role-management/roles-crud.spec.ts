@@ -1,14 +1,26 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { saveScreenshotForDocs } from "../../utils";
+import { generateRandomBranchName, saveScreenshotForDocs } from "../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("Role management - Roles CRUD", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 
+  const BRANCH_NAME = generateRandomBranchName("role-crud");
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
   test("Should create a role ", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management/roles");
+      await page.goto(`/role-management/roles?branch=${BRANCH_NAME}`);
     });
 
     await test.step("create role", async () => {
@@ -50,7 +62,7 @@ test.describe("Role management - Roles CRUD", () => {
 
   test("Should update a role ", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management/roles");
+      await page.goto(`/role-management/roles?branch=${BRANCH_NAME}`);
     });
 
     await test.step("update role", async () => {
@@ -83,7 +95,7 @@ test.describe("Role management - Roles CRUD", () => {
 
   test("Should delete a role ", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management/roles");
+      await page.goto(`/role-management/roles?branch=${BRANCH_NAME}`);
     });
 
     await test.step("delete role", async () => {

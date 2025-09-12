@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import copy
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
@@ -399,7 +400,7 @@ class NodeManager:
 
         results = []
         for peer in peers_info:
-            result = await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
+            result = Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
                 db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
@@ -407,7 +408,7 @@ class NodeManager:
                 data=peer,
             )
             if fetch_peers:
-                await result.set_peer(value=peer_nodes[peer.peer_id])
+                result.set_peer(value=peer_nodes[peer.peer_id])
             results.append(result)
 
         return results
@@ -803,8 +804,21 @@ class NodeManager:
 
         hfid_str = " :: ".join(hfid)
 
-        if not node_schema.human_friendly_id or len(node_schema.human_friendly_id) != len(hfid):
-            raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
+        if not node_schema.human_friendly_id:
+            raise NodeNotFoundError(
+                branch_name=branch.name,
+                node_type=kind_str,
+                identifier=hfid_str,
+                message=f"Unable to lookup node by HFID, schema '{node_schema.kind}' does not have a HFID defined.",
+            )
+
+        if len(node_schema.human_friendly_id) != len(hfid):
+            raise NodeNotFoundError(
+                branch_name=branch.name,
+                node_type=kind_str,
+                identifier=hfid_str,
+                message=f"Unable to lookup node by HFID, schema '{node_schema.kind}' HFID does not contain the same number of elements as {hfid}",
+            )
 
         filters = {}
         for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
@@ -1216,20 +1230,31 @@ class NodeManager:
         if not prefetch_relationships and not fields:
             return
         cardinality_one_identifiers_by_kind: dict[str, dict[str, RelationshipDirection]] | None = None
-        all_identifiers: list[str] | None = None
+        outbound_identifiers: set[str] | None = None
+        inbound_identifiers: set[str] | None = None
+        bidirectional_identifiers: set[str] | None = None
         if not prefetch_relationships:
             cardinality_one_identifiers_by_kind = _get_cardinality_one_identifiers_by_kind(
                 nodes=nodes_by_id.values(), fields=fields or {}
             )
-            all_identifiers_set: set[str] = set()
+            outbound_identifiers = set()
+            inbound_identifiers = set()
+            bidirectional_identifiers = set()
             for identifier_direction_map in cardinality_one_identifiers_by_kind.values():
-                all_identifiers_set.update(identifier_direction_map.keys())
-            all_identifiers = list(all_identifiers_set)
+                for identifier, direction in identifier_direction_map.items():
+                    if direction is RelationshipDirection.OUTBOUND:
+                        outbound_identifiers.add(identifier)
+                    elif direction is RelationshipDirection.INBOUND:
+                        inbound_identifiers.add(identifier)
+                    elif direction is RelationshipDirection.BIDIR:
+                        bidirectional_identifiers.add(identifier)
 
         query = await NodeListGetRelationshipsQuery.init(
             db=db,
             ids=list(nodes_by_id.keys()),
-            relationship_identifiers=all_identifiers,
+            outbound_identifiers=None if outbound_identifiers is None else list(outbound_identifiers),
+            inbound_identifiers=None if inbound_identifiers is None else list(inbound_identifiers),
+            bidirectional_identifiers=None if bidirectional_identifiers is None else list(bidirectional_identifiers),
             branch=branch,
             at=at,
             branch_agnostic=branch_agnostic,
@@ -1315,22 +1340,24 @@ class NodeManager:
         nodes: list[Node],
         branch: Branch | str | None = None,
         at: Timestamp | str | None = None,
+        cascade_delete: bool = True,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
-        node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
-        ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
-        node_ids = {node.get_id() for node in nodes}
-        missing_ids_to_delete = ids_to_delete - node_ids
-        if missing_ids_to_delete:
-            node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
-            nodes += list(node_map.values())
-        deleted_nodes = []
-        for node in nodes:
-            await node.delete(db=db, at=at)
-            deleted_nodes.append(node)
+        nodes_to_delete = copy(nodes)
+        if cascade_delete:
+            node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
+            ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
+            node_ids = {node.get_id() for node in nodes}
+            missing_ids_to_delete = ids_to_delete - node_ids
+            if missing_ids_to_delete:
+                node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
+                nodes_to_delete += list(node_map.values())
 
-        return deleted_nodes
+        for node in nodes_to_delete:
+            await node.delete(db=db, at=at)
+
+        return nodes_to_delete
 
 
 def _get_cardinality_one_identifiers_by_kind(

@@ -32,6 +32,7 @@ query(
     $event_type: [String!]
     $since: DateTime
     $primary_node__ids: [String!]
+    $order: EventSortOrder
 ) {
   InfrahubEvent(
     branches: $branch,
@@ -44,6 +45,7 @@ query(
     primary_node__ids: $primary_node__ids
     event_type: $event_type
     since: $since
+    order: $order
   ) {
     count
     edges {
@@ -439,6 +441,15 @@ async def test_event_query_prefect(
 
     clean_result = filter_outofscope_events(result.data, event_ids_inscope)
     assert clean_result["InfrahubEvent"]["count"] == 10
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"order": "ASC"},
+    )
+    assert result.errors is None
+    assert result.data
 
     result_branch1 = await run_query(
         db=db,

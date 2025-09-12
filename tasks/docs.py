@@ -1,11 +1,15 @@
 import sys
 from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from invoke import Context, task
 
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
@@ -33,6 +37,12 @@ def generate(context: Context) -> None:
 def generate_schema(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for the schema."""
     _generate_infrahub_schema_documentation()
+    _generate_infrahub_schema_attribute_kind_parameters_snippet()
+
+
+@task
+def generate_config(context: Context) -> None:  # noqa: ARG001
+    _generate_infrahub_config_documentation()
 
 
 @task
@@ -172,30 +182,49 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
 def _generate(context: Context) -> None:
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
-    # _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
-    # _generate_infrahub_sdk_configuration_documentation()
     _generate_infrahub_bus_events_documentation()
     _generate_infrahub_events_documentation()
+    _generate_infrahub_config_documentation()
 
 
-# def _generate_infrahubctl_documentation(context: Context) -> None:
-#     """Generate the documentation for infrahubctl using typer-cli."""
-#     from infrahub_sdk.ctl.cli import app
+def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
+    """Generate documentation for any attributes that have parameters defined to be defined by users."""
+    import jinja2
 
-#     print(" - Generate infrahubctl CLI documentation")
-#     for cmd in app.registered_commands:
-#         exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli_commands utils docs --name "infrahubctl {cmd.name}"'
-#         exec_cmd += f" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx"
-#         with context.cd(ESCAPED_REPO_PATH):
-#             context.run(exec_cmd)
+    from infrahub.core.schema.attribute_schema import attribute_schema_class_by_kind
 
-#     for cmd in app.registered_groups:
-#         exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
-#         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
-#         with context.cd(ESCAPED_REPO_PATH):
-#             context.run(exec_cmd)
+    kind_ap_parameters: dict[str, dict] = {}
+    for kind, schema_cls in attribute_schema_class_by_kind.items():
+        # If the schema has a parameters class, add it to the list
+        init_schema = schema_cls(name="ignore", kind=kind)
+        if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
+            params = {
+                param: info
+                for param, info in init_schema.parameters.model_fields.items()
+                if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
+            }
+            kind_ap_parameters[kind] = params
+    # for _, obj in inspect.getmembers(ap):
+    #     if inspect.isclass(obj) and issubclass(obj, ap.AttributeParameters) and obj is not ap.AttributeParameters:
+    #         kind_ap_parameters.append(obj)
+
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "schema" / "attribute_kind_params.j2"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "snippets" / "attribute-kind-params.mdx"
+    output_label = "docs/docs/snippets/attribute-kind-params.mdx"
+    if not template_file.exists():
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = template_file.read_text(encoding="utf-8")
+
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+    rendered_file = template.render(kinds=kind_ap_parameters)
+
+    output_file.write_text(rendered_file, encoding="utf-8")
+    print(f"Docs saved to: {output_label}")
 
 
 def _generate_infrahub_schema_documentation() -> None:
@@ -230,6 +259,68 @@ def _generate_infrahub_schema_documentation() -> None:
         print(f"Docs saved to: {output_label}")
 
 
+def _generate_infrahub_config_documentation() -> None:
+    import jinja2
+
+    from infrahub import config
+
+    sections: list[ConfigurationSection] = []
+    schema = config.Settings.model_json_schema()
+
+    print("Rendering doc for Infrahub config...")
+
+    # Compute the data from config.py
+    for prop in schema["properties"]:
+        if prop not in ["logging", "storage"]:  # TODO: Why would we remove logging and storage here?
+            section_ref = schema["properties"][prop]["$ref"]
+            section_class_name = section_ref.split("/")[-1]
+            section_class: BaseModel = getattr(config, section_class_name)
+            section = ConfigurationSection(
+                name=prop,
+                description=section_class.__doc__ or "",
+            )
+            section_schema = section_class.model_json_schema()
+            env_prefix = section_class.model_config.get("env_prefix")
+            for param in section_schema["properties"]:
+                param_type = section_schema["properties"][param].get("type")
+                if param_type == "array":
+                    array_type = section_schema["properties"][param].get("items", {}).get("type")
+                    if array_type:
+                        param_type = f"array[{array_type}]"
+
+                env = None
+                if env_prefix:
+                    env = f"{env_prefix}{param}".upper()
+
+                section_param = ConfigurationSectionParameter(
+                    name=section_schema["properties"][param].get("title", param).lower(),
+                    description=section_schema["properties"][param].get("description"),
+                    default=section_schema["properties"][param].get("default"),
+                    type=param_type,
+                    env=env,
+                )
+                section.parameters.append(section_param)
+            sections.append(section)
+
+    # Render the template
+    # TODO: Create methods and so on to handle the template/jinja bits
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "infrahub_config.j2"
+    output_label = "docs/reference/configuration.mdx"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / output_label
+
+    if not template_file.exists():
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+    environment = jinja2.Environment(trim_blocks=True)
+    template = environment.from_string(template_text)
+    rendered_file = template.render(sections=sections)
+
+    Path(output_file).write_text(rendered_file, encoding="utf-8")
+    print(f"Docs saved to: {output_label}")
+
+
 def _get_env_vars() -> dict[str, str]:
     from infrahub_sdk.config import ConfigBase
     from pydantic_settings import EnvSettingsSource
@@ -238,8 +329,8 @@ def _get_env_vars() -> dict[str, str]:
     settings = ConfigBase()
     env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
 
-    for field_name, field in settings.model_fields.items():
-        for field_key, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+    for field_name, model_field in settings.model_fields.items():
+        for field_key, field_env_name, _ in env_settings._extract_field_info(model_field, field_name):
             env_vars[field_key].append(field_env_name.upper())
 
     return env_vars
@@ -423,11 +514,7 @@ def _generate_infrahub_bus_events_documentation() -> None:
 
     import jinja2
 
-    from infrahub.message_bus.messages import (
-        MESSAGE_MAP,
-        PRIORITY_MAP,
-        RESPONSE_MAP,
-    )
+    from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
 
     template_text = template_file.read_text(encoding="utf-8")
     environment = jinja2.Environment()
@@ -443,7 +530,23 @@ def _generate_infrahub_bus_events_documentation() -> None:
     print(f"Docs saved to: {output_file}")
 
 
-def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
+@dataclass
+class ConfigurationSectionParameter:
+    name: str
+    description: str
+    default: Any | None = None
+    type: str | None = None
+    env: str | None = None
+
+
+@dataclass
+class ConfigurationSection:
+    name: str
+    description: str
+    parameters: list[ConfigurationSectionParameter] = field(default_factory=list)
+
+
+def _generate_infrahub_events_documentation() -> None:
     """
     Generate documentation for all Infrahub events into a single MDX file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.

@@ -1,13 +1,17 @@
 import { ACCOUNT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { PropertyRow } from "@/entities/schema/ui/styled";
+
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
+
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { PropertyRow } from "@/entities/schema/ui/styled";
+
 import { EventType } from "../types";
 import { EventAttributes } from "./node-events/event-attributes";
+import { EventRelationships } from "./node-events/event-relationships";
 
 export const EventDetails = ({
   id,
@@ -22,7 +26,7 @@ export const EventDetails = ({
   ...props
 }: EventType) => {
   return (
-    <div className="divide-y">
+    <div className="divide-y divide-gray-200">
       <PropertyRow
         title="ID"
         value={
@@ -31,15 +35,19 @@ export const EventDetails = ({
           </div>
         }
       />
+
       <PropertyRow title="Event" value={event} />
+
       <PropertyRow title="Branch" value={branch} />
+
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
+
       {account_id && (
         <PropertyRow
           title="Account"
           value={
             <Link
-              to={getObjectDetailsUrl2(ACCOUNT_OBJECT, account_id, [
+              to={getObjectDetailsUrl(ACCOUNT_OBJECT, account_id, [
                 { name: QSP.BRANCH, value: branch },
               ])}
             >
@@ -48,12 +56,13 @@ export const EventDetails = ({
           }
         />
       )}
+
       {primary_node?.id && (
         <PropertyRow
           title="Primary Node"
           value={
             <Link
-              to={getObjectDetailsUrl2(primary_node.kind, primary_node.id, [
+              to={getObjectDetailsUrl(primary_node.kind, primary_node.id, [
                 { name: QSP.BRANCH, value: branch },
               ])}
             >
@@ -62,6 +71,7 @@ export const EventDetails = ({
           }
         />
       )}
+
       {!!related_nodes?.length && (
         <PropertyRow
           title="Related Nodes"
@@ -71,7 +81,7 @@ export const EventDetails = ({
                 return (
                   <Link
                     key={node.id}
-                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                    to={getObjectDetailsUrl(node.kind, node.id, [
                       { name: QSP.BRANCH, value: branch },
                     ])}
                   >
@@ -83,16 +93,17 @@ export const EventDetails = ({
           }
         />
       )}
+
       {!!ancestors?.length && (
         <PropertyRow
-          title="Related Nodes"
+          title="Ancestors"
           value={
             <div className="flex flex-col items-end gap-1">
               {ancestors.map((node) => {
                 return (
                   <Link
                     key={node.id}
-                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                    to={getObjectDetailsUrl(node.kind, node.id, [
                       { name: QSP.BRANCH, value: branch },
                     ])}
                   >
@@ -104,16 +115,17 @@ export const EventDetails = ({
           }
         />
       )}
+
       {!!members?.length && (
         <PropertyRow
-          title="Related Nodes"
+          title="Members"
           value={
             <div className="flex flex-col items-end gap-1">
               {members.map((node) => {
                 return (
                   <Link
                     key={node.id}
-                    to={getObjectDetailsUrl2(node.kind, node.id, [
+                    to={getObjectDetailsUrl(node.kind, node.id, [
                       { name: QSP.BRANCH, value: branch },
                     ])}
                   >
@@ -125,8 +137,16 @@ export const EventDetails = ({
           }
         />
       )}
-      {"attributes" in props && (
-        <PropertyRow title="Changes" value={<EventAttributes attributes={props.attributes} />} />
+
+      {"attributes" in props && !!props.attributes.length && (
+        <PropertyRow title="Attributes" value={<EventAttributes attributes={props.attributes} />} />
+      )}
+
+      {"relationships" in props && !!props.relationships.length && (
+        <PropertyRow
+          title="Relationships"
+          value={<EventRelationships relationships={props.relationships} />}
+        />
       )}
     </div>
   );

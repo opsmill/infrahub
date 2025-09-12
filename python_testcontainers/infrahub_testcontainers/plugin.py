@@ -14,6 +14,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup("infrahub-performance-test")
 
     group.addoption(
+        "--deployment-type",
+        action="store",
+        dest="infrahub_deployment_type",
+        default=None,
+        metavar="INFRAHUB_DEPLOYMENT_TYPE",
+        help="Type of deployment to use (default: None, options: cluster)",
+    )
+
+    group.addoption(
         "--performance-result-address",
         action="store",
         dest="infrahub_performance_test_result_address",
@@ -125,12 +134,12 @@ def pytest_terminal_summary(
     performance_test = terminalreporter._session.infrahub_performance_test
 
     report = [
-        f"{measurement.name}: {measurement.value} {measurement.unit.value}"
+        f"{measurement.name} ({measurement.context}): {measurement.value} {measurement.unit.value}"
         for measurement in performance_test.measurements
     ]
     terminalreporter.write("\n" + "\n".join(report) + "\n")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def perf_test(request: pytest.FixtureRequest) -> InfrahubPerformanceTest:
     return request.session.infrahub_performance_test

@@ -1,10 +1,13 @@
-import { DIFF_STATUS, DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
-import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
+import { ReactNode } from "react";
+
 import { DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import Accordion from "@/shared/components/display/accordion";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
-import { ReactNode } from "react";
+
+import { DIFF_STATUS, DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
+import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
+
 import {
   BadgeAdded,
   BadgeConflict,
@@ -66,22 +69,22 @@ const DiffDisplay = ({
   rightClassName,
 }: DiffRowProps) => {
   return (
-    <div className={classNames("min-h-9 relative", hasConflicts && "bg-yellow-50")}>
+    <div className={classNames("relative min-h-9", hasConflicts && "bg-yellow-50")}>
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
-      <div className={classNames("grid grid-cols-3 text-xs font-normal group pl-8", className)}>
+      <div className={classNames("group grid grid-cols-3 pl-8 font-normal text-xs", className)}>
         {title}
 
-        <div className="bg-custom-white">
-          <div className={classNames("bg-gray-50 p-2 flex items-center h-full", leftClassName)}>
+        <div className="bg-white">
+          <div className={classNames("flex h-full items-center bg-gray-50 p-2", leftClassName)}>
             {left}
           </div>
         </div>
 
-        <div className="bg-custom-white">
+        <div className="bg-white">
           <div
             className={classNames(
-              "p-2 flex items-center h-full font-medium",
+              "flex h-full items-center p-2 font-medium",
               status === "ADDED" && "bg-green-100 text-green-900",
               status === "REMOVED" && "bg-red-100 text-red-900",
               status === "UPDATED" && "bg-blue-100 text-blue-900",
@@ -104,7 +107,7 @@ export const DiffRow = ({ children, iconClassName, ...props }: DiffRowProps) => 
   }
 
   return (
-    <div className={classNames("min-h-9 relative", hasConflicts && "bg-yellow-50")}>
+    <div className={classNames("relative min-h-9", hasConflicts && "bg-yellow-50")}>
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
 
       <Accordion

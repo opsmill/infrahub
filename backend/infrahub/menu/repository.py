@@ -20,9 +20,9 @@ class MenuRepository:
         async def add_children(menu_item: MenuItemDict, menu_node: CoreMenuItem) -> MenuItemDict:
             children = await menu_node.children.get_peers(db=self.db, peer_type=CoreMenuItem)
             for child_id, child_node in children.items():
-                child_menu_item = menu_by_ids[child_id]
-                child = await add_children(child_menu_item, child_node)
-                menu_item.children[str(child.identifier)] = child
+                if child_menu_item := menu_by_ids.get(child_id):
+                    child = await add_children(child_menu_item, child_node)
+                    menu_item.children[str(child.identifier)] = child
             return menu_item
 
         for menu_node in nodes.values():
@@ -33,9 +33,9 @@ class MenuRepository:
 
             children = await menu_node.children.get_peers(db=self.db, peer_type=CoreMenuItem)
             for child_id, child_node in children.items():
-                child_menu_item = menu_by_ids[child_id]
-                child = await add_children(child_menu_item, child_node)
-                menu_item.children[str(child.identifier)] = child
+                if child_menu_item := menu_by_ids.get(child_id):
+                    child = await add_children(child_menu_item, child_node)
+                    menu_item.children[str(child.identifier)] = child
 
             menu.data[str(menu_item.identifier)] = menu_item
 

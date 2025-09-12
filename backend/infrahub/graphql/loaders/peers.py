@@ -51,7 +51,7 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
         self.db = db
 
     async def batch_load_fn(self, keys: list[Any]) -> list[list[Relationship]]:  # pylint: disable=method-hidden
-        async with self.db.start_session() as db:
+        async with self.db.start_session(read_only=True) as db:
             peer_rels = await NodeManager.query_peers(
                 db=db,
                 ids=keys,

@@ -1,8 +1,7 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
-import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import { toast } from "react-toastify";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -14,9 +13,12 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { areObjectArraysEqualById } from "@/shared/utils/array";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
-import { toast } from "react-toastify";
+
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
+import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface Props {
   objectname: string;
@@ -59,9 +61,9 @@ export default function ObjectItemEditComponent(props: Props) {
     return <NoDataFound message="No details found." />;
   }
 
-  const objectDetailsData = data[schema.kind]?.edges[0]?.node;
+  const objectDetailsData = data[schema.kind as string]?.edges[0]?.node;
 
-  const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge) => edge?.node) ?? [];
+  const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge: any) => edge?.node) ?? [];
 
   const onSubmit: ObjectFormProps["onSubmit"] = async ({ fields, formData, profiles }) => {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });
@@ -95,9 +97,7 @@ export default function ObjectItemEditComponent(props: Props) {
           toastId: "alert-success-updated",
         });
 
-        closeDrawer();
-
-        if (onUpdateComplete) onUpdateComplete();
+        if (onUpdateComplete) await onUpdateComplete();
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
       }

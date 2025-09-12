@@ -2,6 +2,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
@@ -30,6 +31,7 @@ async def _get_branch_merger(
         diff_repository=diff_repository,
         source_branch=source_branch,
         destination_branch=destination_branch,
+        diff_locker=DiffLocker(),
     )
 
 

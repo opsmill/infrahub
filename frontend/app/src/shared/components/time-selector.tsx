@@ -1,6 +1,3 @@
-import { QSP } from "@/config/qsp";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { classNames } from "@/shared/utils/common";
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { format, isPast } from "date-fns";
@@ -8,6 +5,12 @@ import { useAtom } from "jotai/index";
 import { useEffect } from "react";
 import DateTimePicker from "react-datepicker";
 import { DateTimeParam, useQueryParam } from "use-query-params";
+
+import { QSP } from "@/config/qsp";
+
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { classNames } from "@/shared/utils/common";
+
 import { Button } from "./buttons/button-primitive";
 
 import "react-datepicker/dist/react-datepicker.css";
@@ -34,7 +37,7 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "inline-flex items-center h-8 border border-neutral-200 rounded-lg overflow-hidden",
+        "inline-flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200",
         date && "bg-neutral-800"
       )}
     >
@@ -58,7 +61,7 @@ export const TimeFrameSelector = () => {
         maxDate={new Date()}
         filterTime={(date) => isPast(date)}
         popperPlacement="bottom-start"
-        popperClassName="!z-50"
+        popperClassName="z-50!"
       />
 
       <Transition
@@ -72,7 +75,7 @@ export const TimeFrameSelector = () => {
         leaveTo="w-0 opacity-0"
         className="inline-flex items-center text-white text-xxs"
       >
-        <Icon icon="mdi:history" className="text-xl m-1.5" />
+        <Icon icon="mdi:history" className="m-1.5 text-xl" />
 
         <div className="flex flex-col items-center truncate">
           <span className="font-medium">Current view time</span>

@@ -44,12 +44,17 @@ env:
   DOCKERFILE: "development/Dockerfile"
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   build:
+    needs: prepare-environment
+    env:
+      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     runs-on:
       group: huge-runners
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
           submodules: true

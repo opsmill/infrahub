@@ -70,12 +70,16 @@ const ListItems = ({
   items,
   disabled,
   onDelete,
-}: { items: string[]; disabled?: boolean; onDelete: (item: string) => void }) => {
+}: {
+  items: string[];
+  disabled?: boolean;
+  onDelete: (item: string) => void;
+}) => {
   return (
     <div
       className={classNames(
         inputStyle,
-        "gap-1.5 flex-wrap",
+        "flex-wrap gap-1.5",
         disabled && "cursor-not-allowed bg-gray-100"
       )}
     >
@@ -84,8 +88,8 @@ const ListItems = ({
           <Badge
             key={item}
             className={classNames(
-              "text-sm font-normal gap-1.5 py-0",
-              disabled && "opacity-70 bg-gray-200 cursor-not-allowed"
+              "gap-1.5 py-0 font-normal text-sm",
+              disabled && "cursor-not-allowed bg-gray-200 opacity-70"
             )}
           >
             <span>{item}</span>
@@ -94,7 +98,7 @@ const ListItems = ({
                 size="icon"
                 variant="ghost"
                 onClick={() => onDelete(item)}
-                className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                className="h-4 w-4 text-gray-500 hover:text-gray-800"
                 aria-label={`Remove ${item}`}
               >
                 &times;
@@ -103,7 +107,7 @@ const ListItems = ({
           </Badge>
         ))
       ) : (
-        <span className="text-gray-400 italic mx-auto">Empty list</span>
+        <span className="mx-auto text-gray-400 italic">Empty list</span>
       )}
     </div>
   );

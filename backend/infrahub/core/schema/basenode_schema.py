@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import keyword
 import os
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
@@ -10,10 +11,10 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
-from infrahub.core.models import HashableModelDiff
+from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
+from infrahub.core.models import HashableModel, HashableModelDiff
 
-from .attribute_schema import AttributeSchema
+from .attribute_schema import AttributeSchema, get_attribute_schema_class_for_kind
 from .generated.base_node_schema import GeneratedBaseNodeSchema
 from .relationship_schema import RelationshipSchema
 
@@ -26,6 +27,16 @@ if TYPE_CHECKING:
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 INHERITED = "INHERITED"
+
+OPTIONAL_TEXT_FIELDS = [
+    "default_filter",
+    "description",
+    "label",
+    "menu_placement",
+    "documentation",
+    "parent",
+    "children",
+]
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
@@ -42,6 +53,14 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @property
     def is_profile_schema(self) -> bool:
+        return False
+
+    @property
+    def is_ip_prefix(self) -> bool:
+        return False
+
+    @property
+    def is_ip_address(self) -> bool:
         return False
 
     @property
@@ -63,6 +82,30 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         """Return a hash of the object.
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
         return hash(self.get_hash())
+
+    @field_validator("attributes", mode="before")
+    @classmethod
+    def set_attribute_type(cls, raw_attributes: Any) -> Any:
+        if not isinstance(raw_attributes, list):
+            return raw_attributes
+        attribute_schemas_with_types: list[Any] = []
+        for raw_attr in raw_attributes:
+            if not isinstance(raw_attr, (dict, AttributeSchema)):
+                attribute_schemas_with_types.append(raw_attr)
+                continue
+            if isinstance(raw_attr, dict):
+                kind = raw_attr.get("kind")
+                attribute_type_class = get_attribute_schema_class_for_kind(kind=kind)
+                attribute_schemas_with_types.append(attribute_type_class(**raw_attr))
+                continue
+
+            expected_attr_schema_class = get_attribute_schema_class_for_kind(kind=raw_attr.kind)
+            if not isinstance(raw_attr, expected_attr_schema_class):
+                final_attr = expected_attr_schema_class(**raw_attr.model_dump())
+            else:
+                final_attr = raw_attr
+            attribute_schemas_with_types.append(final_attr)
+        return attribute_schemas_with_types
 
     def to_dict(self) -> dict:
         data = self.model_dump(
@@ -352,7 +395,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not self.display_labels:
             return None
 
-        fields: dict[str, str | None | dict[str, None]] = {}
+        fields: dict[str, str | dict[str, None] | None] = {}
         for item in self.display_labels:
             fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
@@ -367,7 +410,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         if not self.human_friendly_id:
             return None
 
-        fields: dict[str, str | None | dict[str, None]] = {}
+        fields: dict[str, str | dict[str, None] | None] = {}
         for item in self.human_friendly_id:
             fields.update(self.convert_path_to_graphql_fields(path=item))
         return fields
@@ -480,6 +523,95 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
             return UniquenessConstraintType.SUBSET_OF_HFID
         return UniquenessConstraintType.STANDARD
 
+    def _update_schema_paths(
+        self, schema_paths_list: list[str], field_name_update_map: dict[str, str], deleted_field_names: set[str]
+    ) -> list[str]:
+        """
+        For each schema_path (eg name__value, device__name_value), update the field name if the current name is
+        in field_name_update_map, remove the path if the field name is in deleted_field_names
+        """
+        updated_element_list = []
+        for schema_path in schema_paths_list:
+            split_path = schema_path.split("__", maxsplit=1)
+            current_field_name = split_path[0]
+            if current_field_name in deleted_field_names:
+                continue
+            new_field_name = field_name_update_map.get(current_field_name)
+            if not new_field_name:
+                updated_element_list.append(schema_path)
+                continue
+            rest_of_path = f"__{split_path[1]}" if len(split_path) > 1 else ""
+            new_element_str = f"{new_field_name}{rest_of_path}"
+            updated_element_list.append(new_element_str)
+        return updated_element_list
+
+    def handle_field_renames_and_deletes(self, other: BaseNodeSchema) -> None:
+        properties_to_update = [self.uniqueness_constraints, self.human_friendly_id, self.display_labels, self.order_by]
+        if not any(p for p in properties_to_update):
+            return
+
+        deleted_names: set[str] = set()
+        field_names_by_id = defaultdict(list)
+        for field in self.attributes + self.relationships:
+            if not field.id:
+                continue
+            field_names_by_id[field.id].append(field.name)
+        for field in other.attributes + other.relationships:
+            # identify fields deleted in the other schema
+            if field.state is HashableModelState.ABSENT:
+                deleted_names.add(field.name)
+            if not field.id:
+                continue
+            if field.name not in field_names_by_id[field.id]:
+                field_names_by_id[field.id].append(field.name)
+        # identify fields renamed from this schema to the other schema
+        renamed_field_name_map = {v[0]: v[-1] for v in field_names_by_id.values() if len(v) > 1}
+
+        if self.uniqueness_constraints:
+            updated_constraints = []
+            for constraint in self.uniqueness_constraints:
+                updated_constraint = self._update_schema_paths(
+                    schema_paths_list=constraint,
+                    field_name_update_map=renamed_field_name_map,
+                    deleted_field_names=deleted_names,
+                )
+                if updated_constraint:
+                    updated_constraints.append(updated_constraint)
+            self.uniqueness_constraints = updated_constraints
+        if self.human_friendly_id:
+            self.human_friendly_id = self._update_schema_paths(
+                schema_paths_list=self.human_friendly_id,
+                field_name_update_map=renamed_field_name_map,
+                deleted_field_names=deleted_names,
+            )
+        if self.display_labels:
+            self.display_labels = self._update_schema_paths(
+                schema_paths_list=self.display_labels,
+                field_name_update_map=renamed_field_name_map,
+                deleted_field_names=deleted_names,
+            )
+        if self.order_by:
+            self.order_by = self._update_schema_paths(
+                schema_paths_list=self.order_by,
+                field_name_update_map=renamed_field_name_map,
+                deleted_field_names=deleted_names,
+            )
+
+    def update(self, other: HashableModel) -> Self:
+        # handle renamed/deleted field updates for schema properties here
+        # so that they can still be overridden during the call to `update()` below
+        if isinstance(other, BaseNodeSchema):
+            self.handle_field_renames_and_deletes(other=other)
+
+        super().update(other=other)
+
+        # Allow to specify empty string to remove existing fields values
+        for field_name in OPTIONAL_TEXT_FIELDS:
+            if getattr(other, field_name, None) == "":  # noqa: PLC1901
+                setattr(self, field_name, None)
+
+        return self
+
 
 @dataclass
 class SchemaUniquenessConstraintPath:
@@ -507,6 +639,24 @@ class SchemaAttributePath:
     attribute_schema: AttributeSchema | None = None
     attribute_property_name: str | None = None
 
+    def __str__(self) -> str:
+        return self.to_string()
+
+    def to_string(self, field_name_override: str | None = None) -> str:
+        str_path = ""
+        if self.relationship_schema:
+            str_path += field_name_override or self.relationship_schema.name
+        if self.attribute_schema:
+            if str_path:
+                str_path += "__"
+                attr_name = self.attribute_schema.name
+            else:
+                attr_name = field_name_override or self.attribute_schema.name
+            str_path += attr_name
+        if self.attribute_property_name:
+            str_path += f"__{self.attribute_property_name}"
+        return str_path
+
     @property
     def is_type_attribute(self) -> bool:
         return bool(self.attribute_schema and not self.related_schema and not self.relationship_schema)
@@ -518,6 +668,14 @@ class SchemaAttributePath:
     @property
     def has_property(self) -> bool:
         return bool(self.attribute_property_name)
+
+    @property
+    def field_name(self) -> str | None:
+        if self.relationship_schema:
+            return self.relationship_schema.name
+        if self.attribute_schema:
+            return self.attribute_schema.name
+        return None
 
     @property
     def active_relationship_schema(self) -> RelationshipSchema:

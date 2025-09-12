@@ -1,20 +1,24 @@
+import { Icon } from "@iconify-icon/react";
+import { Pressable } from "react-aria-components";
+
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { QSP } from "@/config/qsp";
+
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
-import { CopyToClipboard } from "../buttons/copy-to-clipboard";
+  CopyToClipboardMenuItem,
+  Menu,
+  MenuHeader,
+  MenuItem,
+  MenuPopover,
+  MenuSection,
+  MenuTrigger,
+} from "@/shared/components/aria/menu";
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 
 export interface ObjectDetailsButtonProps extends ButtonProps {
   id: string;
-  hfid?: string;
+  hfid?: string | null;
   className?: string;
 }
 
@@ -25,48 +29,42 @@ export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDeta
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <MenuTrigger>
+      <Pressable>
         <Button variant="ghost" size={"sm"} {...props}>
           <Icon icon={"mdi:dots-vertical"} />
         </Button>
-      </DropdownMenuTrigger>
+      </Pressable>
 
-      <DropdownMenuContent align="end" className="z-10">
-        <DropdownMenuItem className="p-0">
-          <CopyToClipboard size={"default"} className="flex-grow justify-start gap-2 p-2" text={id}>
-            Copy ID
-          </CopyToClipboard>
-        </DropdownMenuItem>
+      <MenuPopover placement="bottom end">
+        <Menu>
+          <MenuSection>
+            <MenuHeader>Actions</MenuHeader>
+            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
 
-        {hfid && hfid !== "null" && (
-          <DropdownMenuItem className="p-0">
-            <CopyToClipboard
-              size={"default"}
-              className="flex-grow justify-start gap-2 p-2"
-              text={hfid}
+            {hfid && hfid !== "null" && (
+              <CopyToClipboardMenuItem textToCopy={hfid}>Copy HFID</CopyToClipboardMenuItem>
+            )}
+
+            {children}
+          </MenuSection>
+
+          <MenuSection>
+            <MenuHeader>Go to</MenuHeader>
+            <MenuItem
+              href={constructPath("/tasks", [
+                { name: QSP.FILTER, value: JSON.stringify([taskFilter]) },
+              ])}
+              target="_blank"
+              rel="noreferrer"
             >
-              Copy HFID
-            </CopyToClipboard>
-          </DropdownMenuItem>
-        )}
-
-        {children}
-
-        <DropdownMenuItem asChild>
-          <Link
-            to={constructPath("/tasks", [
-              { name: QSP.FILTER, value: JSON.stringify([taskFilter]) },
-            ])}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <TasksStatusIcon />
-            Tasks
-            <Icon icon="mdi:open-in-new" />
-          </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+              <TasksStatusIcon width="12" height="12" />
+              Tasks
+              <Icon icon="mdi:open-in-new" />
+            </MenuItem>
+          </MenuSection>
+        </Menu>
+      </MenuPopover>
+    </MenuTrigger>
   );
 };

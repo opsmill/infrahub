@@ -1,3 +1,5 @@
+import { Icon } from "@iconify-icon/react";
+
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -5,7 +7,7 @@ import { DurationDisplay } from "@/shared/components/display/duration-display";
 import { List } from "@/shared/components/table/list";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
+
 import { ValidatorDetails } from "./validator-details";
 
 type tValidatorProps = {
@@ -32,7 +34,11 @@ const getValidatorState = (state?: string, conclusion?: string) => {
       if (conclusion === "success") {
         return (
           <Tooltip content="Success" enabled>
-            <Icon icon={"mdi:check-circle-outline"} className="text-green-500" />
+            <Icon
+              icon={"mdi:check-circle-outline"}
+              className="text-green-500"
+              data-testid="validator-success"
+            />
           </Tooltip>
         );
       }
@@ -105,7 +111,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
       <span className="font-normal">-</span>
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
-      <div className="flex flex-grow justify-end">
+      <div className="flex grow justify-end">
         <Popover>
           <PopoverTrigger onClick={(e) => e.stopPropagation()} asChild>
             <InfoButton />
@@ -120,7 +126,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
   );
 
   return (
-    <Accordion title={title} className="bg-custom-white rounded-md p-2">
+    <Accordion title={title} className="rounded-md bg-white p-2">
       <ValidatorDetails id={id} />
     </Accordion>
   );

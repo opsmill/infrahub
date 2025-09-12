@@ -1,14 +1,16 @@
+import * as R from "ramda";
+
 import {
   attributesKindForDetailsViewExclude,
   relationshipsForDetailsView,
   relationshipsForListView,
-  relationshipsForTabs,
 } from "@/config/constants";
+
+import { sortByOrderWeight } from "@/shared/utils/common";
+
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
 import { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
-import { sortByOrderWeight } from "@/shared/utils/common";
-import * as R from "ramda";
 
 type tgetObjectAttributes = {
   schema: ModelSchema | undefined;
@@ -77,26 +79,6 @@ export const getObjectRelationships = ({
   return relationships;
 };
 
-export const getTabs = (schema?: ModelSchema) => {
-  if (!schema) {
-    return [];
-  }
-
-  // Relationship kind to show in LIST VIEW - Attribute, Parent
-  const relationships = (schema.relationships || [])
-    .filter(
-      (relationship) =>
-        relationship.cardinality &&
-        relationshipsForTabs[relationship.cardinality].includes(relationship.kind)
-    )
-    .map((relationship) => ({
-      label: relationship.label,
-      name: relationship.name,
-    }));
-
-  return relationships;
-};
-
 type tgetSchemaObjectColumns = {
   schema?: ModelSchema;
   forListView?: boolean;
@@ -116,7 +98,7 @@ export const getSchemaObjectColumns = ({
   }
 
   const attributes = getObjectAttributes({ schema, forListView, forQuery });
-  const relationships = getObjectRelationships({ schema: schema, forListView });
+  const relationships = getObjectRelationships({ schema, forListView });
 
   const columns = sortByOrderWeight(R.concat(attributes, relationships));
 

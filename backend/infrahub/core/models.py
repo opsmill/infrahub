@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
 
+GENERIC_ATTRIBUTES_TO_IGNORE = ["namespace", "name", "branch"]
+PROPERTY_NAMES_TO_IGNORE = ["regex", "min_length", "max_length"]
+
 
 class NodeKind(BaseModel):
     namespace: str
@@ -69,6 +72,15 @@ class SchemaBranchHash(BaseModel):
     main: str
     nodes: dict[str, str] = Field(default_factory=dict)
     generics: dict[str, str] = Field(default_factory=dict)
+
+    @property
+    def is_valid(self) -> bool:
+        """
+        TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics.
+        """
+        if len(self.nodes) < 2 and len(self.generics) < 2:
+            return False
+        return True
 
     def compare(self, other: SchemaBranchHash) -> SchemaBranchDiff | None:
         if other.main == self.main:
@@ -250,11 +262,37 @@ class SchemaUpdateValidationResult(BaseModel):
             if not sub_field_diff:
                 raise ValueError("sub_field_diff must be defined, unexpected situation")
 
-            for prop_name in sub_field_diff.changed:
+            for prop_name, prop_diff in sub_field_diff.changed.items():
+                if prop_name in PROPERTY_NAMES_TO_IGNORE:
+                    continue
+
                 field_info = field.model_fields[prop_name]
                 field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
 
-                schema_path = SchemaPath(  # type: ignore[call-arg]
+                if isinstance(prop_diff, HashableModelDiff):
+                    for param_field_name in prop_diff.changed:
+                        # override field_update if this field has its own json_schema_extra.update
+                        try:
+                            prop_field = getattr(field, prop_name)
+                            param_field_info = prop_field.model_fields[param_field_name]
+                            param_field_update = str(param_field_info.json_schema_extra.get("update"))
+                        except (AttributeError, KeyError):
+                            param_field_update = None
+
+                        schema_path = SchemaPath(
+                            schema_kind=schema.kind,
+                            path_type=path_type,
+                            field_name=field_name,
+                            property_name=f"{prop_name}.{param_field_name}",
+                        )
+
+                        self._process_field(
+                            schema_path=schema_path,
+                            field_update=param_field_update or field_update,
+                        )
+                    continue
+
+                schema_path = SchemaPath(
                     schema_kind=schema.kind,
                     path_type=path_type,
                     field_name=field_name,
@@ -269,6 +307,10 @@ class SchemaUpdateValidationResult(BaseModel):
     def _process_node_attributes(self, schema: MainSchemaTypes, node_field_name: str) -> None:
         field_info = schema.model_fields[node_field_name]
         field_update = str(field_info.json_schema_extra.get("update"))  # type: ignore[union-attr]
+
+        # No need to execute a migration for generic nodes attributes because they are not stored in the database
+        if schema.is_generic_schema and node_field_name in GENERIC_ATTRIBUTES_TO_IGNORE:
+            return
 
         schema_path = SchemaPath(  # type: ignore[call-arg]
             schema_kind=schema.kind,
@@ -523,7 +565,7 @@ class HashableModel(BaseModel):
 
         return new_list
 
-    def update(self, other: Self) -> Self:
+    def update(self, other: HashableModel) -> Self:
         """Update the current object with the new value from the new one if they are defined.
 
         Currently this method works for the following type of fields
@@ -536,7 +578,11 @@ class HashableModel(BaseModel):
 
         for field_name in other.model_fields.keys():
             if not hasattr(self, field_name):
-                setattr(self, field_name, getattr(other, field_name))
+                try:
+                    setattr(self, field_name, getattr(other, field_name))
+                except ValueError:
+                    # handles the case where self and other are different types and other has fields that self does not
+                    pass
                 continue
 
             attr_other = getattr(other, field_name)

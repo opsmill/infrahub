@@ -120,7 +120,7 @@ class Neo4jBackupRestoreBase:
         self.keep_helper_container = keep_helper_container
         self.docker_client = docker.from_env()
         self.use_host_network = use_host_network
-        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
+        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j:2025.03.0-enterprise")
 
     def _print_message(self, message: str, force_print: bool = False, with_timestamp: bool = True) -> None:
         if self.be_quiet and not force_print:
@@ -358,7 +358,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         # expects name format of <database_name>-2024-02-07T22-12-16.backup
         backup_map = {}
         for backup_path in local_backup_directory.iterdir():
-            if not backup_path.suffix == ".backup":
+            if backup_path.suffix != ".backup":
                 continue
             split_name = backup_path.name.split("-")
             database_name = "-".join(split_name[:-5])

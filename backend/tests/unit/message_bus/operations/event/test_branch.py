@@ -6,13 +6,12 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
+from infrahub.core.branch.tasks import post_process_branch_merge
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.component.registry import ComponentDependencyRegistry
-from infrahub.message_bus import messages
-from infrahub.message_bus.operations.event.branch import merge
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
@@ -49,10 +48,6 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
     source_branch_name = "cr1234"
     target_branch_name = "main"
     right_now = Timestamp()
-    message = messages.EventBranchMerge(
-        source_branch=source_branch_name, target_branch=target_branch_name, context=context, ipam_node_details=[]
-    )
-
     tracked_diff_roots = [
         EnrichedDiffRoot(
             base_branch_name=target_branch_name,
@@ -84,17 +79,21 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
     mock_component_registry.get_component.return_value = diff_repo
 
     with (
-        patch("infrahub.message_bus.operations.event.branch.get_component_registry", new=mock_get_component_registry),
+        patch("infrahub.core.branch.tasks.get_component_registry", new=mock_get_component_registry),
         patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow,
+        patch("infrahub.core.branch.tasks.add_tags"),
+        patch("infrahub.core.branch.tasks.get_run_logger"),
     ):
-        await merge.fn(message=message, service=init_service)
+        await post_process_branch_merge.fn(
+            source_branch=source_branch_name, target_branch=target_branch_name, context=context
+        )
 
         expected_calls = [
             call(
                 workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
-                parameters={"branch": message.target_branch},
+                parameters={"branch": target_branch_name},
                 context=context,
             ),
             call(
@@ -119,6 +118,3 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
     # Use `db=ANY` as a new InfrahubDatabase object is created as we use a new session
     mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=ANY, branch=default_branch)
     diff_repo.get_roots_metadata.assert_awaited_once_with(base_branch_names=[target_branch_name])
-
-    assert len(init_service.message_bus.messages) == 1
-    assert init_service.message_bus.messages[0] == messages.RefreshRegistryBranches()

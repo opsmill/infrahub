@@ -1,7 +1,9 @@
+import { NetworkStatus } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+
 import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/entities/role-manager/api/getGlobalPermissions";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -18,9 +20,12 @@ import { BadgeCopy } from "@/shared/components/ui/badge-copy";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
+import usePagination from "@/shared/hooks/usePagination";
+
+import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/entities/role-manager/api/getGlobalPermissions";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 import { getPermission } from "../../permission/utils";
 import { globalDecisionOptions } from "../constants";
 
@@ -29,6 +34,8 @@ function GlobalPermissions() {
   const { schema } = useSchema(GLOBAL_PERMISSION_OBJECT);
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
+  const [{ offset, limit }] = usePagination();
+
   const {
     loading,
     networkStatus,
@@ -37,7 +44,7 @@ function GlobalPermissions() {
     error,
     refetch,
   } = useQuery(GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS, {
-    variables: { search: searchDebounced },
+    variables: { search: searchDebounced, offset, limit },
     notifyOnNetworkStatusChange: true,
   });
   const data = latestData || previousData;
@@ -95,7 +102,10 @@ function GlobalPermissions() {
             ),
             value: { edges: edge?.node?.roles?.edges },
           },
-          identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          },
           __typename: edge.node.__typename,
         },
       };
@@ -113,7 +123,7 @@ function GlobalPermissions() {
       return <UnauthorizedScreen message={message} />;
     }
 
-    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+    return <ErrorScreen message="An error occurred while retrieving the accounts." />;
   }
 
   if (networkStatus === NetworkStatus.loading) {
@@ -132,14 +142,14 @@ function GlobalPermissions() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between gap-2 p-2 border-b">
+        <div className="flex items-center justify-between gap-2 border-gray-200 border-b p-2">
           <SearchInput
             loading={loading}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search global permissions"
             className="border-none focus-visible:ring-0"
-            containerClassName="flex-grow"
+            containerClassName="grow"
           />
 
           <Button
@@ -179,8 +189,8 @@ function GlobalPermissions() {
           title={
             <SlideOverTitle
               schema={schema}
-              currentObjectLabel="New"
-              title={`Create ${schema.label}`}
+              currentObjectLabel={rowToUpdate?.identifier?.value ?? "New"}
+              title={`${rowToUpdate ? "Update" : "Create"} ${schema.label}`}
               subtitle={schema.description}
             />
           }
@@ -196,6 +206,7 @@ function GlobalPermissions() {
               setShowDrawer(false);
             }}
             onSuccess={() => {
+              setRowToUpdate(null);
               setShowDrawer(false);
               globalRefetch();
             }}

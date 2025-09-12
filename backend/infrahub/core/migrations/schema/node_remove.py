@@ -22,7 +22,6 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
     ) -> str:
         subquery = [
             f"WITH peer_node, {rel_name}, active_node",
-            f"WITH peer_node, {rel_name}, active_node",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
         if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
@@ -59,12 +58,10 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
 
         node_remove_query = self.render_node_remove_query(branch_filter=branch_filter)
 
-        # ruff: noqa: E501
         query = """
         // Find all the active nodes
         MATCH (node:%(node_kind)s)
-        CALL {
-            WITH node
+        CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
             RETURN node as n1, r as r1
@@ -91,13 +88,12 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     insert_return: bool = False
 
     def render_node_remove_query(self, branch_filter: str) -> str:
-        sub_query = self.render_sub_query_in()
+        sub_query, sub_query_args = self.render_sub_query_in()
         query = """
         // Process Inbound Relationship
         WITH active_node
         MATCH (active_node)<-[]-(peer)
-        CALL {
-            WITH active_node, peer
+        CALL (active_node, peer) {
             MATCH (active_node)-[r]->(peer)
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as rel_inband1, peer as p1
@@ -106,27 +102,29 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         }
         WITH n1 as active_node, rel_inband1 as rel_inband, p1 as peer_node
         WHERE rel_inband.status = "active"
-        CALL {
+        CALL (%(sub_query_args)s) {
             %(sub_query)s
         }
         WITH p2 as peer_node, rel_inband, active_node
         FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_inband.to = $current_time
         )
-        """ % {"sub_query": sub_query, "branch_filter": branch_filter}
+        """ % {"sub_query": sub_query, "sub_query_args": sub_query_args, "branch_filter": branch_filter}
         return query
 
-    def render_sub_query_in(self) -> str:
+    def render_sub_query_in(self) -> tuple[str, str]:
+        rel_name = "rel_inband"
+        sub_query_in_args = f"peer_node, {rel_name}, active_node"
         sub_queries_in = [
             self.render_sub_query_per_rel_type(
-                rel_name="rel_inband",
+                rel_name=rel_name,
                 rel_type=rel_type,
                 rel_def=rel_def,
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
         ]
         sub_query_in = "\nUNION\n".join(sub_queries_in)
-        return sub_query_in
+        return sub_query_in, sub_query_in_args
 
     def get_nbr_migrations_executed(self) -> int:
         return 0
@@ -137,13 +135,12 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     insert_return: bool = False
 
     def render_node_remove_query(self, branch_filter: str) -> str:
-        sub_query = self.render_sub_query_out()
+        sub_query, sub_query_args = self.render_sub_query_out()
         query = """
         // Process Outbound Relationship
         WITH active_node
         MATCH (active_node)-[]->(peer)
-        CALL {
-            WITH active_node, peer
+        CALL (active_node, peer) {
             MATCH (active_node)-[r]->(peer)
             WHERE %(branch_filter)s
             RETURN active_node as n1, r as rel_outband1, peer as p1
@@ -152,27 +149,29 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         }
         WITH n1 as active_node, rel_outband1 as rel_outband, p1 as peer_node
         WHERE rel_outband.status = "active"
-        CALL {
+        CALL (%(sub_query_args)s) {
             %(sub_query)s
         }
         FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_outband.to = $current_time
         )
-        """ % {"sub_query": sub_query, "branch_filter": branch_filter}
+        """ % {"sub_query": sub_query, "sub_query_args": sub_query_args, "branch_filter": branch_filter}
 
         return query
 
-    def render_sub_query_out(self) -> str:
+    def render_sub_query_out(self) -> tuple[str, str]:
+        rel_name = "rel_outband"
+        sub_query_out_args = f"peer_node, {rel_name}, active_node"
         sub_queries_out = [
             self.render_sub_query_per_rel_type(
-                rel_name="rel_outband",
+                rel_name=rel_name,
                 rel_type=rel_type,
                 rel_def=rel_def,
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
         ]
         sub_query_out = "\nUNION\n".join(sub_queries_out)
-        return sub_query_out
+        return sub_query_out, sub_query_out_args
 
     def get_nbr_migrations_executed(self) -> int:
         return self.num_of_results

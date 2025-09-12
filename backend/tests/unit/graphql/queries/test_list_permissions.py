@@ -10,9 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccountRole
-from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.permissions import LocalPermissionBackend
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
 from tests.helpers.graphql import graphql
 
@@ -92,6 +90,7 @@ class TestObjectPermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
@@ -99,7 +98,6 @@ class TestObjectPermissions:
     ):
         permissions_helper._first = first_account
         permissions_helper._default_branch = default_branch
-        registry.permission_backends = [LocalPermissionBackend()]
 
         permissions = []
         for object_permission in [
@@ -363,6 +361,7 @@ class TestAttributePermissions:
     async def test_setup(
         self,
         db: InfrahubDatabase,
+        default_permission_backend: None,
         register_core_models_schema: SchemaBranch,
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
@@ -370,7 +369,6 @@ class TestAttributePermissions:
     ):
         permissions_helper._first = first_account
         permissions_helper._default_branch = default_branch
-        registry.permission_backends = [LocalPermissionBackend()]
 
         permissions = []
         for object_permission in [

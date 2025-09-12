@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("Users & Permissions - Read-Only User", () => {
@@ -6,6 +7,7 @@ test.describe("Users & Permissions - Read-Only User", () => {
 
   test("Should not be allowed to read page", async ({ page }) => {
     await page.goto("/role-management");
+    await page.getByRole("link", { name: "Roles" }).click();
     await expect(page.locator("#root")).toContainText("You can't access this view");
   });
 });

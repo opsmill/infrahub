@@ -17,20 +17,23 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CommitNotFoundError,
     FileOutOfRepositoryError,
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
     RepositoryError,
     RepositoryFileNotFoundError,
+    RepositoryInvalidBranchError,
     RepositoryInvalidFileSystemError,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices  # noqa: TC001
+from infrahub.workers.dependencies import get_client
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
@@ -150,21 +153,23 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     )
 
     cache_repo: Repo | None = Field(None, description="Internal cache of the GitPython Repo object")
-    service: InfrahubServices = Field(
-        ..., description="Service object with access to the message queue, the database etc.."
-    )
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
 
     internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
     infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
     model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
+    def get_client(self) -> InfrahubClient:
+        if self.client is None:
+            raise ValueError("Client is not set")
+        return self.client
+
     @property
     def sdk(self) -> InfrahubClient:
-        if self.client:
-            return self.client
+        if not self.client:
+            self.client = get_client()
 
-        return self.service.client
+        return self.client
 
     @property
     def default_branch(self) -> str:
@@ -199,6 +204,54 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def directory_temp(self) -> Path:
         """Return the path to the directory where the temp worktrees of all the commits pending validation are stored."""
         return self.directory_root / TEMPORARY_DIRECTORY_NAME
+
+    async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
+        update_status = """
+        mutation UpdateRepositoryStatus(
+            $repo_id: String!,
+            $status: String!,
+        ) {
+            CoreGenericRepositoryUpdate(
+                data: {
+                    id: $repo_id,
+                    operational_status: { value: $status },
+                }
+            ) {
+                ok
+            }
+        }
+        """
+
+        await self.sdk.execute_graphql(
+            branch_name=self.infrahub_branch_name or registry.default_branch,
+            query=update_status,
+            variables={"repo_id": str(self.id), "status": status.value},
+            tracker="mutation-repository-update-operational-status",
+        )
+
+    async def _update_sync_status(self, branch_name: str, status: RepositorySyncStatus) -> None:
+        update_status = """
+        mutation UpdateRepositoryStatus(
+            $repo_id: String!,
+            $status: String!,
+        ) {
+            CoreGenericRepositoryUpdate(
+                data: {
+                    id: $repo_id,
+                    sync_status: { value: $status },
+                }
+            ) {
+                ok
+            }
+        }
+        """
+
+        await self.sdk.execute_graphql(
+            branch_name=branch_name,
+            query=update_status,
+            variables={"repo_id": str(self.id), "status": status.value},
+            tracker="mutation-repository-update-admin-status",
+        )
 
     def get_git_repo_main(self) -> Repo:
         """Return Git Repo object of the main repository.
@@ -340,7 +393,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             repo = Repo.clone_from(self.location, self.directory_default)
             repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
-            self._raise_enriched_error(error=exc, branch_name=checkout_ref or self.default_branch)
+            await self._raise_enriched_error(error=exc, branch_name=checkout_ref or self.default_branch)
 
         self.has_origin = True
 
@@ -393,9 +446,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         responses = repo.git.worktree("list", "--porcelain").split("\n\n")
 
         return [Worktree.init(response) for response in responses]
-
-    def get_client(self) -> InfrahubClient:
-        return self.sdk
 
     def get_location(self) -> str:
         if self.location:
@@ -572,7 +622,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             try:
                 br_repo.remotes.origin.pull(branch_name)
             except GitCommandError as exc:
-                self._raise_enriched_error(error=exc, branch_name=branch_name)
+                await self._raise_enriched_error(error=exc, branch_name=branch_name)
             self.create_commit_worktree(str(br_repo.head.reference.commit))
             log.debug(
                 f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
@@ -668,7 +718,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         try:
             repo.remotes.origin.fetch()
         except GitCommandError as exc:
-            self._raise_enriched_error(error=exc)
+            await self._raise_enriched_error(error=exc)
+
+        await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
 
         return True
 
@@ -765,7 +817,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 commit_before = str(repo.head.commit)
                 repo.remotes.origin.pull(branch_name)
             except GitCommandError as exc:
-                self._raise_enriched_error(error=exc, branch_name=branch_name)
+                await self._raise_enriched_error(error=exc, branch_name=branch_name)
 
             commit_after = str(repo.head.commit)
 
@@ -862,49 +914,47 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         except GitCommandError as exc:
             cls._raise_enriched_error_static(name=name, location=url, error=exc)
 
-    def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
-        self._raise_enriched_error_static(
-            error=error, name=self.name, location=self.location, branch_name=branch_name or self.default_branch
-        )
+    async def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
+        try:
+            self._raise_enriched_error_static(
+                error=error, name=self.name, location=self.location, branch_name=branch_name or self.default_branch
+            )
+        except RepositoryError as exc:
+            await self._update_operational_status(
+                status={
+                    RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
+                    RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
+                }.get(type(exc), RepositoryOperationalStatus.ERROR)
+            )
+            raise
 
     @staticmethod
     def _raise_enriched_error_static(
         error: GitCommandError, name: str, location: str, branch_name: str | None = None
     ) -> NoReturn:
         if "Repository not found" in error.stderr or "does not appear to be a git" in error.stderr:
-            raise RepositoryError(
-                identifier=name,
-                message=f"Unable to clone the repository {name}, please check the address and the credential",
-            ) from error
+            raise RepositoryConnectionError(identifier=name) from error
 
         if "error: pathspec" in error.stderr:
-            raise RepositoryError(
-                identifier=name,
-                message=f"The branch {branch_name} isn't a valid branch for the repository {name} at {location}.",
-            ) from error
+            raise RepositoryInvalidBranchError(identifier=name, branch_name=branch_name, location=location) from error
 
         if "SSL certificate problem" in error.stderr or "server certificate verification failed" in error.stderr:
-            raise RepositoryError(
-                identifier=name,
-                message=f"SSL verification failed for {name}, please validate the certificate chain.",
+            raise RepositoryConnectionError(
+                identifier=name, message=f"SSL verification failed for {name}, please validate the certificate chain."
             ) from error
 
         if "authentication failed for" in error.stderr.lower():
-            raise RepositoryError(
-                identifier=name,
-                message=f"Authentication failed for {name}, please validate the credentials.",
+            raise RepositoryCredentialsError(identifier=name) from error
+
+        if "fatal: could not read Username for" in error.stderr and "terminal prompts disable" in error.stderr:
+            raise RepositoryCredentialsError(
+                identifier=name, message=f"Unable to correctly lookup credentials for repository {name} ({location})."
             ) from error
 
         if any(err in error.stderr for err in ("Need to specify how to reconcile", "because you have unmerged files")):
             raise RepositoryError(
                 identifier=name,
                 message=f"Unable to pull the branch {branch_name} for repository {name}, there are conflicts that must be resolved.",
-            ) from error
-
-        if "fatal: could not read Username for" in error.stderr and "terminal prompts disable" in error.stderr:
-            raise RepositoryError(
-                identifier=name,
-                message=f"Unable to correctly lookup credentials for repository {name} ({location}).",
             ) from error
 
         raise RepositoryError(identifier=name, message=error.stderr) from error

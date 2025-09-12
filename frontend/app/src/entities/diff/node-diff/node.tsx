@@ -1,14 +1,17 @@
-import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import Accordion from "@/shared/components/display/accordion";
-import { Badge } from "@/shared/components/ui/badge";
-import { Card } from "@/shared/components/ui/card";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 import { useLocation, useParams } from "react-router";
+
+import Accordion from "@/shared/components/display/accordion";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card } from "@/shared/components/ui/card";
+import { classNames } from "@/shared/utils/common";
+
+import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/node-diff/types";
+import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+
 import { DiffNodeAttribute } from "./node-attribute";
 import { getNewValue, getPreviousValue } from "./node-property";
 import { DiffNodeRelationship } from "./node-relationship";
@@ -47,16 +50,16 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
             <div className="group flex items-center gap-2 py-2 pr-2 text-xs">
               <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
               <Badge variant="white">{schemaKindName[node.kind] ?? node.kind}</Badge>
-              <span className="text-gray-800 font-medium px-2 py-1">{node.label}</span>
+              <span className="px-2 py-1 font-medium text-gray-800">{node.label}</span>
 
               {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
             </div>
           }
-          className="bg-gray-100 border rounded-md"
+          className="rounded-md border border-gray-200 bg-gray-100"
         >
-          <div className="bg-custom-white divide-y border-t">
+          <div className="divide-y divide-gray-200 border-gray-200 border-t bg-white">
             <div className="grid grid-cols-3 pl-8">
-              <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
+              <Badge variant="green" className="col-start-2 col-end-3 bg-transparent">
                 <Icon icon="mdi:layers-triple" className="mr-1" /> {sourceBranch}
               </Badge>
 

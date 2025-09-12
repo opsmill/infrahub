@@ -1,5 +1,6 @@
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -238,7 +239,7 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     assert any(expected_error in error.message for error in result.errors)
 
 
-async def test_non_unique_value_raises_error(db: InfrahubDatabase, animal_person_schema, branch: Branch):
+async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch):
     _ = await create_and_save(db=db, schema="TestPerson", name="Jack", bag="bag-jacks")
 
     # Make sure correct raised error is raised while violating uniqueness constraint of a non hfid-related attribute.
@@ -260,6 +261,141 @@ async def test_non_unique_value_raises_error(db: InfrahubDatabase, animal_person
     )
     assert len(result.errors) == 1
     assert "Violates uniqueness constraint 'bag'" in result.errors[0].message
+
+
+async def test_upsert_existing_with_enough_information_for_hfid(
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, default_branch: Branch
+):
+    car_name = "Ferramboghinierati"
+    car_color_1 = "blue"
+    car_color_2 = "red"
+    fred = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=default_branch)
+    car = await create_and_save(
+        db=db, schema="TestCar", name=car_name, owner=fred, color=car_color_1, branch=default_branch
+    )
+    other_car = await create_and_save(
+        db=db, schema="TestCar", name="pinto", owner=fred, color="brown", branch=default_branch
+    )
+    thing1 = await create_and_save(db=db, schema="TestThing", value="thing1", branch=default_branch)
+    thing2 = await create_and_save(db=db, schema="TestThing", value="thing2", car=other_car, branch=default_branch)
+
+    # upsert the existing car with new attr and relationship data
+    query = """
+    mutation($car_name: String!, $owner_id: String!, $color: String!) {
+        TestCarUpsert(
+            data: {
+                name: {value: $car_name},
+                owner: {id: $owner_id},
+                color: {value: $color},
+                things: [
+                    {id: "%(id1)s"}
+                ]
+            }
+        ) {
+            ok
+            object {
+                id
+                name {value}
+                color {value}
+                owner {node {id}}
+            }
+        }
+    }
+    """ % {"id1": thing1.id}
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"car_name": car_name, "owner_id": fred.id, "color": car_color_2},
+    )
+    assert result.errors is None
+
+    # illegal upsert that would add two peers on a TestThing.car relationship
+    query = """
+    mutation($car_name: String!, $owner_id: String!, $color: String!) {
+        TestCarUpsert(
+            data: {
+                name: {value: $car_name},
+                owner: {id: $owner_id},
+                color: {value: $color},
+                things: [
+                    {id: "%(id1)s"}, {id: "%(id2)s"}
+                ]
+            }
+        ) {
+            ok
+            object {
+                id
+                name {value}
+                color {value}
+                owner {node {id}}
+            }
+        }
+    }
+    """ % {"id1": thing1.id, "id2": thing2.id}
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"car_name": car_name, "owner_id": fred.id, "color": car_color_2},
+    )
+    assert result.errors
+    assert result.errors[0].message == f"Node {thing2.id} has 2 peers for carthings, maximum of 1 allowed"
+
+    # delete the TestThing.car relationship and try again
+    await thing2.car.update(db=db, data=[None])
+    await thing2.save(db=db)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"car_name": car_name, "owner_id": fred.id, "color": car_color_2},
+    )
+    assert not result.errors
+    assert result.data["TestCarUpsert"]["object"]["id"] == car.id
+    assert result.data["TestCarUpsert"]["object"]["color"]["value"] == car_color_2
+    assert result.data["TestCarUpsert"]["object"]["owner"]["node"]["id"] == fred.id
+
+    # validate upsert succeeded and all data is as expected
+    all_cars = await NodeManager.query(db=db, branch=default_branch, schema="TestCar")
+    assert len(all_cars) == 2
+    assert {one_car.id for one_car in all_cars} == {car.id, other_car.id}
+    retrieved_car = await NodeManager.get_one(db=db, branch=default_branch, id=car.id, prefetch_relationships=True)
+    assert retrieved_car.name.value == car_name
+    assert retrieved_car.color.value == car_color_2
+    assert (await retrieved_car.owner.get_peer(db=db)).id == fred.id
+    thing_peers = await retrieved_car.things.get_peers(db=db)
+    assert set(thing_peers.keys()) == {thing1.id, thing2.id}
+
+
+async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
+):
+    _ = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=branch)
+
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: {value: "Fred"}, bag: {value: "bag-fred"}}) {
+            ok
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
 
 
 async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
@@ -503,3 +639,37 @@ async def test_with_constructed_hfid_with_numbers(
         "description": {"value": "Here is the update"},
         "id": first_ticket.id,
     }
+
+
+async def test_upsert_node_on_branch_with_hfid_on_default(db: InfrahubDatabase, default_branch, car_person_schema):
+    # create a node on the default branch after the branch is created
+    branch = await create_branch(branch_name="test-branch", db=db)
+    person = await create_and_save(db=db, branch=default_branch, schema="TestPerson", name="John", height=182)
+
+    # try to upsert a node on the branch with a matching hfid
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: { value: "John"}, height: {value: 183}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert (
+        f"Node {person.id} / TestPerson uses this human-friendly ID, but does not exist on this branch"
+        in result.errors[0].message
+    )
+    assert f"Please rebase this branch to access {person.id} / TestPerson" in result.errors[0].message

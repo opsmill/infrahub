@@ -1,11 +1,16 @@
-import { GroupsManager, GroupsManagerProps } from "@/entities/groups/ui/groups-manager";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-type GroupsManagerTriggerProps = ButtonProps & GroupsManagerProps;
+import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+
+import { GroupsManager, GroupsManagerProps } from "@/entities/groups/ui/groups-manager";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { Permission } from "@/entities/permission/types";
+
+export interface GroupsManagerTriggerProps extends ButtonProps, GroupsManagerProps {
+  permission: Permission;
+}
 
 export const GroupsManagerTriggerButton = ({
   schema,
@@ -15,9 +20,7 @@ export const GroupsManagerTriggerButton = ({
 }: GroupsManagerTriggerProps) => {
   const [isManageGroupsDrawerOpen, setIsManageGroupsDrawerOpen] = useState(false);
 
-  const { data } = useObjectDetails(schema, objectId);
-
-  const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
+  const { data: objectDetailsData } = useGetObject({ objectSchema: schema, objectId });
 
   return (
     <>
@@ -46,7 +49,7 @@ export const GroupsManagerTriggerButton = ({
           />
         }
       >
-        <GroupsManager schema={schema} objectId={objectId} className="p-4 overflow-auto" />
+        <GroupsManager schema={schema} objectId={objectId} className="overflow-auto p-4" />
       </SlideOver>
     </>
   );

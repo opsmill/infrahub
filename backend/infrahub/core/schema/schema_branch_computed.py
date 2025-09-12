@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import NodeSchema, SchemaAttributePath
+    from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath
 
 
 @dataclass
@@ -90,6 +90,7 @@ class ComputedAttributes:
     ) -> None:
         self._computed_python_transform_attribute_map: dict[str, list[AttributeSchema]] = transform_attribute_map or {}
         self._computed_jinja2_attribute_map: dict[str, RegisteredNodeComputedAttribute] = jinja2_attribute_map or {}
+        self._defined_from_generic: dict[str, str] = {}
 
     def duplicate(self) -> ComputedAttributes:
         return self.__class__(
@@ -165,6 +166,16 @@ class ComputedAttributes:
             self._computed_jinja2_attribute_map[source_attribute.kind].local_fields[
                 schema_path.active_relationship_schema.name
             ].append(deepcopy(source_attribute))
+
+    def validate_generic_inheritance(
+        self, node: NodeSchema, attribute: AttributeSchema, generic: GenericSchema
+    ) -> None:
+        attribute_key = f"{node.kind}__{attribute.name}"
+        if duplicate := self._defined_from_generic.get(attribute_key):
+            raise ValueError(
+                f"{node.kind}: {attribute.name!r} is declared as a computed attribute from multiple generics {sorted([duplicate, generic.kind])}"
+            )
+        self._defined_from_generic[attribute_key] = generic.kind
 
     def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         if mapping := self._computed_jinja2_attribute_map.get(kind):

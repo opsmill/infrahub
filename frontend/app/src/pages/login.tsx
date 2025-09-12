@@ -1,7 +1,9 @@
+import { Navigate, useLocation } from "react-router";
+
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
+
 import { Login } from "@/entities/authentication/ui/login";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { Navigate, useLocation } from "react-router";
 
 function LoginPage() {
   const location = useLocation();
@@ -13,17 +15,17 @@ function LoginPage() {
   }
 
   return (
-    <div className="bg-stone-100 h-screen w-screen py-[25vh] overflow-auto">
-      <div className="flex flex-col items-center gap-6 w-full max-w-sm m-auto">
+    <div className="h-screen w-screen overflow-auto bg-stone-100 py-[25vh]">
+      <div className="m-auto flex w-full max-w-sm flex-col items-center gap-6">
         <InfrahubLogo className="h-12" />
 
-        <h1 className="text-xl font-semibold text-neutral-900">Log in to your account</h1>
+        <h1 className="font-semibold text-neutral-900 text-xl">Log in to your account</h1>
 
         <Login />
 
         {location?.state?.errors?.map(
           (error: { extensions: { code: number }; message: string }, index: number) => (
-            <p key={index} className="text-red-500 text-sm mt-2">
+            <p key={index} className="mt-2 text-red-500 text-sm">
               ({error.extensions.code}) {error.message}
             </p>
           )

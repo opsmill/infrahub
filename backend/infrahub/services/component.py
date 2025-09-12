@@ -10,13 +10,13 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
-from infrahub.message_bus import messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-    from infrahub.services import InfrahubCache, InfrahubMessageBus
+    from infrahub.services import InfrahubCache
+    from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 PRIMARY_API_SERVER = "workers:primary:api_server"
 WORKER_MATCH = re.compile(r":worker:([^:]+)")
@@ -116,7 +116,7 @@ class InfrahubComponent:
             key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN, not_exists=True
         )
         if result:
-            await self.message_bus.send(message=messages.EventWorkerNewPrimaryAPI(worker_id=WORKER_IDENTITY))
+            log.info("api_worker promoted to primary", worker_id=WORKER_IDENTITY)
         else:
             log.debug("Primary node already set")
             primary_id = await self.cache.get(key=PRIMARY_API_SERVER)

@@ -6,6 +6,7 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
@@ -14,16 +15,17 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
-from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
+from infrahub.workers.dependencies import get_database, get_workflow
 from infrahub.workflows.catalogue import BRANCH_MERGE
 from infrahub.workflows.utils import add_tags
 
 
 @flow(name="merge-branch-mutation", flow_run_name="Merge branch graphQL mutation")
-async def merge_branch_mutation(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
     await add_tags(branches=[branch])
 
-    async with service.database.start_session() as db:
+    database = await get_database()
+    async with database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
         base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
 
@@ -50,7 +52,8 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext, service: 
             diff_merger=diff_merger,
             diff_repository=diff_repository,
             source_branch=obj,
-            service=service,
+            diff_locker=DiffLocker(),
+            workflow=get_workflow(),
         )
         candidate_schema = merger.get_candidate_schema()
         determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
@@ -60,13 +63,10 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext, service: 
 
         if constraints:
             responses = await schema_validate_migrations(
-                message=SchemaValidateMigrationData(
-                    branch=obj, schema_branch=candidate_schema, constraints=constraints
-                ),
-                service=service,
+                message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
             )
             error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        await service.workflow.execute_workflow(workflow=BRANCH_MERGE, context=context, parameters={"branch": obj.name})
+        await get_workflow().execute_workflow(workflow=BRANCH_MERGE, context=context, parameters={"branch": obj.name})

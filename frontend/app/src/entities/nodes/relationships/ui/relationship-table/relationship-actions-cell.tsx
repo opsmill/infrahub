@@ -1,8 +1,6 @@
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
-import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
-import { Permission } from "@/entities/permission/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -16,8 +14,14 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
+import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
+import { canDissociateRelationship } from "@/entities/nodes/relationships/utils/can-dissociate-relationship";
+import { Permission } from "@/entities/permission/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {
   parentId: string;
@@ -27,6 +31,7 @@ export interface ActionsCellProps {
   relationshipKind: string;
   relationshipLabel: string;
   relationshipName: string;
+  relationshipsCount: number;
 }
 
 export function RelationshipActionsCell({
@@ -37,19 +42,29 @@ export function RelationshipActionsCell({
   relationshipLabel,
   relationshipKind,
   relationshipName,
+  relationshipsCount,
 }: ActionsCellProps) {
   const [showPropertiesModal, setShowPropertiesModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDissociateModal, setShowDissociateModal] = useState(false);
-  const { schema } = useSchema(relationshipKind);
-  const isEditAllowed = permission.update.isAllowed;
 
-  if (!schema) return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
+  const { schema: parentSchema } = useSchema(parentKind);
+
+  if (!parentSchema) {
+    return <ErrorScreen message={`Schema not found for ${relationshipKind}`} />;
+  }
+
+  const isEditAllowed = permission.update.isAllowed;
+  const isDissociateAllowed = canDissociateRelationship({
+    parentSchema,
+    relationshipName,
+    relationshipsCount,
+  });
 
   return (
     <Popover open={showPropertiesModal} onOpenChange={setShowPropertiesModal}>
-      <TableCell className="sticky right-0 border-l size-10 items-center justify-center bg-white -ml-px">
-        <div className="absolute -left-4 top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-gray-300/30 pointer-events-none" />
+      <TableCell className="-ml-px sticky right-0 size-10 items-center justify-center border-gray-200 border-l bg-white">
+        <div className="-left-4 pointer-events-none absolute top-0 bottom-0 w-4 bg-linear-to-r from-transparent to-gray-300/30" />
         <DropdownMenu>
           <PopoverAnchor>
             <DropdownMenuTrigger asChild>
@@ -82,17 +97,19 @@ export function RelationshipActionsCell({
               </div>
             </Tooltip>
 
-            <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
-              <div>
-                <DropdownMenuItem
-                  disabled={!isEditAllowed}
-                  onClick={() => isEditAllowed && setShowDissociateModal(true)}
-                >
-                  <Icon icon="mdi:link-variant-remove" className="text-base" />
-                  Dissociate
-                </DropdownMenuItem>
-              </div>
-            </Tooltip>
+            {isDissociateAllowed && (
+              <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
+                <div>
+                  <DropdownMenuItem
+                    disabled={!isEditAllowed}
+                    onClick={() => isEditAllowed && setShowDissociateModal(true)}
+                  >
+                    <Icon icon="mdi:link-variant-remove" className="text-base" />
+                    Dissociate
+                  </DropdownMenuItem>
+                </div>
+              </Tooltip>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -110,7 +127,7 @@ export function RelationshipActionsCell({
         <SlideOver
           title={
             <SlideOverTitle
-              schema={schema}
+              schema={parentSchema}
               currentObjectLabel={relationshipLabel}
               title={`Edit ${relationshipLabel}`}
             />
@@ -121,9 +138,8 @@ export function RelationshipActionsCell({
           <ObjectItemEditComponent
             closeDrawer={() => setShowEditForm(false)}
             onUpdateComplete={async () => {
-              await queryClient.invalidateQueries({
-                predicate: (query) => query.queryKey.includes("objects"),
-              });
+              await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+              setShowEditForm(false);
             }}
             objectid={relationshipId}
             objectname={relationshipKind}

@@ -1,14 +1,14 @@
+import { gql, useQuery } from "@apollo/client";
+import { formatISO, isBefore, parseISO } from "date-fns";
+import { useAtomValue } from "jotai/index";
+import * as R from "ramda";
+import { useState } from "react";
+import { toast } from "react-toastify";
+
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { getThreadTitle } from "@/entities/diff/utils";
-import { createObject } from "@/entities/nodes/api/createObject";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import { getPermission } from "@/entities/permission/utils";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
-import { Button } from "@/shared/components/buttons/button";
+import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import ModalConfirm from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -17,12 +17,16 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
-import { formatISO, isBefore, parseISO } from "date-fns";
-import { useAtomValue } from "jotai/index";
-import * as R from "ramda";
-import { useState } from "react";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { getThreadTitle } from "@/entities/diff/utils";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import { getPermission } from "@/entities/permission/utils";
+
+import { Button } from "../buttons/button-primitive";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -50,6 +54,7 @@ export const Thread = (props: tThread) => {
   const [displayAddComment, setDisplayAddComment] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
+  const createObject = useCreateObjectMutation();
 
   const { loading, data } = useQuery(
     gql(getObjectPermissionsQuery(PROPOSED_CHANGES_THREAD_COMMENT_OBJECT))
@@ -59,57 +64,53 @@ export const Thread = (props: tThread) => {
     data && getPermission(data?.[PROPOSED_CHANGES_THREAD_COMMENT_OBJECT]?.permissions?.edges);
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
-    try {
-      setIsLoading(true);
+    setIsLoading(true);
 
-      const newObject = {
-        text: {
-          value: comment,
-        },
-        thread: {
-          id: thread.id,
-        },
-        created_by: {
-          id: auth?.data?.sub,
-        },
-        created_at: {
-          value: formatISO(new Date()),
-        },
-      };
+    const newObject = {
+      text: {
+        value: comment,
+      },
+      thread: {
+        id: thread.id,
+      },
+      created_by: {
+        id: auth?.data?.sub,
+      },
+      created_at: {
+        value: formatISO(new Date()),
+      },
+    };
 
-      const mutationString = createObject({
-        kind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-        data: stringifyWithoutQuotes(newObject),
-      });
+    await createObject.mutateAsync(
+      {
+        objectKind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+        data: newObject,
+      },
+      {
+        onSuccess: async () => {
+          if (markAsResolved) {
+            // If the resolved checkbox was checked, we need to resolve the thread after the comment
+            await handleResolve();
+          }
 
-      const mutation = gql`
-        ${mutationString}
-      `;
+          if (refetch) {
+            await refetch();
+          }
 
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey.includes(thread.id),
+          });
+
+          setIsLoading(false);
+          setDisplayAddComment(false);
         },
-      });
+        onError: (error) => {
+          console.error("An error occurred while creating the comment: ", error);
 
-      if (markAsResolved) {
-        // If the resolved checkbox was checked, we need to resolve the thread after the comment
-        await handleResolve();
+          setIsLoading(false);
+        },
       }
-
-      if (refetch) {
-        await refetch();
-      }
-
-      setIsLoading(false);
-      setDisplayAddComment(false);
-    } catch (error: any) {
-      console.error("An error occurred while creating the comment: ", error);
-
-      setIsLoading(false);
-    }
+    );
   };
 
   const handleResolve = async () => {
@@ -123,6 +124,8 @@ export const Thread = (props: tThread) => {
       setConfirmModal(false);
       return;
     }
+
+    setIsLoading(true);
 
     const mutationString = updateObjectWithId({
       kind: thread.__typename,
@@ -155,16 +158,21 @@ export const Thread = (props: tThread) => {
       setDisplayAddComment(false);
     }
 
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes(thread.id),
+    });
+
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Thread resolved"} />);
+    setIsLoading(false);
   };
 
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
   const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
-  const idForLabel = `checkbox-resolve-thread${thread.id}`;
+  const idForLabel = `checkbox-resolve-thread${thread?.id}`;
 
   const MarkAsResolved = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 text-sm">
       <Checkbox
         id={idForLabel}
         disabled={isResolved}
@@ -185,7 +193,10 @@ export const Thread = (props: tThread) => {
 
   return (
     <Card
-      className={classNames("relative", isResolved && "bg-gray-200")}
+      className={classNames(
+        "relative flex flex-col gap-2 rounded-md p-2",
+        isResolved && "bg-gray-200"
+      )}
       data-testid="thread"
       data-cy="thread"
     >
@@ -212,6 +223,7 @@ export const Thread = (props: tThread) => {
           {MarkAsResolved}
 
           <Button
+            variant={"outline"}
             onClick={() => setDisplayAddComment(true)}
             disabled={loading || !permission?.create?.isAllowed}
           >

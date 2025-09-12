@@ -1,6 +1,7 @@
+import { gql } from "@apollo/client";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
 
 const generatorRunMutation = gql`
   mutation CoreGeneratorDefinitionRun($generatorId: String!, $waitUntilCompletion: Boolean, $targetNodeIds: [String!]) {

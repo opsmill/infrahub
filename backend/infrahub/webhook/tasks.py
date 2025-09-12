@@ -8,13 +8,13 @@ from infrahub_sdk.protocols import CoreTransformPython, CoreWebhook
 from prefect import flow, task
 from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
-from prefect.client.orchestration import get_client
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
 from infrahub.message_bus.types import KVTTL
-from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerType
-from infrahub.trigger.setup import setup_triggers
+from infrahub.trigger.setup import setup_triggers_specific
+from infrahub.workers.dependencies import get_cache, get_client, get_database, get_http
 from infrahub.workflows.utils import add_tags
 
 from .gather import gather_trigger_webhook
@@ -22,6 +22,7 @@ from .models import CustomWebhook, EventContext, StandardWebhook, TransformWebho
 
 if TYPE_CHECKING:
     from httpx import Response
+
 
 WEBHOOK_MAP: dict[str, type[Webhook]] = {
     "StandardWebhook": StandardWebhook,
@@ -31,10 +32,10 @@ WEBHOOK_MAP: dict[str, type[Webhook]] = {
 
 
 @task(name="webhook-send", task_run_name="Send Standard Webhook {webhook.name}", cache_policy=NONE, retries=3)
-async def webhook_send(
-    webhook: Webhook, context: EventContext, event_data: dict, service: InfrahubServices
-) -> Response:
-    response = await webhook.send(data=event_data, context=context, service=service)
+async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict) -> Response:
+    http_service = get_http()
+    client = get_client()
+    response = await webhook.send(data=event_data, context=context, http_service=http_service, client=client)
     response.raise_for_status()
     return response
 
@@ -71,21 +72,22 @@ async def webhook_process(
     event_type: str,
     event_occured_at: str,
     event_payload: dict,
-    service: InfrahubServices,
     branch_name: str | None = None,
 ) -> None:
     log = get_run_logger()
+    client = get_client()
+    cache = await get_cache()
 
     if branch_name:
         await add_tags(branches=[branch_name])
 
-    webhook_data_str = await service.cache.get(key=f"webhook:{webhook_id}")
+    webhook_data_str = await cache.get(key=f"webhook:{webhook_id}")
     if not webhook_data_str:
         log.info(f"Webhook {webhook_id} not found in cache")
-        webhook_node = await service.client.get(kind=webhook_kind, id=webhook_id)
-        webhook = await convert_node_to_webhook(webhook_node=webhook_node, client=service.client)
+        webhook_node = await client.get(kind=webhook_kind, id=webhook_id)
+        webhook = await convert_node_to_webhook(webhook_node=webhook_node, client=client)
         webhook_data = webhook.to_cache()
-        await service.cache.set(key=f"webhook:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS)
+        await cache.set(key=f"webhook:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS)
 
     else:
         webhook_data = ujson.loads(webhook_data_str)
@@ -103,38 +105,33 @@ async def webhook_process(
         event_payload=event_payload,
     )
     event_data = event_payload.get("data", {})
-    response = await webhook_send(webhook=webhook, context=webhook_context, event_data=event_data, service=service)
+    response = await webhook_send(webhook=webhook, context=webhook_context, event_data=event_data)
     log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
 
 
 @flow(name="webhook-setup-automation-all", flow_run_name="Configure all webhooks")
-async def configure_webhook_all(service: InfrahubServices) -> None:
+async def configure_webhook_all() -> None:
     log = get_run_logger()
 
-    triggers = await gather_trigger_webhook(db=service.database)
-
-    async with get_client(sync_client=False) as prefect_client:
-        await setup_triggers(
-            client=prefect_client,
-            triggers=triggers,
-            trigger_type=TriggerType.WEBHOOK,
-        )  # type: ignore[misc]
+    database = await get_database()
+    async with database.start_session(read_only=True) as db:
+        triggers = await gather_trigger_webhook(db=db)
 
     log.info(f"{len(triggers)} Webhooks automation configuration completed")
+    await setup_triggers_specific(gatherer=gather_trigger_webhook, db=database, trigger_type=TriggerType.WEBHOOK)  # type: ignore[misc]
 
 
 @flow(name="webhook-setup-automation-one", flow_run_name="Configurate webhook for {webhook_name}")
 async def configure_webhook_one(
     webhook_name: str,  # noqa: ARG001
     event_data: dict,
-    service: InfrahubServices,
 ) -> None:
     log = get_run_logger()
 
-    webhook = await service.client.get(kind=CoreWebhook, id=event_data["node_id"])
+    webhook = await get_client().get(kind=CoreWebhook, id=event_data["node_id"])
     trigger = WebhookTriggerDefinition.from_object(webhook)
 
-    async with get_client(sync_client=False) as prefect_client:
+    async with get_prefect_client(sync_client=False) as prefect_client:
         # Query the deployment associated with the trigger to have its ID
         deployment_name = trigger.get_deployment_names()[0]
         deployment = await prefect_client.read_deployment_by_name(name=f"{deployment_name}/{deployment_name}")
@@ -157,18 +154,18 @@ async def configure_webhook_one(
             await prefect_client.create_automation(automation=automation)
             log.info(f"Automation {trigger.generate_name()} created")
 
-        await service.cache.delete(key=f"webhook:{webhook.id}")
+        cache = await get_cache()
+        await cache.delete(key=f"webhook:{webhook.id}")
 
 
 @flow(name="webhook-delete-automation", flow_run_name="Delete webhook automation for {webhook_name}")
 async def delete_webhook_automation(
     webhook_id: str,
     webhook_name: str,  # noqa: ARG001
-    service: InfrahubServices,
 ) -> None:
     log = get_run_logger()
 
-    async with get_client(sync_client=False) as prefect_client:
+    async with get_prefect_client(sync_client=False) as prefect_client:
         automation_name = WebhookTriggerDefinition.generate_name_from_id(id=webhook_id)
 
         existing_automations = await prefect_client.read_automations_by_name(automation_name)
@@ -178,4 +175,5 @@ async def delete_webhook_automation(
             await prefect_client.delete_automation(automation_id=existing_automation.id)
             log.info(f"Automation {automation_name} deleted")
 
-        await service.cache.delete(key=f"webhook:{webhook_id}")
+        cache = await get_cache()
+        await cache.delete(key=f"webhook:{webhook_id}")

@@ -29,6 +29,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.attribute_parameters import TextAttributeParameters
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
@@ -38,6 +39,7 @@ from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
 from tests.constants import TestKind
 from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
+from tests.helpers.schema.device import LAG_INTERFACE
 
 from .conftest import _get_schema_by_kind
 
@@ -149,26 +151,6 @@ async def test_schema_process_inheritance_different_generic_attribute_types_on_n
         schema.process_inheritance()
 
     assert exc.value.args[0] == 'TestWidget.choice inherited from TestAdapter must be the same kind ["Text", "List"]'
-
-
-async def test_schema_process_inheritance_different_generic_attribute_optional_on_node(
-    schema_diff_attr_inheritance_types,
-):
-    """Test that we raise an exception if a node is inheriting an attribute changing its optional property value."""
-    schema = SchemaBranch(cache={}, name="test")
-    schema_new = copy.deepcopy(schema_diff_attr_inheritance_types)
-    schema_new["generics"].pop()
-    schema_new["nodes"][0]["inherit_from"].pop()
-    schema_new["nodes"][0]["attributes"].append({"name": "choice", "kind": "Text", "optional": False})
-    schema.load_schema(schema=SchemaRoot(**schema_new))
-
-    with pytest.raises(ValueError) as exc:
-        schema.process_inheritance()
-
-    assert (
-        exc.value.args[0]
-        == 'TestWidget.choice inherited from TestAdapter must have the same value for property "optional" ["True", "False"]'
-    )
 
 
 async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
@@ -514,6 +496,50 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one):
                 ],
             },
             "TestCriticality's relationship status inherited from InfraGenericInterface cannot be overriden",
+        ),
+        (
+            {
+                "nodes": [
+                    {
+                        "name": "Criticality",
+                        "namespace": "Test",
+                        "inherit_from": ["InfraGenericInterface"],
+                        "default_filter": "name__value",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "relationships": [
+                            {"name": "status", "peer": "TestState", "optional": True, "cardinality": "one"}
+                        ],
+                    },
+                    {
+                        "name": "Status",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                    {
+                        "name": "State",
+                        "namespace": "Test",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                        "attributes": [{"name": "name", "kind": "Text", "label": "Name", "unique": True}],
+                    },
+                ],
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Infra",
+                        "attributes": [{"name": "name", "kind": "Text"}],
+                        "relationships": [
+                            {
+                                "name": "status",
+                                "peer": "TestStatus",
+                                "optional": True,
+                                "cardinality": "one",
+                            }
+                        ],
+                    },
+                ],
+            },
+            "TestCriticality's relationship status inherited from InfraGenericInterface must have the same peer (TestStatus != TestState)",
         ),
     ],
 )
@@ -941,6 +967,95 @@ async def test_schema_branch_validate_kinds_peer():
     assert str(exc.value) == "TestCriticality: Relationship 'first' is referring an invalid peer 'TestNotPresent'"
 
 
+async def test_schema_branch_validate_kinds_common_relatives():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = None
+    lag_interface_schema.relationships[0].common_relatives = ["doesnotexist"]
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' set 'common_relatives' with invalid relationship from "
+        "'TestingPhysicalInterface'"
+    )
+
+
+async def test_schema_branch_validate_common_parent():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.validate_kinds()
+
+
+async def test_schema_branch_validate_common_parent_without_valid_parent():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.get(name=TestKind.LAG_INTERFACE, duplicate=False).get_relationship("device").kind = RelationshipKind.GENERIC
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but node does not have a parent relationship"
+    )
+
+
+async def test_schema_branch_validate_common_parent_invalid_relationship_name():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "foo"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.foo' does not exist"
+    )
+
+
+async def test_schema_branch_validate_common_parent_invalid_relationship_kind():
+    schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
+    lag_interface_schema = copy.deepcopy(LAG_INTERFACE)
+    lag_interface_schema.relationships[0].common_parent = "device"
+    schema_with_lag.nodes.append(lag_interface_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=schema_with_lag)
+    schema.process_inheritance()
+    schema.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False).get_relationship(
+        "device"
+    ).kind = RelationshipKind.GENERIC
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == (
+        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.device is not of kind 'parent'"
+    )
+
+
 async def test_schema_branch_validate_kinds_inherit():
     SCHEMA1 = {
         "name": "Criticality",
@@ -1034,13 +1149,14 @@ async def test_validate_uniqueness_constraints_success(schema_all_in_one, unique
     ["uniqueness_constraints", "unique_attributes", "expected_constraints", "expected_unique_attributes"],
     [
         (None, [], None, []),
-        (None, ["name"], [["name__value"]], ["name"]),
+        # name is on the generic and we don't add inherited unique attribute to the uniqueness constraints
+        (None, ["name"], None, ["name"]),
         ([["name__value"]], ["name"], [["name__value"]], ["name"]),
         ([["name__value"]], [], [["name__value"]], ["name"]),
         ([["name__value"]], ["breed"], [["name__value"], ["breed__value"]], ["name", "breed"]),
         ([["name__value", "owner"]], ["breed"], [["name__value", "owner"], ["breed__value"]], ["breed"]),
-        ([["owner"]], ["name"], [["owner"], ["name__value"]], ["name"]),
-        (None, ["name", "color"], [["color__value"], ["name__value"]], ["name", "color"]),
+        ([["owner"]], ["name"], [["owner"]], ["name"]),
+        (None, ["name", "color"], [["color__value"]], ["name", "color"]),
         ([["color__value"], ["name__value"]], [], [["color__value"], ["name__value"]], ["name", "color"]),
     ],
 )
@@ -2204,6 +2320,62 @@ async def test_schema_manager_get(default_branch: Branch):
     assert schema11.namespace == schema.namespace
 
 
+async def test_schema_manager_purge(default_branch: Branch, reset_registry: None) -> None:
+    criticality_schema = NodeSchema(
+        name="Criticality",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    person_schema = NodeSchema(
+        name="Person",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    dog_schema = NodeSchema(
+        name="Dog",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    manager = SchemaManager()
+
+    manager.set(name="criticality_schema", schema=criticality_schema)
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="main")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch1")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch2")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch3")
+    manager.set(name="person_schema", schema=person_schema, branch="main")
+    manager.set(name="person_schema", schema=person_schema, branch="branch1")
+    manager.set(name="person_schema", schema=person_schema, branch="branch2")
+    manager.set(name="person_schema", schema=person_schema, branch="branch3")
+    manager.set(name="criticality_schema", schema=criticality_schema, branch="branch4")
+    manager.set(name="dog_schema", schema=dog_schema, branch="branch4")
+    assert len(manager._cache) == 3
+    assert criticality_schema.get_hash() in manager._cache
+    assert person_schema.get_hash() in manager._cache
+    assert dog_schema.get_hash() in manager._cache
+    purged = manager.purge_inactive_branches(active_branches=["main", "branch1", "branch2"])
+    assert purged == ["branch3", "branch4"]
+    assert len(manager._cache) == 2
+    assert criticality_schema.get_hash() in manager._cache
+    assert person_schema.get_hash() in manager._cache
+    assert dog_schema.get_hash() not in manager._cache
+
+
 # -----------------------------------------------------------------
 
 
@@ -2257,6 +2429,32 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
     )
     assert len(results) == 1
+
+
+async def test_get_incorrect_kinds(default_branch: Branch) -> None:
+    person_schema = NodeSchema(
+        name="Person",
+        namespace="Test",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="description", kind="Text"),
+        ],
+    )
+
+    house_generic = GenericSchema(
+        name="House", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)]
+    )
+    manager = SchemaManager()
+
+    manager.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    manager.set(name="TestHouse", schema=house_generic, branch=default_branch.name)
+
+    with pytest.raises(ValueError, match="The selected node is not of type NodeSchema"):
+        manager.get_node_schema(name="TestHouse", branch=default_branch.name, duplicate=False)
+
+    with pytest.raises(ValueError, match="The selected node is not of type GenericSchema"):
+        manager.get_generic_schema(name="TestPerson", branch=default_branch.name, duplicate=False)
 
 
 async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
@@ -2548,6 +2746,66 @@ async def test_load_schema(
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+
+
+@pytest.mark.parametrize(
+    "attr_details",
+    [
+        {
+            "parameters": {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+        },
+        {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+        {
+            "parameters": {"regex": "^#[0-9a-f]{0,6}$", "min_length": 7, "max_length": 7},
+            "regex": "old",
+            "min_length": 1,
+            "max_length": 2,
+        },
+    ],
+)
+async def test_load_schema_with_parameters(
+    db: InfrahubDatabase, reset_registry, register_internal_models_schema, default_branch: Branch, attr_details
+):
+    color_attr_dict = {
+        "name": "color",
+        "kind": "Text",
+        "label": "Color",
+        "default_value": "#444444",
+    }
+    color_attr_dict.update(attr_details)
+
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Criticality",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "include_in_menu": True,
+                "attributes": [
+                    color_attr_dict,
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    loaded_schema = await registry.schema.load_schema(db=db, branch=default_branch.name)
+
+    crit_schema = loaded_schema.get("TestCriticality", duplicate=False)
+    color_attr_schema = crit_schema.get_attribute("color")
+    assert isinstance(color_attr_schema.parameters, TextAttributeParameters)
+    assert color_attr_schema.parameters.regex == "^#[0-9a-f]{0,6}$"
+    assert color_attr_schema.parameters.min_length == 7
+    assert color_attr_schema.parameters.max_length == 7
+    assert color_attr_schema.regex == "^#[0-9a-f]{0,6}$"
+    assert color_attr_schema.min_length == 7
+    assert color_attr_schema.max_length == 7
 
 
 async def test_load_schemas(
@@ -3011,6 +3269,18 @@ async def test_manage_object_templates_with_component_relationships():
         template_attr = test_interface_template.get_attribute(name=attr.name)
         # Optional value in component template should match original's
         assert attr.optional == template_attr.optional
+
+    # Verify the generic by checking its attributes and relationships
+    test_interface_template = schema_branch.get(name=f"Template{TestKind.INTERFACE}", duplicate=False)
+    assert test_interface_template.is_generic_schema
+    test_interface = schema_branch.get(name=TestKind.INTERFACE, duplicate=False)
+    assert test_interface.is_generic_schema
+    for attr in test_interface.attributes:
+        template_attr = test_interface_template.get_attribute(name=attr.name)
+        assert attr.optional == template_attr.optional
+    for rel in test_interface.relationships:
+        template_rel = test_interface_template.get_relationship(name=rel.name)
+        assert template_rel.peer == f"Template{rel.peer}"
 
     # Verify when a node is marked as absent
     ABSENT_VIRTUAL_INTERFACE = copy.deepcopy(DEVICE_SCHEMA)

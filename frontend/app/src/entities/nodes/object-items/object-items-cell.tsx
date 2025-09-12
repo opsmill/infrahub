@@ -1,14 +1,16 @@
-import {
-  RelationshipManyType,
-  RelationshipOneType,
-  getDisplayValue,
-} from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { Badge } from "@/shared/components/ui/badge";
-import { classNames } from "@/shared/utils/common";
 import { HTMLAttributes } from "react";
 import { Link, LinkProps } from "react-router";
+
+import { Badge } from "@/shared/components/ui/badge";
+import { classNames } from "@/shared/utils/common";
+
+import {
+  getDisplayValue,
+  RelationshipManyType,
+  RelationshipOneType,
+} from "@/entities/nodes/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 type ObjectItemsCellProps = {
   row: any;
@@ -28,20 +30,20 @@ export const ObjectItemsCell = ({ row, attribute }: ObjectItemsCellProps) => {
     }
   }
 
-  const url = getObjectDetailsUrl2(row.__typename, row.id);
+  const url = getObjectDetailsUrl(row.__typename, row.id);
 
   return <LinkCell to={url}>{getDisplayValue(row, attribute)}</LinkCell>;
 };
 
 export const TextCell = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => {
   return (
-    <span className={classNames("px-4 py-2 text-xs whitespace-nowrap", className)} {...props} />
+    <span className={classNames("whitespace-nowrap px-4 py-2 text-xs", className)} {...props} />
   );
 };
 
 export const LinkCell = ({ className, children, ...props }: LinkProps) => {
   return (
-    <Link className={classNames("h-full flex items-center", className)} {...props}>
+    <Link className={classNames("flex h-full items-center", className)} {...props}>
       <TextCell>{children}</TextCell>
     </Link>
   );
@@ -52,7 +54,7 @@ export const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => 
 
   return (
     <LinkCell
-      to={getObjectDetailsUrl2(data.node.__typename, data.node.id)}
+      to={getObjectDetailsUrl(data.node.__typename, data.node.id)}
       className="hover:underline"
     >
       {data.node.display_label}
@@ -67,8 +69,8 @@ export const RelationshipManyCell = ({ data }: { data: RelationshipManyType }) =
         if (!node) return null;
 
         return (
-          <Link key={node.id} to={getObjectDetailsUrl2(node.__typename, node.id)}>
-            <Badge className="hover:underline hover:bg-gray-200 font-medium">
+          <Link key={node.id} to={getObjectDetailsUrl(node.__typename, node.id)}>
+            <Badge className="font-medium hover:bg-gray-200 hover:underline">
               {node.display_label}
             </Badge>
           </Link>

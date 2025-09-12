@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe.fixme("/proposed-changes diff data", () => {
@@ -78,7 +79,7 @@ test.describe.fixme("/proposed-changes diff data", () => {
     await test.step("check approval", async () => {
       await expect(page.getByRole("cell", { name: "A", exact: true }).nth(1)).toBeVisible();
       await expect(page.getByRole("cell", { name: "A", exact: true }).nth(2)).toBeVisible();
-      await page.getByRole("link", { name: "Proposed changes", exact: true }).click();
+      await page.getByRole("link", { name: "Proposed Change", exact: true }).click();
       await expect(page.getByTestId("approved-icon")).toBeVisible();
     });
   });
@@ -118,15 +119,10 @@ test.describe.fixme("/proposed-changes diff data", () => {
 
   test("should delete proposed changes", async ({ page }) => {
     await page.goto("/proposed-changes");
-    await page
-      .getByRole("link", { name: "conflict-test" })
-      .first()
-      .locator("../..")
-      .getByTestId("actions-row-button")
-      .click();
+    await page.getByTestId("actions-row-button-conflict-test").click();
     await page.getByTestId("delete-row-button").click();
     await expect(page.getByTestId("modal-delete")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
-    await expect(page.getByText("Proposed changes 'conflict-test' deleted")).toBeVisible();
+    await expect(page.getByText("Proposed changes conflict-test deleted")).toBeVisible();
   });
 });

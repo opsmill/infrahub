@@ -17,11 +17,12 @@ distributor:
         grpc:
 
 ingester:
-  max_block_duration: 5m
+  max_block_duration: 30m
+  complete_block_timeout: 12h
 
 compactor:
   compaction:
-    block_retention: 1h
+    block_retention: 96h
 
 metrics_generator:
   registry:

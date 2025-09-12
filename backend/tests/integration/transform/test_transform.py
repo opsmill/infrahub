@@ -8,7 +8,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -38,6 +37,8 @@ class TestTransforms(TestInfrahubApp):
             TestingPerson(name__value: $name) {
                 edges {
                     node {
+                        id
+                        __typename
                         name {
                             value
                         }
@@ -47,6 +48,8 @@ class TestTransforms(TestInfrahubApp):
                         cars {
                             edges {
                                 node {
+                                    id
+                                    __typename
                                     name {
                                         value
                                     }
@@ -77,11 +80,7 @@ class TestTransforms(TestInfrahubApp):
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id,
-            name=git_repo_car_dealership.name,
-            location=git_repo_car_dealership.path,
-            client=client,
-            service=await InfrahubServices.new(database=db),
+            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
         )
 
         return repo
@@ -124,3 +123,26 @@ class TestTransforms(TestInfrahubApp):
 
         response = await client._get(url=f"{client.address}/api/transform/python/test-python-transform?name=John")
         assert response.json() == {"name": "John"}
+
+    async def test_convert_query_response_transform_python(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
+    ):
+        repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
+        queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+
+        t2 = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+        await t2.new(
+            db=db,
+            name="test-convert-python-transform",
+            query=str(queries[0].id),
+            repository=str(repositories[0].id),
+            class_name="ConvertedPersonWith",
+            file_path="transforms/converted_person_with_cars.py",
+            convert_query_response=True,
+        )
+        await t2.save(db=db)
+
+        response = await client._get(
+            url=f"{client.address}/api/transform/python/test-convert-python-transform?name=John"
+        )
+        assert response.json() == {"name": "John", "age": 25}

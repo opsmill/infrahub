@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/proposed-changes checks", () => {
@@ -22,7 +23,7 @@ test.describe("/proposed-changes checks", () => {
       await page.getByLabel("Name *").fill("pc-checks");
       await page.getByLabel("Source Branch *").click();
       await page.getByRole("option", { name: "atl1-delete-upstream" }).click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Open" }).click();
       await expect(page.getByText("Proposed change created")).toBeVisible();
     });
 
@@ -42,15 +43,10 @@ test.describe("/proposed-changes checks", () => {
 
   test("should delete proposed changes", async ({ page }) => {
     await page.goto("/proposed-changes");
-    await page
-      .getByRole("link", { name: "pc-checks 0 atl1-delete-" })
-      .first()
-      .locator("../..")
-      .getByTestId("actions-row-button")
-      .click();
+    await page.getByTestId("actions-row-button-pc-checks").click();
     await page.getByTestId("delete-row-button").click();
     await expect(page.getByTestId("modal-delete")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
-    await expect(page.getByText("Proposed changes 'pc-checks' deleted")).toBeVisible();
+    await expect(page.getByText("Proposed changes pc-checks deleted")).toBeVisible();
   });
 });

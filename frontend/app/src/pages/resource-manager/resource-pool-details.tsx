@@ -1,3 +1,18 @@
+import { useQuery } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { Outlet, useParams } from "react-router";
+
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
+import Content from "@/shared/components/layout/content";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
+import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { Link } from "@/shared/components/ui/link";
+
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
@@ -14,20 +29,6 @@ import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePool
 import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/ui/resource-selector";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { NodeSchema } from "@/entities/schema/types";
-import { constructPath } from "@/shared/api/rest/fetch";
-import ErrorScreen from "@/shared/components/errors/error-screen";
-import NoDataFound from "@/shared/components/errors/no-data-found";
-import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
-import Content from "@/shared/components/layout/content";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
-import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { Link } from "@/shared/components/ui/link";
-import { useQuery } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router";
 
 const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();
@@ -109,11 +110,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         return {
           name: schemaRelationship.label || schemaRelationship.name,
           value: relationshipData && (
-            <Link
-              to={constructPath(
-                getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
-              )}
-            >
+            <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
               {relationshipData?.display_label}
             </Link>
           ),
@@ -139,8 +136,8 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         }
       />
 
-      <div className="p-2 flex items-start overflow-hidden">
-        <aside className="inline-flex flex-col gap-2 shrink-0 mr-1">
+      <div className="flex items-start overflow-hidden p-2">
+        <aside className="mr-1 inline-flex shrink-0 flex-col gap-2">
           <Card className="shrink-0">
             <CardWithBorder.Title className="flex items-center justify-between gap-1">
               <div>

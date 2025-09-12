@@ -29,8 +29,9 @@ from infrahub.core.utils import add_relationship, convert_ip_to_binary_str, upda
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
-from ..types import ATTRIBUTE_TYPES, LARGE_ATTRIBUTE_TYPES
+from ..types import is_large_attribute_type
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
+from .schema.attribute_parameters import NumberAttributeParameters
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -71,7 +72,6 @@ class AttributeCreateData(BaseModel):
     is_visible: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
-    node_type: AttributeDBNodeType = AttributeDBNodeType.DEFAULT
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
@@ -93,8 +93,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         updated_at: Timestamp | str | None = None,
         is_default: bool = False,
         is_from_profile: bool = False,
-        **kwargs,
-    ):
+        **kwargs: dict[str, Any],
+    ) -> None:
         self.id = id
         self.db_id = db_id
 
@@ -169,7 +169,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return self.branch
 
     @classmethod
-    def __init_subclass__(cls, **kwargs) -> None:
+    def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         registry.attribute[cls.__name__] = cls
 
@@ -232,7 +232,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         Raises:
             ValidationError: Content of the attribute value is not valid
         """
-        if schema.regex:
+        if regex := schema.get_regex():
             if schema.kind == "List":
                 validation_values = [str(entry) for entry in value]
             else:
@@ -240,22 +240,24 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             for validation_value in validation_values:
                 try:
-                    is_valid = re.match(pattern=schema.regex, string=str(validation_value))
+                    is_valid = re.match(pattern=regex, string=str(validation_value))
                 except re.error as exc:
-                    raise ValidationError(
-                        {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
-                    ) from exc
+                    raise ValidationError({name: f"The regex defined in the schema is not valid ({regex!r})"}) from exc
 
                 if not is_valid:
-                    raise ValidationError({name: f"{validation_value} must conform with the regex: {schema.regex!r}"})
+                    raise ValidationError({name: f"{validation_value} must conform with the regex: {regex!r}"})
 
-        if schema.min_length:
-            if len(value) < schema.min_length:
-                raise ValidationError({name: f"{value} must have a minimum length of {schema.min_length!r}"})
+        if min_length := schema.get_min_length():
+            if len(value) < min_length:
+                raise ValidationError({name: f"{value} must have a minimum length of {min_length!r}"})
 
-        if schema.max_length:
-            if len(value) > schema.max_length:
-                raise ValidationError({name: f"{value} must have a maximum length of {schema.max_length!r}"})
+        if max_length := schema.get_max_length():
+            if len(value) > max_length:
+                raise ValidationError({name: f"{value} must have a maximum length of {max_length!r}"})
+
+        # Some invalid values may exist due to https://github.com/opsmill/infrahub/issues/6714.
+        if config.SETTINGS.main.schema_strict_mode and isinstance(schema.parameters, NumberAttributeParameters):
+            schema.parameters.check_valid_value(value=value, name=name)
 
         if schema.enum:
             try:
@@ -275,7 +277,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             data["value"] = NULL_VALUE
         else:
             serialized_value = self.serialize_value()
-            if isinstance(serialized_value, str) and ATTRIBUTE_TYPES[self.schema.kind] not in LARGE_ATTRIBUTE_TYPES:
+            if isinstance(serialized_value, str) and not is_large_attribute_type(self.schema.kind):
                 # Perform validation here to avoid an extra serialization during validation step.
                 # Standard non-str attributes (integer, boolean) do not exceed limit size related to neo4j indexing.
                 validate_string_length(serialized_value)
@@ -494,6 +496,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if changelog.has_updates:
             return changelog
 
+        return None
+
     async def to_graphql(
         self,
         db: InfrahubDatabase,
@@ -619,7 +623,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return changed
 
     def get_db_node_type(self) -> AttributeDBNodeType:
-        return AttributeDBNodeType.DEFAULT
+        if is_large_attribute_type(self.get_kind()):
+            return AttributeDBNodeType.DEFAULT
+        return AttributeDBNodeType.INDEXED
 
     def get_create_data(self) -> AttributeCreateData:
         branch = self.branch
@@ -630,7 +636,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch = registry.get_global_branch()
             hierarchy_level = 0
         data = AttributeCreateData(
-            node_type=self.get_db_node_type(),
             uuid=str(UUIDT()),
             name=self.name,
             type=self.get_kind(),
@@ -674,6 +679,12 @@ class AnyAttributeOptional(AnyAttribute):
 class String(BaseAttribute):
     type = str
     value: str
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        if value is not None and not is_large_attribute_type(schema.kind):
+            validate_string_length(value=str(value))
+        super().validate_content(value=value, name=name, schema=schema)
 
 
 class StringOptional(String):
@@ -782,6 +793,10 @@ class Dropdown(BaseAttribute):
 
         return ""
 
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return ["color", "description", "label", "value"]
+
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the content of the dropdown."""
@@ -817,7 +832,18 @@ class IPNetwork(BaseAttribute):
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
-        return ["value", "version", "binary_address", "prefixlen"]
+        return [
+            "binary_address",
+            "broadcast_address",
+            "hostmask",
+            "netmask",
+            "num_addresses",
+            "prefixlen",
+            "value",
+            "version",
+            "with_hostmask",
+            "with_netmask",
+        ]
 
     @property
     def obj(self) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
@@ -926,7 +952,7 @@ class IPNetwork(BaseAttribute):
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPNETWORK
-        return AttributeDBNodeType.DEFAULT
+        return super().get_db_node_type()
 
     def to_db(self) -> dict[str, Any]:
         data = super().to_db()
@@ -950,7 +976,17 @@ class IPHost(BaseAttribute):
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
-        return ["value", "version", "binary_address"]
+        return [
+            "binary_address",
+            "hostmask",
+            "ip",
+            "netmask",
+            "prefixlen",
+            "value",
+            "version",
+            "with_hostmask",
+            "with_netmask",
+        ]
 
     @property
     def obj(self) -> ipaddress.IPv4Interface | ipaddress.IPv6Interface:
@@ -1052,7 +1088,7 @@ class IPHost(BaseAttribute):
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
             return AttributeDBNodeType.IPHOST
-        return AttributeDBNodeType.DEFAULT
+        return super().get_db_node_type()
 
     def to_db(self) -> dict[str, Any]:
         data = super().to_db()
@@ -1169,6 +1205,22 @@ class MacAddress(BaseAttribute):
     def serialize_value(self) -> str:
         """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
         return str(netaddr.EUI(addr=self.value))
+
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return [
+            "bare",
+            "binary",
+            "dot_notation",
+            "ei",
+            "eui48",
+            "eui64",
+            "oui",
+            "semicolon_notation",
+            "split_notation",
+            "value",
+            "version",
+        ]
 
 
 class MacAddressOptional(MacAddress):

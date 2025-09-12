@@ -1,12 +1,14 @@
+import { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { warnUnexpectedType } from "@/shared/utils/common";
+
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-cell";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
+import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
-import { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
-import { warnUnexpectedType } from "@/shared/utils/common";
-import { formatRelativeTimeFromNow } from "@/shared/utils/date";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
@@ -15,14 +17,22 @@ export interface TableAttributeCellProps {
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
   const attributeKind = attributeSchema.kind as AttributeKind;
-  if (!attributeData || (!attributeData.value && attributeData.value !== 0)) return "-";
+  if (
+    !attributeData ||
+    (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false)
+  )
+    return "-";
 
   switch (attributeKind) {
     case ATTRIBUTE_KIND.DROPDOWN: {
       return <DropdownCell dropdown={attributeData as Dropdown} />;
     }
     case ATTRIBUTE_KIND.DATETIME: {
-      return <span className="truncate">{formatRelativeTimeFromNow(attributeData.value)}</span>;
+      return (
+        <span className="truncate">
+          <DateDisplay date={attributeData.value} />
+        </span>
+      );
     }
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX: {
@@ -38,6 +48,10 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
     case ATTRIBUTE_KIND.TEXTAREA: {
+      if (attributeSchema.name === "node_kind") {
+        return <NodeKindCell kind={attributeData.value} />;
+      }
+
       return <span className="truncate">{attributeData.value}</span>;
     }
     case ATTRIBUTE_KIND.URL: {

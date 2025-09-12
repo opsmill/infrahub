@@ -1,6 +1,8 @@
+import { describe, expect, it } from "vitest";
+
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
-import { describe, expect, it } from "vitest";
+
 import { generateGenericSchema, generateNodeSchema } from "../../../../tests/fake/schema";
 
 describe("isPoolSchema", () => {

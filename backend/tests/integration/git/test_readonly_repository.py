@@ -89,11 +89,9 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         client_repository = await client.create(
             kind=InfrahubKind.READONLYREPOSITORY,
             branch=branch.name,
-            data={
-                "name": "car-dealership",
-                "location": f"{git_repos_source_dir_module_scope}/car-dealership",
-                "ref": "main",
-            },
+            name="car-dealership",
+            location=f"{git_repos_source_dir_module_scope}/car-dealership",
+            ref="main",
         )
         await client_repository.save()
 
@@ -113,7 +111,13 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     ):
         artifacts = await client.all(kind=CoreArtifact, branch="ro_repository")
         artifacts_dict = {item.name.value: item for item in artifacts}
-        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner", "car-owner-yaml", "car-spec-markdown"]
+        assert sorted(artifacts_dict.keys()) == [
+            "car-converted-owner",
+            "car-name",
+            "car-owner",
+            "car-owner-yaml",
+            "car-spec-markdown",
+        ]
         john_display_label = await person_john.render_display_label(db=db)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
@@ -121,6 +125,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
         diffs_dict = {str(item.display_label): item for item in diffs}
         assert sorted(diffs_dict.keys()) == [
+            "John - car-converted-owner",
             "John - car-name",
             "John - car-owner",
             "John - car-owner-yaml",
@@ -168,6 +173,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
 
         artifacts = await client.all(kind=CoreArtifact)
         assert sorted([artifact.name.value for artifact in artifacts]) == [
+            "car-converted-owner",
             "car-name",
             "car-owner",
             "car-owner-yaml",
@@ -212,13 +218,24 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
 
         artifacts = await client.all(kind=CoreArtifact, branch="branch")
         artifacts_dict = {item.name.value: item for item in artifacts}
-        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner", "car-owner-yaml", "car-spec-markdown"]
+        assert sorted(artifacts_dict.keys()) == [
+            "car-converted-owner",
+            "car-name",
+            "car-owner",
+            "car-owner-yaml",
+            "car-spec-markdown",
+        ]
         artifact_main = await NodeManager.get_one(db=db, id=artifacts_dict["car-owner"].id)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
         diffs_dict = {str(item.display_label): item for item in diffs}
-        assert sorted(diffs_dict.keys()) == ["John2 - car-name", "John2 - car-owner", "John2 - car-owner-yaml"]
+        assert sorted(diffs_dict.keys()) == [
+            "John2 - car-converted-owner",
+            "John2 - car-name",
+            "John2 - car-owner",
+            "John2 - car-owner-yaml",
+        ]
         assert diffs_dict["John2 - car-owner"] == BranchDiffArtifact(
             branch="branch",
             id=artifacts_dict["car-owner"].id,

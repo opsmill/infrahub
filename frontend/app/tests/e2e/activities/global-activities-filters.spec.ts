@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe.fixme("Global Activities - List view and filter usage", () => {
+test.describe("Global Activities - List view and filter usage", () => {
+  test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.slow();
 
   test("Filter by branch", async ({ page }) => {
     await page.goto("/activities");
@@ -21,6 +24,7 @@ test.describe.fixme("Global Activities - List view and filter usage", () => {
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("created").nth(1)).toBeVisible();
     await page.getByRole("button", { name: "Event Type" }).click();
+    await expect(page.getByText("Node created")).toBeHidden();
     await page.getByRole("button", { name: "Event Type" }).click();
     await page.getByRole("option", { name: "Node deleted" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
@@ -53,7 +57,7 @@ test.describe.fixme("Global Activities - List view and filter usage", () => {
   test("Filter by account", async ({ page }) => {
     await page.goto("/activities");
     await page.getByRole("button", { name: "Account" }).click();
-    await page.getByRole("option", { name: "Chloe O'Brian" }).click();
+    await page.getByRole("option", { name: "Jack Bauer" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("No activities found")).toBeVisible();
   });

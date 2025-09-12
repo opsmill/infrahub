@@ -1,6 +1,7 @@
+import { gql } from "@apollo/client";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { BranchContextParams } from "@/shared/api/types";
-import { gql } from "@apollo/client";
 
 export const REMOVE_RELATIONSHIP = gql`
   mutation RelationshipRemove(

@@ -1,7 +1,7 @@
+import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+
 import {
   AnyAttribute,
   CheckboxAttribute,
@@ -21,9 +21,12 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
-import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
+import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Link } from "@/shared/components/ui/link";
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
+import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
   if (typeof data === "string" || typeof data === "number") {
@@ -60,7 +63,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "TextArea") {
-    return <MarkdownViewer markdownText={row[attribute?.name]?.value} />;
+    return <MarkdownRender markdownText={row[attribute?.name]?.value} />;
   }
 
   if (attribute?.kind === "JSON") {
@@ -136,19 +139,6 @@ export const getDisplayValue = (
   return textValue;
 };
 
-export const getObjectItemDisplayValue = (
-  row: any,
-  attribute: any,
-  schemaKindName?: iSchemaKindNameMap,
-  schemaKindLabel?: iSchemaKindNameMap
-) => {
-  return (
-    <div className="flex items-center min-w-7 min-h-7">
-      {getDisplayValue(row, attribute, schemaKindName, schemaKindLabel)}
-    </div>
-  );
-};
-
 export type FieldSchema = AttributeSchema | RelationshipSchema;
 
 export type AttributeType =
@@ -188,7 +178,9 @@ export const ObjectAttributeValue = ({
   attributeSchema: FieldSchema;
   attributeValue: AttributeType;
 }) => {
-  if (!attributeValue.value && attributeValue.value !== 0) return "-";
+  if (!attributeValue.value && attributeValue.value !== 0 && attributeValue.value !== false) {
+    return "-";
+  }
 
   switch (attributeSchema.kind as AttributeKind) {
     case ATTRIBUTE_KIND.ID:
@@ -214,7 +206,7 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.DATETIME:
       return <DateDisplay date={getTextValue(attributeValue)} />;
     case ATTRIBUTE_KIND.TEXTAREA:
-      return <MarkdownViewer markdownText={getTextValue(attributeValue)} />;
+      return <MarkdownRender markdownText={getTextValue(attributeValue)} />;
     case ATTRIBUTE_KIND.PASSWORD:
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
       return <PasswordDisplay value={getTextValue(attributeValue)} />;
@@ -245,7 +237,7 @@ export const ObjectAttributeValue = ({
       return <CodeViewer>{JSON.stringify(attributeValue.value ?? "", null, 2)}</CodeViewer>;
     default:
       return (
-        <div className="flex items-center min-w-7 min-h-7">{getTextValue(attributeValue)}</div>
+        <div className="flex min-h-7 min-w-7 items-center">{getTextValue(attributeValue)}</div>
       );
   }
 };

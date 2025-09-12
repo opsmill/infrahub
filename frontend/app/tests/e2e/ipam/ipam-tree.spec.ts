@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe.fixme("/ipam - Ipam Tree", () => {
+test.describe("/ipam - Ipam Tree", () => {
   test("load child tree item when clicking on parent tree item", async ({ page }) => {
     await page.goto("/ipam");
     await expect(page.getByTestId("ipam-tree")).toBeVisible();
@@ -45,42 +45,39 @@ test.describe.fixme("/ipam - Ipam Tree", () => {
     await page.goto("/ipam");
 
     await page.getByTestId("ipam-tree").getByRole("link", { name: "10.0.0.0/8" }).click();
-    await expect(page.getByText("Ipam IP Prefix summary")).toBeVisible();
-    await expect(page.getByText("Prefix10.0.0.0/8")).toBeVisible();
-    expect(page.url()).toContain("/ipam/prefixes/");
+    await expect(page.getByRole("heading", { name: "10.0.0.0/8" })).toBeVisible();
   });
 
-  test("verify tree count", async ({ page }) => {
-    await page.goto("/ipam/prefixes/");
-    await expect(page.getByRole("link", { name: "/8 21" })).toBeVisible();
-    await page.getByRole("treeitem", { name: "/8 21" }).getByTestId("tree-item-toggle").click();
-    await expect(page.getByRole("link", { name: "/16 16" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "10.0.0.0/16" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "10.2.0.0/" })).toBeVisible();
-  });
+  test("search an IP Prefix", async ({ page }) => {
+    await page.goto("/ipam");
 
-  test.describe("IPAM search", () => {
-    test("search an IP Prefix", async ({ page }) => {
-      await page.goto("/ipam");
-
-      await test.step("search on IPAM tree", async () => {
-        await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
-        await page.getByPlaceholder("Filter...").fill("10.2");
-        await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
-        expect(await page.getByRole("treeitem").count()).toEqual(1);
-      });
-
-      await test.step("search results are visible after navigation", async () => {
-        await page.getByRole("treeitem", { name: "10.2.0.0/16" }).click();
-        await expect(page.getByText("Prefix10.2.0.0/16")).toBeVisible();
-        await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
-        expect(await page.getByRole("treeitem").count()).toEqual(1);
-      });
-
-      await test.step("reset IPAM search", async () => {
-        await page.getByPlaceholder("Filter...").fill("");
-        await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
-      });
+    await test.step("search on IPAM tree", async () => {
+      await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
+      await page.getByPlaceholder("Filter...").fill("10.2");
+      await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
+      expect(await page.getByRole("treeitem").count()).toEqual(1);
     });
+
+    await test.step("search results are visible after navigation", async () => {
+      await page.getByRole("treeitem", { name: "10.2.0.0/16" }).click();
+      await expect(page.getByText("Prefix10.2.0.0/16")).toBeVisible();
+      await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
+      expect(await page.getByRole("treeitem").count()).toEqual(1);
+    });
+
+    await test.step("reset IPAM search", async () => {
+      await page.getByPlaceholder("Filter...").fill("");
+      await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
+    });
+  });
+
+  test("collapse IPAM tree", async ({ page }) => {
+    await page.goto("/ipam");
+
+    await expect(page.getByTestId("ipam-tree")).toBeVisible();
+    await page.getByRole("button", { name: "toggle IPAM tree" }).click();
+    await expect(page.getByTestId("ipam-tree")).toBeHidden();
+    await page.getByRole("button", { name: "toggle IPAM tree" }).click();
+    await expect(page.getByTestId("ipam-tree")).toBeVisible();
   });
 });

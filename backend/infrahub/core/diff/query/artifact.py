@@ -40,8 +40,7 @@ class ArtifactDiffQuery(Query):
 // -----------------------
 MATCH (source_artifact:%(artifact_kind)s)-[r:IS_PART_OF]->(:Root)
 WHERE r.branch IN [$source_branch_name, $target_branch_name]
-CALL {
-    WITH source_artifact
+CALL (source_artifact) {
     MATCH (source_artifact)-[r:IS_PART_OF]->(:Root)
     WHERE %(source_branch_filter)s
     RETURN r AS root_rel
@@ -50,13 +49,11 @@ CALL {
 }
 WITH source_artifact, root_rel
 WHERE root_rel.status = "active"
-CALL {
-    WITH source_artifact
+CALL (source_artifact) {
     // -----------------------
     // get the artifact's target node
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[rrel1:IS_RELATED]-(rel_node:Relationship)-[rrel2:IS_RELATED]-(target_node:Node)
         WHERE rel_node.name = $target_rel_identifier
         AND all(r IN [rrel1, rrel2] WHERE ( %(source_branch_filter)s ))
@@ -70,8 +67,7 @@ CALL {
     // -----------------------
     // get the artifact's definition node
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[rrel1:IS_RELATED]-(rel_node:Relationship)-[rrel2:IS_RELATED]-(definition_node:Node)
         WHERE rel_node.name = $definition_rel_identifier
         AND all(r IN [rrel1, rrel2] WHERE ( %(source_branch_filter)s ))
@@ -85,8 +81,7 @@ CALL {
     // -----------------------
     // get the artifact's checksum
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "checksum"
         AND all(r IN [attr_rel, value_rel] WHERE ( %(source_branch_filter)s ))
@@ -100,8 +95,7 @@ CALL {
     // -----------------------
     // get the artifact's storage_id
     // -----------------------
-    CALL {
-        WITH source_artifact
+    CALL (source_artifact) {
         OPTIONAL MATCH (source_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "storage_id"
         AND all(r IN [attr_rel, value_rel] WHERE ( %(source_branch_filter)s ))
@@ -137,13 +131,11 @@ CALL {
         ELSE NULL
     END AS source_storage_id
 }
-CALL {
+CALL (target_node, definition_node){
     // -----------------------
     // get the corresponding artifact on the target branch, if it exists
     // -----------------------
-    WITH target_node, definition_node
-    CALL {
-        WITH target_node, definition_node
+    CALL (target_node, definition_node) {
         OPTIONAL MATCH path = (target_node)-[trel1:IS_RELATED]-(trel_node:Relationship)-[trel2:IS_RELATED]-
         (target_artifact:%(artifact_kind)s)-[drel1:IS_RELATED]-(drel_node:Relationship)-[drel2:IS_RELATED]-(definition_node)
         WHERE trel_node.name = $target_rel_identifier
@@ -165,8 +157,7 @@ CALL {
     // -----------------------
     // get the artifact's checksum on target branch
     // -----------------------
-    CALL {
-        WITH target_artifact
+    CALL (target_artifact) {
         OPTIONAL MATCH (target_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "checksum"
         AND attr_rel.branch = $target_branch_name
@@ -178,8 +169,7 @@ CALL {
     // -----------------------
     // get the artifact's storage_id on target branch
     // -----------------------
-    CALL {
-        WITH target_artifact
+    CALL (target_artifact) {
         OPTIONAL MATCH (target_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "storage_id"
         AND attr_rel.branch = $target_branch_name

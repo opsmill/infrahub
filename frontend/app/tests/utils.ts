@@ -1,4 +1,4 @@
-import { type Page, expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export const saveScreenshotForDocs = async (page: Page, filename: string) => {
   if (!process.env.UPDATE_DOCS_SCREENSHOTS) return;
@@ -24,6 +24,6 @@ export const deleteBranch = async (page: Page, branchName: string) => {
   await page.getByTestId("modal-delete-confirm").click();
 };
 
-export const generateRandomBranchName = (prefix: string) => {
-  return `${prefix}-${Math.random().toString(36).substring(2, 15)}`;
+export const generateRandomBranchName = (prefix?: string) => {
+  return `${prefix ?? ""}${Math.random().toString(36).substring(2, 15)}`;
 };

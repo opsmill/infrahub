@@ -88,6 +88,8 @@ GQL_STOP = "stop"
 ContextValue = Any | Callable[[HTTPConnection], Any]
 RootValue = Any
 
+subscription_tasks = set()
+
 
 class InfrahubGraphQLApp:
     def __init__(
@@ -155,7 +157,7 @@ class InfrahubGraphQLApp:
 
             db = websocket.app.state.db
 
-            async with db.start_session() as db:
+            async with db.start_session(read_only=True) as db:
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)
                 branch = await registry.get_branch(db=db, branch=branch_name)
 
@@ -229,6 +231,7 @@ class InfrahubGraphQLApp:
                 operation_name=operation_name,
                 branch=branch,
             )
+        impacted_models = analyzed_query.query_report.impacted_models
 
         await self._evaluate_permissions(
             db=db,
@@ -280,7 +283,7 @@ class InfrahubGraphQLApp:
         GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
         GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
-        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(analyzed_query.query_report.impacted_models))
+        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(impacted_models))
 
         _, errors = analyzed_query.is_valid
         if errors:
@@ -446,7 +449,9 @@ class InfrahubGraphQLApp:
 
         asyncgen = cast(AsyncGenerator[Any, None], result)
         subscriptions[operation_id] = asyncgen
-        asyncio.create_task(self._observe_subscription(asyncgen, operation_id, websocket))
+        task = asyncio.create_task(self._observe_subscription(asyncgen, operation_id, websocket))
+        subscription_tasks.add(task)
+        task.add_done_callback(subscription_tasks.discard)
         return []
 
     async def _observe_subscription(

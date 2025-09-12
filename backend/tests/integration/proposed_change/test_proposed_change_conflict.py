@@ -21,7 +21,6 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.protocols import CoreValidator
 from infrahub.proposed_change.constants import ProposedChangeState
-from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -95,7 +94,6 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         await jesko.save(db=db)
 
-        bus_simulator.service._cache = RedisCache()
         repo_path, repo_name = car_dealership_copy
         FileRepo(name=repo_name, local_repo_base_path=repo_path, sources_directory=git_repos_source_dir_module_scope)
         client_repository = await client.create(
@@ -205,9 +203,16 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
         proposed_change_user = await create_account(db=db, name="jimmy-change-user", password="Password123")
+        # The state=open part here is to validate that the state check during creation of a
+        # proposed change still works if the default "open" state is manually specified
         proposed_change_create = await client.create(
             kind=CoreProposedChange,
-            data={"source_branch": happy_data_branch, "destination_branch": "main", "name": "happy-test"},
+            data={
+                "source_branch": happy_data_branch,
+                "destination_branch": "main",
+                "name": "happy-test",
+                "state": "open",
+            },
         )
         await proposed_change_create.save(
             request_context=RequestContext(account=ContextAccount(id=proposed_change_user.id))
@@ -228,6 +233,10 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             validator for validator in peers.values() if validator.label.value == "Artifact Validator: Ownership report"
         ][0]
         assert ownership_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+        converted_owner_artifacts = [
+            validator for validator in peers.values() if validator.label.value == "Artifact Validator: converted-owner"
+        ][0]
+        assert converted_owner_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         description_check = [
             validator for validator in peers.values() if validator.label.value == "Check: car_description_check"
         ][0]
@@ -270,11 +279,20 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert len(merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 1
         assert merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"][0]["id"] == proposed_change.id
 
-        secondary_events = await client.execute_graphql(query=QUERY_EVENT, variables={"parent__ids": merge_event_id})
-
         john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Johnny", kind=TestKind.PERSON)
         richard = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Richard", kind=TestKind.PERSON)
-        assert secondary_events["InfrahubEvent"]["count"] >= 2
+
+        # Use this sleep mechanism to wait for the events being fired
+        for _ in range(10):
+            secondary_events = await client.execute_graphql(
+                query=QUERY_EVENT, variables={"parent__ids": merge_event_id}
+            )
+            if secondary_events["InfrahubEvent"]["count"] >= 3:
+                break
+            await asyncio.sleep(1)
+
+        assert secondary_events["InfrahubEvent"]["count"] >= 3
+
         johns_events = [
             event
             for event in secondary_events["InfrahubEvent"]["edges"]
@@ -324,8 +342,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             query=QUERY_EVENT,
             variables={"related_node__ids": [proposed_change_after.id], "event_type": ["infrahub.validator.passed"]},
         )
-        assert validator_started_events["InfrahubEvent"]["count"] == 9
-        assert validator_passed_events["InfrahubEvent"]["count"] == 9
+        assert validator_started_events["InfrahubEvent"]["count"] == 10
+        assert validator_passed_events["InfrahubEvent"]["count"] == 10
         started_validators = [
             event["node"]["primary_node"]["kind"] for event in validator_started_events["InfrahubEvent"]["edges"]
         ]
@@ -337,6 +355,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             "CoreArtifactValidator",
             "CoreArtifactValidator",
             "CoreArtifactValidator",
+            "CoreArtifactValidator",
             "CoreGeneratorValidator",
             "CoreGeneratorValidator",
             "CoreRepositoryValidator",
@@ -344,6 +363,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             "CoreUserValidator",
         ]
         assert sorted(passed_validators) == [
+            "CoreArtifactValidator",
             "CoreArtifactValidator",
             "CoreArtifactValidator",
             "CoreArtifactValidator",

@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from types import TracebackType
 from typing import Any
 
@@ -35,7 +35,7 @@ class InfrahubPerformanceTest:
         self.env_vars = {}
         self.project_name = ""
         self.test_info = {}
-        self.start_time = datetime.now(UTC)
+        self.start_time = datetime.now(timezone.utc)
         self.end_time: datetime | None = None
         self.results_url = results_url
         self.scraper_endpoint = ""
@@ -57,7 +57,7 @@ class InfrahubPerformanceTest:
 
     def finalize(self, session: pytest.Session) -> None:
         if self.initialized:
-            self.end_time = datetime.now(UTC)
+            self.end_time = datetime.now(timezone.utc)
             self.extract_test_session_information(session)
             self.send_results()
 
@@ -100,7 +100,7 @@ class InfrahubPerformanceTest:
         return self
 
     def fetch_metrics(self) -> None:
-        with httpx.Client() as client:
+        with httpx.Client(timeout=30.0) as client:
             # Get Infrahub metrics
             response = client.post(
                 url=self.scraper_endpoint,
@@ -129,7 +129,7 @@ class InfrahubPerformanceTest:
         if not exc_type and self.active_measurements:
             self.add_measurement(
                 definition=self.active_measurements.definition,
-                value=(datetime.now(UTC) - self.active_measurements.start_time).total_seconds() * 1000,
+                value=(datetime.now(timezone.utc) - self.active_measurements.start_time).total_seconds() * 1000,
                 context=self.active_measurements.context,
             )
 
@@ -158,9 +158,12 @@ class InfrahubPerformanceTest:
             "kind": PERFORMANCE_TEST_KIND,
             "payload_format": PERFORMANCE_TEST_VERSION,
             "data": data,
-            "checksum": hashlib.sha256(json.dumps(data).encode()).hexdigest(),
+            "checksum": hashlib.sha256(json.dumps(data, separators=(",", ":")).encode()).hexdigest(),
         }
 
         with httpx.Client() as client:
-            response = client.post(self.results_url, json=payload)
-            response.raise_for_status()
+            try:
+                response = client.post(self.results_url, json=payload)
+                response.raise_for_status()
+            except Exception as exc:
+                print(exc)

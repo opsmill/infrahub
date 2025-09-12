@@ -1,16 +1,3 @@
-import { QSP } from "@/config/qsp";
-import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/addRelationship";
-import { Permission } from "@/entities/permission/types";
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { useMutation } from "@/shared/api/graphql/useQuery";
-import { queryClient } from "@/shared/api/rest/client";
-import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import DynamicForm from "@/shared/components/form/dynamic-form";
-import { SelectOption } from "@/shared/components/inputs/select-old";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
@@ -18,14 +5,36 @@ import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
+import { QSP } from "@/config/qsp";
+
+import { useMutation } from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import DynamicForm from "@/shared/components/form/dynamic-form";
+import ObjectForm from "@/shared/components/form/object-form";
+import { FormContext } from "@/shared/components/form/utils/form-context";
+import { SelectOption } from "@/shared/components/inputs/select-old";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
+import { Permission } from "@/entities/permission/types";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
+  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
 }
 
 export function RelationshipsButtons({
   permission,
   schema: parentSchema,
+  objectDetailsData,
 }: RelationshipsButtonsProps) {
   const { objectKind, objectid } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
@@ -35,11 +44,15 @@ export function RelationshipsButtons({
 
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
-  const relationshipGeneric = parentGeneric?.relationships?.find(
-    (r) => r?.name === relationshipTab
-  );
+  const relationshipGeneric = parentGeneric?.relationships?.find((r) => {
+    return r?.name === relationshipTab;
+  });
   const relationshipSchemaData = relationshipSchema || relationshipGeneric;
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
+  const peerSchema = useSchema(relationshipSchemaData?.peer);
+  const peerRelationshipSchema = peerSchema.schema?.relationships?.find((r) => {
+    return r.peer === objectKind;
+  });
 
   const [showAddDrawer, setShowAddDrawer] = useState(false);
 
@@ -51,7 +64,7 @@ export function RelationshipsButtons({
 
       if (relatedSchema) {
         options.push({
-          id: relatedSchema.kind,
+          id: relatedSchema.kind!,
           name: relatedSchema.name,
         });
       }
@@ -61,11 +74,15 @@ export function RelationshipsButtons({
 
     if (relatedSchema) {
       options.push({
-        id: relatedSchema.kind,
+        id: relatedSchema.kind!,
         name: relatedSchema.label ?? relatedSchema.name,
       });
     }
   }
+
+  const handleRefetch = async () => {
+    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+  };
 
   const handleSubmit = async (data: any) => {
     const { relation } = data;
@@ -79,12 +96,7 @@ export function RelationshipsButtons({
         },
       });
 
-      await graphqlClient.refetchQueries({
-        include: [objectKind!, `GetObjectRelationships_${objectKind}`],
-      });
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey.includes("objects"),
-      });
+      await handleRefetch();
 
       toast(
         <Alert
@@ -124,25 +136,43 @@ export function RelationshipsButtons({
         open={showAddDrawer}
         setOpen={setShowAddDrawer}
       >
-        <DynamicForm
-          fields={[
-            {
-              name: "relation",
-              label: relationshipSchema?.label,
-              type: "relationship",
-              relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-              schema: relationshipSchemaData,
-              options,
-            },
-          ]}
-          onSubmit={async ({ relation }) => {
-            await handleSubmit({ relation: relation.value });
-          }}
-          onCancel={() => {
-            setShowAddDrawer(false);
-          }}
-          className="w-full p-4"
-        />
+        <FormContext value={{ parentSchema, parentData: objectDetailsData }}>
+          {parentSchema &&
+          relationshipSchemaData?.kind === "Component" &&
+          peerRelationshipSchema?.kind === "Parent" &&
+          peerRelationshipSchema.optional === false ? (
+            <ObjectForm
+              onSuccess={async () => {
+                await handleRefetch();
+                setShowAddDrawer(false);
+              }}
+              onCancel={() => {
+                setShowAddDrawer(false);
+              }}
+              kind={relationshipSchemaData?.peer!}
+            />
+          ) : (
+            <DynamicForm
+              fields={[
+                {
+                  name: "relation",
+                  label: relationshipSchema?.label!,
+                  type: "relationship",
+                  relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
+                  schema: relationshipSchemaData,
+                  options,
+                },
+              ]}
+              onSubmit={async ({ relation }) => {
+                await handleSubmit({ relation: relation?.value });
+              }}
+              onCancel={() => {
+                setShowAddDrawer(false);
+              }}
+              className="w-full p-4"
+            />
+          )}
+        </FormContext>
       </SlideOver>
     </>
   );

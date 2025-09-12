@@ -1,5 +1,6 @@
-import { getInfrahubAccountToken } from "@/entities/user-profile/domain/get-infrahub-account-token";
 import { queryOptions, useQuery } from "@tanstack/react-query";
+
+import { getInfrahubAccountToken } from "@/entities/user-profile/domain/get-infrahub-account-token";
 
 export function getInfrahubAccountTokenQueryOptions() {
   return queryOptions({

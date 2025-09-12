@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.node import InfrahubNode
 
+    from infrahub.core.branch.models import Branch
+
 
 class TestDeleteAgnosticRel(TestInfrahubApp):
     @pytest.fixture(scope="class")
@@ -102,3 +104,68 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
             f"Cannot delete TestCar '{car_2.id}'. It is linked to mandatory relationship car on node TestRoofrack '{roofrack_2.id}'"
             in exc.value.message
         )
+
+    async def test_delete_branch(
+        self, client: InfrahubClient, car_2: InfrahubNode, roofrack_2: InfrahubNode, db
+    ) -> None:
+        branch2 = await client.branch.create(branch_name="branch2")
+
+        owner = await client.create(kind="TestPerson", name="owner", branch=branch2.name)
+        await owner.save()
+
+        car = await client.create(kind="TestCar", name="car_name", agnostic_owner=owner)
+        await car.save()
+
+        deleted_ok = await client.branch.delete(branch_name=branch2.name)
+        assert deleted_ok
+
+        # Make sure owner has been correctly deleted
+        query = """
+        MATCH (n: Node)
+        WHERE n.uuid = $node_uuid
+        RETURN n
+        """
+
+        results = await db.execute_query(query=query, params={"node_uuid": owner.id})
+        assert len(results) == 0
+
+        # Make sure all nodes are connected to root
+
+        query = """
+        MATCH (n: Node)
+        WHERE NOT exists((n)-[:IS_PART_OF]-(:Root))
+        RETURN n
+        """
+
+        results = await db.execute_query(query=query)
+        assert len(results) == 0
+
+    async def test_delete_branch_with_aware_owner_relationship(
+        self, client: InfrahubClient, default_branch: Branch, car_2: InfrahubNode, roofrack_2: InfrahubNode, db
+    ) -> None:
+        aware_owner = await client.create(kind="TestPerson", name="aware_owner", branch=default_branch.name)
+        await aware_owner.save()
+        agnostic_owner = await client.create(kind="TestPerson", name="agnostic_owner", branch=default_branch.name)
+        await agnostic_owner.save()
+
+        branch2 = await client.branch.create(branch_name="branch2")
+
+        car = await client.create(
+            kind="TestCar", name="radical_car", aware_owner=aware_owner, agnostic_owner=agnostic_owner
+        )
+        await car.save()
+
+        deleted_ok = await client.branch.delete(branch_name=branch2.name)
+        assert deleted_ok
+
+        # Verify no orphaned Relationships
+        query = """
+        MATCH (rel:Relationship)-[:IS_RELATED]-(peer:Node)
+        WITH DISTINCT rel, peer
+        WITH rel, count(*) AS num_peers
+        WHERE num_peers < 2
+        RETURN rel
+        """
+
+        results = await db.execute_query(query=query)
+        assert len(results) == 0

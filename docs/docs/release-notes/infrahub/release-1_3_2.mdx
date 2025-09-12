@@ -1,0 +1,32 @@
+---
+title: Release 1.3.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.3.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>June 30th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Amsterdam</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.3.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.3.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Improve performance of uniqueness constraint checks during create/update/upsert mutations by allowing ordering elements from more specific to less specific within a constraint group ([#6377](https://github.com/opsmill/infrahub/issues/6377))
+- Fixed: min/max constraints no longer trigger on empty values when the field is optional. ([#6671](https://github.com/opsmill/infrahub/issues/6671))
+- Object template ([#6724](https://github.com/opsmill/infrahub/issues/6724))
+  - Fixed "Kind" filter in object template list view.
+  - Fixed search in object template selector during creation form
+- Improve performance when calculating a large diff with many added and/or deleted node (>2,000) ([#6751](https://github.com/opsmill/infrahub/issues/6751))

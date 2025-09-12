@@ -1,7 +1,5 @@
 // type AlertProps = {};
 
-import Accordion from "@/shared/components/display/accordion";
-import { classNames } from "@/shared/utils/common";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -11,6 +9,9 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
+
+import Accordion from "@/shared/components/display/accordion";
+import { classNames } from "@/shared/utils/common";
 
 export enum ALERT_TYPES {
   SUCCESS,
@@ -33,21 +34,21 @@ export const Alert = (props: AlertProps) => {
   const getIcon = () => {
     switch (type) {
       case ALERT_TYPES.SUCCESS: {
-        return <CheckCircleIcon className="w-4 h-4 text-green-400" aria-hidden="true" />;
+        return <CheckCircleIcon className="h-4 w-4 text-green-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.INFO: {
         return (
-          <InformationCircleIcon className="w-4 h-4 text-custom-blue-500" aria-hidden="true" />
+          <InformationCircleIcon className="h-4 w-4 text-custom-blue-500" aria-hidden="true" />
         );
       }
       case ALERT_TYPES.WARNING: {
-        return <ExclamationTriangleIcon className="w-4 h-4 text-yellow-400" aria-hidden="true" />;
+        return <ExclamationTriangleIcon className="h-4 w-4 text-yellow-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.ERROR: {
-        return <XCircleIcon className="w-4 h-4 text-red-400" aria-hidden="true" />;
+        return <XCircleIcon className="h-4 w-4 text-red-400" aria-hidden="true" />;
       }
       default: {
-        return <LightBulbIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />;
+        return <LightBulbIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />;
       }
     }
   };
@@ -109,14 +110,14 @@ export const Alert = (props: AlertProps) => {
 
   const alertClasses = getClassName();
 
-  const alertMessage = <p className={classNames("text-sm ", alertClasses.text)}>{message}</p>;
+  const alertMessage = <p className={classNames("text-sm", alertClasses.text)}>{message}</p>;
 
   const alertDetails = <p className={classNames("text-sm", alertClasses.text)}>{details}</p>;
 
   return (
     <div className={classNames("rounded-m p-4", alertClasses.container)}>
       <div className="flex items-center">
-        <div className="flex-shrink-0 flex items-start">{getIcon()}</div>
+        <div className="flex shrink-0 items-start">{getIcon()}</div>
         <div className="ml-3">
           {details ? <Accordion title={alertMessage}>{alertDetails}</Accordion> : alertMessage}
         </div>
@@ -125,13 +126,13 @@ export const Alert = (props: AlertProps) => {
             <button
               type="button"
               className={classNames(
-                "inline-flex rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2",
+                "inline-flex rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2",
                 alertClasses?.button
               )}
               onClick={handleDismiss}
               data-testid="close-alert"
             >
-              <XMarkIcon className="w-4 h-4" aria-hidden="true" />
+              <XMarkIcon className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>

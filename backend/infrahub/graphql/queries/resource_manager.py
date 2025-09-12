@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Float, Int, List, NonNull, ObjectType, String
-from infrahub_sdk.utils import extract_fields_first_node
+from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -16,6 +15,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolGetIdentifiers,
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
+from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class IPPoolUtilizationResource(ObjectType):
     id = Field(String, required=True, description="The ID of the current resource")
     display_label = Field(String, required=True, description="The common name of the resource")
     kind = Field(String, required=True, description="The resource kind")
-    weight = Field(Int, required=True, description="The relative weight of this resource.")
+    weight = Field(BigInt, required=True, description="The relative weight of this resource.")
     utilization = Field(Float, required=True, description="The overall utilization of the resource.")
     utilization_branches = Field(
         Float, required=True, description="The utilization of the resource on all non default branches."
@@ -70,7 +70,7 @@ def _validate_pool_type(pool_id: str, pool: CoreNode | None = None) -> CoreNode:
 
 
 class PoolAllocated(ObjectType):
-    count = Field(Int, required=True, description="The number of allocations within the selected pool.")
+    count = Field(BigInt, required=True, description="The number of allocations within the selected pool.")
     edges = Field(List(of_type=NonNull(PoolAllocatedEdge), required=True), required=True)
 
     @staticmethod
@@ -87,7 +87,7 @@ class PoolAllocated(ObjectType):
             id=pool_id, db=graphql_context.db, branch=graphql_context.branch
         )
 
-        fields = await extract_fields_first_node(info=info)
+        fields = extract_graphql_fields(info=info)
 
         allocated_kinds: list[str] = []
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
@@ -174,7 +174,7 @@ class PoolAllocated(ObjectType):
 
 
 class PoolUtilization(ObjectType):
-    count = Field(Int, required=True, description="The number of resources within the selected pool.")
+    count = Field(BigInt, required=True, description="The number of resources within the selected pool.")
     utilization = Field(Float, required=True, description="The overall utilization of the pool.")
     utilization_branches = Field(Float, required=True, description="The utilization in all non default branches.")
     utilization_default_branch = Field(
@@ -207,7 +207,7 @@ class PoolUtilization(ObjectType):
         utilization_getter = PrefixUtilizationGetter(
             db=db, ip_prefixes=list(resources_map.values()), at=graphql_context.at
         )
-        fields = await extract_fields_first_node(info=info)
+        fields = extract_graphql_fields(info=info)
         response: dict[str, Any] = {}
         total_utilization = None
         default_branch_utilization = None
@@ -306,7 +306,13 @@ async def resolve_number_pool_allocation(
 async def resolve_number_pool_utilization(
     db: InfrahubDatabase, pool: CoreNode, at: Timestamp | str | None, branch: Branch
 ) -> dict:
-    number_pool = NumberUtilizationGetter(db=db, pool=pool, at=at, branch=branch)
+    """
+    Returns a mapping containg utilization info of a number pool.
+    The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
+    """
+
+    core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind="CoreNumberPool")
+    number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
     await number_pool.load_data()
 
     return {

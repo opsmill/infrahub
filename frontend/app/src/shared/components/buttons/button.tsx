@@ -1,6 +1,7 @@
+import { ButtonHTMLAttributes, forwardRef } from "react";
+
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
-import { ButtonHTMLAttributes, forwardRef } from "react";
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   type?: "button" | "reset" | "submit";
@@ -23,9 +24,9 @@ export enum BUTTON_TYPES {
 
 // Get default class name and avoid certain class if needed (ex: no rounded button for tabs-button)
 const DEFAULT_CLASS = (className?: string, type?: BUTTON_TYPES) => `
-  ${className?.includes("rounded") ? "" : "rounded-md"}
+  ${className?.includes("rounded-sm") ? "" : "rounded-md"}
   ${className?.includes("border") ? "" : "border border-gray-300"}
-  ${className?.includes("shadow") || type === BUTTON_TYPES.INVISIBLE ? "" : "shadow-sm"}
+  ${className?.includes("shadow-sm") || type === BUTTON_TYPES.INVISIBLE ? "" : "shadow-xs"}
   ${className?.includes("p-") || className?.includes("px-") ? "" : "px-2.5"}
   ${className?.includes("p-") || className?.includes("py-") ? "" : "py-1.5"}
   inline-flex items-center
@@ -109,7 +110,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       onClick={handleClick}
       disabled={isLoading ? true : propsToPass.disabled}
     >
-      {isLoading ? <Spinner className="mr-2" /> : children}
+      {isLoading ? <Spinner className="mx-2" /> : children}
     </button>
   );
 });

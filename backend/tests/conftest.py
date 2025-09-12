@@ -5,12 +5,15 @@ import os
 import sys
 import time
 from contextlib import ExitStack
+from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
 import ujson
+from fast_depends import Provider
+from fast_depends import dependency_provider as provider
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 from prefect import settings as prefect_settings
@@ -23,6 +26,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import (
+    add_indexes,
     create_branch,
     create_default_branch,
     create_global_branch,
@@ -42,6 +46,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
+from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from tests.adapters.log import FakeLogger
@@ -62,6 +67,8 @@ from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_p
 
 ResponseClass = TypeVar("ResponseClass")
 DEFAULT_TESTING_LOG_LEVEL = "WARNING"
+
+pytest.register_assert_rewrite("tests.db_snapshot")
 
 
 def pytest_addoption(parser):
@@ -103,6 +110,11 @@ def event_loop():
     loop.close()
 
 
+@pytest.fixture
+def dependency_provider() -> Provider:
+    return provider
+
+
 @pytest.fixture(scope="module")
 async def db(
     neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module
@@ -116,6 +128,7 @@ async def db(
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
     driver = InfrahubDatabase(driver=await get_db(retry=5))
+    await add_indexes(db=driver)
 
     yield driver
 
@@ -160,6 +173,14 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
         registry.default_ipnamespace = ip_namespace.id
         return ip_namespace
     return None
+
+
+@pytest.fixture
+def default_permission_backend() -> Generator[None, Any, Any]:
+    previous_backends = registry.permission_backends
+    registry.permission_backends = [LocalPermissionBackend()]
+    yield
+    registry.permission_backends = previous_backends
 
 
 @pytest.fixture
@@ -632,7 +653,7 @@ async def car_person_schema_branch_local(
 
 
 @pytest.fixture
-async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
     schema: dict[str, Any] = {
         "generics": [
             {
@@ -697,7 +718,6 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
-                    {"name": "bag", "kind": "Text", "optional": True, "unique": True},
                 ],
                 "relationships": [
                     {
@@ -719,14 +739,93 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
         ],
     }
 
+    return schema
+
+
+@pytest.fixture
+async def animal_person_schema_person_no_default_filter(
+    db: InfrahubDatabase, default_branch, node_group_schema, data_schema, animal_person_schema_unregistered
+) -> SchemaBranch:
+    schema_dict = deepcopy(animal_person_schema_unregistered)
+    del schema_dict["nodes"][2]["default_filter"]
+    return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
+
+
+@pytest.fixture
+async def person_schema_unique_attr_non_hfid_unregistered(
+    db: InfrahubDatabase, node_group_schema, data_schema
+) -> SchemaRoot:
+    schema: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "bag", "kind": "Text", "unique": True},
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["owner__name__value", "name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "color", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "owner", "peer": "TestPerson", "cardinality": "one", "optional": False},
+                    {
+                        "name": "things",
+                        "peer": "TestThing",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "carthings",
+                    },
+                ],
+            },
+            {
+                "name": "Thing",
+                "namespace": "Test",
+                "display_labels": ["value__value"],
+                "attributes": [
+                    {"name": "value", "kind": "Text"},
+                ],
+                "relationships": [
+                    {
+                        "name": "car",
+                        "peer": "TestCar",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "carthings",
+                    }
+                ],
+            },
+        ],
+    }
+
     return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def person_schema_unique_attr_non_hfid(
+    db: InfrahubDatabase, default_branch: Branch, person_schema_unique_attr_non_hfid_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(
+        schema=person_schema_unique_attr_non_hfid_unregistered, branch=default_branch.name
+    )
 
 
 @pytest.fixture
 async def animal_person_schema(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered
 ) -> SchemaBranch:
-    return registry.schema.register_schema(schema=animal_person_schema_unregistered, branch=default_branch.name)
+    schema_root = SchemaRoot(**animal_person_schema_unregistered)
+    return registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1139,3 +1238,283 @@ async def branch(request, db: InfrahubDatabase, default_branch: Branch):
         return default_branch
 
     return await create_branch(branch_name=str(request.param), db=db)
+
+
+@pytest.fixture
+async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testconv",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_car",
+                        "peer": "TestconvCar",
+                        "cardinality": "one",
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "fastest_cars",
+                        "peer": "TestconvCar",
+                        "cardinality": "many",
+                        "identifier": "person__fastest_cars",
+                    },
+                    {
+                        "name": "bags",
+                        "peer": "TestconvBag",
+                        "cardinality": "many",
+                        "identifier": "person__bag",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testconv",
+                "inherit_from": ["TestconvPersonGeneric"],
+                "relationships": [],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testconv",
+                "inherit_from": ["TestconvPersonGeneric"],
+                "attributes": [
+                    {"name": "age", "kind": "Number"},
+                    {"name": "citizenship", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "worst_car",
+                        "peer": "TestconvCar",
+                        "cardinality": "one",
+                        "identifier": "person__worst_car",
+                    },
+                    {
+                        "name": "slowest_cars",
+                        "peer": "TestconvCar",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "person__slowest_cars",
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testconv",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestconvPersonGeneric",
+                        "cardinality": "one",
+                        "identifier": "person__fastest_cars",
+                        "optional": True,
+                    },
+                ],
+            },
+            {
+                "name": "Bag",
+                "namespace": "Testconv",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestconvPersonGeneric",
+                        "cardinality": "one",
+                        "identifier": "person__bag",
+                        "optional": False,
+                    },
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_mandatory_owner(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testmo",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "my_car",
+                        "peer": "TestmoCar",
+                        "cardinality": "one",
+                        "identifier": "person__mandatory_owner",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testmo",
+                "inherit_from": ["TestmoPersonGeneric"],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testmo",
+                "inherit_from": ["TestmoPersonGeneric"],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testmo",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "mandatory_owner",
+                        "peer": "TestmoPersonGeneric",
+                        "cardinality": "one",
+                        "optional": False,
+                        "identifier": "person__mandatory_owner",
+                    }
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testbs",
+                "human_friendly_id": ["name_agnostic__value"],
+                "attributes": [
+                    {
+                        "name": "name_agnostic",
+                        "kind": "Text",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testbs",
+                "inherit_from": ["TestbsPersonGeneric"],
+                "attributes": [
+                    {
+                        "name": "age_1_agnostic",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                    {
+                        "name": "height_1_aware",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testbs",
+                "inherit_from": ["TestbsPersonGeneric"],
+                "attributes": [
+                    {"name": "age_2_aware", "kind": "Number", "unique": True, "branch": BranchSupportType.AWARE.value},
+                    {
+                        "name": "height_2_agnostic",
+                        "kind": "Number",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testbs",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testud",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {
+                        "name": "name",
+                        "kind": "Text",
+                        "unique": True,
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testud",
+                "inherit_from": ["TestudPersonGeneric"],
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testud",
+                "inherit_from": ["TestudPersonGeneric"],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testud",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "unidirectional_owner",
+                        "peer": "TestudPersonGeneric",
+                        "cardinality": "one",
+                        "optional": False,
+                    },
+                ],
+            },
+        ],
+    }
+
+    return schema

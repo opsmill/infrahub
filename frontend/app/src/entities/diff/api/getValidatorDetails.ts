@@ -1,4 +1,4 @@
-import Handlebars from "handlebars";
+import Handlebars from "@/shared/libs/handlebars";
 
 export const getValidatorDetails = Handlebars.compile(`
 query GET_VALIDATOR_DETAILS {

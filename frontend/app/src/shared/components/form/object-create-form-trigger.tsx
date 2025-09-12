@@ -1,11 +1,14 @@
-import { ARTIFACT_OBJECT } from "@/config/constants";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ObjectForm from "@/shared/components/form/object-form";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+
+import { ARTIFACT_OBJECT } from "@/config/constants";
+
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ObjectForm from "@/shared/components/form/object-form";
+
+import { Permission } from "@/entities/permission/types";
+import { ModelSchema } from "@/entities/schema/types";
+
 import { Button, ButtonProps } from "../buttons/button-primitive";
 import { Tooltip } from "../ui/tooltip";
 
@@ -40,7 +43,7 @@ export const ObjectCreateFormTrigger = ({
           onClick={() => setShowCreateDrawer(true)}
           {...props}
         >
-          <Icon icon="mdi:plus" className="text-sm mr-1.5" />
+          <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
           Add {schema?.label}
         </Button>
       </Tooltip>
@@ -60,7 +63,6 @@ export const ObjectCreateFormTrigger = ({
         <ObjectForm
           onSuccess={async (result: any) => {
             setShowCreateDrawer(false);
-            await graphqlClient.refetchQueries({ include: [schema.kind!] });
             if (onSuccess) onSuccess(result);
           }}
           onCancel={() => setShowCreateDrawer(false)}

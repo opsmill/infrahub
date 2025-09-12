@@ -1,8 +1,11 @@
-import { ModelSchema } from "@/entities/schema/types";
-import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
-import { buildRelationshipSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema.test";
-import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect } from "vitest";
+
+import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
+import { Filter } from "@/shared/hooks/useFilters";
+
+import { ModelSchema } from "@/entities/schema/types";
+
+import { generateRelationshipSchema } from "../../../fake/schema";
 
 describe("getObjectFromFilters - test", () => {
   it("returns value for a attribute correctly", () => {
@@ -41,7 +44,7 @@ describe("getObjectFromFilters - test", () => {
     ];
     const schema = {
       relationships: [
-        buildRelationshipSchema({ name: "relationship1", cardinality: "one", peer: "peer1" }),
+        generateRelationshipSchema({ name: "relationship1", cardinality: "one", peer: "peer1" }),
       ],
     } as ModelSchema;
 
@@ -64,7 +67,7 @@ describe("getObjectFromFilters - test", () => {
     ];
     const schema = {
       relationships: [
-        buildRelationshipSchema({ name: "relationship1", cardinality: "many", peer: "peer1" }),
+        generateRelationshipSchema({ name: "relationship1", cardinality: "many", peer: "peer1" }),
       ],
     } as ModelSchema;
 

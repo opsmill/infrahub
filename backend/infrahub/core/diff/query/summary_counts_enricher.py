@@ -46,70 +46,59 @@ WHERE ($diff_id IS NOT NULL AND root.uuid = $diff_id)
 OR ($tracking_id IS NOT NULL AND root.tracking_id = $tracking_id AND root.diff_branch = $diff_branch_name)
 MATCH (root)-[:DIFF_HAS_NODE]->(dn:DiffNode)
 WHERE $node_uuids IS NULL OR dn.uuid IN $node_uuids
-CALL {
+CALL (dn) {
     // ----------------------
     // handle attribute count updates
     // ----------------------
-    WITH dn
     MATCH (dn)-[:DIFF_HAS_ATTRIBUTE]->(da:DiffAttribute)
-    CALL {
-        WITH da
+    CALL (da) {
         OPTIONAL MATCH (da)-[:DIFF_HAS_PROPERTY]->(dp:DiffProperty)-[:DIFF_HAS_CONFLICT]->(dc:DiffConflict)
-        WITH da, count(dc) AS num_conflicts
+        WITH count(dc) AS num_conflicts
         SET da.num_conflicts = num_conflicts
         SET da.contains_conflict = (num_conflicts > 0)
     }
-    CALL {
-        WITH da
+    CALL (da) {
         OPTIONAL MATCH (da)-[:DIFF_HAS_PROPERTY]->(dp:DiffProperty {action: "added"})
-        WITH da, count(dp.action) AS num_added
+        WITH count(dp.action) AS num_added
         SET da.num_added = num_added
     }
-    CALL {
-        WITH da
+    CALL (da) {
         OPTIONAL MATCH (da)-[:DIFF_HAS_PROPERTY]->(dp:DiffProperty {action: "updated"})
-        WITH da, count(dp.action) AS num_updated
+        WITH count(dp.action) AS num_updated
         SET da.num_updated = num_updated
     }
-    CALL {
-        WITH da
+    CALL (da) {
         OPTIONAL MATCH (da)-[:DIFF_HAS_PROPERTY]->(dp:DiffProperty {action: "removed"})
-        WITH da, count(dp.action) AS num_removed
+        WITH count(dp.action) AS num_removed
         SET da.num_removed = num_removed
     }
 }
-CALL {
-    WITH dn
+CALL (dn) {
     MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship)
-    CALL {
+    CALL (dr) {
         // ----------------------
         // handle relationship element count updates
         // ----------------------
-        WITH dr
         MATCH (dr)-[:DIFF_HAS_ELEMENT]->(dre:DiffRelationshipElement)
-        CALL {
-            WITH dre
+        CALL (dre) {
             OPTIONAL MATCH (dre)-[*..4]->(dc:DiffConflict)
-            WITH dre, count(dc) AS num_conflicts
+            WITH count(dc) AS num_conflicts
             SET dre.num_conflicts = num_conflicts
             SET dre.contains_conflict = (num_conflicts > 0)
         }
-        CALL {
-            WITH dre
+        CALL (dre) {
             OPTIONAL MATCH (dre)-[:DIFF_HAS_PROPERTY]->(dp:DiffProperty {action: "added"})
-            WITH dre, count(dp.action) AS num_added
+            WITH count(dp.action) AS num_added
             SET dre.num_added = num_added
         }
-        CALL {
-            WITH dre
+        CALL (dre) {
             OPTIONAL MATCH (dre)-[:DIFF_HAS_PROPERTY]->(dp:DiffProperty {action: "updated"})
-            WITH dre, count(dp.action) AS num_updated
+            WITH count(dp.action) AS num_updated
             SET dre.num_updated = num_updated
         }
-        CALL {
-            WITH dre
+        CALL (dre) {
             OPTIONAL MATCH (dre)-[:DIFF_HAS_PROPERTY]->(dp:DiffProperty {action: "removed"})
-            WITH dre, count(dp.action) AS num_removed
+            WITH count(dp.action) AS num_removed
             SET dre.num_removed = num_removed
         }
     }
@@ -121,22 +110,19 @@ CALL {
     SET dr.num_conflicts = num_conflicts
     SET dr.contains_conflict = (num_conflicts > 0)
     WITH dr
-    CALL {
-        WITH dr
+    CALL (dr) {
         OPTIONAL MATCH (dr)-[:DIFF_HAS_ELEMENT]->(dre:DiffRelationshipElement {action: "added"})
-        WITH dr, count(dre.action) AS num_added
+        WITH count(dre.action) AS num_added
         SET dr.num_added = num_added
     }
-    CALL {
-        WITH dr
+    CALL (dr) {
         OPTIONAL MATCH (dr)-[:DIFF_HAS_ELEMENT]->(dre:DiffRelationshipElement {action: "updated"})
-        WITH dr, count(dre.action) AS num_updated
+        WITH count(dre.action) AS num_updated
         SET dr.num_updated = num_updated
     }
-    CALL {
-        WITH dr
+    CALL (dr) {
         OPTIONAL MATCH (dr)-[:DIFF_HAS_ELEMENT]->(dre:DiffRelationshipElement {action: "removed"})
-        WITH dr, count(dre.action) AS num_removed
+        WITH count(dre.action) AS num_removed
         SET dr.num_removed = num_removed
     }
 }
@@ -189,19 +175,16 @@ WHERE $node_uuids IS NULL OR dn.uuid IN $node_uuids
 // handle node count updates
 // ----------------------
 WITH root, dn, coalesce(dn.num_conflicts, 0) AS previous_num_conflicts
-CALL {
+CALL (dn) {
     // ----------------------
     // handle node num_conflicts update
     // ----------------------
-    WITH dn
     OPTIONAL MATCH (dn)-[:DIFF_HAS_ATTRIBUTE]->(da:DiffAttribute {contains_conflict: TRUE})
     RETURN sum(da.num_conflicts) AS num_conflicts
     UNION ALL
-    WITH dn
     OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship {contains_conflict: TRUE})
     RETURN sum(dr.num_conflicts) AS num_conflicts
     UNION ALL
-    WITH dn
     OPTIONAL MATCH (dn)-[:DIFF_HAS_CONFLICT]->(dc:DiffConflict)
     RETURN count(dc) AS num_conflicts
 }
@@ -209,17 +192,16 @@ WITH root, dn, previous_num_conflicts, sum(num_conflicts) AS updated_num_conflic
 SET dn.num_conflicts = updated_num_conflicts
 SET dn.contains_conflict = (updated_num_conflicts > 0)
 WITH root, dn, updated_num_conflicts - previous_num_conflicts AS num_conflicts_delta
-CALL {
+CALL (dn) {
     // ----------------------
     // handle node added/updated/removed updates
     // ----------------------
-    WITH dn
     OPTIONAL MATCH (dn)-[:DIFF_HAS_ATTRIBUTE]->(da:DiffAttribute)
-    WITH dn, collect(da.action) AS attr_actions
+    WITH collect(da.action) AS attr_actions
     OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship)
-    WITH dn, attr_actions, collect(dr.action) AS rel_actions
-    WITH dn, attr_actions + rel_actions AS actions
-    WITH dn, reduce(counts = [0,0,0], a IN actions |
+    WITH attr_actions, collect(dr.action) AS rel_actions
+    WITH attr_actions + rel_actions AS actions
+    WITH reduce(counts = [0,0,0], a IN actions |
         CASE
             WHEN a = "added" THEN [counts[0] + 1, counts[1], counts[2]]
             WHEN a = "updated" THEN [counts[0], counts[1] + 1, counts[2]]
@@ -227,7 +209,7 @@ CALL {
             ELSE counts
         END
     ) AS action_counts
-    WITH dn, action_counts[0] AS num_added, action_counts[1] AS num_updated, action_counts[2] AS num_removed
+    WITH action_counts[0] AS num_added, action_counts[1] AS num_updated, action_counts[2] AS num_removed
     SET dn.num_added = num_added
     SET dn.num_updated = num_updated
     SET dn.num_removed = num_removed
@@ -236,8 +218,7 @@ CALL {
 // handle conflict updates for parent nodes
 // ----------------------
 WITH root, dn, num_conflicts_delta
-CALL {
-    WITH dn, num_conflicts_delta
+CALL (dn, num_conflicts_delta) {
     OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP|DIFF_HAS_NODE*1..]->(parent_node:DiffNode)
     SET parent_node.num_conflicts = parent_node.num_conflicts + num_conflicts_delta
     SET parent_node.contains_conflict = (parent_node.num_conflicts > 0)
@@ -246,8 +227,7 @@ CALL {
 // handle root count updates
 // ----------------------
 WITH root, sum(num_conflicts_delta) AS total_conflicts_delta
-CALL {
-    WITH root, total_conflicts_delta
+CALL (root, total_conflicts_delta) {
     SET root.num_conflicts = coalesce(root.num_conflicts, 0) + total_conflicts_delta
     SET root.contains_conflict = root.num_conflicts > 0
     WITH root

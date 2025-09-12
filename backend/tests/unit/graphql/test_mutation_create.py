@@ -3,10 +3,15 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -208,6 +213,46 @@ async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branc
     assert result.errors
     assert len(result.errors) == 1
     assert "Violates uniqueness constraint" in result.errors[0].message
+
+
+async def test_attr_optional_uniqueness_constraint_create(
+    db: InfrahubDatabase, default_branch: Branch, optional_attr_uniqueness_constraint_schema: NodeSchema
+) -> None:
+    query = """
+    mutation {
+        TestAttrOptionalUniquenessSchemaCreate(
+            data: {
+                description: { value: "the name is null" }
+            }
+        ){
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Violates uniqueness constraint 'name-description'"
 
 
 async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
@@ -792,6 +837,186 @@ async def test_create_object_with_multiple_relationships_flag_property(
     assert rels[2].is_protected is True
 
 
+async def test_create_relationship_for_node_with_migrated_kind(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_internal_models_schema,
+    car_person_schema: Node,
+    person_alfred_main: Node,
+):
+    schema = SchemaRoot(generics=[core_group], nodes=[core_standard_group])
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    branch = await create_branch(db=db, branch_name="migrated-branch")
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    person_schema = schema.get(name="TestPerson")
+    person_schema.name = "GreatPerson"
+    new_person_kind = "TestGreatPerson"
+    assert person_schema.kind == new_person_kind
+    registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestPerson"),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_person_kind, field_name="name"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+    core_node_schema = schema.get_generic(name="CoreNode")
+    core_node_schema.used_by.append(new_person_kind)
+    schema.set(name="CoreNode", schema=core_node_schema)
+    await registry.schema.load_schema_to_db(db=db, schema=schema, branch=branch)
+
+    # create group on main
+    group_create_query = """
+    mutation ($id: String!, $name: String!) {
+        CoreStandardGroupCreate(data: {
+            name: { value: $name},
+            group_type: { value: "internal" },
+            members: { id: $id }
+        }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=group_create_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person_alfred_main.id, "name": "main-group"},
+    )
+    assert not result.errors
+    assert result.data
+    main_group_id = result.data["CoreStandardGroupCreate"]["object"]["id"]
+
+    # create group on branch
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=group_create_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person_alfred_main.id, "name": "branch-group"},
+    )
+    assert not result.errors
+    assert result.data
+    branch_group_id = result.data["CoreStandardGroupCreate"]["object"]["id"]
+
+    # check relationship count on main
+    group_members_query = """
+    query getRelationshipCount_CoreStandardGroup_members ($ids: [ID!]!) {
+        CoreStandardGroup(
+            ids: $ids
+        ) {
+            edges {
+                node {
+                    members {
+                        count
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=group_members_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"ids": [main_group_id]},
+    )
+    assert not result.errors
+    assert result.data
+    assert result.data["CoreStandardGroup"]["edges"][0]["node"]["members"]["count"] == 1
+
+    # check relationship count on branch
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=group_members_query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"ids": [branch_group_id]},
+    )
+    assert not result.errors
+    assert result.data
+    assert result.data["CoreStandardGroup"]["edges"][0]["node"]["members"]["count"] == 1
+
+    # check person-side relationship on main
+    person_main = await NodeManager.get_one(db=db, id=person_alfred_main.id, branch=default_branch)
+    groups = await person_main.member_of_groups.get(db=db)
+    assert len(groups) == 1
+    assert groups[0].peer_id == main_group_id
+    main_person_schema = registry.schema.get(name="TestPerson", branch=default_branch, duplicate=False)
+    members_rel_schema = main_person_schema.get_relationship("member_of_groups")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[person_alfred_main.id],
+        source_kind="TestPerson",
+        schema=members_rel_schema,
+        filters={},
+        branch=default_branch,
+    )
+    assert peer_count == 1
+
+    # check group-side relationship on main
+    group_main = await NodeManager.get_one(db=db, id=main_group_id, branch=default_branch)
+    members = await group_main.members.get(db=db)
+    assert len(members) == 1
+    assert members[0].peer_id == person_alfred_main.id
+    main_group_schema = registry.schema.get(name="CoreStandardGroup", branch=default_branch, duplicate=False)
+    members_rel_schema = main_group_schema.get_relationship("members")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[main_group_id],
+        source_kind="CoreStandardGroup",
+        schema=members_rel_schema,
+        filters={},
+        branch=default_branch,
+    )
+    assert peer_count == 1
+
+    # check person-side relationship on branch
+    alfred_branch = await NodeManager.get_one(db=db, id=person_alfred_main.id, branch=branch)
+    groups = await alfred_branch.member_of_groups.get(db=db)
+    assert len(groups) == 1
+    assert groups[0].peer_id == branch_group_id
+    branch_person_schema = registry.schema.get(name="TestGreatPerson", branch=branch, duplicate=False)
+    members_rel_schema = branch_person_schema.get_relationship("member_of_groups")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[person_alfred_main.id],
+        source_kind="TestGreatPerson",
+        schema=members_rel_schema,
+        filters={},
+        branch=branch,
+    )
+    assert peer_count == 1
+
+    # check group-side relationship on branch
+    group_branch = await NodeManager.get_one(db=db, id=branch_group_id, branch=branch)
+    members = await group_branch.members.get(db=db)
+    assert len(members) == 1
+    assert members[0].peer_id == person_alfred_main.id
+    branch_group_schema = registry.schema.get(name="CoreStandardGroup", branch=branch, duplicate=False)
+    members_rel_schema = branch_group_schema.get_relationship("members")
+    peer_count = await NodeManager.count_peers(
+        db=db,
+        ids=[branch_group_id],
+        source_kind="CoreStandardGroup",
+        schema=members_rel_schema,
+        filters={},
+        branch=branch,
+    )
+    assert peer_count == 1
+
+
 async def test_create_person_not_valid(db: InfrahubDatabase, default_branch, car_person_schema):
     query = """
     mutation {
@@ -1229,6 +1454,64 @@ async def test_create_without_object_template(
     # Validate object not is linked to object template
     device_template_node = await device.object_template.get_peer(db=db)
     assert not device_template_node
+
+
+async def test_create_sub_object_template_by_hfid(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
+):
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+
+    device_template = await Node.init(db=db, schema=f"Template{TestKind.DEVICE}", branch=branch)
+    await device_template.new(
+        db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
+    )
+    await device_template.save(db=db)
+    device_template_hfid = await device_template.get_hfid(db=db)
+
+    template = await registry.manager.get_one_by_hfid(
+        db=db, branch=branch, kind=f"Template{TestKind.INTERFACE_HOLDER}", hfid=device_template_hfid
+    )
+    assert device_template.id == template.id
+
+    query = """
+    mutation CreateTemplateInterfaceWithHFID($template_name: String!, $device_template_hfid: [String!], $name: String!, $phys_type: String!) {
+      TemplateTestingPhysicalInterfaceCreate(
+        data:{
+          template_name: {value: $template_name}
+          device: {hfid: $device_template_hfid}
+          name: {value: $name}
+          phys_type: {value: $phys_type}
+        }
+      ) {
+        ok
+        object {
+          id
+        }
+      }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "template_name": "MX204 et-0/0/0",
+            "device_template_hfid": device_template_hfid,
+            "name": "et-0/0/0",
+            "phys_type": "QSFP28 (100GE)",
+        },
+    )
+    assert not result.errors
+
+    node_id = result.data["TemplateTestingPhysicalInterfaceCreate"]["object"]["id"]
+    assert node_id
+
+    interface_template = await registry.manager.get_one(db=db, branch=branch, id=node_id)
+    assert interface_template
+    assert (await interface_template.device.get_peer(db=db)).id == device_template.id
 
 
 # These tests have been moved at the end of the file to avoid colliding with other and breaking them

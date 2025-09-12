@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants import GlobalPermissions, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError, ValidationError
-from infrahub.permissions.globals import define_global_permission_from_branch
+from infrahub.permissions import define_global_permission_from_branch
 
 if TYPE_CHECKING:
     from .initialization import GraphqlContext

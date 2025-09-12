@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { saveScreenshotForDocs } from "../../../utils";
 
@@ -34,6 +35,8 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await page.getByLabel("is protected *").check();
       await saveScreenshotForDocs(page, "tutorial_4_metadata_edit");
       await page.getByRole("button", { name: "Save" }).click();
+
+      await expect(page.getByText("Metadata updated")).toBeVisible();
 
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
 

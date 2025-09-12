@@ -1,8 +1,11 @@
-import { GET_VALIDATORS } from "@/entities/diff/api/getValidators";
-import useQuery from "@/shared/api/graphql/useQuery";
-import ErrorScreen from "@/shared/components/errors/error-screen";
 import { forwardRef, useImperativeHandle } from "react";
 import { useParams } from "react-router";
+
+import useQuery from "@/shared/api/graphql/useQuery";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+
+import { GET_VALIDATORS } from "@/entities/diff/api/getValidators";
+
 import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
 
@@ -26,10 +29,10 @@ export const Checks = forwardRef((_, ref) => {
   }
 
   return (
-    <div className="text-sm bg-stone-100 flex-grow">
+    <div className="grow bg-stone-100 text-sm">
       <ChecksSummary isLoading={loading} validators={validators} refetch={refetch} />
 
-      <div className="p-4 pt-0 space-y-2">
+      <div className="space-y-2 p-4 pt-0">
         {validators.map((item: any) => (
           <Validator key={item.id} validator={item} />
         ))}

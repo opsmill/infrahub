@@ -1,7 +1,8 @@
-import { Spinner } from "@/shared/components/ui/spinner";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { ReactNode } from "react";
+
+import { Spinner } from "@/shared/components/ui/spinner";
+import { classNames } from "@/shared/utils/common";
 
 type tPill = {
   type?: PILL_TYPES;
@@ -20,7 +21,7 @@ export enum PILL_TYPES {
 const DEFAULT_CLASS = (className?: string) => `
   ${className?.includes("text") ? "" : "text-xs"}
   flex items-center
-  flex-shrink-0 rounded-full px-2 py-0.5
+  shrink-0 rounded-full px-2 py-0.5
   text-gray-80
 `;
 

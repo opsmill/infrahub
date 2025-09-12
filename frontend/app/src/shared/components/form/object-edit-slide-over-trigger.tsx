@@ -1,11 +1,12 @@
-import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { Permission } from "@/entities/permission/types";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+
 import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { Permission } from "@/entities/permission/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;
@@ -53,7 +54,10 @@ const ObjectEditSlideOverTrigger = ({
       >
         <ObjectItemEditComponent
           closeDrawer={() => setIsEditDrawerOpen(false)}
-          onUpdateComplete={onUpdateComplete}
+          onUpdateComplete={() => {
+            onUpdateComplete?.();
+            setIsEditDrawerOpen(false);
+          }}
           objectid={data.id}
           objectname={schema.kind!}
         />

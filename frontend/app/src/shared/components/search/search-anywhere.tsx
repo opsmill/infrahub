@@ -1,13 +1,16 @@
+import { Command } from "cmdk";
+import { useEffect, useState } from "react";
+
 import { SearchAnywhereDialog } from "@/shared/components/search/search-anywhere-dialog";
 import { SearchAnywhereEmpty } from "@/shared/components/search/search-anywhere-empty";
 import { SearchAnywhereInput } from "@/shared/components/search/search-anywhere-input";
 import { SearchAnywhereTrigger } from "@/shared/components/search/search-anywhere-trigger";
-import { Command } from "cmdk";
-import { useEffect, useState } from "react";
+
 import { SearchActions } from "./search-actions";
 import { SearchAnywhereContext } from "./search-anywhere-context";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
+
 type SearchModalProps = {
   isCollapsed?: boolean;
 };
@@ -27,7 +30,7 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
     const onSearchAnywhereShortcut = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        openDialog();
+        setIsOpen((prev) => !prev);
       }
     };
 
@@ -47,14 +50,16 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
       <SearchAnywhereTrigger isCollapsed={isCollapsed} onClick={openDialog} />
 
       <SearchAnywhereDialog>
-        <SearchAnywhereInput />
+        <Command shouldFilter={false}>
+          <SearchAnywhereInput />
 
-        <Command.List className="[&_[cmdk-group]]:mt-2">
-          <SearchAnywhereEmpty />
-          <SearchActions />
-          <SearchNodes />
-          <SearchDocs />
-        </Command.List>
+          <Command.List className="[&_[cmdk-group]]:mt-2">
+            <SearchAnywhereEmpty />
+            <SearchActions />
+            <SearchNodes />
+            <SearchDocs />
+          </Command.List>
+        </Command>
       </SearchAnywhereDialog>
     </SearchAnywhereContext>
   );

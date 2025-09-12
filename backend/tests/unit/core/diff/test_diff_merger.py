@@ -310,7 +310,13 @@ class TestMergeDiff:
 
     def _get_empty_node_diff(self, node: Node, action: DiffAction) -> EnrichedDiffNode:
         return EnrichedNodeFactory.build(
-            uuid=node.get_id(), action=action, kind=node.get_kind(), label="", attributes=set(), relationships=set()
+            uuid=node.get_id(),
+            is_node_kind_migration=False,
+            action=action,
+            kind=node.get_kind(),
+            label="",
+            attributes=set(),
+            relationships=set(),
         )
 
     @pytest.mark.parametrize("check_idempotent", [False, True])

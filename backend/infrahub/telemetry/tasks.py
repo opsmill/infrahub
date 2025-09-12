@@ -12,16 +12,11 @@ from infrahub import __version__, config
 from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.services import InfrahubServices
+from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import TELEMETRY_KIND, TELEMETRY_VERSION
 from .database import gather_database_information
-from .models import (
-    TelemetryBranchData,
-    TelemetryData,
-    TelemetrySchemaData,
-    TelemetryWorkerData,
-)
+from .models import TelemetryBranchData, TelemetryData, TelemetrySchemaData, TelemetryWorkerData
 from .task_manager import gather_prefect_information
 from .utils import determine_infrahub_type
 
@@ -37,8 +32,9 @@ async def gather_schema_information(branch: Branch) -> TelemetrySchemaData:
 
 
 @task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
-async def gather_feature_information(service: InfrahubServices) -> dict[str, int]:
-    async with service.database.start_session() as db:
+async def gather_feature_information() -> dict[str, int]:
+    database = await get_database()
+    async with database.start_session(read_only=True) as db:
         data = {}
         features_to_count = [
             InfrahubKind.ARTIFACT,
@@ -58,11 +54,12 @@ async def gather_feature_information(service: InfrahubServices) -> dict[str, int
 
 
 @task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
-async def gather_anonymous_telemetry_data(service: InfrahubServices) -> TelemetryData:
+async def gather_anonymous_telemetry_data() -> TelemetryData:
     start_time = time.time()
 
     default_branch = registry.get_branch_from_registry()
-    workers = await service.component.list_workers(branch=default_branch.name, schema_hash=False)
+    component = await get_component()
+    workers = await component.list_workers(branch=default_branch.name, schema_hash=False)
 
     data = TelemetryData(
         deployment_id=registry.id,
@@ -78,9 +75,9 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> Telemetr
         branches=TelemetryBranchData(
             total=len(registry.branch),
         ),
-        features=await gather_feature_information(service=service),
+        features=await gather_feature_information(),
         schema_info=await gather_schema_information(branch=default_branch),
-        database=await gather_database_information(db=service.database),
+        database=await gather_database_information(db=await get_database()),
         prefect=await gather_prefect_information(),
     )
 
@@ -90,14 +87,14 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> Telemetr
 
 
 @task(name="telemetry-post-data", task_run_name="Upload data", retries=5, cache_policy=NONE)
-async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:
+async def post_telemetry_data(url: str, payload: dict[str, Any]) -> None:
     """Send the telemetry data to the specified URL, using HTTP POST."""
-    response = await service.http.post(url=url, json=payload)
+    response = await get_http().post(url=url, json=payload)
     response.raise_for_status()
 
 
 @flow(name="anonymous_telemetry_send", flow_run_name="Send anonymous telemetry")
-async def send_telemetry_push(service: InfrahubServices) -> None:
+async def send_telemetry_push() -> None:
     log = get_run_logger()
     if config.SETTINGS.main.telemetry_optout:
         log.info("Skipping, User opted out of this service.")
@@ -105,7 +102,7 @@ async def send_telemetry_push(service: InfrahubServices) -> None:
 
     log.info(f"Pushing anonymous telemetry data to {config.SETTINGS.main.telemetry_endpoint}...")
 
-    data = await gather_anonymous_telemetry_data(service=service)
+    data = await gather_anonymous_telemetry_data()
     data_dict = data.model_dump(mode="json")
     log.info(f"Anonymous usage telemetry gathered in {data.execution_time} seconds. | {data_dict}")
 
@@ -116,4 +113,4 @@ async def send_telemetry_push(service: InfrahubServices) -> None:
         "checksum": hashlib.sha256(json.dumps(data_dict).encode()).hexdigest(),
     }
 
-    await post_telemetry_data(service=service, url=config.SETTINGS.main.telemetry_endpoint, payload=payload)
+    await post_telemetry_data(url=config.SETTINGS.main.telemetry_endpoint, payload=payload)

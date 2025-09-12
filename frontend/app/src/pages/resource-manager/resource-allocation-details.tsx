@@ -1,7 +1,8 @@
+import { Icon } from "@iconify-icon/react";
+import { Link, useParams } from "react-router";
+
 import { QSP } from "@/config/qsp";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { GET_RESOURCE_POOL_ALLOCATED } from "@/entities/resource-manager/api/resource-pool";
-import { RESOURCE_POOL_ALLOCATED_KIND } from "@/entities/resource-manager/constants";
+
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -10,13 +11,15 @@ import { Table } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
 import { Pagination } from "@/shared/components/ui/pagination";
-import { Icon } from "@iconify-icon/react";
-import { Link, useParams } from "react-router";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { GET_RESOURCE_POOL_ALLOCATED } from "@/entities/resource-manager/api/resource-pool";
+import { RESOURCE_POOL_ALLOCATED_KIND } from "@/entities/resource-manager/constants";
 
 const ResourceAllocationDetailsPage = () => {
   const { resourcePoolId, resourceId } = useParams();
   const { data, loading } = useQuery(GET_RESOURCE_POOL_ALLOCATED, {
-    variables: { poolId: resourcePoolId, resourceId: resourceId },
+    variables: { poolId: resourcePoolId, resourceId },
   });
 
   if (loading) return <ResourceAllocationPageSkeleton />;
@@ -24,7 +27,7 @@ const ResourceAllocationDetailsPage = () => {
   const getResourcePoolAllocatedData = data[RESOURCE_POOL_ALLOCATED_KIND];
   const resourcesAllocated = getResourcePoolAllocatedData.edges.map(({ node }: any) => ({
     values: { ...node },
-    link: getObjectDetailsUrl2(node.kind, node.id, [{ name: QSP.BRANCH, value: node.branch }]),
+    link: getObjectDetailsUrl(node.kind, node.id, [{ name: QSP.BRANCH, value: node.branch }]),
   }));
   const totalOfResourcesAllocated = getResourcePoolAllocatedData.count;
 
@@ -51,8 +54,8 @@ const ResourceAllocationDetailsPage = () => {
     },
   ];
   return (
-    <Card className="flex flex-col ml-1 min-w-min max-w-fit sticky right-0 overflow-hidden max-h-full">
-      <div className="pb-2 flex bg-custom-white items-center gap-1">
+    <Card className="sticky right-0 ml-1 flex max-h-full min-w-min max-w-fit flex-col overflow-hidden">
+      <div className="flex items-center gap-1 bg-white pb-2">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>{totalOfResourcesAllocated}</Badge>
 
@@ -75,8 +78,8 @@ const ResourceAllocationPageSkeleton = () => {
   const { resourcePoolId } = useParams();
 
   return (
-    <Card className="ml-1 w-full min-w-[450px] max-w-[606px] sticky right-0">
-      <div className="pb-2 flex bg-custom-white items-center gap-1">
+    <Card className="sticky right-0 ml-1 w-full min-w-[450px] max-w-[606px]">
+      <div className="flex items-center gap-1 bg-white pb-2">
         <h3 className="font-semibold">Allocated resources</h3>
         <Badge>...</Badge>
 

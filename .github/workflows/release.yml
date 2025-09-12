@@ -8,8 +8,11 @@ on:
       - published
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
   check_release:
     runs-on: ubuntu-22.04
+    needs: prepare-environment
     outputs:
       is_prerelease: ${{ steps.release.outputs.is_prerelease }}
       is_devrelease: ${{ steps.release.outputs.is_devrelease }}
@@ -18,7 +21,7 @@ jobs:
       latest_tag: ${{ steps.release.outputs.latest_tag }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
         with:
           submodules: true
 
@@ -30,7 +33,7 @@ jobs:
       - name: "Install Poetry"
         uses: "snok/install-poetry@v1"
         with:
-          version: 1.8.5
+          version: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
@@ -124,9 +127,11 @@ jobs:
     with:
       publish: true
 
-  update-submodule:
-    needs: check_release
-    uses: ./.github/workflows/update-submodule.yml
+  repository-dispatch:
+    needs:
+      - check_release
+      - publish-docker-image
+    uses: ./.github/workflows/repository-dispatch.yml
     secrets: inherit
     with:
-      version: ${{ github.ref_name }}
+      version: ${{ needs.check_release.outputs.version }}

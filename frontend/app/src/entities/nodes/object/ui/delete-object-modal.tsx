@@ -1,7 +1,9 @@
-import { useDeleteObject } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { toast } from "react-toastify";
+
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { toast } from "react-toastify";
+
+import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 
 export interface DeleteObjectModalProps {
   objectId: string;
@@ -9,6 +11,7 @@ export interface DeleteObjectModalProps {
   objectLabel: string;
   open: boolean;
   setOpen: (b: boolean) => void;
+  toastMessage?: string;
 }
 
 export function DeleteObjectModal({
@@ -17,8 +20,9 @@ export function DeleteObjectModal({
   objectId,
   open,
   setOpen,
+  toastMessage,
 }: DeleteObjectModalProps) {
-  const { mutate, isPending } = useDeleteObject();
+  const { mutate, isPending } = useDeleteObjectMutation();
 
   return (
     <ModalDelete
@@ -37,7 +41,12 @@ export function DeleteObjectModal({
           {
             onSuccess: () => {
               setOpen(false);
-              toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Object ${objectLabel} deleted`} />);
+              toast(
+                <Alert
+                  type={ALERT_TYPES.SUCCESS}
+                  message={toastMessage ?? `Object ${objectLabel} deleted`}
+                />
+              );
             },
           }
         )

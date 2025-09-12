@@ -13,13 +13,16 @@ const STYLES = [
 export function ObjectAvatar({ name = "" }: { name: string }) {
   const firstLetter = name[0];
   if (!firstLetter) {
-    return <div className="w-6 h-6 rounded  flex items-center justify-center bg-gray-100" />;
+    return <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-gray-100" />;
   }
 
   const styleIndex = firstLetter.charCodeAt(0) % STYLES.length;
   return (
     <div
-      className={classNames("w-6 h-6 rounded flex items-center justify-center", STYLES[styleIndex])}
+      className={classNames(
+        "flex h-6 w-6 items-center justify-center rounded-sm",
+        STYLES[styleIndex]
+      )}
     >
       {firstLetter.toUpperCase()}
     </div>

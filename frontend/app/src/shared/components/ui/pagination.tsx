@@ -1,6 +1,8 @@
+import ReactPaginate from "react-paginate";
+
 import usePagination from "@/shared/hooks/usePagination";
 import { classNames } from "@/shared/utils/common";
-import ReactPaginate from "react-paginate";
+
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxTrigger } from "./combobox";
 import { Command, CommandList } from "./command";
 
@@ -72,13 +74,13 @@ export const Pagination = (props: tPaginationType) => {
   return (
     <div
       className={classNames(
-        "sticky bottom-0 flex items-center justify-between bg-custom-white p-2",
+        "sticky bottom-0 flex items-center justify-between bg-white p-2",
         className
       )}
     >
-      <div className="flex flex-wrap flex-1 gap-2 justify-between">
+      <div className="flex flex-1 flex-wrap justify-between gap-2">
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-700">{paginationText}</div>
+          <div className="text-gray-700 text-sm">{paginationText}</div>
 
           <div>
             <Combobox>

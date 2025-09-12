@@ -1,33 +1,35 @@
-import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_OBJECT, TASK_TAB } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
-import { Checks } from "@/entities/diff/checks/checks";
-import { NodeDiff } from "@/entities/diff/node-diff";
-import { GET_PROPOSED_CHANGE_DETAILS } from "@/entities/proposed-changes/api/getProposedChangesDetails";
-import useQuery from "@/shared/api/graphql/useQuery";
-import { Tabs } from "@/shared/components/tabs";
-import { useTitle } from "@/shared/hooks/useTitle";
+import { Icon } from "@iconify-icon/react";
+import { useAtom } from "jotai";
+import { Link, useLocation, useParams } from "react-router";
+import { StringParam, useQueryParam } from "use-query-params";
 
-import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { ProposedChangesChecksTab } from "@/entities/proposed-changes/ui/checks-tab";
-import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
-import { TaskItems } from "@/entities/tasks/ui/task-items";
+import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+
 import { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
+import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
+import { Tabs } from "@/shared/components/tabs";
 import { Badge } from "@/shared/components/ui/badge";
-import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import { Link, useLocation, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
+import { useTitle } from "@/shared/hooks/useTitle";
+
+import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
+import { Checks } from "@/entities/diff/checks/checks";
+import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
+import { NodeDiff } from "@/entities/diff/node-diff";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { useGetProposedChangeDetails } from "@/entities/proposed-changes/domain/get-proposed-change-details.query";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { ProposedChangesChecksTab } from "@/entities/proposed-changes/ui/checks-tab";
+import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
+import { TaskItems } from "@/entities/tasks/ui/task-items";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -80,13 +82,13 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
 
       return (
         <div>
-          <div className="flex bg-custom-white text-sm">
+          <div className="flex bg-white text-sm">
             <Link
               to={constructPath(pathname, [
                 { name: QSP.PROPOSED_CHANGES_TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
-              className="flex items-center p-2 "
+              className="flex items-center p-2"
             >
               <Icon icon={"mdi:chevron-left"} />
               All tasks
@@ -103,21 +105,16 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
 };
 
 export function Component() {
-  const { proposedChangeId } = useParams();
+  const { proposedChangeId } = useParams() as { proposedChangeId: string };
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
-  const { loading, error, data, client } = useQuery(GET_PROPOSED_CHANGE_DETAILS, {
-    variables: {
-      id: proposedChangeId,
-      nodeId: proposedChangeId, // Used for tasks, which is a different type
-    },
-  });
+  const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
 
-  if (loading) {
+  if (isPending) {
     return <LoadingIndicator className="h-full" />;
   }
 
-  const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;
+  const { proposedChangeData, tasksCount } = data ?? {};
 
   const tabs = [
     {
@@ -148,17 +145,21 @@ export function Component() {
     {
       label: "Tasks",
       name: TASK_TAB,
-      count: (data && data[TASK_OBJECT]?.count) ?? 0,
+      count: tasksCount ?? 0,
     },
   ];
 
-  if (error || !proposedChangesData) {
+  if (error || !proposedChangeData) {
     return (
       <Content.Card>
         <Content.CardTitle
           title="Proposed changes"
-          reload={() => client.reFetchObservableQueries()}
-          isReloadLoading={loading}
+          reload={() => {
+            queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey.includes(proposedChangeId),
+            });
+          }}
+          isReloadLoading={isPending}
           end={
             <ObjectHelpButton
               documentationUrl={schema?.documentation}
@@ -172,7 +173,7 @@ export function Component() {
           <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
         )}
 
-        {!proposedChangesData && <NoDataFound message="No proposed changes found." />}
+        {!proposedChangeData && <NoDataFound message="No proposed changes found." />}
       </Content.Card>
     );
   }
@@ -180,38 +181,40 @@ export function Component() {
   return (
     <Content.Card className="flex flex-col">
       <Content.CardTitle
-        title={proposedChangesData.display_label}
+        title={proposedChangeData.display_label}
         description={
-          <div className="inline-flex gap-1 text-xs items-center">
+          <div className="inline-flex items-center gap-1 text-xs">
             <Link
-              to={constructPath(
-                getObjectDetailsUrl(
-                  proposedChangesData?.created_by?.node?.id,
-                  proposedChangesData?.created_by?.node?.__typename
-                )
+              to={getObjectDetailsUrl(
+                proposedChangeData?.created_by?.node?.__typename,
+                proposedChangeData?.created_by?.node?.id
               )}
               className="font-semibold text-custom-blue-green"
             >
-              {proposedChangesData?.created_by?.node?.display_label}
+              {proposedChangeData?.created_by?.node?.display_label}
             </Link>
             wants to merge
-            <Link to={constructPath(`/branches/${proposedChangesData.source_branch?.value}`)}>
+            <Link to={constructPath(`/branches/${proposedChangeData.source_branch?.value}`)}>
               <Badge variant="blue">
                 <Icon icon="mdi:layers-triple" className="mr-1" />
-                {proposedChangesData.source_branch?.value}
+                {proposedChangeData.source_branch?.value}
               </Badge>
             </Link>
             into
-            <Link to={constructPath(`/branches/${proposedChangesData.destination_branch?.value}`)}>
+            <Link to={constructPath(`/branches/${proposedChangeData.destination_branch?.value}`)}>
               <Badge variant="green" className="items-center">
                 <Icon icon="mdi:layers-triple" className="mr-1" />
-                {proposedChangesData.destination_branch?.value}
+                {proposedChangeData.destination_branch?.value}
               </Badge>
             </Link>
           </div>
         }
-        reload={() => client.reFetchObservableQueries()}
-        isReloadLoading={loading}
+        reload={() => {
+          queryClient.invalidateQueries({
+            predicate: (query) => query.queryKey.includes(proposedChangeId),
+          });
+        }}
+        isReloadLoading={isPending}
         end={
           <ObjectHelpButton
             documentationUrl={schema?.documentation}
@@ -223,7 +226,7 @@ export function Component() {
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      <ProposedChangeDetailsContent proposedChangeData={proposedChangesData} />
+      <ProposedChangeDetailsContent proposedChangeData={proposedChangeData} />
     </Content.Card>
   );
 }

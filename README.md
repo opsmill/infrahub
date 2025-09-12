@@ -14,7 +14,7 @@
 
 Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that powers your infrastructure by combining the version control and branch management capabilities similar to Git with the flexible data model and UI of a graph database.
 
-If you just want to try Infrahub out, you can use our [Always-On Sandbox](https://demo.infrahub.app/) to get started.
+If you just want to try Infrahub out, you can use our [Infrahub Sandbox](https://sandbox.infrahub.app/) to get started.
 
 ![infrahub screenshot](docs/docs/media/infrahub-readme.gif)
 
@@ -32,7 +32,7 @@ If you just want to try Infrahub out, you can use our [Always-On Sandbox](https:
 
 **Service Catalog** - Infrahub acts as the underlying system to provide infrastructure-as-a-service, allowing you to manage your services and lifecycle them as the services evolve.
 
-**Infrastructure Automation** - Provide infrastructure and network automation workflows with Infrahub rendering configurations and artifacts via Jinja2 and python,then passing to deployment tools such as [Nornir](https://www.opsmill.com/simplifying-network-automation-workflows-with-infrahub-nornir-and-jinja2/), [Ansible](https://docs.infrahub.app/ansible/ansible/), Terraform, or vendor-specific tools.
+**Infrastructure Automation** - Provide infrastructure and network automation workflows with Infrahub rendering configurations and artifacts via Jinja2 and python,then passing to deployment tools such as [Nornir](https://www.opsmill.com/simplifying-network-automation-workflows-with-infrahub-nornir-and-jinja2/), [Ansible](https://docs.infrahub.app/ansible), Terraform, or vendor-specific tools.
 
 **Inventory Management** - Infrahub serves as a centralized inventory system for your infrastructure, allowing you to manage your inventory and track changes to your infrastructure. It provides a WebUI and API for other teams to self-service the information needed to allow the organization to operate.
 
@@ -40,7 +40,7 @@ If you just want to try Infrahub out, you can use our [Always-On Sandbox](https:
 
 ## Quick Start
 
-[Always-On Sandbox](https://demo.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
+[Infrahub Sandbox](https://sandbox.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
 
 [Getting Started Environment & Tutorial](https://opsmill.instruqt.com/pages/labs) - It spins up an instance of Infrahub on our cloud, provides a browser, terminal, code editor and walks you through the basic concepts:
 
@@ -54,7 +54,7 @@ For longer term tests, you can deploy a local instance of Infrahub by referring 
 
 If you'd like to learn more about Infrahub, please refer to the following resources:
 
-- [Infrahub Overview](https://docs.infrahub.app/overview/)
+- [Infrahub Overview](https://docs.infrahub.app/getting-started/overview)
 - [Infrahub Documentation](https://docs.infrahub.app/)
 - [FAQ](https://docs.infrahub.app/faq/)
 

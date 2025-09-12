@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
@@ -55,14 +56,15 @@ from infrahub.core.schema import (
     SchemaRoot,
     core_models,
 )
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_workflow
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
@@ -159,7 +161,6 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
         name="test_basename",
         location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
-        service=await InfrahubServices.new(),
     )
 
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
@@ -1269,10 +1270,8 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-async def car_person_schema_generics(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema
-) -> SchemaRoot:
-    SCHEMA: dict[str, Any] = {
+async def car_person_schema_generics_unregistered(register_core_models_schema, data_schema) -> dict[str, Any]:
+    return {
         "generics": [
             {
                 "name": "Car",
@@ -1387,7 +1386,16 @@ async def car_person_schema_generics(
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
+
+@pytest.fixture
+async def car_person_schema_generics(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+    data_schema,
+    car_person_schema_generics_unregistered,
+) -> SchemaRoot:
+    schema = SchemaRoot(**car_person_schema_generics_unregistered)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
@@ -1696,6 +1704,25 @@ async def group_group2_subscribers_main(
 
 
 @pytest.fixture
+async def optional_attr_uniqueness_constraint_schema(
+    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
+) -> NodeSchema:
+    node_schema = NodeSchema(
+        name="AttrOptionalUniquenessSchema",
+        namespace="Test",
+        branch=BranchSupportType.AWARE.value,
+        uniqueness_constraints=[["name__value", "description__value"]],
+        attributes=[
+            AttributeSchema(name="name", kind="Text", optional=True),
+            AttributeSchema(name="description", kind="TextArea", optional=True),
+        ],
+    )
+    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    return node_schema
+
+
+@pytest.fixture
 async def all_attribute_types_schema(
     db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
 ) -> NodeSchema:
@@ -1757,7 +1784,7 @@ async def all_attribute_default_types_schema(
 
 
 @pytest.fixture
-async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
+async def criticality_schema_root() -> SchemaRoot:
     generic_schema: dict[str, Any] = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -1797,11 +1824,18 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
         ],
     }
     node = NodeSchema(**node_schema)
+    return SchemaRoot(nodes=[node], generics=[generic])
 
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-    registry.schema.set(name=generic.kind, schema=generic, branch=default_branch.name)
+
+@pytest.fixture
+async def criticality_schema(
+    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema, criticality_schema_root: SchemaRoot
+) -> NodeSchema:
+    registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
-    return registry.schema.get(name=node.kind, branch=default_branch.name)
+    return registry.schema.get_node_schema(
+        name=criticality_schema_root.nodes[0].kind, branch=default_branch.name, duplicate=False
+    )
 
 
 @pytest.fixture
@@ -2478,7 +2512,7 @@ async def ipam_schema() -> SchemaRoot:
                 "order_by": ["prefix__value"],
                 "display_labels": ["prefix__value"],
                 "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.IPPREFIX],
+                "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
             },
             {
                 "name": "IPAddress",
@@ -2982,11 +3016,12 @@ async def prefix_pool_01(
 
 
 @pytest.fixture
-def workflow_local():
+def workflow_local(dependency_provider: Provider):
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     config.OVERRIDE.workflow = workflow
-    yield workflow
+    with dependency_provider.scope(build_workflow, lambda: workflow):
+        yield workflow
     config.OVERRIDE.workflow = original
 
 

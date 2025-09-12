@@ -1,8 +1,10 @@
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { Link } from "react-router";
+
 import { QSP } from "@/config/qsp";
-import { GroupDataFromAPI } from "@/entities/groups/api/types";
-import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ItemGroup from "@/shared/components/layouts/item-group";
@@ -10,10 +12,11 @@ import ModalDelete from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { pluralize } from "@/shared/utils/string";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
-import { Link } from "react-router";
+
+import { GroupDataFromAPI } from "@/entities/groups/api/types";
+import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ObjectGroupsListProps = {
   className?: string;
@@ -45,26 +48,26 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
   const groupSchema = nodes.find((node) => node.kind === group.__typename);
 
   return (
-    <div className="flex justify-between items-center gap-4 p-2 bg-gray-100 rounded-md border border-gray-300 relative">
-      <div className="overflow-hidden space-y-1">
+    <div className="relative flex items-center justify-between gap-4 rounded-md border border-gray-300 bg-gray-100 p-2">
+      <div className="space-y-1 overflow-hidden">
         <Link
-          to={getObjectDetailsUrl2(group.__typename, group.id)}
-          className="font-semibold hover:underline truncate block"
+          to={getObjectDetailsUrl(group.__typename, group.id)}
+          className="block truncate font-semibold hover:underline"
         >
           {group.display_label}
         </Link>
 
         <div className="flex items-center gap-2">
           <Link
-            to={getObjectDetailsUrl2(group.__typename, group.id, [
+            to={getObjectDetailsUrl(group.__typename, group.id, [
               { name: QSP.TAB, value: "members" },
             ])}
-            className="text-sm font-light hover:underline"
+            className="font-light text-sm hover:underline"
           >
             {pluralize(group.members.count, "member")}
           </Link>
 
-          <Link to={getObjectDetailsUrl2(group.__typename)}>
+          <Link to={getObjectDetailsUrl(group.__typename)}>
             <Badge variant="blue" className="hover:underline">
               {groupSchema?.label}
             </Badge>
@@ -105,7 +108,7 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
         <Button
           variant="ghost"
           size="icon"
-          className="flex-shrink-0 hover:bg-gray-200"
+          className="shrink-0 hover:bg-gray-200"
           onClick={() => setShowDeleteModal(true)}
           data-testid="leave-group-button"
         >

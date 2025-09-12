@@ -1,9 +1,13 @@
-import { QSP } from "@/config/qsp";
-import { uniqueItemsArray } from "@/shared/utils/array";
 import { StringParam, useQueryParam } from "use-query-params";
 
+import { QSP } from "@/config/qsp";
+
+import { uniqueItemsArray } from "@/shared/utils/array";
+
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
+
 export type Filter = {
-  name: `${string}__${string}`;
+  name: `${string}__${string}` | typeof AVAILABLE_IP_FILTER_NAME | "order";
   value: any;
   display_label?: string;
 };
@@ -18,7 +22,7 @@ const useFilters = (): [Array<Filter>, (filter: Array<Filter>) => void] => {
     const cleanedFilters = uniqueItemsArray(newFilters, "name");
 
     if (!cleanedFilters || !cleanedFilters?.length) {
-      // Set to undefined to remive from QSP
+      // Set undefined to remove from QSP
       setFiltersInQueryString(undefined);
     } else {
       // Stringify parameters
