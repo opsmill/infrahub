@@ -4,15 +4,16 @@ import { useState } from "react";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
-
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
+import { ModelSchema } from "@/entities/schema/types";
 import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
 import { Permission } from "@/entities/permission/types";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import { ModelSchema } from "@/entities/schema/types";
 
 import { ObjectDetailsContent } from "./object-details-content";
+import { Icon } from "@iconify-icon/react";
+import ConvertForm from "@/shared/components/form/convert-form";
 
 export interface ObjectConvertProps {
   objectId: string;
@@ -23,6 +24,7 @@ export interface ObjectConvertProps {
 export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
   const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
   const [kind, setKind] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   if (isPending) {
@@ -53,18 +55,27 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
       <Card className="w-1/2 p-0">
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
-          <Combobox defaultOpen>
+          <Combobox open={isOpen} onOpenChange={setIsOpen}>
             <ComboboxTrigger>{kind && schemaKindLabel[kind]}</ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
                 onSelect={(newKind) => {
                   setKind(newKind);
+                  setIsOpen(false)
                 }}
               />
             </ComboboxContent>
           </Combobox>
         </CardWithBorder.Title>
-        Form
+
+        {!kind && <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+            <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
+            <div className="font-medium text-lg">No kind selected</div>
+            <div className="text-sm">Please select a kind for the convertion target</div>
+          </div>
+        }
+
+        {kind && <ConvertForm kind={kind} />}
       </Card>
     </div>
   );
