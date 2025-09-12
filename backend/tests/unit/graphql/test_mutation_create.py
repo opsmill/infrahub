@@ -15,7 +15,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import DEVICE_SCHEMA
@@ -1555,7 +1555,7 @@ async def test_create_simple_object_with_enum(
         }
     }
     """ % (enum_value)
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -1640,7 +1640,7 @@ async def test_create_string_when_enums_on_fails(
         }
     }
     """
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,

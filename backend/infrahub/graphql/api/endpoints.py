@@ -9,7 +9,7 @@ from starlette.routing import Route, WebSocketRoute
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user
 from infrahub.core import registry
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 
 from .dependencies import build_graphql_app
 
@@ -32,6 +32,6 @@ async def get_graphql_schema(
     branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
 ) -> PlainTextResponse:
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
+    gqlm = graphql_registry.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
     graphql_schema = gqlm.get_graphql_schema()
     return PlainTextResponse(content=print_schema(graphql_schema))

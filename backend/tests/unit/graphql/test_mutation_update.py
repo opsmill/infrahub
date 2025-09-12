@@ -16,7 +16,7 @@ from infrahub.core.schema.definitions.core.group import core_group, core_standar
 from infrahub.database import InfrahubDatabase
 from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
@@ -97,7 +97,7 @@ async def test_update_simple_object_with_enum(
     enum_value,
     response_value,
 ):
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
     query = """
     mutation {
