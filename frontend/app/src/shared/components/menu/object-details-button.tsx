@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
+import { useParams } from "react-router";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { QSP } from "@/config/qsp";
@@ -28,6 +29,8 @@ export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDeta
     value: id,
   };
 
+  const { objectKind } = useParams<{ objectKind: string }>();
+
   return (
     <MenuTrigger>
       <Pressable>
@@ -45,6 +48,14 @@ export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDeta
             {hfid && hfid !== "null" && (
               <CopyToClipboardMenuItem textToCopy={hfid}>Copy HFID</CopyToClipboardMenuItem>
             )}
+
+            <MenuItem
+              href={objectKind ? constructPath(`/objects/${objectKind}/${id}/convert`) : undefined}
+              isDisabled={!objectKind}
+            >
+              <Icon icon={"mdi:swap-horizontal"} className="size-3" />
+              Convert object type
+            </MenuItem>
 
             {children}
           </MenuSection>

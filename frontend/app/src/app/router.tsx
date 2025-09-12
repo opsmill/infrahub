@@ -205,16 +205,33 @@ export const router = createBrowserRouter([
                       },
                       {
                         path: ":objectid",
-                        lazy: () => import("@/pages/objects/object-details"),
                         handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.objectid,
-                              kind: match.params.objectKind,
-                            };
-                          },
+                          breadcrumb: (match: UIMatch) => ({
+                            type: "select",
+                            value: match.params.objectid,
+                            kind: match.params.objectKind,
+                          }),
                         },
+                        children: [
+                          {
+                            index: true,
+                            lazy: () => import("@/pages/objects/object-details"),
+                          },
+                          {
+                            path: "convert",
+                            lazy: () => import("@/pages/objects/object-convert"),
+                            handle: {
+                              breadcrumb: (match: UIMatch) =>
+                                ({
+                                  type: "link",
+                                  label: "convert",
+                                  to: constructPath(
+                                    `/objects/${match.params.objectKind}/${match.params.objectid}/convert`
+                                  ),
+                                }) satisfies BreadcrumbItem,
+                            },
+                          },
+                        ],
                       },
                     ],
                   },
