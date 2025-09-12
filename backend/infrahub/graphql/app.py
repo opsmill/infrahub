@@ -23,7 +23,6 @@ from graphql import (
     ExecutionResult,
     GraphQLError,
     GraphQLFormattedError,
-    Middleware,
     OperationType,
     graphql,
     parse,
@@ -100,7 +99,6 @@ class InfrahubGraphQLApp:
         *,
         on_get: Callable[[Request], Response | Awaitable[Response]] | None = None,
         root_value: RootValue = None,
-        middleware: Middleware | None = None,
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
         execution_context_class: type[ExecutionContext] | None = None,
     ) -> None:
@@ -108,7 +106,6 @@ class InfrahubGraphQLApp:
         self.on_get = on_get
         self.root_value = root_value
         self.error_formatter = error_formatter
-        self.middleware = middleware
         self.execution_context_class = execution_context_class
         self.logger = get_logger(name="infrahub.graphql")
         self.permission_checker = permission_checker

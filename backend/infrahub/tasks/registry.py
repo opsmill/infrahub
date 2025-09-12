@@ -51,7 +51,7 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
         return
 
     if existing_branch.schema_hash.main == branch.active_schema_hash.main:
-        log.info(
+        log.debug(
             "Branch schema hash is the same, no need to refresh the GraphQL schema within the registry",
             branch=branch.name,
             hash=existing_branch.schema_hash.main,
@@ -61,7 +61,7 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
             # If the hash is the same but the branched_from timestamp differs it means
             # that the branch has been rebased and these timestamps need to be refreshed
             # in the registry even though the schema doesn't need to be reloaded.
-            log.debug(
+            log.info(
                 "Updating branched_from property in registry for rebased branch",
                 branch=branch.name,
                 worker=WORKER_IDENTITY,
