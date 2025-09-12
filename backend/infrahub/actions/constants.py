@@ -118,6 +118,12 @@ class ValueMatch(DropdownEnum):
         description="Match against both the current and previous values",
         color="#5ac8fa",
     )
+    ANY = DropdownChoice(
+        name="any",
+        label="Any",
+        description="Match against any value",
+        color="#276cc2",
+    )
 
 
 NODES_THAT_TRIGGER_ACTION_RULES_SETUP = [

@@ -7,6 +7,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.manager import GraphQLSchemaManager
 from tests.helpers.schema.color import COLOR
 from tests.helpers.schema.tshirt import TSHIRT
 
@@ -34,6 +35,7 @@ async def test_is_valid_simple_schema(
     car_person_schema_generics,
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
