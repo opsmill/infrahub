@@ -1,12 +1,10 @@
 import inspect
-from copy import deepcopy
 
 import graphene
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.types import InfrahubObject
@@ -291,23 +289,18 @@ async def test_branch_caching_hit(
     assert manager1 is manager2
 
 
-@pytest.mark.parametrize("schema_changed_at_new,schema_hash_updated", [(True, False), (False, True), (True, True)])
 async def test_branch_caching_miss(
     db: InfrahubDatabase,
     default_branch: Branch,
     data_schema,
     car_person_schema_generics,
-    schema_changed_at_new: bool,
-    schema_hash_updated: bool,
 ):
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
     schema_branch = registry.schema.get_schema_branch(default_branch.name)
-    if schema_changed_at_new:
-        same_branch.schema_changed_at = Timestamp().to_string()
-    if schema_hash_updated:
-        default_branch.schema_hash.main = "abc"
-        same_branch.update_schema_hash()
+
+    default_branch.active_schema_hash.main = "abc"
+    same_branch.update_schema_hash()
 
     manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
     manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
@@ -328,18 +321,16 @@ async def test_branch_purge(
 
     GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
     GraphQLSchemaManager.purge_inactive(active_branches=[default_branch.name])
-    GraphQLSchemaManager._branch_details_by_name[active_branch] = deepcopy(
-        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
-    )
-    GraphQLSchemaManager._branch_details_by_name[purged_branch] = deepcopy(
-        GraphQLSchemaManager._branch_details_by_name[default_branch.name]
-    )
+    GraphQLSchemaManager._add_branch_hash(branch_name=active_branch, schema_hash=default_branch.active_schema_hash.main)
+    GraphQLSchemaManager._add_branch_hash(branch_name=purged_branch, schema_hash=default_branch.active_schema_hash.main)
 
-    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert purged_branch in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert default_branch.active_schema_hash.main in GraphQLSchemaManager._branch_details_by_hash.keys()
+    assert default_branch.active_schema_hash.main in GraphQLSchemaManager._branch_name_by_hash.keys()
+
+    assert active_branch in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
     purged_branches = GraphQLSchemaManager.purge_inactive(active_branches=[active_branch, default_branch.name])
-    assert default_branch.name in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert active_branch in GraphQLSchemaManager._branch_details_by_name.keys()
-    assert purged_branch not in GraphQLSchemaManager._branch_details_by_name.keys()
+    assert active_branch in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch not in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
+
     assert purged_branches == {purged_branch}

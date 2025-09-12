@@ -14,6 +14,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.manager import GraphQLSchemaManager
 from tests.helpers.graphql import graphql
 
 
@@ -1027,6 +1028,7 @@ async def test_query_filter_on_enum(
         }
     }
     """ % (enum_value)
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -1975,6 +1977,7 @@ async def test_query_attribute_node_property_source(
         }
     }
     """
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2033,6 +2036,7 @@ async def test_query_attribute_node_property_owner(
         }
     }
     """
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2045,6 +2049,7 @@ async def test_query_attribute_node_property_owner(
     )
 
     assert result1.errors is None
+    assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]["id"] == first_account.id
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"][
@@ -2092,6 +2097,7 @@ async def test_query_attribute_node_property_owner(
 
     assert result2.errors is None
 
+    assert result2.data
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]["id"] == first_account.id
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"][
@@ -2466,6 +2472,7 @@ async def test_query_attribute_flag_property(
         }
     }
     """
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2478,6 +2485,7 @@ async def test_query_attribute_flag_property(
     )
 
     assert result1.errors is None
+    assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_protected"] is True
     assert result1.data["TestPerson"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
@@ -2781,6 +2789,7 @@ async def test_generic_root_with_pagination(
         }
     }
     """
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2822,7 +2831,7 @@ async def test_generic_root_with_filters(
         }
     }
     """
-
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -2882,6 +2891,7 @@ async def test_member_of_groups(
         }
     }
     """
+    GraphQLSchemaManager.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )

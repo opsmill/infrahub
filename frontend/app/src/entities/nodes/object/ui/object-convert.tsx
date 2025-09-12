@@ -1,19 +1,20 @@
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import ConvertForm from "@/shared/components/form/convert-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
-import { ModelSchema } from "@/entities/schema/types";
+
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
 import { Permission } from "@/entities/permission/types";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { ModelSchema } from "@/entities/schema/types";
 
 import { ObjectDetailsContent } from "./object-details-content";
-import { Icon } from "@iconify-icon/react";
-import ConvertForm from "@/shared/components/form/convert-form";
 
 export interface ObjectConvertProps {
   objectId: string;
@@ -33,6 +34,10 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
 
   if (error) {
     return <ErrorScreen message={error.message} />;
+  }
+
+  if (!objectDetailsData) {
+    return <ErrorScreen message="Object not found." />;
   }
 
   return (
@@ -56,24 +61,27 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
           <Combobox open={isOpen} onOpenChange={setIsOpen}>
-            <ComboboxTrigger>{kind && schemaKindLabel[kind]}</ComboboxTrigger>
+            <ComboboxTrigger>
+              {kind ? schemaKindLabel[kind] : "Select destination kind"}
+            </ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
                 onSelect={(newKind) => {
                   setKind(newKind);
-                  setIsOpen(false)
+                  setIsOpen(false);
                 }}
               />
             </ComboboxContent>
           </Combobox>
         </CardWithBorder.Title>
 
-        {!kind && <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+        {!kind && (
+          <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
             <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
             <div className="font-medium text-lg">No kind selected</div>
             <div className="text-sm">Please select a kind for the convertion target</div>
           </div>
-        }
+        )}
 
         {kind && <ConvertForm kind={kind} />}
       </Card>
