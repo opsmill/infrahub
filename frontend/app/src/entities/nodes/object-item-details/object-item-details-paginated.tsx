@@ -64,10 +64,6 @@ export default function ObjectItemDetails({
 
   const handleMetadataClick = useCallback(
     (attribute: AttributeSchema) => {
-      if (!attribute) {
-        return;
-      }
-
       setMetaEditFieldDetails({
         type: "attribute",
         attributeOrRelationshipName: attribute.name,
