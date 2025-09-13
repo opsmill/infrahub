@@ -71,8 +71,8 @@ Add the following contents to the end of the `.infrahub.yml` file at the root of
 
 ```yaml
 artifact_definitions:
-  - name: "device_configuration"
-    artifact_name: "Device configuration file"
+  - name: "Device configuration file"
+    artifact_name: "device_configuration"
     parameters:
       name: "name__value"
     content_type: "text/plain"
@@ -82,7 +82,8 @@ artifact_definitions:
 
 This defines an artifact with the following properties:
 
-- **name**: a unique name for the artifact
+- **name**: a descriptive name for the artifact definition
+- **artifact_name**: a unique name for the artifact (no spaces)
 - **parameters**: the parameter to pass to the transformation GraphQL query, in this case this we will pass the name of the object (device) as the name parameter
 - **content type**: the content type for the resulting artifact
 - **targets**: the name of a group of which the members will be a target for this artifact
