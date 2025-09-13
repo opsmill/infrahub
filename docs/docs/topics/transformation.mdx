@@ -94,6 +94,12 @@ A TransformPython can be rendered with 2 different methods:
 - As part of an [Artifact](./artifact.mdx)
 - Via the CLI for development and troubleshooting: [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform)
 
+## Targeting transformations with groups
+
+Transformations can operate on entire [groups](./groups.mdx), applying consistent changes across all members. This enables bulk operations without duplicating transformation logic. When used with [artifact definitions](./artifact.mdx) or [generators](./generator.mdx), transformations can target specific groups to process multiple objects with a single configuration.
+
+Groups provide a flexible targeting mechanism that decouples transformation logic from specific object lists, making transformations more reusable and maintainable. See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.
+
 ## Unit testing for transformation
 
 Infrahub provide a framework to create unit tests for your transformations with very minimal code/configuration.
