@@ -1,10 +1,8 @@
 ---
-title: How to generate configuration artifacts from templates
+title: How to generate configuration artifacts from Jinja2 templates
 ---
 
 import VideoPlayer from '../../src/components/VideoPlayer';
-
-# How to generate configuration artifacts from templates
 
 Generate configuration files and other artifacts by combining Infrahub data with templates. This guide shows you how to create artifacts that automatically update when your infrastructure data changes.
 
@@ -80,8 +78,8 @@ artifact_definitions:
 
 This configuration specifies:
 
-- **name**: Human-readable description
-- **artifact_name**: Unique identifier (no spaces)
+- **name**: Unique identifier (no spaces)
+- **artifact_name**: Human-readable description
 - **parameters**: Values passed to the transformation query
 - **content_type**: MIME type of the generated artifact
 - **targets**: Group containing target objects
@@ -132,13 +130,13 @@ Click the download button on any artifact detail page.
 
 ### REST API access
 
-Use the endpoint:
+Use the artifact endpoint:
 
 ```bash
-http://<INFRAHUB_HOST:INFRAHUB_PORT>/api/storage/object/<storage_id>
+http://<INFRAHUB_HOST:INFRAHUB_PORT>/api/artifact/<artifact_id>
 ```
 
-Copy the Storage ID from the artifact menu:
+Copy the Artifact ID from the artifact menu:
 
 ![Artifact menu](../media/guides/artifact/artifact_menu.png)
 

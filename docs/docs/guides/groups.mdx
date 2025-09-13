@@ -115,7 +115,7 @@ Then add these objects to your group:
 mutation UpdateGroupMembers {
   CoreStandardGroupUpdate(
     data: {
-      hfid: ["TagConfigGroup"],
+      hfid: ["<HFID returned by CreateGroup mutation>"],
       members: [
         {id: "<id of red tag>"},
         {id: "<id of blue tag>"}
@@ -196,12 +196,10 @@ query {
 ```python
 # Retrieve and check group members
 group = client.get(kind="CoreStandardGroup", name__value="TagConfigGroup")
-members = await group.members.get()
+members = group.members.get()
 
 for member in members:
     print(f"Member: {member.display_label}")
-```
-
   </TabItem>
 </Tabs>
 
