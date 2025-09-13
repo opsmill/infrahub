@@ -35,7 +35,7 @@ const read = async (reader: any): Promise<string> => {
 
   const nextResult = await read(reader);
 
-  return `${currentValue} ${nextResult}`;
+  return `${currentValue}${nextResult}`;
 };
 
 export const fetchStream = async (url: string, payload?: any) => {

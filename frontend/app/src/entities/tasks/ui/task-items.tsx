@@ -13,11 +13,13 @@ import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Table, tColumn } from "@/shared/components/table/table";
 import { Id } from "@/shared/components/ui/id";
+import { Link } from "@/shared/components/ui/link";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { debounce } from "@/shared/utils/common";
 
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 
@@ -154,7 +156,16 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
                 if (!item.id) return null;
 
-                return <Id key={item.id} id={item.id} kind={item.kind} preventCopy />;
+                return (
+                  <Link
+                    key={item.id}
+                    to={getObjectDetailsUrl(item.kind, item.id, [
+                      { name: QSP.BRANCH, value: edge.node.branch },
+                    ])}
+                  >
+                    <Id id={item.id} kind={item.kind} preventCopy />
+                  </Link>
+                );
               }}
             />
           ),

@@ -40,7 +40,7 @@ router = APIRouter(prefix="/query")
 
 
 class QueryPayload(BaseModel):
-    variables: dict[str, str] = Field(default_factory=dict)
+    variables: dict[str, Any] = Field(default_factory=dict)
 
 
 async def execute_query(
@@ -48,7 +48,7 @@ async def execute_query(
     request: Request,
     branch_params: BranchParams,
     query_id: str,
-    params: dict[str, str],
+    params: dict[str, Any],
     update_group: bool,
     subscribers: list[str],
     permission_checker: GraphQLQueryPermissionChecker,
