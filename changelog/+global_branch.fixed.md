@@ -1,0 +1,1 @@
+Ensure the default branch is used when a node is part of the global branch
