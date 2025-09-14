@@ -254,3 +254,105 @@ More details on the `.infrahub.yml` file format can be found in [.infrahub.yml t
 ### Executing stored GraphQL queries
 
 Stored GraphQL queries can be executed by using the `/api/query/{query_id}` REST API endpoint. The `{query_id}` can be the name or the id of the `GraphQLQuery` node in the database. More information can be found in the [Swagger documentation](http://localhost:8000/api/docs).
+
+## Working with groups in GraphQL
+
+[Groups](./groups.mdx) are first-class objects in Infrahub that can be queried and manipulated through GraphQL. Groups provide powerful ways to organize and operate on collections of infrastructure objects.
+
+### Querying groups and their members
+
+Query a specific group and its members:
+
+```graphql
+query {
+  CoreStandardGroup(name__value: "ProductionRouters") {
+    edges {
+      node {
+        name {
+          value
+        }
+        members {
+          edges {
+            node {
+              display_label
+              __typename
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Finding groups for an object
+
+Every object automatically gains relationships to find its group memberships:
+
+```graphql
+query {
+  InfraDevice(name__value: "router01") {
+    edges {
+      node {
+        name {
+          value
+        }
+        member_of_groups {
+          edges {
+            node {
+              name {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Query groups for bulk operations
+
+Groups enable efficient bulk queries across related objects:
+
+```graphql
+query {
+  CoreStandardGroup(name__value: "EdgeDevices") {
+    edges {
+      node {
+        members {
+          edges {
+            node {
+              ... on InfraDevice {
+                interfaces {
+                  edges {
+                    node {
+                      name {
+                        value
+                      }
+                      ip_addresses {
+                        edges {
+                          node {
+                            address {
+                              value
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This pattern enables powerful operations where you can process all objects in a group with a single query, making groups essential for scalable infrastructure management.
+
+See [organizing objects with groups](../guides/groups.mdx) for creating and managing groups, and [understanding groups](./groups.mdx) for architectural concepts.

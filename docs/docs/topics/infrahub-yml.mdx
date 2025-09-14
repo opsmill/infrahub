@@ -83,6 +83,32 @@ The configuration enables Infrahub to resolve dependencies between resources:
 
 This dependency management ensures that all resources have what they need when they execute.
 
+## Group targeting
+
+Many definitions in `.infrahub.yml` use [groups](./groups.mdx) to specify their targets:
+
+- **Artifact definitions** - The `targets` field references a group name to specify which objects should generate artifacts
+- **Generator definitions** - The `targets` field specifies the group for generated objects
+- **Check definitions** - The `targets` field indicates which group to validate
+
+Groups provide a flexible way to target operations across multiple objects without hardcoding specific object lists. This design decouples resource definitions from infrastructure changes - you can add or remove objects from groups without modifying the configuration files.
+
+Example targeting in `.infrahub.yml`:
+
+```yaml
+artifact_definitions:
+  - name: "Router Configuration"
+    targets: "ProductionRouters"  # References a group
+    transformation: "router_config_transform"
+
+check_definitions:
+  - name: "Interface Validation"
+    targets: "NetworkDevices"     # References a different group
+    class_name: "InterfaceCheck"
+```
+
+See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.
+
 ## Version control and branch behavior
 
 The `.infrahub.yml` file itself is version-controlled, enabling sophisticated integration patterns:
@@ -126,6 +152,8 @@ The `.infrahub.yml` configuration file is a crucial bridge between Git repositor
 - [Repository configuration file reference](../reference/dotinfrahub) - Complete syntax and options reference
 - [How to connect external Git repositories](../guides/repository) - Step-by-step setup guide
 - [Understanding Git repositories in Infrahub](../topics/repository) - Repository integration concepts
+- [Understanding groups](../topics/groups) - Organizational concepts for targeting operations
+- [How to organize objects with groups](../guides/groups) - Creating and managing groups
 - [Schema development](../topics/schema) - Designing infrastructure data models
 - [Transformations](../topics/transformation) - Data processing and template concepts
 - [Generators](../topics/generator) - Infrastructure provisioning automation

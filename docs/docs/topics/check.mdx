@@ -21,8 +21,10 @@ A check is composed of 2 main components:
 
 ## Targeted checks
 
-Targeted checks are exactly the same as a check, the main difference is that they target a specific group of nodes in Infrahub. The check will then only be executed against the nodes in that group.
+Targeted checks are exactly the same as a check, the main difference is that they target a specific [group](./groups.mdx) of nodes in Infrahub. The check will then only be executed against the nodes in that group.
 
-This can be useful if a check should only be executed against a subset of a specific kind of nodes.
+This approach leverages groups to enable scalable validation - instead of running checks against all objects of a type, you can focus validation on logically related objects. Groups provide flexible targeting that can be updated independently of the check definitions.
 
-An example of such scenario could be that you want to validate that all devices for which we generate an OpenConfig artifact, have the NETCONF service enabled.
+An example of such scenario could be that you want to validate that all devices for which we generate an OpenConfig artifact, have the NETCONF service enabled. By targeting the group used for artifact generation, the check automatically stays synchronized with the artifact scope.
+
+See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups for your checks.
