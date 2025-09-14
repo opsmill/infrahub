@@ -119,9 +119,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return "__".join(hfid)
 
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
-        schema_path = self._schema.parse_schema_path(
-            path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
-        )
+        branch_name = self._branch.name if self._branch.name != GLOBAL_BRANCH_NAME else registry.default_branch
+        schema_path = self._schema.parse_schema_path(path=path, schema=db.schema.get_schema_branch(name=branch_name))
 
         if not schema_path.has_property:
             raise ValueError(f"Unable to retrieve the value of a path without property {path!r} on {self.get_kind()!r}")
