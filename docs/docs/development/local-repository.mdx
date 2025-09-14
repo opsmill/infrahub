@@ -1,0 +1,222 @@
+---
+title: How to use a local directory as a repository for development
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# How to use a local directory as a repository for development
+
+When developing Transforms, Checks, or Generators on Infrahub, it's not always practical to use a remote Git server to push and test your changes. This guide explains how to mount your local directory directly into the container and use it as a repository for development and testing purposes.
+
+This approach allows you to validate everything locally before pushing changes upstream, streamlining your development workflow.
+
+## Prerequisites
+
+Before you begin, you'll need:
+
+- An Infrahub development environment running with Docker Compose
+- A local directory containing your Infrahub resources (transforms, checks, generators, etc.)
+- Basic understanding of Docker volumes and Git workflows
+
+:::warning Development only
+
+This method is intended for development and testing purposes only. For production environments, always use proper Git repositories with appropriate authentication and access controls.
+
+:::
+
+## Step 1: Mount the local directory
+
+Create a volume mapping to mount your local directory into the task-worker container. The recommended approach is to use a `docker-compose.override.yml` file, which allows you to extend the main docker-compose configuration without modifying it directly.
+
+Create a `docker-compose.override.yml` file in the same directory as your main `docker-compose.yml` file:
+
+```yaml
+---
+services:
+  task-worker:
+    volumes:
+      - ./:/upstream
+```
+
+This configuration mounts your current directory (containing your Infrahub resources) to `/upstream` within the task-worker container.
+
+:::info Alternative mount paths
+
+You can use any path inside the container (e.g., `/local-repo`, `/dev-repo`). Just ensure you use the same path when adding the repository in the next step.
+
+:::
+
+## Step 2: Add the repository to Infrahub
+
+Once your local directory is mounted, you can add it as a repository in Infrahub using any of the available methods.
+
+<Tabs>
+<TabItem value="Via infrahubctl" default>
+
+Using the [infrahubctl]($(base_url)infrahubctl/infrahubctl) command-line tool:
+
+```shell
+infrahubctl repository add test /upstream
+```
+
+For a read-only repository:
+
+```shell
+infrahubctl repository add test /upstream --read-only
+```
+
+</TabItem>
+<TabItem value="Via Object file">
+
+Create an object file to define the repository:
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreRepository
+  data:
+    - name: test
+      location: "/upstream"
+```
+
+For a read-only repository:
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreReadOnlyRepository
+  data:
+    - name: test
+      location: "/upstream"
+      ref: "main"  # or any branch/tag/commit you want to track
+```
+
+</TabItem>
+<TabItem value="Via the GraphQL Interface">
+
+1. Open the **GraphQL Interface**
+
+:::note GraphQL Sandbox
+
+Access the sandbox by clicking your user icon in the bottom left corner and selecting **GraphQL Sandbox**.
+
+:::
+
+2. Execute the mutation to create the repository:
+
+```graphql
+mutation {
+  CoreRepositoryCreate(
+    data: {
+      name: { value: "test" },
+      location: { value: "/upstream" }
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+For a read-only repository:
+
+```graphql
+mutation {
+  CoreReadOnlyRepositoryCreate(
+    data: {
+      name: { value: "test" },
+      location: { value: "/upstream" },
+      ref: { value: "main" }
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Step 3: Restart your environment
+
+After creating the `docker-compose.override.yml` file, restart your environment to apply the volume mapping:
+
+```shell
+docker compose down
+docker compose up -d
+```
+
+## Important considerations
+
+:::warning Commit requirement
+
+You still need to commit your changes locally in order for Infrahub to pick them up. Uncommitted changes will be ignored, as Infrahub reads from the Git repository, not the working directory.
+
+:::
+
+:::info Branch management
+
+Consider cleaning up your local branches regularly. Infrahub will pick up all branches from your local repository, which may clutter your branch list if you have many development branches.
+
+:::
+
+### Local development workflow
+
+1. Make changes to your transforms, checks, or generators in your local directory
+2. Commit the changes locally:
+   ```shell
+   git add .
+   git commit -m "Your commit message"
+   ```
+3. Infrahub will automatically detect the changes and sync with your local repository
+4. Test your changes in Infrahub
+5. Once satisfied, push your changes to the remote repository
+
+## Validation
+
+After completing this setup, you should be able to:
+
+- See your local repository listed under **Integrations > Git Repositories**
+- Access branches from your local Git repository in Infrahub
+- View and execute transforms, checks, and generators from your local directory
+- See changes reflected in Infrahub after committing them locally
+
+:::success
+
+Your local directory is now available as a repository in Infrahub for development and testing. This setup allows for rapid iteration without needing to push every change to a remote Git server.
+
+:::
+
+## Troubleshooting
+
+### Repository not appearing in Infrahub
+
+- Verify that the `docker-compose.override.yml` file is in the correct location
+- Ensure you've restarted the Docker Compose environment
+- Check that the path `/upstream` (or your chosen path) is correctly mounted
+
+### Changes not being detected
+
+- Confirm that your changes are committed to Git (use `git status` to check)
+- Verify that the repository synchronization is working by checking the repository status in the Infrahub UI
+
+### Permission issues
+
+- Ensure that the Docker container has appropriate permissions to read from the mounted directory
+- Check file ownership and permissions on your local directory
+
+## Related resources
+
+- [Repository concept explanation](../topics/repository)
+- [How to connect external Git repositories](../guides/repository)
+- [Infrahub configuration file documentation](../topics/infrahub-yml)
