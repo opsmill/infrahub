@@ -8,6 +8,7 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
+import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import { Permission } from "@/entities/permission/types";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { ModelSchema } from "@/entities/schema/types";
@@ -18,7 +19,7 @@ export interface ObjectConvertProps {
   permission: Permission;
 }
 
-export function ObjectConvert({ objectSchema, objectId }: ObjectConvertProps) {
+export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
   const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
   const [kind, setKind] = useState("");
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
@@ -31,21 +32,34 @@ export function ObjectConvert({ objectSchema, objectId }: ObjectConvertProps) {
     return <ErrorScreen message={error.message} />;
   }
 
+  if (!objectDetailsData) {
+    return <ErrorScreen message="Object not found." />;
+  }
+
   return (
     <div className="flex gap-2 p-2">
       <Card className="w-1/2 p-0">
-        <CardWithBorder.Title className="flex min-h-19 flex-col">
+        <CardWithBorder.Title className="flex h-19 flex-col">
           <span className="font-normal">SOURCE</span>{" "}
-          {objectDetailsData.display_label ?? objectDetailsData.hfid}
+          <div className="flex h-full items-center">
+            {objectDetailsData.display_label ?? objectDetailsData.hfid}
+          </div>
         </CardWithBorder.Title>
-        Details
+
+        <ObjectDetailsContent
+          schema={objectSchema}
+          objectDetailsData={objectDetailsData}
+          permission={permission}
+        />
       </Card>
 
       <Card className="w-1/2 p-0">
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
           <Combobox defaultOpen>
-            <ComboboxTrigger>{kind && schemaKindLabel[kind]}</ComboboxTrigger>
+            <ComboboxTrigger>
+              {kind ? (schemaKindLabel[kind] ?? kind) : "Select destination kind"}
+            </ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
                 onSelect={(newKind) => {

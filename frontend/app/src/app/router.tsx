@@ -229,7 +229,7 @@ export const router = createBrowserRouter([
                               breadcrumb: (match: UIMatch) =>
                                 ({
                                   type: "link",
-                                  label: "convert",
+                                  label: "Convert",
                                   to: constructPath(
                                     `/objects/${match.params.objectKind}/${match.params.objectid}/convert`
                                   ),
