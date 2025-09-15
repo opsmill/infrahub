@@ -61,7 +61,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           <span className="font-normal">DESTINATION</span>
           <Combobox defaultOpen>
             <ComboboxTrigger>
-              {kind ? (schemaKindLabel[kind] ?? kind) : "Select destination kind"}
+              {targetKind ? (schemaKindLabel[targetKind] ?? targetKind) : "Select destination kind"}
             </ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
