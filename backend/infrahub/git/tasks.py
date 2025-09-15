@@ -366,6 +366,7 @@ async def generate_request_artifact_definition(
             artifact_name=artifact_definition.artifact_name.value,
             artifact_id=artifact_id,
             artifact_definition=model.artifact_definition_id,
+            artifact_definition_name=model.artifact_definition_name,
             commit=repository.commit.value,
             content_type=artifact_definition.content_type.value,
             transform_type=str(transform.typename),
