@@ -59,7 +59,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
       <Card className="w-1/2 p-0">
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
-          <Combobox defaultOpen>
+          <Combobox open={isOpen} onOpenChange={setIsOpen}>
             <ComboboxTrigger>
               {targetKind ? (schemaKindLabel[targetKind] ?? targetKind) : "Select destination kind"}
             </ComboboxTrigger>
