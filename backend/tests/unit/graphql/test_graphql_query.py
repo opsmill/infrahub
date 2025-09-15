@@ -14,7 +14,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 from tests.helpers.graphql import graphql
 
 
@@ -1028,7 +1028,7 @@ async def test_query_filter_on_enum(
         }
     }
     """ % (enum_value)
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -1977,7 +1977,7 @@ async def test_query_attribute_node_property_source(
         }
     }
     """
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2036,7 +2036,7 @@ async def test_query_attribute_node_property_owner(
         }
     }
     """
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2472,7 +2472,7 @@ async def test_query_attribute_flag_property(
         }
     }
     """
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2789,7 +2789,7 @@ async def test_generic_root_with_pagination(
         }
     }
     """
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2831,7 +2831,7 @@ async def test_generic_root_with_filters(
         }
     }
     """
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -2891,7 +2891,7 @@ async def test_member_of_groups(
         }
     }
     """
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
