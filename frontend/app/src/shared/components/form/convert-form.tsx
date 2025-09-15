@@ -20,6 +20,11 @@ const ConvertForm = ({ sourceKind, targetKind }: ConvertFormProps) => {
   });
 
   const { schema } = useSchema(targetKind);
+
+  if (!schema) {
+    return <LoadingIndicator message="Loading schema..." />;
+  }
+
   const fields = getFormFieldsFromSchema({ schema });
 
   if (isPending) {
@@ -27,7 +32,7 @@ const ConvertForm = ({ sourceKind, targetKind }: ConvertFormProps) => {
   }
 
   if (error) {
-    return <ErrorScreen message="An error occured while fetching the fields mapping" />;
+    return <ErrorScreen message="An error occurred while fetching the fields mapping" />;
   }
 
   return <DynamicForm fields={fields} />;

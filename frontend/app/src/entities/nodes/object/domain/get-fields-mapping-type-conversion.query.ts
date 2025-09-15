@@ -30,6 +30,7 @@ export function getFieldsMappingOptions({
         atDate,
       });
     },
+    enabled: Boolean(sourceKind && targetKind),
   });
 }
 

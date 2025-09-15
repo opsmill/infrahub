@@ -23,7 +23,7 @@ export interface ObjectConvertProps {
 
 export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
   const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
-  const [targetKind, setKind] = useState("");
+  const [targetKind, setTargetKind] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
@@ -66,7 +66,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
                 onSelect={(newKind) => {
-                  setKind(newKind);
+                  setTargetKind(newKind);
                   setIsOpen(false);
                 }}
               />
@@ -78,13 +78,14 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
             <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
             <div className="font-medium text-lg">No kind selected</div>
-            <div className="text-sm">Please select a kind for the convertion target</div>
+            <div className="text-sm">Please select a kind for the conversion target</div>
           </div>
         )}
 
         {targetKind && objectSchema.kind && (
           <div className="p-2">
             <ConvertForm
+              key={targetKind}
               objectDetailsData={objectDetailsData}
               sourceKind={objectSchema.kind}
               targetKind={targetKind}
