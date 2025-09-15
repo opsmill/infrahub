@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
 
 
@@ -283,8 +284,8 @@ async def test_branch_caching_hit(
         same_branch.schema_hash = None
     schema_branch = registry.schema.get_schema_branch(default_branch.name)
 
-    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
+    manager1 = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = graphql_registry.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
 
     assert manager1 is manager2
 
@@ -302,8 +303,8 @@ async def test_branch_caching_miss(
     default_branch.active_schema_hash.main = "abc"
     same_branch.update_schema_hash()
 
-    manager1 = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-    manager2 = GraphQLSchemaManager.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
+    manager1 = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    manager2 = graphql_registry.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
 
     assert manager1 is not manager2
 
@@ -319,18 +320,18 @@ async def test_branch_purge(
     active_branch = "i-will-not-be-purged"
     schema_branch = registry.schema.get_schema_branch(default_branch.name)
 
-    GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-    GraphQLSchemaManager.purge_inactive(active_branches=[default_branch.name])
-    GraphQLSchemaManager._add_branch_hash(branch_name=active_branch, schema_hash=default_branch.active_schema_hash.main)
-    GraphQLSchemaManager._add_branch_hash(branch_name=purged_branch, schema_hash=default_branch.active_schema_hash.main)
+    graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    graphql_registry.purge_inactive(active_branches=[default_branch.name])
+    graphql_registry._add_branch_hash(branch_name=active_branch, schema_hash=default_branch.active_schema_hash.main)
+    graphql_registry._add_branch_hash(branch_name=purged_branch, schema_hash=default_branch.active_schema_hash.main)
 
-    assert default_branch.active_schema_hash.main in GraphQLSchemaManager._branch_details_by_hash.keys()
-    assert default_branch.active_schema_hash.main in GraphQLSchemaManager._branch_name_by_hash.keys()
+    assert default_branch.active_schema_hash.main in graphql_registry.branch_details_by_hash.keys()
+    assert default_branch.active_schema_hash.main in graphql_registry.branch_name_by_hash.keys()
 
-    assert active_branch in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
-    assert purged_branch in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
-    purged_branches = GraphQLSchemaManager.purge_inactive(active_branches=[active_branch, default_branch.name])
-    assert active_branch in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
-    assert purged_branch not in GraphQLSchemaManager._branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert active_branch in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
+    purged_branches = graphql_registry.purge_inactive(active_branches=[active_branch, default_branch.name])
+    assert active_branch in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch not in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
 
     assert purged_branches == {purged_branch}

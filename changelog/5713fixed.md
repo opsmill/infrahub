@@ -1,0 +1,1 @@
+Report proper branch when read-only repositories fail to synchronize due to invalid branch

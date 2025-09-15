@@ -10,6 +10,7 @@ import jwt
 from pydantic import BaseModel
 
 from infrahub import config, models
+from infrahub.config import SecurityOAuth2Google, SecurityOAuth2Settings, SecurityOIDCGoogle, SecurityOIDCSettings
 from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -21,6 +22,7 @@ from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 class AuthType(str, Enum):
@@ -237,3 +239,20 @@ async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
     refresh_token = await NodeManager.get_one(id=token_id, db=db)
     if refresh_token:
         await refresh_token.delete(db=db)
+
+
+async def get_groups_from_provider(
+    provider: SecurityOAuth2Settings | SecurityOIDCSettings, service: InfrahubServices, payload: dict, user_info: dict
+) -> list[str]:
+    if isinstance(provider, (SecurityOAuth2Google, SecurityOIDCGoogle)):
+        # Poor man's workaround to fetch user groups from Google
+        if provider.fetch_groups:
+            groups_response = await service.http.get(
+                f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
+                headers={"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"},
+            )
+            group_memberships = groups_response.json()
+            if "memberships" in group_memberships:
+                return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
+
+    return []

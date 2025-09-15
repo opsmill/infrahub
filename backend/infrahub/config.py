@@ -545,6 +545,14 @@ class SecurityOIDCGoogle(SecurityOIDCSettings):
     discovery_url: str = Field(default="https://accounts.google.com/.well-known/openid-configuration")
     icon: str = Field(default="mdi:google")
     display_label: str = Field(default="Google")
+    fetch_groups: bool = Field(
+        default=False,
+        description="Whether to use Cloud Identity API to fetch user groups. Note: requires additional scope: https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+    )
+    cloudidentity_url: str = Field(
+        default="https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchDirectGroups",
+        description="Google Cloud endpoint for Cloud Identity. Using searchDirectGroups by default because it is available for the Free plan",
+    )
 
 
 class SecurityOIDCProvider1(SecurityOIDCSettings):
@@ -605,6 +613,14 @@ class SecurityOAuth2Google(SecurityOAuth2Settings):
     userinfo_url: str = Field(default="https://www.googleapis.com/oauth2/v3/userinfo")
     icon: str = Field(default="mdi:google")
     display_label: str = Field(default="Google")
+    fetch_groups: bool = Field(
+        default=False,
+        description="Whether to use Cloud Identity API to fetch user groups. Note: requires additional scopes: https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+    )
+    cloudidentity_url: str = Field(
+        default="https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchDirectGroups",
+        description="Google Cloud endpoint for Cloud Identity. Using searchDirectGroups by default because it is available for the Free plan",
+    )
 
 
 class SecurityOAuth2ProviderSettings(BaseModel):

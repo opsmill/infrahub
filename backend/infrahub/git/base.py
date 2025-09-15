@@ -402,7 +402,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             repo = Repo.clone_from(self.location, self.directory_default)
             repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
-            await self._raise_enriched_error(error=exc)
+            await self._raise_enriched_error(error=exc, branch_name=checkout_ref or self.default_branch)
 
         self.has_origin = True
 

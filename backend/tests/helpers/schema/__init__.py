@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 
 from .car import CAR
 from .child import CHILD
@@ -43,7 +43,7 @@ async def load_schema(
     branch = registry.get_branch_from_registry(branch_name)
     branch.update_schema_hash()
     await branch.save(db=db)
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
 
 
 __all__ = [
