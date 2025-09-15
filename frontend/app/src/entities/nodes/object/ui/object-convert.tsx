@@ -23,7 +23,7 @@ export interface ObjectConvertProps {
 
 export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
   const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
-  const [kind, setKind] = useState("");
+  const [targetKind, setKind] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
@@ -61,7 +61,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           <span className="font-normal">DESTINATION</span>
           <Combobox open={isOpen} onOpenChange={setIsOpen}>
             <ComboboxTrigger>
-              {kind ? (schemaKindLabel[kind] ?? kind) : "Select destination kind"}
+              {targetKind ? (schemaKindLabel[targetKind] ?? targetKind) : "Select destination kind"}
             </ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
               <KindComboboxList
@@ -74,7 +74,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           </Combobox>
         </CardWithBorder.Title>
 
-        {!kind && (
+        {!targetKind && (
           <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
             <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
             <div className="font-medium text-lg">No kind selected</div>
@@ -82,9 +82,13 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           </div>
         )}
 
-        {kind && (
+        {targetKind && objectSchema.kind && (
           <div className="p-2">
-            <ConvertForm kind={kind} />
+            <ConvertForm
+              objectDetailsData={objectDetailsData}
+              sourceKind={objectSchema.kind}
+              targetKind={targetKind}
+            />
           </div>
         )}
       </Card>
