@@ -67,8 +67,8 @@ Add an artifact definition to your repository's `.infrahub.yml` file:
 
 ```yaml
 artifact_definitions:
-  - name: "Device configuration file"
-    artifact_name: "device_configuration"
+  - name: "device_configuration"
+    artifact_name: "Device configuration file"
     parameters:
       name: "name__value"
     content_type: "text/plain"
@@ -78,8 +78,8 @@ artifact_definitions:
 
 This configuration specifies:
 
-- **name**: Human-readable label
-- **artifact_name**: Machine identifier (no spaces)
+- **name**: Machine identifier (no spaces)
+- **artifact_name**: Human-readable label
 - **parameters**: Values passed to the transformation query
 - **content_type**: MIME type of the generated artifact
 - **targets**: Group containing target objects
@@ -130,10 +130,11 @@ Click the download button on any artifact detail page.
 
 ### REST API access
 
-Use the artifact endpoint:
+Download artifacts using the storage object endpoint (authentication required):
 
 ```bash
-http://<INFRAHUB_HOST:INFRAHUB_PORT>/api/artifact/<artifact_id>
+curl -H "X-INFRAHUB-KEY: <your-api-token>" \
+  http://<INFRAHUB_HOST:INFRAHUB_PORT>/api/storage/object/<storage_identifier>
 ```
 
 Copy the Artifact ID from the artifact menu:
