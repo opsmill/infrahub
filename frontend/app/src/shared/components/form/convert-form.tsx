@@ -1,6 +1,6 @@
 import { useFieldsMappingTypeConversion } from "@/entities/nodes/object/domain/get-fields-mapping-type-conversion.query";
 import { NodeObject } from "@/entities/nodes/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { ModelSchema } from "@/entities/schema/types";
 
 import ErrorScreen from "../errors/error-screen";
 import { LoadingIndicator } from "../loading/loading-indicator";
@@ -9,23 +9,17 @@ import { getFormFieldsFromSchema } from "./utils/getFormFieldsFromSchema";
 
 export type ConvertFormProps = {
   objectDetailsData: NodeObject;
-  sourceKind: string;
-  targetKind: string;
+  sourceSchema: ModelSchema;
+  targetSchema: ModelSchema;
 };
 
-const ConvertForm = ({ sourceKind, targetKind }: ConvertFormProps) => {
+const ConvertForm = ({ sourceSchema, targetSchema }: ConvertFormProps) => {
   const { isPending, error } = useFieldsMappingTypeConversion({
-    sourceKind,
-    targetKind,
+    sourceKind: sourceSchema.kind,
+    targetKind: targetSchema.kind,
   });
 
-  const { schema } = useSchema(targetKind);
-
-  if (!schema) {
-    return <LoadingIndicator message="Loading schema..." />;
-  }
-
-  const fields = getFormFieldsFromSchema({ schema });
+  const fields = getFormFieldsFromSchema({ schema: targetSchema });
 
   if (isPending) {
     return <LoadingIndicator />;
