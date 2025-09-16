@@ -20,7 +20,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Fixed
 
-- Allow RequestGraphQLQueryGroupUpdate params to accept any type of value, not just strings. ([#7208](https://github.com/opsmill/infrahub/issues/7208))
+- Allow RequestGraphQLQueryGroupUpdate parameters to accept any type of value, not just strings. ([#7208](https://github.com/opsmill/infrahub/issues/7208))
 - The available IPs filter in IPAM list views now stays applied when switching kind.
 
 ## [Infrahub - v1.4.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.6) - 2025-09-10
