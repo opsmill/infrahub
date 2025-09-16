@@ -11,6 +11,18 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.7) - 2025-09-16
+
+### Added
+
+- Added optional configuration to fetch and map groups when using Google as an identity provider for OAuth/OIDC.
+- Added the name of the artifact definition to the payload of artifact webhook events.
+
+### Fixed
+
+- Allow RequestGraphQLQueryGroupUpdate params to accept any type of value, not just strings. ([#7208](https://github.com/opsmill/infrahub/issues/7208))
+- The available IPs filter in IPAM list views now stays applied when switching kind.
+
 ## [Infrahub - v1.4.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.6) - 2025-09-10
 
 ### Added
