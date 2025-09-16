@@ -3,7 +3,7 @@ import { gql } from "@apollo/client";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
 
-interface FieldsMappingParams extends ContextParams {
+export interface FieldsMappingParams extends ContextParams {
   sourceKind?: string;
   targetKind: string;
 }
@@ -16,7 +16,7 @@ query($sourceKind: String, $targetKind: String) {
 }
 `;
 
-export function getFieldsMappingFromApi({
+export function getConvertFieldsMappingFromApi({
   sourceKind,
   targetKind,
   branchName,

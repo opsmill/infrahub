@@ -1,4 +1,4 @@
-import { useFieldsMappingTypeConversion } from "@/entities/nodes/object/domain/get-fields-mapping-type-conversion.query";
+import { useFieldsMappingTypeConversion } from "@/entities/nodes/object/domain/get-convert-fields-mappings.query";
 import { NodeObject } from "@/entities/nodes/types";
 import { ModelSchema } from "@/entities/schema/types";
 

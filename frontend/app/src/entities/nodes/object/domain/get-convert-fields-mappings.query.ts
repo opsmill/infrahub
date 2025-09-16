@@ -5,7 +5,7 @@ import { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getFieldsMappingFromApi } from "@/entities/nodes/object/api/get-fields-mapping-type-conversion-from-api";
+import { getConvertFieldsMapping } from "@/entities/nodes/object/domain/get-convert-fields-mappings";
 
 interface FieldsMappingProps {
   sourceKind: string;
@@ -14,7 +14,7 @@ interface FieldsMappingProps {
 
 interface FieldsMappingOptionsParams extends ContextParams, FieldsMappingProps {}
 
-export function getFieldsMappingOptions({
+export function getConvertFieldsMappingOptions({
   sourceKind,
   targetKind,
   branchName,
@@ -23,7 +23,7 @@ export function getFieldsMappingOptions({
   return queryOptions({
     queryKey: [branchName, atDate, "fields-mapping-type-conversion", sourceKind, targetKind],
     queryFn: () => {
-      return getFieldsMappingFromApi({
+      return getConvertFieldsMapping({
         sourceKind,
         targetKind,
         branchName,
@@ -38,19 +38,12 @@ export const useFieldsMappingTypeConversion = ({ sourceKind, targetKind }: Field
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  const { data, ...props } = useQuery(
-    getFieldsMappingOptions({
+  return useQuery(
+    getConvertFieldsMappingOptions({
       sourceKind,
       targetKind,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
     })
   );
-
-  const result = data?.data?.FieldsMappingTypeConversion?.mapping ?? {};
-
-  return {
-    data: result,
-    ...props,
-  };
 };
