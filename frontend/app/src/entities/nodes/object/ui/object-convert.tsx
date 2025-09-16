@@ -8,10 +8,10 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { SchemaComboboxList } from "@/entities/nodes/object/ui/filters/schema-combobox-list";
 import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import { Permission } from "@/entities/permission/types";
 import { ModelSchema } from "@/entities/schema/types";
-import { SchemaComboboxList } from "@/entities/nodes/object/ui/filters/schema-combobox-list";
 
 export interface ObjectConvertProps {
   objectId: string;
