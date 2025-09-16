@@ -239,7 +239,9 @@ class InfrahubDockerCompose(DockerCompose):
             for service_name, service_data in INFRAHUB_SERVICES.items()
         }
 
-    def database_create_backup(self, backup_name: str = "neo4j_database.backup", dest_dir: Path | None = None) -> None:
+    def database_create_backup(
+        self, backup_name: str = "neo4j_database.backup", dest_dir: Path | None = None, compress: bool = False
+    ) -> None:
         assert self.use_neo4j_enterprise
 
         self.exec_in_container(
@@ -247,7 +249,7 @@ class InfrahubDockerCompose(DockerCompose):
                 "neo4j-admin",
                 "database",
                 "backup",
-                "--compress=false",
+                f"--compress={'true' if compress else 'false'}",
                 "--to-path",
                 str(self.internal_backup_dir),
             ],
