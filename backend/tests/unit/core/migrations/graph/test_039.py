@@ -51,17 +51,20 @@ class TestMigration039:
         await net140.new(db=db, prefix="10.10.0.0/16", ip_namespace=ns1, parent=net146)
         await net140.save(db=db)
 
-        branch = await create_branch(db=db, branch_name=self.branch_name)
+        net142 = await Node.init(db=db, schema=prefix_schema)
+        await net142.new(db=db, prefix="10.10.1.0/24", ip_namespace=ns1, parent=net140)
+        await net142.save(db=db)
 
-        net140_branch = await NodeManager.get_one(db=db, branch=branch, id=net140.id)
-        net140_branch.prefix.value = "10.10.0.0/17"
-        await net140_branch.parent.update(db=db, data=net140.id)
-        await net140_branch.save(db=db)
+        net143 = await Node.init(db=db, schema=prefix_schema)
+        await net143.new(db=db, prefix="10.10.1.0/27", ip_namespace=ns1, parent=net142)
+        await net143.save(db=db)
 
         return {
             "ns1": ns1,
             "ns2": ns2,
             "net140": net140,
+            "net142": net142,
+            "net143": net143,
             "net146": net146,
         }
 
@@ -73,7 +76,9 @@ class TestMigration039:
     async def net140_updated(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch: Branch
     ) -> IpPrefixDetails:
+        """Update prefix from 10.10.0.0/16 to 10.10.0.0/17 and set parent to self"""
         net140 = initial_dataset["net140"]
+        net143 = initial_dataset["net143"]
         net146 = initial_dataset["net146"]
         net140_branch = await NodeManager.get_one(db=db, branch=branch, id=net140.id)
         net140_branch.prefix.value = "10.10.0.0/17"
@@ -84,14 +89,39 @@ class TestMigration039:
             node_uuid=net140_branch.id,
             prefix="10.10.0.0/17",
             expected_parent_uuid=net146.id,
-            expected_children_uuids=set(),
+            expected_children_uuids={net143.id},
         )
 
     @pytest.fixture
+    async def net142_updated(
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch: Branch
+    ) -> IpPrefixDetails:
+        """Update prefix from ns1 to ns2 on branch"""
+        net142 = initial_dataset["net142"]
+        ns2 = initial_dataset["ns2"]
+        net142_branch = await NodeManager.get_one(db=db, branch=branch, id=net142.id)
+        await net142_branch.ip_namespace.update(db=db, data=ns2.id)
+        await net142_branch.save(db=db)
+
+        return IpPrefixDetails(
+            node_uuid=net142_branch.id,
+            prefix="10.10.1.0/24",
+            expected_parent_uuid=None,
+            expected_children_uuids=set(),
+        )
+
+    # TODO: address value update on branch
+    # TODO: check that only the expected nodes are reconciled
+
+    @pytest.fixture
     async def branch_updates(
-        self, initial_dataset: dict[str, Node], branch: Branch, net140_updated: IpPrefixDetails
+        self,
+        initial_dataset: dict[str, Node],
+        branch: Branch,
+        net140_updated: IpPrefixDetails,
+        net142_updated: IpPrefixDetails,
     ) -> list[IpPrefixDetails]:
-        return {"net140": net140_updated}
+        return {"net140": net140_updated, "net142": net142_updated}
 
     async def test_migration_039(
         self, db: InfrahubDatabase, initial_dataset, branch: Branch, branch_updates: dict[str, IpPrefixDetails]
