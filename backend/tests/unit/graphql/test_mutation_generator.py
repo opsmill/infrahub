@@ -63,6 +63,7 @@ async def test_run_generator_definition(
     account_session = AccountSession(
         authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
     )
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, branch=default_branch, service=service, account_session=account_session
     )
