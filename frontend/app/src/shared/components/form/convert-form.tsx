@@ -4,7 +4,8 @@ import { ModelSchema } from "@/entities/schema/types";
 
 import ErrorScreen from "../errors/error-screen";
 import { LoadingIndicator } from "../loading/loading-indicator";
-import DynamicForm from "./dynamic-form";
+import { Form, FormSubmit } from "../ui/form";
+import { DynamicInput } from "./dynamic-form";
 import { getFormFieldsFromSchema } from "./utils/getFormFieldsFromSchema";
 
 export type ConvertFormProps = {
@@ -29,7 +30,22 @@ const ConvertForm = ({ sourceSchema, targetSchema }: ConvertFormProps) => {
     return <ErrorScreen message="An error occurred while fetching the fields mapping" />;
   }
 
-  return <DynamicForm fields={fields} />;
+  const formDefaultValues = fields.reduce(
+    (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
+    {}
+  );
+
+  return (
+    <Form defaultValues={formDefaultValues}>
+      {fields.map((field) => (
+        <DynamicInput key={`${field.type}_${field.name}`} {...field} />
+      ))}
+
+      <div className="text-right">
+        <FormSubmit>Convert</FormSubmit>
+      </div>
+    </Form>
+  );
 };
 
 export default ConvertForm;
