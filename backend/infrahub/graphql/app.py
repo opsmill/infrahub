@@ -23,7 +23,6 @@ from graphql import (
     ExecutionResult,
     GraphQLError,
     GraphQLFormattedError,
-    Middleware,
     OperationType,
     graphql,
     parse,
@@ -59,6 +58,7 @@ from .metrics import (
     GRAPHQL_RESPONSE_SIZE_METRICS,
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
+from .middleware import raise_on_mutation_on_branch_needing_rebase
 
 if TYPE_CHECKING:
     import graphene
@@ -99,7 +99,6 @@ class InfrahubGraphQLApp:
         *,
         on_get: Callable[[Request], Response | Awaitable[Response]] | None = None,
         root_value: RootValue = None,
-        middleware: Middleware | None = None,
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
         execution_context_class: type[ExecutionContext] | None = None,
     ) -> None:
@@ -107,7 +106,6 @@ class InfrahubGraphQLApp:
         self.on_get = on_get
         self.root_value = root_value
         self.error_formatter = error_formatter
-        self.middleware = middleware
         self.execution_context_class = execution_context_class
         self.logger = get_logger(name="infrahub.graphql")
         self.permission_checker = permission_checker
@@ -259,7 +257,7 @@ class InfrahubGraphQLApp:
                     source=query,
                     context_value=graphql_params.context,
                     root_value=self.root_value,
-                    middleware=self.middleware,
+                    middleware=[raise_on_mutation_on_branch_needing_rebase],
                     variable_values=variable_values,
                     operation_name=operation_name,
                     execution_context_class=self.execution_context_class,

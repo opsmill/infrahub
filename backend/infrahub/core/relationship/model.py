@@ -905,6 +905,19 @@ class RelationshipManager:
             return registry.get_global_branch()
         return self.branch
 
+    async def get_db_peers(
+        self, db: InfrahubDatabase, at: Timestamp | None = None, branch_agnostic: bool = False
+    ) -> list[RelationshipPeerData]:
+        query = await RelationshipGetPeerQuery.init(
+            db=db,
+            source=self.node,
+            at=at or self.at,
+            rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
+            branch_agnostic=branch_agnostic,
+        )
+        await query.execute(db=db)
+        return list(query.get_peers())
+
     async def fetch_relationship_ids(
         self,
         db: InfrahubDatabase,
@@ -922,16 +935,9 @@ class RelationshipManager:
 
         current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
 
-        query = await RelationshipGetPeerQuery.init(
-            db=db,
-            source=self.node,
-            at=at or self.at,
-            rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
-            branch_agnostic=branch_agnostic,
-        )
-        await query.execute(db=db)
+        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
 
-        peers_database: dict = {str(peer.peer_id): peer for peer in query.get_peers()}
+        peers_database: dict = {str(peer.peer_id): peer for peer in peers}
         peer_ids = list(peers_database.keys())
 
         # Calculate which peer should be added or removed

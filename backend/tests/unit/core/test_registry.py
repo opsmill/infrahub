@@ -1,4 +1,5 @@
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema.manager import SchemaManager
@@ -20,7 +21,7 @@ async def test_get_branch_not_in_registry(db: InfrahubDatabase, default_branch: 
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     default_branch.update_schema_hash()
 
-    branch1 = Branch(name="branch1", status="OPEN")
+    branch1 = Branch(name="branch1", status=BranchStatus.OPEN.value)
     branch1.update_schema_hash()
     await branch1.save(db=db)
 

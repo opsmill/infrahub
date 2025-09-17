@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.convert_object_type.conversion import InputDataForDestField, InputForDestField
+from infrahub.core.constants.infrahubkind import NUMBERPOOL
+from infrahub.core.convert_object_type.object_conversion import InputDataForDestField, InputForDestField
 from infrahub.core.query.resource_manager import NumberPoolGetReserved
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from tests.helpers.test_app import TestInfrahubApp
@@ -192,7 +192,7 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
             persons[name] = person
 
         # Retrieve the pool used for the NumberPool attribute
-        pools = await client.all(kind=InfrahubKind.NUMBERPOOL)
+        pools = await client.all(kind=NUMBERPOOL)
         assert len(pools) == 1
         pool = pools[0]
 

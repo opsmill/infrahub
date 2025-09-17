@@ -67,6 +67,9 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
                 worker=WORKER_IDENTITY,
             )
             registry.branch[branch.name] = branch
+        elif existing_branch.status != branch.status:
+            log.info(f"Updating registry branch cache for {branch.name=}")
+            registry.branch[branch.name] = branch
         return
 
     log.info(

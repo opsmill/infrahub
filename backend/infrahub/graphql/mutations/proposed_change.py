@@ -29,13 +29,14 @@ from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, Vali
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.graphql.types.task import TaskInfo
-from infrahub.lock import InfrahubLock, build_object_lock_name
+from infrahub.lock import InfrahubLock
 from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
+from ...core.node.lock_utils import build_object_lock_name
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:

@@ -1473,6 +1473,100 @@ async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_sche
 
 
 @pytest.fixture
+async def schema_conversion_agnostic_node_with_aware_attributes(
+    db: InfrahubDatabase, node_group_schema, data_schema
+) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testaa",
+                "human_friendly_id": ["name_agnostic__value"],
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "attributes": [
+                    {
+                        "name": "name_agnostic",
+                        "kind": "Text",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                    {
+                        "name": "age_aware",
+                        "kind": "Number",
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_car",
+                        "peer": "TestaaCar",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "other_cars",
+                        "peer": "TestaaCar",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "person__other_cars",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testaa",
+                "inherit_from": ["TestaaPersonGeneric"],
+                "branch": BranchSupportType.AGNOSTIC.value,
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testaa",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "inherit_from": ["TestaaPersonGeneric"],
+                "attributes": [
+                    {
+                        "name": "height_aware",
+                        "kind": "Number",
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testaa",
+                "human_friendly_id": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_person",
+                        "peer": "TestaaPersonGeneric",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "owner",
+                        "peer": "TestaaPersonGeneric",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__other_cars",
+                    },
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
 async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, node_group_schema, data_schema) -> dict:
     schema: dict[str, Any] = {
         "version": "1.0",
