@@ -885,6 +885,19 @@ class RelationshipGetQuery(RelationshipQuery):
         self.add_to_query(query)
         self.return_labels = ["s", "d", "rl", "r2", "is_active"]
 
+    def is_already_deleted(self) -> bool:
+        result = self.get_result()
+        if not result:
+            return False
+        return result.get("is_active") is False
+
+    def get_relationships_ids_for_branch(self, branch_name: str) -> list[str] | None:
+        result = self.get_result()
+        if not result:
+            return None
+
+        return [rel.element_id for rel in result.get_rels() if rel.get("branch") == branch_name]
+
 
 class RelationshipGetByIdentifierQuery(Query):
     name = "relationship_get_identifier"
