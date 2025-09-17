@@ -31,7 +31,7 @@ WHERE e.branch = $branch_name
 CALL (n) {
     OPTIONAL MATCH (n)-[:IS_RELATED {branch: $global_branch_name}]-(rel:Relationship)
     DETACH DELETE rel
-} IN TRANSACTIONS
+} IN TRANSACTIONS OF 500 ROWS
 
 // reduce the results to a single row
 WITH 1 AS one
@@ -44,7 +44,7 @@ MATCH (s)-[r]->(d)
 WHERE r.branch = $branch_name
 CALL (r) {
     DELETE r
-} IN TRANSACTIONS
+} IN TRANSACTIONS OF 500 ROWS
 
 // --------------
 // get the database IDs of every vertex linked to a deleted edge
@@ -61,7 +61,7 @@ CALL (vertex_id) {
     WHERE elementId(n) = vertex_id
     AND NOT exists((n)--())
     DELETE n
-} IN TRANSACTIONS
+} IN TRANSACTIONS OF 500 ROWS
         """
         self.params["branch_name"] = self.branch_name
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
