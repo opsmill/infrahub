@@ -5,7 +5,7 @@ import { ModelSchema } from "@/entities/schema/types";
 import ErrorScreen from "../errors/error-screen";
 import { LoadingIndicator } from "../loading/loading-indicator";
 import { Form, FormSubmit } from "../ui/form";
-import { DynamicInput } from "./dynamic-form";
+import { DynamicField } from "./dynamic-form";
 import { getFormFieldsFromSchema } from "./utils/getFormFieldsFromSchema";
 
 export type ConvertFormProps = {
@@ -38,7 +38,7 @@ const ConvertForm = ({ sourceSchema, targetSchema }: ConvertFormProps) => {
   return (
     <Form defaultValues={formDefaultValues}>
       {fields.map((field) => (
-        <DynamicInput key={`${field.type}_${field.name}`} {...field} />
+        <DynamicField key={`${field.type}_${field.name}`} {...field} />
       ))}
 
       <div className="text-right">
