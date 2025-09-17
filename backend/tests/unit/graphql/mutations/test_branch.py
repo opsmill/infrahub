@@ -28,7 +28,7 @@ class TestBranchCreate(TestInfrahubApp):
     ):
         query = """
             mutation {
-                BranchCreate(data: { name: "branch2", sync_with_git: false }) {
+                BranchCreate(data: { name: "branch2", sync_with_git: false, origin_branch: "main" }) {
                     ok
                     object {
                         id
@@ -239,6 +239,36 @@ class TestBranchCreate(TestInfrahubApp):
 
         branch2 = await Branch.get_by_name(db=db, name="branch2")
         assert branch2.active_schema_hash.main == default_branch.active_schema_hash.main
+
+    async def test_branch_create_invalid_origin_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        session_admin,
+        service: InfrahubServices,
+    ):
+        query = """
+        mutation AddBranch {
+            BranchCreate(data: {
+                name: "test1"
+                description: "test1 description"
+                sync_with_git: false
+                origin_branch: "test"
+            }) {
+                ok
+                object {
+                    id
+                }
+            }
+        }
+        """
+        result = await graphql_mutation(
+            query=query, db=db, service=service, branch=default_branch, account_session=session_admin
+        )
+
+        assert result.errors
+        assert len(result.errors) == 1
+        assert f"origin_branch must be '{default_branch.name}'" == result.errors[0].message
 
 
 @pytest.fixture
