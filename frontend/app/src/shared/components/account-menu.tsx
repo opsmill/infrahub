@@ -147,8 +147,8 @@ const UnauthenticatedAccountMenu = () => {
 
 const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
   const query = gql(getProfileDetails({ ...schema }));
-  const { setToken, isAuthenticated } = useAuth();
-  const { loading, data } = useQuery(query, { skip: !isAuthenticated });
+  const { setToken } = useAuth();
+  const { loading, data } = useQuery(query);
   const { mutateAsync: logout, isPending } = useLogoutMutation();
 
   const handleSignOut = async () => {
