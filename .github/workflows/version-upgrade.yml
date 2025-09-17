@@ -61,7 +61,7 @@ jobs:
         run: |
           pipx install -f poetry==${{ env.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
-          pip install invoke toml
+          pip install invoke
       - name: "Install Package"
         run: "poetry install"
       - name: "Set environment variables"
