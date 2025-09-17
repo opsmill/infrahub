@@ -6,7 +6,7 @@ import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 
 import type { paths } from "@/shared/api/rest/types.generated";
 
-import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refesh-access-token.query";
+import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {

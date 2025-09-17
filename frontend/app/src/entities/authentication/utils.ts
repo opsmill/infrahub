@@ -1,8 +1,5 @@
-import { CONFIG } from "@/config/config";
 import { REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-
-import { fetchUrl } from "@/shared/api/rest/fetch";
 
 import { UserToken } from "@/entities/authentication/types";
 
@@ -16,18 +13,7 @@ export const saveTokensInLocalStorage = (result: Partial<UserToken>) => {
   }
 };
 
-export const removeTokensInLocalStorage = async () => {
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-
-  const payload = {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${localToken}`,
-    },
-  };
-
-  await fetchUrl(CONFIG.LOGOUT_URL, payload);
-
+export const removeTokensInLocalStorage = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 };

@@ -16,7 +16,7 @@ import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refesh-access-token.query";
+import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {

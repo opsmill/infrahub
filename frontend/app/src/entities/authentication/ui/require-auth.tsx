@@ -4,7 +4,7 @@ import { Navigate, useLocation } from "react-router";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
-export function RequireAuth({ children }: { children: React.ReactElement }) {
+export function RequireAuth({ children }: { children: React.ReactNode }) {
   const config = useConfig();
   const { isAuthenticated } = useAuth();
   const location = useLocation();

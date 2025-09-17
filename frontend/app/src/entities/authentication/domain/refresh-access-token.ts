@@ -14,7 +14,7 @@ export const refreshAccessToken: RefreshAccessToken = async () => {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
   if (!refreshToken) {
-    await removeTokensInLocalStorage();
+    removeTokensInLocalStorage();
     window.location.reload();
     throw new Error("Refresh token not found");
   }
@@ -26,7 +26,7 @@ export const refreshAccessToken: RefreshAccessToken = async () => {
   });
 
   if (error) {
-    await removeTokensInLocalStorage();
+    removeTokensInLocalStorage();
     window.location.reload();
     throw error;
   }
