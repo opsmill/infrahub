@@ -26,16 +26,16 @@ export function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
       <Provider store={store}>
-        <AuthProvider>
-          <QueryClientProvider client={queryClient}>
-            <ApolloProvider client={graphqlClient}>
+        <QueryClientProvider client={queryClient}>
+          <ApolloProvider client={graphqlClient}>
+            <AuthProvider>
               <ConfigProvider>
                 <RouterProvider router={router} />
               </ConfigProvider>
-            </ApolloProvider>
-            <TanStackQueryDevtools buttonPosition="bottom-left" />
-          </QueryClientProvider>
-        </AuthProvider>
+            </AuthProvider>
+          </ApolloProvider>
+          <TanStackQueryDevtools buttonPosition="bottom-left" />
+        </QueryClientProvider>
       </Provider>
     </ErrorBoundary>
   );

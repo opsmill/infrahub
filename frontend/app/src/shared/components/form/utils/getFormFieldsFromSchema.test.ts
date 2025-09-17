@@ -320,7 +320,6 @@ describe("getFormFieldsFromSchema", () => {
     const auth: AuthContextType = {
       accessToken: "abc",
       isAuthenticated: true,
-      isLoading: false,
       data: {
         sub: "1",
       },
@@ -381,7 +380,6 @@ describe("getFormFieldsFromSchema", () => {
     const auth: AuthContextType = {
       accessToken: "abc",
       isAuthenticated: true,
-      isLoading: false,
       data: {
         sub: "1",
       },
