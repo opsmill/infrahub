@@ -6,7 +6,7 @@ import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 
 import type { paths } from "@/shared/api/rest/types.generated";
 
-import { getNewToken } from "@/entities/authentication/ui/useAuth";
+import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,7 +51,7 @@ const authMiddleware: Middleware = {
     }
 
     try {
-      const newToken = await getNewToken();
+      const newToken = await queryClient.fetchQuery(refreshAccessTokenQueryOptions());
 
       if (!newToken?.access_token) {
         return response;

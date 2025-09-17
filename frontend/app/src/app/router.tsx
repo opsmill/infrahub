@@ -20,7 +20,7 @@ import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-r
 import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
 import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
 
-import { RequireAuth } from "@/entities/authentication/ui/useAuth";
+import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
