@@ -201,6 +201,7 @@ class TestIpamUtilization(TestIpam):
     ):
         container = initial_dataset["container"]
         prefix_pool = initial_dataset["prefix_pool"]
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
