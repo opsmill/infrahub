@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, Self, assert_never
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
@@ -25,26 +25,47 @@ class InputDataForDestField(BaseModel):  # Only one of these fields can be not N
     peer_id: str | None = None
     peers_ids: list[str] | None = None
 
-    @property
-    def value(self) -> Any:
+    @model_validator(mode="after")
+    def check_only_one_field(self) -> Self:
         fields = [self.attribute_value, self.peer_id, self.peers_ids]
         set_fields = [f for f in fields if f is not None]
         if len(set_fields) != 1:
             raise ValueError("Exactly one of attribute_value, peer_id, or peers_ids must be set")
-        return set_fields[0]
+        return self
+
+    @property
+    def value(self) -> Any:
+        if self.attribute_value is not None:
+            return self.attribute_value
+        if self.peer_id is not None:
+            return self.peer_id
+        if self.peers_ids is not None:
+            return self.peers_ids
+
+        raise ValueError(
+            "Exactly one of attribute_value, peer_id, or peers_ids must be set, model has not been validated correctly."
+        )
 
 
 class InputForDestField(BaseModel):  # Only one of these fields can be not None
     source_field: str | None = None
     data: InputDataForDestField | None = None
 
-    @property
-    def value(self) -> Any:
+    @model_validator(mode="after")
+    def check_only_one_field(self) -> Self:
         if self.source_field is not None and self.data is not None:
             raise ValueError("Only one of source_field or data can be set")
         if self.source_field is None and self.data is None:
             raise ValueError("Either source_field or data must be set")
-        return self.source_field if self.source_field is not None else self.data
+        return self
+
+    @property
+    def value(self) -> Any:
+        if self.source_field is not None:
+            return self.source_field
+        if self.data is not None:
+            return self.data
+        raise ValueError("Either source_field or data must be set, model has not been validated correctly.")
 
 
 async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase, at: Timestamp) -> list[str]:
@@ -76,7 +97,7 @@ async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, InputForD
                 elif item.schema.cardinality == RelationshipCardinality.MANY:
                     data[dest_field_name] = [{"id": peer.id} for _, peer in (await item.get_peers(db=db)).items()]
                 else:
-                    raise ValueError(f"Unknown cardinality {item.schema.cardinality=}")
+                    assert_never(item.schema.cardinality)
         else:  # user input data
             data[dest_field_name] = value.value
     return data

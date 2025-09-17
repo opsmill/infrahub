@@ -9,11 +9,11 @@ from infrahub.core.convert_object_type.object_conversion import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
-from infrahub.core.repositories.create_repository import RepositoryFinalizer
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages import RefreshRegistryBranches
+from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workers.dependencies import get_message_bus
 
 

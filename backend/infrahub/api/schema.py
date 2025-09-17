@@ -18,8 +18,7 @@ from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
-from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.branch.needs_rebase_status import raise_needs_rebase_error
+from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import (  # noqa: TC001
@@ -289,8 +288,7 @@ async def load_schema(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
-    if branch.status == BranchStatus.NEED_REBASE:
-        raise_needs_rebase_error(branch_name=branch.name)
+    check_need_rebase_status(branch)
 
     permission_manager.raise_for_permission(
         permission=define_global_permission_from_branch(

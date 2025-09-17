@@ -10,7 +10,7 @@ from infrahub.core.convert_object_type.object_conversion import InputForDestFiel
 from infrahub.core.convert_object_type.repository_conversion import convert_repository_type
 from infrahub.core.convert_object_type.schema_mapping import get_schema_mapping
 from infrahub.core.manager import NodeManager
-from infrahub.core.repositories.create_repository import RepositoryFinalizer
+from infrahub.repositories.create_repository import RepositoryFinalizer
 
 if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext

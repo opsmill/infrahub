@@ -19,13 +19,13 @@ from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
+from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workflows.catalogue import (
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_PULL_READ_ONLY,
 )
 
 from ...core.node.create import create_node
-from ...core.repositories.create_repository import RepositoryFinalizer
 from ..types.task import TaskInfo
 from .main import InfrahubMutationMixin, InfrahubMutationOptions, build_graphql_response
 

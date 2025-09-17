@@ -1,13 +1,12 @@
-from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.branch.needs_rebase_status import raise_needs_rebase_error
+from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 
 ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH = ["BranchRebase", "BranchDelete", "BranchCreate", "ProposedChangeCreate"]
 
 
 def raise_on_mutation_on_branch_needing_rebase(next, root, info, **kwargs):  # type: ignore  # noqa
-    if info.context.branch.status == BranchStatus.NEED_REBASE and info.operation.operation.value == "mutation":
+    if info.operation.operation.value == "mutation":
         mutation_name = info.operation.selection_set.selections[0].name.value
         if mutation_name not in ALLOWED_MUTATIONS_ON_NEED_REBASE_BRANCH:
-            raise_needs_rebase_error(branch_name=info.context.branch.name)
+            check_need_rebase_status(branch=info.context.branch)
 
     return next(root, info, **kwargs)
