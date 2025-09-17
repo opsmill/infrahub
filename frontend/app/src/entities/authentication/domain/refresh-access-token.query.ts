@@ -6,5 +6,8 @@ export function refreshAccessTokenQueryOptions() {
   return queryOptions({
     queryKey: ["refresh-access-token"],
     queryFn: refreshAccessToken,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
   });
 }

@@ -2,6 +2,8 @@ import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 
 import { apiClient } from "@/shared/api/rest/client";
 
+import { removeTokensInLocalStorage } from "@/entities/authentication/utils";
+
 export type Logout = () => Promise<void>;
 
 export const logout: Logout = async () => {
@@ -12,4 +14,5 @@ export const logout: Logout = async () => {
       authorization: `Bearer ${accessToken}`,
     },
   });
+  removeTokensInLocalStorage();
 };

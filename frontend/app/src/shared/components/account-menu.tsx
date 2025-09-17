@@ -1,7 +1,6 @@
 import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import { toast } from "react-toastify";
 
@@ -28,6 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { Spinner } from "@/shared/components/ui/spinner";
 
 import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -147,16 +147,19 @@ const UnauthenticatedAccountMenu = () => {
 
 const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
   const query = gql(getProfileDetails({ ...schema }));
-  const { error, loading, data } = useQuery(query);
-  const { setToken } = useAuth();
-  const { mutate: logout } = useLogoutMutation();
+  const { setToken, isAuthenticated } = useAuth();
+  const { loading, data } = useQuery(query, { skip: !isAuthenticated });
+  const { mutate: logout, isPending } = useLogoutMutation();
 
-  const handleSignOut = useCallback(async () => {
+  const handleSignOut = async () => {
     logout(undefined, {
       onSuccess: () => {
         setToken(null);
         queryClient.refetchQueries();
-        graphqlClient.reFetchObservableQueries();
+        graphqlClient.refetchQueries({
+          include: "active",
+          onQueryUpdated: ({ queryName }) => queryName !== "GET_PROFILE_DETAILS",
+        });
       },
       onError: (error) => {
         console.error("Error when logging out: ", error);
@@ -165,13 +168,7 @@ const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
         });
       },
     });
-  }, []);
-
-  useEffect(() => {
-    if (error) {
-      handleSignOut();
-    }
-  }, [error]);
+  };
 
   if (loading) {
     return <AccountMenuSkeleton />;
@@ -210,8 +207,8 @@ const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
         <DropdownMenuDivider />
         <CommonMenuItems />
         <DropdownMenuDivider />
-        <DropdownMenuItem onClick={handleSignOut}>
-          <Icon icon="mdi:logout" className="text-base" />
+        <DropdownMenuItem onClick={handleSignOut} disabled={isPending}>
+          {isPending ? <Spinner /> : <Icon icon="mdi:logout" className="text-base" />}
           Logout
         </DropdownMenuItem>
         <DropdownMenuDivider />

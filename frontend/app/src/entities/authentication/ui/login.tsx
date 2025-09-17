@@ -49,7 +49,7 @@ export const Login = () => {
 
 export const LoginForm = ({ className }: { className?: string }) => {
   const { setToken } = useAuth();
-  const { mutate: loginWithCredentials, isPending } = useLoginWithCredentials();
+  const { mutateAsync: loginWithCredentials } = useLoginWithCredentials();
 
   return (
     <Form
@@ -59,7 +59,7 @@ export const LoginForm = ({ className }: { className?: string }) => {
           username: formData.username.value as string,
           password: formData.password.value as string,
         };
-        loginWithCredentials(data, {
+        await loginWithCredentials(data, {
           onSuccess: async (result) => {
             setToken(result);
           },
@@ -80,9 +80,7 @@ export const LoginForm = ({ className }: { className?: string }) => {
         rules={{ validate: { required: isRequired } }}
       />
 
-      <FormSubmit className="h-10 w-full" isLoading={isPending}>
-        Log in
-      </FormSubmit>
+      <FormSubmit className="h-10 w-full">Log in</FormSubmit>
     </Form>
   );
 };

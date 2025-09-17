@@ -57,7 +57,7 @@ export function useAuth() {
   const context = React.use(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used within a AuthContext.");
+    throw new Error("useAuth must be used within an AuthContext.");
   }
 
   return context;
