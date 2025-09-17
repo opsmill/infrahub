@@ -70,13 +70,15 @@ async def convert_repository_type(
         message_bus = await get_message_bus()
         await message_bus.send(RefreshRegistryBranches())
 
-        # We can't apply post creation steps within `convert_object_type` transaction as a sdk call tries to fetch the node
-        # created within the transaction from a different process, therefore that would not run within this transaction
-        # so the node ends up being not found
+        # Following call involve a potential update of `commit` value of the newly created repository
+        # that would be done from another database connection so it can't be performed within above transaction.
+        # Also note since the conversion can only be performed on main branch here, it is fine that we do it
+        # after having updating other branches status to NEEDS_REBASE.
         await repository_post_creator.post_create(
             branch=branch,
             obj=new_repository,  # type: ignore
             db=db,
+            delete_on_connectivity_failure=False,
         )
 
         # Delete the RepositoryGroup associated with the old repository, as a new one was created for the new repository.

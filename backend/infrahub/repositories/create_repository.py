@@ -33,24 +33,32 @@ class RepositoryFinalizer:
         self.services = services
         self.context = context
 
-    async def post_create(self, obj: CoreGenericRepository, branch: Branch, db: InfrahubDatabase) -> None:
+    async def post_create(
+        self,
+        obj: CoreGenericRepository,
+        branch: Branch,
+        db: InfrahubDatabase,
+        delete_on_connectivity_failure: bool = True,
+    ) -> None:
         """
         Method meant to be called after a repository has been created in the database.
         It mainly checks the connectivity to the remote repository and submit the workflow to create the repository in the local filesystem.
         """
 
         # If the connectivity is not good, we remove the repository to allow the user to add a new one
-        message = messages.GitRepositoryConnectivity(
-            repository_name=obj.name.value,
-            repository_location=obj.location.value,
-        )
-        response = await self.services.message_bus.rpc(
-            message=message, response_class=GitRepositoryConnectivityResponse
-        )
+        if delete_on_connectivity_failure:
+            message = messages.GitRepositoryConnectivity(
+                repository_name=obj.name.value,
+                repository_location=obj.location.value,
+            )
+            response = await self.services.message_bus.rpc(
+                message=message, response_class=GitRepositoryConnectivityResponse
+            )
 
-        if response.data.success is False:
-            await obj.delete(db=db)
-            raise ValidationError(response.data.message)
+            if response.data.success is False:
+                await obj.delete(db=db)
+                raise ValidationError(response.data.message)
+
         # If we are in the default branch, we set the sync status to Active
         # If we are in another branch, we set the sync status to Staging
         if branch.is_default:
