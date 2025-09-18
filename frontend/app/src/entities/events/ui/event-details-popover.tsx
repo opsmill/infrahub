@@ -3,7 +3,7 @@ import { InfoIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
-import { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/types";
 
 import { EventDetails } from "./event-details";
 

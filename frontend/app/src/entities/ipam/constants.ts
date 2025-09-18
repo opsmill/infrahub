@@ -1,6 +1,6 @@
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 export const IP_NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";

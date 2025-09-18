@@ -7,7 +7,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

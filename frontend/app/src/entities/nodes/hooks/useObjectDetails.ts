@@ -10,7 +10,7 @@ import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export const useObjectDetails = (schema: ModelSchema, objectId: string) => {

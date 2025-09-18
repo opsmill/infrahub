@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { relationshipsQueryKeys } from "./relationships.query-keys";
 

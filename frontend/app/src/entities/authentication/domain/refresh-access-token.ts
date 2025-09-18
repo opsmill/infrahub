@@ -1,7 +1,7 @@
 import { REFRESH_TOKEN_KEY } from "@/config/constants";
 
 import { apiClient } from "@/shared/api/rest/client";
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 
 import {
   removeTokensInLocalStorage,

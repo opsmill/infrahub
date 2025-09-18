@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 
 import {
-  GenerateArtifactParams,
+  type GenerateArtifactParams,
   generateArtifact,
 } from "@/entities/artifacts/domain/generate-artifact";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";

@@ -1,6 +1,6 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { Fragment, ReactNode, useRef } from "react";
+import { Fragment, type ReactNode, useRef } from "react";
 
 import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 

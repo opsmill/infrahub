@@ -11,7 +11,7 @@ import {
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 
 interface ObjectHelpButtonProps extends ButtonProps {
   className?: string;

@@ -1,11 +1,11 @@
 import React from "react";
 
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
 import { useSchemaSelectedInObjectTable } from "@/entities/nodes/object/ui/object-table/hooks/use-schema-selected-in-object-table";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export type ObjectTableContextProps = {
   filters: Filter[];

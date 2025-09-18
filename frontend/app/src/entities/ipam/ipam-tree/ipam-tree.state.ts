@@ -2,7 +2,7 @@ import { atom } from "jotai";
 import * as R from "ramda";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { TreeProps } from "@/shared/components/ui/tree";
+import type { TreeProps } from "@/shared/components/ui/tree";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
@@ -15,10 +15,10 @@ import {
 } from "@/entities/ipam/ipam-tree/api/prefixes";
 
 import {
-  AncestorsData,
+  type AncestorsData,
   EMPTY_TREE,
   formatIPPrefixResponseForTreeView,
-  PrefixData,
+  type PrefixData,
   updateTreeData,
 } from "./utils";
 

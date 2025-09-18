@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes } from "react";
 import { Link } from "react-router";
 
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";

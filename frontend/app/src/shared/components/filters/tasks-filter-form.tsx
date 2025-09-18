@@ -2,8 +2,8 @@ import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
-import { Filter } from "@/shared/hooks/useFilters";
+import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
+import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
 import { branchesState } from "@/entities/branches/stores";

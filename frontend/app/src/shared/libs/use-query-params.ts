@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router";
-import { PartialLocation, QueryParamAdapterComponent } from "use-query-params";
+import type { PartialLocation, QueryParamAdapterComponent } from "use-query-params";
 
 // https://github.com/pbeshai/use-query-params/issues/295#issuecomment-2788874576
 export const ReactRouter7Adapter: QueryParamAdapterComponent = ({ children }) => {

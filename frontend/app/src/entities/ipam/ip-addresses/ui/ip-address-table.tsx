@@ -2,7 +2,7 @@ import React from "react";
 
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { useGetIpAddressList } from "@/entities/ipam/ip-addresses/domain/get-ip-address-list.query";
 import { getIpAddressTableColumns } from "@/entities/ipam/ip-addresses/utils/get-ip-address-table-columns";

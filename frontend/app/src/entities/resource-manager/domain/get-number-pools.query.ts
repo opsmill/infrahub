@@ -1,13 +1,13 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { ContextParams } from "@/shared/api/types";
+import type { ContextParams } from "@/shared/api/types";
 import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 
-import { GetNumberPoolsParams, getNumberPools } from "./get-number-pools";
+import { type GetNumberPoolsParams, getNumberPools } from "./get-number-pools";
 
 export function getNumberPoolsQueryOptions(params: GetNumberPoolsParams) {
   return queryOptions({

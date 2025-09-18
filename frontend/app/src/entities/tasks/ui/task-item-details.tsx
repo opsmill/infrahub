@@ -19,7 +19,7 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 
-import { Logs, tLog } from "./logs";
+import { Logs, type tLog } from "./logs";
 
 export const getStateBadge: { [key: string]: any } = {
   SCHEDULED: <Badge variant={"blue"}>SCHEDULED</Badge>,

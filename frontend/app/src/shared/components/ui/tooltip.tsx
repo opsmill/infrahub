@@ -1,5 +1,5 @@
 import * as TooltipPrimitives from "@radix-ui/react-tooltip";
-import { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { classNames } from "@/shared/utils/common";
 

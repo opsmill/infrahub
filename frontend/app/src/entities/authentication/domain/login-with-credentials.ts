@@ -1,6 +1,6 @@
 import { apiClient } from "@/shared/api/rest/client";
 
-import { UserToken } from "@/entities/authentication/types";
+import type { UserToken } from "@/entities/authentication/types";
 import { saveTokensInLocalStorage } from "@/entities/authentication/utils";
 
 export type LoginWithCredentialsParams = {

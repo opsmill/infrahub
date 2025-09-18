@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { QSP } from "@/config/qsp";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";

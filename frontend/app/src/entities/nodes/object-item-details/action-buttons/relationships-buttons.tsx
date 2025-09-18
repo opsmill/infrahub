@@ -14,15 +14,15 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
-import { SelectOption } from "@/shared/components/inputs/select-old";
+import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface RelationshipsButtonsProps {

@@ -1,5 +1,5 @@
 import Prism from "prismjs";
-import { ElementRef, forwardRef } from "react";
+import { type ElementRef, forwardRef } from "react";
 import Editor from "react-simple-code-editor";
 
 import { focusWithinStyle } from "@/shared/components/ui/style";

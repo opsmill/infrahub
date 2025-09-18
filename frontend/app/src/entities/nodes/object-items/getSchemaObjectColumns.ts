@@ -9,7 +9,7 @@ import {
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
-import { AttributeKind, ModelSchema } from "@/entities/schema/types";
+import type { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 type tgetObjectAttributes = {

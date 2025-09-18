@@ -7,7 +7,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 import ModalDelete from "../modals/modal-delete";
 

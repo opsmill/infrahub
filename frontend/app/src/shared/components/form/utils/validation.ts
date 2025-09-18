@@ -1,4 +1,4 @@
-import { FormFieldValue } from "@/shared/components/form/type";
+import type { FormFieldValue } from "@/shared/components/form/type";
 
 export const isRequired = ({ value }: Pick<FormFieldValue, "value">) => {
   return (value !== null && value !== undefined && value !== "") || "Required";

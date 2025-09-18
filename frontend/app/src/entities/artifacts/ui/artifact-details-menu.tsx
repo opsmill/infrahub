@@ -1,7 +1,7 @@
 import { CopyToClipboardMenuItem } from "@/shared/components/aria/menu";
 import {
   ObjectDetailsButton,
-  ObjectDetailsButtonProps,
+  type ObjectDetailsButtonProps,
 } from "@/shared/components/menu/object-details-button";
 
 export interface ArtifactDetailsMenuProps extends ObjectDetailsButtonProps {

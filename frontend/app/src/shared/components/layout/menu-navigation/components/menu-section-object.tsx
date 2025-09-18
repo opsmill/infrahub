@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import React from "react";
+import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ObjectAvatar } from "@/shared/components/layout/menu-navigation/components/object-avatar";
 import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
-import { MenuItem } from "@/shared/components/layout/menu-navigation/types";
+import type { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import {
   DropdownMenu,
   DropdownMenuAccordion,

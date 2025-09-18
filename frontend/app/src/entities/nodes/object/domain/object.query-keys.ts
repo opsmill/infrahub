@@ -1,5 +1,5 @@
-import { ContextParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { ContextParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 export interface ObjectKeysBaseParams extends ContextParams {
   objectKind: string;

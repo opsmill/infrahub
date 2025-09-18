@@ -2,7 +2,7 @@ import { Label } from "@/shared/components/aria/label";
 import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { ResetAction } from "@/shared/components/form/fields/common";
-import {
+import type {
   DynamicSelectFieldProps,
   FormAttributeValue,
   FormFieldProps,

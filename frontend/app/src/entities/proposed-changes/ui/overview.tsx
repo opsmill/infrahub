@@ -1,5 +1,5 @@
 import { formatISO } from "date-fns";
-import { HTMLAttributes, useRef } from "react";
+import { type HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router";
 
 import {
@@ -11,7 +11,7 @@ import {
 import { queryClient } from "@/shared/api/rest/client";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Card } from "@/shared/components/ui/card";
-import { FormRef } from "@/shared/components/ui/form";
+import type { FormRef } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";

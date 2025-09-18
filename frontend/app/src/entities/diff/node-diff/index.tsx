@@ -10,7 +10,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/domain/get-diff-tree";
-import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
+import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { buildFilters } from "@/entities/diff/node-diff/utils";
 import { DiffComputing } from "@/entities/diff/ui/diff-computing";
 import { DiffEmpty } from "@/entities/diff/ui/diff-empty";
@@ -20,7 +20,7 @@ import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 import DiffTree from "@/entities/diff/ui/diff-tree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 
-import { DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/ui/diff-filter";
+import { type DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/ui/diff-filter";
 import { DiffNode } from "./node";
 
 export const DiffContext = createContext({});

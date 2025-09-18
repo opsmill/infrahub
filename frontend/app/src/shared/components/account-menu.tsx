@@ -32,7 +32,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 
 export const AccountMenu = () => {

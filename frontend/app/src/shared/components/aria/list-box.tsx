@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import {
   ListBoxItem as AriaListBoxItem,
-  ListBoxItemProps as AriaListBoxItemProps,
+  type ListBoxItemProps as AriaListBoxItemProps,
   composeRenderProps,
 } from "react-aria-components";
 

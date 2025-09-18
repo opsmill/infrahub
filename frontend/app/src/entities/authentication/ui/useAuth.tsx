@@ -5,7 +5,7 @@ import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { parseJwt } from "@/shared/utils/common";
 
-import { User, UserToken } from "@/entities/authentication/types";
+import type { User, UserToken } from "@/entities/authentication/types";
 import {
   removeTokensInLocalStorage,
   saveTokensInLocalStorage,

@@ -1,38 +1,49 @@
 {
   "compilerOptions": {
+    /* Basic Options */
+    "allowJs": true,
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "target": "es2022",
+    "skipLibCheck": true,
+
+    /* Module Resolution */
+    "baseUrl": ".",
+    "module": "preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./src/*"]
     },
-    "target": "ESNext",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "resolveJsonModule": true,
+
+    /* Emit */
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+
+    /* JSX */
+    "jsx": "react-jsx",
+
+    /* Type Checking */
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    /* Type Definitions */
     "types": [
       "vite/client",
       "vitest/globals",
       "@vitest/browser/providers/playwright"
-    ],
-    "allowJs": false,
-    "skipLibCheck": true,
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "sourceMap": true,
-    "inlineSources": true,
-    "sourceRoot": "/",
-    "strictNullChecks": true
+    ]
   },
   "include": [
     "src",
     "tests/mocks",
-    "src/__tests__",
     "tests/unit/components",
     "tests/unit/utils",
     "tests/unit/data",

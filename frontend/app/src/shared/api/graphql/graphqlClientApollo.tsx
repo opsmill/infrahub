@@ -1,6 +1,6 @@
 import {
   ApolloClient,
-  DefaultOptions,
+  type DefaultOptions,
   from,
   HttpLink,
   InMemoryCache,

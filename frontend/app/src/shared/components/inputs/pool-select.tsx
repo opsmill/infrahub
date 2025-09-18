@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import React from "react";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { PoolValue } from "@/shared/components/form/pool-selector";
+import type { PoolValue } from "@/shared/components/form/pool-selector";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";

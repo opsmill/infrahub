@@ -17,7 +17,7 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 type SchemaSelectorProps = {
