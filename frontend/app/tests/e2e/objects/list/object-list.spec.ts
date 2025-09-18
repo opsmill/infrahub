@@ -1,19 +1,23 @@
 import { expect, test } from "@playwright/test";
 
-import { ACCOUNT_STATE_PATH } from "../../constants";
+import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { generateRandomBranchName } from "../../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
-test.describe.fixme("/objects/:objectKind", () => {
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
+test.describe("/objects/:objectKind", () => {
+  const BRANCH_NAME = generateRandomBranchName("object-list");
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
   });
 
   test.describe("when not logged in", () => {
     test("should not be able to create a new object", async ({ page }) => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
 
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
       await expect(
@@ -24,8 +28,15 @@ test.describe.fixme("/objects/:objectKind", () => {
       await expect(page.getByRole("menuitem", { name: "Delete" })).toBeDisabled();
     });
 
+    test("should not be able to select rows", async ({ page }) => {
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
+      await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
+      await expect(page.getByTestId("select-all-rows")).not.toBeVisible();
+      await expect(page.getByTestId("identifier-checkbox-cell")).not.toBeVisible();
+    });
+
     test("should be able to open object details in a new tab", async ({ page, context }) => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
 
       // When
       const objectDetailsLink = page.getByRole("link", { name: "blue" });
@@ -44,30 +55,31 @@ test.describe.fixme("/objects/:objectKind", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
     test("should display 'kind' column on when the object is a generic", async ({ page }) => {
-      await page.goto("/objects/CoreGroup");
-      await expect(page.getByTestId("object-items")).toContainText("Kind");
+      await page.goto(`/objects/CoreGroup?branch=${BRANCH_NAME}`);
+      await expect(page.getByTestId("kind-header-cell")).toBeVisible();
     });
 
     test("should display default column when a relationship schema has no attributes/relationships", async ({
       page,
     }) => {
-      await page.goto("/objects/CoreStandardGroup");
+      await page.goto(`/objects/CoreStandardGroup?branch=${BRANCH_NAME}`);
       await page.getByTestId("object-items").getByRole("link", { name: "arista_devices" }).click();
       await page.getByText("Members").click();
       await expect(page.getByText("Node", { exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Kind" })).toBeVisible();
+      await expect(page.getByTestId("kind-header-cell")).toBeVisible();
     });
 
     test("clicking on a relationship value redirects to its details page", async ({ page }) => {
-      await page.goto("/objects/InfraDevice");
+      await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "Juniper JunOS" }).first().click();
       await expect(page.getByText("NameJuniper JunOS", { exact: true })).toBeVisible();
       expect(page.url()).toContain("/objects/InfraPlatform/");
     });
 
     test("should be able to manage objects", async ({ page }) => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "green" })).toBeVisible();
       await expect(page.getByTestId("create-object-button")).toBeEnabled();
 
       await test.step("create a new item from the list", async () => {
