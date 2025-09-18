@@ -1,10 +1,6 @@
 import { useState } from "react";
 
-import { ModelSchema } from "@/entities/schema/types";
-import { NodeObject } from "@/entities/nodes/types";
-import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
-
-import { Badge } from "../ui/badge";
+import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
@@ -12,7 +8,11 @@ import {
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
-} from "../ui/combobox";
+} from "@/shared/components/ui/combobox";
+
+import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 interface Mapping {
   is_mandatory: boolean;
@@ -62,12 +62,12 @@ export const ConvertSourceAttributeInput = ({
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger>
-        {
-          fieldData?.value && <Badge className="space-x-1">
+        {fieldData?.value && (
+          <Badge className="space-x-1">
             <span>{fieldData?.value}</span>
-            <span className="text-gray-700 font-light">• {fieldData.source.fieldLabel}</span>
+            <span className="font-light text-gray-700">• {fieldData.source.fieldLabel}</span>
           </Badge>
-        }
+        )}
       </ComboboxTrigger>
       <ComboboxContent fitTriggerWidth={false}>
         <ComboboxList>
@@ -113,27 +113,27 @@ export const ConvertSourceRelationshipOneInput = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const availableOptions = sourceSchema?.relationships
-  ?.filter((relationship) => {
-    return relationship.peer === peer && !!objectDetailsData[relationship.name]?.node?.id;
-  })
-  .map((relationship) => {
-    return {
-      value: objectDetailsData[relationship.name]?.node,
-      label: getDisplayValue(objectDetailsData, relationship),
-      source: relationship.label,
-      isDefaultMatch: relationship.name === mapping.source_field_name,
-    };
-  });
+    ?.filter((relationship) => {
+      return relationship.peer === peer && !!objectDetailsData[relationship.name]?.node?.id;
+    })
+    .map((relationship) => {
+      return {
+        value: objectDetailsData[relationship.name]?.node,
+        label: getDisplayValue(objectDetailsData, relationship),
+        source: relationship.label,
+        isDefaultMatch: relationship.name === mapping.source_field_name,
+      };
+    });
 
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger>
-        {
-          fieldData?.value?.display_label && <Badge className="space-x-1">
+        {fieldData?.value?.display_label && (
+          <Badge className="space-x-1">
             <span>{fieldData?.value?.display_label}</span>
-            <span className="text-gray-700 font-light">• {fieldData.source.fieldLabel}</span>
+            <span className="font-light text-gray-700">• {fieldData.source.fieldLabel}</span>
           </Badge>
-        }
+        )}
       </ComboboxTrigger>
       <ComboboxContent fitTriggerWidth={false}>
         <ComboboxList>

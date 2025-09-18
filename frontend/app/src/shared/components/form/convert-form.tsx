@@ -4,7 +4,7 @@ import React from "react";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ConvertLabelFormField } from "@/shared/components/form/fields/common";
-import { FormAttributeValue } from "@/shared/components/form/type";
+import type { FormAttributeValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import {
@@ -16,9 +16,9 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 
 import { useFieldsMappingTypeConversion } from "@/entities/nodes/object/domain/get-convert-fields-mappings.query";
-import { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export type ConvertFormProps = {
   objectDetailsData: NodeObject;
