@@ -14,6 +14,7 @@ from infrahub.core.migrations.graph.m039_ipam_reconcile import Migration039
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from tests.helpers.test_app import TestInfrahubApp
 
 
 @dataclass
@@ -45,7 +46,7 @@ class WrappedMigration039(Migration039):
         return wrapped_reconciler
 
 
-class TestMigration039:
+class TestMigration039(TestInfrahubApp):
     branch_name = "ip_test_branch"
     branch_2_name = "ip_test_branch_2"
 
