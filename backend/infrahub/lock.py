@@ -219,6 +219,27 @@ class InfrahubLockRegistry:
 
         return new_name
 
+    @staticmethod
+    def unpack_name(name: str) -> tuple[str, str | None, bool | None]:
+        local = None
+        namespace = None
+
+        parts = name.split(".")
+        if parts[0] == "local":
+            local = True
+            parts = parts[1:]
+        elif parts[0] == "global":
+            local = False
+            parts = parts[1:]
+
+        if len(parts) > 1:
+            namespace = parts[0]
+            original_name = ".".join(parts[1:])
+        else:
+            original_name = parts[0]
+
+        return original_name, namespace, local
+
     def get_existing(
         self,
         name: str,

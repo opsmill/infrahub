@@ -12,6 +12,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.lock import InfrahubLockRegistry
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
@@ -124,3 +125,19 @@ async def _create_number_pool(
                     pool_type=NumberPoolType.SCHEMA.value,
                 )
                 await number_pool.save(db=dbs)
+
+
+@flow(
+    name="clean_up_deadlocks",
+    flow_run_name="Clean up deadlocks",
+)
+async def clean_up_deadlocks(service: InfrahubServices) -> None:
+    keys = await service.cache.list_keys(filter_pattern="lock.*")
+    values = await service.cache.get_values(keys=keys)
+    worker_ids = [value.split("::", 1)[1] for value in values]
+
+    for key, _worker_id in zip(keys, worker_ids, strict=False):
+        if True:  # worker is inactive
+            name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
+            _lock = lock.registry.get_existing(name=name, namespace=namespace, local=local)
+            await _lock.release()

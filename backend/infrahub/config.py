@@ -199,6 +199,10 @@ class MainSettings(BaseSettings):
         description="Enable strict schema validation. When set to `False`, "
         "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
     )
+    clean_up_deadlocks_interval_mins: int = Field(
+        default=15,
+        description="How many minutes interval clean_up_deadlocks task runs",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod

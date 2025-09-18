@@ -2,6 +2,8 @@ import random
 
 from fast_depends import Depends, inject
 
+from infrahub.config import SETTINGS
+
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
@@ -530,6 +532,14 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
     function="validate_schema_number_pools",
 )
 
+CLEAN_UP_DEADLOCKS = WorkflowDefinition(
+    name="clean_up_deadlocks",
+    type=WorkflowType.CORE,
+    cron=f"*/{SETTINGS.main.clean_up_deadlocks_interval_mins} * * * *",
+    module="infrahub.pools.tasks",
+    function="clean_up_deadlocks",
+)
+
 
 WORKER_POOLS = [INFRAHUB_WORKER_POOL]
 
@@ -547,6 +557,7 @@ WORKFLOWS = [
     BRANCH_MERGE_POST_PROCESS,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
+    CLEAN_UP_DEADLOCKS,
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
