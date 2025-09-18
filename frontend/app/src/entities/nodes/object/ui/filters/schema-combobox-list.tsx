@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 
 import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface SchemaComboboxListProps {
   onSelect: (value: ModelSchema) => void;

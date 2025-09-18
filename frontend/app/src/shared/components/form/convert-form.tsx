@@ -1,11 +1,11 @@
-import { useFieldsMappingTypeConversion } from "@/entities/nodes/object/domain/get-convert-fields-mappings.query";
-import { NodeObject } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import DynamicForm from "@/shared/components/form/dynamic-form";
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import ErrorScreen from "../errors/error-screen";
-import { LoadingIndicator } from "../loading/loading-indicator";
-import DynamicForm from "./dynamic-form";
-import { getFormFieldsFromSchema } from "./utils/getFormFieldsFromSchema";
+import { useFieldsMappingTypeConversion } from "@/entities/nodes/object/domain/get-convert-fields-mappings.query";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export type ConvertFormProps = {
   objectDetailsData: NodeObject;

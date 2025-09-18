@@ -6,7 +6,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getConvertFieldsMapping } from "@/entities/nodes/object/domain/get-convert-fields-mappings";
 import {
-  ObjectConvertFieldsMappingProps,
+  type ObjectConvertFieldsMappingProps,
   objectQueryKeys,
 } from "@/entities/nodes/object/domain/object.query-keys";
 
