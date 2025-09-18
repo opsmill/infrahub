@@ -1,5 +1,5 @@
 import {
-  AddRelationshipsToApiParams,
+  type AddRelationshipsToApiParams,
   addRelationshipsToApi,
 } from "@/entities/nodes/relationships/api/add-relationships-from-api";
 

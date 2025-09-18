@@ -1,4 +1,4 @@
-import { ArtifactStatus } from "@/entities/artifacts/types";
+import type { ArtifactStatus } from "@/entities/artifacts/types";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
 

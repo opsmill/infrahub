@@ -8,7 +8,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
 
-import { ObjectDetailsTab, TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
+import { ObjectDetailsTab, type TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
 import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
 
 export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {

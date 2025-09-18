@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";

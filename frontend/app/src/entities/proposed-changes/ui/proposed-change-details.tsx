@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { TASK_OBJECT } from "@/config/constants";
@@ -11,7 +11,7 @@ import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";

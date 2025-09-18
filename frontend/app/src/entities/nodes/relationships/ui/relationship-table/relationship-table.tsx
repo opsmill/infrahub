@@ -7,7 +7,7 @@ import useFilters from "@/shared/hooks/useFilters";
 import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import {
-  UseObjectRelationshipsParams,
+  type UseObjectRelationshipsParams,
   useObjectRelationships,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships.query";
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";

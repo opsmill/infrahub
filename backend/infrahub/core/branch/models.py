@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
@@ -20,8 +21,6 @@ from infrahub.core.query.branch import (
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
-
-from .enums import BranchStatus
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -485,6 +484,7 @@ class Branch(StandardNode):
         # FIXME, we must ensure that there is no conflict before rebasing a branch
         #   Otherwise we could endup with a complicated situation
         self.branched_from = at.to_string()
+        self.status = BranchStatus.OPEN
         await self.save(db=db)
 
         # Update the branch in the registry after the rebase

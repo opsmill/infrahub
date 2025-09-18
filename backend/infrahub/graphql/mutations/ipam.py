@@ -16,10 +16,12 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, ValidationError
-from infrahub.lock import InfrahubMultiLock, build_object_lock_name
+from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_logger
 
-from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
+from ...core.node.create import create_node
+from ...core.node.lock_utils import build_object_lock_name
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, build_graphql_response
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -116,7 +118,13 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         ip_address: IPv4Interface | ipaddress.IPv6Interface,
         namespace_id: str,
     ) -> Node:
-        address = await cls.mutate_create_object(data=data, db=db, branch=branch)
+        address = await create_node(
+            data=dict(data),
+            db=db,
+            branch=branch,
+            schema=cls._meta.active_schema,
+        )
+
         reconciler = IpamReconciler(db=db, branch=branch)
         reconciled_address = await reconciler.reconcile(
             ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
@@ -147,9 +155,9 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
                 reconciled_address = await cls._mutate_create_object_and_reconcile(
                     data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
                 )
-            result = await cls.mutate_create_to_graphql(info=info, db=dbt, obj=reconciled_address)
+            graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_address)
 
-        return reconciled_address, result
+        return reconciled_address, cls(**graphql_response)
 
     @classmethod
     async def _mutate_update_object_and_reconcile(
@@ -270,7 +278,12 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         db: InfrahubDatabase,
         namespace_id: str,
     ) -> Node:
-        prefix = await cls.mutate_create_object(data=data, db=db, branch=branch)
+        prefix = await create_node(
+            data=dict(data),
+            db=db,
+            branch=branch,
+            schema=cls._meta.active_schema,
+        )
         return await cls._reconcile_prefix(
             branch=branch, db=db, prefix=prefix, namespace_id=namespace_id, is_delete=False
         )
@@ -295,9 +308,9 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
                     data=data, branch=branch, db=dbt, namespace_id=namespace_id
                 )
 
-            result = await cls.mutate_create_to_graphql(info=info, db=dbt, obj=reconciled_prefix)
+            graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_prefix)
 
-        return reconciled_prefix, result
+        return reconciled_prefix, cls(**graphql_response)
 
     @classmethod
     async def _mutate_update_object_and_reconcile(

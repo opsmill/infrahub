@@ -2,7 +2,7 @@ import BreadcrumbBranchSelector from "@/shared/components/layout/breadcrumb-navi
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbObjectSelector from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-object-selector";
 import BreadcrumbSchemaSelector from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-schema-selector";
-import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
+import type { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import BreadcrumbObjectIdDisplay from "./breadcrumb-object-id";

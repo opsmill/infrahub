@@ -12,9 +12,9 @@ import useFilters from "@/shared/hooks/useFilters";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { NodeAttribute } from "@/entities/nodes/types";
+import type { NodeAttribute } from "@/entities/nodes/types";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 type ObjectHeaderProps = {
   schema: ModelSchema;

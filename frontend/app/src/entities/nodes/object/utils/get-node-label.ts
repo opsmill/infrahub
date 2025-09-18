@@ -1,4 +1,4 @@
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 
 export function getNodeLabel(node: NodeCore): string {

@@ -1,4 +1,4 @@
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 
 export const findSelectedBranch = (branches: Branch[], branchName?: string | null) => {
   const filter = branchName ? (b: Branch) => branchName === b.name : (b: Branch) => b.is_default;

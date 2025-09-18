@@ -1,9 +1,9 @@
 import React from "react";
-import { UIMatch, useMatches } from "react-router";
+import { type UIMatch, useMatches } from "react-router";
 
 import {
   BreadcrumbDynamicElement,
-  BreadcrumbDynamicElementProps,
+  type BreadcrumbDynamicElementProps,
 } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-dynamic-element";
 import { breadcrumbActiveStyle } from "@/shared/components/layout/breadcrumb-navigation/style";
 import { Breadcrumb, BreadcrumbSeparator } from "@/shared/components/ui/breadcrumb";

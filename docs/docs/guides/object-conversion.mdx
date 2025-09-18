@@ -1,0 +1,28 @@
+---
+title: Converting an Object Type
+---
+
+It may happen that you created an object with a type A, and would like to convert it to a similar type B. Infrahub offers a way to convert an object type,
+without having to manually deleting and recreating it.
+
+## How to convert an object?
+
+Currently, mutation `ConvertObjectType` is the only way to convert an object type. It will soon be possible to do it from both the web application and the SDK.
+Converting an object requires that any mandatory field present in the destination schema type to be specified. Note that equivalent fields, if not specified, are automatically filled in:
+
+- Two attribute fields in two distinct schemas are considered to be equivalent if they have both the same name and value type.
+- Two relationship fields in two distinct schemas are considered to be equivalent if they have the same name, peer schema type, and cardinality.
+
+# Case of agnostic object having branch aware attributes
+
+For technical reasons, converting an agnostic object having branch aware attribute would remove values of these attributes on the non-conversion branches.
+Therefore, converting such an object has some current limitations:
+
+- Conversion is only allowed on the default branch (usually `main`).
+- Doing such a conversion would automatically put other branches in a `NEED_REBASE` state. No write-operation can be performed on a branch with this state until it is rebased.
+- Branch aware attributes values on other branches are lost (these attributes no longer exist on those branches).
+
+# Converting a repository
+
+It is possible to convert a read-only repository to a read-write repository and vice versa. As they are both agnostic objects having branch aware attributes (`commit`),
+they follow above restrictions on converting agnostic objects having branch aware attributes.

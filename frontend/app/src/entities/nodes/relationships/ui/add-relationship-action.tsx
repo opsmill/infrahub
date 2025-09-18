@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
+import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

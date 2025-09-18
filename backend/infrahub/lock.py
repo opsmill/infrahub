@@ -257,7 +257,3 @@ class InfrahubLockRegistry:
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
     global registry
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
-
-
-def build_object_lock_name(name: str) -> str:
-    return f"global.object.{name}"

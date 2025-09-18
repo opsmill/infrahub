@@ -14,7 +14,7 @@ import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
-import { ProposedChangeActionButtonProps } from "./types";
+import type { ProposedChangeActionButtonProps } from "./types";
 
 export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const { close } = usePcActionsContext();

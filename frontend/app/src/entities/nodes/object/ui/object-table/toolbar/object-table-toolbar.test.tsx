@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/types";
 
 import { render } from "../../../../../../../tests/components/render";
 import { ObjectTableToolbar } from "./object-table-toolbar";

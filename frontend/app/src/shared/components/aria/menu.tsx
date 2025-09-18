@@ -1,15 +1,15 @@
 import { CopyIcon } from "lucide-react";
 import {
   Header as AriaHeader,
-  HeadingProps as AriaHeadingProps,
+  type HeadingProps as AriaHeadingProps,
   Menu as AriaMenu,
   MenuItem as AriaMenuItem,
-  MenuItemProps as AriaMenuItemProps,
-  MenuProps as AriaMenuProps,
+  type MenuItemProps as AriaMenuItemProps,
+  type MenuProps as AriaMenuProps,
   MenuSection as AriaMenuSection,
-  MenuSectionProps as AriaMenuSectionProps,
+  type MenuSectionProps as AriaMenuSectionProps,
   MenuTrigger as AriaMenuTrigger,
-  PopoverProps as AriaPopoverProps,
+  type PopoverProps as AriaPopoverProps,
   composeRenderProps,
 } from "react-aria-components";
 

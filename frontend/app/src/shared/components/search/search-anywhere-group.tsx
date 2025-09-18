@@ -1,5 +1,5 @@
 import { Command } from "cmdk";
-import React from "react";
+import type React from "react";
 
 import { classNames } from "@/shared/utils/common";
 

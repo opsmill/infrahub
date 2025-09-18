@@ -1,9 +1,9 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
-import { InfiniteQueryConfig } from "@/shared/api/types";
+import type { InfiniteQueryConfig } from "@/shared/api/types";
 
 import { OBJECTS_PER_PAGE } from "@/entities/events/api/get-events-from-api";
-import { GetEventsParams, getEvents } from "@/entities/events/domain/get-events";
+import { type GetEventsParams, getEvents } from "@/entities/events/domain/get-events";
 
 interface GetEventsQueryOptions extends GetEventsParams {
   config?: InfiniteQueryConfig<typeof getEventsQueryOptions>;

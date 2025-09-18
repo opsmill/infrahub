@@ -1,6 +1,6 @@
 import {
-  ColumnDef,
-  ColumnOrderState,
+  type ColumnDef,
+  type ColumnOrderState,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -10,10 +10,10 @@ import React from "react";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import {
-  ObjectTableSelectionToolbarProps,
+  type ObjectTableSelectionToolbarProps,
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;

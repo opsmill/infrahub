@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { forwardRef, HTMLAttributes, useState } from "react";
+import { forwardRef, type HTMLAttributes, useState } from "react";
 
 import { classNames } from "@/shared/utils/common";
 

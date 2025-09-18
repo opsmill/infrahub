@@ -1,6 +1,6 @@
 import {
   ApolloClient,
-  DefaultOptions,
+  type DefaultOptions,
   from,
   HttpLink,
   InMemoryCache,
@@ -13,9 +13,10 @@ import { toast } from "react-toastify";
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 
+import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { getNewToken } from "@/entities/authentication/ui/useAuth";
+import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {
@@ -100,7 +101,8 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
             // Modify the operation context with a new token
             const oldHeaders = operation.getContext().headers;
 
-            getNewToken()
+            queryClient
+              .fetchQuery(refreshAccessTokenQueryOptions())
               .then((newToken) => {
                 if (newToken?.access_token) {
                   operation.setContext({

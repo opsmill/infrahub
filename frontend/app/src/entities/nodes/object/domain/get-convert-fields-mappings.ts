@@ -1,5 +1,5 @@
 import {
-  FieldsMappingParams,
+  ConvertFieldsMappingParams,
   getConvertFieldsMappingFromApi,
 } from "@/entities/nodes/object/api/get-convert-fields-mappings-from-api";
 
@@ -8,7 +8,7 @@ export const getConvertFieldsMapping = async ({
   targetKind,
   branchName,
   atDate,
-}: FieldsMappingParams) => {
+}: ConvertFieldsMappingParams) => {
   const { data, errors } = await getConvertFieldsMappingFromApi({
     sourceKind,
     targetKind,

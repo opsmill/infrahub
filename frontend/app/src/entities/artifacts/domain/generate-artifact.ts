@@ -1,5 +1,5 @@
 import {
-  GenerateArtifactFromApiParams,
+  type GenerateArtifactFromApiParams,
   generateArtifactFromApi,
 } from "@/entities/artifacts/api/generate-artifact-from-api";
 

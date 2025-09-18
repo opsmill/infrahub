@@ -1,4 +1,4 @@
-import { ReactElement } from "react";
+import type { ReactElement } from "react";
 
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 

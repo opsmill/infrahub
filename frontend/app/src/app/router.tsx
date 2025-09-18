@@ -6,7 +6,7 @@ import {
   type NavigateOptions,
   Outlet,
   type To,
-  UIMatch,
+  type UIMatch,
   useHref,
   useNavigate,
 } from "react-router";
@@ -17,10 +17,10 @@ import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
-import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
+import type { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
 import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
 
-import { RequireAuth } from "@/entities/authentication/ui/useAuth";
+import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";

@@ -1,6 +1,6 @@
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import {
+import type {
   Permission,
   PermissionAction,
   PermissionData,

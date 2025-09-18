@@ -17,7 +17,7 @@ import {
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getSchema } from "@/entities/schema/domain/get-schema";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 

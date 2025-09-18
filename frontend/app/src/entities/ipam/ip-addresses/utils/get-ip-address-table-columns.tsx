@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
+import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 
 import { IP_ADDRESS_AVAILABLE_KIND } from "@/entities/ipam/constants";
-import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
+import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
 import { IpAddressAvailableCreateFormTrigger } from "@/entities/ipam/ip-addresses/ui/ip-address-available-create-form-trigger";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
@@ -17,8 +17,8 @@ import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
-import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 const columnHelper = createColumnHelper<NodeObject | IpAddressAvailableNode>();
 

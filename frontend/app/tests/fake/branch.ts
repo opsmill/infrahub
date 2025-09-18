@@ -1,4 +1,4 @@
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 
 export const generateBranch = (overrides?: Partial<Branch>): Branch => {
   return {

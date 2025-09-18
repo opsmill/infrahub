@@ -17,7 +17,7 @@ import {
 import Label from "@/shared/components/ui/label";
 
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import { PermissionData } from "@/entities/permission/types";
+import type { PermissionData } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

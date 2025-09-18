@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link, useMatch } from "react-router";
 
 import { Pill } from "@/shared/components/display/pill";

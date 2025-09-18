@@ -1,6 +1,6 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import {
+import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
@@ -10,7 +10,7 @@ import { RelationshipManyInput } from "@/shared/components/inputs/relationship-m
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 export interface RelationshipManyInputProps extends DynamicRelationshipFieldProps {}
 

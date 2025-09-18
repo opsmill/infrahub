@@ -89,6 +89,7 @@ const sidebars: SidebarsConfig = {
             'guides/object-template',
             'guides/profiles',
             'guides/check',
+            'guides/object-conversion',
           ],
         },
         {

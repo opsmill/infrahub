@@ -1,4 +1,4 @@
-import { Button, ButtonProps } from "react-aria-components";
+import { Button, type ButtonProps } from "react-aria-components";
 
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";

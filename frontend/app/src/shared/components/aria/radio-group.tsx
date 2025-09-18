@@ -2,8 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
-  RadioGroupProps as AriaRadioGroupProps,
-  RadioProps as AriaRadioProps,
+  type RadioGroupProps as AriaRadioGroupProps,
+  type RadioProps as AriaRadioProps,
   composeRenderProps,
 } from "react-aria-components";
 

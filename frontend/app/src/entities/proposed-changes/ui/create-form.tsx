@@ -29,7 +29,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

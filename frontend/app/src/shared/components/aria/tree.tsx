@@ -1,11 +1,11 @@
 import { ChevronRightIcon } from "lucide-react";
-import React from "react";
+import type React from "react";
 import {
   Tree as AriaTree,
   TreeItem as AriaTreeItem,
   TreeItemContent as AriaTreeItemContent,
-  TreeItemContentProps as AriaTreeItemContentProps,
-  TreeItemProps as AriaTreeItemProps,
+  type TreeItemContentProps as AriaTreeItemContentProps,
+  type TreeItemProps as AriaTreeItemProps,
   Button,
 } from "react-aria-components";
 

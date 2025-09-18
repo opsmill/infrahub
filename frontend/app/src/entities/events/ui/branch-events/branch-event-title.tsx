@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import {
+import type {
   BranchCreatedEvent,
   BranchDeletedEvent,
   BranchMergedEvent,

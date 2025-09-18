@@ -2,12 +2,12 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
-import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
+import type { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
-import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import { Tree, type TreeItemProps, type TreeProps } from "@/shared/components/ui/tree";
+import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { isElementInViewport } from "@/shared/utils/element";
 
@@ -19,10 +19,10 @@ import {
   objectChildrenQuery,
   objectTopLevelTreeQuery,
 } from "@/entities/nodes/api/objectTreeQuery";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export const HIDE_AUTO_GENERATED_FILTER: Filter = { name: "group_type__value", value: "default" };
 

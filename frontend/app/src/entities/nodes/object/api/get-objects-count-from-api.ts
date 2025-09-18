@@ -3,8 +3,8 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addFiltersToRequest } from "@/shared/api/graphql/utils";
-import { ContextParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { ContextParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 export interface getObjectsCountQueryParams {
   objectKind: string;

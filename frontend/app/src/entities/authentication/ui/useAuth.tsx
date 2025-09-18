@@ -1,157 +1,43 @@
-import { ObservableQuery } from "@apollo/client";
-import { createContext, ReactElement, ReactNode, use, useState } from "react";
-import { Navigate, useLocation } from "react-router";
-import { toast } from "react-toastify";
+import React from "react";
 
-import { CONFIG } from "@/config/config";
-import { REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { fetchUrl } from "@/shared/api/rest/fetch";
-import { components } from "@/shared/api/rest/types.generated";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { parseJwt } from "@/shared/utils/common";
 
-import { useConfig } from "@/entities/config/ui/config-provider";
-
-export type User = {
-  id: string;
-};
-
-type UserToken = {
-  access_token: string;
-  refresh_token: string;
-};
+import type { User, UserToken } from "@/entities/authentication/types";
+import {
+  removeTokensInLocalStorage,
+  saveTokensInLocalStorage,
+} from "@/entities/authentication/utils";
 
 export type AuthContextType = {
   accessToken: string | null;
   data?: any;
   isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
-  signOut: (callback?: () => void) => void;
-  setToken: (token: UserToken) => void;
+  setToken: (token: UserToken | null) => void;
   user: User | null;
 };
 
-export const saveTokensInLocalStorage = (result: any) => {
-  if (result?.access_token) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, result?.access_token);
-  }
-
-  if (result?.refresh_token) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, result?.refresh_token);
-  }
-};
-
-export const removeTokensInLocalStorage = async () => {
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-
-  const payload = {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${localToken}`,
-    },
-  };
-
-  await fetchUrl(CONFIG.LOGOUT_URL, payload);
-
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-};
-
-const QUERY_TO_IGNORE = ["GET_PROFILE_DETAILS"];
-
-const shouldIgnoreQuery = (observableQuery: ObservableQuery) => {
-  return !!observableQuery.queryName && QUERY_TO_IGNORE.includes(observableQuery.queryName);
-};
-
-export const getNewToken = async () => {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-
-  if (!refreshToken) {
-    return;
-  }
-
-  const payload = {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${refreshToken}`,
-    },
-  };
-
-  const result: components["schemas"]["AccessTokenResponse"] = await fetchUrl(
-    CONFIG.AUTH_REFRESH_TOKEN_URL,
-    payload
-  );
-
-  if (!result?.access_token) {
-    await removeTokensInLocalStorage();
-    window.location.reload();
-    return;
-  }
-
-  saveTokensInLocalStorage(result);
-
-  return result;
-};
-
-export const AuthContext = createContext<AuthContextType>({
+export const AuthContext = React.createContext<AuthContextType>({
   accessToken: null,
   isAuthenticated: false,
-  isLoading: false,
   data: undefined,
-  login: async () => {},
-  signOut: () => {},
   setToken: () => {},
   user: null,
 });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-  const [accessToken, setAccessToken] = useState(localToken);
-  const [isLoading, setIsLoading] = useState(false);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [accessToken, setAccessToken] = useLocalStorage(ACCESS_TOKEN_KEY);
 
-  const setToken = (token: UserToken) => {
-    setAccessToken(token.access_token);
-    saveTokensInLocalStorage(token);
-  };
-
-  const signIn = async (data: { username: string; password: string }, callback?: () => void) => {
-    const payload = {
-      method: "POST",
-      body: JSON.stringify(data),
-    };
-
-    const result: components["schemas"]["UserToken"] = await fetchUrl(
-      CONFIG.AUTH_LOGIN_URL,
-      payload
-    );
-
-    setIsLoading(false);
-
-    if (!result?.access_token) {
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Invalid username or password" />, {
-        toastId: "alert-error-sign-in",
-      });
-
-      return;
+  const setToken: AuthContextType["setToken"] = (token) => {
+    if (token) {
+      setAccessToken(token.access_token);
+      saveTokensInLocalStorage(token);
+    } else {
+      setAccessToken("");
+      removeTokensInLocalStorage();
     }
-
-    setToken(result);
-    if (callback) callback();
-  };
-
-  const signOut = async () => {
-    await removeTokensInLocalStorage();
-    setAccessToken(null);
-    graphqlClient.refetchQueries({
-      include: "active",
-      onQueryUpdated(observableQuery) {
-        return !shouldIgnoreQuery(observableQuery);
-      },
-    });
   };
 
   const data = parseJwt(accessToken);
@@ -160,9 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken,
     data,
     isAuthenticated: !!accessToken,
-    isLoading,
-    login: signIn,
-    signOut,
     setToken,
     user: data?.sub ? { id: data?.sub } : null,
   };
@@ -171,19 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  return use(AuthContext);
-}
+  const context = React.use(AuthContext);
 
-export function RequireAuth({ children }: { children: ReactElement }) {
-  const config = useConfig();
-  const { isAuthenticated } = useAuth();
-  const location = useLocation();
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthContext.");
+  }
 
-  if (isAuthenticated || config.main.allow_anonymous_access) return children;
-
-  // Redirect them to the /login page, but save the current location they were
-  // trying to go to when they were redirected. This allows us to send them
-  // along to that page after they log in, which is a nicer user experience
-  // than dropping them off on the home page.
-  return <Navigate to="/login" state={{ from: location }} replace />;
+  return context;
 }

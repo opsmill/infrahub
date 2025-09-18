@@ -24,6 +24,7 @@ from infrahub.graphql.metrics import (
     GRAPHQL_RESPONSE_SIZE_METRICS,
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
+from infrahub.graphql.middleware import raise_on_mutation_on_branch_needing_rebase
 from infrahub.graphql.utils import extract_data
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.log import get_logger
@@ -98,6 +99,7 @@ async def execute_query(
             context_value=gql_params.context,
             root_value=None,
             variable_values=params,
+            middleware=[raise_on_mutation_on_branch_needing_rebase],
         )
 
     data = extract_data(query_name=gql_query.name.value, result=result)

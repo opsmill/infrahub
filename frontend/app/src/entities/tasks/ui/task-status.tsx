@@ -5,7 +5,7 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { QSP } from "@/config/qsp";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton, LinkButtonProps } from "@/shared/components/buttons/button-primitive";
+import { LinkButton, type LinkButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Pulse } from "@/shared/components/ui/pulse";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Tooltip } from "@/shared/components/ui/tooltip";

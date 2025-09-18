@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { ReactElement, useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
@@ -14,7 +14,7 @@ import { ApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-a
 import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
 import { RejectButton } from "@/entities/proposed-changes/ui/action-button/pc-reject-button";
 import { ReviewComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-review-combobox-list";
-import { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
+import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { PcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 type ReviewButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;

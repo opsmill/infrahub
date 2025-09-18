@@ -4,7 +4,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "@/config/qsp";
 
 import { getSchema } from "@/entities/schema/domain/get-schema";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {

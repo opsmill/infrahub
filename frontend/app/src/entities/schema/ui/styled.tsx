@@ -1,10 +1,10 @@
-import { ReactElement } from "react";
-import { Tab, TabPanel, TabPanelProps, TabProps } from "react-aria-components";
+import type { ReactElement } from "react";
+import { Tab, TabPanel, type TabPanelProps, type TabProps } from "react-aria-components";
 import { ArrayParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
-import Accordion, { AccordionProps } from "@/shared/components/display/accordion";
+import Accordion, { type AccordionProps } from "@/shared/components/display/accordion";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";

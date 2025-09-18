@@ -1,4 +1,4 @@
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export const canDisplayResetActions = (
   fieldSchema: AttributeSchema | RelationshipSchema,

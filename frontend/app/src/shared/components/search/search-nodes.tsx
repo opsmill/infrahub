@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
-import { ReactElement } from "react";
+import type { ReactElement } from "react";
 
 import { SEARCH_QUERY_NAME } from "@/config/constants";
 

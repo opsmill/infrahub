@@ -1,11 +1,11 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import { QueryConfig } from "@/shared/api/types";
+import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { LoadSchemaParams, loadSchema } from "@/entities/schema/domain/load-schema";
+import { type LoadSchemaParams, loadSchema } from "@/entities/schema/domain/load-schema";
 
 export interface LoadSchemaQueryOptionsParams extends LoadSchemaParams {
   schemaHash: string | undefined;

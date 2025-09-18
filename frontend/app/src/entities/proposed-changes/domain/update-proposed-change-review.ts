@@ -1,5 +1,5 @@
 import {
-  UpdateProposedChangeReviewFromApiParams,
+  type UpdateProposedChangeReviewFromApiParams,
   updateProposedChangeReviewFromApi,
 } from "@/entities/proposed-changes/api/updateProposedChangeReviewFromApi";
 

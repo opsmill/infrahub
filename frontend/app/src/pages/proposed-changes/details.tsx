@@ -6,7 +6,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 
-import { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
+import type { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
