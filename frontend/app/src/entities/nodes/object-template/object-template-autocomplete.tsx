@@ -5,15 +5,15 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
-  ComboboxListProps,
+  type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
 import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeObject } from "@/entities/nodes/types";
-import { TemplateSchema } from "@/entities/schema/types";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { TemplateSchema } from "@/entities/schema/types";
 
 export interface ObjectTemplateAutocompleteProps extends Omit<ComboboxListProps, "onSelect"> {
   templateSchema: TemplateSchema;

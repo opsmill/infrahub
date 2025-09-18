@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/config/constants";
 
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 

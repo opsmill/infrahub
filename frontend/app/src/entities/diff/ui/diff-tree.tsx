@@ -1,12 +1,12 @@
 import { Icon } from "@iconify-icon/react";
-import { TreeProps as AriaTreeProps, Collection } from "react-aria-components";
+import { type TreeProps as AriaTreeProps, Collection } from "react-aria-components";
 import { useLocation } from "react-router";
 
 import { Tree, TreeItem, TreeItemContent } from "@/shared/components/aria/tree";
 
-import { DiffNode } from "@/entities/diff/node-diff/types";
+import type { DiffNode } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { buildDiffTreeItems, DiffTreeItem } from "@/entities/diff/utils/build-diff-tree-items";
+import { buildDiffTreeItems, type DiffTreeItem } from "@/entities/diff/utils/build-diff-tree-items";
 
 interface DiffTreeProps extends Omit<AriaTreeProps<DiffTreeItem>, "items" | "children"> {
   nodes: Array<DiffNode>;

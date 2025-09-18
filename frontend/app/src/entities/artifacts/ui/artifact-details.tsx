@@ -1,6 +1,6 @@
 import { CONFIG } from "@/config/config";
 
-import { CoreArtifact } from "@/shared/api/graphql/generated/graphql";
+import type { CoreArtifact } from "@/shared/api/graphql/generated/graphql";
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -12,7 +12,7 @@ import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 import ArtifactHeader from "./artifact-header";
 

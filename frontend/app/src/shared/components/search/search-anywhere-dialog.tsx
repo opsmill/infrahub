@@ -1,4 +1,4 @@
-import { Dialog, DialogProps, Modal, ModalOverlay } from "react-aria-components";
+import { Dialog, type DialogProps, Modal, ModalOverlay } from "react-aria-components";
 
 import { useSearchAnywhereContext } from "@/shared/components/search/search-anywhere-context";
 import { classNames } from "@/shared/utils/common";

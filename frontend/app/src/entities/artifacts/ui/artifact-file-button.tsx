@@ -1,4 +1,4 @@
-import { Button as AriaButton, ButtonProps as AriaButtonProps } from "react-aria-components";
+import { Button as AriaButton, type ButtonProps as AriaButtonProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";

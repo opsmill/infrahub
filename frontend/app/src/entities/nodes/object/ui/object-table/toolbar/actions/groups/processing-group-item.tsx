@@ -5,7 +5,7 @@ import React from "react";
 import { Spinner } from "@/shared/components/ui/spinner";
 
 import { GroupItem } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-item";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 
 export interface ProcessingGroupItemProps {
   group: RelationshipNode;

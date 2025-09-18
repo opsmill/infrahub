@@ -1,16 +1,20 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
 
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import { NodeAttribute, NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
+import type {
+  NodeAttribute,
+  NodeRelationshipMany,
+  NodeRelationshipOne,
+} from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface IpPrefixDetailsProps {
   prefixSchema: ModelSchema;

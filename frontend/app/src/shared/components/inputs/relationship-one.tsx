@@ -1,10 +1,10 @@
 import { gql } from "@apollo/client";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { useEffect, useState } from "react";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { PoolValue } from "@/shared/components/form/pool-selector";
+import type { PoolValue } from "@/shared/components/form/pool-selector";
 import {
   Combobox,
   ComboboxContent,
@@ -13,13 +13,13 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import { PopoverTrigger } from "@/shared/components/ui/popover";
+import type { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";
 
 import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
-import { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 
 import { Badge } from "../ui/badge";

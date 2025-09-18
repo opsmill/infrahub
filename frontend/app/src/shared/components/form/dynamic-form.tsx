@@ -18,8 +18,8 @@ import RelationshipManyField from "@/shared/components/form/fields/relationships
 import RelationshipParentConstraintField from "@/shared/components/form/fields/relationships/relationship-parent-constraint.field";
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
-import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
-import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
+import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";

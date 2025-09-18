@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { store } from "@/shared/stores";
 
-import { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { ModelSchema } from "@/entities/schema/types";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { ModelSchema } from "@/entities/schema/types";
 
 import {
   generateAttributeSchema,

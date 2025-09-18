@@ -9,9 +9,9 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
 import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface ObjectConvertProps {
   objectId: string;

@@ -1,8 +1,8 @@
 import {
-  GetRelationshipCountFromApiParams,
+  type GetRelationshipCountFromApiParams,
   getRelationshipCountFromApi,
 } from "@/entities/nodes/relationships/api/get-relationship-count-from-api";
-import { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/types";
 
 export type GetRelationshipCountParams = GetRelationshipCountFromApiParams;
 

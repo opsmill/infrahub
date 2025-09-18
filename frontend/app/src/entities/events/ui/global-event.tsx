@@ -1,12 +1,16 @@
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 
-import { ArtifactEvent, GroupEvent, StandardEvent } from "@/shared/api/graphql/generated/graphql";
+import type {
+  ArtifactEvent,
+  GroupEvent,
+  StandardEvent,
+} from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-import { BranchEvent, EventType } from "@/entities/events/types";
+import type { BranchEvent, EventType } from "@/entities/events/types";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
 import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
 import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";

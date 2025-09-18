@@ -2,13 +2,13 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { REPOSITORY_KIND } from "@/config/constants";
 
-import { ContextParams, QueryConfig } from "@/shared/api/types";
+import type { ContextParams, QueryConfig } from "@/shared/api/types";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";
 import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 import {
-  GetRepositoryGroupParams,
+  type GetRepositoryGroupParams,
   getRepositoryGroup,
 } from "@/entities/repository/domain/get-repository-group";
 

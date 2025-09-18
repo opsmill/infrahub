@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
+import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import * as R from "remeda";
 
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
@@ -17,8 +17,8 @@ import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/c
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 const columnHelper = createColumnHelper<NodeObject>();

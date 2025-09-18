@@ -13,7 +13,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { pluralize } from "@/shared/utils/string";
 
-import { GroupDataFromAPI } from "@/entities/groups/api/types";
+import type { GroupDataFromAPI } from "@/entities/groups/api/types";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";

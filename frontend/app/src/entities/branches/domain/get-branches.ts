@@ -1,4 +1,4 @@
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { store } from "@/shared/stores";
 
 import { getBranchesFromApi } from "@/entities/branches/api/get-branches-from-api";

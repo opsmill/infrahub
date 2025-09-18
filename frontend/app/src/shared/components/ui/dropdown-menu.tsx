@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { ComponentPropsWithoutRef, ElementRef, forwardRef } from "react";
+import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
 
 import {
   Accordion,

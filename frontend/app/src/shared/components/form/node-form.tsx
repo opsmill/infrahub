@@ -1,8 +1,8 @@
 import { toast } from "react-toastify";
 
 import DynamicForm from "@/shared/components/form/dynamic-form";
-import { ProfileData } from "@/shared/components/form/object-form";
-import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import type { ProfileData } from "@/shared/components/form/object-form";
+import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
@@ -11,11 +11,11 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { NodeCore, NodeObject } from "@/entities/nodes/types";
+import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import { useGetNumberPools } from "@/entities/resource-manager/domain/get-number-pools.query";
-import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;

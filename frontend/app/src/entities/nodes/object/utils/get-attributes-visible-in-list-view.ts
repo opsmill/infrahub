@@ -1,4 +1,4 @@
-import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
+import type { AttributeKind, AttributeSchema } from "@/entities/schema/types";
 
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "../../../schema/constants";
 

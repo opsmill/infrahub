@@ -1,12 +1,12 @@
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { PoolSelector } from "@/shared/components/form/pool-selector";
-import { DynamicNumberFieldProps, FormAttributeValue } from "@/shared/components/form/type";
+import type { DynamicNumberFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import {
   updateAttributeFieldValue,
   updateFormFieldValue,
 } from "@/shared/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { Input, InputProps } from "@/shared/components/ui/input";
+import { Input, type InputProps } from "@/shared/components/ui/input";
 
 export interface NumberFieldProps
   extends Omit<DynamicNumberFieldProps, "type" | "onChange">,

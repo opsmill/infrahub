@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
-import { CoreDataCheck } from "@/shared/api/graphql/generated/graphql";
+import type { CoreDataCheck } from "@/shared/api/graphql/generated/graphql";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";

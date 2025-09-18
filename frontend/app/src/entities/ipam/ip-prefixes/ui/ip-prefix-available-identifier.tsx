@@ -3,14 +3,14 @@ import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
+import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";

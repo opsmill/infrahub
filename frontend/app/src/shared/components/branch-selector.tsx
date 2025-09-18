@@ -6,7 +6,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";

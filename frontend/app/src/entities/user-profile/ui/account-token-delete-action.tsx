@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { AccountTokenNode } from "@/shared/api/graphql/generated/graphql";
+import type { AccountTokenNode } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 
 import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";

@@ -10,7 +10,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 
-import { getSeverityBadge, tLog } from "./logs";
+import { getSeverityBadge, type tLog } from "./logs";
 
 const background = {
   // Blue

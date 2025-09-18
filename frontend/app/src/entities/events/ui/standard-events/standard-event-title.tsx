@@ -1,8 +1,8 @@
-import { ReactElement } from "react";
+import type { ReactElement } from "react";
 
 import { QSP } from "@/config/qsp";
 
-import { StandardEvent } from "@/shared/api/graphql/generated/graphql";
+import type { StandardEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";

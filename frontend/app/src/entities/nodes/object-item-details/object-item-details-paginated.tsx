@@ -29,12 +29,12 @@ import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-it
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
 

@@ -1,9 +1,9 @@
 import { ChevronDownIcon } from "lucide-react";
 import {
   Button as AriaButton,
-  ButtonProps as AriaButtonProps,
+  type ButtonProps as AriaButtonProps,
   ListBox as AriaListBox,
-  ListBoxProps as AriaListBoxProps,
+  type ListBoxProps as AriaListBoxProps,
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
   composeRenderProps,
@@ -14,7 +14,7 @@ import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { Popover, PopoverProps } from "./popover";
+import { Popover, type PopoverProps } from "./popover";
 
 export const Select = AriaSelect;
 

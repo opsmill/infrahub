@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import React, { forwardRef, useState } from "react";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
@@ -17,7 +17,7 @@ import {
 } from "@/shared/components/ui/combobox";
 
 import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
-import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 
 export interface EnumDeleteButtonProps extends ButtonProps {

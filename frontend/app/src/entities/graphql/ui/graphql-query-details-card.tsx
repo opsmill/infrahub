@@ -2,20 +2,23 @@ import { Icon } from "@iconify-icon/react";
 
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 
-import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
+import type { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
-import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import {
+  type AttributeType,
+  ObjectAttributeValue,
+} from "@/entities/nodes/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 type GraphqlQueryDetailsCardProps = {
   data: CoreGraphQlQuery;

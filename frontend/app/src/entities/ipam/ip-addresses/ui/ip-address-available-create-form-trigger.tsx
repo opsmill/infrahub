@@ -6,7 +6,7 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import {
-  IPAddressAvailableIdentifierProps,
+  type IPAddressAvailableIdentifierProps,
   IpAddressAvailableIdentifier,
 } from "@/entities/ipam/ip-addresses/ui/ip-address-available-identifier";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
