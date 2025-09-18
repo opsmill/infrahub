@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -155,7 +154,7 @@ class InfrahubMutationMixin:
         """
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch, data=data
+            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
         )
         if lock_names:
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
@@ -223,7 +222,7 @@ class InfrahubMutationMixin:
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch, data=data
+            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch
         )
 
         if db.is_transaction:
@@ -273,6 +272,7 @@ class InfrahubMutationMixin:
         obj = node or await NodeManager.find_object(
             db=db, kind=cls._meta.active_schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
+
         obj, result = await cls._call_mutate_update(info=info, data=data, db=db, branch=branch, obj=obj)
 
         return obj, result
@@ -523,33 +523,14 @@ def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch)
     return False
 
 
-def _hash(value: str) -> str:
-    # Do not use builtin `hash` for lock names as due to randomization results would differ between
-    # different processes.
-    return hashlib.sha256(value.encode()).hexdigest()
-
-
-def _get_kind_lock_names_on_object_mutation(
-    kind: str, branch: Branch, schema_branch: SchemaBranch, data: InputObjectType
-) -> list[str]:
+def _get_kind_lock_names_on_object_mutation(kind: str, branch: Branch, schema_branch: SchemaBranch) -> list[str]:
     """
     Return objects kind for which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
     concurrent mutations are only allowed on non-main branch as objects validations will be performed at least when merging in main branch.
     """
 
-    if not branch.is_default and not _should_kind_be_locked_on_any_branch(kind=kind, schema_branch=schema_branch):
+    if not branch.is_default and not _should_kind_be_locked_on_any_branch(kind, schema_branch):
         return []
-
-    if kind == InfrahubKind.GRAPHQLQUERYGROUP:
-        # Lock on name as well to improve performances
-        try:
-            name = data.name.value
-            return [build_object_lock_name(kind + "." + _hash(name))]
-        except AttributeError:
-            # We might reach here if we are updating a CoreGraphQLQueryGroup without updating the name,
-            # in which case we would not need to lock. This is not supposed to happen as current `update`
-            # logic first fetches the node with its name.
-            return []
 
     lock_kinds = _get_kinds_to_lock_on_object_mutation(kind, schema_branch)
     lock_names = [build_object_lock_name(kind) for kind in lock_kinds]
