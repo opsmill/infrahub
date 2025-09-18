@@ -9,9 +9,11 @@ from rich.progress import Progress
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
+from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ..shared import ArbitraryMigration
@@ -235,6 +237,9 @@ class Migration039(ArbitraryMigration):
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         console = Console()
         result = MigrationResult()
+        # load schemas from database into registry
+        initialize_lock()
+        await initialization(db=db)
 
         console.print("Identifying IP prefixes/addresses to reconcile...", end="")
         find_nodes_query = await FindNodesToReconcileQuery.init(db=db)
