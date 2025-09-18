@@ -10,11 +10,6 @@ import {
   objectQueryKeys,
 } from "@/entities/nodes/object/domain/object.query-keys";
 
-interface FieldsMappingProps {
-  sourceKind: string;
-  targetKind: string;
-}
-
 export function getConvertFieldsMappingOptions({
   sourceKind,
   targetKind,
@@ -39,7 +34,15 @@ export function getConvertFieldsMappingOptions({
   });
 }
 
-export const useFieldsMappingTypeConversion = ({ sourceKind, targetKind }: FieldsMappingProps) => {
+interface FieldsMappingTypeConversionProps {
+  sourceKind: string;
+  targetKind: string;
+}
+
+export const useFieldsMappingTypeConversion = ({
+  sourceKind,
+  targetKind,
+}: FieldsMappingTypeConversionProps) => {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
