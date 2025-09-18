@@ -3,6 +3,7 @@ import { FileBoxIcon } from "lucide-react";
 import { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
 
+import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   FormAttributeValue,
@@ -57,6 +58,54 @@ export const LabelFormField = ({
       {fieldData?.source?.type === "profile" && <ProfileSourceBadge source={fieldData.source} />}
       {fieldData?.source?.type === "pool" && <PoolSourceBadge source={fieldData.source} />}
       {fieldData?.source?.type === "template" && <TemplateSourceBadge source={fieldData.source} />}
+    </div>
+  );
+};
+
+interface ConvertLabelFormFieldProps extends Omit<LabelProps, "onChange"> {
+  className?: string;
+  label?: string;
+  required?: boolean;
+  unique?: boolean;
+  description?: string | null;
+  kind: string;
+  value: string;
+  onChange: (source: string) => void;
+}
+
+export const ConvertLabelFormField = ({
+  className,
+  label,
+  required,
+  unique,
+  description,
+  variant,
+  kind,
+  value,
+  onChange,
+}: ConvertLabelFormFieldProps) => {
+  return (
+    <div className={classNames("flex h-4 items-center justify-between", className)}>
+      <div className="flex items-center gap-1">
+        <FormLabel variant={variant} className="flex items-center gap-2">
+          {label} {required && "*"}
+          {kind && <Badge variant={"lightgray-outline"}>{kind}</Badge>}
+        </FormLabel>
+        {unique && <InputUniqueTips className="mb-px self-end" />}
+        {description && <QuestionMark message={description} className="ml-1" />}
+      </div>
+
+      <RadioGroup
+        orientation="horizontal"
+        value={value}
+        onChange={(newValue) => {
+          return onChange(newValue);
+        }}
+        className="text-sm"
+      >
+        <Radio value="source">From source</Radio>
+        <Radio value="custom">Custom value</Radio>
+      </RadioGroup>
     </div>
   );
 };
