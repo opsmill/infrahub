@@ -11,6 +11,7 @@ class ArtifactEvent(InfrahubEvent):
 
     node_id: str = Field(..., description="The ID of the artifact")
     artifact_definition_id: str = Field(..., description="The ID of the artifact definition")
+    artifact_definition_name: str = Field(..., description="The name of the artifact definition")
     target_id: str = Field(..., description="The ID of the target of the artifact")
     target_kind: str = Field(..., description="The kind of the target of the artifact")
     checksum: str = Field(..., description="The current checksum of the artifact")
@@ -36,6 +37,7 @@ class ArtifactEvent(InfrahubEvent):
                 "infrahub.artifact.storage_id": self.storage_id,
                 "infrahub.artifact.storage_id_previous": self.storage_id_previous or "",
                 "infrahub.artifact.artifact_definition_id": self.artifact_definition_id,
+                "infrahub.artifact.artifact_definition_name": self.artifact_definition_name,
             }
         )
 

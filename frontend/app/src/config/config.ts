@@ -10,7 +10,6 @@ export const INFRAHUB_DOC_LOCAL = `${INFRAHUB_API_SERVER_URL}/docs`;
 export const INFRAHUB_SWAGGER_DOC_URL = `${INFRAHUB_API_SERVER_URL}/api/docs`;
 
 export const CONFIG = {
-  LOGOUT_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/logout`,
   GRAPHQL_URL: (branch?: string | null, date?: Date | null) => {
     if (!date) {
       return `${INFRAHUB_API_SERVER_URL}/graphql/${branch ?? "main"}`;
@@ -21,8 +20,6 @@ export const CONFIG = {
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
   INFO_URL: `${INFRAHUB_API_SERVER_URL}/api/info`,
-  AUTH_LOGIN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
-  AUTH_REFRESH_TOKEN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/refresh`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
   ARTIFACTS_DIFF_URL: (branch?: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/diff/artifacts?branch=${branch}`,

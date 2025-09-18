@@ -42,14 +42,16 @@ While the content of an artifact can change, its identifier will remain the same
 
 ## High level design
 
-Artifacts are defined by grouping a [transformation](./transformation.mdx) with a group of targets in an *Artifact Definition*.
+Artifacts are defined by grouping a [transformation](./transformation.mdx) with a [group](./groups.mdx) of targets in an *Artifact Definition*.
 
 An **artifact definition** centralizes all the information required to generate an artifact.
 
-- Group of targets
-- Transformation
-- Format of the output
-- Information to extract from each target that must be passed to the transformation.
+- [Group](./groups.mdx) of targets - Specifies which objects will generate artifacts
+- Transformation - Defines how to process the data
+- Format of the output - MIME type for the generated content
+- Information to extract from each target that must be passed to the transformation
+
+Groups provide flexible targeting that decouples artifact generation from specific object lists. You can add or remove objects from groups without modifying artifact definitions. See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.
 
 From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the transformation is stored in the [object storage](./object-storage.mdx). The generation of the artifacts is performed by the Task worker(s).
 

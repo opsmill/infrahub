@@ -125,6 +125,7 @@ class CoreGenericRepository(CoreNode):
     queries: RelationshipManager
     checks: RelationshipManager
     generators: RelationshipManager
+    groups_objects: RelationshipManager
 
 
 class CoreGroup(CoreNode):

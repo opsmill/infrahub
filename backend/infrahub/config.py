@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import toml
+import tomllib
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
@@ -976,7 +976,7 @@ def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, 
 
     if config_file.exists():
         config_string = config_file.read_text(encoding="utf-8")
-        config_tmp = toml.loads(config_string)
+        config_tmp = tomllib.loads(config_string)
 
         return Settings(**config_tmp)
 

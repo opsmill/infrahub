@@ -4,11 +4,8 @@ from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants.infrahubkind import GRAPHQLQUERY, GRAPHQLQUERYGROUP
 from infrahub.core.initialization import create_branch
+from infrahub.core.node.lock_utils import _get_kinds_to_lock_on_object_mutation, _hash
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.mutations.main import (
-    _get_kinds_to_lock_on_object_mutation,
-    _hash,
-)
 from tests.helpers.test_app import TestInfrahubApp
 
 
@@ -55,7 +52,7 @@ class TestGetKindsLock(TestInfrahubApp):
         await graphql_query.save()
 
         # Test create
-        with patch("infrahub.graphql.mutations.main.InfrahubMultiLock") as mock_infrahub_multi_lock:
+        with patch("infrahub.core.node.create.InfrahubMultiLock") as mock_infrahub_multi_lock:
             group = await client.create(kind=GRAPHQLQUERYGROUP, name="a_gql_group", query=graphql_query)
             await group.save()
             mock_infrahub_multi_lock.assert_called_once_with(
@@ -104,7 +101,7 @@ class TestGetKindsLock(TestInfrahubApp):
 
         # Test lock onanother branch
         other_branch = await create_branch(branch_name="other_branch", db=db)
-        with patch("infrahub.graphql.mutations.main.InfrahubMultiLock") as mock_infrahub_multi_lock:
+        with patch("infrahub.core.node.create.InfrahubMultiLock") as mock_infrahub_multi_lock:
             group = await client.create(
                 kind=GRAPHQLQUERYGROUP, name="one_more_group", query=graphql_query, branch=other_branch.name
             )

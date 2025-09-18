@@ -29,6 +29,7 @@ from infrahub.core.attribute import (
     StringOptional,
 )
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
@@ -280,7 +281,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     branch1 = Branch(
         name="branch1",
-        status="OPEN",
+        status=BranchStatus.OPEN.value,
         description="Second Branch",
         is_default=False,
         sync_with_git=False,
@@ -502,7 +503,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     branch1 = Branch(
         name="branch1",
-        status="OPEN",
+        status=BranchStatus.OPEN.value,
         description="Second Branch",
         is_default=False,
         sync_with_git=False,
@@ -729,7 +730,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     for branch_name, description, created_at, branched_from in branches:
         obj = Branch(
             name=branch_name,
-            status="OPEN",
+            status=BranchStatus.OPEN.value,
             description=description,
             is_default=False,
             sync_with_git=False,

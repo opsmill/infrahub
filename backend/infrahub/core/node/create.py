@@ -2,18 +2,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.lock_utils import get_kind_lock_names_on_object_mutation
 from infrahub.core.protocols import CoreObjectTemplate
+from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.lock import InfrahubMultiLock
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes, RelationshipSchema
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -67,6 +72,7 @@ async def handle_template_relationships(
     template: CoreObjectTemplate,
     fields: list,
     constraint_runner: NodeConstraintRunner | None = None,
+    at: Timestamp | None = None,
 ) -> None:
     if constraint_runner is None:
         component_registry = get_component_registry()
@@ -94,7 +100,7 @@ async def handle_template_relationships(
                 current_template=template,
             )
 
-            obj_peer = await Node.init(schema=obj_peer_schema, db=db, branch=branch)
+            obj_peer = await Node.init(schema=obj_peer_schema, db=db, branch=branch, at=at)
             await obj_peer.new(db=db, **obj_peer_data)
             await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
             await obj_peer.save(db=db)
@@ -106,6 +112,7 @@ async def handle_template_relationships(
                 obj=obj_peer,
                 template=template_relationship_peer,
                 fields=fields,
+                at=at,
             )
 
 
@@ -142,17 +149,18 @@ async def refresh_for_profile_update(
 
 async def _do_create_node(
     node_class: type[Node],
-    db: InfrahubDatabase,
-    data: dict,
-    schema: NonGenericSchemaTypes,
-    fields_to_validate: list,
-    branch: Branch,
     node_constraint_runner: NodeConstraintRunner,
+    db: InfrahubDatabase,
+    schema: NonGenericSchemaTypes,
+    branch: Branch,
+    fields_to_validate: list[str],
+    data: dict[str, Any],
+    at: Timestamp | None = None,
 ) -> Node:
     obj = await node_class.init(db=db, schema=schema, branch=branch)
     await obj.new(db=db, **data)
     await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-    await obj.save(db=db)
+    await obj.save(db=db, at=at)
 
     object_template = await obj.get_object_template(db=db)
     if object_template:
@@ -162,17 +170,61 @@ async def _do_create_node(
             template=object_template,
             obj=obj,
             fields=fields_to_validate,
+            at=at,
         )
     return obj
 
 
+async def _do_create_node_with_lock(
+    node_class: type[Node],
+    node_constraint_runner: NodeConstraintRunner,
+    db: InfrahubDatabase,
+    schema: NonGenericSchemaTypes,
+    branch: Branch,
+    fields_to_validate: list[str],
+    data: dict[str, Any],
+    at: Timestamp | None = None,
+) -> Node:
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    lock_names = get_kind_lock_names_on_object_mutation(
+        kind=schema.kind, branch=branch, schema_branch=schema_branch, data=dict(data)
+    )
+
+    if lock_names:
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+            return await _do_create_node(
+                node_class=node_class,
+                node_constraint_runner=node_constraint_runner,
+                db=db,
+                schema=schema,
+                branch=branch,
+                fields_to_validate=fields_to_validate,
+                data=data,
+                at=at,
+            )
+    return await _do_create_node(
+        node_class=node_class,
+        node_constraint_runner=node_constraint_runner,
+        db=db,
+        schema=schema,
+        branch=branch,
+        fields_to_validate=fields_to_validate,
+        data=data,
+        at=at,
+    )
+
+
 async def create_node(
-    data: dict,
+    data: dict[str, Any],
     db: InfrahubDatabase,
     branch: Branch,
-    schema: NonGenericSchemaTypes,
+    schema: MainSchemaTypes,
+    at: Timestamp | None = None,
 ) -> Node:
     """Create a node in the database if constraint checks succeed."""
+
+    if isinstance(schema, GenericSchema):
+        raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
 
     component_registry = get_component_registry()
     node_constraint_runner = await component_registry.get_component(
@@ -184,7 +236,7 @@ async def create_node(
 
     fields_to_validate = list(data)
     if db.is_transaction:
-        obj = await _do_create_node(
+        obj = await _do_create_node_with_lock(
             node_class=node_class,
             node_constraint_runner=node_constraint_runner,
             db=db,
@@ -192,10 +244,11 @@ async def create_node(
             branch=branch,
             fields_to_validate=fields_to_validate,
             data=data,
+            at=at,
         )
     else:
         async with db.start_transaction() as dbt:
-            obj = await _do_create_node(
+            obj = await _do_create_node_with_lock(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,
                 db=dbt,
@@ -203,6 +256,7 @@ async def create_node(
                 branch=branch,
                 fields_to_validate=fields_to_validate,
                 data=data,
+                at=at,
             )
 
     if await get_profile_ids(db=db, obj=obj):
