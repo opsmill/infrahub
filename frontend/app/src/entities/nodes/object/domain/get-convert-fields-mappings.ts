@@ -1,5 +1,5 @@
 import {
-  ConvertFieldsMappingParams,
+  type ConvertFieldsMappingParams,
   getConvertFieldsMappingFromApi,
 } from "@/entities/nodes/object/api/get-convert-fields-mappings-from-api";
 

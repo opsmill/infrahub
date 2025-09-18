@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
+import type { ContextParams } from "@/shared/api/types";
 
 export interface ConvertFieldsMappingParams extends ContextParams {
   sourceKind?: string;
