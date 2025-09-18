@@ -35,7 +35,7 @@ class IpAddressDetails:
     expected_prefix_uuid: str
 
 
-class TestingMigration039(Migration039):
+class WrappedMigration039(Migration039):
     async def _get_reconciler(self, db: InfrahubDatabase, branch_name: str) -> IpamReconciler:
         reconciler = await super()._get_reconciler(db=db, branch_name=branch_name)
         if isinstance(reconciler, AsyncMock):
@@ -222,13 +222,10 @@ class TestMigration039:
         self,
         db: InfrahubDatabase,
         initial_dataset,
-        branch: Branch,
         branch_prefix_updates: dict[str, IpPrefixDetails],
         branch_address_updates: dict[str, IpAddressDetails],
     ) -> None:
-        branch = await Branch.get_by_name(db=db, name=self.branch_name)
-
-        migration = TestingMigration039()
+        migration = WrappedMigration039()
         await migration.execute(db=db)
 
         # validate that we only reconciled on the branch

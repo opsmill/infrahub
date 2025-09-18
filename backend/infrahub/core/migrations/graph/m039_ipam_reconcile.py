@@ -4,6 +4,9 @@ import ipaddress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from rich.console import Console
+from rich.progress import Progress
+
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.reconciler import IpamReconciler
@@ -230,28 +233,37 @@ class Migration039(ArbitraryMigration):
         return MigrationResult()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        # console = Console()
+        console = Console()
         result = MigrationResult()
 
+        console.print("Identifying IP prefixes/addresses to reconcile...", end="")
         find_nodes_query = await FindNodesToReconcileQuery.init(db=db)
         await find_nodes_query.execute(db=db)
+        console.print("done")
 
         # we need to delete the self-parent relationships before reconciling b/c the
         # reconciler cannot correctly handle a prefix that is its own parent
         ip_node_details_list = find_nodes_query.get_nodes_to_reconcile()
         uuids_to_check = {ip_node_details.node_uuid for ip_node_details in ip_node_details_list}
+        console.print(f"{len(ip_node_details_list)} IP prefixes/addresses will be reconciled")
 
+        console.print("Deleting any self-parent relationships...", end="")
         delete_self_parent_relationships_query = await DeleteSelfParentRelationshipsQuery.init(
             db=db, uuids_to_check=list(uuids_to_check)
         )
         await delete_self_parent_relationships_query.execute(db=db)
+        console.print("done")
 
-        for ip_node_details in find_nodes_query.get_nodes_to_reconcile():
-            reconciler = await self._get_reconciler(db=db, branch_name=ip_node_details.branch)
-            await reconciler.reconcile(
-                ip_value=ip_node_details.ip_value,
-                namespace=ip_node_details.namespace,
-                node_uuid=ip_node_details.node_uuid,
-            )
+        with Progress() as progress:
+            reconcile_task = progress.add_task("Reconciling IP prefixes/addresses...", total=len(ip_node_details_list))
+
+            for ip_node_details in ip_node_details_list:
+                reconciler = await self._get_reconciler(db=db, branch_name=ip_node_details.branch)
+                await reconciler.reconcile(
+                    ip_value=ip_node_details.ip_value,
+                    namespace=ip_node_details.namespace,
+                    node_uuid=ip_node_details.node_uuid,
+                )
+                progress.update(reconcile_task, advance=1)
 
         return result
