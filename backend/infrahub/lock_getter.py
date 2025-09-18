@@ -1,5 +1,4 @@
 import hashlib
-from typing import TYPE_CHECKING
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -7,9 +6,6 @@ from infrahub.core.node import Node
 from infrahub.core.schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.lock import build_object_lock_name
-
-if TYPE_CHECKING:
-    from infrahub.core.relationship import RelationshipManager
 
 KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED = [InfrahubKind.GENERICGROUP]
 
@@ -79,20 +75,11 @@ def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch:
     Lock names include kind, some generic kinds, and values of attributes of corresponding uniqueness constraints.
     """
 
-    lock_names = []
-    # Check if node is using resource manager allocation
-    for rel_name in node._relationships:
-        rel_manager: RelationshipManager = getattr(node, rel_name)
-        for rel in rel_manager._relationships:
-            if rel.from_pool and "id" in rel.from_pool:
-                lock_names.append(
-                    f"resource_pool.{rel.from_pool['id']}"
-                )  # lock on resource manager using the same lock we have in get_resource()
-
     if not branch.is_default and not _should_kind_be_locked_on_any_branch(node.get_kind(), schema_branch):
-        return lock_names
+        return []
 
     lock_kinds = _get_kinds_to_lock_on_object_mutation(node.get_kind(), schema_branch)
+    lock_names = []
     for kind in lock_kinds:
         schema = schema_branch.get(name=kind)
         ucs = schema.uniqueness_constraints
