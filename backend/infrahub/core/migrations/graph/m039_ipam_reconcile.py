@@ -209,7 +209,8 @@ DELETE e1, e2
 
 class Migration039(ArbitraryMigration):
     """
-    TODO
+    Identify all IP prefixes/addresses that have been updated on a branch and reconcile them on that branch
+    If any of the identified IP prefixes/addresses are their own parent/child, delete those illegal edges before reconciling.
     """
 
     name: str = "039_ipam_reconcile_updated"
@@ -226,9 +227,7 @@ class Migration039(ArbitraryMigration):
         return self._reconcilers_by_branch[branch_name]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         # console = Console()

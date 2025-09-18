@@ -18,6 +18,7 @@ from infrahub.database import InfrahubDatabase
 
 @dataclass
 class IpPrefixDetails:
+    branch: str
     node_uuid: str
     prefix: str
     expected_namespace_uuid: str
@@ -27,6 +28,7 @@ class IpPrefixDetails:
 
 @dataclass
 class IpAddressDetails:
+    branch: str
     node_uuid: str
     address: str
     expected_namespace_uuid: str
@@ -45,6 +47,7 @@ class TestingMigration039(Migration039):
 
 class TestMigration039:
     branch_name = "ip_test_branch"
+    branch_2_name = "ip_test_branch_2"
 
     @pytest.fixture
     async def initial_dataset(
@@ -105,6 +108,10 @@ class TestMigration039:
         return await create_branch(db=db, branch_name=self.branch_name)
 
     @pytest.fixture
+    async def branch_2(self, db: InfrahubDatabase) -> Branch:
+        return await create_branch(db=db, branch_name=self.branch_2_name)
+
+    @pytest.fixture
     async def net140_updated(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch: Branch
     ) -> IpPrefixDetails:
@@ -119,6 +126,7 @@ class TestMigration039:
         await net140_branch.save(db=db)
 
         return IpPrefixDetails(
+            branch=branch.name,
             node_uuid=net140_branch.id,
             prefix="10.10.0.0/17",
             expected_namespace_uuid=ns1.id,
@@ -138,11 +146,34 @@ class TestMigration039:
         await net142_branch.save(db=db)
 
         return IpPrefixDetails(
+            branch=branch.name,
             node_uuid=net142_branch.id,
             prefix="10.10.1.0/24",
             expected_namespace_uuid=ns2.id,
             expected_parent_uuid=None,
             expected_children_uuids=set(),
+        )
+
+    @pytest.fixture
+    async def net143_updated(
+        self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch_2: Branch
+    ) -> IpPrefixDetails:
+        """Update prefix from "10.10.1.0/27" to 10.10.0.0/20"""
+        ns1 = initial_dataset["ns1"]
+        net140 = initial_dataset["net140"]
+        net142 = initial_dataset["net142"]
+        net143 = initial_dataset["net143"]
+        net143_branch = await NodeManager.get_one(db=db, branch=branch_2, id=net143.id)
+        net143_branch.prefix.value = "10.10.0.0/20"
+        await net143_branch.save(db=db)
+
+        return IpPrefixDetails(
+            branch=branch_2.name,
+            node_uuid=net143_branch.id,
+            prefix="10.10.0.0/20",
+            expected_namespace_uuid=ns1.id,
+            expected_parent_uuid=net140.id,
+            expected_children_uuids={net142.id},
         )
 
     @pytest.fixture
@@ -158,6 +189,7 @@ class TestMigration039:
         await address10_branch.save(db=db)
 
         return IpAddressDetails(
+            branch=branch.name,
             node_uuid=address10_branch.id,
             address="10.0.0.1/32",
             expected_namespace_uuid=ns1.id,
@@ -169,16 +201,19 @@ class TestMigration039:
         self,
         initial_dataset: dict[str, Node],
         branch: Branch,
+        branch_2: Branch,
         net140_updated: IpPrefixDetails,
         net142_updated: IpPrefixDetails,
+        net143_updated: IpPrefixDetails,
     ) -> list[IpPrefixDetails]:
-        return {"net140": net140_updated, "net142": net142_updated}
+        return {"net140": net140_updated, "net142": net142_updated, "net143": net143_updated}
 
     @pytest.fixture
     async def branch_address_updates(
         self,
         initial_dataset: dict[str, Node],
         branch: Branch,
+        branch_2: Branch,
         address10_updated: IpAddressDetails,
     ) -> list[IpAddressDetails]:
         return {"address10": address10_updated}
@@ -197,31 +232,36 @@ class TestMigration039:
         await migration.execute(db=db)
 
         # validate that we only reconciled on the branch
-        assert set(migration._reconcilers_by_branch.keys()) == {self.branch_name}
+        assert set(migration._reconcilers_by_branch.keys()) == {self.branch_name, self.branch_2_name}
         # validate that we only reconciled the expected IP prefixes/addresses
-        wrapped_branch_reconciler = migration._reconcilers_by_branch[self.branch_name]
-        expected_reconciler_calls = [
-            call(
-                ip_value=ipaddress.ip_network(ip_prefix_details.prefix),
-                namespace=ip_prefix_details.expected_namespace_uuid,
-                node_uuid=ip_prefix_details.node_uuid,
-            )
-            for ip_prefix_details in branch_prefix_updates.values()
-        ]
-        expected_reconciler_calls.extend(
-            [
+        for branch_name in [self.branch_name, self.branch_2_name]:
+            wrapped_branch_reconciler = migration._reconcilers_by_branch[branch_name]
+            expected_reconciler_calls = [
                 call(
-                    ip_value=ipaddress.ip_interface(ip_address_details.address),
-                    namespace=ip_address_details.expected_namespace_uuid,
-                    node_uuid=ip_address_details.node_uuid,
+                    ip_value=ipaddress.ip_network(ip_prefix_details.prefix),
+                    namespace=ip_prefix_details.expected_namespace_uuid,
+                    node_uuid=ip_prefix_details.node_uuid,
                 )
-                for ip_address_details in branch_address_updates.values()
+                for ip_prefix_details in branch_prefix_updates.values()
+                if ip_prefix_details.branch == branch_name
             ]
-        )
-        wrapped_branch_reconciler.reconcile.assert_has_awaits(expected_reconciler_calls, any_order=True)
+            expected_reconciler_calls.extend(
+                [
+                    call(
+                        ip_value=ipaddress.ip_interface(ip_address_details.address),
+                        namespace=ip_address_details.expected_namespace_uuid,
+                        node_uuid=ip_address_details.node_uuid,
+                    )
+                    for ip_address_details in branch_address_updates.values()
+                    if ip_address_details.branch == branch_name
+                ]
+            )
+            wrapped_branch_reconciler.reconcile.assert_has_awaits(expected_reconciler_calls, any_order=True)
 
         for ip_prefix_details in branch_prefix_updates.values():
-            reconciled_prefix = await NodeManager.get_one(db=db, branch=branch, id=ip_prefix_details.node_uuid)
+            reconciled_prefix = await NodeManager.get_one(
+                db=db, branch=ip_prefix_details.branch, id=ip_prefix_details.node_uuid
+            )
 
             assert reconciled_prefix.prefix.value == ip_prefix_details.prefix
 
@@ -242,7 +282,9 @@ class TestMigration039:
             assert namespace_rels[0].peer_id == expected_namespace_uuid
 
         for ip_address_details in branch_address_updates.values():
-            reconciled_address = await NodeManager.get_one(db=db, branch=branch, id=ip_address_details.node_uuid)
+            reconciled_address = await NodeManager.get_one(
+                db=db, branch=ip_address_details.branch, id=ip_address_details.node_uuid
+            )
 
             assert reconciled_address.address.value == ip_address_details.address
 
