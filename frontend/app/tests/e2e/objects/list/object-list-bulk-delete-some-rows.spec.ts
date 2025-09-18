@@ -53,7 +53,10 @@ test.describe("/objects/BuiltinTag - Bulk delete some rows", () => {
         .getByTestId("identifier-checkbox-cell")
         .click();
 
-      await page.getByRole("button", { name: "Delete" }).click();
+      await page
+        .getByTestId("object-table-toolbar")
+        .getByRole("button", { name: "Delete" })
+        .click();
       await expect(page.getByText("Are you sure you want to")).toBeVisible();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(page.getByText("Objects deleted!")).toBeVisible();
