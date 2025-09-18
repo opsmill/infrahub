@@ -3,25 +3,25 @@ import { gql } from "@apollo/client";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-export interface ConvertFieldsMappingParams extends ContextParams {
-  sourceKind?: string;
+const query = gql`
+  query($sourceKind: String, $targetKind: String) {
+    FieldsMappingTypeConversion(source_kind: $sourceKind, target_kind: $targetKind) {
+      mapping
+    }
+  }
+`;
+
+export interface GetObjectConvertFieldsMappingFromApiParams extends ContextParams {
+  sourceKind: string;
   targetKind: string;
 }
 
-const query = gql`
-query($sourceKind: String, $targetKind: String) {
-  FieldsMappingTypeConversion(source_kind: $sourceKind, target_kind: $targetKind) {
-    mapping
-  }
-}
-`;
-
-export function getConvertFieldsMappingFromApi({
+export function getObjectConvertFieldsMappingFromApi({
   sourceKind,
   targetKind,
   branchName,
   atDate,
-}: ConvertFieldsMappingParams) {
+}: GetObjectConvertFieldsMappingFromApiParams) {
   return graphqlClient.query({
     query,
     variables: {
