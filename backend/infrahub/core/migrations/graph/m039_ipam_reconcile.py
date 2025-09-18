@@ -41,7 +41,7 @@ class FindNodesToReconcileQuery(Query):
                 "prefix_attribute_name": "prefix",
                 "address_attribute_name": "address",
                 "attr_names": ["prefix", "address"],
-                "namespace_relationship_name": "ip_namespace__ip_prefix",
+                "namespace_relationship_names": ["ip_namespace__ip_prefix", "ip_namespace__ip_address"],
             }
         )
         query = """
@@ -70,8 +70,9 @@ CALL (ip_node, default_branch) {
 }
 CALL (ip_node, default_branch) {
     OPTIONAL MATCH (ip_node)-[:IS_RELATED {status: "active"}]-
-        (:Relationship {name: $namespace_relationship_name})-[e2:IS_RELATED {status: "active"}]-(peer:Node)
-    WHERE e2.branch_level = 2
+        (rel:Relationship)-[e2:IS_RELATED {status: "active"}]-(peer:Node)
+    WHERE rel.name IN $namespace_relationship_names
+    AND e2.branch_level = 2
     RETURN collect(DISTINCT e2.branch) AS namespace_update_branches
 }
 // ------------------
@@ -103,8 +104,9 @@ CALL (branch) {
 // get latest namespace on this branch
 // ------------------
 CALL (default_branch, branch, branched_from, ip_node) {
-    MATCH (ip_node)-[e1:IS_RELATED]-(:Relationship {name: $namespace_relationship_name})-[e2:IS_RELATED]-(peer:%(namespace_kind)s)
-    WHERE (
+    MATCH (ip_node)-[e1:IS_RELATED]-(rel:Relationship)-[e2:IS_RELATED]-(peer:%(namespace_kind)s)
+    WHERE rel.name IN $namespace_relationship_names
+    AND (
         e1.branch = branch
         OR (e1.branch = default_branch AND e1.from < branched_from)
     )
