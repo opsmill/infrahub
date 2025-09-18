@@ -1,6 +1,6 @@
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 
-import { Tooltip, TooltipProps } from "@/shared/components/ui/tooltip";
+import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 interface ProgressBarItemProps extends ProgressPrimitive.ProgressIndicatorProps {

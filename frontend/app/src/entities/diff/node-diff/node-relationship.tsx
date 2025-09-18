@@ -4,7 +4,7 @@ import { useParams } from "react-router";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { DiffThread } from "@/entities/diff/node-diff/thread";
-import { DiffRelationship, DiffStatus } from "@/entities/diff/node-diff/types";
+import type { DiffRelationship, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffRow } from "@/entities/diff/node-diff/utils";
 
 import { DiffNodeRelationshipElement } from "./node-relationship-element";

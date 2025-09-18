@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { useNavigate } from "react-router";
 
 import { useSearchAnywhereContext } from "@/shared/components/search/search-anywhere-context";

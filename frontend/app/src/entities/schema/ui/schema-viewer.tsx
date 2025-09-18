@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
 import { ArrayParam, useQueryParam } from "use-query-params";
 
@@ -16,7 +16,7 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
 import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";

@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { ColumnDef, createColumnHelper } from "@tanstack/react-table";
+import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { Row } from "@/shared/components/container";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
@@ -9,7 +9,7 @@ import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
 import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
-import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
+import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -19,8 +19,8 @@ import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cel
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 const columnHelper = createColumnHelper<IpPrefixNode>();
 

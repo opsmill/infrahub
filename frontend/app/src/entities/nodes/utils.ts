@@ -1,4 +1,4 @@
-import { constructPath, overrideQueryParams } from "@/shared/api/rest/fetch";
+import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
 
 import {
   IP_ADDRESS_GENERIC,

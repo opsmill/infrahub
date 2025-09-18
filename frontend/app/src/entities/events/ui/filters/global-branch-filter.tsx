@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import React, { useEffect, useState } from "react";
-import { TagProps } from "react-aria-components";
+import type React from "react";
+import { useEffect, useState } from "react";
+import type { TagProps } from "react-aria-components";
 import { useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
@@ -8,7 +9,7 @@ import { QSP } from "@/config/qsp";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 import { GlobalFilterForm } from "./global-filter-form";
 import { FilterTag } from "./global-filter-tag";

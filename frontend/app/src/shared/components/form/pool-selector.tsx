@@ -3,12 +3,12 @@ import { Slot } from "@radix-ui/react-slot";
 import React, { forwardRef } from "react";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { FormFieldValue } from "@/shared/components/form/type";
+import type { FormFieldValue } from "@/shared/components/form/type";
 import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Popover, PopoverAnchor, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
-import { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { NumberPool } from "@/entities/resource-manager/domain/type";
 
 export type PoolValue = {
   from_pool: {

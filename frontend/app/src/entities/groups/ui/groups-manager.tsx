@@ -11,11 +11,11 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { classNames } from "@/shared/utils/common";
 
 import { getGroupsQuery } from "@/entities/groups/api/getGroups";
-import { GroupDataFromAPI } from "@/entities/groups/api/types";
+import type { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupTriggerButton from "@/entities/groups/ui/add-group-trigger-button";
 import ObjectGroupsList from "@/entities/groups/ui/object-groups-list";
 import { getPermission } from "@/entities/permission/utils";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export type GroupsManagerProps = {
   className?: string;

@@ -13,7 +13,7 @@ import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-o
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
-import { ProposedChangeActionButtonProps } from "./types";
+import type { ProposedChangeActionButtonProps } from "./types";
 
 export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const { setDraft, unsetDraft } = usePcActionsContext();

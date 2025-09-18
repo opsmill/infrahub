@@ -1,6 +1,6 @@
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
-import { Link, LinkProps } from "react-router";
+import { Link, type LinkProps } from "react-router";
 
 import { breadcrumbItemStyle } from "@/shared/components/layout/breadcrumb-navigation/style";
 import { classNames } from "@/shared/utils/common";

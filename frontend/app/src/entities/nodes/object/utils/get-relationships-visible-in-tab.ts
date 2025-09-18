@@ -1,5 +1,5 @@
-import { RelationshipKind } from "@/entities/nodes/types";
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipKind } from "@/entities/nodes/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
 const RELATIONSHIP_KIND_VISIBLE_IN_TAB: Array<RelationshipKind> = [
   "Generic",

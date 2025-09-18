@@ -6,7 +6,7 @@ import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/consta
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
-import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -15,7 +15,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ProposedChangeEditFormProps = {

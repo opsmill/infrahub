@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
+import type { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
 
 const GET_PROPOSED_CHANGE_DETAILS = gql`
   query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID, $taskNodeId: String) {

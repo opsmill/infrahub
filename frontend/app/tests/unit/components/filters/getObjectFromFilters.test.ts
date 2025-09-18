@@ -1,9 +1,9 @@
 import { describe, expect } from "vitest";
 
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 import { generateRelationshipSchema } from "../../../fake/schema";
 

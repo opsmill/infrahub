@@ -8,7 +8,7 @@ import { ToolbarDeleteAction } from "@/entities/nodes/object/ui/object-table/too
 import { ToolbarEditAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-edit-action";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 export interface ObjectTableSelectionToolbarProps {
   selectedRows: Array<NodeCore>;

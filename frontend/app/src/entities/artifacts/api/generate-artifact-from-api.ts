@@ -1,5 +1,5 @@
 import { apiClient } from "@/shared/api/rest/client";
-import { BranchContextParams } from "@/shared/api/types";
+import type { BranchContextParams } from "@/shared/api/types";
 
 export interface GenerateArtifactFromApiParams extends BranchContextParams {
   artifactDefinitionId: string;

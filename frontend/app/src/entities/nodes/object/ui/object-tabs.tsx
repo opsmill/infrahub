@@ -1,4 +1,4 @@
-import { Link, LinkProps, useLocation } from "react-router";
+import { Link, type LinkProps, useLocation } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
@@ -9,7 +9,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
 export interface ObjectDetailsTabProps extends LinkProps {
   isActive?: boolean;

@@ -1,5 +1,5 @@
 import { cellMutedStyle } from "@/shared/components/table/style";
-import { TableCell, TableCellProps } from "@/shared/components/table/table-cell";
+import { TableCell, type TableCellProps } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 
 export interface StickyCellProps extends TableCellProps {

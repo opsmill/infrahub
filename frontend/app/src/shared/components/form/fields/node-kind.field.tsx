@@ -15,7 +15,7 @@ import {
   ComboboxTrigger,
 } from "../../ui/combobox";
 import { FormField, FormInput, FormMessage } from "../../ui/form";
-import { FormAttributeValue, FormFieldProps } from "../type";
+import type { FormAttributeValue, FormFieldProps } from "../type";
 import { updateFormFieldValue } from "../utils/updateFormFieldValue";
 import { LabelFormField, ResetAction } from "./common";
 

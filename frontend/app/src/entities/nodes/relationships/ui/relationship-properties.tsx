@@ -6,7 +6,7 @@ import { Link } from "@/shared/components/ui/link";
 import { formatFullDate } from "@/shared/utils/date";
 
 import {
-  UseGetRelationshipPropertiesParams,
+  type UseGetRelationshipPropertiesParams,
   useGetRelationshipProperties,
 } from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties.query";
 

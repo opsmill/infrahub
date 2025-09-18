@@ -1,6 +1,7 @@
 import { useSetAtom } from "jotai";
 import * as R from "ramda";
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";

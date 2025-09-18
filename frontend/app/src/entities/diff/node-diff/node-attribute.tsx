@@ -3,7 +3,7 @@ import { useParams } from "react-router";
 import { DataConflict } from "@/entities/diff/checks/data-conflict";
 import { DiffNodeProperty } from "@/entities/diff/node-diff/node-property";
 import { DiffThread } from "@/entities/diff/node-diff/thread";
-import { DiffAttribute, DiffStatus } from "@/entities/diff/node-diff/types";
+import type { DiffAttribute, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffRow } from "@/entities/diff/node-diff/utils";
 
 import { BadgeConflict } from "../ui/diff-badge";

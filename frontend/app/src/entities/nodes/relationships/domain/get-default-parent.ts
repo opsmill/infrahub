@@ -1,10 +1,10 @@
-import { ContextParams } from "@/shared/api/types";
-import { FormRelationshipValue } from "@/shared/components/form/type";
-import { FormContextType } from "@/shared/components/form/utils/form-context";
+import type { ContextParams } from "@/shared/api/types";
+import type { FormRelationshipValue } from "@/shared/components/form/type";
+import type { FormContextType } from "@/shared/components/form/utils/form-context";
 
 import { getDefaultParentFromApi } from "@/entities/nodes/relationships/api/get-default-parent-from-api";
-import { NodeCore, NodeObject } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { NodeCore, NodeObject } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface UseDefaultParentParams {

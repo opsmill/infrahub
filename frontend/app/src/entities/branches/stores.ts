@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 
 export const branchesState = atom<Branch[]>([]);
 

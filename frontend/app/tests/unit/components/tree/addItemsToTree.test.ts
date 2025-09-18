@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TreeProps } from "@/shared/components/ui/tree";
+import type { TreeProps } from "@/shared/components/ui/tree";
 
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { addItemsToTree, EMPTY_TREE } from "@/entities/ipam/ipam-tree/utils";

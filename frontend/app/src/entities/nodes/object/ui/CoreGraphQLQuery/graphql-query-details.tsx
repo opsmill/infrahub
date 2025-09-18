@@ -1,4 +1,4 @@
-import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
+import type { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
 import { GraphqlQueryActivities } from "@/entities/graphql/ui/graphql-query-activities";
@@ -6,8 +6,8 @@ import GraphqlQueryDetailsCard from "@/entities/graphql/ui/graphql-query-details
 import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/ui/graphql-query-details-page-skeleton";
 import GraphqlQueryViewerCard from "@/entities/graphql/ui/graphql-query-viewer-card";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export function GraphqlQueryDetails({
   graphqlQueryId,

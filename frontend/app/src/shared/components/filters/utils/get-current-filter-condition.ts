@@ -1,8 +1,8 @@
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import {
   FILTER_CONDITION,
-  FilterCondition,
+  type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 
 /**

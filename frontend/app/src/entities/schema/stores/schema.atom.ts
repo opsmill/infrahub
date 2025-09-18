@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-import {
+import type {
   GenericSchema,
   Namespace,
   NodeSchema,

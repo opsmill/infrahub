@@ -6,7 +6,7 @@ import { namespacesAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema
 
 import { DEFAULT_FORM_FIELD_VALUE } from "./constants";
 import DropdownField from "./fields/dropdown.field";
-import { FormAttributeValue } from "./type";
+import type { FormAttributeValue } from "./type";
 import { isRequired } from "./utils/validation";
 
 export const NameSelect = () => {

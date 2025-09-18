@@ -1,4 +1,4 @@
-import { FC, forwardRef, useRef, useState } from "react";
+import { type FC, forwardRef, useRef, useState } from "react";
 
 import { focusWithinStyle } from "@/shared/components/ui/style";
 import { useCodeMirror } from "@/shared/hooks/useCodeMirror";

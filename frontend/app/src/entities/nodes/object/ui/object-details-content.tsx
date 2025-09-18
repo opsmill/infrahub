@@ -7,14 +7,14 @@ import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltip
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
 import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
-import { Permission } from "@/entities/permission/types";
-import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 import {
   getObjectAttributes,
   getObjectRelationships,
 } from "../../object-items/getSchemaObjectColumns";
-import { NodeObject } from "../../types";
+import type { NodeObject } from "../../types";
 
 type ObjectDetailsContentProps = {
   schema: ModelSchema;

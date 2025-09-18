@@ -1,9 +1,9 @@
 import { gql } from "@apollo/client";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
+import type { ContextParams } from "@/shared/api/types";
 
-import { NodeCore, NodeObject, NodeRelationshipOne } from "@/entities/nodes/types";
+import type { NodeCore, NodeObject, NodeRelationshipOne } from "@/entities/nodes/types";
 
 import { buildGetAncestorsQuery } from "../api/get-ip-prefix-ancestors-from-api";
 

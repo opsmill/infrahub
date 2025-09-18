@@ -1,5 +1,5 @@
 import {
-  GetSchemaFromApiParams,
+  type GetSchemaFromApiParams,
   getSchemaFromApi,
 } from "@/entities/schema/api/get-schema-from-api";
 

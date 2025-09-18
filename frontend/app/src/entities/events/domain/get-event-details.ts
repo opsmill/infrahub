@@ -1,6 +1,6 @@
 import { getEventsFromApi } from "@/entities/events/api/get-events-from-api";
 import { INFRAHUB_EVENT } from "@/entities/events/constants";
-import { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/types";
 
 export type GetEventDetailsParams = {
   id: string;

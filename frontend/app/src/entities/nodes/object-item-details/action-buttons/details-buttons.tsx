@@ -21,9 +21,9 @@ import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 

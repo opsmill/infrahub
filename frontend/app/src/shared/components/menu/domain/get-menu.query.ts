@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import { ContextParams } from "@/shared/api/types";
+import type { ContextParams } from "@/shared/api/types";
 import { getMenu } from "@/shared/components/menu/domain/get-menu";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 

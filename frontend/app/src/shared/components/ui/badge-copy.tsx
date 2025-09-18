@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 
