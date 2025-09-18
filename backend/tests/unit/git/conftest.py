@@ -80,7 +80,7 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
     # Extract the fixture package in the source directory
 
     with tarfile.open(fixture_repo) as file:
-        file.extractall(git_sources_dir)
+        file.extractall(git_sources_dir, filter="data")
 
     return {"name": name, "path": git_sources_dir / name}
 
