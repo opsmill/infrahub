@@ -215,6 +215,16 @@ class Migration039(ArbitraryMigration):
     name: str = "039_ipam_reconcile_updated"
     minimum_version: int = 38
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._reconcilers_by_branch: dict[str, IpamReconciler] = {}
+
+    async def _get_reconciler(self, db: InfrahubDatabase, branch_name: str) -> IpamReconciler:
+        if branch_name not in self._reconcilers_by_branch:
+            branch = await Branch.get_by_name(db=db, name=branch_name)
+            self._reconcilers_by_branch[branch_name] = IpamReconciler(db=db, branch=branch)
+        return self._reconcilers_by_branch[branch_name]
+
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
 
@@ -238,9 +248,7 @@ class Migration039(ArbitraryMigration):
         await delete_self_parent_relationships_query.execute(db=db)
 
         for ip_node_details in find_nodes_query.get_nodes_to_reconcile():
-            # TODO: cache branch object
-            branch = await Branch.get_by_name(db=db, name=ip_node_details.branch)
-            reconciler = IpamReconciler(db=db, branch=branch)
+            reconciler = await self._get_reconciler(db=db, branch_name=ip_node_details.branch)
             await reconciler.reconcile(
                 ip_value=ip_node_details.ip_value,
                 namespace=ip_node_details.namespace,
