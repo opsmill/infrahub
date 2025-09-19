@@ -4,7 +4,7 @@ import type {
   DynamicAttributeFieldProps,
   DynamicDropdownFieldProps,
   DynamicEnumFieldProps,
-  DynamicFieldFieldProps,
+  DynamicInputFieldProps,
   DynamicNumberFieldProps,
   FormFieldValue,
 } from "@/shared/components/form/type";
@@ -53,7 +53,7 @@ export const getFormFieldFromAttribute = ({
 }): DynamicAttributeFieldProps => {
   const attributeData = currentObject?.[attributeSchema.name];
 
-  const basicFormFieldProps: DynamicFieldFieldProps = {
+  const basicFormFieldProps: DynamicInputFieldProps = {
     name: attributeSchema.name,
     label: attributeSchema.label ?? undefined,
     defaultValue: getFieldDefaultValue({
