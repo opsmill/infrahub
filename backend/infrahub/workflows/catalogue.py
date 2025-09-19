@@ -534,8 +534,8 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
 
 CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     name="clean_up_deadlocks",
-    type=WorkflowType.CORE,
-    cron=f"*/{SETTINGS.main.clean_up_deadlocks_interval_mins} * * * *",
+    type=WorkflowType.INTERNAL,
+    cron=f"*/{SETTINGS.cache.clean_up_deadlocks_interval_mins} * * * *",
     module="infrahub.pools.tasks",
     function="clean_up_deadlocks",
 )

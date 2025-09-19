@@ -199,10 +199,6 @@ class MainSettings(BaseSettings):
         description="Enable strict schema validation. When set to `False`, "
         "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
     )
-    clean_up_deadlocks_interval_mins: int = Field(
-        default=15,
-        description="How many minutes interval clean_up_deadlocks task runs",
-    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
@@ -376,6 +372,10 @@ class CacheSettings(BaseSettings):
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    clean_up_deadlocks_interval_mins: int = Field(
+        default=15,
+        description="How many minutes interval clean_up_deadlocks task runs",
+    )
 
     @property
     def service_port(self) -> int:
