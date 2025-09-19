@@ -135,9 +135,10 @@ async def clean_up_deadlocks(service: InfrahubServices) -> None:
     keys = await service.cache.list_keys(filter_pattern="lock.*")
     values = await service.cache.get_values(keys=keys)
     worker_ids = [value.split("::", 1)[1] for value in values]
+    workers = await service.component.list_workers(branch=registry.default_branch, schema_hash=False)
+    workers_active_map = {worker.id: worker.active for worker in workers}
 
-    for key, _worker_id in zip(keys, worker_ids, strict=False):
-        if True:  # worker is inactive
+    for key, worker_id in zip(keys, worker_ids, strict=False):
+        if not workers_active_map.get(worker_id):
             name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
-            _lock = lock.registry.get_existing(name=name, namespace=namespace, local=local)
-            await _lock.release()
+            await lock.registry.force_release_lock(name=name, namespace=namespace, local=local)

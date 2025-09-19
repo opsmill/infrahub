@@ -259,6 +259,17 @@ class InfrahubLockRegistry:
             self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
         return self.locks[lock_name]
 
+    async def force_release_lock(
+        self,
+        name: str,
+        namespace: str | None,
+        local: bool | None = None,
+    ) -> None:
+        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock = self.locks.pop(lock_name, None)
+        if lock:
+            await lock.remote.release()
+
     def local_schema_lock(self) -> LocalLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)
 
