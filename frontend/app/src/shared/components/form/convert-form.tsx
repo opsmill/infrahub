@@ -6,9 +6,9 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ConvertLabelFormField } from "@/shared/components/form/fields/common";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import {
   ConvertSourceAttributeInput,
+  ConvertSourceRelationshipManyInput,
   ConvertSourceRelationshipOneInput,
 } from "@/shared/components/inputs/convert-source-input";
 import { Input } from "@/shared/components/inputs/input";
@@ -38,18 +38,6 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
   });
 
   const fields = getFormFieldsFromSchema({ schema: targetSchema });
-  const fieldsWithMappings = fields.map((field) => {
-    return {
-      ...field,
-      defaultValue: {
-        source: {
-          type: "convert",
-          fieldLabel: field.label,
-        },
-        value: objectDetailsData[field.name]?.value,
-      },
-    };
-  });
 
   if (isPending) {
     return <LoadingIndicator />;
@@ -59,31 +47,47 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     return <ErrorScreen message="An error occurred while fetching the fields mapping" />;
   }
 
-  const formMappingDefaultValues = fieldsWithMappings.reduce((acc, field) => {
+  const formDefaultValues = fields.reduce((acc, field) => {
     return { ...acc, [field.name]: field.defaultValue };
   }, {});
+
+  const formMappingsDefaultValues = fields.reduce((acc, field) => {
+    return {
+      ...acc,
+      [field.name]: {
+        source: {
+          type: "convert",
+          fieldLabel: field.label,
+        },
+        value: objectDetailsData[field.name]?.value,
+      },
+    };
+  });
 
   const handleSubmit = (data) => {
     console.log("data: ", data);
   };
 
   return (
-    <Form defaultValues={formMappingDefaultValues} onSubmit={handleSubmit}>
-      {fieldsWithMappings.map((fieldSchema) => {
-        const { name, label, unique, description, defaultValue, rules } = fieldSchema;
-
+    <Form onSubmit={handleSubmit}>
+      {fields.map(({ name, label, unique, description, rules, attribute, relationship }) => {
         return (
           <FormField
             key={name}
             name={name}
             rules={rules}
-            defaultValue={defaultValue}
             render={({ field }) => {
-              const [sourceSelection, setSourceSelection] = React.useState(
-                defaultValue?.source?.type === "convert" ? "source" : "custom"
-              );
+              const hasMapping = !!mappings[name]?.source_field_name;
 
-              const fieldData: FormAttributeValue = field.value;
+              const initialSource = hasMapping ? "source" : "custom";
+              const [sourceSelection, setSourceSelection] = React.useState(initialSource);
+
+              const defaultValue =
+                hasMapping && sourceSelection === "source"
+                  ? formMappingsDefaultValues[name]
+                  : formDefaultValues[name];
+
+              const fieldData: FormAttributeValue = field.value ?? defaultValue;
 
               const handleSourceChange = (newSource: string) => {
                 setSourceSelection(newSource);
@@ -91,19 +95,29 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                 if (newSource === "source") {
                   field.onChange({
                     source: { type: "source", fieldLabel: label },
-                    value: defaultValue.value,
+                    value: formMappingsDefaultValues[name]?.value,
                   });
                 }
 
                 if (newSource === "custom") {
-                  field.onChange(updateFormFieldValue(defaultValue.value, defaultValue));
+                  field.onChange({
+                    source: { type: "schema" },
+                    value: formDefaultValues[name]?.value,
+                  });
                 }
               };
 
-              const handleSourceValueChange = (option) => {
+              const handleSourceValueChange = (newOption) => {
                 field.onChange({
                   source: { type: "source", fieldLabel: label },
-                  value: option.value,
+                  value: newOption.value,
+                });
+              };
+
+              const handleInputValueChange = (newValue: string) => {
+                field.onChange({
+                  source: { type: "user" },
+                  value: newValue,
                 });
               };
 
@@ -114,36 +128,47 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                     unique={unique}
                     required={!!rules?.required}
                     description={description}
-                    kind={
-                      fieldSchema.attribute?.kind ?? scheaKindLabel[fieldSchema.relationship?.peer]
-                    }
+                    kind={attribute?.kind ?? scheaKindLabel[relationship?.peer]}
                     onChange={handleSourceChange}
                     value={sourceSelection}
                   />
 
                   <Row>
                     <FormInput>
-                      <>
-                        {sourceSelection === "source" && fieldSchema.attribute && (
+                      <div className="grow">
+                        {sourceSelection === "source" && attribute && (
                           <ConvertSourceAttributeInput
                             objectDetailsData={objectDetailsData}
                             sourceSchema={sourceSchema}
                             mapping={mappings?.[field.name]}
                             onSelect={handleSourceValueChange}
-                            kind={fieldSchema.attribute.kind}
+                            kind={attribute.kind}
                             fieldData={fieldData}
                           />
                         )}
 
                         {sourceSelection === "source" &&
-                          fieldSchema.relationship?.peer &&
-                          fieldSchema.relationship.cardinality === "one" && (
+                          relationship?.peer &&
+                          relationship.cardinality === "one" && (
                             <ConvertSourceRelationshipOneInput
                               objectDetailsData={objectDetailsData}
                               sourceSchema={sourceSchema}
                               mapping={mappings?.[field.name]}
                               onSelect={handleSourceValueChange}
-                              peer={fieldSchema.relationship.peer}
+                              peer={relationship.peer}
+                              fieldData={fieldData}
+                            />
+                          )}
+
+                        {sourceSelection === "source" &&
+                          relationship?.peer &&
+                          relationship.cardinality === "many" && (
+                            <ConvertSourceRelationshipManyInput
+                              objectDetailsData={objectDetailsData}
+                              sourceSchema={sourceSchema}
+                              mapping={mappings?.[field.name]}
+                              onSelect={handleSourceValueChange}
+                              peer={relationship.peer}
                               fieldData={fieldData}
                             />
                           )}
@@ -151,13 +176,11 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                         {sourceSelection !== "source" && (
                           <Input
                             {...field}
-                            value={(fieldData?.value as string) ?? ""}
-                            onChange={(newValue: string) => {
-                              field.onChange(updateFormFieldValue(newValue, defaultValue));
-                            }}
+                            value={fieldData?.value ?? ""}
+                            onChange={handleInputValueChange}
                           />
                         )}
-                      </>
+                      </div>
                     </FormInput>
                   </Row>
 
