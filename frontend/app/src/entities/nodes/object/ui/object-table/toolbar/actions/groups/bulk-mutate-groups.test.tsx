@@ -115,7 +115,7 @@ describe("BulkMutateGroups Component", () => {
   test("calls mutation function when processing", async () => {
     // GIVEN
     const component = render(
-      <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
+      <BulkMutateGroups mutationFn={(group) => mockMutationFn(group)} onSuccess={mockOnSuccess} />
     );
 
     // WHEN
