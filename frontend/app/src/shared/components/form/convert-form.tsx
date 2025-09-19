@@ -15,9 +15,10 @@ import { Input } from "@/shared/components/inputs/input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 
-import { useFieldsMappingTypeConversion } from "@/entities/nodes/object/domain/get-convert-fields-mappings.query";
 import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+
+import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/object/domain/get-object-convert-fields-mapping.query";
 import type { ModelSchema } from "@/entities/schema/types";
 
 export type ConvertFormProps = {
@@ -27,17 +28,17 @@ export type ConvertFormProps = {
 };
 
 const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
-  const scheaKindLabel = useAtomValue(schemaKindNameState);
-  const {
-    data: mappings,
-    isPending,
-    error,
-  } = useFieldsMappingTypeConversion({
-    sourceKind: sourceSchema.kind,
-    targetKind: targetSchema.kind,
+  const schemaKindLabel = useAtomValue(schemaKindNameState);
+  const { isPending, error } = useGetObjectConvertFieldsMapping({
+    sourceKind: sourceSchema.kind!,
+    targetKind: targetSchema.kind!,
   });
 
-  const fields = getFormFieldsFromSchema({ schema: targetSchema });
+  const fields = getFormFieldsFromSchema({
+    schema: targetSchema,
+    parentSchema: null,
+    parentData: null,
+  });
 
   if (isPending) {
     return <LoadingIndicator />;
@@ -128,7 +129,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                     unique={unique}
                     required={!!rules?.required}
                     description={description}
-                    kind={attribute?.kind ?? scheaKindLabel[relationship?.peer]}
+                    kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
                     onChange={handleSourceChange}
                     value={sourceSelection}
                   />
