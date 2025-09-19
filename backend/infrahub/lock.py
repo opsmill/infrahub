@@ -179,6 +179,49 @@ class InfrahubLock:
         return self.local.locked()
 
 
+class InfahubLockNameGenerator:
+    local = "local"
+    _global = "global"
+
+    @staticmethod
+    def generate_name(name: str, namespace: str | None = None, local: bool | None = None) -> str:
+        if namespace is None and local is None:
+            return name
+
+        new_name = ""
+        if local is True:
+            new_name = f"{InfahubLockNameGenerator.local}."
+        elif local is False:
+            new_name = f"{InfahubLockNameGenerator._global}."
+
+        if namespace is not None:
+            new_name += f"{namespace}."
+        new_name += name
+
+        return new_name
+
+    @staticmethod
+    def unpack_name(name: str) -> tuple[str, str | None, bool | None]:
+        local = None
+        namespace = None
+
+        parts = name.split(".")
+        if parts[0] == InfahubLockNameGenerator.local:
+            local = True
+            parts = parts[1:]
+        elif parts[0] == InfahubLockNameGenerator._global:
+            local = False
+            parts = parts[1:]
+
+        if len(parts) > 1:
+            namespace = parts[0]
+            original_name = ".".join(parts[1:])
+        else:
+            original_name = parts[0]
+
+        return original_name, namespace, local
+
+
 class InfrahubLockRegistry:
     def __init__(
         self, token: str | None = None, local_only: bool = False, service: InfrahubServices | None = None
@@ -204,41 +247,11 @@ class InfrahubLockRegistry:
 
     @classmethod
     def _generate_name(cls, name: str, namespace: str | None = None, local: bool | None = None) -> str:
-        if namespace is None and local is None:
-            return name
-
-        new_name = ""
-        if local is True:
-            new_name = "local."
-        elif local is False:
-            new_name = "global."
-
-        if namespace is not None:
-            new_name += f"{namespace}."
-        new_name += name
-
-        return new_name
+        return InfahubLockNameGenerator.generate_name(name=name, namespace=namespace, local=local)
 
     @staticmethod
     def unpack_name(name: str) -> tuple[str, str | None, bool | None]:
-        local = None
-        namespace = None
-
-        parts = name.split(".")
-        if parts[0] == "local":
-            local = True
-            parts = parts[1:]
-        elif parts[0] == "global":
-            local = False
-            parts = parts[1:]
-
-        if len(parts) > 1:
-            namespace = parts[0]
-            original_name = ".".join(parts[1:])
-        else:
-            original_name = parts[0]
-
-        return original_name, namespace, local
+        return InfahubLockNameGenerator.unpack_name(name=name)
 
     def get_existing(
         self,
