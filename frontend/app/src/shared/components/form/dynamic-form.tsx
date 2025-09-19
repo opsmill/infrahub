@@ -44,7 +44,7 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
     return (
       <Form ref={ref} {...props} defaultValues={formDefaultValues}>
         {fields.map((field) => (
-          <DynamicInput key={`${field.type}_${field.name}`} {...field} />
+          <DynamicField key={`${field.type}_${field.name}`} {...field} />
         ))}
 
         <div className="text-right">
@@ -61,7 +61,7 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
   }
 );
 
-export const DynamicInput = (props: DynamicFieldProps) => {
+export const DynamicField = (props: DynamicFieldProps) => {
   switch (props.type) {
     case ATTRIBUTE_KIND.DATETIME: {
       const { type, ...otherProps } = props;
