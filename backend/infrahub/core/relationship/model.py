@@ -404,17 +404,21 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             db=db, source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
         )
         await get_query.execute(db=db)
-        result = get_query.get_result()
-        if not result:
+
+        rel_ids_to_update = get_query.get_relationships_ids_for_branch(branch_name=branch.name)
+        if rel_ids_to_update is None:
             raise Error(
                 f"Unable to find the relationship to delete. id: {self.id}, source: {node.id}, destination: {peer.id}"
             )
+
+        if get_query.is_already_deleted():
+            return
 
         # when we remove a relationship we need to :
         # - Update the existing relationship if we are on the same branch
         # - Create a new rel of type DELETED in the right branch
 
-        if rel_ids_to_update := [rel.element_id for rel in result.get_rels() if rel.get("branch") == branch.name]:
+        if rel_ids_to_update:
             await update_relationships_to(rel_ids_to_update, to=delete_at, db=db)
 
         delete_query = await RelationshipDeleteQuery.init(
