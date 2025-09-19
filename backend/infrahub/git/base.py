@@ -725,7 +725,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch()
+            repo.remotes.origin.fetch(prune=True)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 
