@@ -28,6 +28,9 @@ from typing_extensions import Self
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
 from infrahub.core import registry
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+)
 from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
@@ -129,10 +132,10 @@ class DatabaseSchemaManager:
 
         If the branch is the global one, the default branch will be returned.
         """
-        # branch_name = registry.default_branch if name == GLOBAL_BRANCH_NAME else name
-        if name not in self._db._schemas:
-            return registry.schema.get_schema_branch(name=name)
-        return self._db._schemas[name]
+        branch_name = registry.default_branch if name == GLOBAL_BRANCH_NAME else name
+        if branch_name not in self._db._schemas:
+            return registry.schema.get_schema_branch(name=branch_name)
+        return self._db._schemas[branch_name]
 
 
 class InfrahubDatabase:
