@@ -13,6 +13,7 @@ from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -268,7 +269,9 @@ async def create_node(
                 at=at,
             )
 
-    if await get_profile_ids(db=db, obj=obj):
-        obj = await refresh_for_profile_update(db=db, branch=branch, schema=schema, obj=obj)
+    if profile_ids := await get_profile_ids(db=db, obj=obj):
+        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+        await node_profiles_applier.apply_profiles(node=obj, profile_ids=list(profile_ids))
+        await obj.save(db=db)
 
     return obj
