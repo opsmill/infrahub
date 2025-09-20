@@ -166,13 +166,20 @@ async def token(
         user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
 
     response.set_cookie(
-        "access_token", user_token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime
+        "access_token",
+        user_token.access_token,
+        httponly=True,
+        max_age=config.SETTINGS.security.access_token_lifetime,
+        secure=True,
+        samesite="Lax",
     )
     response.set_cookie(
         "refresh_token",
         user_token.refresh_token,
         httponly=True,
         max_age=config.SETTINGS.security.refresh_token_lifetime,
+        secure=True,
+        samesite="Lax",
     )
 
     return models.UserTokenWithUrl(
