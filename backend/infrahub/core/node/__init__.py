@@ -119,7 +119,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return "__".join(hfid)
 
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
-        # branch_name = self._branch.name if self._branch.name != GLOBAL_BRANCH_NAME else registry.default_branch
         schema_path = self._schema.parse_schema_path(
             path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
         )
