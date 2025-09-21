@@ -50,7 +50,7 @@ core_trigger_rule = GenericSchema(
             description="Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger",
             optional=False,
             default_value=True,
-            order_weight=200,
+            order_weight=250,
         ),
         Attr(
             name="branch_scope",
@@ -59,7 +59,7 @@ core_trigger_rule = GenericSchema(
             choices=BranchScope.available_types(),
             default_value=BranchScope.DEFAULT_BRANCH.value.name,
             optional=False,
-            order_weight=200,
+            order_weight=260,
             allow_override=AllowOverrideType.NONE,
         ),
     ],
@@ -270,8 +270,10 @@ core_node_trigger_attribute_match = NodeSchema(
     label="Node Trigger Attribute Match",
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
-    inherit_from=["CoreNodeTriggerMatch"],
+    inherit_from=[core_node_trigger_match.kind],
     display_labels=["attribute_name__value"],
+    uniqueness_constraints=[["trigger", "attribute_name__value"]],
+    human_friendly_id=["trigger__name__value", "attribute_name__value"],
     attributes=[
         Attr(
             name="attribute_name",
@@ -319,8 +321,10 @@ core_node_trigger_relationship_match = NodeSchema(
     label="Node Trigger Relationship Match",
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
-    inherit_from=["CoreNodeTriggerMatch"],
+    inherit_from=[core_node_trigger_match.kind],
     display_labels=["relationship_name__value", "modification_type__value"],
+    uniqueness_constraints=[["trigger", "relationship_name__value"]],
+    human_friendly_id=["trigger__name__value", "relationship_name__value"],
     attributes=[
         Attr(
             name="relationship_name",
