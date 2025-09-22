@@ -1,6 +1,7 @@
 import random
 
 from fast_depends import Depends, inject
+from prefect.client.schemas.objects import ConcurrencyLimitStrategy
 
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
@@ -536,6 +537,8 @@ CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     cron="* * * * *",
     module="infrahub.pools.tasks",
     function="clean_up_deadlocks",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
 )
 
 
