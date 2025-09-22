@@ -3,7 +3,7 @@ from __future__ import annotations
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
@@ -11,6 +11,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.pools.models import NumberPoolLockDefinition
@@ -134,11 +135,14 @@ async def _create_number_pool(
 async def clean_up_deadlocks(service: InfrahubServices) -> None:
     keys = await service.cache.list_keys(filter_pattern="lock.*")
     values = await service.cache.get_values(keys=keys)
-    worker_ids = [value.split("::", 1)[1] for value in values]
     workers = await service.component.list_workers(branch=registry.default_branch, schema_hash=False)
     workers_active_map = {worker.id: worker.active for worker in workers}
 
-    for key, worker_id in zip(keys, worker_ids, strict=False):
-        if not workers_active_map.get(worker_id):
+    for key, value in zip(keys, values, strict=False):
+        timestamp, worker_id = value.split("::", 1)
+        if not workers_active_map.get(worker_id) and Timestamp() > Timestamp(timestamp).add(
+            minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
+        ):
             name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
-            await lock.registry.force_release_lock(name=name, namespace=namespace, local=local)
+            await lock.registry.pop_lock(name=name, namespace=namespace, local=local)
+            await service.cache.delete(key)

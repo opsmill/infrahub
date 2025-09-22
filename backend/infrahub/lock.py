@@ -179,7 +179,7 @@ class InfrahubLock:
         return self.local.locked()
 
 
-class InfahubLockNameGenerator:
+class InfrahubLockNameGenerator:
     local = "local"
     _global = "global"
 
@@ -190,9 +190,9 @@ class InfahubLockNameGenerator:
 
         new_name = ""
         if local is True:
-            new_name = f"{InfahubLockNameGenerator.local}."
+            new_name = f"{InfrahubLockNameGenerator.local}."
         elif local is False:
-            new_name = f"{InfahubLockNameGenerator._global}."
+            new_name = f"{InfrahubLockNameGenerator._global}."
 
         if namespace is not None:
             new_name += f"{namespace}."
@@ -206,10 +206,10 @@ class InfahubLockNameGenerator:
         namespace = None
 
         parts = name.split(".")
-        if parts[0] == InfahubLockNameGenerator.local:
+        if parts[0] == InfrahubLockNameGenerator.local:
             local = True
             parts = parts[1:]
-        elif parts[0] == InfahubLockNameGenerator._global:
+        elif parts[0] == InfrahubLockNameGenerator._global:
             local = False
             parts = parts[1:]
 
@@ -247,11 +247,11 @@ class InfrahubLockRegistry:
 
     @classmethod
     def _generate_name(cls, name: str, namespace: str | None = None, local: bool | None = None) -> str:
-        return InfahubLockNameGenerator.generate_name(name=name, namespace=namespace, local=local)
+        return InfrahubLockNameGenerator.generate_name(name=name, namespace=namespace, local=local)
 
     @staticmethod
     def unpack_name(name: str) -> tuple[str, str | None, bool | None]:
-        return InfahubLockNameGenerator.unpack_name(name=name)
+        return InfrahubLockNameGenerator.unpack_name(name=name)
 
     def get_existing(
         self,
@@ -272,16 +272,14 @@ class InfrahubLockRegistry:
             self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
         return self.locks[lock_name]
 
-    async def force_release_lock(
+    async def pop_lock(
         self,
         name: str,
         namespace: str | None,
         local: bool | None = None,
-    ) -> None:
+    ) -> InfrahubLock | None:
         lock_name = self._generate_name(name=name, namespace=namespace, local=local)
-        lock = self.locks.pop(lock_name, None)
-        if lock:
-            await lock.remote.release()
+        return self.locks.pop(lock_name, None)
 
     def local_schema_lock(self) -> LocalLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)

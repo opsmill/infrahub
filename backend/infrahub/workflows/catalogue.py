@@ -2,8 +2,6 @@ import random
 
 from fast_depends import Depends, inject
 
-from infrahub.config import SETTINGS
-
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
@@ -535,7 +533,7 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
 CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     name="clean_up_deadlocks",
     type=WorkflowType.INTERNAL,
-    cron=f"*/{SETTINGS.cache.clean_up_deadlocks_interval_mins} * * * *",
+    cron="* * * * *",
     module="infrahub.pools.tasks",
     function="clean_up_deadlocks",
 )
