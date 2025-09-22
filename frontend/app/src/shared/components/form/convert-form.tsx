@@ -15,10 +15,9 @@ import { Input } from "@/shared/components/inputs/input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 
+import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/object/domain/get-object-convert-fields-mapping.query";
 import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-
-import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/object/domain/get-object-convert-fields-mapping.query";
 import type { ModelSchema } from "@/entities/schema/types";
 
 export type ConvertFormProps = {
@@ -29,7 +28,11 @@ export type ConvertFormProps = {
 
 const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
   const schemaKindLabel = useAtomValue(schemaKindNameState);
-  const { isPending, error } = useGetObjectConvertFieldsMapping({
+  const {
+    data: mappings,
+    isPending,
+    error,
+  } = useGetObjectConvertFieldsMapping({
     sourceKind: sourceSchema.kind!,
     targetKind: targetSchema.kind!,
   });
