@@ -760,8 +760,8 @@ class SchemaBranch:
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
-            if node_schema.display_label and node_schema.display_labels:
-                raise ValidationError(f"{node_schema.kind}: cannot defined both `display_label` and `display_labels`")
+            if node_schema.display_label and node_schema.display_labels is not None:
+                raise ValidationError(f"{node_schema.kind}: cannot define both `display_label` and `display_labels`")
 
             if node_schema.display_label:
                 self._validate_display_label(node=node_schema)
