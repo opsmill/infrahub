@@ -34,6 +34,7 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_schema import TextAttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.models import NumberPoolLockDefinition
@@ -42,10 +43,10 @@ from infrahub.types import ATTRIBUTE_TYPES
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
 from ...log import get_logger
-from ..attribute import BaseAttribute
+from ..attribute import BaseAttribute, String
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
-from ..utils import update_relationships_to
+from ..utils import is_jinja2_template, update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 
 if TYPE_CHECKING:
@@ -197,10 +198,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return self._branch
 
     def __repr__(self) -> str:
-        if not self._existing:
-            return f"{self.get_kind()}(ID: {str(self.id)})[NEW]"
-
-        return f"{self.get_kind()}(ID: {str(self.id)})"
+        v = f"{self.get_kind()}(ID: {str(self.id)})"
+        return v if self._existing else f"{v}[NEW]"
 
     def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
         self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
@@ -216,6 +215,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._owner: Node | None = None
         self._is_protected: bool = None
         self._computed_jinja2_attributes: list[str] = []
+
+        self._display_label: String | None = None
+        self._hfid: list[str] | None = None
 
         # Lists of attributes and relationships names
         self._attributes: list[str] = []
@@ -733,6 +735,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
             self._updated_at = Timestamp(updated_at)
 
+        if self._schema.namespace != "Schema" and (display_label := kwargs.pop("display_label", None)):
+            self._display_label = display_label
+
         await self._process_fields(db=db, fields=kwargs)
         return self
 
@@ -762,9 +767,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             relm: RelationshipManager = getattr(self, name)
             for rel in relm._relationships:
                 identifier = f"{rel.schema.identifier}::{rel.peer_id}"
-
                 rel.id, rel.db_id = new_ids[identifier]
-
                 node_changelog.create_relationship(relationship=rel)
 
         node_changelog.display_label = await self.render_display_label(db=db)
@@ -808,8 +811,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
         """Create or Update the Node in the database."""
-
         save_at = Timestamp(at)
+
+        if self._schema.namespace != "Schema":
+            self._display_label = String(
+                name="display_label",
+                schema=TextAttributeSchema(name="display_label", kind="Text", branch=BranchSupportType.AWARE),
+                branch=self._branch,
+                at=save_at,
+                node=self,
+                data={"value": await self.compute_display_label(db=db)},
+            )
 
         if self._existing:
             self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
@@ -898,7 +910,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "display_label":
-                response[field_name] = await self.render_display_label(db=db)
+                response[field_name] = (
+                    self._display_label.value if self._display_label else await self.render_display_label(db=db)
+                )
                 continue
 
             if field_name == "hfid":
@@ -1001,6 +1015,38 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return repr(self)
         return display_label.strip()
 
+    async def get_display_label_element_value(self, db: InfrahubDatabase, path: str) -> Any:
+        schema_path = self._schema.parse_schema_path(
+            path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
+        )
+
+        if schema_path.is_type_attribute:
+            attr = getattr(self, schema_path.active_attribute_schema.name)
+            return getattr(attr, schema_path.active_attribute_property_name)
+
+        # Not an attribute so matching schema_path.is_type_relationship:
+        relm: RelationshipManager = getattr(self, schema_path.active_relationship_schema.name)
+        await relm.resolve(db=db)
+        node = await relm.get_peer(db=db)
+        attr = getattr(node, schema_path.active_attribute_schema.name)
+        return getattr(attr, schema_path.active_attribute_property_name)
+
+    async def compute_display_label(self, db: InfrahubDatabase) -> str:
+        if not self._schema.display_label:
+            return await self.render_display_label(db=db)
+
+        # NOTE: this below should not be required if we normalize the display_label as a jinja2 template even if it is not provided as one
+        if not is_jinja2_template(self._schema.display_label):
+            return await self.get_display_label_element_value(db=db, path=self._schema.display_label)
+
+        jinja_template = Jinja2Template(template=self._schema.display_label)
+
+        variables: dict[str, Any] = {}
+        for variable in jinja_template.get_variables():
+            variables[variable] = await self.get_display_label_element_value(db=db, path=variable)
+
+        return await jinja_template.render(variables=variables)
+
     def _get_parent_relationship_name(self) -> str | None:
         """Return the name of the parent relationship is one is present"""
         for relationship in self._schema.relationships:
@@ -1010,7 +1056,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return None
 
     async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
-        object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
+        object_template: RelationshipManager | None = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
         return (
             await object_template.get_peer(db=db, peer_type=CoreObjectTemplate) if object_template is not None else None
         )
