@@ -155,6 +155,8 @@ class DiffMergeSerializer:
                 continue
             serial_attr_diffs = []
             for attr_diff in node.attributes:
+                if attr_diff.name == "display_label":
+                    continue
                 serial_attr_diff, attribute_property_diff = self._serialize_attribute(
                     attribute_diff=attr_diff, node_uuid=node.uuid, node_kind=node.kind
                 )
