@@ -118,6 +118,13 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                 });
               };
 
+              const handleSourceValuesChange = (newOptions) => {
+                field.onChange({
+                  source: { type: "source", fieldLabel: label },
+                  value: newOptions,
+                });
+              };
+
               const handleInputValueChange = (newValue: string) => {
                 field.onChange({
                   source: { type: "user" },
@@ -171,7 +178,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                               objectDetailsData={objectDetailsData}
                               sourceSchema={sourceSchema}
                               mapping={mappings?.[field.name]}
-                              onSelect={handleSourceValueChange}
+                              onSelect={handleSourceValuesChange}
                               peer={relationship.peer}
                               fieldData={fieldData}
                             />
