@@ -13,7 +13,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.lock import InfrahubLockRegistry
+from infrahub.lock import LockNameGenerator
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
@@ -134,7 +134,8 @@ async def _create_number_pool(
 )
 async def clean_up_deadlocks(service: InfrahubServices) -> None:
     """Remove stale distributed locks left behind by inactive workers"""
-    keys = await service.cache.list_keys(filter_pattern="lock.*")
+    lock_prefix = "lock."
+    keys = await service.cache.list_keys(filter_pattern=f"{lock_prefix}*")
     if not keys:
         return
 
@@ -151,7 +152,7 @@ async def clean_up_deadlocks(service: InfrahubServices) -> None:
         if not workers_active_map.get(worker_id) and Timestamp() > Timestamp(timestamp).add(
             minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
         ):
-            name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
+            name, namespace, local = LockNameGenerator().unpack_name(name=key.replace(lock_prefix, ""))
             await lock.registry.pop_lock(name=name, namespace=namespace, local=local)
             await service.cache.delete(key)
             log.debug(f"Deleted deadlock key={key} worker={worker_id}")

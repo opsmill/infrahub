@@ -179,20 +179,19 @@ class InfrahubLock:
         return self.local.locked()
 
 
-class InfrahubLockNameGenerator:
+class LockNameGenerator:
     local = "local"
     _global = "global"
 
-    @staticmethod
-    def generate_name(name: str, namespace: str | None = None, local: bool | None = None) -> str:
+    def generate_name(self, name: str, namespace: str | None = None, local: bool | None = None) -> str:
         if namespace is None and local is None:
             return name
 
         new_name = ""
         if local is True:
-            new_name = f"{InfrahubLockNameGenerator.local}."
+            new_name = f"{self.local}."
         elif local is False:
-            new_name = f"{InfrahubLockNameGenerator._global}."
+            new_name = f"{self._global}."
 
         if namespace is not None:
             new_name += f"{namespace}."
@@ -200,16 +199,15 @@ class InfrahubLockNameGenerator:
 
         return new_name
 
-    @staticmethod
-    def unpack_name(name: str) -> tuple[str, str | None, bool | None]:
+    def unpack_name(self, name: str) -> tuple[str, str | None, bool | None]:
         local = None
         namespace = None
 
         parts = name.split(".")
-        if parts[0] == InfrahubLockNameGenerator.local:
+        if parts[0] == self.local:
             local = True
             parts = parts[1:]
-        elif parts[0] == InfrahubLockNameGenerator._global:
+        elif parts[0] == self._global:
             local = False
             parts = parts[1:]
 
@@ -224,7 +222,11 @@ class InfrahubLockNameGenerator:
 
 class InfrahubLockRegistry:
     def __init__(
-        self, token: str | None = None, local_only: bool = False, service: InfrahubServices | None = None
+        self,
+        token: str | None = None,
+        local_only: bool = False,
+        service: InfrahubServices | None = None,
+        name_generator: LockNameGenerator | None = None,
     ) -> None:
         if config.SETTINGS.cache.enable and not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
@@ -244,14 +246,7 @@ class InfrahubLockRegistry:
 
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
-
-    @classmethod
-    def _generate_name(cls, name: str, namespace: str | None = None, local: bool | None = None) -> str:
-        return InfrahubLockNameGenerator.generate_name(name=name, namespace=namespace, local=local)
-
-    @staticmethod
-    def unpack_name(name: str) -> tuple[str, str | None, bool | None]:
-        return InfrahubLockNameGenerator.unpack_name(name=name)
+        self.name_generator = name_generator or LockNameGenerator()
 
     def get_existing(
         self,
@@ -259,7 +254,7 @@ class InfrahubLockRegistry:
         namespace: str | None,
         local: bool | None = None,
     ) -> InfrahubLock | None:
-        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
             return None
         return self.locks[lock_name]
@@ -267,7 +262,7 @@ class InfrahubLockRegistry:
     def get(
         self, name: str, namespace: str | None = None, local: bool | None = None, in_multi: bool = False
     ) -> InfrahubLock:
-        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
             self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
         return self.locks[lock_name]
@@ -278,7 +273,7 @@ class InfrahubLockRegistry:
         namespace: str | None,
         local: bool | None = None,
     ) -> InfrahubLock | None:
-        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         return self.locks.pop(lock_name, None)
 
     def local_schema_lock(self) -> LocalLock:

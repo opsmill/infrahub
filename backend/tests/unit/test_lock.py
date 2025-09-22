@@ -51,7 +51,7 @@ async def test_multi_global_graph_lock():
 
 
 def test_generate_name():
-    generate_name = lock.InfrahubLockRegistry._generate_name
+    generate_name = lock.LockNameGenerator().generate_name
 
     assert generate_name("simple") == "simple"
     assert generate_name("simple.name") == "simple.name"
@@ -63,7 +63,7 @@ def test_generate_name():
 
 
 def test_unpack_name():
-    unpack_name = lock.InfrahubLockRegistry.unpack_name
+    unpack_name = lock.LockNameGenerator().unpack_name
 
     assert unpack_name("simple") == ("simple", None, None)
     assert unpack_name("repository.simple") == ("simple", "repository", None)
