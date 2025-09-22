@@ -1300,7 +1300,7 @@ async def test_validate_display_label_failure_both_defined(schema_all_in_one):
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     with pytest.raises(
-        ValidationError, match=r"InfraGenericInterface: cannot defined both `display_label` and `display_labels`"
+        ValidationError, match=r"InfraGenericInterface: cannot define both `display_label` and `display_labels`"
     ):
         schema.validate_display_label()
 
