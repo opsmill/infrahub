@@ -374,7 +374,7 @@ class CacheSettings(BaseSettings):
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
-        description="How many minutes interval clean_up_deadlocks task runs",
+        description="How many minutes interval clean_up_deadlocks task deletes deadlocks",
     )
 
     @property

@@ -139,10 +139,11 @@ async def clean_up_deadlocks(service: InfrahubServices) -> None:
     workers_active_map = {worker.id: worker.active for worker in workers}
 
     for key, value in zip(keys, values, strict=False):
-        timestamp, worker_id = value.split("::", 1)
-        if not workers_active_map.get(worker_id) and Timestamp() > Timestamp(timestamp).add(
-            minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
-        ):
-            name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
-            await lock.registry.pop_lock(name=name, namespace=namespace, local=local)
-            await service.cache.delete(key)
+        if key and value:
+            timestamp, worker_id = value.split("::", 1)
+            if not workers_active_map.get(worker_id) and Timestamp() > Timestamp(timestamp).add(
+                minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
+            ):
+                name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
+                await lock.registry.pop_lock(name=name, namespace=namespace, local=local)
+                await service.cache.delete(key)
