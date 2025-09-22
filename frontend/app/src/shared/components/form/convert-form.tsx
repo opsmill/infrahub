@@ -63,10 +63,10 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
           type: "convert",
           fieldLabel: field.label,
         },
-        value: objectDetailsData[field.name]?.value,
+        value: objectDetailsData[field.name]?.value ?? objectDetailsData[field.name]?.node,
       },
     };
-  });
+  }, {});
 
   const handleSubmit = (data) => {
     console.log("data: ", data);
