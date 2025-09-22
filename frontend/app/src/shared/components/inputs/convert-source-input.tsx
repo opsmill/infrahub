@@ -48,11 +48,11 @@ export const ConvertSourceAttributeInput = ({
 
   const availableOptions = sourceSchema?.attributes
     ?.filter((attribute) => {
-      return attribute.kind === kind && !!objectDetailsData[attribute.name]?.value;
+      return attribute.kind === kind;
     })
     .map((attribute) => {
       return {
-        value: objectDetailsData[attribute.name]?.value,
+        value: objectDetailsData[attribute.name]?.value ?? "-",
         label: getDisplayValue(objectDetailsData, attribute),
         source: attribute.label,
         isDefaultMatch: attribute.name === mapping.source_field_name,
@@ -114,7 +114,7 @@ export const ConvertSourceRelationshipOneInput = ({
 
   const availableOptions = sourceSchema?.relationships
     ?.filter((relationship) => {
-      return relationship.peer === peer && !!objectDetailsData[relationship.name]?.node?.id;
+      return relationship.peer === peer;
     })
     .map((relationship) => {
       return {
@@ -180,7 +180,7 @@ export const ConvertSourceRelationshipManyInput = ({
 
   const availableOptions = sourceSchema?.relationships
     ?.filter((relationship) => {
-      return relationship.peer === peer && !!objectDetailsData[relationship.name]?.node?.id;
+      return relationship.peer === peer;
     })
     .map((relationship) => {
       return {
@@ -190,6 +190,7 @@ export const ConvertSourceRelationshipManyInput = ({
         isDefaultMatch: relationship.name === mapping.source_field_name,
       };
     });
+  console.log("availableOptions: ", availableOptions);
 
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
