@@ -726,10 +726,16 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
+        min_count, max_count = self.schema.min_count, self.schema.max_count
+        if self.schema.optional:
+            min_count = 0
+        else:
+            max_count = max(self.schema.min_count, self.schema.max_count)
+
         self._relationships: RelationshipValidatorList = RelationshipValidatorList(
             name=self.schema.name,
-            min_count=0 if self.schema.optional else self.schema.min_count,
-            max_count=self.schema.max_count,
+            min_count=min_count,
+            max_count=max_count,
         )
         self._relationship_id_details: RelationshipUpdateDetails | None = None
         self.has_fetched_relationships: bool = False
