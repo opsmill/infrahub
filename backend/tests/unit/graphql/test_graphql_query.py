@@ -2630,9 +2630,8 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -2642,6 +2641,7 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
     )
 
     assert result.errors is None
+    assert result.data
     assert sorted([car["node"]["name"]["value"] for car in result.data["TestCar"]["edges"]]) == [
         "Porsche 911",
         "Renaud Clio",
@@ -2695,6 +2695,7 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
         }
     }
     """
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2707,6 +2708,7 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestPerson"]["edges"][0]["node"]["vehicules"]["edges"]) == 2
     expected_results = {
         "name": {"value": "John Doe"},
@@ -2756,6 +2758,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
         }
     }
     """
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2768,6 +2771,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestBoat"]["edges"][0]["node"]["owners"]["edges"]) == 1
 
 
