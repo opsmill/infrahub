@@ -1,6 +1,7 @@
 import random
 
 from fast_depends import Depends, inject
+from prefect.client.schemas.objects import ConcurrencyLimitStrategy
 
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
@@ -179,6 +180,8 @@ GIT_REPOSITORIES_SYNC = WorkflowDefinition(
     cron="* * * * *",
     module="infrahub.git.tasks",
     function="sync_remote_repositories",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
 )
 
 GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
