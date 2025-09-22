@@ -133,17 +133,25 @@ async def _create_number_pool(
     flow_run_name="Clean up deadlocks",
 )
 async def clean_up_deadlocks(service: InfrahubServices) -> None:
+    """Remove stale distributed locks left behind by inactive workers"""
     keys = await service.cache.list_keys(filter_pattern="lock.*")
+    if not keys:
+        return
+
+    log = get_run_logger()
     values = await service.cache.get_values(keys=keys)
     workers = await service.component.list_workers(branch=registry.default_branch, schema_hash=False)
     workers_active_map = {worker.id: worker.active for worker in workers}
 
     for key, value in zip(keys, values, strict=False):
-        if key and value:
-            timestamp, worker_id = value.split("::", 1)
-            if not workers_active_map.get(worker_id) and Timestamp() > Timestamp(timestamp).add(
-                minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
-            ):
-                name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
-                await lock.registry.pop_lock(name=name, namespace=namespace, local=local)
-                await service.cache.delete(key)
+        if not key or not value:
+            continue
+
+        timestamp, worker_id = value.split("::", 1)
+        if not workers_active_map.get(worker_id) and Timestamp() > Timestamp(timestamp).add(
+            minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
+        ):
+            name, namespace, local = InfrahubLockRegistry.unpack_name(name=key.replace("lock.", ""))
+            await lock.registry.pop_lock(name=name, namespace=namespace, local=local)
+            await service.cache.delete(key)
+            log.debug(f"Deleted deadlock key={key} worker={worker_id}")
