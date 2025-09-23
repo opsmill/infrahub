@@ -318,7 +318,7 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             }
         }
     }
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
 RETURN 1 AS done
         """ % {"id_func": db.get_id_function_name()}
         self.add_to_query(query=query)
@@ -501,7 +501,7 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
             CREATE (attr_rel)-[:IS_PROTECTED { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
     }
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
         """ % {"id_func": db.get_id_function_name()}
         self.add_to_query(query=query)
 
@@ -679,7 +679,7 @@ CALL (n) {
         SET new_edge.branch_level = $branch_level
         SET new_edge.branch = $target_branch
     }
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
         """
         self.add_to_query(query)
 
