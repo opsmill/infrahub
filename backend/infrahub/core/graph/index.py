@@ -25,4 +25,5 @@ rel_indexes: list[IndexItem] = [
     IndexItem(name="attr_branch", label="HAS_ATTRIBUTE", properties=["branch"], type=IndexType.RANGE),
     IndexItem(name="value_from", label="HAS_VALUE", properties=["from"], type=IndexType.RANGE),
     IndexItem(name="value_branch", label="HAS_VALUE", properties=["branch"], type=IndexType.RANGE),
+    IndexItem(name="part_of_branch", label="IS_PART_OF", properties=["branch"], type=IndexType.RANGE),
 ]

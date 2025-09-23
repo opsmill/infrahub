@@ -267,13 +267,17 @@ class DiffNodePathsQuery(DiffCalculationQuery):
 // -------------------------------------
 // Identify nodes added/removed on branch
 // -------------------------------------
-MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
-WHERE (
-    ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
-    OR ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
-    OR ($new_node_ids_list IS NULL AND $current_node_ids_list IS NULL)
-)
-AND p.branch_support = $branch_aware
+CALL () {
+    MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
+    WHERE (
+        ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
+        OR ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
+        OR ($new_node_ids_list IS NULL AND $current_node_ids_list IS NULL)
+    )
+    RETURN q, diff_rel, p
+}
+WITH q, diff_rel, p
+WHERE p.branch_support = $branch_aware
 AND (
     (
         ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
