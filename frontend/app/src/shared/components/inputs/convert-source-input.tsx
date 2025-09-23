@@ -140,8 +140,6 @@ export const ConvertSourceRelationshipOneInput = ({
   const currentOption = availableOptions?.find((nodeOption) => {
     return nodeOption.source.name === fieldData.value?.name;
   });
-  console.log("currentOption: ", currentOption);
-  console.log("fieldData: ", fieldData);
 
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
@@ -293,60 +291,6 @@ export const ConvertSourceRelationshipManyInput = ({
               );
             })}
         </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
-  );
-
-  return (
-    <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger className="space-x-2">
-        {fieldData.value?.map((node) => (
-          <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
-            <span>{getNodeLabel(node)}</span>
-            <span className="font-light text-gray-700">• {fieldData.value?.label}</span>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSelect(node);
-              }}
-              className="size-4 text-gray-500 hover:text-gray-800"
-              aria-label="Remove"
-              data-testid="remove-option"
-            >
-              &times;
-            </Button>
-          </Badge>
-        ))}
-      </ComboboxTrigger>
-
-      <ComboboxContent fitTriggerWidth={false}>
-        <ComboboxEmpty>No available values</ComboboxEmpty>
-
-        {availableOptions?.map((option) => {
-          return (
-            <ComboboxItem
-              key={option.value?.id}
-              value={option.value?.id}
-              selectedValue={fieldData?.value}
-              onSelect={() => {
-                handleSelect(option);
-              }}
-            >
-              <div className="flex grow items-center justify-between">
-                <span className="grow">{option.label}</span>
-
-                <div className="space-x-2">
-                  {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
-
-                  <Badge variant={"gray-outline"}>{option.source}</Badge>
-                </div>
-              </div>
-            </ComboboxItem>
-          );
-        })}
       </ComboboxContent>
     </Combobox>
   );
