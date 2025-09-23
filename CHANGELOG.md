@@ -11,6 +11,19 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.7) - 2025-09-23
+
+### Fixed
+
+- Report proper branch when read-only repositories fail to synchronize due to invalid branch ([#5713](https://github.com/opsmill/infrahub/issues/5713))
+- Add an HFID for Attribute and Relationship matches for a Node Trigger Rule ([#6713](https://github.com/opsmill/infrahub/issues/6713))
+- Use the prune flag when fetching updates from remote git repositories to clear deleted remote references locally ([#6884](https://github.com/opsmill/infrahub/issues/6884))
+- Fix branch delete query to avoid out-of-memory error when using the community edition ([#7161](https://github.com/opsmill/infrahub/issues/7161))
+- Fix bug in GraphQL queries that filter on the ID(s) of peer nodes that could cause nodes to be improperly excluded if the peer's schema had its name, namespace, or inheritance updated. ([#7247](https://github.com/opsmill/infrahub/issues/7247))
+- Convert GraphQL query group update tasks to interval to hide it from the task list
+- Ensure the default branch is used when a node is part of the global branch
+- Update a cypher query that did not correctly account for deleted Relationships. It was only used during a delete, so would not have caused any issues visible to the user.
+
 ## [Infrahub - v1.4.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.7) - 2025-09-16
 
 ### Added

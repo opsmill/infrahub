@@ -1,1 +1,0 @@
-Convert GraphQL query group update tasks to interval to hide it from the task list
