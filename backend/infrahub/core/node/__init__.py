@@ -738,7 +738,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if self._schema.namespace != "Schema" and (display_label := kwargs.pop("display_label", None)):
             self._display_label = String(
                 name="display_label",
-                schema=TextAttributeSchema(name="display_label", kind="Text", branch=BranchSupportType.AWARE),
+                schema=TextAttributeSchema(name="display_label", kind="Text", branch=self._schema.branch),
                 branch=self._branch,
                 at=self._updated_at or Timestamp(),
                 node=self,
@@ -830,7 +830,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             else:
                 self._display_label = String(
                     name="display_label",
-                    schema=TextAttributeSchema(name="display_label", kind="Text", branch=BranchSupportType.AWARE),
+                    schema=TextAttributeSchema(name="display_label", kind="Text", branch=self._schema.branch),
                     branch=self._branch,
                     at=save_at,
                     node=self,
