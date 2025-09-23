@@ -570,7 +570,9 @@ class RelationshipValidatorList:
         ValidationError: If the number of relationships is not within the min and max count.
     """
 
-    def __init__(self, *relationships: Relationship, name: str, min_count: int = 0, max_count: int = 0) -> None:
+    def __init__(
+        self, *relationships: Relationship, name: str, min_count: int | None = 0, max_count: int | None = 0
+    ) -> None:
         """Initialize list for Relationship but with validation against min/max count.
 
         Args:
@@ -580,8 +582,14 @@ class RelationshipValidatorList:
         Raises:
             ValidationError: The number of relationships is not within the min and max count.
         """
-        if max_count < min_count:
+        if max_count is not None and min_count is not None and max_count < min_count:
             raise ValidationError({"msg": "max_count must be greater than min_count"})
+
+        if max_count is None:
+            max_count = 0
+        if min_count is None:
+            min_count = 0
+
         self.min_count: int = min_count
         self.max_count: int = max_count
         self.name = name
@@ -730,7 +738,7 @@ class RelationshipManager:
         if self.schema.optional:
             min_count = 0
         else:
-            max_count = max(self.schema.min_count, self.schema.max_count)
+            max_count = self.schema.max_count or None
 
         self._relationships: RelationshipValidatorList = RelationshipValidatorList(
             name=self.schema.name,
