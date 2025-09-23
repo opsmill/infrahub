@@ -14,5 +14,5 @@ class DiffMergerDependency(DependencyBuilder[DiffMerger]):
             source_branch=context.branch,
             destination_branch=registry.get_branch_from_registry(),
             diff_repository=DiffRepositoryDependency.build(context=context),
-            serializer=DiffMergeSerializer(db=context.db, max_batch_size=100),
+            serializer=DiffMergeSerializer(db=context.db),
         )
