@@ -1,5 +1,6 @@
 from typing import AsyncGenerator
 
+from infrahub import config
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.schema import MainSchemaTypes
@@ -28,9 +29,9 @@ Primitives = str | bool | int | float
 
 
 class DiffMergeSerializer:
-    def __init__(self, db: InfrahubDatabase, max_batch_size: int) -> None:
+    def __init__(self, db: InfrahubDatabase, max_batch_size: int | None = None) -> None:
         self.db = db
-        self.max_batch_size = max_batch_size
+        self.max_batch_size = max_batch_size or int(config.SETTINGS.database.query_size_limit / 50)
         self._attribute_type_cache: dict[tuple[str, str], type] = {}
         self._source_branch_name: str | None = None
         self._target_branch_name: str | None = None
