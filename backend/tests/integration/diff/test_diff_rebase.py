@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub import config, lock
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -23,6 +23,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import RelationshipSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.locks import lock
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.schema.location import CONTINENT, LOCATION

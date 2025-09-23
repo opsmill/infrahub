@@ -3,9 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
-from graphql import GraphQLResolveInfo
 
-from infrahub import lock
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -29,7 +27,7 @@ from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, Vali
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.graphql.types.task import TaskInfo
-from infrahub.lock import InfrahubLock
+from infrahub.locks.lock import InfrahubLock
 from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
@@ -37,6 +35,7 @@ from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE, REQUEST_PROPOSED_CHANGE_PIPELINE
 
 from ...core.node.lock_utils import build_object_lock_name
+from ...locks import lock
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:

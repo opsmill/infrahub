@@ -3,7 +3,6 @@ from __future__ import annotations
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
@@ -12,6 +11,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.locks import lock
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow

@@ -9,7 +9,7 @@ from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.timestamp import Timestamp
-from infrahub.lock import initialize_lock
+from infrahub.locks.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ..shared import InternalSchemaMigration, SchemaMigration

@@ -16,7 +16,7 @@ from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
-from infrahub.lock import initialize_lock
+from infrahub.locks.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache

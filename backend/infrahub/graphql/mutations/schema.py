@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import RESTRICTED_NAMESPACES, GlobalPermissions
 from infrahub.core.manager import NodeManager
@@ -19,6 +18,7 @@ from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.worker import WORKER_IDENTITY
 
+from ...locks import lock
 from ..types import DropdownFields
 
 if TYPE_CHECKING:

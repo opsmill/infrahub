@@ -6,7 +6,7 @@ from prefect.logging import get_run_logger
 from infrahub import config
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.lock import LOCK_PREFIX
+from infrahub.locks.lock import LOCK_PREFIX
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 
 

@@ -20,7 +20,7 @@ from infrahub.core import registry
 from infrahub.core.initialization import initialization
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
-from infrahub.lock import initialize_lock
+from infrahub.locks.lock import initialize_lock
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
 from infrahub.workers.dependencies import (

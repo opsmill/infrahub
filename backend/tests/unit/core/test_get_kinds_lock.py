@@ -1,11 +1,11 @@
 from unittest.mock import patch
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants.infrahubkind import GRAPHQLQUERY, GRAPHQLQUERYGROUP
 from infrahub.core.initialization import create_branch
 from infrahub.core.node.lock_utils import _get_kinds_to_lock_on_object_mutation, _hash
 from infrahub.database import InfrahubDatabase
+from infrahub.locks import lock
 from tests.helpers.test_app import TestInfrahubApp
 
 

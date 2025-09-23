@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub import config, lock
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -21,6 +21,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.locks import lock
 
 
 class TestDiffCoordinatorLocks:

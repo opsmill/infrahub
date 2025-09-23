@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPoolGetUsed, NumberPoolSetReserved
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.exceptions import PoolExhaustedError
+from infrahub.locks import lock
 
 from .. import Node
 

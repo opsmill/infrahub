@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 from netaddr import IPSet
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.query.ipam import get_subnets
@@ -14,6 +13,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolSetReserved,
 )
 from infrahub.exceptions import ValidationError
+from infrahub.locks import lock
 from infrahub.pools.prefix import get_next_available_prefix
 
 from .. import Node

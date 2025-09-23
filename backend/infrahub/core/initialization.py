@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from infrahub import config, lock
+from infrahub import config
 from infrahub.constants.database import DatabaseType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -35,6 +35,7 @@ from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.exceptions import DatabaseError
 from infrahub.graphql.manager import registry as graphql_registry
+from infrahub.locks import lock
 from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend, get_or_create_global_permission

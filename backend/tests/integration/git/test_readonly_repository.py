@@ -15,7 +15,7 @@ from infrahub.core.diff.model.diff import ArtifactTarget, BranchDiffArtifact, Br
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git.models import RequestArtifactDefinitionGenerate
-from infrahub.lock import InfrahubLockRegistry
+from infrahub.locks.lock import InfrahubLockRegistry
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo

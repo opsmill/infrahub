@@ -11,7 +11,6 @@ from prefect import State, flow, task
 from prefect.cache_policies import NONE
 from prefect.states import Completed, Failed
 
-from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.generators.models import (
@@ -21,6 +20,7 @@ from infrahub.generators.models import (
 )
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
+from infrahub.locks import lock
 from infrahub.workers.dependencies import get_client, get_workflow
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN, REQUEST_GENERATOR_RUN
 from infrahub.workflows.utils import add_tags

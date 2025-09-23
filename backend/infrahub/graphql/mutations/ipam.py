@@ -6,7 +6,6 @@ from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
 from typing_extensions import Self
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -16,11 +15,12 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, ValidationError
-from infrahub.lock import InfrahubMultiLock
+from infrahub.locks.lock import InfrahubMultiLock
 from infrahub.log import get_logger
 
 from ...core.node.create import create_node
 from ...core.node.lock_utils import build_object_lock_name
+from ...locks import lock
 from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, build_graphql_response
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 

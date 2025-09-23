@@ -7,7 +7,7 @@ from infrahub.core.initialization import initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult
 from infrahub.core.timestamp import Timestamp
-from infrahub.lock import initialize_lock
+from infrahub.locks.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ...query import Query, QueryType

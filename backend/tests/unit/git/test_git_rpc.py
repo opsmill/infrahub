@@ -22,7 +22,7 @@ from infrahub.git.models import (
 )
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
-from infrahub.lock import InfrahubLockRegistry
+from infrahub.locks.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution

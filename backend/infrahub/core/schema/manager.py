@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub import lock
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -25,6 +24,7 @@ from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
+from ...locks import lock
 from .constants import IGNORE_FOR_NODE
 from .schema_branch import SchemaBranch
 

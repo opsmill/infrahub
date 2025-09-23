@@ -26,7 +26,7 @@ from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 from pydantic import BaseModel
 
-from infrahub import config, lock
+from infrahub import config
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
@@ -103,6 +103,7 @@ from infrahub.workflows.catalogue import (
 )
 from infrahub.workflows.utils import add_tags
 
+from ..locks import lock
 from .branch_diff import get_diff_summary_cache, get_modified_kinds
 from .checker import verify_proposed_change_is_mergeable
 

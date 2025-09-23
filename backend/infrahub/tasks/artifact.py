@@ -2,10 +2,10 @@ from infrahub_sdk.node import InfrahubNode
 from prefect import task
 from prefect.cache_policies import NONE
 
-from infrahub import lock
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import InfrahubKind
 from infrahub.git.models import RequestArtifactGenerate
+from infrahub.locks import lock
 from infrahub.workers.dependencies import get_client
 
 

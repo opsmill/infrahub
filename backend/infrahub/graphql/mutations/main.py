@@ -8,7 +8,7 @@ from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
-from infrahub import config, lock
+from infrahub import config
 from infrahub.core.constants import MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
@@ -28,10 +28,11 @@ from infrahub.events.generator import generate_node_mutation_events
 from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.lock import InfrahubMultiLock
+from infrahub.locks.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
 
 from ...core.node.lock_utils import get_kind_lock_names_on_object_mutation
+from ...locks import lock
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:

@@ -12,7 +12,6 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub import lock
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.manager import NodeManager
@@ -26,6 +25,7 @@ from infrahub.workers.dependencies import get_client, get_database, get_event_se
 
 from ..core.timestamp import Timestamp
 from ..core.validators.checks_runner import run_checks_and_update_validator
+from ..locks import lock
 from ..log import get_log_data, get_logger
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import (

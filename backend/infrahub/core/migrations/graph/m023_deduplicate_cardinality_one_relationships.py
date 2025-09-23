@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
-from infrahub.lock import initialize_lock
+from infrahub.locks.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ... import registry

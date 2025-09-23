@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
@@ -12,7 +11,8 @@ from infrahub.core.node.lock_utils import get_kind_lock_names_on_object_mutation
 from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.lock import InfrahubMultiLock
+from infrahub.locks import lock
+from infrahub.locks.lock import InfrahubMultiLock
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

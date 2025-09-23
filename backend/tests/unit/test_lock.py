@@ -1,7 +1,7 @@
 import time
 from asyncio import gather, sleep
 
-from infrahub import lock
+from infrahub.locks import lock
 
 
 async def do_nothing(id: str, wait_sec: int, lock_name: str = "test1") -> int:

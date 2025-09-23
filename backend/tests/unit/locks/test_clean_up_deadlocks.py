@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock
 
-from infrahub.lock import LOCK_PREFIX
+from infrahub.locks.lock import LOCK_PREFIX
 from infrahub.locks.tasks import clean_up_deadlocks
 from infrahub.services import InfrahubServices
 from infrahub.services.component import InfrahubComponent, WorkerInfo

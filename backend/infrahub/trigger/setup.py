@@ -7,10 +7,10 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 from prefect.events.schemas.automations import Automation
 
-from infrahub import lock
 from infrahub.database import InfrahubDatabase
 from infrahub.trigger.models import TriggerDefinition
 
+from ..locks import lock
 from .models import TriggerSetupReport, TriggerType
 
 if TYPE_CHECKING:

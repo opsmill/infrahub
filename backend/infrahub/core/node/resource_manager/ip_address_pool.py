@@ -3,7 +3,6 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Any
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.query.ipam import get_ip_addresses
@@ -12,6 +11,7 @@ from infrahub.core.query.resource_manager import (
     IPAddressPoolSetReserved,
 )
 from infrahub.exceptions import PoolExhaustedError, ValidationError
+from infrahub.locks import lock
 from infrahub.pools.address import get_available
 
 from .. import Node

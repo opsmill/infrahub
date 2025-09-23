@@ -7,7 +7,6 @@ from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
@@ -41,6 +40,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
+from ...locks import lock
 from ...log import get_logger
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager

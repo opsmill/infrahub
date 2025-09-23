@@ -12,7 +12,6 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse
 
-from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
@@ -36,6 +35,7 @@ from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError
+from infrahub.locks import lock
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES

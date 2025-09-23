@@ -1,4 +1,4 @@
-from infrahub import lock
+from infrahub.locks import lock
 
 
 class DiffLocker:

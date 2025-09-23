@@ -14,7 +14,7 @@ from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.validators.attribute.min_max import AttributeNumberChecker
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
-from infrahub.lock import initialize_lock
+from infrahub.locks.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.types import Number
 

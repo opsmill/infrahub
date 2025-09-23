@@ -18,10 +18,11 @@ router.include_router(events.router)
 
 async def _init_prefect() -> None:
     # Import there in case we are running Prefect within a testsuite using the original Prefect container
-    from infrahub import lock
-    from infrahub.lock import initialize_lock
+    from infrahub.locks.lock import initialize_lock
     from infrahub.services import InfrahubServices
     from infrahub.workers.dependencies import get_cache
+
+    from ..locks import lock
 
     cache = await get_cache()
     service = await InfrahubServices.new(cache=cache)

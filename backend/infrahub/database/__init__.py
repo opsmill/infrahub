@@ -25,7 +25,7 @@ from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, Transi
 from opentelemetry import trace
 from typing_extensions import Self
 
-from infrahub import config, lock
+from infrahub import config
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -36,6 +36,7 @@ from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
+from ..locks import lock
 from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 
 if TYPE_CHECKING:

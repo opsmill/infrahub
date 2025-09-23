@@ -54,7 +54,7 @@ def shell() -> None:
     from infrahub.core.manager import NodeManager
     from infrahub.core.registry import registry
     from infrahub.dependencies.registry import build_component_registry
-    from infrahub.lock import initialize_lock
+    from infrahub.locks.lock import initialize_lock
     from infrahub.services import InfrahubServices
     from infrahub.workers.dependencies import (
         get_cache,
