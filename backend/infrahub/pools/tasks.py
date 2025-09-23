@@ -3,7 +3,7 @@ from __future__ import annotations
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
@@ -11,9 +11,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
-from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.lock import LockNameGenerator
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
@@ -126,33 +124,3 @@ async def _create_number_pool(
                     pool_type=NumberPoolType.SCHEMA.value,
                 )
                 await number_pool.save(db=dbs)
-
-
-@flow(
-    name="clean_up_deadlocks",
-    flow_run_name="Clean up deadlocks",
-)
-async def clean_up_deadlocks(service: InfrahubServices) -> None:
-    """Remove stale distributed locks left behind by inactive workers"""
-    lock_prefix = "lock."
-    keys = await service.cache.list_keys(filter_pattern=f"{lock_prefix}*")
-    if not keys:
-        return
-
-    log = get_run_logger()
-    values = await service.cache.get_values(keys=keys)
-    workers = await service.component.list_workers(branch=registry.default_branch, schema_hash=False)
-    workers_active_map = {worker.id: worker.active for worker in workers}
-
-    for key, value in zip(keys, values, strict=False):
-        if not key or not value:
-            continue
-
-        timestamp, worker_id = value.split("::", 1)
-        if not workers_active_map.get(worker_id) and Timestamp() > Timestamp(timestamp).add(
-            minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
-        ):
-            name, namespace, local = LockNameGenerator().unpack_name(name=key.replace(lock_prefix, ""))
-            await lock.registry.pop_lock(name=name, namespace=namespace, local=local)
-            await service.cache.delete(key)
-            log.debug(f"Deleted deadlock key={key} worker={worker_id}")

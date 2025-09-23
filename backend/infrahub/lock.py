@@ -25,6 +25,7 @@ registry: InfrahubLockRegistry = None
 
 
 METRIC_PREFIX = "infrahub_lock"
+LOCK_PREFIX = "lock"
 
 LOCK_ACQUIRE_TIME_METRICS = Histogram(
     f"{METRIC_PREFIX}_acquire_seconds",
@@ -139,9 +140,9 @@ class InfrahubLock:
         if self.use_local:
             self.local = LocalLock()
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            self.remote = GlobalLock(redis=self.connection, name=f"lock.{self.name}")
+            self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
         else:
-            self.remote = NATSLock(service=self.connection, name=f"lock.{self.name}")
+            self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
 
     async def __aenter__(self):
         await self.acquire()
@@ -266,15 +267,6 @@ class InfrahubLockRegistry:
         if lock_name not in self.locks:
             self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
         return self.locks[lock_name]
-
-    async def pop_lock(
-        self,
-        name: str,
-        namespace: str | None,
-        local: bool | None = None,
-    ) -> InfrahubLock | None:
-        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
-        return self.locks.pop(lock_name, None)
 
     def local_schema_lock(self) -> LocalLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)
