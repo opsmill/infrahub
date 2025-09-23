@@ -72,7 +72,7 @@ CALL (dn) {
         WITH count(dp.action) AS num_removed
         SET da.num_removed = num_removed
     }
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
 CALL (dn) {
     MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship)
     CALL (dr) {
@@ -125,7 +125,7 @@ CALL (dn) {
         WITH count(dre.action) AS num_removed
         SET dr.num_removed = num_removed
     }
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
         """
         self.add_to_query(query)
 
@@ -189,10 +189,11 @@ CALL (dn) {
     RETURN count(dc) AS num_conflicts
 }
 WITH root, dn, previous_num_conflicts, sum(num_conflicts) AS updated_num_conflicts
-SET dn.num_conflicts = updated_num_conflicts
-SET dn.contains_conflict = (updated_num_conflicts > 0)
-WITH root, dn, updated_num_conflicts - previous_num_conflicts AS num_conflicts_delta
-CALL (dn) {
+WITH root, dn, updated_num_conflicts, updated_num_conflicts - previous_num_conflicts AS num_conflicts_delta
+CALL (dn, updated_num_conflicts) {
+    SET dn.num_conflicts = updated_num_conflicts
+    SET dn.contains_conflict = (updated_num_conflicts > 0)
+    WITH dn
     // ----------------------
     // handle node added/updated/removed updates
     // ----------------------
@@ -213,7 +214,7 @@ CALL (dn) {
     SET dn.num_added = num_added
     SET dn.num_updated = num_updated
     SET dn.num_removed = num_removed
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
 // ----------------------
 // handle conflict updates for parent nodes
 // ----------------------
@@ -222,7 +223,7 @@ CALL (dn, num_conflicts_delta) {
     OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP|DIFF_HAS_NODE*1..]->(parent_node:DiffNode)
     SET parent_node.num_conflicts = parent_node.num_conflicts + num_conflicts_delta
     SET parent_node.contains_conflict = (parent_node.num_conflicts > 0)
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
 // ----------------------
 // handle root count updates
 // ----------------------
@@ -242,6 +243,6 @@ CALL (root, total_conflicts_delta) {
     OPTIONAL MATCH (root)-[:DIFF_HAS_NODE]->(dn:DiffNode {action: "removed"})
     WITH root, count(dn.action) AS num_removed
     SET root.num_removed = num_removed
-}
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS
         """
         self.add_to_query(query)
