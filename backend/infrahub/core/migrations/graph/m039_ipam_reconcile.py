@@ -13,7 +13,7 @@ from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
-from infrahub.lock import initialize_lock
+from infrahub.locks.lock import initialize_lock
 from infrahub.log import get_logger
 
 from ..shared import ArbitraryMigration
