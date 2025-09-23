@@ -20,10 +20,10 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
     gqlm = GraphQLSchemaManager(schema=schema)
 
     result = gqlm.generate_interface_object(schema=generic_vehicule_schema)
-    assert inspect.isclass(result)
-    assert issubclass(result, graphene.Interface)
-    assert result._meta.name == "TestVehicule"
-    assert sorted(result._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
+    assert inspect.isclass(result.reference)
+    assert issubclass(result.reference, graphene.Interface)
+    assert result.reference._meta.name == "TestVehicule"
+    assert sorted(result.reference._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
 
 
 async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -33,10 +33,10 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
     generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
     gqlm.generate_interface_object(schema=generic_schema, populate_cache=True)
     result = gqlm.generate_graphql_object(schema=criticality_schema)
-    assert inspect.isclass(result)
-    assert issubclass(result, InfrahubObject)
-    assert result._meta.name == "TestCriticality"
-    assert sorted(result._meta.fields.keys()) == [
+    assert inspect.isclass(result.reference)
+    assert issubclass(result.reference, InfrahubObject)
+    assert result.reference._meta.name == "TestCriticality"
+    assert sorted(result.reference._meta.fields.keys()) == [
         "_updated_at",
         "color",
         "description",
@@ -64,10 +64,10 @@ async def test_generate_graphql_object_with_interface(
     gqlm.generate_interface_object(schema=generic_vehicule_schema, populate_cache=True)
 
     result = gqlm.generate_graphql_object(schema=car_schema)
-    assert inspect.isclass(result)
-    assert issubclass(result, InfrahubObject)
-    assert result._meta.name == "TestCar"
-    assert sorted(result._meta.fields.keys()) == [
+    assert inspect.isclass(result.reference)
+    assert issubclass(result.reference, InfrahubObject)
+    assert result.reference._meta.name == "TestCar"
+    assert sorted(result.reference._meta.fields.keys()) == [
         "_updated_at",
         "description",
         "display_label",
@@ -325,13 +325,13 @@ async def test_branch_purge(
     graphql_registry._add_branch_hash(branch_name=active_branch, schema_hash=default_branch.active_schema_hash.main)
     graphql_registry._add_branch_hash(branch_name=purged_branch, schema_hash=default_branch.active_schema_hash.main)
 
-    assert default_branch.active_schema_hash.main in graphql_registry.branch_details_by_hash.keys()
-    assert default_branch.active_schema_hash.main in graphql_registry.branch_name_by_hash.keys()
+    assert default_branch.active_schema_hash.main in graphql_registry._branch_details_by_hash.keys()
+    assert default_branch.active_schema_hash.main in graphql_registry._branch_name_by_hash.keys()
 
-    assert active_branch in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
-    assert purged_branch in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert active_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
     purged_branches = graphql_registry.purge_inactive(active_branches=[active_branch, default_branch.name])
-    assert active_branch in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
-    assert purged_branch not in graphql_registry.branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert active_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
+    assert purged_branch not in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
 
     assert purged_branches == {purged_branch}

@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { DynamicInput } from "@/shared/components/form/dynamic-form";
+import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
@@ -164,7 +164,7 @@ export const NodeAttributeMatchForm = ({
         <NodeAttributeField field={attributeField} />
 
         {fields.map((field) => {
-          return <DynamicInput key={field.name} {...field} />;
+          return <DynamicField key={field.name} {...field} />;
         })}
 
         <div className="text-right">

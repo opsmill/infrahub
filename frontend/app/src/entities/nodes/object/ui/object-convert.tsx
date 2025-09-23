@@ -1,16 +1,16 @@
-import { useAtomValue } from "jotai";
+import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import ConvertForm from "@/shared/components/form/convert-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
+import { SchemaComboboxList } from "@/entities/nodes/object/ui/filters/schema-combobox-list";
 import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import type { Permission } from "@/entities/permission/types";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 
 export interface ObjectConvertProps {
@@ -21,8 +21,8 @@ export interface ObjectConvertProps {
 
 export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConvertProps) {
   const { data: objectDetailsData, isPending, error } = useGetObject({ objectSchema, objectId });
-  const [kind, setKind] = useState("");
-  const schemaKindLabel = useAtomValue(schemaKindLabelState);
+  const [targetSchema, setTargetSchema] = useState<ModelSchema | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   if (isPending) {
     return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
@@ -56,20 +56,39 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
       <Card className="w-1/2 p-0">
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
-          <Combobox defaultOpen>
+          <Combobox open={isOpen} onOpenChange={setIsOpen}>
             <ComboboxTrigger>
-              {kind ? (schemaKindLabel[kind] ?? kind) : "Select destination kind"}
+              {targetSchema ? targetSchema.label : "Select destination kind"}
             </ComboboxTrigger>
             <ComboboxContent fitTriggerWidth={false}>
-              <KindComboboxList
-                onSelect={(newKind) => {
-                  setKind(newKind);
+              <SchemaComboboxList
+                onSelect={(newSchema) => {
+                  setTargetSchema(newSchema);
+                  setIsOpen(false);
                 }}
               />
             </ComboboxContent>
           </Combobox>
         </CardWithBorder.Title>
-        Form
+
+        {!targetSchema && (
+          <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
+            <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
+            <div className="font-medium text-lg">No kind selected</div>
+            <div className="text-sm">Please select a kind for the conversion target</div>
+          </div>
+        )}
+
+        {targetSchema?.kind && objectSchema.kind && (
+          <div className="p-2">
+            <ConvertForm
+              key={targetSchema.kind}
+              objectDetailsData={objectDetailsData}
+              sourceSchema={objectSchema}
+              targetSchema={targetSchema}
+            />
+          </div>
+        )}
       </Card>
     </div>
   );
