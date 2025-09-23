@@ -50,11 +50,11 @@ log = get_logger()
 
 class DiffRepository:
     def __init__(
-        self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int = 1000
+        self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int | None = None
     ) -> None:
         self.db = db
         self.deserializer = deserializer
-        self.max_save_batch_size = max_save_batch_size
+        self.max_save_batch_size = max_save_batch_size or int(config.SETTINGS.database.query_size_limit / 5)
 
     async def _run_get_diff_query(
         self,
