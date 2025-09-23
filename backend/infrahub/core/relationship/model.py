@@ -738,7 +738,7 @@ class RelationshipManager:
         if self.schema.optional:
             min_count = 0
         else:
-            max_count = self.schema.max_count or None
+            max_count = self.schema.max_count if self.schema.max_count > 0 else None
 
         self._relationships: RelationshipValidatorList = RelationshipValidatorList(
             name=self.schema.name,
