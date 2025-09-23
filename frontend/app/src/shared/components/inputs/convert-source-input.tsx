@@ -55,8 +55,8 @@ export const ConvertSourceAttributeInput = ({
     })
     .map((attribute) => {
       return {
-        value: objectDetailsData[attribute.name]?.value ?? "-",
-        label: getDisplayValue(objectDetailsData, attribute),
+        value: objectDetailsData[attribute.name]?.value,
+        label: getDisplayValue(objectDetailsData, attribute) || "-",
         source: {
           label: attribute.label,
           name: attribute.name,
@@ -145,7 +145,7 @@ export const ConvertSourceRelationshipOneInput = ({
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger>
         <Badge className="space-x-1">
-          <span>{currentOption?.value?.display_label ?? "-"}</span>
+          <span>{currentOption?.value?.display_label || "-"}</span>
           <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
         </Badge>
       </ComboboxTrigger>
@@ -165,7 +165,7 @@ export const ConvertSourceRelationshipOneInput = ({
                 }}
               >
                 <div className="flex grow items-center justify-between">
-                  <span className="grow">{option.value?.display_label ?? "-"}</span>
+                  <span className="grow">{option.value?.display_label || "-"}</span>
 
                   <div className="space-x-2">
                     {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
