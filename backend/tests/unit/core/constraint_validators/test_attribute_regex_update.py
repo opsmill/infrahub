@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import NULL_VALUE, PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -18,7 +18,7 @@ async def test_query(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.parameters.regex = r"^[A-Z]+$"
 
@@ -48,10 +48,10 @@ async def test_query(
 async def test_query_NULL_allowed(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
     color_attr.optional = True
-    registry.schema.set(name="TestCar", schema=car_schema)
+    core_registry.schema.set(name="TestCar", schema=car_schema)
 
     no_color_car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await no_color_car.new(
@@ -64,7 +64,7 @@ async def test_query_NULL_allowed(
     )
     await upper_color_car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     color_attr = car_schema.get_attribute(name="color")
     color_attr.parameters.regex = r"^#[a-z0-9]+$"
 
@@ -105,7 +105,7 @@ async def test_query_update_on_branch(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.parameters.regex = r"^[A-Z]+$"
 
@@ -136,7 +136,7 @@ async def test_query_node_deleted_on_branch(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.parameters.regex = r"^[A-Z]+$"
 
@@ -161,10 +161,10 @@ async def test_validator(
     await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
+    person_schema = core_registry.schema.get(name="TestPerson", branch=default_branch)
     name_attr = person_schema.get_attribute(name="name")
     name_attr.parameters.regex = r"^[A-Z]+$"
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,

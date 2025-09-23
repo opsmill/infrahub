@@ -4,7 +4,7 @@ from graphene import Boolean, InputObjectType, Mutation, String
 from graphene.types.generic import GenericScalar
 from graphql import GraphQLResolveInfo
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants.infrahubkind import READONLYREPOSITORY, REPOSITORY
 from infrahub.core.convert_object_type.object_conversion import InputForDestField, convert_and_validate_object_type
 from infrahub.core.convert_object_type.repository_conversion import convert_repository_type
@@ -44,8 +44,8 @@ class ConvertObjectType(Mutation):
             id=str(data.node_id), db=graphql_context.db, branch=graphql_context.branch
         )
 
-        source_schema = registry.get_node_schema(name=node_to_convert.get_kind(), branch=graphql_context.branch)
-        target_schema = registry.get_node_schema(name=str(data.target_kind), branch=graphql_context.branch)
+        source_schema = core_registry.get_node_schema(name=node_to_convert.get_kind(), branch=graphql_context.branch)
+        target_schema = core_registry.get_node_schema(name=str(data.target_kind), branch=graphql_context.branch)
 
         fields_mapping: dict[str, InputForDestField] = {}
         if not isinstance(data.fields_mapping, dict):

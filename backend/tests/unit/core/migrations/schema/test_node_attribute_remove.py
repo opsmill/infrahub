@@ -1,6 +1,6 @@
 from typing import Any
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import HashableModelState, SchemaPathType
 from infrahub.core.migrations.schema.node_attribute_remove import (
@@ -15,7 +15,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
     attr = car_schema.get_attribute(name="color")
@@ -54,7 +54,7 @@ async def test_query_default_branch_generic_with_override(
                 {"name": "color", "kind": "Text", "default_value": "#555555", "max_length": 8}
             )
     schema_root = SchemaRoot(**car_person_schema_generics_unregistered)
-    schema = registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    schema = core_registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
 
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
@@ -99,7 +99,7 @@ async def test_query_default_branch_generic_with_override(
 
 
 async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
     attr = car_schema.get_attribute(name="color")

@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_branch,
@@ -192,11 +192,11 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
         assert len(persons) == 2
 
     async def test_step02_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
-        car_schema = registry.schema.get_node_schema(name=CAR_KIND)
+        car_schema = core_registry.schema.get_node_schema(name=CAR_KIND)
         rel = car_schema.get_relationship(name="owner")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -245,7 +245,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert success
 
     async def test_step02_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
-        car_schema = registry.schema.get_node_schema(name=CAR_KIND)
+        car_schema = core_registry.schema.get_node_schema(name=CAR_KIND)
         rel = car_schema.get_relationship(name="owner")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -262,7 +262,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert branches[self.branch1.name].has_schema_changes is True
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
-        john_cars = await registry.manager.query(
+        john_cars = await core_registry.manager.query(
             db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"}, branch=self.branch1
         )
         assert len(john_cars) == 2
@@ -272,7 +272,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert len(tags) == 2
 
         # And ensure that we can still query them with the original schema in MAIN
-        john_cars_main = await registry.manager.query(
+        john_cars_main = await core_registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"main_driver__name__value": "John"}
         )
         assert len(john_cars_main) == 2
@@ -304,15 +304,15 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         response = await client.schema.load(schemas=[schema_step03], branch=self.branch1.name)
         assert not response.errors
 
-        john = await registry.manager.get_one(db=db, id=initial_dataset["john"], branch=self.branch1)
+        john = await core_registry.manager.get_one(db=db, id=initial_dataset["john"], branch=self.branch1)
         assert john
         tags = await john.tags.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(tags) == 2
 
-        red_branch = await registry.manager.get_one(db=db, id=initial_dataset["red"], branch=self.branch1)
+        red_branch = await core_registry.manager.get_one(db=db, id=initial_dataset["red"], branch=self.branch1)
         assert not hasattr(red_branch, "persons")
 
-        red_main = await registry.manager.get_one(db=db, id=initial_dataset["red"])
+        red_main = await core_registry.manager.get_one(db=db, id=initial_dataset["red"])
         assert red_main
         persons = await red_main.persons.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(persons) == 1
@@ -322,7 +322,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         assert branch
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
-        jane_cars = await registry.manager.query(
+        jane_cars = await core_registry.manager.query(
             db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"}, branch=self.branch1.name
         )
         assert len(jane_cars) == 2
@@ -337,14 +337,18 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
 
         # Ensure that we can query the nodes with the new schema in MAIN
         # Ensure that we can query the nodes with the new schema in BRANCH1
-        jane_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"})
+        jane_cars = await core_registry.manager.query(
+            db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"}
+        )
         assert len(jane_cars) == 2
         jane = await jane_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
         assert jane.id == initial_dataset["jane"]
         tags = await jane.tags.get_peers(db=db)
         assert len(tags) == 1
 
-        john_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"})
+        john_cars = await core_registry.manager.query(
+            db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"}
+        )
         assert len(john_cars) == 2
         john = await john_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
         assert john.id == initial_dataset["john"]

@@ -1,3 +1,4 @@
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
@@ -23,7 +24,6 @@ from infrahub.core.query.node import (
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
 )
-from infrahub.core.registry import registry
 from infrahub.core.utils import count_nodes, get_nodes
 from infrahub.database import InfrahubDatabase
 
@@ -104,7 +104,7 @@ async def test_query_NodeListGetInfoQuery(
 async def test_query_NodeListGetInfoQuery_with_profiles(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    profile_schema = registry.schema.get("ProfileTestPerson", branch=branch)
+    profile_schema = core_registry.schema.get("ProfileTestPerson", branch=branch)
     person_profile = await Node.init(db=db, schema=profile_schema, branch=branch)
     await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
     await person_profile.save(db=db)
@@ -129,7 +129,7 @@ async def test_query_NodeListGetInfoQuery_with_profiles(
 async def test_query_NodeListGetInfoQuery_with_profiles_some_deleted(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    profile_schema = registry.schema.get("ProfileTestPerson", branch=branch)
+    profile_schema = core_registry.schema.get("ProfileTestPerson", branch=branch)
     person_profile = await Node.init(db=db, schema=profile_schema, branch=branch)
     await person_profile.new(db=db, profile_name="person_profile_1", height=172, profile_priority=1001)
     await person_profile.save(db=db)
@@ -167,7 +167,7 @@ async def test_query_NodeListGetInfoQuery_with_profiles_some_deleted(
 async def test_query_NodeListGetInfoQuery_renamed(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    schema = core_registry.schema.get_schema_branch(name=branch.name)
     candidate_schema = schema.duplicate()
     person_schema = candidate_schema.get(name="TestPerson")
     candidate_schema.delete(name="TestPerson")
@@ -195,8 +195,8 @@ async def test_query_NodeListGetInfoQuery_renamed(
 
 
 async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02):
-    default_branch = await registry.get_branch(db=db, branch="main")
-    branch1 = await registry.get_branch(db=db, branch="branch1")
+    default_branch = await core_registry.get_branch(db=db, branch="main")
+    branch1 = await core_registry.get_branch(db=db, branch="branch1")
 
     # Query all the nodes in main but only c1 and c2 present
     # Expect 4 attributes per node(x2) = 8 attributes
@@ -235,7 +235,7 @@ async def test_query_NodeListGetAttributeQuery_with_source(
     )
     await obj2.save(db=db)
 
-    default_branch = await registry.get_branch(db=db, branch="main")
+    default_branch = await core_registry.get_branch(db=db, branch="main")
 
     query = await NodeListGetAttributeQuery.init(
         db=db, ids=[obj1.id, obj2.id], branch=default_branch, include_source=True
@@ -254,8 +254,8 @@ async def test_query_NodeListGetAttributeQuery_with_source(
 
 
 async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_dataset_02):
-    default_branch = await registry.get_branch(db=db, branch="main")
-    branch1 = await registry.get_branch(db=db, branch="branch1")
+    default_branch = await core_registry.get_branch(db=db, branch="main")
+    branch1 = await core_registry.get_branch(db=db, branch="branch1")
 
     # Query all the nodes in main but only c1 and c2 present
     # Expect 2 attributes per node(x2) = 4 attributes
@@ -297,10 +297,10 @@ async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_datase
 
 
 async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, base_dataset_02):
-    default_branch = await registry.get_branch(db=db, branch="main")
-    branch1 = await registry.get_branch(db=db, branch="branch1")
+    default_branch = await core_registry.get_branch(db=db, branch="main")
+    branch1 = await core_registry.get_branch(db=db, branch="branch1")
 
-    schema = registry.schema.get_schema_branch(name=branch1.name)
+    schema = core_registry.schema.get_schema_branch(name=branch1.name)
     car_schema = schema.get(name="TestCar")
 
     migration = NodeAttributeRemoveMigration(
@@ -344,7 +344,7 @@ async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, bas
 async def test_query_NodeListGetRelationshipsQuery(
     db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main, tag_blue_main, tag_red_main
 ):
-    default_branch = await registry.get_branch(db=db, branch="main")
+    default_branch = await core_registry.get_branch(db=db, branch="main")
     query = await NodeListGetRelationshipsQuery.init(
         db=db,
         ids=[person_jack_tags_main.id],
@@ -367,7 +367,7 @@ async def test_query_NodeListGetRelationshipsQuery_hierarchical(
     paris_id = hierarchical_location_data["paris"].id
     paris_r1_id = hierarchical_location_data["paris-r1"].id
     paris_r2_id = hierarchical_location_data["paris-r2"].id
-    default_branch = await registry.get_branch(db=db, branch="main")
+    default_branch = await core_registry.get_branch(db=db, branch="main")
     query = await NodeListGetRelationshipsQuery.init(
         db=db,
         ids=node_ids,
@@ -448,7 +448,7 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
     default_branch: Branch,
     hierarchical_location_data,
 ):
-    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+    node_schema = core_registry.schema.get(name="LocationRack", branch=default_branch)
 
     europe = hierarchical_location_data["europe"]
     paris = hierarchical_location_data["paris"]
@@ -470,7 +470,7 @@ async def test_query_NodeGetHierarchyQuery_filters(
     default_branch: Branch,
     hierarchical_location_data: dict[str, Node],
 ):
-    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+    node_schema = core_registry.schema.get(name="LocationRack", branch=default_branch)
 
     europe = hierarchical_location_data["europe"]
 

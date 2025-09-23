@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -97,12 +97,14 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
     async def initial_schema(
         self, db: InfrahubDatabase, initialize_registry, default_branch: Branch, location_schema_01: SchemaRoot
     ) -> None:
-        branch_schema = registry.schema.get_schema_branch(name=default_branch.name)
+        branch_schema = core_registry.schema.get_schema_branch(name=default_branch.name)
         tmp_schema = branch_schema.duplicate()
         tmp_schema.load_schema(schema=location_schema_01)
         tmp_schema.process()
 
-        await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch.name, update_db=True)
+        await core_registry.schema.update_schema_branch(
+            schema=tmp_schema, db=db, branch=default_branch.name, update_db=True
+        )
 
     @pytest.fixture(scope="class")
     async def branch_1(self, db: InfrahubDatabase) -> Branch:

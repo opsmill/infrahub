@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from infrahub.constants.database import Neo4jRuntime
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
@@ -39,7 +39,7 @@ async def test_diff(benchmark_config, car_person_schema_root, graph_generator, i
         neo4j_image=benchmark_config.neo4j_image,
         load_indexes=benchmark_config.load_db_indexes,
     )
-    registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
     diff_branch = await create_branch(branch_name="diff_branch", db=db_profiling_queries)
 
     # Build function to profile

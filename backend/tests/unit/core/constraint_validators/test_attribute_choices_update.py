@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -21,7 +21,7 @@ async def test_new_choice_value(db: InfrahubDatabase, default_branch: Branch, cr
     await crit_med.new(db=db, name="med", level=4, status="passive")
     await crit_med.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality")
+    crit_schema = core_registry.schema.get(name="TestCriticality")
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices.append(DropdownChoice(name="another-thing"))
 
@@ -49,7 +49,7 @@ async def test_remove_choice(db: InfrahubDatabase, default_branch: Branch, criti
     await crit_med.new(db=db, name="med", level=4, status="passive")
     await crit_med.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality")
+    crit_schema = core_registry.schema.get(name="TestCriticality")
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
 
@@ -86,7 +86,7 @@ async def test_convert_to_choice(db: InfrahubDatabase, branch: Branch, criticali
     await crit_med.new(db=db, name="med", level=4, status="passive")
     await crit_med.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = core_registry.schema.get(name="TestCriticality", branch=branch)
     name_attr = crit_schema.get_attribute(name="name")
     name_attr.choices = [DropdownChoice(name="nothing")]
     name_attr.kind = "Dropdown"
@@ -146,7 +146,7 @@ async def test_attribute_update_on_branch(
     await crit_high.new(db=db, name="high", level=4, status="passive")
     await crit_high.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = core_registry.schema.get(name="TestCriticality", branch=branch)
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
 
@@ -204,7 +204,7 @@ async def test_node_delete_on_branch(
     await crit_high.new(db=db, name="high", level=4, status="passive")
     await crit_high.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = core_registry.schema.get(name="TestCriticality", branch=branch)
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
 
@@ -258,7 +258,7 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, criticality_schem
     await crit_high.new(db=db, name="high", level=4, status="passive")
     await crit_high.save(db=db)
 
-    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema = core_registry.schema.get(name="TestCriticality", branch=branch)
     status_attr = crit_schema.get_attribute(name="status")
     status_attr.choices = [DropdownChoice(name="active", color="#00ff00", description="Online things")]
 
@@ -325,10 +325,10 @@ async def test_validator_generic_and_node_have_different_choices(
             inherit_from=["TestGenericCriticality"],
         )
     )
-    registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    core_registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+    core_registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
 
     # create TestCriticalityTwo nodes
     crit_two_status = await Node.init(db=db, schema="TestCriticalityTwo", branch=branch)
@@ -349,7 +349,7 @@ async def test_validator_generic_and_node_have_different_choices(
     # verify that no errors are raised for TestGenericCriticality
     constraint_checker = AttributeChoicesChecker(db=db, branch=branch)
 
-    generic_crit_schema = registry.schema.get(name="TestGenericCriticality", branch=branch)
+    generic_crit_schema = core_registry.schema.get(name="TestGenericCriticality", branch=branch)
     request = SchemaConstraintValidatorRequest(
         branch=branch,
         constraint_name="attribute.choices.update",
@@ -365,7 +365,7 @@ async def test_validator_generic_and_node_have_different_choices(
     assert len(data_paths) == 0
 
     # verify that no errors are raised for TestCriticality
-    node_crit_schema = registry.schema.get_node_schema(name="TestCriticality", branch=branch)
+    node_crit_schema = core_registry.schema.get_node_schema(name="TestCriticality", branch=branch)
     request = SchemaConstraintValidatorRequest(
         branch=branch,
         constraint_name="attribute.choices.update",

@@ -20,7 +20,7 @@ from rich.logging import RichHandler
 from rich.table import Table
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -379,9 +379,9 @@ async def migrate_database(
 
 
 async def initialize_internal_schema() -> None:
-    registry.schema = SchemaManager()
+    core_registry.schema = SchemaManager()
     schema = SchemaRoot(**internal_schema)
-    registry.schema.register_schema(schema=schema)
+    core_registry.schema.register_schema(schema=schema)
 
 
 async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debug: bool = False) -> None:
@@ -393,14 +393,14 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         await initialize_registry(db=db)
         await initialize_internal_schema()
 
-    default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+    default_branch = core_registry.get_branch_from_registry(branch=core_registry.default_branch)
 
     # ----------------------------------------------------------
     # Load Current Schema from the database
     # ----------------------------------------------------------
-    schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
-    branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+    schema_default_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    core_registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+    branch_schema = core_registry.schema.get_schema_branch(name=core_registry.default_branch)
 
     candidate_schema = branch_schema.duplicate()
     candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
@@ -449,10 +449,10 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     # Update the internal schema
     schema_default_branch.load_schema(schema=SchemaRoot(**internal_schema))
     schema_default_branch.process()
-    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+    core_registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
     async with db.start_transaction() as dbt:
-        await registry.schema.update_schema_branch(
+        await core_registry.schema.update_schema_branch(
             schema=candidate_schema,
             db=dbt,
             branch=default_branch.name,

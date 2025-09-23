@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -19,7 +19,7 @@ async def test_create_with_jinja2_computed_attributes_on_related_node(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None, branch: Branch
 ) -> None:
     schema = SchemaRoot(**internal_schema)
-    registry.schema.register_schema(schema=schema, branch=branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=branch.name)
     branch.update_schema_hash()
     await branch.save(db=db)
     await load_schema(db, branch_name=branch.name, schema=SchemaRoot(nodes=[CHILD, THING]))
@@ -64,7 +64,7 @@ async def test_create_with_jinja2_computed_attributes_on_hierarchial_node(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None, branch: Branch
 ) -> None:
     schema = SchemaRoot(**internal_schema)
-    registry.schema.register_schema(schema=schema, branch=branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=branch.name)
     branch.update_schema_hash()
     await branch.save(db=db)
     await load_schema(db, branch_name=branch.name, schema=LOCATION_SCHEMA)
@@ -113,7 +113,7 @@ async def test_create_with_jinja2_with_generics(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None, branch: Branch
 ) -> None:
     schema = SchemaRoot(**internal_schema)
-    registry.schema.register_schema(schema=schema, branch=branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=branch.name)
     branch.update_schema_hash()
     await branch.save(db=db)
     await load_schema(db, branch_name=branch.name, schema=LOCATION_SCHEMA)

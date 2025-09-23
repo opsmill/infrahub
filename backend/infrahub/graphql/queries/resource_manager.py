@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
@@ -218,7 +218,7 @@ class PoolUtilization(ObjectType):
         if "utilization_default_branch" in fields:
             response["utilization_default_branch"] = (
                 default_branch_utilization
-            ) = await utilization_getter.get_use_percentage(branch_names=[registry.default_branch])
+            ) = await utilization_getter.get_use_percentage(branch_names=[core_registry.default_branch])
         if "utilization_branches" in fields:
             total_utilization = (
                 total_utilization if total_utilization is not None else await utilization_getter.get_use_percentage()
@@ -226,7 +226,7 @@ class PoolUtilization(ObjectType):
             default_branch_utilization = (
                 default_branch_utilization
                 if default_branch_utilization is not None
-                else await utilization_getter.get_use_percentage(branch_names=[registry.default_branch])
+                else await utilization_getter.get_use_percentage(branch_names=[core_registry.default_branch])
             )
             response["utilization_branches"] = total_utilization - default_branch_utilization
         if "edges" in fields:
@@ -253,7 +253,7 @@ class PoolUtilization(ObjectType):
                         node_response["utilization_default_branch"] = (
                             default_branch_total
                         ) = await utilization_getter.get_use_percentage(
-                            ip_prefixes=[resource_node], branch_names=[registry.default_branch]
+                            ip_prefixes=[resource_node], branch_names=[core_registry.default_branch]
                         )
                     if "utilization_branches" in node_fields:
                         resource_total = (
@@ -265,7 +265,7 @@ class PoolUtilization(ObjectType):
                             default_branch_total
                             if default_branch_total is not None
                             else await utilization_getter.get_use_percentage(
-                                ip_prefixes=[resource_node], branch_names=[registry.default_branch]
+                                ip_prefixes=[resource_node], branch_names=[core_registry.default_branch]
                             )
                         )
                         node_response["utilization_branches"] = resource_total - default_branch_total
@@ -311,7 +311,9 @@ async def resolve_number_pool_utilization(
     The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
     """
 
-    core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind="CoreNumberPool")
+    core_number_pool = await core_registry.manager.get_one_by_id_or_default_filter(
+        db=db, id=pool.id, kind="CoreNumberPool"
+    )
     number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
     await number_pool.load_data()
 

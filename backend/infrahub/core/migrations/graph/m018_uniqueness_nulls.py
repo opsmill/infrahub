@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, Sequence
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.diff.payload_builder import get_display_labels_per_kind
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, internal_schema
@@ -28,14 +28,14 @@ async def validate_nulls_in_uniqueness_constraints(db: InfrahubDatabase) -> Migr
     An update to uniqueness constraint validation now handles NULL values as unique instead of ignoring them
     """
 
-    default_branch = registry.get_branch_from_registry()
+    default_branch = core_registry.get_branch_from_registry()
     build_component_registry()
     component_registry = get_component_registry()
     uniqueness_checker = await component_registry.get_component(UniquenessChecker, db=db, branch=default_branch)
     non_unique_nodes_by_kind: dict[str, list[NonUniqueNode]] = defaultdict(list)
 
     manager = SchemaManager()
-    registry.schema = manager
+    core_registry.schema = manager
     internal_schema_root = SchemaRoot(**internal_schema)
     manager.register_schema(schema=internal_schema_root)
     schema_branch = await manager.load_schema_from_db(db=db, branch=default_branch)

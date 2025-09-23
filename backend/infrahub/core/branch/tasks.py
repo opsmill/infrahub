@@ -9,7 +9,7 @@ from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
@@ -55,7 +55,7 @@ async def rebase_branch(branch: str, context: InfrahubContext) -> None:  # noqa:
         log = get_run_logger()
         await add_tags(branches=[branch])
         obj = await Branch.get_by_name(db=db, name=branch)
-        base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
+        base_branch = await Branch.get_by_name(db=db, name=core_registry.default_branch)
         component_registry = get_component_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
@@ -103,7 +103,7 @@ async def rebase_branch(branch: str, context: InfrahubContext) -> None:  # noqa:
 
         schema_in_main_before = merger.destination_schema.duplicate()
         migrations = []
-        async with lock.registry.global_graph_lock():
+        async with lock.lock_registry.global_graph_lock():
             async with db.start_transaction() as dbt:
                 await obj.rebase(db=dbt)
                 log.info("Branch successfully rebased")
@@ -114,13 +114,13 @@ async def rebase_branch(branch: str, context: InfrahubContext) -> None:  # noqa:
                 # Everything
                 # schema_diff = await merger.has_schema_changes()
                 # TODO Would be good to convert this part to a Prefect Task in order to track it properly
-                updated_schema = await registry.schema.load_schema_from_db(
+                updated_schema = await core_registry.schema.load_schema_from_db(
                     db=db,
                     branch=obj,
                     # schema=merger.source_schema.duplicate(),
                     # schema_diff=schema_diff,
                 )
-                registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
+                core_registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
                 obj.update_schema_hash()
                 await obj.save(db=db)
 
@@ -152,7 +152,7 @@ async def rebase_branch(branch: str, context: InfrahubContext) -> None:  # noqa:
         diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=obj)
         ipam_node_details = await diff_parser.get_changed_ipam_node_details(
             source_branch_name=obj.name,
-            target_branch_name=registry.default_branch,
+            target_branch_name=core_registry.default_branch,
         )
         if ipam_node_details:
             await get_workflow().submit_workflow(
@@ -197,20 +197,20 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
     async with database.start_session() as db:
         log = get_run_logger()
 
-        await add_tags(branches=[branch, registry.default_branch])
+        await add_tags(branches=[branch, core_registry.default_branch])
 
         obj = await Branch.get_by_name(db=db, name=branch)
-        default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+        default_branch = await core_registry.get_branch(db=db, branch=core_registry.default_branch)
         component_registry = get_component_registry()
         merge_event = BranchMergedEvent(
             branch_name=obj.name,
             branch_id=str(obj.get_uuid()),
             proposed_change_id=proposed_change_id,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=context, branch=core_registry.get_global_branch()),
         )
 
         merger: BranchMerger | None = None
-        async with lock.registry.global_graph_lock():
+        async with lock.lock_registry.global_graph_lock():
             diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
             diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
@@ -246,13 +246,13 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=obj)
         ipam_node_details = await diff_parser.get_changed_ipam_node_details(
             source_branch_name=obj.name,
-            target_branch_name=registry.default_branch,
+            target_branch_name=core_registry.default_branch,
         )
         if ipam_node_details:
             await get_workflow().submit_workflow(
                 workflow=IPAM_RECONCILIATION,
                 context=context,
-                parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
+                parameters={"branch": core_registry.default_branch, "ipam_node_details": ipam_node_details},
             )
         # -------------------------------------------------------------
         # remove tracking ID from the diff because there is no diff after the merge
@@ -268,7 +268,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         await get_workflow().submit_workflow(
             workflow=BRANCH_MERGE_POST_PROCESS,
             context=context,
-            parameters={"source_branch": obj.name, "target_branch": registry.default_branch},
+            parameters={"source_branch": obj.name, "target_branch": core_registry.default_branch},
         )
 
         events: list[InfrahubEvent] = [merge_event]
@@ -303,7 +303,7 @@ async def delete_branch(branch: str, context: InfrahubContext) -> None:
             branch_name=branch,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=context, branch=core_registry.get_global_branch()),
         )
 
         await get_workflow().submit_workflow(
@@ -358,16 +358,16 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValueError("\n".join(error_msgs)) from exc
 
-        async with lock.registry.local_schema_lock():
+        async with lock.lock_registry.local_schema_lock():
             # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+            origin_schema = core_registry.schema.get_schema_branch(name=obj.origin_branch)
             new_schema = origin_schema.duplicate(name=obj.name)
-            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+            core_registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
             obj.update_schema_hash()
             await obj.save(db=db)
 
             # Add Branch to registry
-            registry.branch[obj.name] = obj
+            core_registry.branch[obj.name] = obj
             component = await get_component()
             await component.refresh_schema_hash(branches=[obj.name])
 
@@ -375,7 +375,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=context, branch=core_registry.get_global_branch()),
         )
         event_service = await get_event_service()
         await event_service.send(event=event)
@@ -423,7 +423,7 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         log.info(f"Running additional tasks after merging {source_branch} within {target_branch}")
 
         component_registry = get_component_registry()
-        default_branch = registry.get_branch_from_registry()
+        default_branch = core_registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         # send diff update requests for every branch-tracking diff
         branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[target_branch])

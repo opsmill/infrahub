@@ -17,7 +17,7 @@ async def define_artifact(model: CheckArtifactCreate | RequestArtifactGenerate) 
     if model.artifact_id:
         artifact = await client.get(kind=InfrahubKind.ARTIFACT, id=model.artifact_id, branch=model.branch_name)
     else:
-        async with lock.registry.get(f"{model.target_id}-{model.artifact_definition}", namespace="artifact"):
+        async with lock.lock_registry.get(f"{model.target_id}-{model.artifact_definition}", namespace="artifact"):
             artifacts = await client.filters(
                 kind=InfrahubKind.ARTIFACT,
                 branch=model.branch_name,

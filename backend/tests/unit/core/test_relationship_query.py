@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipDirection, SchemaPathType
 from infrahub.core.initialization import create_branch
@@ -97,7 +97,7 @@ async def get_relationship_properties(
 async def test_RelationshipQuery_init(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     with pytest.raises(ValueError) as exc:
@@ -139,7 +139,7 @@ async def test_RelationshipQuery_init(
 async def test_query_RelationshipCreateQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     query = await RelationshipCreateQuery.init(
@@ -167,7 +167,7 @@ async def test_query_RelationshipCreateQuery(
 async def test_query_RelationshipCreateQuery_w_node_property(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, first_account: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     paths = await get_paths_between_nodes(
@@ -205,12 +205,12 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
     person_jack_main: Node,
     branch: Branch,
 ):
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    schema = core_registry.schema.get_schema_branch(name=branch.name)
     person_schema = schema.get(name="TestPerson")
     person_schema.name = "GreatPerson"
     new_person_kind = "TestGreatPerson"
     assert person_schema.kind == new_person_kind
-    registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestPerson"),
         new_node_schema=person_schema,
@@ -287,7 +287,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
 async def test_query_RelationshipDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     # We should have 2 paths between t1 and p1
@@ -418,7 +418,7 @@ async def test_query_RelationshipDeleteQuery(
 async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
     paths = await get_paths_between_nodes(
         db=db,
@@ -433,9 +433,9 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
     person_schema.name = "NewPerson"
     person_schema.namespace = "Test2"
     assert person_schema.kind == "Test2NewPerson"
-    registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
-        previous_node_schema=registry.schema.get(name="TestPerson", branch=branch),
+        previous_node_schema=core_registry.schema.get(name="TestPerson", branch=branch),
         new_node_schema=person_schema,
         schema_path=SchemaPath(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
@@ -643,7 +643,7 @@ async def test_relationship_update_with_delete_peer(
 async def test_query_RelationshipGetPeerQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     query = await RelationshipGetPeerQuery.init(
@@ -680,7 +680,7 @@ async def test_query_RelationshipGetPeerQuery_with_filter(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -708,7 +708,7 @@ async def test_query_RelationshipGetPeerQuery_with_id(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -735,7 +735,7 @@ async def test_query_RelationshipGetPeerQuery_with_ids(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -762,11 +762,11 @@ async def test_query_RelationshipGetPeerQuery_with_sort(
     car_yaris_main,
     branch: Branch,
 ):
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = core_registry.schema.get(name="TestCar", branch=branch)
     car_schema.order_by = ["name__value"]
-    registry.schema.set(name="TestCar", branch=branch.name, schema=car_schema)
+    core_registry.schema.set(name="TestCar", branch=branch.name, schema=car_schema)
 
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema = core_registry.schema.get(name="TestPerson", branch=branch)
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -796,7 +796,7 @@ async def test_query_RelationshipGetPeerQuery_deleted_node(
     node = await NodeManager.get_one(id=car_volt_main.id, db=db, branch=branch)
     await node.delete(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -822,7 +822,7 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -850,16 +850,16 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.schema.get_node_schema(name="TestPerson")
+    person_schema = core_registry.schema.get_node_schema(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     # migrate person kind
     person_schema.name = "NewPerson"
     person_schema.namespace = "Test2"
     assert person_schema.kind == "Test2NewPerson"
-    registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
-        previous_node_schema=registry.schema.get_node_schema(name="TestPerson", branch=branch),
+        previous_node_schema=core_registry.schema.get_node_schema(name="TestPerson", branch=branch),
         new_node_schema=person_schema,
         schema_path=SchemaPath(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
@@ -886,7 +886,7 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
 async def test_query_RelationshipDataDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     # We should have 2 paths between t1 and p1
@@ -938,16 +938,16 @@ async def test_query_RelationshipDataDeleteQuery(
 async def test_query_RelationshipDataDeleteQuery_on_migrated_kind_node(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema = core_registry.schema.get(name="TestPerson", branch=branch)
     rel_schema = person_schema.get_relationship("tags")
 
     # migrate person kind
     person_schema.name = "NewPerson"
     person_schema.namespace = "Test2"
     assert person_schema.kind == "Test2NewPerson"
-    registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
-        previous_node_schema=registry.schema.get(name="TestPerson", branch=branch),
+        previous_node_schema=core_registry.schema.get(name="TestPerson", branch=branch),
         new_node_schema=person_schema,
         schema_path=SchemaPath(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
@@ -980,13 +980,13 @@ async def test_query_RelationshipDataDeleteQuery_on_migrated_kind_node(
     await verify_no_duplicate_paths(db=db)
 
     # migrate tag kind
-    tag_schema = registry.schema.get("BuiltinTag", branch=branch)
+    tag_schema = core_registry.schema.get("BuiltinTag", branch=branch)
     tag_schema.name = "NewTag"
     tag_schema.namespace = "Builtin2"
     assert tag_schema.kind == "Builtin2NewTag"
-    registry.schema.set(name="Builtin2NewTag", schema=tag_schema, branch=branch.name)
+    core_registry.schema.set(name="Builtin2NewTag", schema=tag_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
-        previous_node_schema=registry.schema.get(name="BuiltinTag", branch=branch),
+        previous_node_schema=core_registry.schema.get(name="BuiltinTag", branch=branch),
         new_node_schema=tag_schema,
         schema_path=SchemaPath(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind="Builtin2NewTag", field_name="namespace"
@@ -1032,7 +1032,7 @@ async def test_query_RelationshipCountPerNodeQuery(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     albert = await Node.init(db=db, schema="TestPerson", branch=branch)

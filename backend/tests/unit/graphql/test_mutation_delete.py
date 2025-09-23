@@ -1,5 +1,5 @@
 from infrahub.auth import AccountSession
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import MutationAction, RelationshipDeleteBehavior
 from infrahub.core.manager import NodeManager
@@ -173,7 +173,7 @@ async def test_delete_events_with_cascade(
     session_first_account: AccountSession,
 ) -> None:
     # set TestPerson.animals to be cascade delete
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     for schema_kind in ("TestPerson", "TestHuman", "TestCylon"):
         schema = schema_branch.get(name=schema_kind, duplicate=False)
         schema.get_relationship("animals").on_delete = RelationshipDeleteBehavior.CASCADE

@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
@@ -52,7 +52,7 @@ class TestDiffCoordinatorLocks:
             namespace=core_repository.namespace,
         )
         schema = SchemaRoot(nodes=[dummy_repository])
-        registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
 

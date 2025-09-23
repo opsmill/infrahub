@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import BaseModel
 
-from infrahub.core.registry import registry
+from infrahub.core import core_registry
 from infrahub.events import (
     GroupMemberAddedEvent,
     GroupMemberRemovedEvent,
@@ -112,9 +112,9 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
 
         match trigger_rule.branch_scope:
             case BranchScope.DEFAULT_BRANCH:
-                event_trigger.match["infrahub.branch.name"] = registry.default_branch
+                event_trigger.match["infrahub.branch.name"] = core_registry.default_branch
             case BranchScope.OTHER_BRANCHES:
-                event_trigger.match["infrahub.branch.name"] = f"!{registry.default_branch}"
+                event_trigger.match["infrahub.branch.name"] = f"!{core_registry.default_branch}"
 
         related_matches: list[dict[str, str | list[str]]] = []
         for match in trigger_rule.matches:
@@ -209,9 +209,9 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
 
         match trigger_rule.branch_scope:
             case BranchScope.DEFAULT_BRANCH:
-                event_trigger.match["infrahub.branch.name"] = registry.default_branch
+                event_trigger.match["infrahub.branch.name"] = core_registry.default_branch
             case BranchScope.OTHER_BRANCHES:
-                event_trigger.match["infrahub.branch.name"] = f"!{registry.default_branch}"
+                event_trigger.match["infrahub.branch.name"] = f"!{core_registry.default_branch}"
 
         if isinstance(trigger_rule.action, CoreGeneratorAction):
             workflow = ExecuteWorkflow(

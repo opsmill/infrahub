@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -86,7 +86,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
 
@@ -121,7 +121,7 @@ async def test_query(
     car_volt_main: Node,
     person_john_main,
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"
 
@@ -163,7 +163,7 @@ async def test_query_no_relationships(
     db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
 ):
     await branch.rebase(db=db)
-    car_schema = registry.schema.get(name="TestCar", duplicate=False)
+    car_schema = core_registry.schema.get(name="TestCar", duplicate=False)
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.optional = True
     for car in (car_accord_main, car_volt_main):
@@ -186,7 +186,7 @@ async def test_query_no_relationships(
 
 
 async def test_query_switch_from_generic_to_node_success(db: InfrahubDatabase, branch: Branch, car_person_generic_data):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -208,7 +208,7 @@ async def test_query_switch_from_generic_to_node_failure(db: InfrahubDatabase, b
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=23, owner=p_1)
     await g_car.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -242,7 +242,7 @@ async def test_query_switch_from_node_to_generic_success(db: InfrahubDatabase, b
     await p_1.electric_cars.update(db=db, data=[g_car, e_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     ecars_rel = person_schema.get_relationship(name="electric_cars")
     ecars_rel.peer = "TestCar"
 
@@ -270,7 +270,7 @@ async def test_query_switch_from_node_to_generic_failure(db: InfrahubDatabase, b
     await p_1.electric_cars.update(db=db, data=[g_car, e_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     ecars_rel = person_schema.get_relationship(name="electric_cars")
     ecars_rel.peer = "TestPerson"
 
@@ -324,7 +324,7 @@ async def test_query_update_on_branch_success(
     await p_1.cars.update(db=db, data=[e_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -354,7 +354,7 @@ async def test_query_update_on_branch_failure(
     await p_1.cars.update(db=db, data=[e_car, g_car])
     await p_1.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -407,7 +407,7 @@ async def test_query_delete_on_branch(
     p_1 = await NodeManager.get_one(db=db, id=p_1.id, branch=branch)
     await p_1.delete(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
 
@@ -431,7 +431,7 @@ async def test_validator(
     car_volt_main: Node,
     person_john_main,
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"
 

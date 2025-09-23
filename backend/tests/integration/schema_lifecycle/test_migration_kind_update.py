@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -191,10 +191,10 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         return branch_specific_one
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
+        all_specifics = await core_registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 1
 
-        specific_ones = await registry.manager.query(db=db, schema=SPECIFIC_ONE_KIND)
+        specific_ones = await core_registry.manager.query(db=db, schema=SPECIFIC_ONE_KIND)
         assert len(specific_ones) == 1
 
     async def test_step02_check_change_node_kind(
@@ -206,7 +206,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         branch_one: Branch,
         schema_step_02: dict[str, Any],
     ):
-        current_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        current_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
         current_specific_one_schema = current_schema_branch.get_node(name=SPECIFIC_ONE_KIND, duplicate=False)
         for schema_dict in schema_step_02["nodes"]:
             if SPECIFIC_ONE_KIND_UPDATED.endswith(schema_dict["name"]):
@@ -247,11 +247,11 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         assert len(updated_things_rels) == 1
         assert retrieved_things_rels[0].get_peer_id() == updated_things_rels[0].get_peer_id()
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_one)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_one)
         with pytest.raises(SchemaNotFoundError):
             updated_schema_branch.get(SPECIFIC_ONE_KIND)
         updated_specific_one_schema = updated_schema_branch.get(name=SPECIFIC_ONE_KIND_UPDATED, duplicate=False)
-        main_specific_one_schema = registry.schema.get(name=SPECIFIC_ONE_KIND, branch=branch_one, duplicate=False)
+        main_specific_one_schema = core_registry.schema.get(name=SPECIFIC_ONE_KIND, branch=branch_one, duplicate=False)
         assert updated_specific_one_schema.get_id() == main_specific_one_schema.get_id()
 
     async def test_step02_update_migrated_node(

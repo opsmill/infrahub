@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.relationship.constraints.peer_parent import RelationshipPeerParentConstraint
@@ -22,7 +22,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
         schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
         schema_with_lag.nodes[0].generate_template = False
         schema_with_lag.nodes.append(LAG_INTERFACE)
-        return registry.schema.register_schema(schema=schema_with_lag, branch=registry.default_branch)
+        return core_registry.schema.register_schema(schema=schema_with_lag, branch=core_registry.default_branch)
 
     @pytest.fixture
     async def device_1(self, db: InfrahubDatabase, schema) -> Node:
@@ -59,7 +59,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
         return device
 
     async def test_same_parent(self, db: InfrahubDatabase, device_1: Node):
-        lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
+        lag_schema = core_registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerParentConstraint(db=db)
 
@@ -72,7 +72,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
         await constraint.check(relm=lag.members, node_schema=lag_schema, node=lag)
 
     async def test_different_parent(self, db: InfrahubDatabase, device_1: Node, device_2: Node):
-        lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
+        lag_schema = core_registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerParentConstraint(db=db)
 
@@ -98,7 +98,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
         schema_with_lag = copy.deepcopy(DEVICE_SCHEMA)
         schema_with_lag.nodes[0].generate_template = False
         schema_with_lag.nodes.append(lag)
-        return registry.schema.register_schema(schema=schema_with_lag, branch=registry.default_branch)
+        return core_registry.schema.register_schema(schema=schema_with_lag, branch=core_registry.default_branch)
 
     @pytest.fixture
     async def device_1(self, db: InfrahubDatabase, schema) -> Node:
@@ -135,7 +135,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
         return device
 
     async def test_common_relatives_allowed(self, db: InfrahubDatabase, device_1: Node):
-        lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
+        lag_schema = core_registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerRelativesConstraint(db=db)
 
@@ -148,7 +148,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
         await constraint.check(relm=lag.members, node_schema=lag_schema, node=lag)
 
     async def test_common_relatives_disallowed(self, db: InfrahubDatabase, device_1: Node, device_2: Node):
-        lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
+        lag_schema = core_registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerRelativesConstraint(db=db)
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from infrahub.core import core_registry
 from infrahub.core.query.resource_manager import NumberPoolGetAllocated
-from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -46,8 +46,8 @@ class NumberUtilizationGetter:
             if result.get_as_optional_type(label="value", return_type=int) is not None
         ]
 
-        self.used_default_branch = {entry.number for entry in self.used if entry.branch == registry.default_branch}
-        used_branches = {entry.number for entry in self.used if entry.branch != registry.default_branch}
+        self.used_default_branch = {entry.number for entry in self.used if entry.branch == core_registry.default_branch}
+        used_branches = {entry.number for entry in self.used if entry.branch != core_registry.default_branch}
         self.used_branches = used_branches - self.used_default_branch
 
     @property

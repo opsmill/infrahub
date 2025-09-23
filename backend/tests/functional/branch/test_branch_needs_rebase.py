@@ -6,7 +6,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.graphql import Mutation
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -41,7 +41,7 @@ class TestNeedsRebaseStatus(TestInfrahubApp):
         branch = await client.branch.create(branch_name=branch_name)
 
         # Set status to NEED_REBASE
-        backend_branch = registry.branch[branch.name]
+        backend_branch = core_registry.branch[branch.name]
         backend_branch.status = BranchStatus.NEED_REBASE
         await backend_branch.save(db=db)
 

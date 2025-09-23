@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph import Migration019
 from infrahub.core.node import Node
@@ -17,7 +17,7 @@ async def test_migration_019(
     """
 
     schema = SchemaRoot(**core_models)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     test_group = await Node.init(db=db, schema="CoreStandardGroup")
     await test_group.new(db=db, name="test_group")
@@ -124,7 +124,7 @@ async def test_migration_019(
 
     # Additional sanity checks
     await validate_node_relationships(node=test_group, branch=default_branch, db=db)
-    await validate_node_relationships(node=test_group, branch=registry.get_global_branch(), db=db)
+    await validate_node_relationships(node=test_group, branch=core_registry.get_global_branch(), db=db)
 
 
 async def test_incorrectly_deleted_aware_nodes_and_relationship(
@@ -135,7 +135,7 @@ async def test_incorrectly_deleted_aware_nodes_and_relationship(
     connected to another node through a branch aware relationship.
     """
 
-    registry.schema.register_schema(schema=car_person_schema_unregistered, branch=branch.name)
+    core_registry.schema.register_schema(schema=car_person_schema_unregistered, branch=branch.name)
 
     john = await Node.init(schema="TestPerson", db=db, branch=branch)
     await john.new(db=db, name="John")
@@ -174,7 +174,7 @@ async def test_incorrectly_deleted_agnostic_node(db: InfrahubDatabase, branch, c
     """
 
     # await load_schema(db, schema=CAR_SCHEMA)
-    registry.schema.register_schema(schema=SchemaRoot(**car_person_branch_agnostic_schema), branch=branch.name)
+    core_registry.schema.register_schema(schema=SchemaRoot(**car_person_branch_agnostic_schema), branch=branch.name)
 
     aware_person = await Node.init(schema="TestPerson", db=db, branch=branch)
     await aware_person.new(db=db, name="John")
@@ -203,7 +203,7 @@ async def test_incorrectly_deleted_agnostic_node(db: InfrahubDatabase, branch, c
     await migration.validate_migration(db=db)
 
     await validate_node_relationships(node=agnostic_car, branch=branch, db=db)
-    await validate_node_relationships(node=agnostic_car, branch=registry.get_global_branch(), db=db)
+    await validate_node_relationships(node=agnostic_car, branch=core_registry.get_global_branch(), db=db)
 
 
 async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_person_branch_agnostic_schema):
@@ -213,7 +213,7 @@ async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_
     Note that, after deleting an aware node, agnostic edges of this node will not be deleted.
     """
 
-    registry.schema.register_schema(schema=SchemaRoot(**car_person_branch_agnostic_schema), branch=branch.name)
+    core_registry.schema.register_schema(schema=SchemaRoot(**car_person_branch_agnostic_schema), branch=branch.name)
 
     aware_person = await Node.init(schema="TestPerson", db=db, branch=branch)
     await aware_person.new(db=db, name="John")
@@ -242,4 +242,4 @@ async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_
     await migration.validate_migration(db=db)
 
     await validate_node_relationships(node=aware_person, branch=branch, db=db)
-    await validate_node_relationships(node=aware_person, branch=registry.get_global_branch(), db=db)
+    await validate_node_relationships(node=aware_person, branch=core_registry.get_global_branch(), db=db)

@@ -1,8 +1,8 @@
 from graphql import DocumentNode, GraphQLSchema
 
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
@@ -15,7 +15,7 @@ from tests.helpers.schema.tshirt import TSHIRT
 async def test_analyzer_init_with_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str, bad_query_01: str
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
@@ -34,7 +34,7 @@ async def test_is_valid_simple_schema(
     query_introspection: str,
     car_person_schema_generics,
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
@@ -79,7 +79,7 @@ async def test_is_valid_core_schema(
     query_05: str,
     register_core_models_schema,
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     gqa = InfrahubGraphQLQueryAnalyzer(
@@ -98,7 +98,7 @@ async def test_get_models_in_use(
     query_03: str,
     car_person_schema_generics,
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
@@ -180,7 +180,7 @@ async def test_get_models_in_use(
 
 
 async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     mutation_query_no_return_data = """
@@ -402,10 +402,10 @@ async def test_query_report_single_target(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     schema_root = SchemaRoot(nodes=[COLOR, TSHIRT])
-    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
     default_branch.update_schema_hash()
 
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     gql_params = await prepare_graphql_params(db=db, branch=default_branch, include_subscription=False)
 

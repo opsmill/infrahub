@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, InputObjectType, List, Mutation, NonNull, String
 
+from infrahub.core import core_registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreTransformPython
-from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.node_action import NodeUpdatedEvent
@@ -55,7 +55,7 @@ class UpdateComputedAttribute(Mutation):
         context: ContextInput | None = None,
     ) -> UpdateComputedAttribute:
         graphql_context: GraphqlContext = info.context
-        node_schema = registry.schema.get_node_schema(
+        node_schema = core_registry.schema.get_node_schema(
             name=str(data.kind), branch=graphql_context.branch.name, duplicate=False
         )
         target_attribute = node_schema.get_attribute(name=str(data.attribute))
@@ -71,7 +71,7 @@ class UpdateComputedAttribute(Mutation):
                 name=node_schema.name,
                 action=PermissionAction.UPDATE.value,
                 decision=PermissionDecision.ALLOW_DEFAULT.value
-                if graphql_context.branch.name == registry.default_branch
+                if graphql_context.branch.name == core_registry.default_branch
                 else PermissionDecision.ALLOW_OTHER.value,
             )
         )
@@ -150,7 +150,7 @@ class RecomputeComputedAttribute(Mutation):
         context: ContextInput | None = None,
     ) -> RecomputeComputedAttribute:
         graphql_context: GraphqlContext = info.context
-        node_schema = registry.schema.get_node_schema(
+        node_schema = core_registry.schema.get_node_schema(
             name=str(data.kind), branch=graphql_context.branch.name, duplicate=False
         )
 
@@ -160,7 +160,7 @@ class RecomputeComputedAttribute(Mutation):
                 name=node_schema.name,
                 action=PermissionAction.UPDATE.value,
                 decision=PermissionDecision.ALLOW_DEFAULT.value
-                if graphql_context.branch.name == registry.default_branch
+                if graphql_context.branch.name == core_registry.default_branch
                 else PermissionDecision.ALLOW_OTHER.value,
             )
         )

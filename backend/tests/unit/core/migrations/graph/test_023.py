@@ -2,7 +2,7 @@ import uuid
 
 from infrahub_sdk.schema.main import RelationshipDirection
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m023_deduplicate_cardinality_one_relationships import Migration023
@@ -139,7 +139,7 @@ async def add_extra_relationship(db, node_1_id, node_2_id, before_time, branch, 
             "branch": branch.name,
             "new_rel_uuid": str(uuid.uuid4()),
             "rel_name": rel_name,
-            "branch_level": 1 if branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME] else 2,
+            "branch_level": 1 if branch.name in [core_registry.default_branch, GLOBAL_BRANCH_NAME] else 2,
         },
     )
 

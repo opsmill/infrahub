@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import NameTrackingId
@@ -442,8 +442,8 @@ class DiffTreeResolver:
     ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
-        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=graphql_context.db, branch=branch)
+        base_branch = await core_registry.get_branch(db=graphql_context.db, branch=core_registry.default_branch)
+        diff_branch = await core_registry.get_branch(db=graphql_context.db, branch=branch)
         diff_repo = await component_registry.get_component(DiffRepository, db=graphql_context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_branched_from())
         if from_time:
@@ -514,8 +514,8 @@ class DiffTreeResolver:
     ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
-        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=graphql_context.db, branch=branch)
+        base_branch = await core_registry.get_branch(db=graphql_context.db, branch=core_registry.default_branch)
+        diff_branch = await core_registry.get_branch(db=graphql_context.db, branch=branch)
         diff_repo = await component_registry.get_component(DiffRepository, db=graphql_context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_branched_from())
         if from_time:

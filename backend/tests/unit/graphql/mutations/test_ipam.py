@@ -1,6 +1,6 @@
 import ipaddress
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -277,7 +277,7 @@ async def test_protected_default_ipnamespace(db: InfrahubDatabase, default_branc
         schema=gql_params.schema,
         source=DELETE_IPNAMESPACE,
         context_value=gql_params.context,
-        variable_values={"namespace_id": registry.default_ipnamespace},
+        variable_values={"namespace_id": core_registry.default_ipnamespace},
     )
 
     assert result.errors
@@ -323,9 +323,9 @@ async def test_ipprefix_create(
     assert result.data["IpamIPPrefixCreate"]["ok"]
     assert result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-    ip_prefix = await registry.manager.get_one(id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db)
+    ip_prefix = await core_registry.manager.get_one(id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db)
     ip_namespace = await ip_prefix.ip_namespace.get_peer(db=db)
-    assert ip_namespace.id == registry.default_ipnamespace
+    assert ip_namespace.id == core_registry.default_ipnamespace
 
     result = await graphql(
         schema=gql_params.schema,
@@ -410,7 +410,7 @@ async def test_ipprefix_create_with_ipnamespace(
     assert result.data["IpamIPPrefixCreate"]["ok"]
     assert result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-    ip_prefix = await registry.manager.get_one(
+    ip_prefix = await core_registry.manager.get_one(
         id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db, branch=branch
     )
     ip_namespace = await ip_prefix.ip_namespace.get_peer(db=db)
@@ -715,9 +715,9 @@ async def test_ipaddress_create(
     assert result.data["IpamIPAddressCreate"]["ok"]
     assert result.data["IpamIPAddressCreate"]["object"]["id"]
 
-    ip = await registry.manager.get_one(id=result.data["IpamIPAddressCreate"]["object"]["id"], db=db)
+    ip = await core_registry.manager.get_one(id=result.data["IpamIPAddressCreate"]["object"]["id"], db=db)
     ip_namespace = await ip.ip_namespace.get_peer(db=db)
-    assert ip_namespace.id == registry.default_ipnamespace
+    assert ip_namespace.id == core_registry.default_ipnamespace
 
     result = await graphql(
         schema=gql_params.schema,
@@ -1073,7 +1073,7 @@ async def test_prefix_ancestors_descendants(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")
@@ -1183,7 +1183,7 @@ async def test_delete_top_level_prefix(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")

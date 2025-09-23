@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.query_parser import DiffQueryParser
 from infrahub.core.query.diff import (
@@ -129,14 +129,14 @@ class DiffCalculator:
         include_unchanged: bool = True,
         previous_node_specifiers: NodeFieldSpecifierMap | None = None,
     ) -> CalculatedDiffs:
-        if diff_branch.name == registry.default_branch:
+        if diff_branch.name == core_registry.default_branch:
             diff_branch_from_time = from_time
         else:
             diff_branch_from_time = Timestamp(diff_branch.get_branched_from())
         diff_parser = DiffQueryParser(
             base_branch=base_branch,
             diff_branch=diff_branch,
-            schema_manager=registry.schema,
+            schema_manager=core_registry.schema,
             from_time=from_time,
             to_time=to_time,
             previous_node_field_specifiers=previous_node_specifiers,

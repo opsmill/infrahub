@@ -2,7 +2,7 @@ import random
 import uuid
 from typing import Any
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -12,11 +12,11 @@ from tests.helpers.query_benchmark.db_query_profiler import InfrahubDatabaseProf
 
 class CarGenerator(DataGenerator):
     async def load_data(self, nb_elements: int) -> None:
-        default_branch = await registry.get_branch(db=self.db)
+        default_branch = await core_registry.get_branch(db=self.db)
         await self.load_cars(default_branch, nb_elements)
 
     async def load_car_random_name(self, branch: Branch, nbr_seats: int, **kwargs: Any) -> Node:
-        car_schema = registry.schema.get_node_schema(name="TestCar", branch=branch)
+        car_schema = core_registry.schema.get_node_schema(name="TestCar", branch=branch)
 
         short_id = str(uuid.uuid4())[:8]
         car_name = f"car-{short_id}"
@@ -36,7 +36,7 @@ class CarGenerator(DataGenerator):
 
 class EngineGenerator(DataGenerator):
     async def load_data(self, nb_elements: int) -> None:
-        default_branch = await registry.get_branch(db=self.db)
+        default_branch = await core_registry.get_branch(db=self.db)
         await self.load_engines(default_branch, nb_elements)
 
     async def load_engines(self, branch: Branch, nb_cars: int, **kwargs: Any) -> dict[str, Node]:
@@ -48,7 +48,7 @@ class EngineGenerator(DataGenerator):
         return engines
 
     async def load_engine_random_name(self, branch: Branch, **kwargs: Any) -> Node:
-        engine_schema = registry.schema.get_node_schema(name="TestEngine", branch=branch)
+        engine_schema = core_registry.schema.get_node_schema(name="TestEngine", branch=branch)
 
         short_id = str(uuid.uuid4())[:8]
         engine_name = f"engine-{short_id}"
@@ -118,7 +118,7 @@ class CarWithDiffInSecondBranchGenerator(CarGenerator):
 
         # Retrieve car nodes from diff branch, including the ones not present in main branch
         # that were created by prior calls to `load_data`
-        car_schema = registry.schema.get_node_schema(name="TestCar", branch=self.diff_branch)
+        car_schema = core_registry.schema.get_node_schema(name="TestCar", branch=self.diff_branch)
         car_nodes = await NodeManager.query(db=self.db, schema=car_schema, branch=self.diff_branch)
         new_car_nodes = [car_node for car_node in car_nodes if car_node.name.value in new_cars]
 
@@ -164,8 +164,8 @@ class PersonGenerator(DataGenerator):
         If 'cars' is specified, each person created is linked to a few random cars.
         """
 
-        default_branch = await registry.get_branch(db=self.db)
-        person_schema = registry.schema.get_node_schema(name="TestPerson", branch=default_branch)
+        default_branch = await core_registry.get_branch(db=self.db)
+        person_schema = core_registry.schema.get_node_schema(name="TestPerson", branch=default_branch)
 
         persons_names_to_nodes = {}
         for _ in range(nb_persons):
@@ -209,8 +209,8 @@ class CarGeneratorWithOwnerHavingUniqueCar(CarGenerator):
         Also generate distinct nb_seats per car.
         """
 
-        default_branch = await registry.get_branch(db=self.db)
-        car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
+        default_branch = await core_registry.get_branch(db=self.db)
+        car_schema = core_registry.schema.get_node_schema(name="TestCar", branch=default_branch)
 
         for i in range(nb_elements):
             short_id = str(uuid.uuid4())[:8]

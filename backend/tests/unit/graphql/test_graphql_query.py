@@ -4,7 +4,7 @@ import pytest
 from deepdiff import DeepDiff
 
 from infrahub import __version__, config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -311,8 +311,8 @@ async def test_all_attributes(
 
 
 async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -375,8 +375,8 @@ async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_pe
 
 
 async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -481,7 +481,7 @@ async def test_nested_query_single_relationship(
         ],
     }
     schema = SchemaRoot(**raw_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     site_schema = schema_branch.get_node(name="LocationSite")
     device_schema = schema_branch.get_node(name="InfraDevice")
@@ -591,7 +591,7 @@ async def test_nested_generic_query_many_relationship(
         ],
     }
     schema = SchemaRoot(**raw_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     site_schema = schema_branch.get_node(name="LocationSite")
     device_schema = schema_branch.get_node(name="InfraDevice")
@@ -671,8 +671,8 @@ async def test_nested_generic_query_many_relationship(
 
 
 async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1009,7 +1009,7 @@ async def test_query_filter_on_enum(
     enum_value: Literal["MANUAL", '"manual"'],
 ):
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
-    car = registry.schema.get(name="TestCar")
+    car = core_registry.schema.get(name="TestCar")
 
     c1 = await Node.init(db=db, schema=car)
     await c1.new(db=db, name="GoKart", nbr_seats=1, is_electric=True, owner=person_john_main, transmission="manual")
@@ -1048,9 +1048,9 @@ async def test_query_filter_on_enum(
 async def test_query_multiple_filters(
     db: InfrahubDatabase, default_branch: Branch, car_person_manufacturer_schema: None
 ):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
-    manufacturer = registry.schema.get(name="TestManufacturer")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
+    manufacturer = core_registry.schema.get(name="TestManufacturer")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1199,8 +1199,8 @@ async def test_query_multiple_filters(
 async def test_query_filter_relationships(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1360,8 +1360,8 @@ async def test_query_filter_relationships_with_generic_filter(
 async def test_query_filter_relationship_id(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1537,7 +1537,7 @@ async def test_query_filter_list(
 async def test_query_attribute_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ):
-    person = registry.schema.get(name="TestPerson")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1572,8 +1572,8 @@ async def test_query_attribute_multiple_values(
 async def test_query_relationship_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -2110,8 +2110,8 @@ async def test_query_attribute_node_property_owner(
 async def test_query_relationship_node_property(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, first_account: Node
 ):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)

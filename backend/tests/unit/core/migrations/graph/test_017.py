@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.migrations.graph import Migration017
 from infrahub.database import InfrahubDatabase
 
@@ -12,13 +12,13 @@ async def test_migration_017(
     Test migration correctly adds CoreProfile schema node.
     """
 
-    item = registry.schema.get(name="CoreProfile")
+    item = core_registry.schema.get(name="CoreProfile")
     # Make sure to remove CoreProfile from database if it is there
     if item.id is not None:
-        _ = await registry.schema.delete_node_in_db(node=item, branch=default_branch, db=db)
+        _ = await core_registry.schema.delete_node_in_db(node=item, branch=default_branch, db=db)
 
     # Remove CoreProfile from registry
-    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(default_branch.name)
     core_profile_hash = schema_branch.generics["CoreProfile"]
     # TODO: should this cache deletion be performed within schema_branch.delete?
     del schema_branch._cache[core_profile_hash]
@@ -33,5 +33,5 @@ async def test_migration_017(
         assert not validation_result.errors
 
     # Make sure CoreProfile exists now
-    schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+    schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
     assert schema_branch.all_names == ["CoreProfile"]

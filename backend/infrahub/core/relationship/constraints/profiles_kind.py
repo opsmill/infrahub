@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.exceptions import ValidationError
@@ -21,7 +21,9 @@ class RelationshipProfilesKindConstraint(RelationshipManagerConstraintInterface)
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None):
         self.db = db
         self.branch = branch
-        self.schema_branch = registry.schema.get_schema_branch(branch.name if branch else registry.default_branch)
+        self.schema_branch = core_registry.schema.get_schema_branch(
+            branch.name if branch else core_registry.default_branch
+        )
 
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
         if relm.name != "profiles" or not isinstance(node_schema, NodeSchema):

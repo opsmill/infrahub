@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.manager import SchemaManager
@@ -30,7 +30,7 @@ class Migration017(InternalSchemaMigration):
         """
         Load CoreProfile schema node in db.
         """
-        default_branch = registry.get_branch_from_registry()
+        default_branch = core_registry.get_branch_from_registry()
         manager = SchemaManager()
         manager.set_schema_branch(name=default_branch.name, schema=self.get_internal_schema())
 

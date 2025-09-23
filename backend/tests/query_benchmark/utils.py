@@ -1,5 +1,5 @@
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import add_indexes, create_default_branch, create_global_branch, create_root_node
 from infrahub.core.schema.manager import SchemaManager
@@ -23,7 +23,7 @@ async def start_db_and_create_default_branch(
     await create_root_node(db=db)
     default_branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
-    registry.schema = SchemaManager()
+    core_registry.schema = SchemaManager()
 
     # Initialize indexes if needed
     if load_indexes:

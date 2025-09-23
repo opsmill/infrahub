@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -28,9 +28,9 @@ class TestIpam(TestInfrahubApp):
         # object corresponding to default branch would be created. Then, we can't rely on default_branch fixture here,
         # as updating default_branch schema hash would not update the object within registry.
         # This is why this fixture depends on initialize_registry and client (which calls initialize_registry).
-        default_branch_name = registry.default_branch
-        schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch_name)
-        registry.get_branch_from_registry(default_branch_name).update_schema_hash()
+        default_branch_name = core_registry.default_branch
+        schema_branch = core_registry.schema.register_schema(schema=ipam_schema, branch=default_branch_name)
+        core_registry.get_branch_from_registry(default_branch_name).update_schema_hash()
         return schema_branch
 
 
@@ -44,13 +44,13 @@ class TestIpamReconcileBase(TestIpam):
         default_branch,
     ) -> dict[str, Node]:
         # Update database state as later merging operations may trigger a refresh registry from database.
-        schema_branch_main = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.update_schema_branch(schema=schema_branch_main, db=db)
+        schema_branch_main = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.update_schema_branch(schema=schema_branch_main, db=db)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
 
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch.name)
-        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch.name)
+        prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch.name)
+        address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch.name)
 
         # -----------------------
         # Namespace NS1

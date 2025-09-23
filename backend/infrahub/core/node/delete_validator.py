@@ -2,7 +2,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import Iterable
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipDeleteBehavior
 from infrahub.core.node import Node
@@ -120,7 +120,7 @@ class NodeDeleteValidator:
     def __init__(self, db: InfrahubDatabase, branch: Branch):
         self.db = db
         self.branch = branch
-        schema_branch = registry.schema.get_schema_branch(name=self.branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=self.branch.name)
         self._all_schemas_map = schema_branch.get_all(duplicate=False)
         self.index: NodeDeleteIndex = NodeDeleteIndex(all_schemas_map=self._all_schemas_map)
 

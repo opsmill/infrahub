@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -126,7 +126,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         }
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND)
         assert len(persons) == 1
 
     async def test_step02_check_attr_add_rename(
@@ -159,7 +159,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
-        persons = await registry.manager.query(
+        persons = await core_registry.manager.query(
             db=db,
             schema=PERSON_KIND,
             filters={"firstname__value": "John"},  # , branch=self.branch1
@@ -193,7 +193,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Modify the value for Height in the database
-        persons = await registry.manager.query(
+        persons = await core_registry.manager.query(
             db=db,
             schema=PERSON_KIND,
             filters={"firstname__value": "John"},
@@ -205,7 +205,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         await john.save(db=db)
 
         # Validate that the new value has been properly saved
-        persons2 = await registry.manager.query(
+        persons2 = await core_registry.manager.query(
             db=db,
             schema=PERSON_KIND,
             filters={"firstname__value": "John"},

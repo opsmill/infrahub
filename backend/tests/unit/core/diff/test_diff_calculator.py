@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality, SchemaPathType
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -2679,7 +2679,7 @@ async def test_hierarchy_with_same_kind_parent_and_child(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix")
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix")
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ip_namespace.new(db=db, name="ns1")
     await ip_namespace.save(db=db)
@@ -3196,12 +3196,12 @@ async def test_calculate_with_migrated_kind_node(
     await main_car_camry.owner.update(db=db, data=new_main_camry_owner_id)
     await main_car_camry.save(db=db)
 
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema.get(name="TestCar")
     car_schema.name = "NewCar"
     car_schema.namespace = "Test2"
     assert car_schema.kind == "Test2NewCar"
-    registry.schema.set(name="Test2NewCar", schema=car_schema, branch=branch.name)
+    core_registry.schema.set(name="Test2NewCar", schema=car_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=car_schema,
@@ -3776,7 +3776,7 @@ async def test_calculate_with_migrated_attr_name(
 ):
     """Test that the diff can correctly handle an attribute name migration"""
     branch = await create_branch(db=db, branch_name="branch")
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
     prev_attr.id = str(uuid4())
@@ -3785,7 +3785,7 @@ async def test_calculate_with_migrated_attr_name(
     new_attr = new_car_schema.get_attribute(name="color")
     new_attr.name = "new-color"
     new_attr.id = prev_attr.id
-    registry.schema.set(name=new_car_schema.kind, schema=new_car_schema, branch=branch.name)
+    core_registry.schema.set(name=new_car_schema.kind, schema=new_car_schema, branch=branch.name)
 
     migration = AttributeNameUpdateMigration(
         previous_node_schema=prev_car_schema,
@@ -3862,7 +3862,7 @@ async def test_calculate_with_renamed_relationships(
     """Test that the diff can correctly handle an attribute name migration"""
     branch = await create_branch(db=db, branch_name="branch")
     new_rel_identifier = "brand_new_identifier"
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     new_car_schema = candidate_schema.get(name="TestCar")
     new_owner_rel = new_car_schema.get_relationship(name="owner")
@@ -3871,8 +3871,8 @@ async def test_calculate_with_renamed_relationships(
     new_person_schema = candidate_schema.get(name="TestPerson")
     new_cars_rel = new_person_schema.get_relationship(name="cars")
     new_cars_rel.identifier = new_rel_identifier
-    registry.schema.set(name=new_car_schema.kind, schema=new_car_schema, branch=branch.name)
-    registry.schema.set(name=new_person_schema.kind, schema=new_person_schema, branch=branch.name)
+    core_registry.schema.set(name=new_car_schema.kind, schema=new_car_schema, branch=branch.name)
+    core_registry.schema.set(name=new_person_schema.kind, schema=new_person_schema, branch=branch.name)
 
     migration_query = await RelationshipDuplicateQuery.init(
         db=db,
@@ -4030,11 +4030,11 @@ async def test_migrated_kind_node_then_peer_delete(
     person_albert_main,
 ):
     # migrate TestPerson kind on main
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     original_person_schema = schema_branch.get_node(name="TestPerson")
     person_schema = schema_branch.get_node(name="TestPerson")
     person_schema.inherit_from = ["GenericThing"]
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
     migration = NodeKindUpdateMigration(
         previous_node_schema=original_person_schema,
         new_node_schema=person_schema,
@@ -4045,12 +4045,12 @@ async def test_migrated_kind_node_then_peer_delete(
 
     # migrate TestPerson kind back to original on a different branch
     branch = await create_branch(db=db, branch_name="branch-undo-kind-migrate")
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+    core_registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
     original_person_schema = schema_branch.get_node(name="TestPerson")
     person_schema = schema_branch.get_node(name="TestPerson")
     person_schema.inherit_from = []
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
         previous_node_schema=original_person_schema,
         new_node_schema=person_schema,
@@ -4061,8 +4061,8 @@ async def test_migrated_kind_node_then_peer_delete(
 
     # create a branch and delete a car on the branch
     branch = await create_branch(db=db, branch_name="branch-delete-car")
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+    core_registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
     branch_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
     await branch_accord.delete(db=db)
 
@@ -4124,12 +4124,12 @@ async def test_migrated_kind_with_property_level_changes(
     await branch_accord.save(db=db)
 
     # migrate TestPerson kind on branch
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+    core_registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
     original_person_schema = schema_branch.get_node(name="TestPerson")
     person_schema = schema_branch.get_node(name="TestPerson")
     person_schema.inherit_from = ["GenericThing"]
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
         previous_node_schema=original_person_schema,
         new_node_schema=person_schema,

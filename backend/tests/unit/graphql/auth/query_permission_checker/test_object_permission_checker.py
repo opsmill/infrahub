@@ -7,10 +7,10 @@ from uuid import uuid4
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
+from infrahub.core import core_registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
@@ -292,7 +292,7 @@ class TestObjectPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_TAGS,
             schema=gql_params.schema,
@@ -317,7 +317,7 @@ class TestObjectPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_REPOS,
             schema=gql_params.schema,
@@ -346,7 +346,7 @@ class TestObjectPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_GRAPHQL,
             schema=gql_params.schema,
@@ -374,7 +374,7 @@ class TestObjectPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_GRAPHQL_AND_REPO,
             schema=gql_params.schema,
@@ -456,7 +456,7 @@ class TestAccountManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation,
             schema=gql_params.schema,
@@ -499,7 +499,7 @@ class TestAccountManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation,
             schema=gql_params.schema,
@@ -602,7 +602,7 @@ class TestPermissionManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation,
             schema=gql_params.schema,
@@ -664,7 +664,7 @@ class TestPermissionManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=query,
             schema=gql_params.schema,
@@ -708,7 +708,7 @@ class TestPermissionManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation,
             schema=gql_params.schema,
@@ -780,7 +780,7 @@ class TestPermissionManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=query,
             schema=gql_params.schema,
@@ -864,7 +864,7 @@ class TestRepositoryManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation,
             schema=gql_params.schema,
@@ -906,7 +906,7 @@ class TestRepositoryManagerPermissions:
         gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
-        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation,
             schema=gql_params.schema,

@@ -2,7 +2,7 @@ import random
 import time
 from typing import List
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase, get_db
@@ -79,7 +79,7 @@ async def load_data(
     All the Tags and the repositories will be created at once but the GraphQLQuery will be created in batch.
     The size of the batch and the number of concurrent session can be controlled with "batch_size" and "concurrent_execution"
     """
-    default_branch = await registry.get_branch(db=db)
+    default_branch = await core_registry.get_branch(db=db)
 
     await get_db()
 
@@ -89,9 +89,9 @@ async def load_data(
     repository = {}
     gqlquery = {}
 
-    tag_schema = registry.schema.get(name=InfrahubKind.TAG, branch=default_branch)
-    repository_schema = registry.schema.get(name=InfrahubKind.REPOSITORY, branch=default_branch)
-    gqlquery_schema = registry.schema.get(name=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
+    tag_schema = core_registry.schema.get(name=InfrahubKind.TAG, branch=default_branch)
+    repository_schema = core_registry.schema.get(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    gqlquery_schema = core_registry.schema.get(name=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
 
     # -------------------------------------------------------------------------------------
     # TAG

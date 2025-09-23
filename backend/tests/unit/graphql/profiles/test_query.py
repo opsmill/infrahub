@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.manager import NodeManager
@@ -24,7 +24,7 @@ def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
         ],
     }
     generic_schema = GenericSchema(**GENERIC_SCHEMA)
-    registry.schema.set(name=generic_schema.kind, schema=generic_schema)
+    core_registry.schema.set(name=generic_schema.kind, schema=generic_schema)
 
     NODE_SCHEMA = {
         "name": "Criticality",
@@ -36,7 +36,7 @@ def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
         ],
     }
     tmp_schema = NodeSchema(**NODE_SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    core_registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
 
     NODE_SCHEMA = {
         "name": "ColorfulCriticality",
@@ -48,13 +48,13 @@ def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
         ],
     }
     tmp_schema = NodeSchema(**NODE_SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    core_registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
 
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
 
 
 async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile = core_registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
     await obj1.new(db=db, profile_name="prof1", level=8)
@@ -89,7 +89,7 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
 
 
 async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile = core_registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
     await obj1.new(db=db, profile_name="prof1", level=8)
@@ -135,7 +135,7 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
 
 
 async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = core_registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
@@ -143,7 +143,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_schema = core_registry.schema.get("TestCriticality", branch=default_branch)
     crit_1 = await Node.init(db=db, schema=crit_schema)
     await crit_1.new(db=db, name="crit_1")
     crit_1.level.is_default = True
@@ -206,7 +206,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
 
 
 async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_generic_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
+    profile_generic_schema = core_registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_generic_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
@@ -214,13 +214,13 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_schema = core_registry.schema.get("TestCriticality", branch=default_branch)
     crit_1 = await Node.init(db=db, schema=crit_schema)
     await crit_1.new(db=db, name="crit_1")
     crit_1.level.is_default = True
     await crit_1.profiles.update(db=db, data=[prof_1])
     await crit_1.save(db=db)
-    colorful_crit_schema = registry.schema.get("TestColorfulCriticality", branch=default_branch)
+    colorful_crit_schema = core_registry.schema.get("TestColorfulCriticality", branch=default_branch)
     crit_2 = await Node.init(db=db, schema=colorful_crit_schema)
     await crit_2.new(db=db, name="crit_2", color="green")
     crit_2.level.is_default = True
@@ -281,18 +281,18 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_generic_schema = registry.schema.get(
+    profile_generic_schema = core_registry.schema.get(
         "ProfileTestGenericCriticality", branch=default_branch, duplicate=False
     )
     generic_profile = await Node.init(db=db, schema=profile_generic_schema)
     await generic_profile.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await generic_profile.save(db=db)
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch, duplicate=False)
+    profile_schema = core_registry.schema.get("ProfileTestCriticality", branch=default_branch, duplicate=False)
     node_profile = await Node.init(db=db, schema=profile_schema)
     await node_profile.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await node_profile.save(db=db)
-    generic_schema = registry.schema.get("TestGenericCriticality", branch=default_branch, duplicate=False)
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch, duplicate=False)
+    generic_schema = core_registry.schema.get("TestGenericCriticality", branch=default_branch, duplicate=False)
+    crit_schema = core_registry.schema.get("TestCriticality", branch=default_branch, duplicate=False)
     crit_1 = await Node.init(db=db, schema=crit_schema)
     await crit_1.new(db=db, name="crit_1")
     await crit_1.save(db=db)
@@ -370,7 +370,7 @@ async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, defau
 
 
 async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = core_registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
@@ -378,7 +378,7 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_schema = core_registry.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)
     await crit_no_profile.new(db=db, name="crit_no_profile", fancy="always")
     await crit_no_profile.save(db=db)
@@ -448,7 +448,7 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
 
 
 async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
+    profile_schema = core_registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
     await prof_1.save(db=db)
@@ -456,7 +456,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
-    crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
+    crit_schema = core_registry.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)
     await crit_no_profile.new(db=db, name="crit_no_profile", fancy="always")
     await crit_no_profile.save(db=db)

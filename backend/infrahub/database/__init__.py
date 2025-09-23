@@ -27,7 +27,7 @@ from typing_extensions import Self
 
 from infrahub import config
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
@@ -71,7 +71,7 @@ class InfrahubDatabaseSessionMode(InfrahubStringEnum):
 
 def get_branch_name(branch: Branch | str | None = None) -> str:
     if not branch:
-        return registry.default_branch
+        return core_registry.default_branch
     if isinstance(branch, str):
         return branch
 
@@ -85,7 +85,7 @@ class DatabaseSchemaManager:
     def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
+            return core_registry.schema.get(name=name, branch=branch, duplicate=duplicate)
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
     def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:
@@ -107,25 +107,25 @@ class DatabaseSchemaManager:
     def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.set(name=name, schema=schema, branch=branch)
+            return core_registry.schema.set(name=name, schema=schema, branch=branch)
         return self._db._schemas[branch_name].set(name=name, schema=schema)
 
     def has(self, name: str, branch: Branch | str | None = None) -> bool:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.has(name=name, branch=branch)
+            return core_registry.schema.has(name=name, branch=branch)
         return self._db._schemas[branch_name].has(name=name)
 
     def get_full(self, branch: Branch | str | None = None, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.get_full(branch=branch)
+            return core_registry.schema.get_full(branch=branch)
         return self._db._schemas[branch_name].get_all(duplicate=duplicate)
 
     async def get_full_safe(
         self, branch: Branch | str | None = None, duplicate: bool = True
     ) -> dict[str, MainSchemaTypes]:
-        await lock.registry.local_schema_wait()
+        await lock.lock_registry.local_schema_wait()
         return self.get_full(branch=branch, duplicate=duplicate)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:
@@ -133,9 +133,9 @@ class DatabaseSchemaManager:
 
         If the branch is the global one, the default branch will be returned.
         """
-        branch_name = registry.default_branch if name == GLOBAL_BRANCH_NAME else name
+        branch_name = core_registry.default_branch if name == GLOBAL_BRANCH_NAME else name
         if branch_name not in self._db._schemas:
-            return registry.schema.get_schema_branch(name=branch_name)
+            return core_registry.schema.get_schema_branch(name=branch_name)
         return self._db._schemas[branch_name]
 
 

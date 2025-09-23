@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -28,7 +28,7 @@ async def prefix_pool_01(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
     pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -111,7 +111,7 @@ async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
     pool = prefix_pool_01["pool"]
     net142 = prefix_pool_01["net142"]
 
-    schema = registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
+    schema = core_registry.schema.get_node_schema(name="TestMandatoryPrefix", branch=default_branch)
 
     obj = await Node.init(db=db, schema=schema, branch=default_branch)
     await obj.new(db=db, name="site1", prefix=net142)
@@ -183,7 +183,7 @@ async def test_create_object_and_assign_address_from_pool(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    address_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -264,7 +264,7 @@ async def test_prefix_pool_get_resource(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
     pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -323,7 +323,7 @@ async def test_prefix_pool_get_resource_with_identifier(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
     pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -389,7 +389,7 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
     pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -449,7 +449,7 @@ async def test_address_pool_get_resource(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    address_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -507,7 +507,7 @@ async def test_address_pool_get_resource_with_identifier(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    address_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -572,7 +572,7 @@ async def test_address_pool_get_resource_with_prefix_length(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    address_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db, branch=default_branch)
     await pool.new(
@@ -885,10 +885,10 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
+    node_schema = core_registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    core_registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     query_before_creation = await graphql(
         schema=gql_params.schema,
         source=QUERY_NUMBER_POOL,
@@ -972,10 +972,10 @@ async def test_update_schema_number_pool_range(
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
+    node_schema = core_registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    core_registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
     query_before_creation = await graphql(
         schema=gql_params.schema,
         source=QUERY_NUMBER_POOL,

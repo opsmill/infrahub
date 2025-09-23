@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.query.ipam import get_ip_addresses
 from infrahub.core.query.resource_manager import (
@@ -34,7 +34,7 @@ class CoreIPAddressPool(Node):
         prefixlen: int | None = None,
         at: Timestamp | None = None,
     ) -> Node:
-        async with lock.registry.get(name=self.get_id(), namespace="resource_pool"):
+        async with lock.lock_registry.get(name=self.get_id(), namespace="resource_pool"):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
 
@@ -46,7 +46,7 @@ class CoreIPAddressPool(Node):
                 if result:
                     address = result.get_node("address")
                     # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-                    node = await registry.manager.get_one(db=db, id=address.get("uuid"), branch=branch)
+                    node = await core_registry.manager.get_one(db=db, id=address.get("uuid"), branch=branch)
 
                     if node:
                         return node
@@ -66,7 +66,7 @@ class CoreIPAddressPool(Node):
 
             next_address = await self.get_next(db=db, prefixlen=prefixlen)
 
-            target_schema = registry.get_node_schema(name=address_type, branch=branch)
+            target_schema = core_registry.get_node_schema(name=address_type, branch=branch)
             node = await Node.init(db=db, schema=target_schema, branch=branch, at=at)
             try:
                 await node.new(db=db, address=str(next_address), ip_namespace=ip_namespace, **data)

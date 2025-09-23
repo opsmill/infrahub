@@ -7,11 +7,11 @@ from infrahub_sdk.graphql import Query
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core import core_registry
 from infrahub.core.constants import HashableModelState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
-from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
@@ -93,9 +93,9 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
         )
 
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+        await validate_schema_number_pools(branch_name=core_registry.default_branch, context=context, service=service)
 
-        test_schema = registry.schema.get_node_schema(name="TestNumberAttribute")
+        test_schema = core_registry.schema.get_node_schema(name="TestNumberAttribute")
         test_attribute = test_schema.get_attribute(name="assigned_number")
         assert isinstance(test_attribute.parameters, NumberPoolParameters)
         number_pool_id = test_attribute.parameters.number_pool_id
@@ -124,7 +124,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         after_purge = get_branches_with_schema_number_pool(kind="TestNumberAttribute", attribute_name="assigned_number")
         assert after_purge == []
 
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+        await validate_schema_number_pools(branch_name=core_registry.default_branch, context=context, service=service)
 
         with pytest.raises(NodeNotFoundError):
             await NodeManager.find_object(
@@ -142,9 +142,9 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
             account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
         )
 
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+        await validate_schema_number_pools(branch_name=core_registry.default_branch, context=context, service=service)
 
-        test_schema = registry.schema.get_node_schema(name="SnowIncident")
+        test_schema = core_registry.schema.get_node_schema(name="SnowIncident")
         test_attribute = test_schema.get_attribute(name="number")
         assert isinstance(test_attribute.parameters, NumberPoolParameters)
         number_pool_id = test_attribute.parameters.number_pool_id
@@ -176,7 +176,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         after_purge = get_branches_with_schema_number_pool(kind="SnowTask", attribute_name="number")
         assert after_purge == []
 
-        await validate_schema_number_pools(branch_name=registry.default_branch, context=context, service=service)
+        await validate_schema_number_pools(branch_name=core_registry.default_branch, context=context, service=service)
 
         with pytest.raises(NodeNotFoundError):
             await NodeManager.find_object(
@@ -223,7 +223,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         assert len(pools_after) == 2
 
         # Validate that the existing incidents have been updated with the new number
-        incidents = await registry.manager.query(db=db, branch=default_branch, schema=incident_schema)
+        incidents = await core_registry.manager.query(db=db, branch=default_branch, schema=incident_schema)
         assert incidents[0].new_number.value == 10
 
         incident10 = await client.create(kind=SNOW_INCIDENT.kind, title="Incident #10", branch=default_branch.name)

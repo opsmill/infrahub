@@ -6,7 +6,7 @@ import pytest
 from infrahub_sdk.exceptions import BranchNotFoundError, GraphQLError
 from infrahub_sdk.graphql import Mutation
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.node import Node
@@ -89,10 +89,10 @@ class TestBranchMutations(TestInfrahubApp):
         return client_repository.id
 
     async def test_branch_delete_async(self, initial_dataset: str, client: InfrahubClient) -> None:
-        from infrahub.core import registry
+        from infrahub.core import core_registry
 
         branch = await client.branch.create(branch_name="branch_to_delete")
-        branch_server_id = registry.branch[branch.name].uuid
+        branch_server_id = core_registry.branch[branch.name].uuid
 
         query = Mutation(
             mutation="BranchDelete",
@@ -111,7 +111,7 @@ class TestBranchMutations(TestInfrahubApp):
 
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_delete_sync")
-        branch_server_id = registry.branch[branch.name].uuid
+        branch_server_id = core_registry.branch[branch.name].uuid
         query = Mutation(
             mutation="BranchDelete",
             input_data={"data": {"name": branch.name}},
@@ -189,12 +189,12 @@ class TestBranchMutations(TestInfrahubApp):
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: str, client: InfrahubClient
     ) -> None:
         branch = await client.branch.create(branch_name="branch_to_validate_failed")
-        branch_obj = await registry.get_branch(db=db, branch=branch.name)
+        branch_obj = await core_registry.get_branch(db=db, branch=branch.name)
 
-        john_main = await registry.manager.query(
+        john_main = await core_registry.manager.query(
             db=db, schema=TestKind.PERSON, filters={"name__value": "John"}, branch=default_branch
         )
-        john_branch = await registry.manager.query(
+        john_branch = await core_registry.manager.query(
             db=db, schema=TestKind.PERSON, filters={"name__value": "John"}, branch=branch.name
         )
 

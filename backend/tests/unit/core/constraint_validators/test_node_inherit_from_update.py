@@ -2,7 +2,7 @@ import copy
 import uuid
 from itertools import chain
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.initialization import create_branch
@@ -20,7 +20,7 @@ async def test_add_generic_success(db: InfrahubDatabase, default_branch: Branch,
     good_animal_schema = GenericSchema(
         name="GoodAnimal", namespace="Test", attributes=[{"name": "is_good", "kind": "Boolean", "default_value": True}]
     )
-    dog_schema = registry.schema.get_node_schema(name="TestDog")
+    dog_schema = core_registry.schema.get_node_schema(name="TestDog")
     dog_schema.inherit_from.append(good_animal_schema.kind)
 
     schema_branch = SchemaBranch(cache={}, name="test")
@@ -45,7 +45,7 @@ async def test_add_generic_success(db: InfrahubDatabase, default_branch: Branch,
 async def test_remove_generic_fail(db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
     branch = await create_branch(branch_name="branch", db=db)
 
-    dog_schema = registry.schema.get_node_schema(name="TestDog")
+    dog_schema = core_registry.schema.get_node_schema(name="TestDog")
     dog_schema.id = str(uuid.uuid4())
     dog_schema.inherit_from = []
 
@@ -80,8 +80,8 @@ async def test_remove_generic_fail(db: InfrahubDatabase, default_branch: Branch,
 async def test_rename_generic_success(db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
     branch = await create_branch(branch_name="branch", db=db)
 
-    animal_schema = registry.schema.get(name="TestAnimal")
-    dog_schema = registry.schema.get(name="TestDog")
+    animal_schema = core_registry.schema.get(name="TestAnimal")
+    dog_schema = core_registry.schema.get(name="TestDog")
 
     good_animal_schema = copy.deepcopy(animal_schema)
     good_animal_schema.name = "GoodAnimal"

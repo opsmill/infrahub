@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -59,7 +59,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch: Branch
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
     assert len(query_id) == 36  # length of an UUID
 
-    query1 = await registry.manager.get_one(id=query_id, db=db)
+    query1 = await core_registry.manager.get_one(id=query_id, db=db)
     assert query1.depth.value == 6
     assert query1.height.value == 7
     assert query1.operations.value == ["mutation", "query"]
@@ -127,7 +127,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch: Bran
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
     assert len(query_id) == 36  # length of an UUID
 
-    query2 = await registry.manager.get_one(id=query_id, db=db)
+    query2 = await core_registry.manager.get_one(id=query_id, db=db)
     assert query2.depth.value == 8
     assert query2.height.value == 11
     assert query2.operations.value == ["mutation", "query"]
@@ -222,7 +222,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch: Branch, regist
     assert result.data
     assert result.data["CoreGraphQLQueryUpdate"]["ok"] is True
 
-    obj2 = await registry.manager.get_one(id=obj.id, db=db)
+    obj2 = await core_registry.manager.get_one(id=obj.id, db=db)
     assert obj2.depth.value == 8
     assert obj2.height.value == 11
     assert obj2.operations.value == ["mutation", "query"]
@@ -285,7 +285,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch: Bran
     assert result.data
     assert result.data["CoreGraphQLQueryUpdate"]["ok"] is True
 
-    obj2 = await registry.manager.get_one(id=obj.id, db=db)
+    obj2 = await core_registry.manager.get_one(id=obj.id, db=db)
     assert obj2.depth.value == 6
     assert obj2.height.value == 7
     assert obj2.operations.value == ["query"]

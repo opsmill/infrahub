@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
@@ -196,8 +196,8 @@ async def test_schema_load_permission_failure(
     await token.save(db=db)
 
     # Load the schema in the database
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
 
     # Must execute in a with block to execute the startup/shutdown event
     with client:
@@ -377,8 +377,8 @@ async def test_schema_load_endpoint_constraints_not_valid(
     helper,
 ):
     # Load the schema in the database
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
 
     person_schema = {
         "name": "Person",

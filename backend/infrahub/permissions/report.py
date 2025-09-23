@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.schema.node_schema import NodeSchema
@@ -54,7 +54,7 @@ def get_permission_report(  # noqa: PLR0911
                 else BranchRelativePermissionDecision.DENY
             )
 
-    is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+    is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, core_registry.default_branch)
     decision = permission_manager.report_object_permission(namespace=node.namespace, name=node.name, action=action)
 
     if (

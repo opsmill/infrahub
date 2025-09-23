@@ -438,16 +438,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.lock"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "no-untyped-def",
-    "operator",
-    "return-value",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations"
 disable_error_code = [
     "operator",

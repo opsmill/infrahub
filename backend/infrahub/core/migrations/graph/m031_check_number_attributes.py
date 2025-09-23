@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import initialization
@@ -50,7 +50,7 @@ class Migration031(InternalSchemaMigration):
 
         branches = await Branch.get_list(db=db)
         for branch in branches:  # noqa
-            schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+            schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
             for node_schema_kind in schema_branch.node_names:
                 schema = schema_branch.get_node(name=node_schema_kind, duplicate=False)
                 if not isinstance(schema, (NodeSchema, GenericSchema)):
@@ -73,7 +73,7 @@ class Migration031(InternalSchemaMigration):
                             schema_path=SchemaPath(
                                 path_type=SchemaPathType.ATTRIBUTE, schema_kind=schema.kind, field_name=attr.name
                             ),
-                            schema_branch=db.schema.get_schema_branch(name=registry.default_branch),
+                            schema_branch=db.schema.get_schema_branch(name=core_registry.default_branch),
                         )
 
                         constraint_checker = AttributeNumberChecker(db=db, branch=branch)

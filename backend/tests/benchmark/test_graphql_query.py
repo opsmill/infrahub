@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
@@ -27,7 +27,7 @@ NBR_WARMUP = int(os.getenv("INFRAHUB_BENCHMARK_NBR_WARMUP", "5"))
 
 @pytest.fixture(scope="module")
 async def reset_environment(db: InfrahubDatabase) -> None:
-    registry.delete_all()
+    core_registry.delete_all()
     await delete_all_nodes(db=db)
     await create_root_node(db=db)
 
@@ -36,13 +36,13 @@ async def reset_environment(db: InfrahubDatabase) -> None:
 async def default_branch(reset_environment, db: InfrahubDatabase) -> Branch:
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
-    registry.schema = SchemaManager()
+    core_registry.schema = SchemaManager()
     return branch
 
 
 @pytest.fixture(scope="module")
 async def register_default_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**internal_schema))
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.process()

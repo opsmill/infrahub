@@ -3,11 +3,11 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Sequence
 
+from infrahub.core import core_registry
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.locks.lock import initialize_lock
 from infrahub.log import get_logger
 
-from ... import registry
 from ...constants import RelationshipCardinality, RelationshipDirection
 from ...initialization import initialization
 from ...query import Query, QueryType
@@ -35,7 +35,7 @@ class DedupCardinalityOneRelsQuery(Query):
 
         rel_one_identifiers_inbound = defaultdict(list)
         rel_one_identifiers_outbound = defaultdict(list)
-        for schema_branch in registry.schema._branches.values():
+        for schema_branch in core_registry.schema._branches.values():
             all_nodes = schema_branch.get_all()
             for node in all_nodes.values():
                 for rel in node.relationships:

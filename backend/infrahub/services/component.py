@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any
 from attr import dataclass
 
 from infrahub.components import ComponentType
+from infrahub.core import core_registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -76,16 +76,16 @@ class InfrahubComponent:
         return list(workers.values())
 
     async def refresh_schema_hash(self, branches: list[str] | None = None) -> None:
-        branches = branches or list(registry.branch.keys())
+        branches = branches or list(core_registry.branch.keys())
         for branch in branches:
             if branch == GLOBAL_BRANCH_NAME:
                 continue
-            schema_branch = registry.schema.get_schema_branch(name=branch)
+            schema_branch = core_registry.schema.get_schema_branch(name=branch)
             hash_value = schema_branch.get_hash()
 
             # Use branch name if we cannot find branch id in cache
             branch_id: str | None = None
-            if branch_obj := await registry.get_branch(branch=branch, db=self.db):
+            if branch_obj := await core_registry.get_branch(branch=branch, db=self.db):
                 branch_id = str(branch_obj.uuid)
 
             if not branch_id:

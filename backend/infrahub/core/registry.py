@@ -198,7 +198,7 @@ class Registry:
             if not session and not db:
                 raise
 
-        async with lock.registry.local_schema_lock():
+        async with lock.lock_registry.local_schema_lock():
             obj = await self.branch_object.get_by_name(name=branch, db=db)
             registry.branch[branch] = obj
 

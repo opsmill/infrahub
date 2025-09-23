@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from infrahub.constants.database import Neo4jRuntime
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_ENTERPRISE_IMAGE
@@ -45,11 +45,11 @@ async def test_node_get_list_ordering(
         neo4j_image=benchmark_config.neo4j_image,
         load_indexes=benchmark_config.load_db_indexes,
     )
-    registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
 
     # Build function to profile
     async def init_and_execute():
-        car_node_schema = registry.get_node_schema(name="TestCar", branch=default_branch.name)
+        car_node_schema = core_registry.get_node_schema(name="TestCar", branch=default_branch.name)
         query = await NodeGetListQuery.init(
             db=db_profiling_queries,
             schema=car_node_schema,

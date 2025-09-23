@@ -16,7 +16,7 @@ from infrahub.config import (  # noqa: TC001
     LoggingSettings,
     MainSettings,
 )
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.workers.dependencies import get_installation_type
 
@@ -56,7 +56,7 @@ async def get_config() -> ConfigAPI:
 
 @router.get("/info")
 async def get_info(request: Request, _: AccountSession = Depends(get_current_user)) -> InfoAPI:
-    return InfoAPI(deployment_id=str(registry.id), version=request.app.version)
+    return InfoAPI(deployment_id=str(core_registry.id), version=request.app.version)
 
 
 class SearchDocs:

@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -19,7 +19,7 @@ async def test_query_optional_true(db: InfrahubDatabase, default_branch: Branch,
     )
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.optional = True
 
@@ -42,7 +42,7 @@ async def test_query_optional_false(db: InfrahubDatabase, default_branch: Branch
     await person.new(db=db, name="ALFRED")
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.optional = False
 
@@ -82,7 +82,7 @@ async def test_query_optional_update_on_branch(
     await person.new(db=db, name="ALFRED")
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.optional = False
 
@@ -121,7 +121,7 @@ async def test_query_optional_node_deleted_on_branch(
     await person.new(db=db, name="ALFRED")
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.optional = False
 
@@ -152,10 +152,10 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main,
     await person.new(db=db, name="ALFRED")
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema = core_registry.schema.get(name="TestPerson", branch=branch)
     height_attr = person_schema.get_attribute(name="height")
     height_attr.optional = False
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,

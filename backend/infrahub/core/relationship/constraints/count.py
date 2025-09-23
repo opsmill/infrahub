@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
@@ -27,7 +27,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         self.branch = branch
 
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
-        branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
+        branch = await core_registry.get_branch(db=self.db) if not self.branch else self.branch
 
         # NOTE adding resolve here because we need to retrieve the real ID
         # but if the validation fails we'll end up with some allocated resources that are not being used
@@ -40,7 +40,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         # peer_ids_present_database_only:
         #    relationship to be deleted, need to check if the schema on the other side has a min_count defined
         # TODO see how to manage Generic node
-        peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch)
+        peer_schema = core_registry.schema.get(name=relm.schema.peer, branch=branch)
         peer_rels = peer_schema.get_relationships_by_identifier(id=relm.schema.get_identifier())
         if not peer_rels:
             return

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.graphql.registry import registry as graphql_registry
 
@@ -34,13 +34,13 @@ SNOW_TICKET_SCHEMA = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW
 async def load_schema(
     db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None, update_db: bool = False
 ) -> None:
-    branch_name = branch_name or registry.default_branch
-    branch_schema = registry.schema.get_schema_branch(name=branch_name)
-    registry.schema.register_schema(schema=schema, branch=branch_name)
-    await registry.schema.update_schema_branch(
+    branch_name = branch_name or core_registry.default_branch
+    branch_schema = core_registry.schema.get_schema_branch(name=branch_name)
+    core_registry.schema.register_schema(schema=schema, branch=branch_name)
+    await core_registry.schema.update_schema_branch(
         schema=branch_schema.duplicate(), db=db, branch=branch_name, update_db=update_db
     )
-    branch = registry.get_branch_from_registry(branch_name)
+    branch = core_registry.get_branch_from_registry(branch_name)
     branch.update_schema_hash()
     await branch.save(db=db)
     graphql_registry.clear_cache()

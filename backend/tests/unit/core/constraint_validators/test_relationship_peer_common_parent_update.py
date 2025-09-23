@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -58,7 +58,7 @@ async def device_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaR
     schema = copy.deepcopy(DEVICE_SCHEMA)
     schema.nodes.append(LAG_INTERFACE)
     schema.get(name=TestKind.DEVICE).generate_template = False
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
 
@@ -114,8 +114,8 @@ async def expected_invalid_lag_data_paths(
 
 
 async def test_query_no_relationships(db: InfrahubDatabase, branch: Branch, data_empty_lags: dict[str, Any]):
-    lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
-    interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
+    lag_schema = core_registry.schema.get(name=TestKind.LAG_INTERFACE)
+    interface_schema = core_registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
     query = await RelationshipPeerParentValidatorQuery.init(
         db=db,
@@ -142,8 +142,8 @@ async def test_query_invalid_lag(
     expected_invalid_lag_data_paths: set[DataPath],
     branch: Branch,
 ):
-    lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
-    interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
+    lag_schema = core_registry.schema.get(name=TestKind.LAG_INTERFACE)
+    interface_schema = core_registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
     query = await RelationshipPeerParentValidatorQuery.init(
         db=db,
@@ -164,8 +164,8 @@ async def test_query_invalid_lag(
 
 
 async def test_query_deleted_lag_members(db: InfrahubDatabase, data_invalid_lag: dict[str, Node], branch: Branch):
-    lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
-    interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
+    lag_schema = core_registry.schema.get(name=TestKind.LAG_INTERFACE)
+    interface_schema = core_registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
     for lag in [data_invalid_lag["d_1_lag"], data_invalid_lag["d_2_lag"]]:
         branch_lag = await NodeManager.get_one(db=db, branch=branch, id=lag.id)
@@ -199,7 +199,7 @@ async def test_validator(
     expected_invalid_lag_data_paths: set[DataPath],
     branch: Branch,
 ):
-    lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
+    lag_schema = core_registry.schema.get(name=TestKind.LAG_INTERFACE)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,
@@ -208,7 +208,7 @@ async def test_validator(
         schema_path=SchemaPath(
             path_type=SchemaPathType.RELATIONSHIP, schema_kind=lag_schema.kind, field_name="members"
         ),
-        schema_branch=registry.schema.get_schema_branch(default_branch.name),
+        schema_branch=core_registry.schema.get_schema_branch(default_branch.name),
     )
 
     constraint_checker = RelationshipPeerParentChecker(db=db, branch=branch)

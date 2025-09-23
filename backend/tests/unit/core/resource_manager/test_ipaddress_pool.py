@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -20,7 +20,7 @@ async def test_get_next(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
-    adress_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    adress_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=adress_pool_schema, db=db)
     await pool.new(db=db, name="pool1", resources=[net145], ip_namespace=ns1, default_address_type="IpamIPAddress")
@@ -58,7 +58,7 @@ async def test_get_next_weighted(
     net145.allocation_weight.value = 200
     await net145.save(db=db)
 
-    adress_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    adress_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=adress_pool_schema, db=db)
     await pool.new(
@@ -92,7 +92,7 @@ async def test_get_next_full(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net147 = ip_dataset_prefix_v4["net147"]
 
-    adress_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    adress_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     pool = await CoreIPAddressPool.init(schema=adress_pool_schema, db=db)
     await pool.new(db=db, name="pool2", resources=[net147], ip_namespace=ns1, default_address_type="IpamIPAddress")

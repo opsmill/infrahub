@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -37,7 +37,7 @@ class TestMigrationAttributeKind(TestInfrahubApp):
             return default_branch
         branch_name = "branch-attr-kind-update"
         try:
-            return await registry.get_branch(db=db, branch=branch_name)
+            return await core_registry.get_branch(db=db, branch=branch_name)
         except BranchNotFoundError:
             return await create_branch(db=db, branch_name=branch_name)
 

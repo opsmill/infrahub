@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -12,7 +12,7 @@ RETURN rel
 
 
 async def test_update_node_with_hierarchy(db: InfrahubDatabase, hierarchical_location_data):
-    site_schema = registry.schema.get(name="LocationSite", duplicate=False)
+    site_schema = core_registry.schema.get(name="LocationSite", duplicate=False)
     retrieved_node = await NodeManager.get_one(db=db, id=hierarchical_location_data["seattle"].id)
     new_parent = await NodeManager.get_one(db=db, id=hierarchical_location_data["europe"].id)
     results = await db.execute_query(

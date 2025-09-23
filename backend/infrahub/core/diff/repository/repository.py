@@ -3,7 +3,7 @@ from typing import AsyncGenerator, Generator, Iterable
 from neo4j.exceptions import TransientError
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.diff.query.drop_nodes import EnrichedDiffDropNodesQuery
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
 from infrahub.core.diff.query.summary_counts_enricher import (
@@ -212,7 +212,7 @@ class DiffRepository:
         include_parents: bool = True,
     ) -> EnrichedDiffRoot:
         enriched_diffs = await self.get(
-            base_branch_name=registry.default_branch,
+            base_branch_name=core_registry.default_branch,
             diff_branch_names=[diff_branch_name],
             tracking_id=tracking_id,
             diff_ids=[diff_id] if diff_id else None,

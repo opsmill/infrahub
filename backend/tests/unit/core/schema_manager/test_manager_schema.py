@@ -6,7 +6,7 @@ import uuid
 import pytest
 from infrahub_sdk.utils import compare_lists
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
@@ -1218,7 +1218,7 @@ async def test_validate_exception_ipam_ip_namespace(
 
     ipam_schema = SchemaRoot(**SCHEMA)
 
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     schema.load_schema(schema=ipam_schema)
     schema.process()
 
@@ -2380,8 +2380,8 @@ async def test_schema_manager_purge(default_branch: Branch, reset_registry: None
 
 
 async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
-    registry.schema = SchemaManager()
-    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
+    core_registry.schema = SchemaManager()
+    core_registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
     node = NodeSchema(
         name="Criticality",
@@ -2400,9 +2400,9 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
         ],
         relationships=[RelationshipSchema(name="others", peer="BuiltinCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
+    await core_registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
-    node2 = registry.schema.get(name=node.kind, branch=default_branch)
+    node2 = core_registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
     assert node2.relationships[0].id
     assert node2.attributes[0].id
@@ -2412,8 +2412,8 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
 
 
 async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch):
-    registry.schema = SchemaManager()
-    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
+    core_registry.schema = SchemaManager()
+    core_registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
     SCHEMA = {
         "name": "GenericInterface",
@@ -2423,7 +2423,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
+    await core_registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -2473,18 +2473,18 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
         ],
     }
 
-    registry.schema = SchemaManager()
-    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch)
+    core_registry.schema = SchemaManager()
+    core_registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
+    await core_registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch)
 
-    node = registry.schema.get(name="BuiltinCriticality", branch=default_branch)
+    node = core_registry.schema.get(name="BuiltinCriticality", branch=default_branch)
 
     new_node = node.duplicate()
 
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch)
+    await core_registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch)
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
 
@@ -2494,11 +2494,11 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
 
 async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_branch: Branch):
     schema = SchemaRoot(**internal_schema)
-    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    new_schema = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name)
 
-    node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
+    node_schema = core_registry.schema.get(name="SchemaNode", branch=default_branch)
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
     assert all(r for r in results if r.namespace.value != "Profile")
@@ -2508,11 +2508,11 @@ async def test_load_schema_to_db_core_models(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
 ):
     schema = SchemaRoot(**core_models)
-    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    new_schema = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
+    await core_registry.schema.load_schema_to_db(schema=new_schema, db=db)
 
-    node_schema = registry.schema.get(name="SchemaGeneric")
+    node_schema = core_registry.schema.get(name="SchemaGeneric")
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
     assert all(r for r in results if r.namespace.value != "Profile")
@@ -2522,14 +2522,14 @@ async def test_clean_diff_after_reload_from_db(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
 ):
     schema = SchemaRoot(**core_models)
-    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    new_schema = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
+    await core_registry.schema.load_schema_to_db(schema=new_schema, db=db)
 
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     schema_pre = schema_branch.duplicate()
 
-    await registry.schema.load_schema_from_db(db=db, branch=default_branch, schema=schema_branch)
+    await core_registry.schema.load_schema_from_db(db=db, branch=default_branch, schema=schema_branch)
 
     assert not schema_pre.diff(other=schema_branch).all
 
@@ -2542,10 +2542,10 @@ async def test_load_schema_to_db_simple_01(
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
-    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
+    new_schema = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
-    node_schema = registry.schema.get(name="SchemaNode")
+    node_schema = core_registry.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
         schema=node_schema, filters={"name__value": "Device"}, db=db, branch=default_branch
     )
@@ -2560,10 +2560,10 @@ async def test_load_schema_to_db_w_generics_01(
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))
-    new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
+    new_schema = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
-    node_schema = registry.schema.get(name="SchemaNode")
+    node_schema = core_registry.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
         schema=node_schema, filters={"name__value": "InterfaceL3"}, db=db, branch=default_branch
     )
@@ -2639,14 +2639,14 @@ async def test_load_schema_from_db(
         ],
     }
 
-    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    schema1 = core_registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
     crit_schema = schema1.get(name="TestCriticality", duplicate=False)
 
-    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
     start_crit_schema = schema1.get(name="TestCriticality", duplicate=False)
     start_crit_hash = start_crit_schema.get_hash()
-    schema11 = registry.schema.get_schema_branch(name=default_branch.name)
-    schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+    schema11 = core_registry.schema.get_schema_branch(name=default_branch.name)
+    schema2 = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
@@ -2729,11 +2729,11 @@ async def test_load_schema(
         ],
     }
 
-    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    schema1 = core_registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
     default_branch.update_schema_hash()
-    schema11 = registry.schema.get_schema_branch(name=default_branch.name)
-    schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
+    schema11 = core_registry.schema.get_schema_branch(name=default_branch.name)
+    schema2 = await core_registry.schema.load_schema(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 6
     assert set(schema2.generics.keys()) == {"CoreProfile", "TestGenericInterface"}
@@ -2792,10 +2792,10 @@ async def test_load_schema_with_parameters(
         ],
     }
 
-    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    schema1 = core_registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await core_registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
     default_branch.update_schema_hash()
-    loaded_schema = await registry.schema.load_schema(db=db, branch=default_branch.name)
+    loaded_schema = await core_registry.schema.load_schema(db=db, branch=default_branch.name)
 
     crit_schema = loaded_schema.get("TestCriticality", duplicate=False)
     color_attr_schema = crit_schema.get_attribute("color")
@@ -3074,9 +3074,11 @@ async def test_hierarchical_validate_parent_children(
     site_schema.human_friendly_id = ["parent__name__value", "name__value"]
     site_schema.uniqueness_constraints = [["parent", "name__value"]]
 
-    registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
+    core_registry.schema.register_schema(
+        schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name
+    )
 
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     with pytest.raises(ValueError, match=r"Unable to find the relationship"):
         region_schema = schema_branch.get(name="LocationRegion", duplicate=False)

@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.node import Node
@@ -20,7 +20,7 @@ async def test_query_no_violations(
     car_yaris_main: Node,
     car_volt_main: Node,
 ):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     seats_attr = car_schema.get_attribute(name="nbr_seats")
     seats_attr.unique = True
 
@@ -51,7 +51,7 @@ async def test_query_with_violations(
     await car.new(db=db, name="New Accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
     await car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     seats_attr = car_schema.get_attribute(name="nbr_seats")
     seats_attr.unique = True
 
@@ -114,7 +114,7 @@ async def test_query_no_violations_update_in_branch(
     car.name.value = "Newest Accord"
     await car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
 
     node_schema = car_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
@@ -147,7 +147,7 @@ async def test_query_no_violations_deleted_node(
     await car.save(db=db)
     await car.delete(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
 
     node_schema = car_schema
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
@@ -175,7 +175,7 @@ async def test_validator(
     await car.new(db=db, name="New Accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
     await car.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     seats_attr = car_schema.get_attribute(name="nbr_seats")
     seats_attr.unique = True
 

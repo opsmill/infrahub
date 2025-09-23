@@ -19,7 +19,7 @@ from pytest_httpx import HTTPXMock
 
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.attribute import (
     Boolean,
     IntegerOptional,
@@ -289,9 +289,9 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
         created_at=params["time_m45"],
     )
     await branch1.save(db=db)
-    registry.branch[branch1.name] = branch1
-    schema_branch1 = registry.schema.get_schema_branch(name=default_branch.name).duplicate(name=branch1.name)
-    registry.schema.set_schema_branch(name=branch1.name, schema=schema_branch1)
+    core_registry.branch[branch1.name] = branch1
+    schema_branch1 = core_registry.schema.get_schema_branch(name=default_branch.name).duplicate(name=branch1.name)
+    core_registry.schema.set_schema_branch(name=branch1.name, schema=schema_branch1)
 
     query = """
     MATCH (root:Root)
@@ -511,7 +511,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
         created_at=params["time_m45"],
     )
     await branch1.save(db=db)
-    registry.branch[branch1.name] = branch1
+    core_registry.branch[branch1.name] = branch1
 
     query = """
     MATCH (root:Root)
@@ -738,7 +738,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
             created_at=params[created_at],
         )
         await obj.save(db=db)
-        registry.branch[obj.name] = obj
+        core_registry.branch[obj.name] = obj
 
         params[branch_name] = branch_name
     # flake8: noqa: F841
@@ -1052,11 +1052,11 @@ async def base_dataset_04(
 
     branch1 = await create_branch(branch_name="branch1", db=db, at=params["time_m20"])
 
-    org1_branch = await registry.manager.get_one(id=org1.id, branch=branch1, db=db)
+    org1_branch = await core_registry.manager.get_one(id=org1.id, branch=branch1, db=db)
     await org1_branch.tags.update(data=[blue, red], db=db)
     await org1_branch.save(db=db, at=params["time_m5"])
 
-    org1_main = await registry.manager.get_one(id=org1.id, db=db)
+    org1_main = await core_registry.manager.get_one(id=org1.id, db=db)
     await org1_main.tags.update(data=[blue, yellow], db=db)
     await org1_main.save(db=db, at=params["time_m10"])
 
@@ -1118,7 +1118,7 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1159,7 +1159,7 @@ async def car_person_schema_global(
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1267,7 +1267,7 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1397,15 +1397,15 @@ async def car_person_schema_generics(
     car_person_schema_generics_unregistered,
 ) -> SchemaRoot:
     schema = SchemaRoot(**car_person_schema_generics_unregistered)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
 
 @pytest.fixture
 async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> dict[str, Node]:
-    ecar = registry.schema.get(name="TestElectricCar")
-    gcar = registry.schema.get(name="TestGazCar")
-    person = registry.schema.get(name="TestPerson")
+    ecar = core_registry.schema.get(name="TestElectricCar")
+    gcar = core_registry.schema.get(name="TestGazCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1473,7 +1473,7 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1718,8 +1718,8 @@ async def optional_attr_uniqueness_constraint_schema(
             AttributeSchema(name="description", kind="TextArea", optional=True),
         ],
     )
-    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node_schema
 
 
@@ -1745,8 +1745,8 @@ async def all_attribute_types_schema(
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node_schema
 
 
@@ -1779,8 +1779,8 @@ async def all_attribute_default_types_schema(
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node_schema
 
 
@@ -1836,9 +1836,9 @@ async def criticality_schema(
     data_schema,
     criticality_schema_root: SchemaRoot,
 ) -> NodeSchema:
-    registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    return registry.schema.get_node_schema(
+    core_registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
+    return core_registry.schema.get_node_schema(
         name=criticality_schema_root.nodes[0].kind, branch=default_branch.name, duplicate=False
     )
 
@@ -1902,8 +1902,8 @@ async def generic_vehicule_schema(
     }
 
     node = GenericSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1920,8 +1920,8 @@ async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehic
 
     node = NodeSchema(**SCHEMA)
     node.inherit_from_interface(interface=generic_vehicule_schema)
-    registry.schema.set(name=node.kind, schema=node)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node.kind, schema=node)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1938,8 +1938,8 @@ async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generi
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node.kind, schema=node)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1956,8 +1956,8 @@ async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_veh
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node.kind, schema=node)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1979,8 +1979,8 @@ async def boat_schema(
 
     node = NodeSchema(**SCHEMA)
     node.inherit_from_interface(interface=generic_vehicule_schema)
-    registry.schema.set(name=node.kind, schema=node)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node.kind, schema=node)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -2000,8 +2000,8 @@ async def person_schema(db: InfrahubDatabase, default_branch: Branch, generic_ve
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=node.kind, schema=node)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
 
 
 @pytest.fixture
@@ -2041,7 +2041,7 @@ async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> S
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema)
+    core_registry.schema.register_schema(schema=schema)
     return schema
 
 
@@ -2093,7 +2093,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema)
+    core_registry.schema.register_schema(schema=schema)
     return schema
 
 
@@ -2165,7 +2165,9 @@ async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
 async def hierarchical_location_schema_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple_unregistered: SchemaRoot
 ) -> SchemaRoot:
-    registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
+    core_registry.schema.register_schema(
+        schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name
+    )
     return hierarchical_location_schema_simple_unregistered
 
 
@@ -2353,13 +2355,13 @@ async def prefix_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaR
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema)
+    core_registry.schema.register_schema(schema=schema)
     return schema
 
 
 @pytest.fixture
 async def reset_registry(db: InfrahubDatabase) -> None:
-    registry.delete_all()
+    core_registry.delete_all()
 
 
 @pytest.fixture
@@ -2380,10 +2382,10 @@ async def init_db(empty_database, db: InfrahubDatabase) -> None:
 
 @pytest.fixture
 async def init_nodes_registry(db: InfrahubDatabase) -> None:
-    registry.node["Node"] = Node
-    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
-    registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
-    registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
+    core_registry.node["Node"] = Node
+    core_registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    core_registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
+    core_registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
 
 
 @pytest.fixture
@@ -2538,23 +2540,23 @@ async def ipam_schema() -> SchemaRoot:
 
 @pytest.fixture
 async def register_builtin_models_schema(default_branch: Branch, builtin_schema: SchemaRoot) -> SchemaBranch:
-    schema_branch = registry.schema.register_schema(schema=builtin_schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=builtin_schema, branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
 
 
 @pytest.fixture
 async def register_organization_schema(default_branch: Branch, organization_schema: SchemaRoot) -> SchemaBranch:
-    schema_branch = registry.schema.register_schema(schema=organization_schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=organization_schema, branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
 
 
 @pytest.fixture
 async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
-    await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, db=db)
-    updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-    registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
+    await core_registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, db=db)
+    updated_schema = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    core_registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
 
 
 @pytest.fixture
@@ -2573,12 +2575,12 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
     ]
     nodes = [item for item in core_models["nodes"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
     generics = [item for item in core_models["generics"] if f"{item['namespace']}{item['name']}" in SCHEMAS_TO_REGISTER]
-    registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
+    core_registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
 
 
 @pytest.fixture
 async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
-    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
 
@@ -2626,7 +2628,7 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
         ],
     }
 
-    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=SchemaRoot(**SCHEMA), branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
 
@@ -2792,8 +2794,8 @@ async def ip_dataset_01(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     # -----------------------
     # Namespace NS1
@@ -2889,8 +2891,8 @@ async def ip_dataset_prefix_v4(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")
@@ -2989,7 +2991,7 @@ async def person_ip_schema_unregistered(db: InfrahubDatabase, data_schema, regis
 
 @pytest.fixture
 async def person_ip_schema(db: InfrahubDatabase, default_branch: Branch, person_ip_schema_unregistered) -> SchemaBranch:
-    return registry.schema.register_schema(schema=person_ip_schema_unregistered, branch=default_branch.name)
+    return core_registry.schema.register_schema(schema=person_ip_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -3004,7 +3006,7 @@ async def prefix_pool_01(
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
 
     prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await prefix_pool.new(
@@ -3090,4 +3092,4 @@ async def generic_car_person_schema(default_branch: Branch, data_schema):
     }
 
     schema_root = SchemaRoot(**schema)
-    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema_root, branch=default_branch.name)

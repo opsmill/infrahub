@@ -4,7 +4,7 @@ import asyncio
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
@@ -61,7 +61,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     async def get_branch(self) -> Branch:
         if not isinstance(self.branch, Branch):
-            self.branch = await registry.get_branch(db=self.db, branch=self.branch)
+            self.branch = await core_registry.get_branch(db=self.db, branch=self.branch)
         return self.branch
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:

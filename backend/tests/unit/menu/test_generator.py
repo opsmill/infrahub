@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_default_menu
 from infrahub.core.protocols import CoreMenuItem
@@ -40,7 +40,7 @@ async def test_generate_menu_placement(
     menu_repository: MenuRepository,
     helper,
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     schema_car = schema_branch.get(name="TestCar")
     schema_car.menu_placement = "BuiltinObjectManagement"
@@ -51,7 +51,7 @@ async def test_generate_menu_placement(
     new_menu_items = generate_menu_fixtures(nbr_item=2)
     await menu_repository.create_menu(menu=new_menu_items)
 
-    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
+    menu_items = await core_registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 
     assert menu
@@ -72,7 +72,7 @@ async def test_generate_menu_top_level(
     new_menu_items = generate_menu_fixtures(nbr_item=2)
     await menu_repository.create_menu(menu=new_menu_items)
 
-    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
+    menu_items = await core_registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 
     assert menu
@@ -88,7 +88,7 @@ async def test_generate_menu_default(
     car_person_schema_generics: SchemaRoot,
     helper,
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     schema_car = schema_branch.get(name="TestCar")
     schema_car.menu_placement = "DoesNotExist"
     schema_branch.set(name="TestCar", schema=schema_car)
@@ -98,7 +98,7 @@ async def test_generate_menu_default(
     new_menu_items = generate_menu_fixtures(nbr_item=2)
     await menu_repository.create_menu(menu=new_menu_items)
 
-    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
+    menu_items = await core_registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 
     assert menu
@@ -118,7 +118,7 @@ async def test_generate_ipam_menu(
     new_menu_items = generate_menu_fixtures(nbr_item=2)
     await menu_repository.create_menu(menu=new_menu_items)
 
-    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
+    menu_items = await core_registry.manager.query(db=db, schema=CoreMenuItem, branch=default_branch)
     initial_menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 
     schema = SchemaRoot(
@@ -130,7 +130,7 @@ async def test_generate_ipam_menu(
             )
         ]
     )
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     updated_menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 

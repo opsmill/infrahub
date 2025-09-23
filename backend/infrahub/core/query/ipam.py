@@ -4,11 +4,11 @@ import ipaddress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable
 
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
 from infrahub.core.query import QueryType
-from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
 
 from . import Query
@@ -45,7 +45,7 @@ def _get_namespace_id(
         return namespace
     if namespace and hasattr(namespace, "id"):
         return namespace.id
-    return registry.default_ipnamespace
+    return core_registry.default_ipnamespace
 
 
 class IPPrefixSubnetFetch(Query):
@@ -218,7 +218,7 @@ async def get_subnets(
     at: Timestamp | str | None = None,
     branch_agnostic: bool = False,
 ) -> Iterable[IPPrefixData]:
-    branch = await registry.get_branch(db=db, branch=branch)
+    branch = await core_registry.get_branch(db=db, branch=branch)
     query = await IPPrefixSubnetFetch.init(
         db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
     )
@@ -234,7 +234,7 @@ async def get_ip_addresses(
     at: Timestamp | str | None = None,
     branch_agnostic: bool = False,
 ) -> Iterable[IPAddressData]:
-    branch = await registry.get_branch(db=db, branch=branch)
+    branch = await core_registry.get_branch(db=db, branch=branch)
     query = await IPPrefixIPAddressFetch.init(
         db=db, branch=branch, obj=ip_prefix, namespace=namespace, at=at, branch_agnostic=branch_agnostic
     )

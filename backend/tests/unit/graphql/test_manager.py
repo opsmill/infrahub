@@ -3,7 +3,7 @@ import inspect
 import graphene
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
@@ -16,7 +16,7 @@ async def test_input_type_registration():
 
 
 async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     result = gqlm.generate_interface_object(schema=generic_vehicule_schema)
@@ -27,7 +27,7 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
 
 
 async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
@@ -59,7 +59,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
 async def test_generate_graphql_object_with_interface(
     db: InfrahubDatabase, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema
 ):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
     gqlm.generate_interface_object(schema=generic_vehicule_schema, populate_cache=True)
 
@@ -79,7 +79,7 @@ async def test_generate_graphql_object_with_interface(
 
 
 async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
@@ -91,7 +91,7 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
 
 
 async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     generic_schema = schema.get(name="TestGenericCriticality", duplicate=False)
@@ -103,7 +103,7 @@ async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_br
 
 
 async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     gqlm.generate_object_types()
@@ -175,7 +175,7 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     person = schema.get(name="TestPerson")
@@ -282,7 +282,7 @@ async def test_branch_caching_hit(
         same_branch.schema_changed_at = None
     if schema_hash_null:
         same_branch.schema_hash = None
-    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(default_branch.name)
 
     manager1 = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
     manager2 = graphql_registry.get_manager_for_branch(branch=same_branch, schema_branch=schema_branch)
@@ -298,7 +298,7 @@ async def test_branch_caching_miss(
 ):
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
-    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(default_branch.name)
 
     default_branch.active_schema_hash.main = "abc"
     same_branch.update_schema_hash()
@@ -318,7 +318,7 @@ async def test_branch_purge(
     default_branch.update_schema_hash()
     purged_branch = "i-will-be-purged"
     active_branch = "i-will-not-be-purged"
-    schema_branch = registry.schema.get_schema_branch(default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(default_branch.name)
 
     graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
     graphql_registry.purge_inactive(active_branches=[default_branch.name])

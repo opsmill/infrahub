@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -55,8 +55,8 @@ async def test_ipam_diff_parser_update(db: InfrahubDatabase, default_branch: Bra
 
 async def test_ipam_diff_parser_create(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
     branch_2 = await create_branch(db=db, branch_name="branch_22")
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     # new prefix
     new_prefix_branch = await Node.init(db=db, branch=branch_2, schema=prefix_schema)

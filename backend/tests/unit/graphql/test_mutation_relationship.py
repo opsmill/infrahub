@@ -6,7 +6,7 @@ from uuid import uuid4
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog
@@ -882,16 +882,16 @@ async def test_relationship_add_for_node_with_migrated_kind(
     person_alfred_main: Node,
 ):
     schema = SchemaRoot(generics=[core_group], nodes=[core_standard_group])
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     default_branch.update_schema_hash()
 
     branch = await create_branch(db=db, branch_name="migrated-branch")
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    schema = core_registry.schema.get_schema_branch(name=branch.name)
     person_schema = schema.get(name="TestPerson")
     person_schema.name = "GreatPerson"
     new_person_kind = "TestGreatPerson"
     assert person_schema.kind == new_person_kind
-    registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestPerson"),
         new_node_schema=person_schema,
@@ -902,7 +902,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
     core_node_schema = schema.get_generic(name="CoreNode")
     core_node_schema.used_by.append(new_person_kind)
     schema.set(name="CoreNode", schema=core_node_schema)
-    await registry.schema.load_schema_to_db(db=db, schema=schema, branch=branch)
+    await core_registry.schema.load_schema_to_db(db=db, schema=schema, branch=branch)
 
     # create group on main
     main_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
@@ -998,7 +998,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
     groups = await person_main.member_of_groups.get(db=db)
     assert len(groups) == 1
     assert groups[0].peer_id == main_group.id
-    main_person_schema = registry.schema.get(name="TestPerson", branch=default_branch, duplicate=False)
+    main_person_schema = core_registry.schema.get(name="TestPerson", branch=default_branch, duplicate=False)
     members_rel_schema = main_person_schema.get_relationship("member_of_groups")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -1015,7 +1015,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
     members = await group_main.members.get(db=db)
     assert len(members) == 1
     assert members[0].peer_id == person_alfred_main.id
-    main_group_schema = registry.schema.get(name="CoreStandardGroup", branch=default_branch, duplicate=False)
+    main_group_schema = core_registry.schema.get(name="CoreStandardGroup", branch=default_branch, duplicate=False)
     members_rel_schema = main_group_schema.get_relationship("members")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -1032,7 +1032,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
     groups = await alfred_branch.member_of_groups.get(db=db)
     assert len(groups) == 1
     assert groups[0].peer_id == branch_group.id
-    branch_person_schema = registry.schema.get(name="TestGreatPerson", branch=branch, duplicate=False)
+    branch_person_schema = core_registry.schema.get(name="TestGreatPerson", branch=branch, duplicate=False)
     members_rel_schema = branch_person_schema.get_relationship("member_of_groups")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -1049,7 +1049,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
     members = await group_branch.members.get(db=db)
     assert len(members) == 1
     assert members[0].peer_id == person_alfred_main.id
-    branch_group_schema = registry.schema.get(name="CoreStandardGroup", branch=branch, duplicate=False)
+    branch_group_schema = core_registry.schema.get(name="CoreStandardGroup", branch=branch, duplicate=False)
     members_rel_schema = branch_group_schema.get_relationship("members")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -1313,7 +1313,7 @@ async def test_relationship_read_only(
         ],
     }
     schema = SchemaRoot(**raw_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     site_schema = schema_branch.get_node(name="LocationSite")
     device_schema = schema_branch.get_node(name="InfraDevice")

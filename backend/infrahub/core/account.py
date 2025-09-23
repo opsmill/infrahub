@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
+from infrahub.core import core_registry
 from infrahub.core.constants import NULL_VALUE, InfrahubKind, PermissionDecision
 from infrahub.core.query import Query, QueryType
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -589,7 +589,7 @@ WHERE r1.status = "active" AND r2.status = "active"
 
 
 async def validate_token(token: str, db: InfrahubDatabase, branch: Branch | str | None = None) -> str | None:
-    branch = await registry.get_branch(db=db, branch=branch)
+    branch = await core_registry.get_branch(db=db, branch=branch)
     query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token)
     await query.execute(db=db)
     return query.get_account_id()

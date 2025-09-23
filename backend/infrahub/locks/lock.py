@@ -13,15 +13,11 @@ from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
+from infrahub.services import InfrahubServices
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from types import TracebackType
-
-    from infrahub.services import InfrahubServices
-
-
-registry: InfrahubLockRegistry = None
 
 
 METRIC_PREFIX = "infrahub_lock"
@@ -54,7 +50,7 @@ class InfrahubMultiLock:
         self.registry = lock_registry
         self.locks = locks or []
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
         await self.acquire()
 
     async def __aexit__(
@@ -62,7 +58,7 @@ class InfrahubMultiLock:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         await self.release()
 
     async def acquire(self) -> None:
@@ -79,10 +75,10 @@ class NATSLock:
 
     def __init__(self, service: InfrahubServices, name: str) -> None:
         self.name = name
-        self.token = None
+        self.token: str | None = None
         self.service = service
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
         await self.acquire()
 
     async def __aexit__(
@@ -90,18 +86,18 @@ class NATSLock:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         await self.release()
 
-    async def acquire(self) -> None:
-        token = f"{current_timestamp()}::{WORKER_IDENTITY}"
+    async def acquire(self, token: str | None = None) -> bool:
+        _token = token or f"{current_timestamp()}::{WORKER_IDENTITY}"
         while True:
-            if await self.do_acquire(token):
-                self.token = token
+            if await self.do_acquire(_token):
+                self.token = _token
                 return True
             await sleep(0.1)  # default Redis GlobalLock value
 
-    async def do_acquire(self, token: str) -> bool:
+    async def do_acquire(self, token: str) -> bool | None:
         return await self.service.cache.set(key=self.name, value=token, not_exists=True)
 
     async def release(self) -> None:
@@ -124,11 +120,11 @@ class InfrahubLock:
         local: bool | None = None,
         in_multi: bool = False,
     ) -> None:
-        self.use_local: bool = local
-        self.local: LocalLock = None
-        self.remote: GlobalLock = None
+        self.use_local: bool | None = local
+        self._local: LocalLock | None = None
+        self._remote: GlobalLock | NATSLock | None = None
         self.name: str = name
-        self.connection: redis.Redis | None = connection
+        self.connection: redis.Redis | InfrahubServices | None = connection
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
         self.acquire_time: int | None = None
@@ -138,13 +134,27 @@ class InfrahubLock:
             self.use_local = True
 
         if self.use_local:
-            self.local = LocalLock()
+            self._local = LocalLock()
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
+            assert isinstance(self.connection, redis.Redis)
+            self._remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
         else:
-            self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
+            assert isinstance(self.connection, InfrahubServices)
+            self._remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
 
-    async def __aenter__(self):
+    @property
+    def remote(self) -> GlobalLock | NATSLock:
+        if not self._remote:
+            raise RuntimeError("Remote lock not initialized")
+        return self._remote
+
+    @property
+    def local(self) -> LocalLock:
+        if not self._local:
+            raise RuntimeError("Local lock not initialized")
+        return self._local
+
+    async def __aenter__(self) -> None:
         await self.acquire()
 
     async def __aexit__(
@@ -152,7 +162,7 @@ class InfrahubLock:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         await self.release()
 
     async def acquire(self) -> None:
@@ -165,6 +175,9 @@ class InfrahubLock:
         self.event.clear()
 
     async def release(self) -> None:
+        if not self.acquire_time:
+            raise RuntimeError("Lock not initialized")
+
         duration_ns = time.time_ns() - self.acquire_time
         LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
         if not self.use_local:
@@ -268,10 +281,10 @@ class InfrahubLockRegistry:
             self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
         return self.locks[lock_name]
 
-    def local_schema_lock(self) -> LocalLock:
+    def local_schema_lock(self) -> InfrahubLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)
 
-    def initialization(self) -> LocalLock:
+    def initialization(self) -> InfrahubLock:
         return self.get(name=GLOBAL_INIT_LOCK)
 
     async def local_schema_wait(self) -> None:
@@ -285,5 +298,8 @@ class InfrahubLockRegistry:
 
 
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
-    global registry
-    registry = InfrahubLockRegistry(local_only=local_only, service=service)
+    global lock_registry
+    lock_registry = InfrahubLockRegistry(local_only=local_only, service=service)
+
+
+lock_registry: InfrahubLockRegistry = InfrahubLockRegistry()

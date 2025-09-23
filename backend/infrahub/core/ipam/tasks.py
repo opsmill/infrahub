@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from prefect import flow
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_branch_tag
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 async def ipam_reconciliation(branch: str, ipam_node_details: list[IpamNodeDetails]) -> None:
     database = await get_database()
     async with database.start_session() as db:
-        branch_obj = await registry.get_branch(db=db, branch=branch)
+        branch_obj = await core_registry.get_branch(db=db, branch=branch)
 
         await add_branch_tag(branch_name=branch_obj.name)
 

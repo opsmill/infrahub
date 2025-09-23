@@ -1,7 +1,7 @@
 import pytest
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
@@ -846,16 +846,16 @@ async def test_create_relationship_for_node_with_migrated_kind(
     person_alfred_main: Node,
 ):
     schema = SchemaRoot(generics=[core_group], nodes=[core_standard_group])
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     default_branch.update_schema_hash()
 
     branch = await create_branch(db=db, branch_name="migrated-branch")
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    schema = core_registry.schema.get_schema_branch(name=branch.name)
     person_schema = schema.get(name="TestPerson")
     person_schema.name = "GreatPerson"
     new_person_kind = "TestGreatPerson"
     assert person_schema.kind == new_person_kind
-    registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name=new_person_kind, schema=person_schema, branch=branch.name)
     migration = NodeKindUpdateMigration(
         previous_node_schema=schema.get(name="TestPerson"),
         new_node_schema=person_schema,
@@ -866,7 +866,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
     core_node_schema = schema.get_generic(name="CoreNode")
     core_node_schema.used_by.append(new_person_kind)
     schema.set(name="CoreNode", schema=core_node_schema)
-    await registry.schema.load_schema_to_db(db=db, schema=schema, branch=branch)
+    await core_registry.schema.load_schema_to_db(db=db, schema=schema, branch=branch)
 
     # create group on main
     group_create_query = """
@@ -954,7 +954,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
     groups = await person_main.member_of_groups.get(db=db)
     assert len(groups) == 1
     assert groups[0].peer_id == main_group_id
-    main_person_schema = registry.schema.get(name="TestPerson", branch=default_branch, duplicate=False)
+    main_person_schema = core_registry.schema.get(name="TestPerson", branch=default_branch, duplicate=False)
     members_rel_schema = main_person_schema.get_relationship("member_of_groups")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -971,7 +971,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
     members = await group_main.members.get(db=db)
     assert len(members) == 1
     assert members[0].peer_id == person_alfred_main.id
-    main_group_schema = registry.schema.get(name="CoreStandardGroup", branch=default_branch, duplicate=False)
+    main_group_schema = core_registry.schema.get(name="CoreStandardGroup", branch=default_branch, duplicate=False)
     members_rel_schema = main_group_schema.get_relationship("members")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -988,7 +988,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
     groups = await alfred_branch.member_of_groups.get(db=db)
     assert len(groups) == 1
     assert groups[0].peer_id == branch_group_id
-    branch_person_schema = registry.schema.get(name="TestGreatPerson", branch=branch, duplicate=False)
+    branch_person_schema = core_registry.schema.get(name="TestGreatPerson", branch=branch, duplicate=False)
     members_rel_schema = branch_person_schema.get_relationship("member_of_groups")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -1005,7 +1005,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
     members = await group_branch.members.get(db=db)
     assert len(members) == 1
     assert members[0].peer_id == person_alfred_main.id
-    branch_group_schema = registry.schema.get(name="CoreStandardGroup", branch=branch, duplicate=False)
+    branch_group_schema = core_registry.schema.get(name="CoreStandardGroup", branch=branch, duplicate=False)
     members_rel_schema = branch_group_schema.get_relationship("members")
     peer_count = await NodeManager.count_peers(
         db=db,
@@ -1080,7 +1080,7 @@ async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_bra
 
 
 async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get("TestCar", duplicate=True)
     car_schema.uniqueness_constraints = [["owner", "color"]]
     schema_branch.set(name="TestCar", schema=car_schema)
@@ -1281,7 +1281,7 @@ async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branc
 async def test_create_with_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    core_registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
     branch.update_schema_hash()
 
     query = """
@@ -1421,7 +1421,7 @@ async def test_create_with_object_template(
 async def test_create_without_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    core_registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
     branch.update_schema_hash()
 
     query = """
@@ -1464,7 +1464,7 @@ async def test_create_without_object_template(
 async def test_create_sub_object_template_by_hfid(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
-    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    core_registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
     branch.update_schema_hash()
 
     device_template = await Node.init(db=db, schema=f"Template{TestKind.DEVICE}", branch=branch)
@@ -1474,7 +1474,7 @@ async def test_create_sub_object_template_by_hfid(
     await device_template.save(db=db)
     device_template_hfid = await device_template.get_hfid(db=db)
 
-    template = await registry.manager.get_one_by_hfid(
+    template = await core_registry.manager.get_one_by_hfid(
         db=db, branch=branch, kind=f"Template{TestKind.INTERFACE_HOLDER}", hfid=device_template_hfid
     )
     assert device_template.id == template.id
@@ -1515,7 +1515,7 @@ async def test_create_sub_object_template_by_hfid(
     node_id = result.data["TemplateTestingPhysicalInterfaceCreate"]["object"]["id"]
     assert node_id
 
-    interface_template = await registry.manager.get_one(db=db, branch=branch, id=node_id)
+    interface_template = await core_registry.manager.get_one(db=db, branch=branch, id=node_id)
     assert interface_template
     assert (await interface_template.device.get_peer(db=db)).id == device_template.id
 

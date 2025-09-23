@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
@@ -36,7 +36,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
                     if parent_attr.unique is True:
                         comparison_schema = generic_parent_schema
                         break
-            nodes = await registry.manager.query(
+            nodes = await core_registry.manager.query(
                 schema=comparison_schema,
                 filters={f"{unique_attr.name}__value": attr.value},
                 fields={},

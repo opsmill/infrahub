@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -186,9 +186,9 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND)
-        cylons = await registry.manager.query(db=db, schema=CYLON_KIND)
-        cars = await registry.manager.query(db=db, schema=CAR_KIND)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND)
+        cylons = await core_registry.manager.query(db=db, schema=CYLON_KIND)
+        cars = await core_registry.manager.query(db=db, schema=CAR_KIND)
         assert len(persons) == 2
         assert len(cylons) == 2
         assert len(cars) == 1

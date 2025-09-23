@@ -8,7 +8,7 @@ from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
@@ -206,7 +206,7 @@ async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> bool:
         return True
 
     schema_manager = SchemaManager()
-    registry.schema = schema_manager
+    core_registry.schema = schema_manager
     schema = SchemaRoot(**internal_schema)
     schema_manager.register_schema(schema=schema)
     branches_by_name = {b.name: b for b in await Branch.get_list(db=db)}
@@ -273,8 +273,10 @@ async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> bool:
 
     rprint(f"{SUCCESS_BADGE} All nodes have the correct inheritance")
 
-    if registry.default_branch in kind_label_counts_by_branch:
-        kinds = [kind_label_count.kind for kind_label_count in kind_label_counts_by_branch[registry.default_branch]]
+    if core_registry.default_branch in kind_label_counts_by_branch:
+        kinds = [
+            kind_label_count.kind for kind_label_count in kind_label_counts_by_branch[core_registry.default_branch]
+        ]
         rprint(
             "[bold cyan]Note that migrations were run on the default branch for the following schema kinds: "
             f"{', '.join(kinds)}. You should rebase any branches that include/will include changes using "

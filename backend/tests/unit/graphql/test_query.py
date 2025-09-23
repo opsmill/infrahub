@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 import pytest
 from graphql import graphql
 
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreGraphQLQuery
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -31,7 +31,7 @@ async def execute_query(
     """Helper function to Execute a GraphQL Query."""
 
     if not isinstance(branch, Branch):
-        branch = await registry.get_branch(db=db, branch=branch)
+        branch = await core_registry.get_branch(db=db, branch=branch)
     at = Timestamp(at)
 
     graphql_query = await NodeManager.get_one_by_default_filter(

@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.manager import Node, NodeManager
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.timestamp import Timestamp
@@ -18,7 +18,7 @@ async def test_account(db: InfrahubDatabase, default_branch, register_core_model
 
 @pytest.fixture
 async def relm(db: InfrahubDatabase, default_branch, register_core_models_schema, test_account) -> RelationshipManager:
-    model = registry.schema.get(name="CoreAccount")
+    model = core_registry.schema.get(name="CoreAccount")
     rel_schema = model.get_relationship("member_of_groups")
 
     relm = await RelationshipManager.init(
@@ -29,7 +29,7 @@ async def relm(db: InfrahubDatabase, default_branch, register_core_models_schema
 
 
 def test_nodemanager_querypeers(aio_benchmark, db: InfrahubDatabase, default_branch, test_account):
-    model = registry.schema.get(name="CoreAccount")
+    model = core_registry.schema.get(name="CoreAccount")
     aio_benchmark(
         NodeManager().query_peers,
         db=db,

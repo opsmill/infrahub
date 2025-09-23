@@ -13,7 +13,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
@@ -165,13 +165,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             Branch:
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
-            return registry.get_global_branch()
+            return core_registry.get_global_branch()
         return self.branch
 
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
-        registry.attribute[cls.__name__] = cls
+        core_registry.attribute[cls.__name__] = cls
 
     def get_kind(self) -> str:
         return self.schema.kind
@@ -631,9 +631,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
-            branch = registry.get_global_branch()
+            branch = core_registry.get_global_branch()
         elif self.schema.branch == BranchSupportType.LOCAL and self.node._schema.branch == BranchSupportType.AGNOSTIC:
-            branch = registry.get_global_branch()
+            branch = core_registry.get_global_branch()
             hierarchy_level = 0
         data = AttributeCreateData(
             uuid=str(UUIDT()),

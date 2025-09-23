@@ -6,7 +6,7 @@ import pytest
 
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -39,7 +39,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
 
     @pytest.fixture(scope="class")
     async def new_address_1(self, branch_1, initial_dataset, db: InfrahubDatabase):
-        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch_1)
+        address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=branch_1)
         new_address = await Node.init(schema=address_schema, db=db, branch=branch_1)
         await new_address.new(db=db, address="10.10.0.2", ip_namespace=initial_dataset["ns1"].id)
         await new_address.save(db=db)
@@ -91,8 +91,8 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
             data={"source_branch": branch_2.name, "destination_branch": "main", "name": "delete_prefix_pc"},
         )
         await proposed_change_create.save()
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch_2)
-        new_prefix = await Node.init(schema=prefix_schema, db=db, branch=registry.default_branch)
+        prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch_2)
+        new_prefix = await Node.init(schema=prefix_schema, db=db, branch=core_registry.default_branch)
         await new_prefix.new(db=db, prefix="10.10.0.0/17", ip_namespace=initial_dataset["ns1"].id)
         await new_prefix.save(db=db)
         deleted_prefix_branch = await NodeManager.get_one(db=db, branch=branch_2, id=initial_dataset["net140"].id)

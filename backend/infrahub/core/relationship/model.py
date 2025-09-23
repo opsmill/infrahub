@@ -20,7 +20,7 @@ from infrahub_sdk.utils import intersection, is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
 from infrahub.core.property import (
@@ -163,7 +163,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             Branch:
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
-            return registry.get_global_branch()
+            return core_registry.get_global_branch()
         return self.branch
 
     def _process_data(self, data: dict | RelationshipPeerData | str) -> None:
@@ -239,7 +239,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         if self._node:
             return self._node
 
-        node: Node = await registry.manager.get_one_by_id_or_default_filter(
+        node: Node = await core_registry.manager.get_one_by_id_or_default_filter(
             db=db,
             id=self.node_id,
             kind=self.schema.kind.value,
@@ -283,7 +283,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         peer: Node
         try:
             if self.peer_hfid:
-                peer = await registry.manager.get_one_by_hfid(
+                peer = await core_registry.manager.get_one_by_hfid(
                     db=db,
                     hfid=self.peer_hfid,
                     kind=self.schema.peer,
@@ -296,7 +296,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
             else:
-                peer = await registry.manager.get_one_by_id_or_default_filter(
+                peer = await core_registry.manager.get_one_by_id_or_default_filter(
                     db=db,
                     id=self.get_peer_id(),
                     kind=self.schema.peer,
@@ -433,7 +433,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return
 
         if self.peer_id and not is_valid_uuid(self.peer_id):
-            peer = await registry.manager.get_one_by_default_filter(
+            peer = await core_registry.manager.get_one_by_default_filter(
                 db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
             )
             if peer:
@@ -446,7 +446,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 if isinstance(self.data, dict) and "kind" in self.data and peer_schema.is_generic_schema
                 else self.schema.peer
             )
-            peer = await registry.manager.get_one_by_hfid(
+            peer = await core_registry.manager.get_one_by_hfid(
                 db=db,
                 hfid=self.peer_hfid,
                 branch=self.branch,
@@ -458,7 +458,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         if not self.peer_id and self.from_pool and "id" in self.from_pool:
             pool_id = str(self.from_pool.get("id"))
-            pool = await registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
+            pool = await core_registry.manager.get_one(db=db, id=pool_id, branch=self.branch)
 
             if not pool:
                 raise NodeNotFoundError(
@@ -891,7 +891,7 @@ class RelationshipManager:
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
-        nodes = await registry.manager.get_many(
+        nodes = await core_registry.manager.get_many(
             db=db, ids=peer_ids, branch=self.branch, branch_agnostic=branch_agnostic
         )
         return nodes
@@ -906,7 +906,7 @@ class RelationshipManager:
             Branch:
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
-            return registry.get_global_branch()
+            return core_registry.get_global_branch()
         return self.branch
 
     async def get_db_peers(

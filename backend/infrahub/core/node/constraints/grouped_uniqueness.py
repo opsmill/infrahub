@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import NULL_VALUE
 from infrahub.core.schema.basenode_schema import (
     UniquenessConstraintType,
@@ -34,7 +34,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.db = db
         self.branch = branch
-        self.schema_branch = registry.schema.get_schema_branch(branch.name)
+        self.schema_branch = core_registry.schema.get_schema_branch(branch.name)
 
     async def _get_unique_valued_paths(
         self,

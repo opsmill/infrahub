@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.node import Node
@@ -53,7 +53,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         }
 
         schema_root = SchemaRoot(**schema_dict)
-        return registry.schema.register_schema(schema=schema_root, branch=registry.default_branch)
+        return core_registry.schema.register_schema(schema=schema_root, branch=core_registry.default_branch)
 
     @pytest.fixture
     async def ship_one(self, db: InfrahubDatabase, schema) -> Node:
@@ -77,13 +77,13 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         return ship_profile
 
     async def test_empty_profiles_allowed(self, db: InfrahubDatabase, ship_one: Node, ship_profile: Node):
-        ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
+        ship_schema = core_registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
         await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
     async def test_profile_for_schema_allowed(self, db: InfrahubDatabase, ship_one: Node, ship_profile: Node):
-        ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
+        ship_schema = core_registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
         await ship_one.profiles.add(db=db, data=ship_profile)
@@ -92,7 +92,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         await constraint.check(relm=ship_one.profiles, node_schema=ship_schema, node=ship_one)
 
     async def test_generic_profile_allowed(self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node):
-        ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
+        ship_schema = core_registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
         await ship_one.profiles.add(db=db, data=space_object_profile)
@@ -104,7 +104,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
         wrong_profile = await Node.init(db=db, schema="ProfileTestOtherGeneric")
         await wrong_profile.new(db=db, profile_name="something", profile_priority=400, smell="not good")
         await wrong_profile.save(db=db)
-        ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
+        ship_schema = core_registry.schema.get_node_schema(name="TestShip", duplicate=False)
 
         constraint = RelationshipProfilesKindConstraint(db=db)
         await ship_one.profiles.add(db=db, data=wrong_profile)
@@ -119,8 +119,8 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
     async def test_generic_profile_not_allowed_when_generic_generate_profile_is_false(
         self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node
     ):
-        ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
-        generic_schema = registry.schema.get(name="TestGenericSpaceObject", duplicate=False)
+        ship_schema = core_registry.schema.get_node_schema(name="TestShip", duplicate=False)
+        generic_schema = core_registry.schema.get(name="TestGenericSpaceObject", duplicate=False)
         generic_schema.generate_profile = False
 
         constraint = RelationshipProfilesKindConstraint(db=db)
@@ -136,7 +136,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
     async def test_profile_not_allowed_when_generate_profile_is_false(
         self, db: InfrahubDatabase, ship_one: Node, space_object_profile: Node
     ):
-        ship_schema = registry.schema.get_node_schema(name="TestShip", duplicate=False)
+        ship_schema = core_registry.schema.get_node_schema(name="TestShip", duplicate=False)
         ship_schema.generate_profile = False
 
         constraint = RelationshipProfilesKindConstraint(db=db)

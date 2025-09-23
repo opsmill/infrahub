@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model.diff import (
@@ -74,7 +74,7 @@ async def get_diff_artifacts(
     _: str = Depends(get_current_user),
 ) -> dict[str, BranchDiffArtifact]:
     artifact_diff_calculator = ArtifactDiffCalculator(db=db)
-    target_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    target_branch = await core_registry.get_branch(db=db, branch=core_registry.default_branch)
     artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=target_branch)
     response = {art_diff.id: art_diff for art_diff in artifact_diffs}
     return response

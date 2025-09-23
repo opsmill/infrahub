@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, PathType, SchemaPathType
 from infrahub.core.node import Node
@@ -22,8 +22,8 @@ from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 @pytest.fixture
 async def snow_incident_01(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> Node:
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
     incident_1 = await Node.init(db=db, schema="SnowIncident", branch=default_branch)
     await incident_1.new(db=db, title="The first issue")
@@ -36,7 +36,7 @@ async def snow_incident_01(db: InfrahubDatabase, default_branch: Branch, registe
 async def test_query_numberpool_constraints_success(
     db: InfrahubDatabase, default_branch: Branch, snow_incident_01: Node, start_range: int, end_range: int
 ) -> None:
-    incident_schema = registry.schema.get(name="SnowIncident")
+    incident_schema = core_registry.schema.get(name="SnowIncident")
     number = incident_schema.get_attribute(name="number")
     assert isinstance(number.parameters, NumberPoolParameters)
     number.parameters.start_range = start_range
@@ -59,7 +59,7 @@ async def test_query_numberpool_constraints_success(
 async def test_query_numberpool_constraints_too_small(
     db: InfrahubDatabase, default_branch: Branch, snow_incident_01: Node
 ) -> None:
-    incident_schema = registry.schema.get(name="SnowIncident")
+    incident_schema = core_registry.schema.get(name="SnowIncident")
     number = incident_schema.get_attribute(name="number")
     assert isinstance(number.parameters, NumberPoolParameters)
     number.parameters.start_range = 10
@@ -92,7 +92,7 @@ async def test_query_numberpool_constraints_too_small(
 async def test_query_numberpool_constraints_too_large(
     db: InfrahubDatabase, default_branch: Branch, snow_incident_01: Node
 ) -> None:
-    incident_schema = registry.schema.get(name="SnowIncident")
+    incident_schema = core_registry.schema.get(name="SnowIncident")
     number = incident_schema.get_attribute(name="number")
     assert isinstance(number.parameters, NumberPoolParameters)
     number.parameters.start_range = -20
@@ -131,18 +131,18 @@ async def test_validator_range(
     await branch.rebase(db=db)
 
     """
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema = core_registry.schema.get(name="TestPerson", branch=branch)
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = 100
     height_attr.parameters.max_value = 150
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
     """
-    incident_schema = registry.schema.get_node_schema(name="SnowIncident")
+    incident_schema = core_registry.schema.get_node_schema(name="SnowIncident")
     number = incident_schema.get_attribute(name="number")
     assert isinstance(number.parameters, NumberPoolParameters)
     number.parameters.start_range = -5
     number.parameters.end_range = 5
-    registry.schema.set(name="SnowIncident", schema=incident_schema, branch=branch.name)
+    core_registry.schema.set(name="SnowIncident", schema=incident_schema, branch=branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,
@@ -160,7 +160,7 @@ async def test_validator_range(
 
     number.parameters.start_range = 100
     number.parameters.end_range = 200
-    registry.schema.set(name="SnowIncident", schema=incident_schema, branch=branch.name)
+    core_registry.schema.set(name="SnowIncident", schema=incident_schema, branch=branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,

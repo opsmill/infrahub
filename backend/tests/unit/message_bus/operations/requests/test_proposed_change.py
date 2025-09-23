@@ -5,7 +5,7 @@ import ujson
 from infrahub_sdk.diff import NodeDiff
 from pytest_httpx import HTTPXMock
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
 from infrahub.core.diff.model.diff import DiffElementType
@@ -122,7 +122,7 @@ async def test_get_proposed_change_schema_integrity_constraints(
     schema_integrity_01,
     branch_diff_01_summary: list[NodeDiff],
 ):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     constraints = await _get_proposed_change_schema_integrity_constraints(
         schema=schema, diff_summary=branch_diff_01_summary
     )
@@ -283,7 +283,7 @@ async def test_schema_integrity(
         await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
         await person.save(db=db)
 
-        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        branch2_schema = core_registry.schema.get_schema_branch(name=branch2.name)
         person_schema = branch2_schema.get(name="TestPerson")
         name_attr = person_schema.get_attribute(name="name")
         name_attr.parameters.regex = r"^[A-Z]+$"
@@ -295,7 +295,7 @@ async def test_schema_integrity(
 
         await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
 
-        checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
+        checks = await core_registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
         assert len(checks) == 2
         assert checks[0].conclusion.value.value == "failure"
         assert checks[1].conclusion.value.value == "failure"

@@ -11,12 +11,12 @@ from pydantic import BaseModel
 
 from infrahub import config, models
 from infrahub.config import SecurityOAuth2Google, SecurityOAuth2Settings, SecurityOIDCGoogle, SecurityOIDCSettings
+from infrahub.core import core_registry
 from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
-from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: str | None = None
 ) -> models.UserToken:
-    selected_branch = await registry.get_branch(db=db, branch=branch)
+    selected_branch = await core_registry.get_branch(db=db, branch=branch)
 
     response: list[CoreGenericAccount] = await NodeManager.query(
         schema=InfrahubKind.GENERICACCOUNT,
@@ -98,7 +98,7 @@ async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expirat
 async def create_fresh_access_token(
     db: InfrahubDatabase, refresh_data: models.RefreshTokenData
 ) -> models.AccessTokenResponse:
-    selected_branch = await registry.get_branch(db=db)
+    selected_branch = await core_registry.get_branch(db=db)
 
     refresh_token = await NodeManager.get_one(id=str(refresh_data.session_id), db=db)
     if not refresh_token:

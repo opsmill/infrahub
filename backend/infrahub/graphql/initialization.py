@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from starlette.background import BackgroundTasks
 
 from infrahub.context import InfrahubContext
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
 from infrahub.graphql.registry import registry as graphql_registry
@@ -88,8 +88,8 @@ async def prepare_graphql_params(
     include_subscription: bool = True,
     include_types: bool = True,
 ) -> GraphqlParams:
-    branch = registry.get_branch_from_registry(branch=branch)
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    branch = core_registry.get_branch_from_registry(branch=branch)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
     gqlm = graphql_registry.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
     gql_schema = gqlm.get_graphql_schema(
         include_query=include_query,

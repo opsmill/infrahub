@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
@@ -44,7 +44,9 @@ async def test_hierarchical_uniqueness_constraint(
     rack_schema.human_friendly_id = ["parent__name__value", "status__value"]
     rack_schema.uniqueness_constraints = [["parent", "status__value"]]
 
-    registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
+    core_registry.schema.register_schema(
+        schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name
+    )
     constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
 
     eu = await Node.init(db=db, schema="LocationRegion", branch=default_branch)

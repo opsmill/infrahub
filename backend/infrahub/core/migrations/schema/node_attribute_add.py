@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.node import Node
 from infrahub.exceptions import PoolExhaustedError
 from infrahub.tasks.registry import update_branch_registry
@@ -58,7 +58,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         await update_branch_registry(db=db, branch=branch)
 
-        nodes: list[Node] = await registry.manager.query(
+        nodes: list[Node] = await core_registry.manager.query(
             db=db, branch=branch, schema=self.new_schema, fields={"id": True, self.new_attribute_schema.name: True}
         )
 

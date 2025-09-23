@@ -3,7 +3,7 @@ from __future__ import annotations
 from prefect import flow
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.models import RequestDiffUpdate  # noqa: TC001  needed for prefect flow
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -23,8 +23,8 @@ async def update_diff(model: RequestDiffUpdate) -> None:
     database = await get_database()
     async with database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
-        base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=db, branch=model.branch_name)
+        base_branch = await core_registry.get_branch(db=db, branch=core_registry.default_branch)
+        diff_branch = await core_registry.get_branch(db=db, branch=model.branch_name)
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
 
@@ -44,8 +44,8 @@ async def refresh_diff(branch_name: str, diff_id: str) -> None:
     database = await get_database()
     async with database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
-        base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=db, branch=branch_name)
+        base_branch = await core_registry.get_branch(db=db, branch=core_registry.default_branch)
+        diff_branch = await core_registry.get_branch(db=db, branch=branch_name)
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
         await diff_coordinator.recalculate(base_branch=base_branch, diff_branch=diff_branch, diff_id=diff_id)
@@ -58,7 +58,7 @@ async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
     database = await get_database()
     async with database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
-        default_branch = registry.get_branch_from_registry()
+        default_branch = core_registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         diff_roots_to_refresh = await diff_repository.get_roots_metadata(diff_branch_names=[branch_name])
 

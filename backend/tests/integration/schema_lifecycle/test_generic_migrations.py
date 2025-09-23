@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import HashableModelState
 from infrahub.core.manager import NodeManager
@@ -215,7 +215,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     async def branch(self, request, db: InfrahubDatabase, default_branch: Branch, branch_name: str) -> Branch:
         if request.param:
             return default_branch
-        return await registry.get_branch(db=db, branch=branch_name)
+        return await core_registry.get_branch(db=db, branch=branch_name)
 
     @pytest.fixture(scope="class")
     def schema_specific_one_with_overrides(self, schema_specific_one_base: dict[str, Any]) -> dict[str, Any]:
@@ -426,8 +426,8 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         }
 
     async def _refresh_registry(self, db: InfrahubDatabase, branch: Branch) -> None:
-        current_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
-        registry.schema.set_schema_branch(name=branch.name, schema=current_schema_branch)
+        current_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
+        core_registry.schema.set_schema_branch(name=branch.name, schema=current_schema_branch)
 
     async def validate_database(
         self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
@@ -437,7 +437,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     async def test_step01_baseline_backend(
         self, db: InfrahubDatabase, branch: Branch, client: InfrahubClient, initial_dataset
     ):
-        all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
+        all_specifics = await core_registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 3
 
         # verify create and delete using the client
@@ -634,7 +634,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert retrieved_node.generic_required_attr.value is None
         await node.delete()
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert set(generic_schema.attribute_names) == {"generic_attr_text", "generic_attr_num", "generic_required_attr"}
         assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
@@ -697,7 +697,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert not errors
 
     async def _finalize_deleted_fields(self, db: InfrahubDatabase, branch: Branch, full_schema_dict: dict[str, Any]):
-        current_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        current_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
         for schema_dict in full_schema_dict["generics"] + full_schema_dict["nodes"]:
             for attr in schema_dict.get("attributes", []):
                 if attr.get("state") == HashableModelState.ABSENT.value:
@@ -800,7 +800,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert rels_three[0].peer_id == initial_dataset["thing_three"].id
         assert isinstance(retrieved_specific_three.things, RelationshipManager)
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert set(generic_schema.attribute_names) == {"generic_attr_num", "generic_attr_text", "generic_required_attr"}
         assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
@@ -946,7 +946,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert rels_three[0].peer_id == initial_dataset["thing_three"].id
         assert isinstance(retrieved_specific_three.things, RelationshipManager)
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert set(generic_schema.attribute_names) == {"generic_attr_num", "generic_attr_text", "generic_required_attr"}
         assert set(generic_schema.relationship_names) >= {"things", "favorite_thing"}
@@ -1197,7 +1197,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert retrieved_node.generic_required_attr.value is None
         await node.delete()
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert set(generic_schema.attribute_names) == {"generic_attr_num"}
         assert "things" not in generic_schema.relationship_names
@@ -1322,7 +1322,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         assert rels_three[0].peer_id == initial_dataset["thing_three"].id
         assert not hasattr(retrieved_specific_threee, "things")
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
         generic_schema = updated_schema_branch.get(GENERIC_KIND, duplicate=False)
         assert set(generic_schema.attribute_names) == {"generic_attr_num"}
         assert "things" not in generic_schema.relationship_names
@@ -1475,7 +1475,7 @@ class TestSchemaLifecycleGenericUpdatedWithLegacyDuplicates(SchemaLifecycleGener
     ) -> dict[str, Node]:
         # add duplicative inherited attrs and rels to database for inheriting schemas
         # b/c this is how data used to be stored
-        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        main_schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         attribute_schema = main_schema_branch.get_node(name="SchemaAttribute", duplicate=False)
         relationship_schema = main_schema_branch.get_node(name="SchemaRelationship", duplicate=False)
         for schema_kind in [SPECIFIC_ONE_KIND, SPECIFIC_TWO_KIND, SPECIFIC_THREE_KIND]:
@@ -1483,13 +1483,13 @@ class TestSchemaLifecycleGenericUpdatedWithLegacyDuplicates(SchemaLifecycleGener
             node_schema_instance = await NodeManager.get_one(db=db, branch=default_branch, id=node_schema.get_id())
             for attr_name in ("generic_attr_text", "generic_attr_num"):
                 attr = node_schema.get_attribute(attr_name)
-                new_attr = await registry.schema.create_attribute_in_db(
+                new_attr = await core_registry.schema.create_attribute_in_db(
                     db=db, branch=default_branch, schema=attribute_schema, parent=node_schema_instance, item=attr
                 )
                 attr.id = new_attr.id
             for rel_name in ("things", "favorite_thing"):
                 rel = node_schema.get_relationship(rel_name)
-                new_rel = await registry.schema.create_relationship_in_db(
+                new_rel = await core_registry.schema.create_relationship_in_db(
                     db=db, branch=default_branch, schema=relationship_schema, parent=node_schema_instance, item=rel
                 )
                 rel.id = new_rel.id

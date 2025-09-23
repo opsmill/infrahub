@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.initialization import create_branch
@@ -61,7 +61,7 @@ async def test_node_init(
 
 
 async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.schema.set(name="TestCriticality", schema=criticality_schema)
+    core_registry.schema.set(name="TestCriticality", schema=criticality_schema)
     obj = await Node.init(db=db, schema="TestCriticality")
     await obj.new(db=db, name="low", level=4)
 
@@ -75,7 +75,7 @@ async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.schema.set(name="TestCriticality", schema=criticality_schema)
+    core_registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     uuid1 = str(UUIDT())
     obj = await Node.init(db=db, schema="TestCriticality")
@@ -86,7 +86,7 @@ async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, critic
 
 
 async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.schema.set(name="TestCriticality", schema=criticality_schema)
+    core_registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     uuid1 = str(UUIDT())
     obj1 = await Node.init(db=db, schema="TestCriticality")
@@ -101,7 +101,7 @@ async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_node_init_invalid_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.schema.set(name="TestCriticality", schema=criticality_schema)
+    core_registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     obj = await Node.init(db=db, schema="TestCriticality")
     with pytest.raises(ValidationError) as exc:
@@ -178,7 +178,7 @@ async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch):
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node_schema.kind, schema=node_schema)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, name="test01", myint=100, mybool=False, mystr="test02")
@@ -208,7 +208,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     }
 
     node_schema = NodeSchema(**schema_01)
-    registry.schema.set(name=node_schema.kind, schema=node_schema)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
@@ -217,7 +217,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     # Display Labels with 2 attributes
     schema_01["display_labels"] = ["firstname__value", "age__value"]
     node_schema = NodeSchema(**schema_01)
-    registry.schema.set(name=node_schema.kind, schema=node_schema)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
@@ -226,7 +226,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     # Empty Display Label
     schema_01["display_labels"] = []
     node_schema = NodeSchema(**schema_01)
-    registry.schema.set(name=node_schema.kind, schema=node_schema)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
@@ -235,7 +235,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     # Display Labels with an ENUM String
     schema_01["display_labels"] = ["firstname__value", "color__value"]
     node_schema = NodeSchema(**schema_01)
-    registry.schema.set(name=node_schema.kind, schema=node_schema)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, color="red")
@@ -244,7 +244,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     # Display Labels with an ENUM Number
     schema_01["display_labels"] = ["firstname__value", "height__value"]
     node_schema = NodeSchema(**schema_01)
-    registry.schema.set(name=node_schema.kind, schema=node_schema)
+    core_registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, height=180)
@@ -295,8 +295,8 @@ async def test_get_path_value(db: InfrahubDatabase, default_branch, animal_perso
 
 
 async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -326,8 +326,8 @@ async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_
 
 
 async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -361,8 +361,8 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 
 async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -426,8 +426,8 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_to_graphql_without_properties(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -617,8 +617,8 @@ async def test_node_create_attribute_with_different_owner(
 
 
 async def test_node_create_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -687,8 +687,8 @@ async def test_node_create_with_single_relationship(db: InfrahubDatabase, defaul
 
 
 async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema):
-    fruit = registry.schema.get(name="GardenFruit")
-    tag = registry.schema.get(name=InfrahubKind.TAG)
+    fruit = core_registry.schema.get(name="GardenFruit")
+    tag = core_registry.schema.get(name=InfrahubKind.TAG)
 
     t1 = await Node.init(db=db, schema=tag)
     await t1.new(db=db, name="tag1")
@@ -755,12 +755,12 @@ async def test_node_create_with_object_template(
             )
         ],
     )
-    registry.schema.set(name=DUMMY.kind, schema=DUMMY, branch=default_branch.name)
-    registry.schema.set(name=SIMPLE_DEVICE.kind, schema=SIMPLE_DEVICE, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
+    core_registry.schema.set(name=DUMMY.kind, schema=DUMMY, branch=default_branch.name)
+    core_registry.schema.set(name=SIMPLE_DEVICE.kind, schema=SIMPLE_DEVICE, branch=default_branch.name)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
 
-    template_schema = registry.schema.get(name=f"Template{SIMPLE_DEVICE.kind}", branch=default_branch.name)
-    node_schema = registry.schema.get(name=SIMPLE_DEVICE.kind, branch=default_branch.name)
+    template_schema = core_registry.schema.get(name=f"Template{SIMPLE_DEVICE.kind}", branch=default_branch.name)
+    node_schema = core_registry.schema.get(name=SIMPLE_DEVICE.kind, branch=default_branch.name)
 
     # Validate that the attributes respect the order_weight defined on the original schema
     template_weights = {
@@ -933,7 +933,7 @@ async def test_update_related_node(db: InfrahubDatabase, default_branch, data_sc
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema)
+    core_registry.schema.register_schema(schema=schema)
 
     # ----------------------------------------------------------------
     # Create objects
@@ -1305,7 +1305,7 @@ async def test_node_relationship_interface(db: InfrahubDatabase, default_branch:
 
 
 async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
-    prefix = registry.schema.get(name="TestPrefix")
+    prefix = core_registry.schema.get(name="TestPrefix")
 
     p1 = await Node.init(db=db, schema=prefix)
     await p1.new(db=db, prefix="192.0.2.1", name="prefix1")
@@ -1330,7 +1330,7 @@ async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_node_serialize_address(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
-    ip = registry.schema.get(name="TestIp")
+    ip = core_registry.schema.get(name="TestIp")
 
     i1 = await Node.init(db=db, schema=ip)
     await i1.new(db=db, address="192.0.2.1", name="ip1")

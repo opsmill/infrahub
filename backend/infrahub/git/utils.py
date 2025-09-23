@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
@@ -23,7 +23,7 @@ async def get_repositories_commit_per_branch(
 
     repositories: dict[str, RepositoryData] = {}
 
-    for branch in list(registry.branch.values()):
+    for branch in list(core_registry.branch.values()):
         repos: list[CoreGenericRepository] = await NodeManager.query(
             db=db,
             branch=branch,

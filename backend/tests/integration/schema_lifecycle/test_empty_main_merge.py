@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -374,9 +374,9 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         assert result["CoreProposedChangeUpdate"]["ok"]
 
         # verify schema hashes match
-        branch_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+        branch_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
         branch_schema_hash = branch_schema_branch.get_hash()
-        default_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        default_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
         default_schema_hash = default_schema_branch.get_hash()
         assert branch_schema_hash == default_schema_hash
 

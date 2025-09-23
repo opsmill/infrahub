@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, call
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
@@ -58,8 +58,8 @@ class TestMigration039(TestInfrahubApp):
         register_core_models_schema: SchemaBranch,
         register_ipam_schema: SchemaBranch,
     ) -> dict[str, Node]:
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+        prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+        address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
         # namespaces
         ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)

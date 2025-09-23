@@ -9,7 +9,7 @@ from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema  # noqa: TC001
 from infrahub.core.schema.schema_branch_computed import (  # noqa: TC001
@@ -101,8 +101,8 @@ class PythonTransformComputedAttribute(BaseModel):
                 self.branch_commit[branch] = commit
 
     def get_altered_branches(self) -> list[str]:
-        if registry.default_branch in self.branch_commit:
-            default_branch_commit = self.branch_commit[registry.default_branch]
+        if core_registry.default_branch in self.branch_commit:
+            default_branch_commit = self.branch_commit[core_registry.default_branch]
             return [
                 branch_name for branch_name, commit in self.branch_commit.items() if commit != default_branch_commit
             ]
@@ -154,7 +154,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         event_trigger.match = {"infrahub.node.kind": trigger_node.kind}
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
-        elif not branches_out_of_scope and branch != registry.default_branch:
+        elif not branches_out_of_scope and branch != core_registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
         event_trigger.match_related = {
@@ -210,7 +210,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         computed_attribute: PythonTransformComputedAttribute,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
-        # scope = registry.default_branch
+        # scope = core_registry.default_branch
 
         event_trigger = EventTrigger()
         event_trigger.events.update({NodeCreatedEvent.event_name, NodeUpdatedEvent.event_name})
@@ -220,7 +220,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
 
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
-        elif not branches_out_of_scope and branch != registry.default_branch:
+        elif not branches_out_of_scope and branch != core_registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
@@ -298,7 +298,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
 
         if branches_out_of_scope:
             event_trigger.match["infrahub.branch.name"] = [f"!{branch}" for branch in branches_out_of_scope]
-        elif not branches_out_of_scope and branch != registry.default_branch:
+        elif not branches_out_of_scope and branch != core_registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
         definition = cls(

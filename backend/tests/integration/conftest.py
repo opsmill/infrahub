@@ -11,7 +11,7 @@ from prefect.testing.utilities import prefect_test_harness
 from pytest import TempPathFactory
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.manager import NodeManager
@@ -40,8 +40,8 @@ def event_loop():
 async def load_infrastructure_schema(db: InfrahubDatabase):
     base_dir = get_models_dir() / "base"
 
-    default_branch_name = registry.default_branch
-    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
+    default_branch_name = core_registry.default_branch
+    branch_schema = core_registry.schema.get_schema_branch(name=default_branch_name)
     tmp_schema = branch_schema.duplicate()
 
     for file_name in base_dir.iterdir():
@@ -53,7 +53,9 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
             tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()
 
-    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
+    await core_registry.schema.update_schema_branch(
+        schema=tmp_schema, db=db, branch=default_branch_name, update_db=True
+    )
 
 
 @pytest.fixture(scope="module")

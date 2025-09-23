@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
@@ -118,6 +118,6 @@ async def car_person_schema_computed_attr(
         ]
     )
 
-    registry.schema.register_schema(schema=SCHEMA, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=SCHEMA, branch=default_branch.name)
     default_branch.update_schema_hash()
     await default_branch.save(db=db)

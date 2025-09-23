@@ -5,8 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from infrahub.core import core_registry
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
-from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -141,7 +141,9 @@ class NodePropertyMixin:
     async def _retrieve_node_property(self, db: InfrahubDatabase, name: str) -> None:
         """Query the node associated with this node_property from the database."""
 
-        node = await registry.manager.get_one(db=db, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at)
+        node = await core_registry.manager.get_one(
+            db=db, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at
+        )
         setattr(self, f"_{name}", node)
         if node:
             setattr(self, f"{name}_id", node.id)

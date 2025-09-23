@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -17,7 +17,7 @@ from infrahub.database import InfrahubDatabase
 async def test_query_number_constraints_success(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, min_value, max_value
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = min_value
     height_attr.parameters.max_value = max_value
@@ -42,7 +42,7 @@ async def test_query_number_constraints_too_small(
     person_john_main,
     person_jane_main,
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = 300
     height_attr.parameters.max_value = None
@@ -89,7 +89,7 @@ async def test_query_number_too_large(
     person_john_main,
     person_jane_main,
 ):
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = None
     height_attr.parameters.max_value = 10
@@ -145,7 +145,7 @@ async def test_query_update_on_branch(
     person_john.height.value = 180
     await person_john.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = 10
     height_attr.parameters.max_value = 300
@@ -178,7 +178,7 @@ async def test_query_delete_on_branch(
     person_john = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     await person_john.delete(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = 100
     height_attr.parameters.max_value = 150
@@ -216,11 +216,11 @@ async def test_validator_min_max(
     person_jane_main,
 ):
     await branch.rebase(db=db)
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema = core_registry.schema.get(name="TestPerson", branch=branch)
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = 100
     height_attr.parameters.max_value = 150
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,
@@ -277,12 +277,12 @@ async def test_validator_excluded_values(
     excluded_values: str,
 ):
     await branch.rebase(db=db)
-    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema = core_registry.schema.get(name="TestPerson", branch=branch)
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.excluded_values = excluded_values
     height_attr.parameters.min_value = None
     height_attr.parameters.max_value = None
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
+    core_registry.schema.set(name="TestPerson", schema=person_schema, branch=branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,

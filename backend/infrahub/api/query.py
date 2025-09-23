@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.context import InfrahubContext
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.database import InfrahubDatabase  # noqa: TC001
@@ -55,7 +55,7 @@ async def execute_query(
     permission_checker: GraphQLQueryPermissionChecker,
     account_session: AccountSession,
 ) -> dict[str, Any]:
-    gql_query = await registry.manager.get_one_by_id_or_default_filter(
+    gql_query = await core_registry.manager.get_one_by_id_or_default_filter(
         db=db, id=query_id, kind=CoreGraphQLQuery, branch=branch_params.branch, at=branch_params.at
     )
 

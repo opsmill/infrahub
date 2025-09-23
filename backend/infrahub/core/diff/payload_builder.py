@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub import config
+from infrahub.core import core_registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.registry import registry
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
@@ -19,7 +19,7 @@ async def get_display_labels_per_kind(
     kind: str, ids: list[str], branch_name: str, db: InfrahubDatabase, skip_missing_schema: bool = False
 ) -> dict[str, str]:
     """Return the display_labels of a list of nodes of a specific kind."""
-    branch = await registry.get_branch(branch=branch_name, db=db)
+    branch = await core_registry.get_branch(branch=branch_name, db=db)
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     try:
         fields = schema_branch.generate_fields_for_display_label(name=kind)

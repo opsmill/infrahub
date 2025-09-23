@@ -35,7 +35,7 @@ async def setup_triggers_specific(
     trigger_type: TriggerType,
     db: InfrahubDatabase | None = None,
 ) -> TriggerSetupReport:
-    async with lock.registry.get(
+    async with lock.lock_registry.get(
         name=f"configure-action-rules-{trigger_type.value}", namespace="trigger-rules", local=False
     ):
         if db:

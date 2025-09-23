@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -62,12 +62,12 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
         return objs
 
     async def test_step01_baseline(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
-        devices = await registry.manager.query(db=db, schema=DEVICE_KIND)
+        devices = await core_registry.manager.query(db=db, schema=DEVICE_KIND)
         assert len(devices) == 2
 
     async def test_step02_load_schema_update(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
-        role_schema = registry.schema.get(name=DEVICE_ROLE_KIND, duplicate=False).model_dump()
-        device_schema = registry.schema.get(name=DEVICE_KIND, duplicate=False).model_dump()
+        role_schema = core_registry.schema.get(name=DEVICE_ROLE_KIND, duplicate=False).model_dump()
+        device_schema = core_registry.schema.get(name=DEVICE_KIND, duplicate=False).model_dump()
 
         assert role_schema["id"]
         assert device_schema["id"]
@@ -82,7 +82,7 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
         assert not response.errors
 
     async def test_step03_get_devices(self, db: InfrahubDatabase) -> None:
-        devices = await registry.manager.query(db=db, schema=DEVICE_KIND)
+        devices = await core_registry.manager.query(db=db, schema=DEVICE_KIND)
         assert len(devices) == 2
 
     async def test_step04_get_devices_via_graphql(self, client: InfrahubClient) -> None:

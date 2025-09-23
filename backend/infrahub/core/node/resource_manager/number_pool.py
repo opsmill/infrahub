@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPoolGetUsed, NumberPoolSetReserved
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.exceptions import PoolExhaustedError
@@ -21,7 +21,7 @@ class CoreNumberPool(Node):
     def get_attribute_nb_excluded_values(self) -> int:
         """Returns the number of excluded values for the attribute of the number pool."""
 
-        pool_node = registry.schema.get(name=self.node.value)  # type: ignore [attr-defined]
+        pool_node = core_registry.schema.get(name=self.node.value)  # type: ignore [attr-defined]
         attribute = [attribute for attribute in pool_node.attributes if attribute.name == self.node_attribute.value][0]  # type: ignore [attr-defined]
         if not isinstance(attribute.parameters, NumberAttributeParameters):
             return 0
@@ -63,7 +63,7 @@ class CoreNumberPool(Node):
         identifier: str | None = None,
         at: Timestamp | None = None,
     ) -> int:
-        async with lock.registry.get(name=self.get_id(), namespace="resource_pool"):
+        async with lock.lock_registry.get(name=self.get_id(), namespace="resource_pool"):
             # NOTE: ideally we should use the HFID as the identifier (if available)
             # one of the challenge with using the HFID is that it might change over time
             # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes

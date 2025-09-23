@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import RESTRICTED_NAMESPACES, GlobalPermissions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
@@ -314,8 +314,8 @@ async def update_registry(
     service: InfrahubServices,
     context: InfrahubContext,
 ) -> None:
-    async with lock.registry.global_schema_lock():
-        branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    async with lock.lock_registry.global_schema_lock():
+        branch_schema = core_registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.
         tmp_schema = branch_schema.duplicate()
@@ -328,7 +328,7 @@ async def update_registry(
         if diff.all:
             log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
             async with db.start_transaction() as dbt:
-                await registry.schema.update_schema_branch(
+                await core_registry.schema.update_schema_branch(
                     schema=tmp_schema, db=dbt, branch=branch.name, limit=diff.all, update_db=True
                 )
                 branch.update_schema_hash()

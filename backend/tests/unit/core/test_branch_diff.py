@@ -4,6 +4,7 @@ import pytest
 from deepdiff import DeepDiff
 from pydantic import Field
 
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
@@ -11,7 +12,6 @@ from infrahub.core.diff.model.diff import BaseDiffElement
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -908,7 +908,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
 
 @pytest.mark.skip(reason="Update for new diff logic")
 async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04):
-    branch1 = await registry.get_branch(branch="branch1", db=db)
+    branch1 = await core_registry.get_branch(branch="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
     rels = await diff.get_relationships()
@@ -1025,8 +1025,8 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
 async def test_diff_schema_changes(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema
 ):
-    schema_main = registry.schema.get_schema_branch(name=default_branch.name)
-    await registry.schema.update_schema_branch(
+    schema_main = core_registry.schema.get_schema_branch(name=default_branch.name)
+    await core_registry.schema.update_schema_branch(
         db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
     )
 
@@ -1039,12 +1039,12 @@ async def test_diff_schema_changes(
     person_schema_main.attributes.append(AttributeSchema(name="color", kind="Text", optional=True))
     schema_main.set(name="TestPerson", schema=person_schema_main)
     schema_main.process()
-    await registry.schema.update_schema_branch(
+    await core_registry.schema.update_schema_branch(
         db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
     )
 
     # Update Schema in BRANCH
-    schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch2.name)
     schema_branch.duplicate()
     car_schema_branch = schema_main.get(name="TestCar")
     car_attribute_names = {attr.name: idx for idx, attr in enumerate(car_schema_branch.attributes)}
@@ -1052,10 +1052,10 @@ async def test_diff_schema_changes(
     car_schema_branch.attributes.append(AttributeSchema(name="4motion", kind="Boolean", default_value=False))
     schema_branch.set(name="TestCar", schema=car_schema_branch)
     schema_branch.process()
-    await registry.schema.update_schema_branch(
+    await core_registry.schema.update_schema_branch(
         db=db, branch=branch2, schema=schema_branch, limit=["TestCar", "TestPerson"], update_db=True
     )
-    schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch2.name)
 
     diff = BranchDiffer(db=db, branch=branch2)
     summary = await diff.get_schema_summary()

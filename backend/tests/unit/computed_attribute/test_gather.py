@@ -2,7 +2,7 @@ from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
 )
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -28,7 +28,7 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
 ):
     branch = await create_branch(branch_name="branch2", db=db)
 
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
     car_schema = schema_branch.get_node("TestCar")
 
     attr1 = car_schema.get_attribute(name="computed_desc")
@@ -36,7 +36,7 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
         "{{ name__value | upper }} {{ owner__name__value | upper }} has {{ nbr_seats__value | upper }} seats"
     )
     schema_branch.set(name="TestCar", schema=car_schema)
-    registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
+    core_registry.schema.set_schema_branch(name=branch.name, schema=schema_branch)
     branch.update_schema_hash()
     schema_branch.process()
     await branch.save(db=db)

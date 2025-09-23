@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -9,9 +9,9 @@ from tests.helpers.test_app import TestInfrahubApp
 
 class TestMigration034(TestInfrahubApp):
     async def test_migration_034(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics):
-        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=main_schema_branch)
-        main_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        main_schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=main_schema_branch)
+        main_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
 
         branch1 = await create_branch(db=db, branch_name="test-branch-1")
         branch2 = await create_branch(db=db, branch_name="test-branch-2")

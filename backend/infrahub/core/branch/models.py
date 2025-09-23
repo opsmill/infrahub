@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
+from infrahub.core import core_registry
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
@@ -18,7 +19,6 @@ from infrahub.core.query.branch import (
     RebaseBranchDeleteRelationshipQuery,
     RebaseBranchUpdateRelationshipQuery,
 )
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
@@ -122,7 +122,7 @@ class Branch(StandardNode):
         return False
 
     def update_schema_hash(self, at: Timestamp | str | None = None) -> bool:
-        latest_schema = registry.schema.get_schema_branch(name=self.name)
+        latest_schema = core_registry.schema.get_schema_branch(name=self.name)
         new_hash = latest_schema.get_hash_full()
         if self.schema_hash and new_hash.main == self.schema_hash.main:
             return False
@@ -174,7 +174,7 @@ class Branch(StandardNode):
         if not self.origin_branch or self.origin_branch == self.name:
             return None
 
-        return registry.get_branch_from_registry(branch=self.origin_branch)
+        return core_registry.get_branch_from_registry(branch=self.origin_branch)
 
     def get_branches_in_scope(self) -> list[str]:
         """Return the list of all the branches that are constituing this branch.
@@ -182,7 +182,7 @@ class Branch(StandardNode):
         For now, either a branch is the default branch or it must inherit from it so we can only have 2 values at best
         But the idea is that it will change at some point in a future version.
         """
-        default_branch = registry.default_branch
+        default_branch = core_registry.default_branch
         if self.name == default_branch:
             return [self.name]
 
@@ -488,7 +488,7 @@ class Branch(StandardNode):
         await self.save(db=db)
 
         # Update the branch in the registry after the rebase
-        registry.branch[self.name] = self
+        core_registry.branch[self.name] = self
 
     async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
@@ -532,4 +532,4 @@ class Branch(StandardNode):
         await delete_query.execute(db=db)
 
 
-registry.branch_object = Branch
+core_registry.branch_object = Branch

@@ -7,10 +7,10 @@ from prefect import task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
-from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
 from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -37,9 +37,9 @@ async def gather_python_transform_attributes(
     db: InfrahubDatabase, branch_name: str, repositories: dict[str, RepositoryData] | None = None
 ) -> list[PythonTransformComputedAttribute]:
     log = get_run_logger()
-    schema_branch = registry.schema.get_schema_branch(name=branch_name)
-    branches_with_diff_from_main = registry.get_altered_schema_branches()
-    branch = registry.get_branch_from_registry(branch=branch_name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch_name)
+    branches_with_diff_from_main = core_registry.get_altered_schema_branches()
+    branch = core_registry.get_branch_from_registry(branch=branch_name)
 
     transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
 
@@ -106,14 +106,14 @@ async def gather_trigger_computed_attribute_jinja2(
     log = get_run_logger()
 
     # Build a list of all branches to process based on which branch is different from main
-    branches_with_diff_from_main = registry.get_altered_schema_branches()
+    branches_with_diff_from_main = core_registry.get_altered_schema_branches()
     branches_to_process: list[tuple[str, list[str]]] = [(branch, []) for branch in branches_with_diff_from_main]
-    branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
+    branches_to_process.append((core_registry.default_branch, branches_with_diff_from_main))
 
     triggers: list[ComputedAttrJinja2TriggerDefinition] = []
 
     for branch_scope, branches_out_of_scope in branches_to_process:
-        schema_branch = registry.schema.get_schema_branch(name=branch_scope)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch_scope)
         mapping = schema_branch.computed_attributes.get_jinja2_trigger_nodes()
 
         log.info(f"Generating {len(mapping)} Jinja2 trigger for {branch_scope} (except {branches_out_of_scope})")
@@ -144,7 +144,7 @@ async def gather_trigger_computed_attribute_python(
     repositories = await get_repositories_commit_per_branch(db=db)
 
     all_computed_attributes: dict[str, dict[str, PythonTransformComputedAttribute]] = defaultdict(dict)
-    for branch in list(registry.branch.values()):
+    for branch in list(core_registry.branch.values()):
         if branch.is_global:
             continue
 
@@ -156,8 +156,8 @@ async def gather_trigger_computed_attribute_python(
 
     for branches in all_computed_attributes.values():
         branches_with_diff_from_main = []
-        if registry.default_branch in branches.keys():
-            commit_main = branches[registry.default_branch].repository_commit
+        if core_registry.default_branch in branches.keys():
+            commit_main = branches[core_registry.default_branch].repository_commit
             branches_with_diff_from_main = [
                 branch_name for branch_name, item in branches.items() if item.repository_commit != commit_main
             ]
@@ -165,7 +165,7 @@ async def gather_trigger_computed_attribute_python(
             branches_with_diff_from_main = list(branches.keys())
 
         branches_to_process: list[tuple[str, list[str]]] = [(branch, []) for branch in branches_with_diff_from_main]
-        branches_to_process.append((registry.default_branch, branches_with_diff_from_main))
+        branches_to_process.append((core_registry.default_branch, branches_with_diff_from_main))
 
         for branch_scope, branches_out_of_scope in branches_to_process:
             trigger_python = ComputedAttrPythonTriggerDefinition.from_object(

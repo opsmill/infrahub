@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from infrahub.cli.db_commands.check_inheritance import check_inheritance
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -54,30 +54,30 @@ RETURN n.uuid AS n_uuid, labels(n) AS n_labels, e.branch AS branch, e.status AS 
         person_john_main: Node,
         register_internal_models_schema,
     ) -> None:
-        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=main_schema_branch)
-        main_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
+        main_schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=main_schema_branch)
+        main_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
 
         # verify no inheritance problems to start with
         result = await check_inheritance(db=db, fix=False)
         assert result is True
 
         # add a generic to the schema
-        main_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
+        main_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
         schema_generic = GenericSchema(
             name="FoodPerson",
             namespace="Test",
             attributes=[AttributeSchema(name="favorite_food", kind="Text", optional=True)],
         )
-        registry.schema.set(name="TestFoodPerson", branch=default_branch.name, schema=schema_generic)
-        person_schema = registry.schema.get_node_schema(name="TestPerson", branch=default_branch)
+        core_registry.schema.set(name="TestFoodPerson", branch=default_branch.name, schema=schema_generic)
+        person_schema = core_registry.schema.get_node_schema(name="TestPerson", branch=default_branch)
         person_schema.inherit_from = ["TestFoodPerson"]
-        registry.schema.set(name=person_schema.kind, branch=default_branch.name, schema=person_schema)
-        registry.schema.process_schema_branch(name=default_branch.name)
-        updated_main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=updated_main_schema_branch)
+        core_registry.schema.set(name=person_schema.kind, branch=default_branch.name, schema=person_schema)
+        core_registry.schema.process_schema_branch(name=default_branch.name)
+        updated_main_schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=updated_main_schema_branch)
 
         # verify inheritance problems exist
         result = await check_inheritance(db=db, fix=False)
@@ -105,16 +105,16 @@ RETURN n.uuid AS n_uuid, labels(n) AS n_labels, e.branch AS branch, e.status AS 
         }
 
         # un-update the inheritance on a branch
-        main_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
+        main_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
         branch = await create_branch(db=db, branch_name="mulligan-branch")
-        registry.schema.set_schema_branch(name=branch.name, schema=main_schema_branch)
-        person_schema = registry.schema.get_node_schema(name="TestPerson", branch=branch)
+        core_registry.schema.set_schema_branch(name=branch.name, schema=main_schema_branch)
+        person_schema = core_registry.schema.get_node_schema(name="TestPerson", branch=branch)
         person_schema.inherit_from = []
-        registry.schema.set(name=person_schema.kind, branch=branch.name, schema=person_schema)
-        registry.schema.process_schema_branch(name=branch.name)
-        updated_main_schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        await registry.schema.load_schema_to_db(db=db, branch=branch, schema=updated_main_schema_branch)
+        core_registry.schema.set(name=person_schema.kind, branch=branch.name, schema=person_schema)
+        core_registry.schema.process_schema_branch(name=branch.name)
+        updated_main_schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
+        await core_registry.schema.load_schema_to_db(db=db, branch=branch, schema=updated_main_schema_branch)
 
         # verify inheritance problems exist
         result = await check_inheritance(db=db, fix=False)
@@ -153,12 +153,12 @@ RETURN n.uuid AS n_uuid, labels(n) AS n_labels, e.branch AS branch, e.status AS 
             ),
         }
 
-        main_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
+        main_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=main_schema_branch)
         main_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
         assert main_person.favorite_food.value is None
 
-        branch_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
-        registry.schema.set_schema_branch(name=branch.name, schema=branch_schema_branch)
+        branch_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch)
+        core_registry.schema.set_schema_branch(name=branch.name, schema=branch_schema_branch)
         branch_person = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
         assert not hasattr(branch_person, "favorite_food")

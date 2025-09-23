@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 async def test_trigger_repository_import(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch, create_test_admin: Node
 ) -> None:
-    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    repository_model = core_registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
     service = await InfrahubServices.new(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())
     account_session = AccountSession(
@@ -84,7 +84,7 @@ async def test_trigger_repository_import(
 
 async def test_repository_update(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
     branch2 = await create_branch(branch_name="branch2", db=db)
-    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    repository_model = core_registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
     service = await InfrahubServices.new(database=db, message_bus=recorder)
 

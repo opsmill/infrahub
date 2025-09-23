@@ -1,5 +1,5 @@
 from infrahub.auth import AccountSession
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -29,7 +29,7 @@ query actions($proposed_change_id: String!) {
 async def test_proposed_change_open(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
+    core_registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-1"
     source_branch = Branch(name=branch_name)
@@ -87,7 +87,7 @@ async def test_proposed_change_open(
 async def test_proposed_change_closed(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
+    core_registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-3"
     source_branch = Branch(name=branch_name)
@@ -149,7 +149,7 @@ async def test_proposed_change_draft(
     session_admin: AccountSession,
     session_first_account: AccountSession,
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
+    core_registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-4"
     source_branch = Branch(name=branch_name)

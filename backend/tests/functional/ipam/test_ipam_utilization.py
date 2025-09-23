@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
@@ -66,12 +66,12 @@ class TestIpamUtilization(TestIpam):
     ) -> dict[str, Node | list[Node]]:
         await create_ipam_namespace(db=db)
         default_ipnamespace = await get_default_ipnamespace(db=db)
-        default_branch = registry.default_branch
+        default_branch = core_registry.default_branch
 
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
-        prefix_pool_schema = registry.schema.get_node_schema(name="CoreIPPrefixPool", branch=default_branch)
-        address_pool_schema = registry.schema.get_node_schema(name="CoreIPAddressPool", branch=default_branch)
+        prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+        address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+        prefix_pool_schema = core_registry.schema.get_node_schema(name="CoreIPPrefixPool", branch=default_branch)
+        address_pool_schema = core_registry.schema.get_node_schema(name="CoreIPAddressPool", branch=default_branch)
 
         container = await Node.init(db=db, schema=prefix_schema)
         await container.new(db=db, prefix="192.0.2.0/24", member_type="prefix")
@@ -120,8 +120,8 @@ class TestIpamUtilization(TestIpam):
 
     @pytest.fixture(scope="class")
     async def step_02_dataset(self, db: InfrahubDatabase, initial_dataset, branch2) -> dict[str, Node | list[Node]]:
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch2)
-        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch2)
+        prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch2)
+        address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=branch2)
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix_pool = initial_dataset["prefix_pool"]

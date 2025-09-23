@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     DiffAction,
@@ -240,7 +240,7 @@ class TestDiffRebase(TestInfrahubApp):
         await antarctica_branch_1.delete(db=db)
 
         # delete a node schema with a relationship
-        branch_3_schema = await registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
+        branch_3_schema = await core_registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
 
         continent_schema = branch_3_schema.get(name=TestKind.CONTINENT, duplicate=True)
         continent_schema.state = HashableModelState.ABSENT
@@ -252,7 +252,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert not response.errors
         assert response.schema_updated
 
-        retrieved_branch_3_schema = await registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
+        retrieved_branch_3_schema = await core_registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
         assert not retrieved_branch_3_schema.has(name=TestKind.CONTINENT)
         manufacturer_schema = retrieved_branch_3_schema.get(name=TestKind.MANUFACTURER)
         assert "continents" not in manufacturer_schema.relationship_names
@@ -562,7 +562,7 @@ class TestDiffRebase(TestInfrahubApp):
         await main_jeb.save(db=db)
 
         # check schema is correct on branch_3
-        branch_3_schema = await registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
+        branch_3_schema = await core_registry.schema.load_schema_from_db(db=db, branch=branch_3.name)
         assert not branch_3_schema.has(name=TestKind.CONTINENT)
         manufacturer_schema = branch_3_schema.get(name=TestKind.MANUFACTURER)
         assert "continents" not in manufacturer_schema.relationship_names
@@ -572,7 +572,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert result["BranchMerge"]["ok"]
 
         # check schema is correct on default_branch
-        main_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+        main_schema = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
         assert not main_schema.has(name=TestKind.CONTINENT)
         manufacturer_schema = main_schema.get(name=TestKind.MANUFACTURER)
         assert "continents" not in manufacturer_schema.relationship_names

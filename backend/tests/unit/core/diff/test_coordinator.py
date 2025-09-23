@@ -2,7 +2,7 @@ from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -390,11 +390,11 @@ class TestDiffCoordinator:
         await john_branch.delete(db=db)
 
         # delete the schema on the default branch
-        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        main_schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         main_schema_branch.delete(name="TestPerson")
 
         # delete the schema on the branch, it might not exist b/c it was just deleted above
-        branch_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        branch_schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         try:
             branch_schema_branch.delete(name="TestPerson")
         except SchemaNotFoundError:

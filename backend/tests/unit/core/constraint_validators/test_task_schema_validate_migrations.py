@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.models import SchemaUpdateConstraintInfo
@@ -18,7 +18,7 @@ async def test_schema_validate_migrations(
     person_john_main,
     helper,
 ):
-    schema = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name).duplicate()
     person_schema = schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")
     name_attr.parameters.regex = r"^[A-Z]+$"

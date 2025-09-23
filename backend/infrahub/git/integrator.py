@@ -42,8 +42,8 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
+from infrahub.core import core_registry
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
-from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
@@ -215,7 +215,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if error:
             raise error
 
-        infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
+        infrahub_branch = core_registry.get_branch_from_registry(branch=infrahub_branch_name)
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
@@ -1371,7 +1371,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             branch_name=message.branch_name,
             timeout=message.timeout,
         )
-        branch = registry.get_branch_from_registry(branch=message.branch_name)
+        branch = core_registry.get_branch_from_registry(branch=message.branch_name)
 
         previous_checksum = artifact.checksum.value
         previous_storage_id = artifact.storage_id.value

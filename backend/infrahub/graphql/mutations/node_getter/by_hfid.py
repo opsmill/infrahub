@@ -1,9 +1,9 @@
 from graphene import InputObjectType
 
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.core.schema import MainSchemaTypes
 from infrahub.database import InfrahubDatabase
 
@@ -38,7 +38,7 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
                 # The update neither includes "hfid" or all components to form an hfid:
                 return None
 
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
         hfid: list[str] = []
         for component in node_schema.human_friendly_id:
             attribute_path = node_schema.parse_schema_path(path=component, schema=schema_branch)

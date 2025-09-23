@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.profile_schema import ProfileSchema
@@ -248,9 +248,9 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND)
-        cars = await registry.manager.query(db=db, schema=CAR_KIND)
-        tags = await registry.manager.query(db=db, schema=TAG_KIND)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND)
+        cars = await core_registry.manager.query(db=db, schema=CAR_KIND)
+        tags = await core_registry.manager.query(db=db, schema=TAG_KIND)
         assert len(persons) == 2
         assert len(cars) == 3
         assert len(tags) == 2
@@ -403,7 +403,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     async def test_step_07_check_generate_profile_failure(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_07_generate_profile_false
     ):
-        car_profile_schema = registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
+        car_profile_schema = core_registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
         assert isinstance(car_profile_schema, ProfileSchema)
         car_profile = await Node.init(db=db, schema=car_profile_schema)
         await car_profile.new(db=db, profile_name="cool car", description="a very cool car")
@@ -421,7 +421,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     async def test_step_08_check_generate_profile_failure(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_07_generate_profile_false
     ):
-        car_profile_schema = registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
+        car_profile_schema = core_registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
         car_profile_nodes = await NodeManager.query(
             db=db,
             schema=car_profile_schema,
@@ -462,7 +462,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             },
         }
 
-        generic_profile_schema = registry.schema.get(name=f"Profile{VELOCIPEDE_KIND}", duplicate=False)
+        generic_profile_schema = core_registry.schema.get(name=f"Profile{VELOCIPEDE_KIND}", duplicate=False)
         assert isinstance(generic_profile_schema, ProfileSchema)
         generic_profile = await Node.init(db=db, schema=generic_profile_schema)
         await generic_profile.new(db=db, profile_name="cool unicycle", num_wheels=1)

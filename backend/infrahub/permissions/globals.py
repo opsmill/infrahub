@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core import core_registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreGlobalPermission
-from infrahub.core.registry import registry
 
 from .constants import GLOBAL_PERMISSION_DESCRIPTION
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 def define_global_permission_from_branch(permission: GlobalPermissions, branch_name: str) -> GlobalPermission:
-    if branch_name in (GLOBAL_BRANCH_NAME, registry.default_branch):
+    if branch_name in (GLOBAL_BRANCH_NAME, core_registry.default_branch):
         decision = PermissionDecision.ALLOW_DEFAULT
     else:
         decision = PermissionDecision.ALLOW_OTHER

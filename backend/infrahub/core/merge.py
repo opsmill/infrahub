@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core import core_registry
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreRepository
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import MergeFailedError, ValidationError
 from infrahub.log import get_logger
@@ -45,7 +45,7 @@ class BranchMerger:
         workflow: InfrahubWorkflow | None = None,
     ):
         self.source_branch = source_branch
-        self.destination_branch: Branch = destination_branch or registry.get_branch_from_registry()
+        self.destination_branch: Branch = destination_branch or core_registry.get_branch_from_registry()
         self.db = db
         self.diff_coordinator = diff_coordinator
         self.diff_merger = diff_merger
@@ -63,14 +63,16 @@ class BranchMerger:
     @property
     def source_schema(self) -> SchemaBranch:
         if not self._source_schema:
-            self._source_schema = registry.schema.get_schema_branch(name=self.source_branch.name).duplicate()
+            self._source_schema = core_registry.schema.get_schema_branch(name=self.source_branch.name).duplicate()
 
         return self._source_schema
 
     @property
     def destination_schema(self) -> SchemaBranch:
         if not self._destination_schema:
-            self._destination_schema = registry.schema.get_schema_branch(name=self.destination_branch.name).duplicate()
+            self._destination_schema = core_registry.schema.get_schema_branch(
+                name=self.destination_branch.name
+            ).duplicate()
 
         return self._destination_schema
 
@@ -95,7 +97,7 @@ class BranchMerger:
         if self._initial_source_schema:
             return self._initial_source_schema
 
-        self._initial_source_schema = await registry.schema.load_schema_from_db(
+        self._initial_source_schema = await core_registry.schema.load_schema_from_db(
             db=self.db,
             branch=self.source_branch,
             at=Timestamp(self.source_branch.created_at),
@@ -126,13 +128,13 @@ class BranchMerger:
         if not await self.has_schema_changes():
             return False
 
-        updated_schema = await registry.schema.load_schema_from_db(
+        updated_schema = await core_registry.schema.load_schema_from_db(
             db=self.db,
             branch=self.destination_branch,
             # schema=self.destination_schema.duplicate(),
             # schema_diff=schema_diff,
         )
-        registry.schema.set_schema_branch(name=self.destination_branch.name, schema=updated_schema)
+        core_registry.schema.set_schema_branch(name=self.destination_branch.name, schema=updated_schema)
         self.destination_branch.update_schema_hash()
         await self.destination_branch.save(db=self.db)
 
@@ -179,7 +181,7 @@ class BranchMerger:
         at: str | Timestamp | None = None,
     ) -> EnrichedDiffRoot:
         """Merge the current branch into main."""
-        if self.source_branch.name == registry.default_branch:
+        if self.source_branch.name == core_registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
 
         log.info("Updating diff for merge")

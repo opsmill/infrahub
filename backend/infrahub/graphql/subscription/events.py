@@ -7,7 +7,7 @@
 # from graphql import GraphQLResolveInfo
 # from graphql import graphql
 
-# from infrahub.core import registry
+# from infrahub.core import core_registry
 # from infrahub.core.branch import Branch
 # from infrahub.core.constants import InfrahubKind
 # from infrahub.core.manager import NodeManager

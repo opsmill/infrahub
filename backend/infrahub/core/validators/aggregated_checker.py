@@ -3,7 +3,7 @@ from __future__ import annotations
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.exceptions import ValidationError
 
 from .model import SchemaViolation
@@ -38,7 +38,7 @@ class AggregatedConstraintChecker:
         # it's possible that it might not work if the obj is not valid with the schema
         fields = {"display_label": None, request.schema_path.field_name: None}
         try:
-            nodes = await registry.manager.get_many(db=self.db, ids=ids, branch=self.branch, fields=fields)
+            nodes = await core_registry.manager.get_many(db=self.db, ids=ids, branch=self.branch, fields=fields)
         except ValidationError:
             nodes = {}
 

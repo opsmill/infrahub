@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_branch,
@@ -182,13 +182,13 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         }
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, branch=self.branch1)
         assert len(persons) == 2
 
     async def test_step02_check_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
     ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
+        person_schema = core_registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -227,7 +227,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     async def test_step02_load_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
     ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=self.branch1)
+        person_schema = core_registry.schema.get_node_schema(name=PERSON_KIND, branch=self.branch1)
         attr = person_schema.get_attribute(name="name")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -242,7 +242,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert branches[self.branch1.name].has_schema_changes is True
 
         # Check schema properties
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=self.branch1)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=self.branch1)
         updated_person_schema = schema_branch.get(name=PERSON_KIND)
         assert updated_person_schema.uniqueness_constraints == [["firstname__value"]]
         assert updated_person_schema.human_friendly_id == ["firstname__value"]
@@ -250,7 +250,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert updated_person_schema.order_by is None
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
-        persons = await registry.manager.query(
+        persons = await core_registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1
         )
         assert len(persons) == 1
@@ -262,7 +262,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         await john.save(db=db)
 
         # And ensure that we can still query them with the original schema in MAIN
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"name__value": "John"})
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, filters={"name__value": "John"})
         assert len(persons) == 1
         john = persons[0]
         assert john.name.value == "John"  # type: ignore[attr-defined]
@@ -295,8 +295,8 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
-        # person_schema = registry.schema.get(name=PERSON_KIND)
-        persons = await registry.manager.query(
+        # person_schema = core_registry.schema.get(name=PERSON_KIND)
+        persons = await core_registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"firstname__value": "John"}, branch=self.branch1
         )
         assert len(persons) == 1
@@ -308,7 +308,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert branch
 
         # Validate that all data added to main after the creation of the branch has been migrated properly
-        persons = await registry.manager.query(
+        persons = await core_registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"}, branch=self.branch1.name
         )
         assert len(persons) == 1
@@ -360,7 +360,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert branch
 
         # Ensure that we can query the nodes with the new schema in MAIN
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
         assert len(persons) == 1
         john = persons[0]
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
@@ -368,7 +368,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert not hasattr(john, "height")
         assert not hasattr(john, "name")
 
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"})
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"})
         assert len(persons) == 1
         jane = persons[0]
         assert jane.firstname.value == "Jane"  # type: ignore[attr-defined]

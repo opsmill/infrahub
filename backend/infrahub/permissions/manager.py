@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.exceptions import PermissionDeniedError
@@ -28,7 +28,7 @@ class PermissionManager:
 
     async def load_permissions(self, db: InfrahubDatabase, branch: Branch) -> None:
         """Load permissions from the configured backends into memory."""
-        for permission_backend in registry.permission_backends:
+        for permission_backend in core_registry.permission_backends:
             backend_permissions = await permission_backend.load_permissions(
                 db=db, branch=branch, account_session=self.account_session
             )

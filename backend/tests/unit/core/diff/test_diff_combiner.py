@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from whenever import Instant
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.combiner import DiffCombiner
@@ -69,7 +69,7 @@ class TestDiffCombiner:
             exists_on_database=False,
         )
         self.schema_manager = AsyncMock(spec=SchemaManager)
-        registry.schema = self.schema_manager
+        core_registry.schema = self.schema_manager
         self.combiner = DiffCombiner()
 
     @pytest.fixture

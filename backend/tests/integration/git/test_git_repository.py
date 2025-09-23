@@ -8,7 +8,7 @@ from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTransformJinja2, CoreTransformPython
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
@@ -28,8 +28,8 @@ from tests.helpers.test_client import InfrahubTestClient
 async def load_infrastructure_schema(db: InfrahubDatabase):
     base_dir = get_models_dir() / "base"
 
-    default_branch_name = registry.default_branch
-    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
+    default_branch_name = core_registry.default_branch
+    branch_schema = core_registry.schema.get_schema_branch(name=default_branch_name)
     tmp_schema = branch_schema.duplicate()
 
     for file_name in base_dir.iterdir():
@@ -41,7 +41,9 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
             tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()
 
-    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
+    await core_registry.schema.update_schema_branch(
+        schema=tmp_schema, db=db, branch=default_branch_name, update_db=True
+    )
 
 
 class TestInfrahubClient:

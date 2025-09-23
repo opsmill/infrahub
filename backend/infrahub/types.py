@@ -9,7 +9,7 @@ import graphene
 from graphene.types.generic import GenericScalar
 from pydantic import EmailStr, HttpUrl, IPvAnyAddress, Json
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -34,7 +34,7 @@ class InfrahubDataType:
     @classmethod
     def __init_subclass__(cls, **kwargs: typing.Any) -> None:
         super().__init_subclass__(**kwargs)
-        registry.data_type[cls.label] = cls
+        core_registry.data_type[cls.label] = cls
 
     def __str__(self) -> str:
         return self.label

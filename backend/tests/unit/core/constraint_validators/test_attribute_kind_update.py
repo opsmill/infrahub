@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.initialization import create_branch
@@ -13,13 +13,13 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_query_success(db: InfrahubDatabase, default_branch: Branch, person_john_main):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await car.new(db=db, name="http://www.accord.com", nbr_seats=5, is_electric=False, owner=person_john_main.id)
     await car.save(db=db)
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "URL"
-    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
 
@@ -35,10 +35,10 @@ async def test_query_success(db: InfrahubDatabase, default_branch: Branch, perso
 
 
 async def test_query_failure(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    car_schema = registry.schema.get(name="TestCar")
+    car_schema = core_registry.schema.get(name="TestCar")
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "IPNetwork"
-    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
 
@@ -89,10 +89,10 @@ async def test_query_update_on_branch(
     car_volt = await NodeManager.get_one(db=db, branch=branch, id=car_volt_main.id)
     car_volt.name.value = "still-not-a-url.com"
     await car_volt.save(db=db)
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = core_registry.schema.get(name="TestCar", branch=branch)
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "URL"
-    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
 
@@ -144,10 +144,10 @@ async def test_query_update_on_branch_with_too_large_value(
     branch_node.mytextarea.value = "abcdef" * 1000
     await branch_node.save(db=db)
 
-    node_schema = registry.schema.get_node_schema(name=all_attribute_types_schema.kind, branch=branch)
+    node_schema = core_registry.schema.get_node_schema(name=all_attribute_types_schema.kind, branch=branch)
     name_attr = node_schema.get_attribute(name="mytextarea")
     name_attr.kind = "Text"
-    registry.schema.set(name=all_attribute_types_schema.kind, schema=node_schema, branch=default_branch.name)
+    core_registry.schema.set(name=all_attribute_types_schema.kind, schema=node_schema, branch=default_branch.name)
 
     schema_path = SchemaPath(
         path_type=SchemaPathType.ATTRIBUTE, schema_kind=all_attribute_types_schema.kind, field_name="mytextarea"
@@ -186,10 +186,10 @@ async def test_query_update_on_branch_with_parameters_violation(
     car_volt = await NodeManager.get_one(db=db, branch=branch, id=car_volt_main.id)
     car_volt.name.value = "VOLT"
     await car_volt.save(db=db)
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = core_registry.schema.get(name="TestCar", branch=branch)
     name_attr = car_schema.get_attribute(name="name")
     name_attr.parameters.regex = "^[a-z]+$"
-    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
 
@@ -239,10 +239,10 @@ async def test_query_delete_on_branch(
     await car_accord.save(db=db)
     car_volt = await NodeManager.get_one(db=db, branch=branch, id=car_volt_main.id)
     await car_volt.delete(db=db)
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = core_registry.schema.get(name="TestCar", branch=branch)
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "URL"
-    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name")
 
@@ -294,10 +294,10 @@ async def test_validator(
     car2.name.value = "one-internet-please"
     await car2.save(db=db)
 
-    car_schema = registry.schema.get(name="TestCar", branch=branch)
+    car_schema = core_registry.schema.get(name="TestCar", branch=branch)
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "URL"
-    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
+    core_registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=branch,

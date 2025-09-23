@@ -191,7 +191,7 @@ class InfrahubMutationMixin:
 
         if db.is_transaction:
             if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+                async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=lock_names):
                     obj = await cls.mutate_update_object(
                         db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
                     )
@@ -204,7 +204,7 @@ class InfrahubMutationMixin:
 
         async with db.start_transaction() as dbt:
             if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+                async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=lock_names):
                     obj = await cls.mutate_update_object(
                         db=dbt,
                         info=info,

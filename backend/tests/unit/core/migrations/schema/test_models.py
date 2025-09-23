@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import SchemaUpdateMigrationInfo
@@ -9,7 +9,7 @@ from infrahub.database import InfrahubDatabase
 def test_SchemaApplyMigrationData_serializer(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema
 ):
-    schema_main = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_main = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     data = SchemaApplyMigrationData(
         branch=default_branch,

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -58,16 +58,16 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
 
 @pytest.fixture(scope="module")
 async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
-    if not registry._default_ipnamespace:
+    if not core_registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
-        registry.default_ipnamespace = ip_namespace.id
+        core_registry.default_ipnamespace = ip_namespace.id
         return ip_namespace
     return None
 
 
 @pytest.fixture(scope="module")
 async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
-    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
     default_branch.update_schema_hash()
     return schema_branch
 
@@ -80,8 +80,8 @@ async def ip_dataset_01_load(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
-    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
     # -----------------------
     # Namespace NS1

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, RelationshipHierarchyDirection, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -75,12 +75,12 @@ class TestDiffAndMerge:
         register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
     ):
-        schema_main = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.update_schema_branch(
+        schema_main = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.update_schema_branch(
             db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
         )
         branch2 = await create_branch(db=db, branch_name="branch2")
-        schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch2.name)
         schema_branch.duplicate()
         car_schema_branch = schema_branch.get(name="TestCar")
         car_schema_branch.attributes.append(AttributeSchema(name="num_cupholders", kind="Number", default_value=15))
@@ -88,7 +88,7 @@ class TestDiffAndMerge:
         car_schema_branch.attributes.append(AttributeSchema(name="nickname", kind="Text", default_value="car"))
         schema_branch.set(name="TestCar", schema=car_schema_branch)
         schema_branch.process()
-        await registry.schema.update_schema_branch(
+        await core_registry.schema.update_schema_branch(
             db=db, branch=branch2, schema=schema_branch, limit=["TestCar", "TestPerson"], update_db=True
         )
 
@@ -98,7 +98,7 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
-        updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        updated_schema = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
         car_schema_main = updated_schema.get(name="TestCar", duplicate=False)
         new_int_attr = car_schema_main.get_attribute(name="num_cupholders")
         assert new_int_attr.default_value == 15
@@ -109,7 +109,7 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        rolled_back_schema = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
         car_schema_main = rolled_back_schema.get(name="TestCar", duplicate=False)
         attribute_names = car_schema_main.attribute_names
         assert "num_cupholders" not in attribute_names
@@ -487,13 +487,13 @@ class TestDiffAndMerge:
         # validate car (branch=local) not merged to main
         updated_car = await NodeManager.get_one(db=db, id=car.id)
         assert updated_car is None
-        person_schema = registry.schema.get(name="TestPerson", duplicate=False)
+        person_schema = core_registry.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         cars_rels = await NodeManager.query_peers(
             db=db, ids=[person.id], source_kind="TestPerson", schema=cars_rel_schema, filters={}, fetch_peers=True
         )
         assert len(cars_rels) == 0
-        car_schema = registry.schema.get(name="TestCar", duplicate=False)
+        car_schema = core_registry.schema.get(name="TestCar", duplicate=False)
         owner_rel_schema = car_schema.get_relationship(name="owner")
         owner_rels = await NodeManager.query_peers(
             db=db, ids=[car.id], source_kind="TestCar", schema=owner_rel_schema, filters={}, fetch_peers=True
@@ -565,14 +565,14 @@ class TestDiffAndMerge:
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person.id
 
-        person_schema = registry.schema.get(name="TestPerson", duplicate=False)
+        person_schema = core_registry.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         cars_rels = await NodeManager.query_peers(
             db=db, ids=[person.id], source_kind="TestPerson", schema=cars_rel_schema, filters={}, fetch_peers=True
         )
         assert len(cars_rels) == 1
         assert cars_rels[0].peer_id == car.id
-        car_schema = registry.schema.get(name="TestCar", duplicate=False)
+        car_schema = core_registry.schema.get(name="TestCar", duplicate=False)
         owner_rel_schema = car_schema.get_relationship(name="owner")
         owner_rels = await NodeManager.query_peers(
             db=db, ids=[car.id], source_kind="TestCar", schema=owner_rel_schema, filters={}, fetch_peers=True
@@ -793,7 +793,7 @@ class TestDiffAndMerge:
         # remove TestCar relationship to TestPerson
         car_schema = car_person_schema_unregistered.get(name="TestCar")
         car_schema.relationships = []
-        registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+        core_registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
         # initial data
         person_1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
         await person_1.new(db=db, name="Alice", height=160)
@@ -897,7 +897,7 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch)
         await diff_merger.merge_graph(at=at)
 
-        region_schema = registry.schema.get(name="LocationRegion", duplicate=False)
+        region_schema = core_registry.schema.get(name="LocationRegion", duplicate=False)
         region = hierarchy_data["europe"]
         region_descendants = [
             hierarchy_data["paris"],
@@ -907,7 +907,7 @@ class TestDiffAndMerge:
             hierarchy_data["london-r1"],
             hierarchy_data["london-r2"],
         ]
-        site_schema = registry.schema.get(name="LocationSite", duplicate=False)
+        site_schema = core_registry.schema.get(name="LocationSite", duplicate=False)
         site = hierarchy_data["paris-r2"]
         site_ancestors = [
             hierarchy_data["paris"],
@@ -946,12 +946,14 @@ class TestDiffAndMerge:
         person_jane_main: Node,
         person_john_main: Node,
     ):
-        schema_main = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.update_schema_branch(db=db, branch=default_branch, schema=schema_main, update_db=True)
+        schema_main = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.update_schema_branch(
+            db=db, branch=default_branch, schema=schema_main, update_db=True
+        )
         original_car_owner = person_john_main
 
         branch2 = await create_branch(db=db, branch_name="branch2")
-        schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch2.name)
         original_car_schema = schema_branch.get(name="TestCar", duplicate=True)
         car_schema_branch = schema_branch.get(name="TestCar", duplicate=True)
         car_schema_branch.name = "NewCar"
@@ -965,7 +967,7 @@ class TestDiffAndMerge:
         cars_driven_rel.peer = "Test2NewCar"
         schema_branch.set(name="TestPerson", schema=person_schema_branch)
         schema_branch.process()
-        await registry.schema.update_schema_branch(
+        await core_registry.schema.update_schema_branch(
             db=db, branch=branch2, schema=schema_branch, limit=["TestCar", "Test2NewCar", "TestPerson"], update_db=True
         )
         migration = NodeKindUpdateMigration(
@@ -995,8 +997,8 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
         car_schema_main = updated_schema_branch.get(name="Test2NewCar", duplicate=False)
         assert car_schema_main.id == original_car_schema.id
         person_schema_branch = updated_schema_branch.get(name="TestPerson", duplicate=True)
@@ -1027,8 +1029,8 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=rolled_back_schema_branch)
+        rolled_back_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=rolled_back_schema_branch)
         car_schema_main = rolled_back_schema_branch.get(name="TestCar", duplicate=False)
         with pytest.raises(SchemaNotFoundError):
             rolled_back_schema_branch.get(name="Test2NewCar", duplicate=False)
@@ -1066,9 +1068,11 @@ class TestDiffAndMerge:
                 )
             ]
         )
-        registry.schema.register_schema(schema=root_with_another_generic, branch=default_branch.name)
-        schema_main = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.update_schema_branch(db=db, branch=default_branch, schema=schema_main, update_db=True)
+        core_registry.schema.register_schema(schema=root_with_another_generic, branch=default_branch.name)
+        schema_main = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.update_schema_branch(
+            db=db, branch=default_branch, schema=schema_main, update_db=True
+        )
 
         # initial data
         person_1 = await create_and_save(db=db, branch=default_branch, schema="TestPerson", name="One", height=171)
@@ -1101,7 +1105,7 @@ class TestDiffAndMerge:
         branch2 = await create_branch(db=db, branch_name="branch2")
 
         # migrate TestElectricCar to be Test2NewElectricCar
-        schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch2.name)
         original_car_schema = schema_branch.get(name="TestElectricCar", duplicate=True)
         car_schema_branch = schema_branch.get(name="TestElectricCar", duplicate=True)
         car_schema_branch.name = "NewElectricCar"
@@ -1109,7 +1113,7 @@ class TestDiffAndMerge:
         assert car_schema_branch.kind == "Test2NewElectricCar"
         schema_branch.set(name="Test2NewElectricCar", schema=car_schema_branch)
         schema_branch.process()
-        await registry.schema.update_schema_branch(
+        await core_registry.schema.update_schema_branch(
             db=db,
             branch=branch2,
             schema=schema_branch,
@@ -1134,12 +1138,12 @@ class TestDiffAndMerge:
         await migrated_car.save(db=db)
 
         # migrate Test2NewElectricCar to inherit from TestVehicle
-        schema_branch = registry.schema.get_schema_branch(name=branch2.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch2.name)
         car_schema_branch = schema_branch.get(name="Test2NewElectricCar", duplicate=True)
         car_schema_branch.inherit_from += ["TestVehicle"]
         schema_branch.set(name="Test2ElectricNewCar", schema=car_schema_branch)
         schema_branch.process()
-        await registry.schema.update_schema_branch(
+        await core_registry.schema.update_schema_branch(
             db=db, branch=branch2, schema=schema_branch, limit=["Test2NewElectricCar"], update_db=True
         )
         migration = NodeKindUpdateMigration(
@@ -1162,8 +1166,8 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
         car_schema_main = updated_schema_branch.get(name="Test2NewElectricCar", duplicate=False)
         assert "TestVehicle" in car_schema_main.inherit_from
         assert car_schema_main.id == original_car_schema.id
@@ -1191,8 +1195,8 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=rolled_back_schema_branch)
+        rolled_back_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=rolled_back_schema_branch)
         car_schema_main = rolled_back_schema_branch.get(name="TestElectricCar", duplicate=False)
         assert "TestVehicle" not in car_schema_main.inherit_from
         with pytest.raises(SchemaNotFoundError):

@@ -6,7 +6,7 @@ from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mut
 from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
-from infrahub.core import protocols, registry
+from infrahub.core import core_registry, protocols
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
@@ -75,7 +75,7 @@ class IPPrefixPoolGetResource(Mutation):
         if member_type and member_type not in allowed_member_types:
             raise QueryValidationError(f"Invalid member_type value, allowed values are {allowed_member_types}")
 
-        obj: CoreIPPrefixPool = await registry.manager.find_object(  # type: ignore[assignment]
+        obj: CoreIPPrefixPool = await core_registry.manager.find_object(  # type: ignore[assignment]
             db=graphql_context.db,
             kind=InfrahubKind.IPPREFIXPOOL,
             id=data.get("id"),
@@ -122,7 +122,7 @@ class IPAddressPoolGetResource(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
-        obj: CoreIPAddressPool = await registry.manager.find_object(
+        obj: CoreIPAddressPool = await core_registry.manager.find_object(
             db=graphql_context.db,
             kind=InfrahubKind.IPADDRESSPOOL,
             id=data.get("id"),
@@ -180,7 +180,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         try:
-            schema_node = registry.schema.get(name=data["node"].value)
+            schema_node = core_registry.schema.get(name=data["node"].value)
             if not schema_node.is_generic_schema and not schema_node.is_node_schema:
                 raise ValidationError(input_value="The selected model is not a Node or a Generic")
         except SchemaNotFoundError as exc:

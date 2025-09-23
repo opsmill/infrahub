@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -8,8 +8,8 @@ from infrahub.exceptions import ValidationError
 
 
 async def test_create_node_with_invalid_hierarchy(db: InfrahubDatabase, hierarchical_location_data):
-    region_schema = registry.schema.get_node_schema(name="LocationRegion", duplicate=True)
-    rack_schema = registry.schema.get_node_schema(name="LocationRack", duplicate=True)
+    region_schema = core_registry.schema.get_node_schema(name="LocationRegion", duplicate=True)
+    rack_schema = core_registry.schema.get_node_schema(name="LocationRack", duplicate=True)
     europe = await NodeManager.get_one(db=db, id=hierarchical_location_data["europe"].id)
     city = await NodeManager.get_one(db=db, id=hierarchical_location_data["seattle"].id)
 

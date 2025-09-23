@@ -5,7 +5,7 @@ class DiffLocker:
     lock_namespace = "diff-update"
 
     def __init__(self) -> None:
-        self.lock_registry = lock.registry
+        self.lock_registry = lock.lock_registry
 
     def get_lock_name(self, base_branch_name: str, diff_branch_name: str, is_incremental: bool) -> str:
         lock_name = f"{base_branch_name}__{diff_branch_name}"

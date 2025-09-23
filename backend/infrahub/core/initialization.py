@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from infrahub import config
 from infrahub.constants.database import DatabaseType
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
@@ -65,10 +65,10 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
 
 
 async def get_default_ipnamespace(db: InfrahubDatabase) -> Node | None:
-    if not registry.schema._branches or not registry.schema.has(name=InfrahubKind.NAMESPACE):
+    if not core_registry.schema._branches or not core_registry.schema.has(name=InfrahubKind.NAMESPACE):
         return None
 
-    nodes = await registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"default__value": True})
+    nodes = await core_registry.manager.query(db=db, schema=InfrahubKind.NAMESPACE, filters={"default__value": True})
     if len(nodes) == 0:
         return None
 
@@ -95,37 +95,37 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     # Initialize the database and Load the Root node
     # ---------------------------------------------------
     root = await get_root_node(db=db, initialize=initialize)
-    registry.id = str(root.get_uuid())
-    registry.default_branch = root.default_branch
+    core_registry.id = str(root.get_uuid())
+    core_registry.default_branch = root.default_branch
 
     # ---------------------------------------------------
     # Initialize the Storage Driver
     # ---------------------------------------------------
-    registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    core_registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
     # ---------------------------------------------------
     # Load existing branches into the registry
     # ---------------------------------------------------
     branches: list[Branch] = await Branch.get_list(db=db)
     for branch in branches:
-        registry.branch[branch.name] = branch
+        core_registry.branch[branch.name] = branch
 
     # ---------------------------------------------------
     # Load internal models into the registry
     # ---------------------------------------------------
-    registry.node["Node"] = Node
-    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
-    registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
-    registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
-    registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
-    registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
-    registry.node[InfrahubKind.PROPOSEDCHANGE] = CoreProposedChange
+    core_registry.node["Node"] = Node
+    core_registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    core_registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
+    core_registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
+    core_registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    core_registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
+    core_registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
+    core_registry.node[InfrahubKind.PROPOSEDCHANGE] = CoreProposedChange
 
     # ---------------------------------------------------
     # Instantiate permission backends
     # ---------------------------------------------------
-    registry.permission_backends = initialize_permission_backends()
+    core_registry.permission_backends = initialize_permission_backends()
 
 
 async def add_indexes(db: InfrahubDatabase) -> None:
@@ -148,7 +148,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
     # ---------------------------------------------------
     # Initialize the database and Load the Root node
     # ---------------------------------------------------
-    async with lock.registry.initialization():
+    async with lock.lock_registry.initialization():
         log.debug("Checking Root Node")
         await initialize_registry(db=db, initialize=True)
 
@@ -159,16 +159,16 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
     # Load all schema in the database into the registry
     #  ... Unless the schema has been initialized already
     # ---------------------------------------------------
-    if not registry.schema_has_been_initialized():
-        registry.schema = SchemaManager()
+    if not core_registry.schema_has_been_initialized():
+        core_registry.schema = SchemaManager()
         schema = SchemaRoot(**internal_schema)
-        registry.schema.register_schema(schema=schema)
+        core_registry.schema.register_schema(schema=schema)
 
         # Import the default branch
-        default_branch: Branch = registry.get_branch_from_registry(branch=registry.default_branch)
+        default_branch: Branch = core_registry.get_branch_from_registry(branch=core_registry.default_branch)
         hash_in_db = default_branch.active_schema_hash.main
-        schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+        schema_default_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
         if default_branch.update_schema_hash():
             log.warning(
@@ -179,13 +179,13 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
             )
             await default_branch.save(db=db)
 
-        for branch in list(registry.branch.values()):
+        for branch in list(core_registry.branch.values()):
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
                 continue
 
             hash_in_db = branch.active_schema_hash.main
             log.info("Importing schema", branch=branch.name)
-            await registry.schema.load_schema(db=db, branch=branch)
+            await core_registry.schema.load_schema(db=db, branch=branch)
 
             if branch.update_schema_hash():
                 log.warning(
@@ -195,8 +195,8 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
                 )
                 await branch.save(db=db)
 
-    default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch = core_registry.get_branch_from_registry(branch=core_registry.default_branch)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
     gqlm.get_graphql_schema(
         include_query=True,
@@ -210,7 +210,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
     # ---------------------------------------------------
     ip_namespace = await get_default_ipnamespace(db=db)
     if ip_namespace:
-        registry.default_ipnamespace = ip_namespace.id
+        core_registry.default_ipnamespace = ip_namespace.id
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:
@@ -218,15 +218,15 @@ async def create_root_node(db: InfrahubDatabase) -> Root:
     await root.save(db=db)
     log.info(f"Generated instance ID : {root.uuid} (v{GRAPH_VERSION})")
 
-    registry.id = root.id
-    registry.default_branch = root.default_branch
+    core_registry.id = root.id
+    core_registry.default_branch = root.default_branch
 
     return root
 
 
 async def create_default_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
-        name=registry.default_branch,
+        name=core_registry.default_branch,
         status=BranchStatus.OPEN,
         description="Default Branch",
         hierarchy_level=1,
@@ -234,7 +234,7 @@ async def create_default_branch(db: InfrahubDatabase) -> Branch:
         sync_with_git=True,
     )
     await branch.save(db=db)
-    registry.branch[branch.name] = branch
+    core_registry.branch[branch.name] = branch
 
     log.info("Created default branch", branch=branch.name)
 
@@ -251,7 +251,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
         sync_with_git=False,
     )
     await branch.save(db=db)
-    registry.branch[branch.name] = branch
+    core_registry.branch[branch.name] = branch
 
     log.info("Created global branch", branch=branch.name)
 
@@ -277,13 +277,13 @@ async def create_branch(
         is_isolated=isolated,
     )
 
-    origin_schema = registry.schema.get_schema_branch(name=branch.origin_branch)
+    origin_schema = core_registry.schema.get_schema_branch(name=branch.origin_branch)
     new_schema = origin_schema.duplicate(name=branch.name)
-    registry.schema.set_schema_branch(name=branch.name, schema=new_schema)
+    core_registry.schema.set_schema_branch(name=branch.name, schema=new_schema)
 
     branch.update_schema_hash()
     await branch.save(db=db)
-    registry.branch[branch.name] = branch
+    core_registry.branch[branch.name] = branch
 
     log.info("Created branch", branch=branch.name)
 
@@ -520,13 +520,13 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Load the internal and core schema in the database
     # --------------------------------------------------
-    registry.schema = SchemaManager()
+    core_registry.schema = SchemaManager()
     schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.process()
-    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db)
-    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
+    await core_registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db)
+    core_registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
     log.info("Created the Schema in the database", hash=default_branch.active_schema_hash.main)

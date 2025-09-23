@@ -5,8 +5,8 @@ from infrahub_sdk.graphql import Query
 from prefect import task
 from prefect.cache_policies import NONE
 
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
 from infrahub.graphql.initialization import prepare_graphql_params
 
@@ -93,7 +93,7 @@ async def gather_trigger_action_rules(db: InfrahubDatabase) -> list[ActionTrigge
     )
     gql_params = await prepare_graphql_params(
         db=db,
-        branch=registry.default_branch,
+        branch=core_registry.default_branch,
     )
     response = await graphql(
         schema=gql_params.schema,

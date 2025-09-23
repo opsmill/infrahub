@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.attribute import MAX_STRING_LENGTH
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import create_branch
@@ -31,39 +31,39 @@ class TestMigration037:
         register_internal_models_schema: SchemaBranch,
         all_attribute_types_schema: NodeSchema,
     ) -> None:
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=schema_branch)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=schema_branch)
 
     @pytest.fixture
     async def branch_0(self, db: InfrahubDatabase, default_branch: Branch, load_start_schema: None) -> Branch:
         branch_0 = await create_branch(db=db, branch_name="branch_0")
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         schema_branch.duplicate(name=branch_0.name)
-        registry.schema.set_schema_branch(name=branch_0.name, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=branch_0.name, schema=schema_branch)
         return branch_0
 
     @pytest.fixture
     async def branch_1(self, db: InfrahubDatabase, default_branch: Branch, load_start_schema: None) -> Branch:
         branch_1 = await create_branch(db=db, branch_name="branch_1")
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         schema_branch.duplicate(name=branch_1.name)
-        registry.schema.set_schema_branch(name=branch_1.name, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=branch_1.name, schema=schema_branch)
         return branch_1
 
     @pytest.fixture
     async def branch_2(self, db: InfrahubDatabase, default_branch: Branch, load_start_schema: None) -> Branch:
         branch_2 = await create_branch(db=db, branch_name="branch_2")
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         schema_branch.duplicate(name=branch_2.name)
-        registry.schema.set_schema_branch(name=branch_2.name, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=branch_2.name, schema=schema_branch)
         return branch_2
 
     @pytest.fixture
     async def branch_3(self, db: InfrahubDatabase, default_branch: Branch, load_start_schema: None) -> Branch:
         branch_3 = await create_branch(db=db, branch_name="branch_3")
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         schema_branch.duplicate(name=branch_3.name)
-        registry.schema.set_schema_branch(name=branch_3.name, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=branch_3.name, schema=schema_branch)
         return branch_3
 
     @pytest.fixture
@@ -77,7 +77,7 @@ class TestMigration037:
     ) -> list[Node]:
         loaded_nodes = []
 
-        all_attribute_types_schema = registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
+        all_attribute_types_schema = core_registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
 
         # node on branch before main schema change
         branch_node_before = await Node.init(db=db, branch=branch_0, schema=all_attribute_types_schema)
@@ -93,7 +93,7 @@ class TestMigration037:
         await branch_node_before.save(db=db)
         loaded_nodes.append(branch_node_before)
 
-        schema_branch = registry.schema.get_schema_branch(name=branch_0.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch_0.name)
         schema_branch = schema_branch.duplicate(name=branch_0.name)
         node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
 
@@ -102,8 +102,8 @@ class TestMigration037:
         text_area_attr_schema = node_schema.get_attribute(name="mytextarea")
         text_area_attr_schema.kind = "Text"
         schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
-        registry.schema.set_schema_branch(name=branch_0.name, schema=schema_branch)
-        await registry.schema.load_schema_to_db(db=db, branch=branch_0, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=branch_0.name, schema=schema_branch)
+        await core_registry.schema.load_schema_to_db(db=db, branch=branch_0, schema=schema_branch)
 
         # node on main after schema change
         branch_node_after = await Node.init(db=db, branch=branch_0, schema=all_attribute_types_schema.kind)
@@ -131,7 +131,7 @@ class TestMigration037:
     ) -> list[Node]:
         loaded_nodes = []
 
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
         # node on main before schema change
         main_node_before = await Node.init(db=db, branch=default_branch, schema=all_attribute_types_schema.kind)
@@ -141,13 +141,13 @@ class TestMigration037:
         await main_node_before.save(db=db)
         loaded_nodes.append(main_node_before)
 
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
         text_attr_schema = node_schema.get_attribute(name="mystring")
         text_attr_schema.kind = "TextArea"
         schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
-        await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
+        await core_registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=schema_branch)
 
         # node on main after schema change
         main_node_after = await Node.init(db=db, branch=default_branch, schema=all_attribute_types_schema.kind)
@@ -165,7 +165,7 @@ class TestMigration037:
     ) -> list[Node]:
         loaded_nodes = []
 
-        all_attribute_types_schema = registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
+        all_attribute_types_schema = core_registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
 
         # node on branch before branch schema change
         branch_node_before = await Node.init(db=db, branch=branch_1, schema=all_attribute_types_schema)
@@ -187,7 +187,7 @@ class TestMigration037:
     ) -> list[Node]:
         loaded_nodes = []
 
-        all_attribute_types_schema = registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
+        all_attribute_types_schema = core_registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
 
         # node on branch after main schema change
         branch_node_before = await Node.init(db=db, branch=branch_2, schema=all_attribute_types_schema)
@@ -203,7 +203,7 @@ class TestMigration037:
         await branch_node_before.save(db=db)
         loaded_nodes.append(branch_node_before)
 
-        schema_branch = registry.schema.get_schema_branch(name=branch_2.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch_2.name)
         schema_branch = schema_branch.duplicate(name=branch_2.name)
         node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
 
@@ -212,8 +212,8 @@ class TestMigration037:
         text_area_attr_schema = node_schema.get_attribute(name="myjson")
         text_area_attr_schema.kind = "TextArea"
         schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
-        registry.schema.set_schema_branch(name=branch_2.name, schema=schema_branch)
-        await registry.schema.load_schema_to_db(db=db, branch=branch_2, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=branch_2.name, schema=schema_branch)
+        await core_registry.schema.load_schema_to_db(db=db, branch=branch_2, schema=schema_branch)
 
         # node on main after schema change
         branch_node_after = await Node.init(db=db, branch=branch_2, schema=all_attribute_types_schema.kind)
@@ -231,7 +231,7 @@ class TestMigration037:
     ) -> list[Node]:
         loaded_nodes = []
 
-        all_attribute_types_schema = registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
+        all_attribute_types_schema = core_registry.schema.get_node_schema(name=all_attribute_types_schema.kind)
 
         branch_node_before = await Node.init(db=db, branch=branch_3, schema=all_attribute_types_schema)
         await branch_node_before.new(
@@ -271,7 +271,7 @@ class TestMigration037:
     async def update_branch_1_schema(
         self, db: InfrahubDatabase, branch_1: Branch, all_attribute_types_schema: NodeSchema
     ) -> None:
-        schema_branch = registry.schema.get_schema_branch(name=branch_1.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=branch_1.name)
         schema_branch = schema_branch.duplicate(name=branch_1.name)
         node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
 
@@ -286,21 +286,21 @@ class TestMigration037:
         name_attr_schema = node_schema.get_attribute(name="mytextarea")
         name_attr_schema.kind = "Text"
         schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
-        registry.schema.set_schema_branch(name=branch_1.name, schema=schema_branch)
-        await registry.schema.load_schema_to_db(db=db, branch=branch_1, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=branch_1.name, schema=schema_branch)
+        await core_registry.schema.load_schema_to_db(db=db, branch=branch_1, schema=schema_branch)
 
     async def update_main_schema(
         self, db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
     ) -> None:
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         schema_branch = schema_branch.duplicate(name=default_branch.name)
         node_schema = schema_branch.get_node(name=all_attribute_types_schema.kind)
 
         name_attr_schema = node_schema.get_attribute(name="name")
         name_attr_schema.kind = "TextArea"
         schema_branch.set(name=all_attribute_types_schema.kind, schema=node_schema)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
-        await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=schema_branch)
+        core_registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
+        await core_registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=schema_branch)
 
     async def verify_no_duplicate_has_value_edges(self, db: InfrahubDatabase) -> None:
         query = """

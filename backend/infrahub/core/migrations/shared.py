@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import (
@@ -189,7 +189,7 @@ class InternalSchemaMigration(BaseModel):
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
 
-        default_branch = registry.get_branch_from_registry()
+        default_branch = core_registry.get_branch_from_registry()
 
         for migration in self.migrations:
             try:

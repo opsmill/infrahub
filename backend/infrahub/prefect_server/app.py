@@ -28,7 +28,7 @@ async def _init_prefect() -> None:
     service = await InfrahubServices.new(cache=cache)
     initialize_lock(service=service)
 
-    async with lock.registry.get(name=GLOBAL_TASKMGR_INIT_LOCK):
+    async with lock.lock_registry.get(name=GLOBAL_TASKMGR_INIT_LOCK):
         await init_prefect()
 
 

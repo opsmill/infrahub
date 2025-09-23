@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m013_convert_git_password_credential import (
@@ -190,8 +190,8 @@ async def migration_013_schema(
 async def test_migration_013_query_01(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
 ):
-    registry.branch[default_branch.name] = default_branch
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    core_registry.branch[default_branch.name] = default_branch
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     schema_branch.set(name=PASSWORD_CRED.kind, schema=PASSWORD_CRED)
 
@@ -226,8 +226,8 @@ async def test_migration_013_query_01(
 async def test_migration_013_query_02(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
 ):
-    registry.branch[default_branch.name] = default_branch
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    core_registry.branch[default_branch.name] = default_branch
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     schema_branch.set(name=PASSWORD_CRED.kind, schema=PASSWORD_CRED)
 

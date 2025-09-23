@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
@@ -84,13 +84,13 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         return objs
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND)
         assert len(persons) == 2
 
     async def test_step02_check_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
     ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
+        person_schema = core_registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -129,7 +129,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
     async def test_step02_load_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
     ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
+        person_schema = core_registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -140,13 +140,13 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
         assert len(persons) == 1
         john = persons[0]
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
 
     async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
-        manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
+        manufacturer_schema = core_registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
         assert schema_step03["nodes"][2]["name"] == "CarMaker"
@@ -200,7 +200,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert success
 
     async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
-        manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
+        manufacturer_schema = core_registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
         assert schema_step03["nodes"][2]["name"] == "CarMaker"
@@ -210,7 +210,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Ensure that we can query the existing node with the new schema
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
         assert len(persons) == 1
         john = persons[0]
         assert not hasattr(john, "height")
@@ -222,7 +222,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         api_john = api_persons[0]
         assert not hasattr(api_john, "height")
 
-        manufacturers = await registry.manager.query(
+        manufacturers = await core_registry.manager.query(
             db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "honda"}
         )
         assert len(manufacturers) == 1
@@ -231,7 +231,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert len(honda_cars) == 2
 
     async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
-        tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
+        tag_schema = core_registry.schema.get_node_schema(name=TAG_KIND)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
         assert schema_step04["nodes"][3]["name"] == "Tag"
@@ -243,7 +243,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert success
 
     async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
-        tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
+        tag_schema = core_registry.schema.get_node_schema(name=TAG_KIND)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
         assert schema_step04["nodes"][3]["name"] == "Tag"
@@ -252,7 +252,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         response = await client.schema.load(schemas=[schema_step04])
         assert not response.errors
 
-        assert registry.schema.has(name=TAG_KIND) is False
+        assert core_registry.schema.has(name=TAG_KIND) is False
 
     async def test_step05_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
         success, response = await client.schema.check(schemas=[schema_step05])
@@ -278,8 +278,8 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         response = await client.schema.load(schemas=[schema_step05])
         assert not response.errors
 
-        assert registry.schema.has(name=f"Profile{CAR_KIND}") is False
-        car_schema = registry.schema.get(name=CAR_KIND, duplicate=False)
+        assert core_registry.schema.has(name=f"Profile{CAR_KIND}") is False
+        car_schema = core_registry.schema.get(name=CAR_KIND, duplicate=False)
         assert "profiles" in car_schema.relationship_names
 
     async def test_final_validate(self, db: InfrahubDatabase):

@@ -9,8 +9,8 @@ from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
+from infrahub.core import core_registry
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
-from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
@@ -66,7 +66,7 @@ async def process_transform(
     await add_tags(branches=[branch_name], nodes=[object_id])
     client = get_client()
 
-    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch_name)
     node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
     transform_attributes: dict[str, ComputedAttribute] = {}
     for attribute in node_schema.attributes:
@@ -205,9 +205,9 @@ async def process_jinja2(
     updates: list[str] = updated_fields or []
 
     target_branch_schema = (
-        branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
+        branch_name if branch_name in core_registry.get_altered_schema_branches() else core_registry.default_branch
     )
-    schema_branch = registry.schema.get_schema_branch(name=target_branch_schema)
+    schema_branch = core_registry.schema.get_schema_branch(name=target_branch_schema)
     node_schema = schema_branch.get_node(name=computed_attribute_kind, duplicate=False)
     computed_macros = [
         attrib
@@ -335,7 +335,7 @@ async def computed_attribute_setup_python(
     async with database.start_session() as db:
         log = get_run_logger()
 
-        branch_name = branch_name or registry.default_branch
+        branch_name = branch_name or core_registry.default_branch
         if branch_name:
             await add_tags(branches=[branch_name])
             component = await get_component()
@@ -398,7 +398,7 @@ async def query_transform_targets(
     context: InfrahubContext,
 ) -> None:
     await add_tags(branches=[branch_name])
-    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch_name)
     targets = await get_client().execute_graphql(
         query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}, branch_name=branch_name
     )

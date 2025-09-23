@@ -2,7 +2,7 @@ from itertools import chain
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.initialization import create_branch
@@ -20,7 +20,7 @@ async def test_set_generate_profile_success(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, generate_profile
 ):
     branch = await create_branch(branch_name="branch", db=db)
-    updated_schema = registry.schema.get_node_schema(name="TestCar")
+    updated_schema = core_registry.schema.get_node_schema(name="TestCar")
     updated_schema.generate_profile = generate_profile
     request = SchemaConstraintValidatorRequest(
         branch=branch,
@@ -41,7 +41,7 @@ async def test_set_generate_profile_success_generics(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema, generate_profile
 ):
     branch = await create_branch(branch_name="branch", db=db)
-    updated_schema = registry.schema.get(name="TestAnimal")
+    updated_schema = core_registry.schema.get(name="TestAnimal")
     updated_schema.generate_profile = generate_profile
     request = SchemaConstraintValidatorRequest(
         branch=branch,
@@ -59,11 +59,11 @@ async def test_set_generate_profile_success_generics(
 
 async def test_set_generate_profile_false_fail(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     branch = await create_branch(branch_name="branch", db=db)
-    profile_schema = registry.schema.get(name="ProfileTestCar", branch=branch)
+    profile_schema = core_registry.schema.get(name="ProfileTestCar", branch=branch)
     profile_node = await Node.init(db=db, schema=profile_schema, branch=branch)
     await profile_node.new(db=db, profile_name="bus", nbr_seats=50)
     await profile_node.save(db=db)
-    updated_schema = registry.schema.get_node_schema(name="TestCar")
+    updated_schema = core_registry.schema.get_node_schema(name="TestCar")
     updated_schema.generate_profile = False
     request = SchemaConstraintValidatorRequest(
         branch=branch,
@@ -87,11 +87,11 @@ async def test_set_generate_profile_false_fail_generic(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema
 ):
     branch = await create_branch(branch_name="branch", db=db)
-    profile_schema = registry.schema.get(name="ProfileTestAnimal", branch=branch)
+    profile_schema = core_registry.schema.get(name="ProfileTestAnimal", branch=branch)
     profile_node = await Node.init(db=db, schema=profile_schema, branch=branch)
     await profile_node.new(db=db, profile_name="chupacabra")
     await profile_node.save(db=db)
-    updated_schema = registry.schema.get(name="TestAnimal")
+    updated_schema = core_registry.schema.get(name="TestAnimal")
     updated_schema.generate_profile = False
     request = SchemaConstraintValidatorRequest(
         branch=branch,
@@ -114,14 +114,14 @@ async def test_set_generate_profile_false_fail_generic(
 async def test_set_generate_profile_false_branch_delete_profile_success(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema
 ):
-    profile_schema = registry.schema.get(name="ProfileTestCar", branch=default_branch)
+    profile_schema = core_registry.schema.get(name="ProfileTestCar", branch=default_branch)
     profile_node = await Node.init(db=db, schema=profile_schema, branch=default_branch)
     await profile_node.new(db=db, profile_name="bus", nbr_seats=50)
     await profile_node.save(db=db)
     branch = await create_branch(branch_name="branch", db=db)
     profile_node_branch = await NodeManager.get_one(db=db, branch=branch, id=profile_node.id)
     await profile_node_branch.delete(db=db)
-    updated_schema = registry.schema.get_node_schema(name="TestCar")
+    updated_schema = core_registry.schema.get_node_schema(name="TestCar")
     updated_schema.generate_profile = False
     request = SchemaConstraintValidatorRequest(
         branch=branch,

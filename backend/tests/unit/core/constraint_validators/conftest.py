@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.node import Node
@@ -80,15 +80,15 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
 
 @pytest.fixture
 async def car_person_generics_data_simple(db: InfrahubDatabase, car_person_schema_generics_simple) -> dict[str, Node]:
-    ecar = registry.schema.get(name="TestElectricCar")
-    gcar = registry.schema.get(name="TestGazCar")
-    person = registry.schema.get(name="TestPerson")
+    ecar = core_registry.schema.get(name="TestElectricCar")
+    gcar = core_registry.schema.get(name="TestGazCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -157,5 +157,5 @@ async def car_person_schema_hfid(db: InfrahubDatabase, default_branch: Branch) -
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema

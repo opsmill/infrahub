@@ -10,7 +10,7 @@ from infrahub_sdk.uuidt import UUIDT
 from prefect.client.orchestration import PrefectClient
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_account,
@@ -52,12 +52,12 @@ class TestInfrahub:
 
     @pytest.fixture(scope="class")
     async def default_branch(self, local_storage_dir: Path, db: InfrahubDatabase) -> Branch:
-        registry.delete_all()
+        core_registry.delete_all()
         await delete_all_nodes(db=db)
         await create_root_node(db=db)
         branch = await create_default_branch(db=db)
         await create_global_branch(db=db)
-        registry.schema = SchemaManager()
+        core_registry.schema = SchemaManager()
         return branch
 
 
@@ -115,7 +115,7 @@ class TestInfrahubApp(TestInfrahub):
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
         schema = SchemaRoot(**internal_schema)
-        schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        schema_branch = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
         return schema_branch
@@ -125,7 +125,7 @@ class TestInfrahubApp(TestInfrahub):
         self, db: InfrahubDatabase, default_branch: Branch, register_internal_schema: SchemaBranch
     ) -> SchemaBranch:
         schema = SchemaRoot(**core_models)
-        schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        schema_branch = core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
         return schema_branch

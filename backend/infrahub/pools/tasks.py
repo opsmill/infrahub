@@ -4,11 +4,11 @@ from prefect import flow
 from prefect.logging import get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
-from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.locks import lock
@@ -37,8 +37,8 @@ async def validate_schema_number_pools(
         defined_on_branches = get_branches_with_schema_number_pool(
             kind=schema_number_pool.node.value, attribute_name=schema_number_pool.node_attribute.value
         )
-        if registry.default_branch in defined_on_branches:
-            schema = registry.schema.get(name=schema_number_pool.node.value, branch=registry.default_branch)
+        if core_registry.default_branch in defined_on_branches:
+            schema = core_registry.schema.get(name=schema_number_pool.node.value, branch=core_registry.default_branch)
             attribute = schema.get_attribute(name=schema_number_pool.node_attribute.value)
             number_pool_updated = False
             if isinstance(attribute.parameters, NumberPoolParameters):
@@ -51,7 +51,7 @@ async def validate_schema_number_pools(
 
             if number_pool_updated:
                 log.info(
-                    f"Updating NumberPool={schema_number_pool.id} based on changes in the schema on {registry.default_branch}"
+                    f"Updating NumberPool={schema_number_pool.id} based on changes in the schema on {core_registry.default_branch}"
                 )
                 await schema_number_pool.save(db=service.database)
 
@@ -60,7 +60,7 @@ async def validate_schema_number_pools(
             await schema_number_pool.delete(db=service.database)
 
     existing_pool_ids = [pool.id for pool in schema_number_pools]
-    for registry_branch in registry.schema.get_branches():
+    for registry_branch in core_registry.schema.get_branches():
         schema_branch = service.database.schema.get_schema_branch(name=registry_branch)
 
         for generic_name in schema_branch.generic_names:
@@ -105,14 +105,18 @@ async def _create_number_pool(
     end_range: int,
 ) -> None:
     lock_definition = NumberPoolLockDefinition(pool_id=number_pool_id)
-    async with lock.registry.get(name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False):
+    async with lock.lock_registry.get(
+        name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
+    ):
         async with service.database.start_session() as dbs:
             try:
-                await registry.manager.get_one_by_id_or_default_filter(
+                await core_registry.manager.get_one_by_id_or_default_filter(
                     db=dbs, id=str(number_pool_id), kind=CoreNumberPool
                 )
             except NodeNotFoundError:
-                number_pool = await Node.init(db=dbs, schema=InfrahubKind.NUMBERPOOL, branch=registry.default_branch)
+                number_pool = await Node.init(
+                    db=dbs, schema=InfrahubKind.NUMBERPOOL, branch=core_registry.default_branch
+                )
                 await number_pool.new(
                     db=dbs,
                     id=number_pool_id,

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from graphene import Boolean, DateTime, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.models import RequestDiffUpdate
@@ -59,8 +59,8 @@ class DiffUpdateMutation(Mutation):
             raise ValidationError("diff with specified time range requires a name")
 
         component_registry = get_component_registry()
-        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=graphql_context.db, branch=data.branch)
+        base_branch = await core_registry.get_branch(db=graphql_context.db, branch=core_registry.default_branch)
+        diff_branch = await core_registry.get_branch(db=graphql_context.db, branch=data.branch)
         diff_repository = await component_registry.get_component(
             DiffRepository, db=graphql_context.db, branch=diff_branch
         )

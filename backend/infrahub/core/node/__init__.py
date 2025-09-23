@@ -7,7 +7,7 @@ from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
@@ -172,7 +172,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             Branch:
         """
         if self._schema.branch == BranchSupportType.AGNOSTIC:
-            return registry.get_global_branch()
+            return core_registry.get_global_branch()
         return self._branch
 
     def __repr__(self) -> str:
@@ -238,7 +238,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     ) -> Self | SchemaProtocol:
         attrs: dict[str, Any] = {}
 
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
 
         if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema):
             attrs["schema"] = schema
@@ -272,7 +272,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return
 
         try:
-            number_pool = await registry.manager.get_one_by_id_or_default_filter(
+            number_pool = await core_registry.manager.get_one_by_id_or_default_filter(
                 db=db, id=attribute.from_pool["id"], kind=CoreNumberPool
             )
         except NodeNotFoundError:
@@ -337,11 +337,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         number_pool_parameters: NumberPoolParameters = schema_attribute.parameters
 
         lock_definition = NumberPoolLockDefinition(pool_id=str(number_pool_parameters.number_pool_id))
-        async with lock.registry.get(
+        async with lock.lock_registry.get(
             name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
         ):
             try:
-                number_pool_from_db = await registry.manager.get_one_by_id_or_default_filter(
+                number_pool_from_db = await core_registry.manager.get_one_by_id_or_default_filter(
                     db=db, id=str(number_pool_parameters.number_pool_id), kind=CoreNumberPool
                 )
                 return number_pool_from_db  # type: ignore[return-value]
@@ -372,7 +372,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
                 # Do a lookup of the number pool to get the correct mapped type from the registry
                 # without this we don't get access to the .get_resource() method.
-                return await registry.manager.get_one_by_id_or_default_filter(
+                return await core_registry.manager.get_one_by_id_or_default_filter(
                     db=db, id=number_pool.id, kind=CoreNumberPool
                 )
 
@@ -383,7 +383,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return
 
         try:
-            template: CoreObjectTemplate = await registry.manager.find_object(
+            template: CoreObjectTemplate = await core_registry.manager.find_object(
                 db=db,
                 kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
                 id=object_template_field.get("id"),
@@ -582,7 +582,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                         self, attribute_path.active_relationship_schema.name
                     )
                     if peer := await relationship_attribute.get_peer(db=db, raise_on_error=False):
-                        related_node = await registry.manager.get_one_by_id_or_default_filter(
+                        related_node = await core_registry.manager.get_one_by_id_or_default_filter(
                             db=db,
                             id=peer.id,
                             kind=attribute_path.active_relationship_schema.peer,

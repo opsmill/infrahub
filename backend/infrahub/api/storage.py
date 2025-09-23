@@ -8,7 +8,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_current_user
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ class UploadContentPayload(BaseModel):
 
 @router.get("/object/{identifier:str}")
 def get_file(identifier: str, _: AccountSession = Depends(get_current_user)) -> Response:
-    content = registry.storage.retrieve(identifier=identifier)
+    content = core_registry.storage.retrieve(identifier=identifier)
     return Response(content=content)
 
 
@@ -46,7 +46,7 @@ def upload_content(
     identifier = str(UUIDT())
 
     checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
-    registry.storage.store(identifier=identifier, content=file_content)
+    core_registry.storage.store(identifier=identifier, content=file_content)
     return UploadResponse(identifier=identifier, checksum=checksum)
 
 
@@ -60,5 +60,5 @@ def upload_file(file: UploadFile = File(...), _: AccountSession = Depends(get_cu
     identifier = str(UUIDT())
 
     checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
-    registry.storage.store(identifier=identifier, content=file_content)
+    core_registry.storage.store(identifier=identifier, content=file_content)
     return UploadResponse(identifier=identifier, checksum=checksum)

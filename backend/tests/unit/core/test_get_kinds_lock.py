@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants.infrahubkind import GRAPHQLQUERY, GRAPHQLQUERYGROUP
 from infrahub.core.initialization import create_branch
 from infrahub.core.node.lock_utils import _get_kinds_to_lock_on_object_mutation, _hash
@@ -18,19 +18,19 @@ class TestGetKindsLock(TestInfrahubApp):
         client,
     ):
         # CoreCredential has no uniqueness_constraint, but generic CorePasswordCredential has one
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         assert _get_kinds_to_lock_on_object_mutation(kind="CorePasswordCredential", schema_branch=schema_branch) == [
             "CoreCredential"
         ]
 
         # 3 generics but only GenericAccount has a uniqueness_constraint
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         assert _get_kinds_to_lock_on_object_mutation(kind="CoreAccount", schema_branch=schema_branch) == [
             "CoreGenericAccount"
         ]
 
         # No uniqueness_constraint, no generic
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         assert _get_kinds_to_lock_on_object_mutation(kind="BuiltinIPPrefix", schema_branch=schema_branch) == []
 
     async def test_lock_core_graphql_query_groups(

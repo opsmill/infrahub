@@ -3,7 +3,7 @@ from typing import Any, Hashable
 import pytest
 from pydantic import ValidationError
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
@@ -142,15 +142,15 @@ async def test_node_schema_generate_fields_for_display_label_with_generic(defaul
         ],
     )
     schema_root = SchemaRoot(generics=[generic_schema], nodes=[node_schema_1, node_schema_2])
-    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    core_registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     generic_display_label = schema_branch.generate_fields_for_display_label(name="TestThingGeneric")
     assert generic_display_label == {"name": {"value": None}, "height": {"value": None}}
 
 
 async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
-    person = registry.schema.get(name="TestPerson")
+    person = core_registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
@@ -185,7 +185,7 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
 
 
 async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema):
-    person = registry.schema.get(name="TestPerson")
+    person = core_registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
@@ -220,9 +220,9 @@ async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_br
 
 
 async def test_rel_schema_query_filter_large_attribute_type(db: InfrahubDatabase, default_branch, car_person_schema):
-    person = registry.schema.get(name="TestPerson")
+    person = core_registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
-    car_schema = registry.schema.get(name="TestCar", duplicate=False)
+    car_schema = core_registry.schema.get(name="TestCar", duplicate=False)
     name_attr = car_schema.get_attribute(name="name")
     name_attr.kind = "TextArea"
 

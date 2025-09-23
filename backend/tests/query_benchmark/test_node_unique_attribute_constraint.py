@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from infrahub.constants.database import Neo4jRuntime
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.validators.uniqueness.model import (
     NodeUniquenessQueryRequest,
     QueryAttributePath,
@@ -47,7 +47,7 @@ async def benchmark_uniqueness_query(
         load_indexes=benchmark_config.load_db_indexes,
         queries_names_to_config=queries_names_to_config,
     )
-    registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
 
     # Build function to profile
     async def init_and_execute():

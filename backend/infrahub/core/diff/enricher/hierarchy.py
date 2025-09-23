@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import RelationshipHierarchyDirection, RelationshipKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.node import NodeGetHierarchyQuery
@@ -74,7 +74,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         enriched_diff_root: EnrichedDiffRoot,
         node_map: dict[str, list[NodeIdentifier]],
     ) -> None:
-        diff_branch = registry.get_branch_from_registry(branch=enriched_diff_root.diff_branch_name)
+        diff_branch = core_registry.get_branch_from_registry(branch=enriched_diff_root.diff_branch_name)
 
         # Retrieve the ID of all ancestors
         for kind, node_identifiers in node_map.items():
@@ -120,7 +120,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
     async def _enrich_nodes_with_parent(
         self, enriched_diff_root: EnrichedDiffRoot, node_map: dict[str, list[NodeIdentifier]]
     ) -> None:
-        diff_branch = registry.get_branch_from_registry(branch=enriched_diff_root.diff_branch_name)
+        diff_branch = core_registry.get_branch_from_registry(branch=enriched_diff_root.diff_branch_name)
 
         parent_peers: dict[NodeIdentifier, RelationshipPeerData] = {}
 

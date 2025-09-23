@@ -1,6 +1,6 @@
 import uuid
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import (
@@ -18,7 +18,7 @@ from infrahub.database import InfrahubDatabase
 async def test_query_default_branch(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
 ):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
     prev_attr.id = str(uuid.uuid4())
@@ -59,7 +59,7 @@ async def test_query_branch1(
 ):
     branch1 = await create_branch(db=db, branch_name="branch1", isolated=True)
 
-    schema = registry.schema.get_schema_branch(name=branch1.name)
+    schema = core_registry.schema.get_schema_branch(name=branch1.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
     prev_attr.id = str(uuid.uuid4())
@@ -98,7 +98,7 @@ async def test_query_branch1(
 async def test_migration(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
 ):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
     prev_attr.id = str(uuid.uuid4())

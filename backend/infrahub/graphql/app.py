@@ -41,7 +41,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.core.registry import registry
+from infrahub.core import core_registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -131,8 +131,8 @@ class InfrahubGraphQLApp:
 
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
-                    branch_name = request.path_params.get("branch_name", registry.default_branch)
-                    branch = await registry.get_branch(db=db, branch=branch_name)
+                    branch_name = request.path_params.get("branch_name", core_registry.default_branch)
+                    branch = await core_registry.get_branch(db=db, branch=branch_name)
                 except BranchNotFoundError as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
@@ -156,8 +156,8 @@ class InfrahubGraphQLApp:
             db = websocket.app.state.db
 
             async with db.start_session(read_only=True) as db:
-                branch_name = websocket.path_params.get("branch_name", registry.default_branch)
-                branch = await registry.get_branch(db=db, branch=branch_name)
+                branch_name = websocket.path_params.get("branch_name", core_registry.default_branch)
+                branch = await core_registry.get_branch(db=db, branch=branch_name)
 
                 await self._run_websocket_server(db=db, branch=branch, websocket=websocket)
 
@@ -219,7 +219,7 @@ class InfrahubGraphQLApp:
         if analyzed_query.contains_mutation:
             graphql_params.context.at = Timestamp()
         elif at and branch.schema_changed_at and Timestamp(branch.schema_changed_at) > Timestamp(at):
-            schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
+            schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
             db.add_schema(name=branch.name, schema=schema_branch)
             analyzed_query = InfrahubGraphQLQueryAnalyzer(
                 query=query,

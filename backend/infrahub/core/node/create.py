@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
@@ -87,7 +87,7 @@ async def handle_template_relationships(
 
         for template_relationship_peer in template_relationship_peers.values():
             # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
-            obj_peer_schema = registry.schema.get_node_schema(
+            obj_peer_schema = core_registry.schema.get_node_schema(
                 name=template_relationship_peer.get_schema().kind.removeprefix("Template"),
                 branch=branch,
                 duplicate=False,
@@ -185,13 +185,13 @@ async def _do_create_node_with_lock(
     data: dict[str, Any],
     at: Timestamp | None = None,
 ) -> Node:
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
     lock_names = get_kind_lock_names_on_object_mutation(
         kind=schema.kind, branch=branch, schema_branch=schema_branch, data=dict(data)
     )
 
     if lock_names:
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+        async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=lock_names):
             return await _do_create_node(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,
@@ -231,8 +231,8 @@ async def create_node(
         NodeConstraintRunner, db=db.start_session() if not db.is_transaction else db, branch=branch
     )
     node_class = Node
-    if schema.kind in registry.node:
-        node_class = registry.node[schema.kind]
+    if schema.kind in core_registry.node:
+        node_class = core_registry.node[schema.kind]
 
     fields_to_validate = list(data)
     if db.is_transaction:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.merge import (
@@ -107,7 +107,7 @@ class DiffMerger:
 
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
-        registry.branch[self.source_branch.name] = self.source_branch
+        core_registry.branch[self.source_branch.name] = self.source_branch
         return enriched_diff
 
     async def rollback(self, at: Timestamp) -> None:

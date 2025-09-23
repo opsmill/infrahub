@@ -1,7 +1,7 @@
 from graphql import GraphQLSchema, parse
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
@@ -17,8 +17,8 @@ def generate_graphql_schema(
     include_subscription: bool = True,
     include_types: bool = True,
 ) -> GraphQLSchema:
-    branch = registry.get_branch_from_registry(branch)
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    branch = core_registry.get_branch_from_registry(branch)
+    schema = core_registry.schema.get_schema_branch(name=branch.name)
     return GraphQLSchemaManager(schema=schema).generate(
         include_query=include_query,
         include_mutation=include_mutation,

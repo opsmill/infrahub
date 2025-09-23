@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
@@ -230,7 +230,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert result["DiffUpdate"]["ok"]
 
         # Validate if the diff has been updated properly
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         assert len(diff.nodes) == 2
@@ -240,7 +240,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     ) -> None:
         """Validate if the diff is properly updated the second time"""
 
-        branch1 = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        branch1 = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
 
         bob = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
         await bob.new(db=db, name="Bob", height=123, description="The less famous Bob")
@@ -250,7 +250,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert result["DiffUpdate"]["ok"]
 
         # Validate if the diff has been updated properly
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         assert len(diff.nodes) == 3
@@ -258,7 +258,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_diff_deleted_ed_209(
         self, db: InfrahubDatabase, initial_dataset, create_diff, client: InfrahubClient
     ) -> None:
-        branch1 = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        branch1 = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
 
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
@@ -275,7 +275,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert result["DiffUpdate"]["ok"]
 
         # Validate if the diff has been updated properly
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         assert len(diff.nodes) == 5
@@ -413,7 +413,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["DiffUpdate"]["ok"]
 
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         assert diff.to_time > changes_done_time
@@ -447,7 +447,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_add_cardinality_one_peer_conflict(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
     ) -> None:
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         jesko_id = initial_dataset["jesko"].get_id()
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
         cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
@@ -509,7 +509,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_add_cardinality_one_peer_property_conflict(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
     ) -> None:
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         t_800_id = initial_dataset["t_800"].get_id()
         john_id = initial_dataset["john"].get_id()
         john_node = await NodeManager.get_one(db=db, id=john_id)
@@ -633,7 +633,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_add_cardinality_many_peer_property_conflict(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
     ) -> None:
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         murphy_id = initial_dataset["murphy"].get_id()
 
@@ -714,7 +714,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["DiffUpdate"]["ok"]
 
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         assert diff.to_time > changes_done_time
@@ -762,7 +762,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["ResolveDiffConflict"]["ok"]
 
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
         assert len(diff.nodes) == 9
         nodes_by_id = {n.uuid: n for n in diff.nodes}
@@ -842,7 +842,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["ResolveDiffConflict"]["ok"]
 
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         jesko_id = initial_dataset["jesko"].get_id()
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
@@ -900,7 +900,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["ResolveDiffConflict"]["ok"]
 
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         t_800_id = initial_dataset["t_800"].get_id()
         john_id = initial_dataset["john"].get_id()
         omnicorp_id = initial_dataset["omnicorp"].get_id()
@@ -987,7 +987,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         )
         assert result["ResolveDiffConflict"]["ok"]
 
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         murphy_id = initial_dataset["murphy"].get_id()
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
@@ -1059,7 +1059,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             )
         assert "Conflict must be resolved manually" in exc.value.message
 
-        diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
+        diff_branch = core_registry.get_branch_from_registry(branch=BRANCH_NAME)
         kara_main = initial_dataset["kara"]
         # manually reset updated value
         kara_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=kara_main.get_id())

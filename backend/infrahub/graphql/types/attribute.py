@@ -5,7 +5,7 @@ from typing import Any
 from graphene import BigInt, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 
 from .enums import BranchRelativePermissionDecision
 from .interface import InfrahubInterface
@@ -81,7 +81,7 @@ class BaseAttribute(ObjectType):
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
-        registry.default_graphql_type[cls.__name__] = cls
+        core_registry.default_graphql_type[cls.__name__] = cls
 
 
 class TextAttributeType(BaseAttribute):

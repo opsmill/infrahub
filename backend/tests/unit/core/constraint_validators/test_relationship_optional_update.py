@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.node import Node
@@ -19,7 +19,7 @@ async def test_query(
     await person.new(db=db, name="Alfred", height=160)
     await person.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     name_rel = person_schema.get_relationship(name="cars")
     name_rel.optional = False
 
@@ -53,7 +53,7 @@ async def test_validator(
     await person2.new(db=db, name="Bob", height=150)
     await person2.save(db=db)
 
-    person_schema = registry.schema.get(name="TestPerson")
+    person_schema = core_registry.schema.get(name="TestPerson")
     name_rel = person_schema.get_relationship(name="cars")
     name_rel.optional = False
 

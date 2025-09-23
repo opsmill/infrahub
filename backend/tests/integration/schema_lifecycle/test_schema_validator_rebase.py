@@ -4,7 +4,7 @@ import pytest
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -123,9 +123,9 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         }
 
     async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND)
-        cars = await registry.manager.query(db=db, schema=CAR_KIND)
-        tags = await registry.manager.query(db=db, schema=TAG_KIND)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND)
+        cars = await core_registry.manager.query(db=db, schema=CAR_KIND)
+        tags = await core_registry.manager.query(db=db, schema=TAG_KIND)
         assert len(persons) == 2
         assert len(cars) == 3
         assert len(tags) == 2

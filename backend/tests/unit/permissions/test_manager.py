@@ -1,7 +1,7 @@
 import pytest
 
 from infrahub.auth import AccountSession
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
@@ -65,7 +65,7 @@ async def test_load_permissions(
 async def test_load_permissions_multiple_backends(
     db: InfrahubDatabase, default_branch: Branch, session_first_account: AccountSession
 ):
-    registry.permission_backends = [DummyBackendAllow(), DummyBackendDeny()]
+    core_registry.permission_backends = [DummyBackendAllow(), DummyBackendDeny()]
 
     permission_manager = PermissionManager(account_session=session_first_account)
     await permission_manager.load_permissions(db=db, branch=default_branch)

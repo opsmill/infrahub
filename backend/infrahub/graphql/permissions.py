@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.registry import registry
+from infrahub.core import core_registry
 from infrahub.core.schema import GenericSchema
 from infrahub.permissions import report_schema_permissions
 
@@ -15,7 +15,9 @@ async def get_permissions(schema: MainSchemaTypes, graphql_context: GraphqlConte
     schema_objects = [schema]
     if isinstance(schema, GenericSchema):
         for node_name in schema.used_by:
-            schema_objects.append(registry.schema.get(name=node_name, branch=graphql_context.branch, duplicate=False))
+            schema_objects.append(
+                core_registry.schema.get(name=node_name, branch=graphql_context.branch, duplicate=False)
+            )
 
     response: dict[str, Any] = {"count": len(schema_objects), "edges": []}
 

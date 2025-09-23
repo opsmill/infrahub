@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from infrahub_sdk import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import (
     create_branch,
@@ -225,14 +225,14 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset, branch_1: Branch):
         # Check schema properties
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_1)
         # check that unique attribute is correctly synced to uniqueness constraints
         person_schema = schema_branch.get(name=PERSON_KIND)
         assert person_schema.uniqueness_constraints == [["name__value"]]
         generic_schema = schema_branch.get(name="TestingThing")
         assert generic_schema.uniqueness_constraints == [["unique_attr__value"]]
 
-        persons = await registry.manager.query(db=db, schema=PERSON_KIND, branch=branch_1.name)
+        persons = await core_registry.manager.query(db=db, schema=PERSON_KIND, branch=branch_1.name)
         assert len(persons) == 2
 
     async def test_step02_check_more_fields(
@@ -280,12 +280,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert branches[branch_1.name].has_schema_changes is True
 
         # Ensure that we can query the nodes with the new schema in BRANCH1
-        persons = await registry.manager.query(
+        persons = await core_registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"name__value": "John"}, branch=branch_1.name
         )
         assert len(persons) == 1
         john = persons[0]
-        persons = await registry.manager.query(
+        persons = await core_registry.manager.query(
             db=db, schema=PERSON_KIND, filters={"name__value": "Jane"}, branch=branch_1.name
         )
         assert len(persons) == 1
@@ -359,7 +359,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert branches[branch_1.name].has_schema_changes is True
 
         # Check schema properties
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_1)
         updated_person_schema = schema_branch.get(name=PERSON_KIND)
         assert updated_person_schema.uniqueness_constraints
         unique_constraint_sets = frozenset(tuple(uc) for uc in updated_person_schema.uniqueness_constraints)
@@ -382,7 +382,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     async def test_step04_check_rename_name(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_04
     ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
+        person_schema = core_registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
         attr = person_schema.get_attribute(name="name")
 
         # Insert the ID of the attribute name into the schema in order to rename it
@@ -427,7 +427,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     async def test_step04_load_renamed_fields(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_04
     ):
-        person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
+        person_schema = core_registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
         attr = person_schema.get_attribute(name="name")
 
         # Insert the ID of the attribute name into the schema in order to rename it
@@ -440,7 +440,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Check schema properties
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_1)
         updated_person_schema = schema_branch.get(name=PERSON_KIND)
         assert updated_person_schema.uniqueness_constraints
         unique_constraint_sets = frozenset(tuple(uc) for uc in updated_person_schema.uniqueness_constraints)
@@ -505,7 +505,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Check schema properties
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_1)
         updated_person_schema = schema_branch.get(name=PERSON_KIND)
         assert updated_person_schema.uniqueness_constraints
         unique_constraint_sets = frozenset(tuple(uc) for uc in updated_person_schema.uniqueness_constraints)
@@ -572,7 +572,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert not response.errors
 
         # Check schema properties
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_1)
         updated_generic_schema = schema_branch.get(name="TestingThing")
         assert not updated_generic_schema.uniqueness_constraints
 

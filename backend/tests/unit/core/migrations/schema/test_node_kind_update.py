@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipHierarchyDirection, SchemaPathType
 from infrahub.core.initialization import create_branch
@@ -16,7 +16,7 @@ from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
 async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
     candidate_schema.delete(name="TestCar")
@@ -59,7 +59,7 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
 async def test_migration_aware_relationship(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
 ):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
     candidate_schema.delete(name="TestCar")
@@ -103,7 +103,7 @@ async def test_migration_agnostic_relationship(
     await car.new(db=db, name="yaris", agnostic_owner=person_john.id)
     await car.save(db=db)
 
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
     candidate_schema.delete(name="TestCar")
@@ -127,8 +127,8 @@ async def test_migration_agnostic_relationship(
     assert await count_nodes(db=db, label="TestCar") == 1
     assert await count_nodes(db=db, label="Test2NewCar") == 1
 
-    await validate_node_relationships(node=person_john, db=db, branch=registry.get_global_branch())
-    await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())
+    await validate_node_relationships(node=person_john, db=db, branch=core_registry.get_global_branch())
+    await validate_node_relationships(node=car, db=db, branch=core_registry.get_global_branch())
 
 
 async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch):
@@ -142,7 +142,7 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
     await country_france.new(db=db, name="France", shortname={"value": "FR"}, parent=continent_europe.id)
     await country_france.save(db=db)
 
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     continent_schema = candidate_schema.get(name=TestKind.CONTINENT)
     candidate_schema.delete(name=TestKind.CONTINENT)
@@ -195,7 +195,7 @@ async def test_inheritance_migration_on_branch_and_main(
     branch = await create_branch(db=db, branch_name="test-migration-branch")
 
     # 2. Run NodeKindUpdateMigration on the new branch
-    schema = registry.schema.get_schema_branch(name=branch.name)
+    schema = core_registry.schema.get_schema_branch(name=branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get_node(name="TestCar")
     candidate_schema.delete(name="TestCar")
@@ -213,7 +213,7 @@ async def test_inheritance_migration_on_branch_and_main(
     assert execution_result.nbr_migrations_executed == 2
 
     # 3. Run the same NodeKindUpdateMigration on the default_branch
-    schema_default = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_default = core_registry.schema.get_schema_branch(name=default_branch.name)
     migration_default = NodeKindUpdateMigration(
         previous_node_schema=schema_default.get(name="TestCar"),
         new_node_schema=car_schema,

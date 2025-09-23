@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
+from infrahub.core import core_registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
@@ -22,7 +23,6 @@ from infrahub.core.query.node import (
     NodeToProcess,
 )
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
-from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship, RelationshipManager
 from infrahub.core.schema import (
     GenericSchema,
@@ -51,13 +51,13 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
     If there is a class in the registry matching one of the node Parent, use it
     Otherwise use Node
     """
-    if node.schema.kind in registry.node:
-        return registry.node[node.schema.kind]
+    if node.schema.kind in core_registry.node:
+        return core_registry.node[node.schema.kind]
 
     if node.schema.inherit_from:
         for parent in node.schema.inherit_from:
-            if parent in registry.node:
-                return registry.node[parent]
+            if parent in core_registry.node:
+                return core_registry.node[parent]
 
     return Node
 
@@ -205,7 +205,7 @@ class NodeManager:
             list[Node]: List of Node object
         """
 
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node_schema = get_schema(db=db, branch=branch, node_schema=schema)
@@ -293,7 +293,7 @@ class NodeManager:
             int: The number of responses found
         """
 
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node_schema = get_schema(db=db, branch=branch, node_schema=schema)
@@ -322,7 +322,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         branch_agnostic: bool = False,
     ) -> int:
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
@@ -355,7 +355,7 @@ class NodeManager:
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
     ) -> list[Relationship]:
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
@@ -424,7 +424,7 @@ class NodeManager:
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
     ) -> int:
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         query = await NodeGetHierarchyQuery.init(
@@ -453,7 +453,7 @@ class NodeManager:
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
     ) -> dict[str, Node]:
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         query = await NodeGetHierarchyQuery.init(
@@ -647,7 +647,7 @@ class NodeManager:
         account=None,
         branch_agnostic: bool = False,
     ) -> Any:
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node_schema = get_schema(db=db, branch=branch, node_schema=kind)
@@ -796,7 +796,7 @@ class NodeManager:
         account=None,
         branch_agnostic: bool = False,
     ) -> Any:
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node_schema = get_schema(db=db, branch=branch, node_schema=kind)
@@ -822,13 +822,15 @@ class NodeManager:
 
         filters = {}
         for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
-            path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
+            path = node_schema.parse_schema_path(
+                path=key, schema=core_registry.schema.get_schema_branch(name=branch.name)
+            )
 
             if path.is_type_relationship:
                 rel_schema = path.related_schema
                 # Keep the relationship attribute path and parse it
                 path = rel_schema.parse_schema_path(
-                    path=key.split("__", maxsplit=1)[1], schema=registry.schema.get_schema_branch(name=branch.name)
+                    path=key.split("__", maxsplit=1)[1], schema=core_registry.schema.get_schema_branch(name=branch.name)
                 )
 
             filters[key] = path.attribute_schema.get_class().deserialize_from_string(item)
@@ -913,7 +915,7 @@ class NodeManager:
         account=None,
         branch_agnostic: bool = False,
     ) -> Any:
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node = await cls.get_one(
@@ -1055,7 +1057,7 @@ class NodeManager:
         branch_agnostic: bool = False,
     ) -> Any | None:
         """Return one node based on its ID."""
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
 
         result = await cls.get_many(
             ids=[id],
@@ -1120,7 +1122,7 @@ class NodeManager:
     ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         # Query all nodes
@@ -1194,7 +1196,7 @@ class NodeManager:
 
             new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
-            node_branch = await registry.get_branch(db=db, branch=node.branch)
+            node_branch = await core_registry.get_branch(db=db, branch=node.branch)
             item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
             await item.load(**new_node_data_with_profile_overrides, db=db)
 
@@ -1343,7 +1345,7 @@ class NodeManager:
         cascade_delete: bool = True,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
-        branch = await registry.get_branch(branch=branch, db=db)
+        branch = await core_registry.get_branch(branch=branch, db=db)
         nodes_to_delete = copy(nodes)
         if cascade_delete:
             node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
@@ -1383,4 +1385,4 @@ def _get_cardinality_one_identifiers_by_kind(
     return cardinality_one_fields_by_kind
 
 
-registry.manager = NodeManager
+core_registry.manager = NodeManager

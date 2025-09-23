@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.locks import lock
@@ -35,16 +35,16 @@ async def create_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
     """Create a new entry in the registry for a given branch."""
 
     log.info("New branch detected, pulling schema", branch=branch.name, worker=WORKER_IDENTITY)
-    await registry.schema.load_schema(db=db, branch=branch)
-    registry.branch[branch.name] = branch
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    await core_registry.schema.load_schema(db=db, branch=branch)
+    core_registry.branch[branch.name] = branch
+    schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
     update_graphql_schema(branch=branch, schema_branch=schema_branch)
 
 
 async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
     """Update the registry for a branch if the schema hash has changed or the branch was rebased."""
 
-    existing_branch: Branch = registry.branch[branch.name]
+    existing_branch: Branch = core_registry.branch[branch.name]
 
     if not existing_branch.schema_hash:
         log.warning("Branch schema hash is not set, cannot update branch registry")
@@ -66,10 +66,10 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
                 branch=branch.name,
                 worker=WORKER_IDENTITY,
             )
-            registry.branch[branch.name] = branch
+            core_registry.branch[branch.name] = branch
         elif existing_branch.status != branch.status:
             log.info(f"Updating registry branch cache for {branch.name=}")
-            registry.branch[branch.name] = branch
+            core_registry.branch[branch.name] = branch
         return
 
     log.info(
@@ -79,9 +79,9 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
         hash_new=branch.active_schema_hash.main,
         worker=WORKER_IDENTITY,
     )
-    await registry.schema.load_schema(db=db, branch=branch)
-    registry.branch[branch.name] = branch
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    await core_registry.schema.load_schema(db=db, branch=branch)
+    core_registry.branch[branch.name] = branch
+    schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
 
     update_graphql_schema(branch=branch, schema_branch=schema_branch)
 
@@ -93,20 +93,20 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     We pull the new schema from the database and we update the registry.
     """
 
-    async with lock.registry.local_schema_lock():
-        active_branches = await registry.branch_object.get_list(db=db)
+    async with lock.lock_registry.local_schema_lock():
+        active_branches = await core_registry.branch_object.get_list(db=db)
         for active_branch in active_branches:
             if active_branch.name == GLOBAL_BRANCH_NAME:
                 # Avoid processing updates for the global branch as it doesn't
                 # have an associated schema
                 continue
 
-            if active_branch.name in registry.branch:
+            if active_branch.name in core_registry.branch:
                 await update_branch_registry(db=db, branch=active_branch)
             else:
                 await create_branch_registry(db=db, branch=active_branch)
 
-        purged_branches = await registry.purge_inactive_branches(db=db, active_branches=active_branches)
+        purged_branches = await core_registry.purge_inactive_branches(db=db, active_branches=active_branches)
         purged_branches.update(
             graphql_registry.purge_inactive(active_branches=[branch.name for branch in active_branches])
         )

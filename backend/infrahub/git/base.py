@@ -16,9 +16,9 @@ from prefect.logging import get_run_logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
-from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CommitNotFoundError,
     FileOutOfRepositoryError,
@@ -182,7 +182,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @property
     def default_branch(self) -> str:
-        return self.default_branch_name or registry.default_branch
+        return self.default_branch_name or core_registry.default_branch
 
     @property
     def legacy_directory_root(self) -> Path:
@@ -232,7 +232,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """
 
         await self.sdk.execute_graphql(
-            branch_name=self.infrahub_branch_name or registry.default_branch,
+            branch_name=self.infrahub_branch_name or core_registry.default_branch,
             query=update_status,
             variables={"repo_id": str(self.id), "status": status.value},
             tracker="mutation-repository-update-operational-status",
@@ -770,7 +770,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         - Make sure that a representation if the branch can be created in the database
         - Make sure that there are no conflicts that would prevent it from being merged
         """
-        if branch_name == registry.default_branch and branch_name != self.default_branch:
+        if branch_name == core_registry.default_branch and branch_name != self.default_branch:
             # If the default branch of Infrahub and the git repository differs we map the repository
             # default branch to that of Infrahub. In that scenario we can't import a branch from the
             # repository if it matches the default branch of Infrahub
@@ -811,7 +811,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if not self.has_origin:
             return False
         identifier = branch_name
-        if branch_name == self.default_branch and branch_name != registry.default_branch:
+        if branch_name == self.default_branch and branch_name != core_registry.default_branch:
             identifier = "main"
 
         repo: Repo | None = None
@@ -970,14 +970,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def _get_mapped_remote_branch(self, branch_name: str) -> str:
         """Returns the remote branch for Git Repositories."""
-        if branch_name != self.default_branch and branch_name == registry.default_branch:
+        if branch_name != self.default_branch and branch_name == core_registry.default_branch:
             return self.default_branch
         return branch_name
 
     def _get_mapped_target_branch(self, branch_name: str) -> str:
         """Returns the target branch within Infrahub."""
-        if branch_name == self.default_branch and branch_name != registry.default_branch:
-            return registry.default_branch
+        if branch_name == self.default_branch and branch_name != core_registry.default_branch:
+            return core_registry.default_branch
         return branch_name
 
     def get_changed_files(self, first_commit: str, second_commit: str | None = None) -> RepoChangedFiles:

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -83,7 +83,7 @@ class TestDiffReadQuery(TestInfrahub):
         }
 
         schema = SchemaRoot(**SCHEMA)
-        registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     @pytest.fixture(scope="class")
     async def hierarchical_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema):

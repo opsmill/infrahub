@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.components import ComponentType
-from infrahub.core.registry import registry
+from infrahub.core import core_registry
 from infrahub.services import InfrahubServices
 from infrahub.services.component import InfrahubComponent
 from infrahub.worker import WORKER_IDENTITY
@@ -26,7 +26,7 @@ async def test_status_query(db: InfrahubDatabase, default_branch: Branch, regist
         message_bus=bus,
         component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
     )
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     await service.component.refresh_heartbeat()
     await service.component.refresh_schema_hash()

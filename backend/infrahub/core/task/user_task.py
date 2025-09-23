@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import Severity, TaskConclusion
 from infrahub.log import get_logger
 
@@ -67,7 +67,7 @@ class UserTask:
         if self._account:
             return False
 
-        account: CoreGenericAccount | None = await registry.manager.get_one(id=self.account_id, db=self.db)
+        account: CoreGenericAccount | None = await core_registry.manager.get_one(id=self.account_id, db=self.db)
         if not account:
             raise ValueError(f"Unable to find the account associated with {self.account_id}")
         self._account = account

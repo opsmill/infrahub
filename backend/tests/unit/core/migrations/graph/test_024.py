@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import RelationshipHierarchyDirection
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -51,7 +51,7 @@ SET main_e.hierarchy = NULL
         """
         await db.execute_query(query=query, params={"default_branch": default_branch.name})
 
-        region_schema = registry.schema.get(name="LocationRegion", duplicate=False)
+        region_schema = core_registry.schema.get(name="LocationRegion", duplicate=False)
         region = hierarchy_data["europe"]
         region_descendants = [
             hierarchy_data["paris"],
@@ -61,7 +61,7 @@ SET main_e.hierarchy = NULL
             hierarchy_data["london-r1"],
             hierarchy_data["london-r2"],
         ]
-        site_schema = registry.schema.get(name="LocationSite", duplicate=False)
+        site_schema = core_registry.schema.get(name="LocationSite", duplicate=False)
         site = hierarchy_data["paris-r2"]
         site_ancestors = [
             hierarchy_data["paris"],
@@ -89,18 +89,18 @@ SET main_e.hierarchy = NULL
         assert retrieved_ancestors_map == {}
 
         # run the migration
-        default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
-        await registry.schema.load_schema_to_db(db=db, schema=default_schema_branch)
+        default_schema_branch = core_registry.schema.get_schema_branch(name=core_registry.default_branch)
+        await core_registry.schema.load_schema_to_db(db=db, schema=default_schema_branch)
         migration = Migration024()
-        mock_schema_manager = MagicMock(wraps=registry.schema)
+        mock_schema_manager = MagicMock(wraps=core_registry.schema)
         mock_load_schema_from_db = AsyncMock(return_value=default_schema_branch)
         mock_schema_manager.load_schema_from_db = mock_load_schema_from_db
-        real_schema_manager = registry.schema
+        real_schema_manager = core_registry.schema
         try:
-            registry.schema = mock_schema_manager
+            core_registry.schema = mock_schema_manager
             await migration.execute(db=db)
         finally:
-            registry.schema = real_schema_manager
+            core_registry.schema = real_schema_manager
         mock_load_schema_from_db.assert_awaited_once()
         await migration.validate_migration(db=db)
 

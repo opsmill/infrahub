@@ -8,7 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 from infrahub import config
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     AttributeDBNodeType,
@@ -179,7 +179,8 @@ class NodeCreateAllQuery(NodeQuery):
 
                 rel_create_data = await rel.get_create_data(db=db, at=at)
                 if rel_create_data.peer_branch_level > deepest_branch_level or (
-                    deepest_branch_name == GLOBAL_BRANCH_NAME and rel_create_data.peer_branch == registry.default_branch
+                    deepest_branch_name == GLOBAL_BRANCH_NAME
+                    and rel_create_data.peer_branch == core_registry.default_branch
                 ):
                     deepest_branch_name = rel_create_data.peer_branch
                     deepest_branch_level = rel_create_data.peer_branch_level
@@ -348,11 +349,11 @@ class NodeCreateAllQuery(NodeQuery):
         }
         """ % {"ipnetwork_prop": ", ".join(ipnetwork_prop_list)}
 
-        deepest_branch = await registry.get_branch(db=db, branch=deepest_branch_name)
+        deepest_branch = await core_registry.get_branch(db=db, branch=deepest_branch_name)
         branch_filter, branch_params = deepest_branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
-        self.params["default_branch_name"] = registry.default_branch
+        self.params["default_branch_name"] = core_registry.default_branch
 
         dest_node_subquery = """
         CALL (rel) {
@@ -909,7 +910,7 @@ WHERE toString(n.uuid) IN $ids
         """
         # only add the branch filter logic if a branch is included in the query parameters
         if branch := getattr(self, "branch", None):
-            branch = await registry.get_branch(db=db, branch=branch)
+            branch = await core_registry.get_branch(db=db, branch=branch)
             branch_filter, branch_params = branch.get_query_filter_path(at=self.at)
             self.params.update(branch_params)
             query += f"AND {branch_filter}"

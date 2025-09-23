@@ -1,6 +1,6 @@
 from infrahub import config
 from infrahub.auth import AccountSession
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
@@ -32,7 +32,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         required_decision = (
             PermissionDecisionFlag.ALLOW_DEFAULT
             if analyzed_query.branch is None
-            or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+            or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, core_registry.default_branch)
             else PermissionDecisionFlag.ALLOW_OTHER
         )
 

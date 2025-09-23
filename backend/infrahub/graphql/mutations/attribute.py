@@ -3,7 +3,7 @@ from typing import Any
 from graphene import BigInt, Boolean, Field, InputObjectType, Int, String
 from graphene.types.generic import GenericScalar
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.graphql.types.attribute import GenericPoolInput
 
 
@@ -16,7 +16,7 @@ class BaseAttributeCreate(InputObjectType):
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
-        registry.input_type[cls.__name__] = cls
+        core_registry.input_type[cls.__name__] = cls
 
 
 class BaseAttributeUpdate(InputObjectType):
@@ -29,7 +29,7 @@ class BaseAttributeUpdate(InputObjectType):
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
-        registry.input_type[cls.__name__] = cls
+        core_registry.input_type[cls.__name__] = cls
 
 
 class TextAttributeCreate(BaseAttributeCreate):

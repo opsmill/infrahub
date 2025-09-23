@@ -13,7 +13,7 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
@@ -50,14 +50,16 @@ async def get_artifact(
     branch_params: BranchParams = Depends(get_branch_params),
     _: AccountSession = Depends(get_current_user),
 ) -> Response:
-    artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at)
+    artifact = await core_registry.manager.get_one(
+        db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at
+    )
     if not artifact:
         raise NodeNotFoundError(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
     return Response(
-        content=registry.storage.retrieve(identifier=artifact.storage_id.value),
+        content=core_registry.storage.retrieve(identifier=artifact.storage_id.value),
         headers={"Content-Type": artifact.content_type.value.value},
     )
 
@@ -79,7 +81,7 @@ async def generate_artifact(
 
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
-        if branch_params.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+        if branch_params.branch.name in (GLOBAL_BRANCH_NAME, core_registry.default_branch)
         else PermissionDecisionFlag.ALLOW_OTHER
     )
     permissions = [
@@ -89,7 +91,7 @@ async def generate_artifact(
     permission_manager.raise_for_permissions(permissions=permissions)
 
     # Verify that the artifact definition exists for the requested branch
-    artifact_definition = await registry.manager.get_one_by_id_or_default_filter(
+    artifact_definition = await core_registry.manager.get_one_by_id_or_default_filter(
         db=db,
         id=artifact_definition_id,
         kind=CoreArtifactDefinition,

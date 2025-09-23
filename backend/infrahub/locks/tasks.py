@@ -4,7 +4,7 @@ from prefect import flow
 from prefect.logging import get_run_logger
 
 from infrahub import config
-from infrahub.core.registry import registry
+from infrahub.core import core_registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.locks.lock import LOCK_PREFIX
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
@@ -22,7 +22,7 @@ async def clean_up_deadlocks(service: InfrahubServices) -> None:
 
     log = get_run_logger()
     values = await service.cache.get_values(keys=keys)
-    workers = await service.component.list_workers(branch=registry.default_branch, schema_hash=False)
+    workers = await service.component.list_workers(branch=core_registry.default_branch, schema_hash=False)
     workers_not_active = {worker.id for worker in workers if not worker.active}
 
     for key, value in zip(keys, values, strict=False):

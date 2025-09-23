@@ -9,7 +9,7 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub import __version__, config
-from infrahub.core import registry, utils
+from infrahub.core import core_registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.workers.dependencies import get_component, get_database, get_http
@@ -23,7 +23,7 @@ from .utils import determine_infrahub_type
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
 async def gather_schema_information(branch: Branch) -> TelemetrySchemaData:
-    main_schema = registry.schema.get_schema_branch(name=branch.name)
+    main_schema = core_registry.schema.get_schema_branch(name=branch.name)
     return TelemetrySchemaData(
         node_count=len(main_schema.node_names),
         generic_count=len(main_schema.generic_names),
@@ -57,12 +57,12 @@ async def gather_feature_information() -> dict[str, int]:
 async def gather_anonymous_telemetry_data() -> TelemetryData:
     start_time = time.time()
 
-    default_branch = registry.get_branch_from_registry()
+    default_branch = core_registry.get_branch_from_registry()
     component = await get_component()
     workers = await component.list_workers(branch=default_branch.name, schema_hash=False)
 
     data = TelemetryData(
-        deployment_id=registry.id,
+        deployment_id=core_registry.id,
         execution_time=None,
         infrahub_version=__version__,
         infrahub_type=determine_infrahub_type(),
@@ -73,7 +73,7 @@ async def gather_anonymous_telemetry_data() -> TelemetryData:
             active=len([w for w in workers if w.active]),
         ),
         branches=TelemetryBranchData(
-            total=len(registry.branch),
+            total=len(core_registry.branch),
         ),
         features=await gather_feature_information(),
         schema_info=await gather_schema_information(branch=default_branch),

@@ -7,7 +7,7 @@ from graphql.type.definition import GraphQLNonNull
 from netaddr import IPSet
 from opentelemetry import trace
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
@@ -91,7 +91,7 @@ async def _resolve_available_address_nodes(
     """Annotate a list of IP addresses node with available ranges within a prefix."""
     ip_prefix: IPvAnyNetwork = prefix.prefix.obj
     ip_namespace = await prefix.ip_namespace.get_peer(db=db, peer_type=BuiltinIPNamespace, raise_on_error=True)
-    ip_range_schema = registry.get_node_schema(name=InfrahubKind.IPRANGEAVAILABLE, branch=branch)
+    ip_range_schema = core_registry.get_node_schema(name=InfrahubKind.IPRANGEAVAILABLE, branch=branch)
 
     # Make sure nodes are ordered by addresses
     sorted_nodes = sorted(existing_nodes, key=lambda n: n.address.obj)
@@ -189,7 +189,7 @@ async def _resolve_available_prefix_nodes(
     last_node_context: Node | None = None,
 ) -> list[Node]:
     """Annotate a list of IP prefixes node with available prefixes within a parent one."""
-    ip_prefix_schema = registry.get_node_schema(name=InfrahubKind.IPPREFIXAVAILABLE, branch=branch)
+    ip_prefix_schema = core_registry.get_node_schema(name=InfrahubKind.IPPREFIXAVAILABLE, branch=branch)
 
     existing_prefixes = IPSet([n.prefix.value for n in existing_nodes])
     if first_node_context:

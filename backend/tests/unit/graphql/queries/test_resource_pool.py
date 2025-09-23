@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialization
@@ -31,8 +31,8 @@ async def prefix_pools_02(
     ipv4_prefix_resource = ip_dataset_01["net144"]
     ipv4_address_resource = ip_dataset_01["net145"]
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    prefix_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    address_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
 
     ipv6_prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=default_branch)
     await ipv6_prefix_pool.new(
@@ -451,7 +451,7 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
     branch = await create_branch(branch_name="issue-3579", db=db)
 
     # Create a prefix and add it to resource pool in branch
-    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch)
+    prefix_schema = core_registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch)
     rfc5735 = await Node.init(db=db, schema=prefix_schema, branch=branch)
     await rfc5735.new(db=db, prefix="192.0.2.0/24", ip_namespace=ns1)
     await rfc5735.save(db=db)
@@ -511,11 +511,11 @@ async def test_read_resources_in_pool_new_schema_in_branch(
 ):
     branch2 = await create_branch(db=db, branch_name="branch2")
 
-    schema_branch2 = registry.schema.get_schema_branch(name=branch2.name)
+    schema_branch2 = core_registry.schema.get_schema_branch(name=branch2.name)
     schema_branch2.load_schema(schema=ipam_schema)
     schema_branch2.process()
 
-    registry.schema.set_schema_branch(name=branch2.name, schema=schema_branch2)
+    core_registry.schema.set_schema_branch(name=branch2.name, schema=schema_branch2)
     branch2.update_schema_hash()
 
     prefix_schema = schema_branch2.get_node(name="IpamIPPrefix")
@@ -535,7 +535,7 @@ async def test_read_resources_in_pool_new_schema_in_branch(
     await net140.new(db=db, prefix="10.10.0.0/16", ip_namespace=ns1, parent=net146)
     await net140.save(db=db)
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=branch2)
+    prefix_pool_schema = core_registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=branch2)
     ipv4_prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=branch2)
     await ipv4_prefix_pool.new(
         db=db,

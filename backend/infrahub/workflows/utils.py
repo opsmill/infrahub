@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 from prefect import get_client
 from prefect.runtime import flow_run
 
+from infrahub.core import core_registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.core.registry import registry
 from infrahub.tasks.registry import refresh_branches
 
 from .constants import TAG_NAMESPACE, WorkflowTag
@@ -61,7 +61,7 @@ async def wait_for_schema_to_converge(
 ) -> None:
     has_converged = False
     branch_id = branch_name
-    if branch := registry.branch.get(branch_name):
+    if branch := core_registry.branch.get(branch_name):
         branch_id = str(branch.get_uuid())
 
     delay = 0.2

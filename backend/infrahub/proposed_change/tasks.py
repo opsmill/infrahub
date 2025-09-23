@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from infrahub import config
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
 from infrahub.core.constants import (
@@ -124,7 +124,7 @@ async def _proposed_change_transition_state(
 ) -> None:
     async with database.start_session() as db:
         if proposed_change is None and proposed_change_id:
-            proposed_change = await registry.manager.get_one(
+            proposed_change = await core_registry.manager.get_one(
                 db=db, id=proposed_change_id, kind=InternalCoreProposedChange, raise_on_error=True
             )
         if proposed_change:
@@ -163,7 +163,7 @@ async def merge_proposed_change(
     await add_tags(nodes=[proposed_change_id])
     database = await get_database()
 
-    proposed_change = await registry.manager.get_one(
+    proposed_change = await core_registry.manager.get_one(
         db=database,
         id=proposed_change_id,
         kind=InternalCoreProposedChange,
@@ -288,8 +288,8 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 
     database = await get_database()
     async with database.start_session() as dbs:
-        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
+        destination_branch = await core_registry.get_branch(db=dbs, branch=model.destination_branch)
+        source_branch = await core_registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
@@ -398,8 +398,8 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
-    dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
+    source_schema = core_registry.schema.get_schema_branch(name=model.source_branch).duplicate()
+    dest_schema = core_registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
 
     candidate_schema = dest_schema.duplicate()
     candidate_schema.update(schema=source_schema)
@@ -419,7 +419,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
+    source_branch = core_registry.get_branch_from_registry(branch=model.source_branch)
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
             branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
@@ -848,7 +848,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClie
         await instance.update(do_full_update=True)
 
     else:
-        async with lock.registry.get(
+        async with lock.lock_registry.get(
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
             instances = await client.filters(
@@ -1052,8 +1052,8 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
 
     database = await get_database()
     async with database.start_session() as dbs:
-        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
+        destination_branch = await core_registry.get_branch(db=dbs, branch=model.destination_branch)
+        source_branch = await core_registry.get_branch(db=dbs, branch=model.source_branch)
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
@@ -1519,7 +1519,7 @@ async def _validate_repository_merge_conflicts(
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name, client=client)
-            async with lock.registry.get(name=repo.repository_name, namespace="repository"):
+            async with lock.lock_registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch
                 )

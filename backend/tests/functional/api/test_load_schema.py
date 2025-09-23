@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
 
+from infrahub.core import core_registry
 from infrahub.core.manager import NodeManager
-from infrahub.core.registry import registry
 from infrahub.core.schema import core_models
 from infrahub.core.schema.basenode_schema import OPTIONAL_TEXT_FIELDS
 from infrahub.core.utils import count_relationships
@@ -68,7 +68,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
 
         # get the organization schema
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         organization_schema = schema_branch.get_node(name="TestingOrganization", duplicate=False)
         tags_relationship = organization_schema.get_relationship(name="tags")
         description_attribute = organization_schema.get_attribute(name="description")
@@ -123,8 +123,8 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch: Branch,
     ) -> None:
-        schema = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+        schema = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
         creation = await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
         assert not creation.errors
 
@@ -157,18 +157,18 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch: Branch,
     ) -> None:
-        schema = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+        schema = core_registry.schema.get_schema_branch(name=default_branch.name)
+        await core_registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
         simple = await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
         assert not simple.errors
-        org_schema = registry.schema.get(name="TestingOrganization", branch=default_branch.name)
+        org_schema = core_registry.schema.get(name="TestingOrganization", branch=default_branch.name)
         initial_nbr_relationships = len(org_schema.relationships)
 
         extended_schema = await client.schema.load(schemas=[helper.schema_file("infra_w_extensions_01.json")])
         assert not extended_schema.errors
         assert extended_schema.schema_updated
 
-        org_schema = registry.schema.get(name="TestingOrganization", branch=default_branch.name)
+        org_schema = core_registry.schema.get(name="TestingOrganization", branch=default_branch.name)
         assert len(org_schema.relationships) == initial_nbr_relationships + 1
 
     @pytest.fixture(scope="class")
@@ -270,7 +270,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
     async def load_extension_schema_03(
         self, db: InfrahubDatabase, client: InfrahubClient, extension_branch: BranchData
     ) -> None:
-        generic_schema = registry.schema.get(name="ThingGeneric")
+        generic_schema = core_registry.schema.get(name="ThingGeneric")
         retrieved_generic_schema = await NodeManager.get_one(db=db, id=generic_schema.get_id())
         schema_attrs = await retrieved_generic_schema.attributes.get(db=db)
         name_attr: Node | None = None
@@ -316,12 +316,12 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         load_extension_schema_01,
         extension_branch: BranchData,
     ) -> None:
-        node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
+        node_schema = core_registry.schema.get(name="ThingNode", branch=default_branch.name)
         initial_nbr_relationships = len(node_schema.relationships)
         initial_nbr_attributes = len(node_schema.attributes)
         branch_name = extension_branch.name
 
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_name)
         node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
         assert len(node_schema.relationships) == initial_nbr_relationships + 1
         assert len(node_schema.attributes) == initial_nbr_attributes + 1
@@ -363,12 +363,12 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         load_extension_schema_02,
         extension_branch: BranchData,
     ) -> None:
-        node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
+        node_schema = core_registry.schema.get(name="ThingNode", branch=default_branch.name)
         initial_nbr_relationships = len(node_schema.relationships)
         initial_nbr_attributes = len(node_schema.attributes)
         branch_name = extension_branch.name
 
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_name)
         node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
         assert len(node_schema.relationships) == initial_nbr_relationships + 2
         assert len(node_schema.attributes) == initial_nbr_attributes + 2
@@ -412,12 +412,12 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         load_extension_schema_03,
         extension_branch: BranchData,
     ) -> None:
-        node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
+        node_schema = core_registry.schema.get(name="ThingNode", branch=default_branch.name)
         initial_nbr_relationships = len(node_schema.relationships)
         initial_nbr_attributes = len(node_schema.attributes)
         branch_name = extension_branch.name
 
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_name)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=branch_name)
         node_schema = schema_branch.get_node(name="ThingNode", duplicate=False)
         assert len(node_schema.relationships) == initial_nbr_relationships + 2
         assert len(node_schema.attributes) == initial_nbr_attributes + 2

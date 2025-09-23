@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -57,7 +57,7 @@ class TestBranchCreate(TestInfrahubApp):
         assert result.data["BranchCreate"]["object"]["branched_from"] is not None
 
         branch2 = await Branch.get_by_name(db=db, name="branch2")
-        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        branch2_schema = core_registry.schema.get_schema_branch(name=branch2.name)
 
         assert branch2
         assert branch2_schema

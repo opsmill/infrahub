@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.merger.serializer import DiffMergeSerializer
 from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilderContext
@@ -12,7 +12,7 @@ class DiffMergerDependency(DependencyBuilder[DiffMerger]):
         return DiffMerger(
             db=context.db,
             source_branch=context.branch,
-            destination_branch=registry.get_branch_from_registry(),
+            destination_branch=core_registry.get_branch_from_registry(),
             diff_repository=DiffRepositoryDependency.build(context=context),
             serializer=DiffMergeSerializer(db=context.db, max_batch_size=100),
         )

@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -31,7 +31,7 @@ class TestProfileLifecycle(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def person_1(self, db: InfrahubDatabase, schema_person_base) -> Node:
-        schema = registry.schema.get_node_schema(name="TestingPerson", duplicate=False)
+        schema = core_registry.schema.get_node_schema(name="TestingPerson", duplicate=False)
         person_1 = await Node.init(db=db, schema=schema)
         await person_1.new(db=db, name="Starbuck")
         await person_1.save(db=db)

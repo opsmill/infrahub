@@ -8,7 +8,7 @@ from infrahub_sdk.protocols import CoreArtifact, CoreArtifactDefinition
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 from infrahub.core.diff.model.diff import ArtifactTarget, BranchDiffArtifact, BranchDiffArtifactStorage
@@ -121,7 +121,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         john_display_label = await person_john.render_display_label(db=db)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
-        branch = await registry.get_branch(db=db, branch="ro_repository")
+        branch = await core_registry.get_branch(db=db, branch="ro_repository")
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
         diffs_dict = {str(item.display_label): item for item in diffs}
         assert sorted(diffs_dict.keys()) == [
@@ -190,11 +190,11 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         context: InfrahubContext,
         service: InfrahubServices,
     ):
-        from infrahub.core import registry
+        from infrahub.core import core_registry
         from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 
         await client.branch.create(branch_name="branch", sync_with_git=False)
-        branch = await registry.get_branch(db=db, branch="branch")
+        branch = await core_registry.get_branch(db=db, branch="branch")
 
         manufacturer = await Node.init(schema=TestKind.MANUFACTURER, db=db, branch=branch)
         await manufacturer.new(db=db, name="Car builder")

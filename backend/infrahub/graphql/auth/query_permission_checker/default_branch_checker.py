@@ -1,6 +1,6 @@
 from infrahub import config
 from infrahub.auth import AccountSession
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
@@ -38,7 +38,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     ) -> CheckerResolution:
         operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
             GLOBAL_BRANCH_NAME,
-            registry.default_branch,
+            core_registry.default_branch,
         )
         is_exempt_operation = all(
             operation_name in self.exempt_operations for operation_name in analyzed_query.operation_names

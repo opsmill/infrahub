@@ -6,10 +6,10 @@ import pydantic
 import pytest
 
 from infrahub import config
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
     NumberAttributeParameters,
@@ -210,11 +210,11 @@ async def test_create_nodes_from_generic_numberpools(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch
 ) -> None:
     schema = SchemaRoot(generics=[SNOW_TASK], nodes=[SNOW_INCIDENT, SNOW_REQUEST])
-    schema_branch = registry.schema.register_schema(schema=schema)
+    schema_branch = core_registry.schema.register_schema(schema=schema)
     snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)
     incident_attribute = snow_incident.get_attribute(name="number")
     assert isinstance(incident_attribute.parameters, NumberPoolParameters)
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    core_registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
     incident_1 = await Node.init(db=db, schema="SnowIncident")
     await incident_1.new(db=db, title="The first incident")

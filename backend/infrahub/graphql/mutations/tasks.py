@@ -3,7 +3,7 @@ from __future__ import annotations
 from prefect import flow
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
@@ -27,7 +27,7 @@ async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
     database = await get_database()
     async with database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
-        base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
+        base_branch = await Branch.get_by_name(db=db, name=core_registry.default_branch)
 
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)

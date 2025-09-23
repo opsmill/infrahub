@@ -5,7 +5,7 @@ import pytest
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -71,7 +71,7 @@ class TestArtifact11(TestInfrahubApp):
         )
         await artifact.save(db=db)
 
-        registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=b'{"test": true}')
+        core_registry.storage.store(identifier="95008984-16ca-4e58-8323-0899bb60035f", content=b'{"test": true}')
 
         return artifact
 

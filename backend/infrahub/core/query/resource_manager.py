@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Generator
 
 from pydantic import BaseModel, ConfigDict
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import InfrahubKind, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 
@@ -96,7 +96,7 @@ class IPAddressPoolSetReserved(Query):
         self.params["address_id"] = self.address_id
         self.params["identifier"] = self.identifier
 
-        global_branch = registry.get_global_branch()
+        global_branch = core_registry.get_global_branch()
         self.params["rel_prop"] = {
             "branch": global_branch.name,
             "branch_level": global_branch.hierarchy_level,
@@ -248,7 +248,7 @@ class PoolChangeReserved(Query):
 
         self.params.update(branch_params)
 
-        global_branch = registry.get_global_branch()
+        global_branch = core_registry.get_global_branch()
         self.params["rel_prop"] = {
             "branch": global_branch.name,
             "branch_level": global_branch.hierarchy_level,
@@ -360,7 +360,7 @@ class NumberPoolSetReserved(Query):
         self.params["reserved"] = self.reserved
         self.params["identifier"] = self.identifier
 
-        global_branch = registry.get_global_branch()
+        global_branch = core_registry.get_global_branch()
         self.params["rel_prop"] = {
             "branch": global_branch.name,
             "branch_level": global_branch.hierarchy_level,
@@ -457,7 +457,7 @@ class PrefixPoolSetReserved(Query):
         self.params["prefix_id"] = self.prefix_id
         self.params["identifier"] = self.identifier
 
-        global_branch = registry.get_global_branch()
+        global_branch = core_registry.get_global_branch()
         self.params["rel_prop"] = {
             "branch": global_branch.name,
             "branch_level": global_branch.hierarchy_level,

@@ -1,9 +1,9 @@
 from infrahub.auth import AccountSession
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.events.node_action import NodeMutatedEvent
@@ -48,7 +48,7 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
 async def test_upsert_existing_simple_object_by_default_filter(
     db: InfrahubDatabase, person_schema_default_filter, default_branch
 ):
-    registry.schema.register_schema(schema=person_schema_default_filter)
+    core_registry.schema.register_schema(schema=person_schema_default_filter)
 
     person = await Node.init(db=db, schema="TestPersonDF")
     await person.new(db=db, name="John", height=180)
@@ -596,7 +596,7 @@ async def test_with_constructed_hfid_with_numbers(
 ) -> None:
     """Validate that we can construct an HFID out of the payload without specifying all parts."""
 
-    registry.schema.register_schema(schema=SchemaRoot(nodes=[TICKET]), branch=default_branch.name)
+    core_registry.schema.register_schema(schema=SchemaRoot(nodes=[TICKET]), branch=default_branch.name)
 
     first_ticket = await Node.init(schema=TestKind.TICKET, db=db)
     await first_ticket.new(db=db, title="first", ticket_id=1, description="Add more info")

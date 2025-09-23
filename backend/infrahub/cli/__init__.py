@@ -49,10 +49,10 @@ def shell() -> None:
 
     from infrahub import config
     from infrahub.components import ComponentType
+    from infrahub.core import core_registry
     from infrahub.core.branch import Branch
     from infrahub.core.initialization import initialization
     from infrahub.core.manager import NodeManager
-    from infrahub.core.registry import registry
     from infrahub.dependencies.registry import build_component_registry
     from infrahub.locks.lock import initialize_lock
     from infrahub.services import InfrahubServices
@@ -121,7 +121,7 @@ def shell() -> None:
         "welcome": welcome,
         "NodeManager": NodeManager,
         "Branch": Branch,
-        "registry": registry,
+        "registry": core_registry,
     }
 
     start_ipython(argv=[], config=c, user_ns=user_ns)

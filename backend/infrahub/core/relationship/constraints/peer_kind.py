@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.node import Node
@@ -28,8 +28,8 @@ class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
         self.branch = branch
 
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
-        branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
-        peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
+        branch = await core_registry.get_branch(db=self.db) if not self.branch else self.branch
+        peer_schema = core_registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
         if isinstance(peer_schema, GenericSchema):
             allowed_kinds = peer_schema.used_by
         else:

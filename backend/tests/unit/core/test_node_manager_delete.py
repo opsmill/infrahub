@@ -2,7 +2,7 @@ from typing import AsyncGenerator
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipDeleteBehavior
 from infrahub.core.manager import NodeManager
@@ -52,7 +52,7 @@ async def test_one_sided_relationship(
     person_jane_main,
     car_person_schema_unregistered,
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.relationships.append(
         RelationshipSchema(
@@ -99,7 +99,7 @@ async def test_cascade_delete_not_prevented(
     person_albert_main: Node,
     person_jane_main: Node,
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
@@ -113,7 +113,7 @@ async def test_cascade_delete_not_prevented(
 async def test_delete_with_cascade_on_many_relationship(
     db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
 
@@ -127,7 +127,7 @@ async def test_delete_with_cascade_on_many_relationship(
 async def test_delete_with_cascade_on_one_relationship(
     db, default_branch, car_camry_main, car_accord_main, person_john_main
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
 
@@ -141,7 +141,7 @@ async def test_delete_with_cascade_on_one_relationship(
 async def test_delete_with_cascade_multiple_input_nodes(
     db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
 
@@ -155,7 +155,7 @@ async def test_delete_with_cascade_multiple_input_nodes(
 async def test_delete_with_cascade_both_directions_succeeds(
     db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
 ):
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
@@ -188,7 +188,7 @@ async def test_delete_with_required_on_generic_prevented(db, default_branch, dep
 
 async def test_delete_with_cascade_on_generic_allowed(db, default_branch, dependent_generics_schema: SchemaBranch):
     # set TestPerson.animals to be cascade delete
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
     for schema_kind in ("TestPerson", "TestHuman", "TestCylon"):
         schema = schema_branch.get(name=schema_kind, duplicate=False)
         schema.get_relationship("animals").on_delete = RelationshipDeleteBehavior.CASCADE

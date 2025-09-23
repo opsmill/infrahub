@@ -14,7 +14,7 @@ from starlette.responses import JSONResponse
 
 from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
@@ -179,11 +179,11 @@ async def get_schema(
     _: AccountSession = Depends(get_current_user),
 ) -> SchemaReadAPI:
     log.debug("schema_request", branch=branch.name)
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
     all_schemas = schema_branch.get_schemas_for_namespaces(namespaces=namespaces)
 
     return SchemaReadAPI(
-        main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
+        main=core_registry.schema.get_schema_branch(name=branch.name).get_hash(),
         nodes=[
             APINodeSchema.from_schema(value)
             for value in all_schemas
@@ -213,7 +213,7 @@ async def get_schema_summary(
     branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
 ) -> SchemaBranchHash:
     log.debug("schema_summary_request", branch=branch.name)
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    schema_branch = core_registry.schema.get_schema_branch(name=branch.name)
     return schema_branch.get_hash_full()
 
 
@@ -223,7 +223,7 @@ async def get_schema_by_kind(
 ) -> APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema:
     log.debug("schema_kind_request", branch=branch.name)
 
-    schema = registry.schema.get(name=schema_kind, branch=branch, duplicate=False)
+    schema = core_registry.schema.get(name=schema_kind, branch=branch, duplicate=False)
 
     api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema]] = {
         "profile": APIProfileSchema,
@@ -253,7 +253,7 @@ async def get_json_schema_by_kind(
 
     fields: dict[str, Any] = {}
 
-    schema = registry.schema.get(name=schema_kind, branch=branch)
+    schema = core_registry.schema.get(name=schema_kind, branch=branch)
 
     for attr in schema.attributes:
         field_type = ATTRIBUTE_PYTHON_TYPES[attr.kind]
@@ -296,7 +296,7 @@ async def load_schema(
         )
     )
 
-    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch):
+    if branch.name in (GLOBAL_BRANCH_NAME, core_registry.default_branch):
         permission_manager.raise_for_permission(
             permission=GlobalPermission(
                 action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_DEFAULT.value
@@ -313,8 +313,8 @@ async def load_schema(
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
-    async with lock.registry.global_schema_lock():
-        branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    async with lock.lock_registry.global_schema_lock():
+        branch_schema = core_registry.schema.get_schema_branch(name=branch.name)
         original_hash = branch_schema.get_hash()
 
         candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
@@ -346,7 +346,7 @@ async def load_schema(
         origin_schema = branch_schema.duplicate()
         log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
         async with db.start_transaction() as dbt:
-            await registry.schema.update_schema_branch(
+            await core_registry.schema.update_schema_branch(
                 schema=candidate_schema,
                 db=dbt,
                 branch=branch.name,
@@ -363,7 +363,7 @@ async def load_schema(
                 log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
 
             await branch.save(db=dbt)
-            updated_branch = registry.schema.get_schema_branch(name=branch.name)
+            updated_branch = core_registry.schema.get_schema_branch(name=branch.name)
             updated_hash = updated_branch.get_hash()
 
         # ----------------------------------------------------------
@@ -423,7 +423,7 @@ async def check_schema(
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
-    branch_schema = registry.schema.get_schema_branch(name=branch.name)
+    branch_schema = core_registry.schema.get_schema_branch(name=branch.name)
 
     candidate_schema, result = evaluate_candidate_schemas(branch_schema=branch_schema, schemas_to_evaluate=schemas)
 

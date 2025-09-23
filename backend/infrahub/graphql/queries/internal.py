@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from graphene import Field, ObjectType, String
 
 from infrahub import __version__
-from infrahub.core import registry
+from infrahub.core import core_registry
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -20,7 +20,7 @@ class Info(ObjectType):
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,  # noqa: ARG004
     ) -> dict[str, str]:
-        return {"deployment_id": str(registry.id), "version": __version__}
+        return {"deployment_id": str(core_registry.id), "version": __version__}
 
 
 InfrahubInfo = Field(Info, resolver=Info.resolve, required=True)

@@ -16,7 +16,7 @@ from prometheus_client import start_http_server
 from infrahub import __version__ as infrahub_version
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.initialization import initialization
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
@@ -121,7 +121,7 @@ class InfrahubWorkerAsync(BaseWorker):
         set_component_type(component_type=self.component_type)
         await self._init_services(client=client)
 
-        if not registry.schema_has_been_initialized():
+        if not core_registry.schema_has_been_initialized():
             initialize_lock(service=self.service)
 
             async with self.service.database.start_session() as db:

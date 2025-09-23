@@ -1,6 +1,6 @@
 from deepdiff import DeepDiff
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipCardinality
 from infrahub.core.node import Node
@@ -24,9 +24,9 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
         ],
     }
     tmp_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
+    core_registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get(tmp_schema.kind, branch=default_branch)
     obj1 = await Node.init(db=db, schema=schema)
     await obj1.new(db=db, name="low")
     await obj1.save(db=db)
@@ -72,9 +72,9 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
     }
 
     tmp_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
+    core_registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=schema)
     await obj1.new(db=db, name="low", level=4)
@@ -126,9 +126,9 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
     }
 
     tmp_schema = NodeSchema(**SCHEMA)
-    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
+    core_registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=schema)
     await obj1.new(db=db, name="low")
@@ -210,8 +210,8 @@ async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branc
 async def test_display_label_nested_query(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ):
-    car = registry.schema.get(name="TestCar")
-    person = registry.schema.get(name="TestPerson")
+    car = core_registry.schema.get(name="TestCar")
+    person = core_registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -352,11 +352,11 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
             )
         ],
     )
-    registry.schema.set(name=object_a_schema.kind, schema=object_a_schema)
-    registry.schema.set(name=object_b_schema.kind, schema=object_b_schema)
-    registry.schema.process_schema_branch(name=default_branch.name)
-    object_a_schema = registry.schema.get(object_a_schema.kind, branch=default_branch)
-    object_b_schema = registry.schema.get(object_b_schema.kind, branch=default_branch)
+    core_registry.schema.set(name=object_a_schema.kind, schema=object_a_schema)
+    core_registry.schema.set(name=object_b_schema.kind, schema=object_b_schema)
+    core_registry.schema.process_schema_branch(name=default_branch.name)
+    object_a_schema = core_registry.schema.get(object_a_schema.kind, branch=default_branch)
+    object_b_schema = core_registry.schema.get(object_b_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=object_a_schema)
     await obj1.new(db=db, name="first")

@@ -6,7 +6,7 @@ from infrahub.locks import lock
 
 async def do_nothing(id: str, wait_sec: int, lock_name: str = "test1") -> int:
     """Function for testing a simple lock."""
-    async with lock.registry.get(name=lock_name):
+    async with lock.lock_registry.get(name=lock_name):
         start_time = time.time_ns()
         await sleep(delay=wait_sec)
         end_time = time.time_ns()
@@ -17,7 +17,7 @@ async def do_nothing(id: str, wait_sec: int, lock_name: str = "test1") -> int:
 async def do_nothing_global_graph(id=str, wait_sec=int) -> int:
     """Function for testing the global_graph_lock.
     After acquiring the locks, wait for the indicated amount and return the start time and the end time of the lock."""
-    async with lock.registry.global_graph_lock():
+    async with lock.lock_registry.global_graph_lock():
         start_time = time.time_ns()
         await sleep(delay=wait_sec)
         end_time = time.time_ns()

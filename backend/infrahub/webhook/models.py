@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.events.utils import get_all_infrahub_node_kind_events
@@ -50,12 +50,12 @@ class WebhookTriggerDefinition(TriggerDefinition):
         if obj.branch_scope.value == "default_branch":
             event_trigger.match_related = {
                 "prefect.resource.role": "infrahub.branch",
-                "infrahub.resource.label": registry.default_branch,
+                "infrahub.resource.label": core_registry.default_branch,
             }
         elif obj.branch_scope.value == "other_branches":
             event_trigger.match_related = {
                 "prefect.resource.role": "infrahub.branch",
-                "infrahub.resource.label": f"!{registry.default_branch}",
+                "infrahub.resource.label": f"!{core_registry.default_branch}",
             }
 
         if obj.node_kind.value and obj.event_type.value in get_all_infrahub_node_kind_events():

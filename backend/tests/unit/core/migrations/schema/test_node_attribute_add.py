@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import HashableModelState, SchemaPathType
 from infrahub.core.migrations.schema.node_attribute_add import (
@@ -90,7 +90,7 @@ async def test_query01(db: InfrahubDatabase, default_branch, init_database, sche
 
 
 async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
 
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Attribute") == 14

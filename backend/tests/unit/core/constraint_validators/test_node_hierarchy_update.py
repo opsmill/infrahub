@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
@@ -63,7 +63,7 @@ async def hierarchical_location_data_simple_and_small(
 
 
 async def test_query_children_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children")
 
     query = await NodeHierarchyUpdateValidatorQuery.init(
@@ -78,7 +78,7 @@ async def test_query_children_success(db: InfrahubDatabase, default_branch: Bran
 
 
 async def test_query_parent_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent")
 
     query = await NodeHierarchyUpdateValidatorQuery.init(
@@ -96,7 +96,7 @@ async def test_query_children_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
     hldsas = hierarchical_location_data_simple_and_small
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
 
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children")
@@ -160,7 +160,7 @@ async def test_query_parent_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
     hldsas = hierarchical_location_data_simple_and_small
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     site_schema.parent = "LocationRack"
 
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent")
@@ -224,7 +224,7 @@ async def test_query_update_on_branch_failure(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
     hldsas = hierarchical_location_data_simple_and_small
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
 
     s1r1_rack2 = await Node.init(db=db, schema="LocationRack", branch=branch)
@@ -303,7 +303,7 @@ async def test_query_delete_on_branch_failure(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
     hldsas = hierarchical_location_data_simple_and_small
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
 
     await branch.rebase(db=db)
@@ -360,10 +360,10 @@ async def test_validator_parents_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
     hldsas = hierarchical_location_data_simple_and_small
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     site_schema.parent = "LocationRack"
 
-    registry.schema.set(name="LocationSite", schema=site_schema, branch=default_branch.name)
+    core_registry.schema.set(name="LocationSite", schema=site_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
@@ -390,7 +390,7 @@ async def test_validator_parents_failure(
 async def test_validator_parents_success(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
@@ -412,10 +412,10 @@ async def test_validator_children_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
     hldsas = hierarchical_location_data_simple_and_small
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
 
-    registry.schema.set(name="LocationSite", schema=site_schema, branch=default_branch.name)
+    core_registry.schema.set(name="LocationSite", schema=site_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
@@ -442,7 +442,7 @@ async def test_validator_children_failure(
 async def test_validator_children_success(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
 ):
-    site_schema = registry.schema.get(name="LocationSite")
+    site_schema = core_registry.schema.get(name="LocationSite")
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,

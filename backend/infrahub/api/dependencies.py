@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
 from infrahub.context import InfrahubContext
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch  # noqa: TC001
-from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import AuthorizationError
@@ -86,7 +86,7 @@ async def get_branch_params(
     branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
     at: str | None = Query(None, description="Time to use for the query, in absolute or relative format"),
 ) -> BranchParams:
-    branch = await registry.get_branch(db=db, branch=branch_name)
+    branch = await core_registry.get_branch(db=db, branch=branch_name)
 
     return BranchParams(branch=branch, at=Timestamp(at))
 
@@ -95,7 +95,7 @@ async def get_branch_dep(
     db: InfrahubDatabase = Depends(get_db),
     branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
 ) -> Branch:
-    return await registry.get_branch(db=db, branch=branch_name)
+    return await core_registry.get_branch(db=db, branch=branch_name)
 
 
 async def get_current_user(

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
     NumberAttributeParameters,
@@ -185,7 +185,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         assert number_attr.parameters.end_range == end_range
 
     async def test_schema_01_is_correct(self, db: InfrahubDatabase, default_branch: Branch, load_schema_01) -> None:
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+        schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
         legacy_schema = schema_branch.get_node(name=LEGACY_KIND, duplicate=False)
         self._validate_schema_value_parameters(schema=legacy_schema, regex="old", min_length=0, max_length=4)
@@ -314,7 +314,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         response = await client.schema.load(schemas=[schema_step_02], branch=default_branch.name)
         assert not response.errors
 
-        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        updated_schema_branch = await core_registry.schema.load_schema_from_db(db=db, branch=default_branch)
         legacy_schema = updated_schema_branch.get_node(name=LEGACY_KIND, duplicate=False)
         self._validate_schema_value_parameters(
             schema=legacy_schema, regex=regex_02, min_length=min_length_02, max_length=max_length_02

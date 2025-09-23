@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from netaddr import IPSet
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.query.ipam import get_subnets
 from infrahub.core.query.resource_manager import (
@@ -37,7 +37,7 @@ class CoreIPPrefixPool(Node):
         prefix_type: str | None = None,
         at: Timestamp | None = None,
     ) -> Node:
-        async with lock.registry.get(name=self.get_id(), namespace="resource_pool"):
+        async with lock.lock_registry.get(name=self.get_id(), namespace="resource_pool"):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
             if identifier:
@@ -47,7 +47,7 @@ class CoreIPPrefixPool(Node):
                 if result:
                     prefix = result.get_node("prefix")
                     # TODO add support for branch, if the node is reserved with this id in another branch we should return an error
-                    node = await registry.manager.get_one(db=db, id=prefix.get("uuid"), branch=branch)
+                    node = await core_registry.manager.get_one(db=db, id=prefix.get("uuid"), branch=branch)
                     if node:
                         return node
 
@@ -74,7 +74,7 @@ class CoreIPPrefixPool(Node):
             member_type = member_type or data.get("member_type", None) or self.default_member_type.value.value  # type: ignore[attr-defined]
             data["member_type"] = member_type
 
-            target_schema = registry.get_node_schema(name=prefix_type, branch=branch)
+            target_schema = core_registry.get_node_schema(name=prefix_type, branch=branch)
             node = await Node.init(db=db, schema=target_schema, branch=branch, at=at)
             try:
                 await node.new(db=db, prefix=str(next_prefix), ip_namespace=ip_namespace, **data)

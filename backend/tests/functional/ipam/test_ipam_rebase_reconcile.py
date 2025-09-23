@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -67,7 +67,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         client: InfrahubClient,
     ) -> None:
         branch = await create_branch(db=db, branch_name="new_address")
-        address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=branch)
+        address_schema = core_registry.schema.get_node_schema(name="IpamIPAddress", branch=branch)
 
         new_address = await Node.init(schema=address_schema, db=db, branch=branch)
         await new_address.new(db=db, address="10.10.0.2", ip_namespace=initial_dataset["ns1"].id)
@@ -89,7 +89,9 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
     ) -> None:
         branch = await create_branch(db=db, branch_name="delete_prefix")
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_subscription=False, branch=core_registry.default_branch
+        )
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPPREFIX,
@@ -146,7 +148,9 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
     ) -> None:
         branch = await create_branch(db=db, branch_name="interlinked")
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_subscription=False, branch=core_registry.default_branch
+        )
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPPREFIX,
@@ -177,7 +181,9 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         assert result.data["IpamIPPrefixCreate"]["object"]["id"]
         net_10_0_0_0_15_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_subscription=False, branch=core_registry.default_branch
+        )
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPPREFIX,

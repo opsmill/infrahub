@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipCardinality
@@ -33,8 +33,8 @@ class TestSchemaConversionMapping(TestInfrahubApp):
         res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 
-        source_schema = registry.get_node_schema(name="TestconvPerson1", branch=branch)
-        target_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
+        source_schema = core_registry.get_node_schema(name="TestconvPerson1", branch=branch)
+        target_schema = core_registry.get_node_schema(name="TestconvPerson2", branch=branch)
         mapping = get_schema_mapping(source_schema=source_schema, target_schema=target_schema)
         assert len(mapping) == 12
         assert mapping["name"] == SchemaMappingValue(source_field_name="name", is_mandatory=True)
@@ -115,7 +115,7 @@ class TestConvertObjectType(TestInfrahubApp):
             "bags": InputForDestField(source_field="bags"),
         }
 
-        person_2_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
+        person_2_schema = core_registry.get_node_schema(name="TestconvPerson2", branch=branch)
         jack_2 = await convert_and_validate_object_type(
             node=jack_1,
             target_schema=person_2_schema,
@@ -179,7 +179,7 @@ class TestConvertObjectType(TestInfrahubApp):
             "name": InputForDestField(source_field="name"),
         }
 
-        person_2_schema = registry.get_node_schema(name="TestmoPerson2", branch=branch)
+        person_2_schema = core_registry.get_node_schema(name="TestmoPerson2", branch=branch)
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at mandatory_owner"):
             await convert_and_validate_object_type(
                 node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch
@@ -228,7 +228,7 @@ class TestConvertObjectType(TestInfrahubApp):
             "name": InputForDestField(source_field="name"),
         }
 
-        person_2_schema = registry.get_node_schema(name="TestudPerson2", branch=default_branch)
+        person_2_schema = core_registry.get_node_schema(name="TestudPerson2", branch=default_branch)
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at unidirectional_owner"):
             await convert_and_validate_object_type(
                 node=jack_1,
@@ -259,7 +259,7 @@ class TestConvertObjectType(TestInfrahubApp):
             "height_2_agnostic": InputForDestField(source_field="height_1_aware"),
         }
 
-        person_2_schema = registry.get_node_schema(name="TestbsPerson2", branch=default_branch)
+        person_2_schema = core_registry.get_node_schema(name="TestbsPerson2", branch=default_branch)
         jack_2 = await convert_and_validate_object_type(
             node=jack_1,
             target_schema=person_2_schema,
@@ -312,7 +312,7 @@ class TestConvertObjectType(TestInfrahubApp):
             "other_cars": InputForDestField(source_field="other_cars"),
         }
 
-        person_2_schema = registry.get_node_schema(name="TestaaPerson2", branch=default_branch)
+        person_2_schema = core_registry.get_node_schema(name="TestaaPerson2", branch=default_branch)
 
         jack_2 = await convert_and_validate_object_type(
             node=jack_1,
@@ -341,7 +341,7 @@ class TestConvertObjectType(TestInfrahubApp):
         assert br2.status == BranchStatus.NEED_REBASE.value
 
         # Make sure main/global branches are still in OPEN state
-        main_branch = await Branch.get_by_name(name=registry.default_branch, db=db)
+        main_branch = await Branch.get_by_name(name=core_registry.default_branch, db=db)
         assert main_branch.status == BranchStatus.OPEN.value
         global_branch = await Branch.get_by_name(name=GLOBAL_BRANCH_NAME, db=db)
         assert global_branch.status == BranchStatus.OPEN.value

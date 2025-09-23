@@ -1,4 +1,4 @@
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.schema.node_remove import (
@@ -16,7 +16,7 @@ from tests.unit.core.migrations.schema.test_node_kind_update import validate_nod
 
 
 async def test_query_out_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
 
@@ -50,7 +50,7 @@ async def test_query_out_default_branch(db: InfrahubDatabase, default_branch: Br
 async def test_query_in_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
     """This test is a bit silly for now because there is nothing to migrate but it least we validate that the generated query is valid"""
 
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
 
@@ -81,7 +81,7 @@ async def test_query_in_default_branch(db: InfrahubDatabase, default_branch: Bra
 
 
 async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
 
@@ -118,7 +118,7 @@ async def test_migration_agnostic_relationship(
     await car.new(db=db, name="yaris", agnostic_owner=person_john.id)
     await car.save(db=db)
 
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = core_registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
 
@@ -135,5 +135,5 @@ async def test_migration_agnostic_relationship(
     assert execution_result.nbr_migrations_executed == 1
     assert await count_nodes(db=db, label="TestCar") == 1
 
-    await validate_node_relationships(node=person_john, db=db, branch=registry.get_global_branch())
-    await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())
+    await validate_node_relationships(node=person_john, db=db, branch=core_registry.get_global_branch())
+    await validate_node_relationships(node=car, db=db, branch=core_registry.get_global_branch())

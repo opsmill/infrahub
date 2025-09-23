@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph import Migration018, Migration025
@@ -18,7 +18,7 @@ async def car_person_schema(
     car_person_schema_unregistered: SchemaRoot,
 ) -> SchemaBranch:
     car_person_schema_unregistered.get("TestCar").uniqueness_constraints = [["color__value", "nbr_seats__value"]]
-    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+    return core_registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -86,8 +86,8 @@ async def test_migration_018_fail(
     """
     Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint
     """
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    await registry.schema.load_schema_to_db(db=db, schema=schema_branch)
+    schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
+    await core_registry.schema.load_schema_to_db(db=db, schema=schema_branch)
     car_red_update = await NodeManager.get_one(db=db, id=car_red.id)
     car_red_update.color.value = None
     await car_red_update.save(db=db)

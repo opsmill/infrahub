@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
@@ -124,7 +124,7 @@ def person_cars_node_diff(
 
 class TestConstraintDeterminer:
     async def test_no_node_diffs(self, car_person_schema, default_branch):
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
 
         constraints = await determiner.get_constraints(node_diffs=[])
@@ -132,7 +132,7 @@ class TestConstraintDeterminer:
         assert constraints == []
 
     async def test_one_attribute_update_node_diff(self, car_person_schema, default_branch, person_name_node_diff):
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_name_node_diff
 
@@ -147,7 +147,7 @@ class TestConstraintDeterminer:
         assert set(relevant_constraints) == constraint_info_set
 
     async def test_many_relationship_update(self, car_person_schema, default_branch, person_cars_node_diff):
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         determiner = ConstraintValidatorDeterminer(schema_branch=schema_branch)
         node_diff, constraint_info_set = person_cars_node_diff
 
@@ -157,7 +157,7 @@ class TestConstraintDeterminer:
         assert constraint_info_set < set(constraints)
 
     async def test_node_property_constraints_included(self, car_person_schema, default_branch, person_name_node_diff):
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         person_schema = schema_branch.get(name="TestPerson", duplicate=False)
         person_schema.uniqueness_constraints = [["name", "height"]]
         name_attr_schema = person_schema.get_attribute("name")

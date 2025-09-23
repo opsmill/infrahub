@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
@@ -103,7 +103,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_camry_main: Node,
         car_volt_main: Node,
     ):
-        car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        car_schema = core_registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         car_schema.uniqueness_constraints = [["nbr_seats__value", "name__value"]]
         attr = car_schema.get_attribute("nbr_seats")
         attr.optional = False
@@ -119,7 +119,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_camry_main: Node,
         car_volt_main: Node,
     ):
-        car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        car_schema = core_registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         attr = car_schema.get_attribute("nbr_seats")
         attr.optional = False
         attr.enum = [2, 4, 5, 7]
@@ -160,7 +160,7 @@ class TestNodeGroupedUniquenessConstraint:
     ):
         p1 = car_person_generics_data_simple["p1"]
         p2 = car_person_generics_data_simple["p2"]
-        p3 = await Node.init(db=db, schema=registry.schema.get(name="TestPerson"))
+        p3 = await Node.init(db=db, schema=core_registry.schema.get(name="TestPerson"))
         await p3.new(db=db, name="Geoff", height=158)
         await p3.save(db=db)
         car_1: Node = car_person_generics_data_simple["c1"]
@@ -170,7 +170,7 @@ class TestNodeGroupedUniquenessConstraint:
         await car_2.owner.update(db=db, data=p1)
         await car_2.previous_owner.update(db=db, data=p3)
         await car_2.save(db=db)
-        car_3 = await Node.init(db=db, schema=registry.schema.get(name="TestElectricCar"))
+        car_3 = await Node.init(db=db, schema=core_registry.schema.get(name="TestElectricCar"))
         await car_3.new(db=db, name="dolt", nbr_seats=4, nbr_engine=2, owner=p2, previous_owner=p3)
         await car_3.save(db=db)
         car_1.get_schema().uniqueness_constraints = [["previous_owner", "owner"]]
@@ -260,7 +260,7 @@ class TestNodeGroupedUniquenessConstraint:
     ):
         car_node: Node = car_person_generics_data_simple["c1"]
         car_schema = car_node.get_schema()
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        schema_branch = core_registry.schema.get_schema_branch(name=default_branch.name)
         parent_kind = car_schema.inherit_from[0]
         parent_schema = schema_branch.get(name=parent_kind, duplicate=False)
         car_schema.uniqueness_constraints = node_constraints
@@ -298,7 +298,7 @@ class TestNodeGroupedUniquenessConstraint:
     async def test_generic_constraints_success(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
     ):
-        car_generic_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        car_generic_schema = core_registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         car_generic_schema.uniqueness_constraints = [["color__value", "owner"]]
         car_node_1: Node = car_person_generics_data_simple["c1"]
         car_node_1.color.value = "#123456"
@@ -315,7 +315,7 @@ class TestNodeGroupedUniquenessConstraint:
     async def test_generic_constraints_failure(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
     ):
-        car_generic_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        car_generic_schema = core_registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         car_generic_schema.uniqueness_constraints = [["color__value", "owner"]]
         car_node_1 = car_person_generics_data_simple["c1"]
         person_node_2 = car_person_generics_data_simple["p2"]

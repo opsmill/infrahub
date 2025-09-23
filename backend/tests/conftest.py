@@ -22,7 +22,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config
 from infrahub.config import load_and_exit
-from infrahub.core import registry
+from infrahub.core import core_registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import (
@@ -154,7 +154,7 @@ async def reset_registry(db: InfrahubDatabase) -> None:
 
 
 async def do_reset_registry(db: InfrahubDatabase) -> None:
-    registry.delete_all()
+    core_registry.delete_all()
 
 
 @pytest.fixture
@@ -165,25 +165,25 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, db: 
 async def do_default_branch(db: InfrahubDatabase) -> Branch:
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
-    registry.schema = SchemaManager()
+    core_registry.schema = SchemaManager()
     return branch
 
 
 @pytest.fixture
 async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
-    if not registry._default_ipnamespace:
+    if not core_registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
-        registry.default_ipnamespace = ip_namespace.id
+        core_registry.default_ipnamespace = ip_namespace.id
         return ip_namespace
     return None
 
 
 @pytest.fixture
 def default_permission_backend() -> Generator[None, Any, Any]:
-    previous_backends = registry.permission_backends
-    registry.permission_backends = [LocalPermissionBackend()]
+    previous_backends = core_registry.permission_backends
+    core_registry.permission_backends = [LocalPermissionBackend()]
     yield
-    registry.permission_backends = previous_backends
+    core_registry.permission_backends = previous_backends
 
 
 @pytest.fixture
@@ -208,7 +208,7 @@ async def register_internal_models_schema(default_branch: Branch) -> SchemaBranc
 
 async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=schema, branch=branch.name)
     branch.update_schema_hash()
     return schema_branch
 
@@ -220,7 +220,7 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    schema_branch = core_registry.schema.register_schema(schema=schema, branch=branch.name)
     branch.update_schema_hash()
     return schema_branch
 
@@ -456,7 +456,7 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -493,7 +493,7 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -595,7 +595,7 @@ async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema, 
 async def car_person_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
 ) -> SchemaBranch:
-    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+    return core_registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -652,7 +652,7 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
 async def car_person_schema_branch_local(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local_root
 ) -> SchemaBranch:
-    return registry.schema.register_schema(schema=car_person_schema_branch_local_root, branch=default_branch.name)
+    return core_registry.schema.register_schema(schema=car_person_schema_branch_local_root, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -751,7 +751,7 @@ async def animal_person_schema_person_no_default_filter(
 ) -> SchemaBranch:
     schema_dict = deepcopy(animal_person_schema_unregistered)
     del schema_dict["nodes"][2]["default_filter"]
-    return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
+    return core_registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
 
 
 @pytest.fixture
@@ -818,7 +818,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
 async def person_schema_unique_attr_non_hfid(
     db: InfrahubDatabase, default_branch: Branch, person_schema_unique_attr_non_hfid_unregistered
 ) -> SchemaBranch:
-    return registry.schema.register_schema(
+    return core_registry.schema.register_schema(
         schema=person_schema_unique_attr_non_hfid_unregistered, branch=default_branch.name
     )
 
@@ -828,7 +828,7 @@ async def animal_person_schema(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered
 ) -> SchemaBranch:
     schema_root = SchemaRoot(**animal_person_schema_unregistered)
-    return registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    return core_registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -929,7 +929,7 @@ async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schem
 async def dependent_generics_schema(
     db: InfrahubDatabase, default_branch: Branch, dependent_generics_unregistered
 ) -> SchemaBranch:
-    return registry.schema.register_schema(schema=dependent_generics_unregistered, branch=default_branch.name)
+    return core_registry.schema.register_schema(schema=dependent_generics_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -978,7 +978,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -996,7 +996,7 @@ async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, da
         ]
     }
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    core_registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture(scope="module")
