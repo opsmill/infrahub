@@ -56,7 +56,8 @@ class TestGetKindsLock(TestInfrahubApp):
             group = await client.create(kind=GRAPHQLQUERYGROUP, name="a_gql_group", query=graphql_query)
             await group.save()
             mock_infrahub_multi_lock.assert_called_once_with(
-                lock_registry=lock.registry, locks=["global.object.CoreGraphQLQueryGroup." + _hash("a_gql_group")]
+                lock_registry=lock.get_lock_registry(),
+                locks=["global.object.CoreGraphQLQueryGroup." + _hash("a_gql_group")],
             )
 
         # Test upsert the same node
@@ -65,7 +66,8 @@ class TestGetKindsLock(TestInfrahubApp):
             await group.save(allow_upsert=True)
 
             mock_infrahub_multi_lock.assert_called_with(
-                lock_registry=lock.registry, locks=["global.object.CoreGraphQLQueryGroup." + _hash("a_gql_group")]
+                lock_registry=lock.get_lock_registry(),
+                locks=["global.object.CoreGraphQLQueryGroup." + _hash("a_gql_group")],
             )
 
         # Test updating group name
@@ -74,7 +76,8 @@ class TestGetKindsLock(TestInfrahubApp):
             await group.save()
 
             mock_infrahub_multi_lock.assert_called_once_with(
-                lock_registry=lock.registry, locks=["global.object.CoreGraphQLQueryGroup." + _hash("new_group_name")]
+                lock_registry=lock.get_lock_registry(),
+                locks=["global.object.CoreGraphQLQueryGroup." + _hash("new_group_name")],
             )
 
         # Test updating other field not present in uniqueness constraint
@@ -107,5 +110,6 @@ class TestGetKindsLock(TestInfrahubApp):
             )
             await group.save()
             mock_infrahub_multi_lock.assert_called_once_with(
-                lock_registry=lock.registry, locks=["global.object.CoreGraphQLQueryGroup." + _hash("one_more_group")]
+                lock_registry=lock.get_lock_registry(),
+                locks=["global.object.CoreGraphQLQueryGroup." + _hash("one_more_group")],
             )

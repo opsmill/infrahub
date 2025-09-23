@@ -93,13 +93,12 @@ class TestAddRepository:
             patch("infrahub.git.tasks.lock") as mock_infra_lock,
             patch("infrahub.git.tasks.InfrahubRepository", spec=InfrahubRepository) as mock_repo_class,
         ):
-            mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
+            lock_registry = AsyncMock(spec=InfrahubLockRegistry)
+            mock_infra_lock.get_lock_registry.return_value = lock_registry
             mock_repo_class.new.return_value = self.mock_repo
             await add_git_repository(model=model)
 
-            mock_infra_lock.registry.get.assert_called_once_with(
-                name=git_upstream_repo_01["name"], namespace="repository"
-            )
+            lock_registry.get.assert_called_once_with(name=git_upstream_repo_01["name"], namespace="repository")
 
             mock_repo_class.new.assert_awaited_once_with(
                 id=repo_id,

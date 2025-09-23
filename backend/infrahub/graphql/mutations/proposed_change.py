@@ -260,7 +260,7 @@ class ProposedChangeReview(Mutation):
         )
         pc_id = str(data.id)
         lock_name = build_object_lock_name(pc_id)
-        async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
+        async with InfrahubLock(name=lock_name, connection=lock.get_lock_registry().connection):
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=pc_id, kind=CoreProposedChange, db=graphql_context.db, prefetch_relationships=True
             )

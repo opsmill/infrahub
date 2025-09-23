@@ -132,7 +132,7 @@ class SchemaManager(NodeManager):
         return self._branches[branch_name].get_all(duplicate=duplicate)
 
     async def get_full_safe(self, branch: Branch | str | None = None) -> dict[str, MainSchemaTypes]:
-        await lock.registry.local_schema_wait()
+        await lock.get_lock_registry().local_schema_wait()
 
         return self.get_full(branch=branch)
 
