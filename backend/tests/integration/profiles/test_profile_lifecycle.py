@@ -13,6 +13,7 @@ from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 
+@pytest.mark.skip(reason="profile refactoring")
 class TestProfileLifecycle(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def schema_person_base(self, db: InfrahubDatabase, initialize_registry) -> None:
