@@ -65,13 +65,17 @@ export const ConvertSourceAttributeInput = ({
       };
     });
 
+  const currentOption = availableOptions?.find((option) => {
+    return option.source.name === fieldData.value.name;
+  });
+
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger>
-        {fieldData?.value?.value && (
+        {currentOption && (
           <Badge className="space-x-1">
-            <span>{fieldData?.value?.value}</span>
-            <span className="font-light text-gray-700">• {fieldData.value?.label}</span>
+            <span>{currentOption.label}</span>
+            <span className="font-light text-gray-700">• {currentOption.source?.label}</span>
           </Badge>
         )}
       </ComboboxTrigger>
