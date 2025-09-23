@@ -736,7 +736,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             self._updated_at = Timestamp(updated_at)
 
         if self._schema.namespace != "Schema" and (display_label := kwargs.pop("display_label", None)):
-            self._display_label = display_label
+            self._display_label = String(
+                name="display_label",
+                schema=TextAttributeSchema(name="display_label", kind="Text", branch=BranchSupportType.AWARE),
+                branch=self._branch,
+                at=self._updated_at or Timestamp(),
+                node=self,
+                data=display_label,
+            )
 
         await self._process_fields(db=db, fields=kwargs)
         return self
@@ -781,8 +788,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
+        if fields:
+            fields.append("_display_label")
+
         # Go over the list of Attribute and update them one by one
-        for name in self._attributes:
+        for name in self._attributes + ["_display_label"]:
             if (fields and name in fields) or not fields:
                 attr: BaseAttribute = getattr(self, name)
                 updated_attribute = await attr.save(at=update_at, db=db)
@@ -814,14 +824,18 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         save_at = Timestamp(at)
 
         if self._schema.namespace != "Schema":
-            self._display_label = String(
-                name="display_label",
-                schema=TextAttributeSchema(name="display_label", kind="Text", branch=BranchSupportType.AWARE),
-                branch=self._branch,
-                at=save_at,
-                node=self,
-                data={"value": await self.compute_display_label(db=db)},
-            )
+            display_label_value = await self.compute_display_label(db=db)
+            if self._display_label:
+                self._display_label.value = display_label_value
+            else:
+                self._display_label = String(
+                    name="display_label",
+                    schema=TextAttributeSchema(name="display_label", kind="Text", branch=BranchSupportType.AWARE),
+                    branch=self._branch,
+                    at=save_at,
+                    node=self,
+                    data={"value": display_label_value},
+                )
 
         if self._existing:
             self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
