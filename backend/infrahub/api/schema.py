@@ -313,7 +313,7 @@ async def load_schema(
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
-    async with lock.lock_registry.global_schema_lock():
+    async with lock.get_lock_registry().global_schema_lock():
         branch_schema = core_registry.schema.get_schema_branch(name=branch.name)
         original_hash = branch_schema.get_hash()
 

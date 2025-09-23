@@ -191,7 +191,7 @@ async def _do_create_node_with_lock(
     )
 
     if lock_names:
-        async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=lock_names):
+        async with InfrahubMultiLock(lock_registry=lock.get_lock_registry(), locks=lock_names):
             return await _do_create_node(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,

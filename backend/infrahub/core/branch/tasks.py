@@ -103,7 +103,7 @@ async def rebase_branch(branch: str, context: InfrahubContext) -> None:  # noqa:
 
         schema_in_main_before = merger.destination_schema.duplicate()
         migrations = []
-        async with lock.lock_registry.global_graph_lock():
+        async with lock.get_lock_registry().global_graph_lock():
             async with db.start_transaction() as dbt:
                 await obj.rebase(db=dbt)
                 log.info("Branch successfully rebased")
@@ -210,7 +210,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         )
 
         merger: BranchMerger | None = None
-        async with lock.lock_registry.global_graph_lock():
+        async with lock.get_lock_registry().global_graph_lock():
             diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
             diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
@@ -358,7 +358,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValueError("\n".join(error_msgs)) from exc
 
-        async with lock.lock_registry.local_schema_lock():
+        async with lock.get_lock_registry().local_schema_lock():
             # Copy the schema from the origin branch and set the hash and the schema_changed_at value
             origin_schema = core_registry.schema.get_schema_branch(name=obj.origin_branch)
             new_schema = origin_schema.duplicate(name=obj.name)

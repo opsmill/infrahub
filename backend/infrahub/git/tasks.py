@@ -62,7 +62,7 @@ from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_init
 async def add_git_repository(model: GitRepositoryAdd) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
-    async with lock.lock_registry.get(name=model.repository_name, namespace="repository"):
+    async with lock.get_lock_registry().get(name=model.repository_name, namespace="repository"):
         repo = await InfrahubRepository.new(
             id=model.repository_id,
             name=model.repository_name,
@@ -99,7 +99,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
 async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
-    async with lock.lock_registry.get(name=model.repository_name, namespace="repository"):
+    async with lock.get_lock_registry().get(name=model.repository_name, namespace="repository"):
         repo = await InfrahubReadOnlyRepository.new(
             id=model.repository_id,
             name=model.repository_name,
@@ -170,7 +170,7 @@ async def sync_remote_repositories() -> None:
 
         infrahub_branch = staging_branch or core_registry.default_branch
 
-        async with lock.lock_registry.get(name=repo_name, namespace="repository"):
+        async with lock.get_lock_registry().get(name=repo_name, namespace="repository"):
             init_failed = False
             try:
                 repo = await InfrahubRepository.init(
@@ -239,7 +239,7 @@ async def git_branch_create(
         id=repository_id, name=repository_name, location=repository_location, client=client
     )
 
-    async with lock.lock_registry.get(name=repository_name, namespace="repository"):
+    async with lock.get_lock_registry().get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
 
         # New branch has been pushed remotely, tell workers to fetch it
@@ -398,7 +398,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     if not model.ref and not model.commit:
         log.warning("No commit or ref in GitRepositoryPullReadOnly message")
         return
-    async with lock.lock_registry.get(name=model.repository_name, namespace="repository"):
+    async with lock.get_lock_registry().get(name=model.repository_name, namespace="repository"):
         init_failed = False
         try:
             repo = await InfrahubReadOnlyRepository.init(
@@ -465,7 +465,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
         await repo_main.save()
     else:
-        async with lock.lock_registry.get(name=model.repository_name, namespace="repository"):
+        async with lock.get_lock_registry().get(name=model.repository_name, namespace="repository"):
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
             if repo.location:
                 # Destination branch has changed and pushed remotely, tell workers to re-fetch
@@ -770,7 +770,7 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
         name=model.repository_name,
         repository_kind=InfrahubKind.REPOSITORY,
     )
-    async with lock.lock_registry.get(name=model.repository_name, namespace="repository"):
+    async with lock.get_lock_registry().get(name=model.repository_name, namespace="repository"):
         conflicts = await repo.get_conflicts(source_branch=model.source_branch, dest_branch=model.target_branch)
 
     existing_checks = {}

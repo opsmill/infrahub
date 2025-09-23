@@ -105,7 +105,7 @@ async def _create_number_pool(
     end_range: int,
 ) -> None:
     lock_definition = NumberPoolLockDefinition(pool_id=number_pool_id)
-    async with lock.lock_registry.get(
+    async with lock.get_lock_registry().get(
         name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
     ):
         async with service.database.start_session() as dbs:

@@ -337,7 +337,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         number_pool_parameters: NumberPoolParameters = schema_attribute.parameters
 
         lock_definition = NumberPoolLockDefinition(pool_id=str(number_pool_parameters.number_pool_id))
-        async with lock.lock_registry.get(
+        async with lock.get_lock_registry().get(
             name=lock_definition.lock_name, namespace=lock_definition.namespace_name, local=False
         ):
             try:

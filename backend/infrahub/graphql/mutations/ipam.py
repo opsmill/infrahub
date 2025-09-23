@@ -147,7 +147,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         async with db.start_transaction() as dbt:
             if lock_name := cls._get_lock_name(namespace_id, branch):
-                async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=[lock_name]):
+                async with InfrahubMultiLock(lock_registry=lock.get_lock_registry(), locks=[lock_name]):
                     reconciled_address = await cls._mutate_create_object_and_reconcile(
                         data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
                     )
@@ -203,7 +203,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         async with db.start_transaction() as dbt:
             if lock_name := cls._get_lock_name(namespace_id, branch):
-                async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=[lock_name]):
+                async with InfrahubMultiLock(lock_registry=lock.get_lock_registry(), locks=[lock_name]):
                     reconciled_address = await cls._mutate_update_object_and_reconcile(
                         info=info, data=data, branch=branch, address=address, namespace_id=namespace_id, db=dbt
                     )
@@ -303,7 +303,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         async with db.start_transaction() as dbt:
             lock_name = cls._get_lock_name(namespace_id)
-            async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=[lock_name]):
+            async with InfrahubMultiLock(lock_registry=lock.get_lock_registry(), locks=[lock_name]):
                 reconciled_prefix = await cls._mutate_create_object_and_reconcile(
                     data=data, branch=branch, db=dbt, namespace_id=namespace_id
                 )
@@ -353,7 +353,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         async with db.start_transaction() as dbt:
             lock_name = cls._get_lock_name(namespace_id)
-            async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=[lock_name]):
+            async with InfrahubMultiLock(lock_registry=lock.get_lock_registry(), locks=[lock_name]):
                 reconciled_prefix = await cls._mutate_update_object_and_reconcile(
                     info=info, data=data, prefix=prefix, db=dbt, namespace_id=namespace_id, branch=branch
                 )
@@ -418,7 +418,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         async with graphql_context.db.start_transaction() as dbt:
             lock_name = cls._get_lock_name(namespace_id)
-            async with InfrahubMultiLock(lock_registry=lock.lock_registry, locks=[lock_name]):
+            async with InfrahubMultiLock(lock_registry=lock.get_lock_registry(), locks=[lock_name]):
                 reconciled_prefix = await cls._reconcile_prefix(
                     branch=branch, db=dbt, prefix=prefix, namespace_id=namespace_id, is_delete=True
                 )

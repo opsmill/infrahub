@@ -125,7 +125,7 @@ class DatabaseSchemaManager:
     async def get_full_safe(
         self, branch: Branch | str | None = None, duplicate: bool = True
     ) -> dict[str, MainSchemaTypes]:
-        await lock.lock_registry.local_schema_wait()
+        await lock.get_lock_registry().local_schema_wait()
         return self.get_full(branch=branch, duplicate=duplicate)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:

@@ -13,11 +13,15 @@ from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
-from infrahub.services import InfrahubServices
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    from infrahub.services import InfrahubServices
+
+
+lock_registry: InfrahubLockRegistry | None = None
 
 
 METRIC_PREFIX = "infrahub_lock"
@@ -139,6 +143,8 @@ class InfrahubLock:
             assert isinstance(self.connection, redis.Redis)
             self._remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
         else:
+            from infrahub.services import InfrahubServices
+
             assert isinstance(self.connection, InfrahubServices)
             self._remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
 
@@ -302,4 +308,8 @@ def initialize_lock(local_only: bool = False, service: InfrahubServices | None =
     lock_registry = InfrahubLockRegistry(local_only=local_only, service=service)
 
 
-lock_registry: InfrahubLockRegistry = InfrahubLockRegistry()
+def get_lock_registry() -> InfrahubLockRegistry:
+    global lock_registry
+    if not lock_registry:
+        lock_registry = InfrahubLockRegistry()
+    return lock_registry

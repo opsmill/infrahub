@@ -34,7 +34,7 @@ class CoreIPAddressPool(Node):
         prefixlen: int | None = None,
         at: Timestamp | None = None,
     ) -> Node:
-        async with lock.lock_registry.get(name=self.get_id(), namespace="resource_pool"):
+        async with lock.get_lock_registry().get(name=self.get_id(), namespace="resource_pool"):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
 

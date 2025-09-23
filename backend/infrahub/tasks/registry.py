@@ -93,7 +93,7 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     We pull the new schema from the database and we update the registry.
     """
 
-    async with lock.lock_registry.local_schema_lock():
+    async with lock.get_lock_registry().local_schema_lock():
         active_branches = await core_registry.branch_object.get_list(db=db)
         for active_branch in active_branches:
             if active_branch.name == GLOBAL_BRANCH_NAME:

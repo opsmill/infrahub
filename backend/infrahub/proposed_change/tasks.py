@@ -848,7 +848,7 @@ async def _define_instance(model: RunGeneratorAsCheckModel, client: InfrahubClie
         await instance.update(do_full_update=True)
 
     else:
-        async with lock.lock_registry.get(
+        async with lock.get_lock_registry().get(
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
             instances = await client.filters(
@@ -1519,7 +1519,7 @@ async def _validate_repository_merge_conflicts(
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
             git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name, client=client)
-            async with lock.lock_registry.get(name=repo.repository_name, namespace="repository"):
+            async with lock.get_lock_registry().get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch
                 )

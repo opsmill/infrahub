@@ -29,7 +29,7 @@ async def convert_repository_type(
     An extra check is performed on input node peers relationships to make sure they are still valid."""
 
     repo_name = repository.name.value
-    async with lock.lock_registry.get(name=repo_name, namespace="repository"):
+    async with lock.get_lock_registry().get(name=repo_name, namespace="repository"):
         async with db.start_transaction() as dbt:
             timestamp_before_conversion = Timestamp()
 

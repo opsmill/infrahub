@@ -314,7 +314,7 @@ async def update_registry(
     service: InfrahubServices,
     context: InfrahubContext,
 ) -> None:
-    async with lock.lock_registry.global_schema_lock():
+    async with lock.get_lock_registry().global_schema_lock():
         branch_schema = core_registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.

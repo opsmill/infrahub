@@ -148,7 +148,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
     # ---------------------------------------------------
     # Initialize the database and Load the Root node
     # ---------------------------------------------------
-    async with lock.lock_registry.initialization():
+    async with lock.get_lock_registry().initialization():
         log.debug("Checking Root Node")
         await initialize_registry(db=db, initialize=True)
 

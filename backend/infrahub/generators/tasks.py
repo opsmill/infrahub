@@ -98,7 +98,7 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
         await instance.update(do_full_update=True)
 
     else:
-        async with lock.lock_registry.get(
+        async with lock.get_lock_registry().get(
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
             instances = await client.filters(

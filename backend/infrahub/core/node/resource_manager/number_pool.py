@@ -63,7 +63,7 @@ class CoreNumberPool(Node):
         identifier: str | None = None,
         at: Timestamp | None = None,
     ) -> int:
-        async with lock.lock_registry.get(name=self.get_id(), namespace="resource_pool"):
+        async with lock.get_lock_registry().get(name=self.get_id(), namespace="resource_pool"):
             # NOTE: ideally we should use the HFID as the identifier (if available)
             # one of the challenge with using the HFID is that it might change over time
             # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes
