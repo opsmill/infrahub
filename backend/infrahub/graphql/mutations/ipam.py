@@ -44,6 +44,11 @@ async def validate_namespace(
             db=db, branch=branch, kind=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
         )
         namespace_id = namespace.id
+    elif "hfid" in data["ip_namespace"]:
+        namespace = await registry.manager.get_one_by_hfid(
+            db=db, branch=branch, kind=InfrahubKind.IPNAMESPACE, hfid=data["ip_namespace"]["hfid"]
+        )
+        namespace_id = namespace.id
     else:
         raise ValidationError(
             "A valid ip_namespace must be provided or ip_namespace should be left empty in order to use the default value."
