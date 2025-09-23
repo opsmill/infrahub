@@ -204,7 +204,6 @@ async def default_attribute_query_filter(
     param_prefix: str | None = None,
     db: InfrahubDatabase | None = None,  # noqa: ARG001
     partial_match: bool = False,
-    support_profiles: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
     """Generate Query String Snippet to filter the right node."""
     attribute_value_label = GraphAttributeValueNode.get_default_label()
@@ -251,9 +250,6 @@ async def default_attribute_query_filter(
                 query_where.append(f"toString(av.{filter_name}) =~ ${param_prefix}_{filter_name}")
             elif filter_name == "isnull":
                 query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
-            elif support_profiles:
-                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
-                query_where.append(f"(av.{filter_name} = ${param_prefix}_{filter_name} OR av.is_default)")
             else:
                 query_filter.append(
                     QueryNode(
@@ -271,8 +267,6 @@ async def default_attribute_query_filter(
         if attribute_kind and attribute_kind == "List":
             query_params[f"{param_prefix}_{filter_name}"] = build_regex_attrs(values=filter_value)
             query_where.append(f"toString(av.value) =~ ${param_prefix}_{filter_name}")
-        elif support_profiles:
-            query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
         else:
             query_where.append(f"av.value IN ${param_prefix}_value")
         query_params[f"{param_prefix}_value"] = filter_value

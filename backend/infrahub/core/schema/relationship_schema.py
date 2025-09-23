@@ -91,7 +91,6 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         include_match: bool = True,
         param_prefix: str | None = None,
         partial_match: bool = False,
-        support_profiles: bool = False,  # noqa: ARG002
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         """Generate Query String Snippet to filter the right node."""
 

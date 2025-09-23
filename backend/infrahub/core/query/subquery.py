@@ -25,12 +25,8 @@ async def build_subquery_filter(
     partial_match: bool = False,
     optional_match: bool = False,
     result_prefix: str = "filter",
-    support_profiles: bool = False,
     extra_tail_properties: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any], str]:
-    support_profiles = (
-        support_profiles and field and field.is_attribute and filter_name in ("value", "values", "isnull")
-    )
     params = {}
     prefix = f"{result_prefix}{subquery_idx}"
 
@@ -52,7 +48,6 @@ async def build_subquery_filter(
         param_prefix=prefix,
         db=db,
         partial_match=partial_match,
-        support_profiles=support_profiles,
     )
     params.update(field_params)
 
@@ -109,10 +104,8 @@ async def build_subquery_order(
     branch: Branch = None,
     subquery_idx: int = 1,
     result_prefix: str | None = None,
-    support_profiles: bool = False,
     extra_tail_properties: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any], str]:
-    support_profiles = support_profiles and field and field.is_attribute and order_by in ("value", "values")
     params = {}
     prefix = result_prefix or f"order{subquery_idx}"
 
@@ -124,7 +117,6 @@ async def build_subquery_order(
         filter_value=None,
         branch=branch,
         param_prefix=prefix,
-        support_profiles=support_profiles,
     )
     params.update(field_params)
 
