@@ -18,6 +18,8 @@ node_indexes: list[IndexItem] = [
     # diff indices
     IndexItem(name="diff_uuid", label="DiffRoot", properties=["uuid"], type=IndexType.RANGE),
     IndexItem(name="diff_node_uuid", label="DiffNode", properties=["uuid"], type=IndexType.RANGE),
+    IndexItem(name="diff_branch", label="DiffRoot", properties=["diff_branch"], type=IndexType.RANGE),
+    IndexItem(name="diff_tracking_id", label="DiffRoot", properties=["tracking_id"], type=IndexType.RANGE),
 ]
 
 rel_indexes: list[IndexItem] = [
