@@ -61,9 +61,20 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
       [field.name]: {
         source: {
           type: "convert",
-          fieldLabel: field.label,
         },
-        value: objectDetailsData[field.name]?.value ?? objectDetailsData[field.name]?.node,
+        value: {
+          value:
+            // Attribute
+            objectDetailsData[field.name]?.value ??
+            // Relationship one
+            objectDetailsData[field.name]?.node?.id ??
+            // Relationship many
+            objectDetailsData[field.name]?.edges?.map((edge) => {
+              return edge.node.id;
+            }),
+          label: field.label,
+          name: field.name,
+        },
       },
     };
   }, {});
@@ -98,29 +109,41 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
 
                 if (newSource === "source") {
                   field.onChange({
-                    source: { type: "source", fieldLabel: label },
-                    value: formMappingsDefaultValues[name]?.value,
+                    source: { type: "source", label, name },
+                    value: {
+                      value: formMappingsDefaultValues[name]?.value,
+                      label,
+                      name,
+                    },
                   });
                 }
 
                 if (newSource === "custom") {
                   field.onChange({
                     source: { type: "schema" },
-                    value: formDefaultValues[name]?.value,
+                    value: {
+                      value: formDefaultValues[name]?.value,
+                    },
                   });
                 }
               };
 
               const handleSourceValueChange = (newOption) => {
                 field.onChange({
-                  source: { type: "source", fieldLabel: label },
-                  value: newOption.value,
+                  source: {
+                    type: "source",
+                  },
+                  value: {
+                    value: newOption.value,
+                    label: newOption.source.label,
+                    name: newOption.source.name,
+                  },
                 });
               };
 
               const handleSourceValuesChange = (newOptions) => {
                 field.onChange({
-                  source: { type: "source", fieldLabel: label },
+                  source: { type: "source" },
                   value: newOptions,
                 });
               };

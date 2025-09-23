@@ -57,7 +57,10 @@ export const ConvertSourceAttributeInput = ({
       return {
         value: objectDetailsData[attribute.name]?.value ?? "-",
         label: getDisplayValue(objectDetailsData, attribute),
-        source: attribute.label,
+        source: {
+          label: attribute.label,
+          name: attribute.name,
+        },
         isDefaultMatch: attribute.name === mapping.source_field_name,
       };
     });
@@ -65,10 +68,10 @@ export const ConvertSourceAttributeInput = ({
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger>
-        {fieldData?.value && (
+        {fieldData?.value?.value && (
           <Badge className="space-x-1">
-            <span>{fieldData?.value}</span>
-            <span className="font-light text-gray-700">• {fieldData.source.fieldLabel}</span>
+            <span>{fieldData?.value?.value}</span>
+            <span className="font-light text-gray-700">• {fieldData.value?.label}</span>
           </Badge>
         )}
       </ComboboxTrigger>
@@ -79,9 +82,9 @@ export const ConvertSourceAttributeInput = ({
           {availableOptions?.map((option) => {
             return (
               <ComboboxItem
-                key={option.value}
-                value={option.value}
-                selectedValue={fieldData?.value}
+                key={option.source.name}
+                value={option.source.name}
+                selectedValue={fieldData.value?.name}
                 onSelect={() => {
                   onSelect(option);
                   setIsOpen(false);
@@ -93,7 +96,7 @@ export const ConvertSourceAttributeInput = ({
                   <div className="space-x-2">
                     {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
 
-                    <Badge variant={"gray-outline"}>{option.source}</Badge>
+                    <Badge variant={"gray-outline"}>{option.source?.label}</Badge>
                   </div>
                 </div>
               </ComboboxItem>
@@ -122,21 +125,27 @@ export const ConvertSourceRelationshipOneInput = ({
     .map((relationship) => {
       return {
         value: objectDetailsData[relationship.name]?.node,
-        label: getDisplayValue(objectDetailsData, relationship),
-        source: relationship.label,
+        source: {
+          label: relationship.label,
+          name: relationship.name,
+        },
         isDefaultMatch: relationship.name === mapping.source_field_name,
       };
     });
 
+  const currentOption = availableOptions?.find((nodeOption) => {
+    return nodeOption.source.name === fieldData.value?.name;
+  });
+  console.log("currentOption: ", currentOption);
+  console.log("fieldData: ", fieldData);
+
   return (
     <Combobox open={isOpen} onOpenChange={setIsOpen}>
       <ComboboxTrigger>
-        {fieldData?.value?.display_label && (
-          <Badge className="space-x-1">
-            <span>{fieldData?.value?.display_label}</span>
-            <span className="font-light text-gray-700">• {fieldData.source.fieldLabel}</span>
-          </Badge>
-        )}
+        <Badge className="space-x-1">
+          <span>{currentOption?.value?.display_label ?? "-"}</span>
+          <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
+        </Badge>
       </ComboboxTrigger>
       <ComboboxContent fitTriggerWidth={false}>
         <ComboboxList>
@@ -145,21 +154,21 @@ export const ConvertSourceRelationshipOneInput = ({
           {availableOptions?.map((option) => {
             return (
               <ComboboxItem
-                key={option.value}
-                value={option.value}
-                selectedValue={fieldData?.value}
+                key={option.source.name}
+                value={option.source.name}
+                selectedValue={fieldData.value?.name}
                 onSelect={() => {
                   onSelect(option);
                   setIsOpen(false);
                 }}
               >
                 <div className="flex grow items-center justify-between">
-                  <span className="grow">{option.label}</span>
+                  <span className="grow">{option.value?.display_label ?? "-"}</span>
 
                   <div className="space-x-2">
                     {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
 
-                    <Badge variant={"gray-outline"}>{option.source}</Badge>
+                    <Badge variant={"gray-outline"}>{option.source?.label}</Badge>
                   </div>
                 </div>
               </ComboboxItem>
@@ -191,7 +200,10 @@ export const ConvertSourceRelationshipManyInput = ({
           return {
             value: edge.node,
             label: edge.node.display_label,
-            source: relationship.label,
+            source: {
+              label: relationship.label,
+              name: relationship.name,
+            },
             isDefaultMatch: relationship.name === mapping.source_field_name,
           };
         }) ?? [];
@@ -203,7 +215,7 @@ export const ConvertSourceRelationshipManyInput = ({
     const hasSelectedOption = !!fieldData.value?.includes(selectedId);
 
     const filteredOptions =
-      fieldData.value?.filter((optionId) => {
+      fieldData.value?.value?.filter((optionId) => {
         return selectedId !== optionId;
       }) ?? [];
 
@@ -217,10 +229,10 @@ export const ConvertSourceRelationshipManyInput = ({
   return (
     <Combobox open={open} onOpenChange={setOpen}>
       <ComboboxTrigger className="space-x-2">
-        {fieldData?.value &&
-          fieldData?.value?.map((nodeId) => {
+        {fieldData?.value?.value &&
+          fieldData?.value?.value?.map((nodeId) => {
             const node = availableOptions.find((nodeOption) => {
-              return nodeOption.value.id === nodeId;
+              return nodeOption.value?.id === nodeId;
             })?.value;
 
             if (!node) {
@@ -230,7 +242,7 @@ export const ConvertSourceRelationshipManyInput = ({
             return (
               <Badge key={nodeId} className="space-x-1">
                 <span>{getNodeLabel(node)}</span>
-                <span className="font-light text-gray-700">• {fieldData.source.fieldLabel}</span>
+                <span className="font-light text-gray-700">• {fieldData.value?.label}</span>
                 <Button
                   size="icon"
                   variant="ghost"
@@ -254,14 +266,14 @@ export const ConvertSourceRelationshipManyInput = ({
 
           {availableOptions
             ?.filter((option) => {
-              return !fieldData.value?.includes(option.value.id);
+              return !fieldData.value?.value?.includes(option.value?.value?.id);
             })
             .map((option) => {
               return (
                 <ComboboxItem
-                  key={option.value.id}
-                  value={option.value.id}
-                  selectedValue={fieldData?.value}
+                  key={option.value?.id}
+                  value={option.value?.id}
+                  selectedValue={fieldData?.value?.value}
                   onSelect={handleSelect}
                 >
                   <div className="flex grow items-center justify-between">
@@ -270,7 +282,7 @@ export const ConvertSourceRelationshipManyInput = ({
                     <div className="space-x-2">
                       {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
 
-                      <Badge variant={"gray-outline"}>{option.source}</Badge>
+                      <Badge variant={"gray-outline"}>{option.source.name}</Badge>
                     </div>
                   </div>
                 </ComboboxItem>
@@ -287,7 +299,7 @@ export const ConvertSourceRelationshipManyInput = ({
         {fieldData.value?.map((node) => (
           <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
             <span>{getNodeLabel(node)}</span>
-            <span className="font-light text-gray-700">• {fieldData.source.fieldLabel}</span>
+            <span className="font-light text-gray-700">• {fieldData.value?.label}</span>
 
             <Button
               size="icon"
@@ -312,8 +324,8 @@ export const ConvertSourceRelationshipManyInput = ({
         {availableOptions?.map((option) => {
           return (
             <ComboboxItem
-              key={option.value.id}
-              value={option.value.id}
+              key={option.value?.id}
+              value={option.value?.id}
               selectedValue={fieldData?.value}
               onSelect={() => {
                 handleSelect(option);
