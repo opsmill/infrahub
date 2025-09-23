@@ -734,20 +734,23 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        min_count, max_count = self.schema.min_count, self.schema.max_count
+        self._relationships: RelationshipValidatorList = self._get_init_relationships()
+        self._relationship_id_details: RelationshipUpdateDetails | None = None
+        self.has_fetched_relationships: bool = False
+        self.lock = asyncio.Lock()
+
+    def _get_init_relationships(self) -> RelationshipValidatorList:
+        min_count = self.schema.min_count
+        max_count: int | None = self.schema.max_count
         if self.schema.optional:
             min_count = 0
         else:
             max_count = self.schema.max_count if self.schema.max_count > 0 else None
-
-        self._relationships: RelationshipValidatorList = RelationshipValidatorList(
+        return RelationshipValidatorList(
             name=self.schema.name,
             min_count=min_count,
             max_count=max_count,
         )
-        self._relationship_id_details: RelationshipUpdateDetails | None = None
-        self.has_fetched_relationships: bool = False
-        self.lock = asyncio.Lock()
 
     @classmethod
     async def init(
