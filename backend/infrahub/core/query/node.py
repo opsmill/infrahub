@@ -1263,7 +1263,7 @@ class NodeGetKindQuery(Query):
         self.params["ids"] = self.ids
         query = """
 MATCH (n:Node)-[r:IS_PART_OF {status: "active"}]->(:Root)
-WHERE toString(n.uuid) IN $ids
+WHERE n.uuid IN $ids
         """
         # only add the branch filter logic if a branch is included in the query parameters
         if branch := getattr(self, "branch", None):
