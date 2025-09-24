@@ -11,7 +11,7 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 
 
 @flow(
-    name="clean_up_deadlocks",
+    name="clean-up-deadlocks",
     flow_run_name="Clean up deadlocks",
 )
 async def clean_up_deadlocks(service: InfrahubServices) -> None:
@@ -23,14 +23,14 @@ async def clean_up_deadlocks(service: InfrahubServices) -> None:
     log = get_run_logger()
     values = await service.cache.get_values(keys=keys)
     workers = await service.component.list_workers(branch=core_registry.default_branch, schema_hash=False)
-    workers_not_active = {worker.id for worker in workers if not worker.active}
+    workers_active = {worker.id for worker in workers if worker.active}
 
     for key, value in zip(keys, values, strict=False):
         if not key or not value:
             continue
 
         timestamp, worker_id = value.split("::", 1)
-        if worker_id in workers_not_active and Timestamp() > Timestamp(timestamp).add(
+        if worker_id not in workers_active and Timestamp() > Timestamp(timestamp).add(
             minutes=config.SETTINGS.cache.clean_up_deadlocks_interval_mins
         ):
             await service.cache.delete(key)
