@@ -214,14 +214,6 @@ def build_regex_attr(value: str | int | bool) -> str:
     raise ValueError("value was neither a string, an int or a boolean")
 
 
-def is_jinja2_template(value: str) -> bool:
-    """Tell if a string is supposed to be a Jinja2 template.
-
-    This is done by looking at Jinja2 control structures such as `{{ variable }}` or `{% if ... %}`.
-    """
-    return bool(re.search(r"{{.+}}", value) or re.search(r"{%.+%}", value))
-
-
 # --------------------------------------------------------------------------------
 # CODE IMPORTED FROM:
 #   https://github.com/graphql-python/graphene/blob/9c3e4bb7da001aac48002a3b7d83dcd072087770/graphene/utils/subclass_with_meta.py#L18

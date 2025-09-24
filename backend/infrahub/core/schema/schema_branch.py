@@ -54,7 +54,6 @@ from infrahub.core.schema import (
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
-from infrahub.core.utils import is_jinja2_template
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
@@ -1160,7 +1159,7 @@ class SchemaBranch:
             | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
         )
 
-        if not is_jinja2_template(node.display_label):
+        if not any(c in node.display_label for c in "{}"):
             self.validate_schema_path(
                 node_schema=node,
                 path=node.display_label,
