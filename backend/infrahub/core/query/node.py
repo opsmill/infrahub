@@ -147,9 +147,7 @@ class NodeCreateAllQuery(NodeQuery):
             attributes_indexed.append(display_label_attr.get_create_data())
 
         for attr_name in self.node._attributes:
-            attr: BaseAttribute | None = getattr(self.node, attr_name, None)
-            if attr is None:
-                continue
+            attr: BaseAttribute = getattr(self.node, attr_name)
             attr_data = attr.get_create_data()
             node_type = attr.get_db_node_type()
 
