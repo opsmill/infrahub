@@ -834,11 +834,16 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
-        if fields:
-            fields.append("_display_label")
+        # Update the display label if one of its variable is being updated
+        if self._display_label and self._display_label.needs_update(fields=fields):
+            await self._display_label.compute(db=db, node=self)
+            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
+            updated_attribute = await attr.save(at=update_at, db=db)
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
 
         # Go over the list of Attribute and update them one by one
-        for name in self._attributes + ["_display_label"]:
+        for name in self._attributes:
             if (fields and name in fields) or not fields:
                 attr: BaseAttribute = getattr(self, name)
                 updated_attribute = await attr.save(at=update_at, db=db)
