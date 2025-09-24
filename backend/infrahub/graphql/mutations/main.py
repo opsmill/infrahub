@@ -12,11 +12,7 @@ from infrahub import config, lock
 from infrahub.core.constants import MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.create import (
-    create_node,
-    get_profile_ids,
-    refresh_for_profile_update,
-)
+from infrahub.core.node.create import create_node, get_profile_ids
 from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
@@ -30,6 +26,7 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ...core.node.lock_utils import get_kind_lock_names_on_object_mutation
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
@@ -252,7 +249,6 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        before_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
         await node_constraint_runner.check(
@@ -266,13 +262,12 @@ class InfrahubMutationMixin:
 
         await obj.save(db=db, fields=fields)
 
-        obj = await refresh_for_profile_update(
-            db=db,
-            branch=branch,
-            obj=obj,
-            previous_profile_ids=before_mutate_profile_ids,
-            schema=cls._meta.active_schema,
-        )
+        after_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
+        if after_mutate_profile_ids:
+            node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+            await node_profiles_applier.apply_profiles(node=obj)
+            await obj.save(db=db)
+
         return obj
 
     @classmethod
