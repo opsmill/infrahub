@@ -72,7 +72,7 @@ CALL (dn) {
         WITH count(dp.action) AS num_removed
         SET da.num_removed = num_removed
     }
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
 CALL (dn) {
     MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship)
     CALL (dr) {
@@ -125,7 +125,7 @@ CALL (dn) {
         WITH count(dre.action) AS num_removed
         SET dr.num_removed = num_removed
     }
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
         """
         self.add_to_query(query)
 
@@ -214,7 +214,7 @@ CALL (dn, updated_num_conflicts) {
     SET dn.num_added = num_added
     SET dn.num_updated = num_updated
     SET dn.num_removed = num_removed
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
 // ----------------------
 // handle conflict updates for parent nodes
 // ----------------------
@@ -223,7 +223,7 @@ CALL (dn, num_conflicts_delta) {
     OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP|DIFF_HAS_NODE*1..]->(parent_node:DiffNode)
     SET parent_node.num_conflicts = parent_node.num_conflicts + num_conflicts_delta
     SET parent_node.contains_conflict = (parent_node.num_conflicts > 0)
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
 // ----------------------
 // handle root count updates
 // ----------------------
@@ -243,6 +243,6 @@ CALL (root, total_conflicts_delta) {
     OPTIONAL MATCH (root)-[:DIFF_HAS_NODE]->(dn:DiffNode {action: "removed"})
     WITH root, count(dn.action) AS num_removed
     SET root.num_removed = num_removed
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
         """
         self.add_to_query(query)
