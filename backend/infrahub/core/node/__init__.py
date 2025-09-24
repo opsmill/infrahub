@@ -746,6 +746,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
 
+        if self._schema.namespace != "Schema" and self._schema.display_label:
+            self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
+            await self._display_label.compute(db=db, node=self)
+
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
         await query.execute(db=db)
 
@@ -822,10 +826,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
         """Create or Update the Node in the database."""
         save_at = Timestamp(at)
-
-        if self._schema.namespace != "Schema" and not self._display_label:
-            self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
-            await self._display_label.compute(db=db, node=self)
 
         if self._existing:
             self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
