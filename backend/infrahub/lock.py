@@ -25,6 +25,7 @@ registry: InfrahubLockRegistry = None
 
 
 METRIC_PREFIX = "infrahub_lock"
+LOCK_PREFIX = "lock"
 
 LOCK_ACQUIRE_TIME_METRICS = Histogram(
     f"{METRIC_PREFIX}_acquire_seconds",
@@ -139,9 +140,9 @@ class InfrahubLock:
         if self.use_local:
             self.local = LocalLock()
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            self.remote = GlobalLock(redis=self.connection, name=f"lock.{self.name}")
+            self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
         else:
-            self.remote = NATSLock(service=self.connection, name=f"lock.{self.name}")
+            self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
 
     async def __aenter__(self):
         await self.acquire()
@@ -179,9 +180,54 @@ class InfrahubLock:
         return self.local.locked()
 
 
+class LockNameGenerator:
+    local = "local"
+    _global = "global"
+
+    def generate_name(self, name: str, namespace: str | None = None, local: bool | None = None) -> str:
+        if namespace is None and local is None:
+            return name
+
+        new_name = ""
+        if local is True:
+            new_name = f"{self.local}."
+        elif local is False:
+            new_name = f"{self._global}."
+
+        if namespace is not None:
+            new_name += f"{namespace}."
+        new_name += name
+
+        return new_name
+
+    def unpack_name(self, name: str) -> tuple[str, str | None, bool | None]:
+        local = None
+        namespace = None
+
+        parts = name.split(".")
+        if parts[0] == self.local:
+            local = True
+            parts = parts[1:]
+        elif parts[0] == self._global:
+            local = False
+            parts = parts[1:]
+
+        if len(parts) > 1:
+            namespace = parts[0]
+            original_name = ".".join(parts[1:])
+        else:
+            original_name = parts[0]
+
+        return original_name, namespace, local
+
+
 class InfrahubLockRegistry:
     def __init__(
-        self, token: str | None = None, local_only: bool = False, service: InfrahubServices | None = None
+        self,
+        token: str | None = None,
+        local_only: bool = False,
+        service: InfrahubServices | None = None,
+        name_generator: LockNameGenerator | None = None,
     ) -> None:
         if config.SETTINGS.cache.enable and not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
@@ -201,23 +247,7 @@ class InfrahubLockRegistry:
 
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
-
-    @classmethod
-    def _generate_name(cls, name: str, namespace: str | None = None, local: bool | None = None) -> str:
-        if namespace is None and local is None:
-            return name
-
-        new_name = ""
-        if local is True:
-            new_name = "local."
-        elif local is False:
-            new_name = "global."
-
-        if namespace is not None:
-            new_name += f"{namespace}."
-        new_name += name
-
-        return new_name
+        self.name_generator = name_generator or LockNameGenerator()
 
     def get_existing(
         self,
@@ -225,7 +255,7 @@ class InfrahubLockRegistry:
         namespace: str | None,
         local: bool | None = None,
     ) -> InfrahubLock | None:
-        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
             return None
         return self.locks[lock_name]
@@ -233,7 +263,7 @@ class InfrahubLockRegistry:
     def get(
         self, name: str, namespace: str | None = None, local: bool | None = None, in_multi: bool = False
     ) -> InfrahubLock:
-        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
             self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
         return self.locks[lock_name]
