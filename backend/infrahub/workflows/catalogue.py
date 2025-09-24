@@ -323,6 +323,31 @@ COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
+    name="display-label-process-jinja2",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="process_display_label",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
+    name="display-label-jinja2-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="display_label_jinja2_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
+    name="trigger-update-display-labels",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="trigger_update_display_labels",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
 TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     name="trigger_update_jinja2_computed_attributes",
     type=WorkflowType.CORE,
@@ -358,6 +383,14 @@ COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
     function="process_transform",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
+
+DISPLAY_LABELS_SETUP_JINJA2 = WorkflowDefinition(
+    name="display-labels-setup-jinja2",
+    type=WorkflowType.CORE,
+    module="infrahub.displaylabels.tasks",
+    function="display_labels_setup_jinja2",
+)
+
 
 QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS = WorkflowDefinition(
     name="query-computed-attribute-transform-targets",
@@ -586,6 +619,9 @@ WORKFLOWS = [
     COMPUTED_ATTRIBUTE_SETUP_JINJA2,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     CONFIGURE_ACTION_RULES,
+    DISPLAY_LABELS_PROCESS_JINJA2,
+    DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
+    DISPLAY_LABELS_SETUP_JINJA2,
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
@@ -632,6 +668,7 @@ WORKFLOWS = [
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_CONFIGURE_ALL,
     TRIGGER_GENERATOR_DEFINITION_RUN,
+    TRIGGER_UPDATE_DISPLAY_LABELS,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     VALIDATE_SCHEMA_NUMBER_POOLS,
