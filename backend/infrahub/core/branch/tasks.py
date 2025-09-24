@@ -345,7 +345,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
     async with database.start_session() as db:
         try:
             await Branch.get_by_name(db=db, name=model.name)
-            raise ValueError(f"The branch {model.name}, already exist")
+            raise ValidationError(f"The branch {model.name}, already exist")
         except BranchNotFoundError:
             pass
 
@@ -356,7 +356,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             obj = Branch(**data_dict)
         except pydantic.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-            raise ValueError("\n".join(error_msgs)) from exc
+            raise ValidationError("\n".join(error_msgs)) from exc
 
         async with lock.registry.local_schema_lock():
             # Copy the schema from the origin branch and set the hash and the schema_changed_at value

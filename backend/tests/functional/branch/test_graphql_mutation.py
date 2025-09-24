@@ -264,6 +264,17 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchCreate"]["object"]["id"] is not None
         assert result["BranchCreate"]["task"] is None
 
+    async def test_branch_create_duplicate_branch_failed(self, initial_dataset: str, client: InfrahubClient) -> None:
+        branch_to_duplicate = await client.branch.create(branch_name="branch_to_duplicate")
+        query = Mutation(
+            mutation="BranchCreate",
+            input_data={"data": {"name": "branch_to_duplicate"}},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await client.execute_graphql(query=query.render())
+        assert f"The branch {branch_to_duplicate.name}, already exist" in exc.value.message
+
     async def test_branch_create_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         query = Mutation(
             mutation="BranchCreate",
@@ -273,6 +284,19 @@ class TestBranchMutations(TestInfrahubApp):
         result = await client.execute_graphql(query=query.render())
         assert result["BranchCreate"]["ok"] is True
         assert result["BranchCreate"]["task"]["id"] is not None
+
+    async def test_branch_create_async_duplicate_branch_failed(
+        self, initial_dataset: str, client: InfrahubClient
+    ) -> None:
+        branch_to_duplicate_async = await client.branch.create(branch_name="branch_to_duplicate_async")
+        query = Mutation(
+            mutation="BranchCreate",
+            input_data={"data": {"name": "branch_to_duplicate_async"}, "wait_until_completion": False},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await client.execute_graphql(query=query.render())
+        assert f"The branch {branch_to_duplicate_async.name}, already exist" in exc.value.message
 
     async def test_branch_create_async_deprecated(self, initial_dataset: str, client: InfrahubClient) -> None:
         query = Mutation(

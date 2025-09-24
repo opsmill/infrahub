@@ -10,6 +10,7 @@ from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.database import retry_db_transaction
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.context import ContextInput
@@ -75,6 +76,12 @@ class BranchCreate(Mutation):
 
         model = BranchCreateModel(**data)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        try:
+            await Branch.get_by_name(db=graphql_context.db, name=model.name)
+            raise ValidationError(f"The branch {model.name}, already exist")
+        except BranchNotFoundError:
+            pass
 
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
