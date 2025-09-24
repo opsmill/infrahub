@@ -34,7 +34,6 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
-from infrahub.core.schema.attribute_schema import TextAttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.models import NumberPoolLockDefinition
@@ -43,11 +42,11 @@ from infrahub.types import ATTRIBUTE_TYPES
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
 from ...log import get_logger
-from ..attribute import String
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
-from ..utils import is_jinja2_template, update_relationships_to
+from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
+from .display_label import DisplayLabel
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -196,7 +195,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._is_protected: bool = None
         self._computed_jinja2_attributes: list[str] = []
 
-        self._display_label: String | None = None
+        self._display_label: DisplayLabel | None = None
         self._hfid: list[str] | None = None
 
         # Lists of attributes and relationships names
@@ -714,13 +713,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             self._updated_at = Timestamp(updated_at)
 
         if self._schema.namespace != "Schema" and (display_label := kwargs.pop("display_label", None)):
-            self._display_label = String(
-                name="display_label",
-                schema=TextAttributeSchema(name="display_label", kind="Text", branch=self._schema.branch),
-                branch=self._branch,
-                at=self._updated_at or Timestamp(),
-                node=self,
-                data=display_label,
+            self._display_label = DisplayLabel(
+                node_schema=self._schema, template=self._schema.display_label, value=display_label
             )
 
         await self._process_fields(db=db, fields=kwargs)
@@ -766,11 +760,16 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
-        if fields:
-            fields.append("_display_label")
+        # Update the display label if one of its variable is being updated
+        if self._display_label and self._display_label.needs_update(fields=fields):
+            await self._display_label.compute(db=db, node=self)
+            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
+            updated_attribute = await attr.save(at=update_at, db=db)
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
 
         # Go over the list of Attribute and update them one by one
-        for name in self._attributes + ["_display_label"]:
+        for name in self._attributes:
             if (fields and name in fields) or not fields:
                 attr: BaseAttribute = getattr(self, name)
                 updated_attribute = await attr.save(at=update_at, db=db)
@@ -801,19 +800,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         """Create or Update the Node in the database."""
         save_at = Timestamp(at)
 
-        if self._schema.namespace != "Schema":
-            display_label_value = await self.compute_display_label(db=db)
-            if self._display_label:
-                self._display_label.value = display_label_value
-            else:
-                self._display_label = String(
-                    name="display_label",
-                    schema=TextAttributeSchema(name="display_label", kind="Text", branch=self._schema.branch),
-                    branch=self._branch,
-                    at=save_at,
-                    node=self,
-                    data={"value": display_label_value},
-                )
+        if self._schema.namespace != "Schema" and not self._display_label:
+            self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
+            await self._display_label.compute(db=db, node=self)
 
         if self._existing:
             self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
@@ -1006,38 +995,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not display_label.strip():
             return repr(self)
         return display_label.strip()
-
-    async def get_display_label_element_value(self, db: InfrahubDatabase, path: str) -> Any:
-        schema_path = self._schema.parse_schema_path(
-            path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
-        )
-
-        if schema_path.is_type_attribute:
-            attr = getattr(self, schema_path.active_attribute_schema.name)
-            return getattr(attr, schema_path.active_attribute_property_name)
-
-        # Not an attribute so matching schema_path.is_type_relationship:
-        relm: RelationshipManager = getattr(self, schema_path.active_relationship_schema.name)
-        await relm.resolve(db=db)
-        node = await relm.get_peer(db=db)
-        attr = getattr(node, schema_path.active_attribute_schema.name)
-        return getattr(attr, schema_path.active_attribute_property_name)
-
-    async def compute_display_label(self, db: InfrahubDatabase) -> str:
-        if not self._schema.display_label:
-            return await self.render_display_label(db=db)
-
-        # NOTE: this below should not be required if we normalize the display_label as a jinja2 template even if it is not provided as one
-        if not is_jinja2_template(self._schema.display_label):
-            return await self.get_display_label_element_value(db=db, path=self._schema.display_label)
-
-        jinja_template = Jinja2Template(template=self._schema.display_label)
-
-        variables: dict[str, Any] = {}
-        for variable in jinja_template.get_variables():
-            variables[variable] = await self.get_display_label_element_value(db=db, path=variable)
-
-        return await jinja_template.render(variables=variables)
 
     def _get_parent_relationship_name(self) -> str | None:
         """Return the name of the parent relationship is one is present"""
