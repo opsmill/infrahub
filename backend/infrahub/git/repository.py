@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
 from prefect import task
-from prefect.cache_policies import NONE
+from prefect.cache_policies import INPUTS
+from prefect.locking.memory import MemoryLockManager
+from prefect.transactions import IsolationLevel
 from pydantic import Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -251,7 +254,9 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 @task(
     name="Fetch repository commit",
     description="Retrieve a git repository at a given commit, if it does not already exist locally",
-    cache_policy=NONE,
+    cache_policy=INPUTS.configure(isolation_level=IsolationLevel.SERIALIZABLE, lock_manager=MemoryLockManager())
+    - "client",
+    cache_expiration=timedelta(seconds=30),
 )
 async def get_initialized_repo(
     client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
