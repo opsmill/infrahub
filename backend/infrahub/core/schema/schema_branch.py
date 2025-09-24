@@ -761,18 +761,10 @@ class SchemaBranch:
             if node_schema.display_label and node_schema.display_labels is not None:
                 raise ValidationError(f"{node_schema.kind}: cannot define both `display_label` and `display_labels`")
 
-            if node_schema.display_label:
-                self._validate_display_label(node=node_schema)
-            elif isinstance(node_schema, NodeSchema):
-                generic_display_labels = []
-                for generic in node_schema.inherit_from:
-                    generic_schema = self.get(name=generic, duplicate=False)
-                    if generic_schema.display_label:
-                        generic_display_labels.append(generic_schema.display_label)
+            if not node_schema.display_label:
+                continue
 
-                if len(generic_display_labels) == 1:
-                    # Only assign node display labels if a single generic has them defined
-                    node_schema.display_label = generic_display_labels[0]
+            self._validate_display_label(node=node_schema)
 
     def validate_display_labels(self) -> None:
         for name in self.all_names:
