@@ -132,7 +132,7 @@ CALL (root_uuid, node_map, node_uuid, node_db_id) {
         OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)
         SET node_conflict = node_conflict_params
     }
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
 // -------------------------
 // resetting the UNWIND and starting over here reduces memory usage
 // -------------------------
@@ -190,7 +190,7 @@ CALL (root_uuid, node_map, node_uuid, node_db_id) {
             SET diff_attr_prop_conflict = attr_property.conflict_params
         }
     }
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
 // -------------------------
 // resetting the UNWIND and starting over here reduces memory usage
 // -------------------------
@@ -298,7 +298,7 @@ CALL (root_uuid, node_map, node_uuid, node_db_id) {
         MERGE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(property_conflict:DiffConflict)
         SET property_conflict = node_relationship_property.conflict_params
     }
-} IN CONCURRENT TRANSACTIONS OF 10 ROWS
+} IN CONCURRENT TRANSACTIONS OF 10 ROWS ON ERROR RETRY
         """ % {
             "attr_name_list_comp": db.render_list_comprehension(
                 items="node_map.attributes", item_name="node_properties.name"
