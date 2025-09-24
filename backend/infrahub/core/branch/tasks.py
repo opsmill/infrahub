@@ -345,7 +345,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
     async with database.start_session() as db:
         try:
             await Branch.get_by_name(db=db, name=model.name)
-            raise ValidationError(f"The branch {model.name}, already exist")
+            raise ValidationError(f"The branch {model.name} already exists")
         except BranchNotFoundError:
             pass
 

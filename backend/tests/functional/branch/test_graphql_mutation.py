@@ -273,7 +273,7 @@ class TestBranchMutations(TestInfrahubApp):
         )
         with pytest.raises(GraphQLError) as exc:
             await client.execute_graphql(query=query.render())
-        assert f"The branch {branch_to_duplicate.name}, already exist" in exc.value.message
+        assert f"The branch {branch_to_duplicate.name} already exists" in exc.value.message
 
     async def test_branch_create_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         query = Mutation(
@@ -296,7 +296,7 @@ class TestBranchMutations(TestInfrahubApp):
         )
         with pytest.raises(GraphQLError) as exc:
             await client.execute_graphql(query=query.render())
-        assert f"The branch {branch_to_duplicate_async.name}, already exist" in exc.value.message
+        assert f"The branch {branch_to_duplicate_async.name} already exists" in exc.value.message
 
     async def test_branch_create_async_deprecated(self, initial_dataset: str, client: InfrahubClient) -> None:
         query = Mutation(

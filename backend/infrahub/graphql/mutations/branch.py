@@ -79,7 +79,7 @@ class BranchCreate(Mutation):
 
         try:
             await Branch.get_by_name(db=graphql_context.db, name=model.name)
-            raise ValidationError(f"The branch {model.name}, already exist")
+            raise ValidationError(f"The branch {model.name} already exists")
         except BranchNotFoundError:
             pass
 
