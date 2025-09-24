@@ -1255,6 +1255,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "favorite_color", "kind": "Text", "optional": True, "default_value": "blue"},
                 ],
                 "relationships": [
                     {
