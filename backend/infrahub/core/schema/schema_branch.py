@@ -66,6 +66,7 @@ from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
+from .schema_branch_display import DisplayLabels
 
 log = get_logger()
 
@@ -77,6 +78,7 @@ class SchemaBranch:
         name: str | None = None,
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
+        display_labels: DisplayLabels | None = None,
     ):
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
@@ -85,6 +87,7 @@ class SchemaBranch:
         self.profiles: dict[str, str] = {}
         self.templates: dict[str, str] = {}
         self.computed_attributes = computed_attributes or ComputedAttributes()
+        self.display_labels = display_labels or DisplayLabels()
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -270,6 +273,7 @@ class SchemaBranch:
             data=copy.deepcopy(self.to_dict()),
             cache=self._cache,
             computed_attributes=self.computed_attributes.duplicate(),
+            display_labels=self.display_labels.duplicate(),
         )
 
     def set(self, name: str, schema: MainSchemaTypes) -> str:
@@ -1156,19 +1160,17 @@ class SchemaBranch:
         if not node.display_label:
             return
 
-        allowed_path_types = (
-            SchemaElementPathType.ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
-        )
-
         if not any(c in node.display_label for c in "{}"):
-            self.validate_schema_path(
+            schema_path = self.validate_schema_path(
                 node_schema=node,
                 path=node.display_label,
-                allowed_path_types=allowed_path_types,
-                element_name="display_label",
+                allowed_path_types=SchemaElementPathType.ATTR_WITH_PROP,
+                element_name="display_label - non Jinja2",
             )
+            if schema_path.attribute_schema:
+                self.display_labels.register_attribute_based_display_label(
+                    kind=node.kind, attribute_name=schema_path.attribute_schema.name
+                )
             return
 
         jinja_template = Jinja2Template(template=node.display_label)
@@ -1180,10 +1182,15 @@ class SchemaBranch:
                 f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
             ) from exc
 
+        allowed_path_types = (
+            SchemaElementPathType.ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
+        )
         for variable in variables:
             try:
                 schema_path = self.validate_schema_path(
-                    node_schema=node, path=variable, allowed_path_types=allowed_path_types
+                    node_schema=node, path=variable, allowed_path_types=allowed_path_types, element_name="display_label"
                 )
             except ValueError as exc:
                 raise ValueError(
@@ -1192,6 +1199,10 @@ class SchemaBranch:
 
             if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == "display_label":
                 raise ValueError(f"{node.kind}: display_label the '{variable}' variable is a reference to itself")
+
+            self.display_labels.register_template_schema_path(
+                kind=node.kind, schema_path=schema_path, template=node.display_label
+            )
 
     def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
