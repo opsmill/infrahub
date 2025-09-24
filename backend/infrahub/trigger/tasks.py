@@ -6,6 +6,7 @@ from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
 )
+from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.workers.dependencies import get_database
@@ -18,6 +19,7 @@ async def trigger_configure_all() -> None:
     database = await get_database()
     async with database.start_session() as db:
         webhook_trigger = await gather_trigger_webhook(db=db)
+        display_label_triggers = await gather_trigger_display_labels_jinja2()
         computed_attribute_j2_triggers = await gather_trigger_computed_attribute_jinja2()
         (
             computed_attribute_python_triggers,
@@ -28,6 +30,7 @@ async def trigger_configure_all() -> None:
             computed_attribute_j2_triggers
             + computed_attribute_python_triggers
             + computed_attribute_python_query_triggers
+            + display_label_triggers
             + builtin_triggers
             + webhook_trigger
             + action_rules
