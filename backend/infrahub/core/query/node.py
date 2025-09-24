@@ -142,7 +142,11 @@ class NodeCreateAllQuery(NodeQuery):
         attributes_ipnetwork: list[AttributeCreateData] = []
         attributes_indexed: list[AttributeCreateData] = []
 
-        for attr_name in self.node._attributes + ["_display_label"]:
+        if self.node._display_label:
+            display_label_attr = await self.node._display_label.get_node_attribute(node=self.node, at=at)
+            attributes_indexed.append(display_label_attr.get_create_data())
+
+        for attr_name in self.node._attributes:
             attr: BaseAttribute | None = getattr(self.node, attr_name, None)
             if attr is None:
                 continue
