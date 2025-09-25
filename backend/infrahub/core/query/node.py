@@ -634,6 +634,14 @@ class NodeListGetAttributeQuery(Query):
         WITH n, r1, a
         MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
         WHERE %(branch_filter)s
+        CALL (a) {
+            OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
+            WHERE %(branch_filter)s
+            RETURN r.status = "active" AS has_active_profile
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH *, has_active_profile = TRUE AS is_from_profile
         CALL (a, av) {
             MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
             WHERE %(branch_filter)s
@@ -641,13 +649,13 @@ class NodeListGetAttributeQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n, r1, a1 as a, r2, av1 as av
+        WITH n, r1, a1 as a, r2, av1 as av, is_from_profile
         WHERE r2.status = "active"
-        WITH n, a, av, r1, r2
+        WITH n, a, av, r1, r2, is_from_profile
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
-        self.return_labels = ["n", "a", "av", "r1", "r2"]
+        self.return_labels = ["n", "a", "av", "r1", "r2", "is_from_profile"]
 
         # Add Is_Protected and Is_visible
         rel_isv_branch_filter, _ = self.branch.get_query_filter_path(
@@ -723,6 +731,7 @@ class NodeListGetAttributeQuery(Query):
     def _extract_attribute_data(self, result: QueryResult) -> AttributeFromDB:
         attr = result.get_node("a")
         attr_value = result.get_node("av")
+        is_from_profile = result.get_as_type(label="is_from_profile", return_type=bool)
 
         data = AttributeFromDB(
             name=attr.get("name"),
@@ -734,6 +743,7 @@ class NodeListGetAttributeQuery(Query):
             updated_at=result.get_rel("r2").get("from"),
             value=attr_value.get("value"),
             is_default=attr_value.get("is_default"),
+            is_from_profile=is_from_profile,
             content=attr_value._properties,
             branch=self.branch.name,
             flag_properties={
