@@ -127,11 +127,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not self._schema.human_friendly_id:
             return None
 
-        hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+        if self._human_friendly_id:
+            hfid_values = self._human_friendly_id.value
+        else:
+            hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+
         hfid = [value for value in hfid_values if value is not None]
-        if include_kind:
-            return [self.get_kind()] + hfid
-        return hfid
+        return [self.get_kind()] + hfid if include_kind else hfid
 
     async def get_hfid_as_string(self, db: InfrahubDatabase, include_kind: bool = False) -> str | None:
         """Return the Human friendly id of the node in string format separated with a dunder (__) ."""
