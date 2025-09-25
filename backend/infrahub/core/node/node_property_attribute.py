@@ -98,8 +98,8 @@ class DisplayLabel(NodePropertyAttribute):
             return self._value.value
         return self._value
 
-    def _update_value(self, value: str | None) -> None:
-        """Update the value of the display label without overriding the attribute node in the database if it already exists."""
+    def set_value(self, value: str | None) -> None:
+        """Force the value of the display label to the given one."""
         if isinstance(self._value, AttributeFromDB):
             self._value.value = value
         else:
@@ -149,7 +149,7 @@ class DisplayLabel(NodePropertyAttribute):
             )
 
         if not self.is_jinja2_template:
-            self._update_value(value=str(await node.get_path_value(db=db, path=self.template)))
+            self.set_value(value=str(await node.get_path_value(db=db, path=self.template)))
             return
 
         jinja2_template = Jinja2Template(template=self.template)
@@ -158,7 +158,7 @@ class DisplayLabel(NodePropertyAttribute):
         for variable in jinja2_template.get_variables():
             variables[variable] = await node.get_path_value(db=db, path=variable)
 
-        self._update_value(value=await jinja2_template.render(variables=variables))
+        self.set_value(value=await jinja2_template.render(variables=variables))
 
     async def get_node_attribute(self, node: Node, at: Timestamp) -> String:
         """Return a node attribute that can be stored in the database for this display label and node."""
@@ -196,8 +196,8 @@ class HumanFriendlyIdentifier(NodePropertyAttribute):
             return self._value.value
         return self._value
 
-    def _update_value(self, value: list[str] | None) -> None:
-        """Update the value of the HFID without overriding the attribute node in the database if it already exists."""
+    def set_value(self, value: list[str] | None) -> None:
+        """Force the value of the HFID to the given one."""
         if isinstance(self._value, AttributeFromDB):
             self._value.value = value
         else:
@@ -227,11 +227,7 @@ class HumanFriendlyIdentifier(NodePropertyAttribute):
                 f"human_friendly_id for schema {self.node_schema.kind} cannot be computed for node {node.get_schema().kind} {node.id}"
             )
 
-        value: list[str] = []
-        for path in self.template:
-            value.append(str(await node.get_path_value(db=db, path=path)))
-
-        self._update_value(value=value)
+        self.set_value(value=[await node.get_path_value(db=db, path=path) for path in self.template])
 
     async def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttribute:
         """Return a node attribute that can be stored in the database for this HFID and node."""
