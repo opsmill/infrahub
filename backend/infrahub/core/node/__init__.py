@@ -121,6 +121,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return None
         return "__".join(hfid)
 
+    async def get_display_label(self, db: InfrahubDatabase) -> str | None:
+        if not self._schema.display_label and self._schema.display_labels is None:
+            return None
+
+        if self._display_label:
+            return self._display_label.value
+
+        return await self.render_display_label(db=db)
+
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
         schema_path = self._schema.parse_schema_path(
             path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
@@ -766,7 +775,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.render_display_label(db=db)
+        node_changelog.display_label = await self.get_display_label(db=db) or ""
         return node_changelog
 
     async def _update(
@@ -818,7 +827,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
 
-        node_changelog.display_label = await self.render_display_label(db=db)
+        node_changelog.display_label = await self.get_display_label(db=db) or ""
         return node_changelog
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
@@ -838,7 +847,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.render_display_label(db=db)
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db) or ""
         )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
@@ -912,9 +921,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "display_label":
-                response[field_name] = (
-                    self._display_label.value if self._display_label else await self.render_display_label(db=db)
-                )
+                response[field_name] = await self.get_display_label(db=db)
                 continue
 
             if field_name == "hfid":
