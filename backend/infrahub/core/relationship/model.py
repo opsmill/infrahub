@@ -741,11 +741,9 @@ class RelationshipManager:
 
     def _get_init_relationships(self) -> RelationshipValidatorList:
         min_count = self.schema.min_count
-        max_count: int | None = self.schema.max_count
+        max_count: int | None = self.schema.max_count if self.schema.max_count > 0 else None
         if self.schema.optional:
             min_count = 0
-        else:
-            max_count = self.schema.max_count if self.schema.max_count > 0 else None
         return RelationshipValidatorList(
             name=self.schema.name,
             min_count=min_count,
