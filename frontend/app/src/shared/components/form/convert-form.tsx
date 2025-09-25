@@ -150,7 +150,18 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                 }
               };
 
-              const handleSourceValueChange = (newOption) => {
+              const handleSourceAttributeValueChange = (newOption) => {
+                field.onChange({
+                  source: {
+                    type: "source",
+                    label: newOption.source.label,
+                    name: newOption.source.name,
+                  },
+                  value: newOption.value,
+                });
+              };
+
+              const handleSourceRelationshipOneValueChange = (newOption) => {
                 field.onChange({
                   source: {
                     type: "source",
@@ -161,8 +172,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                 });
               };
 
-              const handleSourceValuesChange = (newOptions: Array<string>, valuesSourceMapping) => {
-                console.log("valuesSourceMapping: ", valuesSourceMapping);
+              const handleSourceRelationshipManyValueChange = (newOptions, valuesSourceMapping) => {
                 field.onChange({
                   source: { type: "source", values: valuesSourceMapping },
                   value: newOptions,
@@ -185,7 +195,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                     description={description}
                     kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
                     onChange={handleSourceChange}
-                    value={field.value.source?.type ?? "custom"}
+                    value={field.value.source?.type === "source" ? "source" : "custom"}
                   />
 
                   <Row>
@@ -196,7 +206,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                             objectDetailsData={objectDetailsData}
                             sourceSchema={sourceSchema}
                             mapping={mappings?.[field.name]}
-                            onSelect={handleSourceValueChange}
+                            onSelect={handleSourceAttributeValueChange}
                             kind={attribute.kind}
                             fieldData={fieldData}
                           />
@@ -209,7 +219,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                               objectDetailsData={objectDetailsData}
                               sourceSchema={sourceSchema}
                               mapping={mappings?.[field.name]}
-                              onSelect={handleSourceValueChange}
+                              onSelect={handleSourceRelationshipOneValueChange}
                               peer={relationship.peer}
                               fieldData={fieldData}
                             />
@@ -222,7 +232,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                               objectDetailsData={objectDetailsData}
                               sourceSchema={sourceSchema}
                               mapping={mappings?.[field.name]}
-                              onSelect={handleSourceValuesChange}
+                              onSelect={handleSourceRelationshipManyValueChange}
                               peer={relationship.peer}
                               fieldData={fieldData}
                             />
