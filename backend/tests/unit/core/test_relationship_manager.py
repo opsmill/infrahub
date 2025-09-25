@@ -327,3 +327,69 @@ async def test_can_create_relationship_manager_when_not_optional_and_min_count_o
 
     assert relm._relationships.min_count == 2
     assert relm._relationships.max_count == 0
+
+
+async def test_can_create_relationship_manager_when_optional_and_min_count_only(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("primary_tag")
+    rel_schema.optional = True
+    rel_schema.min_count = 2
+    rel_schema.max_count = 0
+
+    relm = await RelationshipManager.init(
+        db=db,
+        schema=rel_schema,
+        branch=branch,
+        at=Timestamp(),
+        node=person_jack_primary_tag_main,
+    )
+    await relm.save(db=db)
+
+    assert relm._relationships.min_count == 0
+    assert relm._relationships.max_count == 0
+
+
+async def test_can_create_relationship_manager_when_not_optional(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("primary_tag")
+    rel_schema.optional = False
+    rel_schema.min_count = 2
+    rel_schema.max_count = 5
+
+    relm = await RelationshipManager.init(
+        db=db,
+        schema=rel_schema,
+        branch=branch,
+        at=Timestamp(),
+        node=person_jack_primary_tag_main,
+    )
+    await relm.save(db=db)
+
+    assert relm._relationships.min_count == 2
+    assert relm._relationships.max_count == 5
+
+
+async def test_can_create_relationship_manager_when_optional(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("primary_tag")
+    rel_schema.optional = True
+    rel_schema.min_count = 2
+    rel_schema.max_count = 5
+
+    relm = await RelationshipManager.init(
+        db=db,
+        schema=rel_schema,
+        branch=branch,
+        at=Timestamp(),
+        node=person_jack_primary_tag_main,
+    )
+    await relm.save(db=db)
+
+    assert relm._relationships.min_count == 0
+    assert relm._relationships.max_count == 5
