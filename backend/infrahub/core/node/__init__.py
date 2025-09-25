@@ -217,7 +217,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._computed_jinja2_attributes: list[str] = []
 
         self._display_label: DisplayLabel | None = None
-        self._hfid: HumanFriendlyIdentifier | None = None
+        self._human_friendly_id: HumanFriendlyIdentifier | None = None
 
         # Lists of attributes and relationships names
         self._attributes: list[str] = []
@@ -737,7 +737,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if self._schema.namespace != "Schema":
             if hfid := kwargs.pop("human_friendly_id", None):
-                self._hfid = HumanFriendlyIdentifier(
+                self._human_friendly_id = HumanFriendlyIdentifier(
                     node_schema=self._schema, template=self._schema.human_friendly_id, value=hfid
                 )
             if display_label := kwargs.pop("display_label", None):
@@ -753,8 +753,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if self._schema.namespace != "Schema":
             if self._schema.human_friendly_id:
-                self._hfid = HumanFriendlyIdentifier(node_schema=self._schema, template=self._schema.human_friendly_id)
-                await self._hfid.compute(db=db, node=self)
+                self._human_friendly_id = HumanFriendlyIdentifier(
+                    node_schema=self._schema, template=self._schema.human_friendly_id
+                )
+                await self._human_friendly_id.compute(db=db, node=self)
             if self._schema.display_label:
                 self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
                 await self._display_label.compute(db=db, node=self)
@@ -797,9 +799,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Update the HFID if one of its variable is being updated
-        if self._hfid and self._hfid.needs_update(fields=fields):
-            await self._hfid.compute(db=db, node=self)
-            attr = await self._hfid.get_node_attribute(node=self, at=update_at)
+        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
+            await self._human_friendly_id.compute(db=db, node=self)
+            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
             updated_attribute = await attr.save(at=update_at, db=db)
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
