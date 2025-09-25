@@ -835,9 +835,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Update the HFID if one of its variable is being updated
-        if self._hfid and self._hfid.needs_update(fields=fields):
-            await self._hfid.compute(db=db, node=self)
-            attr = await self._hfid.get_node_attribute(node=self, at=update_at)
+        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
+            await self._human_friendly_id.compute(db=db, node=self)
+            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
             updated_attribute = await attr.save(at=update_at, db=db)
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
