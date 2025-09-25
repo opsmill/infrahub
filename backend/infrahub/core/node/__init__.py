@@ -1015,6 +1015,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return repr(self)
         return display_label.strip()
 
+    async def update_human_friendly_id(self, value: list[str] | None) -> None:
+        """Update the human friendly ID of this node if one is set. `save()` must be called to commit the change in the database."""
+        if self._human_friendly_id is None:
+            return
+
+        self._human_friendly_id.set_value(value=value)
+
+    async def update_display_label(self, value: str | None) -> None:
+        """Update the display label of this node if one is set. `save()` must be called to commit the change in the database."""
+        if self._display_label is None:
+            return
+
+        self._display_label.set_value(value=value)
+
     def _get_parent_relationship_name(self) -> str | None:
         """Return the name of the parent relationship is one is present"""
         for relationship in self._schema.relationships:
