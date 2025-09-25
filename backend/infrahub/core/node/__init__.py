@@ -47,6 +47,7 @@ from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 from .display_label import DisplayLabel
+from .hfid import HumanFriendlyIdentifier
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -196,7 +197,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._computed_jinja2_attributes: list[str] = []
 
         self._display_label: DisplayLabel | None = None
-        self._hfid: list[str] | None = None
+        self._hfid: HumanFriendlyIdentifier | None = None
 
         # Lists of attributes and relationships names
         self._attributes: list[str] = []
@@ -712,10 +713,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
             self._updated_at = Timestamp(updated_at)
 
-        if self._schema.namespace != "Schema" and (display_label := kwargs.pop("display_label", None)):
-            self._display_label = DisplayLabel(
-                node_schema=self._schema, template=self._schema.display_label, value=display_label
-            )
+        if self._schema.namespace != "Schema":
+            if hfid := kwargs.pop("human_friendly_id", None):
+                self._hfid = HumanFriendlyIdentifier(
+                    node_schema=self._schema, template=self._schema.human_friendly_id, value=hfid
+                )
+            if display_label := kwargs.pop("display_label", None):
+                self._display_label = DisplayLabel(
+                    node_schema=self._schema, template=self._schema.display_label, value=display_label
+                )
 
         await self._process_fields(db=db, fields=kwargs)
         return self
@@ -723,9 +729,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
 
-        if self._schema.namespace != "Schema" and self._schema.display_label:
-            self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
-            await self._display_label.compute(db=db, node=self)
+        if self._schema.namespace != "Schema":
+            if self._schema.human_friendly_id:
+                self._hfid = HumanFriendlyIdentifier(node_schema=self._schema, template=self._schema.human_friendly_id)
+                await self._hfid.compute(db=db, node=self)
+            if self._schema.display_label:
+                self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
+                await self._display_label.compute(db=db, node=self)
 
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
         await query.execute(db=db)
@@ -763,6 +773,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+
+        # Update the HFID if one of its variable is being updated
+        if self._hfid and self._hfid.needs_update(fields=fields):
+            await self._hfid.compute(db=db, node=self)
+            attr = await self._hfid.get_node_attribute(node=self, at=update_at)
+            updated_attribute = await attr.save(at=update_at, db=db)
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
 
         # Update the display label if one of its variable is being updated
         if self._display_label and self._display_label.needs_update(fields=fields):

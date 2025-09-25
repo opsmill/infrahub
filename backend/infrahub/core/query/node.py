@@ -145,6 +145,9 @@ class NodeCreateAllQuery(NodeQuery):
         if self.node._display_label:
             display_label_attr = await self.node._display_label.get_node_attribute(node=self.node, at=at)
             attributes_indexed.append(display_label_attr.get_create_data())
+        if self.node._hfid:
+            hfid_attr = await self.node._hfid.get_node_attribute(node=self.node, at=at)
+            attributes_indexed.append(hfid_attr.get_create_data())
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
