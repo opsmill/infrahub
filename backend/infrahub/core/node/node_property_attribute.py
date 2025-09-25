@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from abc import abstractmethod
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.template import Jinja2Template
@@ -227,7 +228,17 @@ class HumanFriendlyIdentifier(NodePropertyAttribute):
                 f"human_friendly_id for schema {self.node_schema.kind} cannot be computed for node {node.get_schema().kind} {node.id}"
             )
 
-        self.set_value(value=[await node.get_path_value(db=db, path=path) for path in self.template])
+        value: list[str] = []
+        for path in self.template:
+            path_value = await node.get_path_value(db=db, path=path)
+
+            # NOTE: should we go .name or .value?
+            if isinstance(path_value, Enum):
+                path_value = path_value.name
+
+            value.append(path_value)
+
+        self.set_value(value=value)
 
     async def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttribute:
         """Return a node attribute that can be stored in the database for this HFID and node."""
