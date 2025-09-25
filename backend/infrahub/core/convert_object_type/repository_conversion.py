@@ -2,7 +2,7 @@ from infrahub import lock
 from infrahub.core.branch import Branch
 from infrahub.core.constants.infrahubkind import REPOSITORYVALIDATOR, USERVALIDATOR
 from infrahub.core.convert_object_type.object_conversion import (
-    InputForDestField,
+    ConversionFieldInput,
     convert_object_type,
     validate_conversion,
 )
@@ -20,7 +20,7 @@ from infrahub.workers.dependencies import get_message_bus
 async def convert_repository_type(
     repository: CoreRepository | CoreReadOnlyRepository,
     target_schema: NodeSchema,
-    mapping: dict[str, InputForDestField],
+    mapping: dict[str, ConversionFieldInput],
     branch: Branch,
     db: InfrahubDatabase,
     repository_post_creator: RepositoryFinalizer,

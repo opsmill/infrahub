@@ -1,6 +1,6 @@
-from typing import Any, Self, assert_never
+from typing import Any, assert_never
 
-from pydantic import BaseModel, model_validator
+from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
@@ -20,52 +20,14 @@ from infrahub.tasks.registry import update_branch_registry
 from infrahub.workers.dependencies import get_message_bus
 
 
-class InputDataForDestField(BaseModel):  # Only one of these fields can be not None
-    attribute_value: Any | None = None
-    peer_id: str | None = None
-    peers_ids: list[str] | None = None
-
-    @model_validator(mode="after")
-    def check_only_one_field(self) -> Self:
-        fields = [self.attribute_value, self.peer_id, self.peers_ids]
-        set_fields = [f for f in fields if f is not None]
-        if len(set_fields) != 1:
-            raise ValueError("Exactly one of attribute_value, peer_id, or peers_ids must be set")
-        return self
-
-    @property
-    def value(self) -> Any:
-        if self.attribute_value is not None:
-            return self.attribute_value
-        if self.peer_id is not None:
-            return self.peer_id
-        if self.peers_ids is not None:
-            return self.peers_ids
-
-        raise ValueError(
-            "Exactly one of attribute_value, peer_id, or peers_ids must be set, model has not been validated correctly."
-        )
-
-
-class InputForDestField(BaseModel):  # Only one of these fields can be not None
-    source_field: str | None = None
-    data: InputDataForDestField | None = None
-
-    @model_validator(mode="after")
-    def check_only_one_field(self) -> Self:
-        if self.source_field is not None and self.data is not None:
-            raise ValueError("Only one of source_field or data can be set")
-        if self.source_field is None and self.data is None:
-            raise ValueError("Either source_field or data must be set")
-        return self
-
-    @property
-    def value(self) -> Any:
-        if self.source_field is not None:
-            return self.source_field
-        if self.data is not None:
-            return self.data
-        raise ValueError("Either source_field or data must be set, model has not been validated correctly.")
+def _get_conversion_field_raw_value(conv_field_value: ConversionFieldValue) -> Any:
+    if conv_field_value.attribute_value is not None:
+        return conv_field_value.attribute_value
+    if conv_field_value.peer_id is not None:
+        return conv_field_value.peer_id
+    if conv_field_value.peers_ids is not None:
+        return conv_field_value.peers_ids
+    raise ValueError("ConversionFieldValue has not been validated correctly.")
 
 
 async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase, at: Timestamp) -> list[str]:
@@ -77,15 +39,15 @@ async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase, at: Timestamp
     return all_peers_ids
 
 
-async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, InputForDestField], node: Node) -> dict:
+async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, ConversionFieldInput], node: Node) -> dict:
     """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node,
     or a raw value."""
 
     data = {}
-    for dest_field_name, input_for_dest_field in mapping.items():
-        value = input_for_dest_field.value
-        if isinstance(value, str):  # source_field
-            item = getattr(node, value)
+    for dest_field_name, conv_field_input in mapping.items():
+        if conv_field_input.source_field is not None:
+            # Fetch the value of the corresponding field from the node being converted.
+            item = getattr(node, conv_field_input.source_field)
             if isinstance(item, BaseAttribute):
                 data[dest_field_name] = item.value
             elif isinstance(item, RelationshipManager):
@@ -98,8 +60,12 @@ async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, InputForD
                     data[dest_field_name] = [{"id": peer.id} for _, peer in (await item.get_peers(db=db)).items()]
                 else:
                     assert_never(item.schema.cardinality)
-        else:  # user input data
-            data[dest_field_name] = value.value
+        elif conv_field_input.data is not None:
+            data[dest_field_name] = _get_conversion_field_raw_value(conv_field_input.data)
+        elif conv_field_input.use_default_value is True:
+            pass  # default value will be used automatically when creating the node
+        else:
+            raise ValueError("ConversionFieldInput has not been validated correctly.")
     return data
 
 
@@ -129,7 +95,7 @@ async def _get_other_active_branches(db: InfrahubDatabase) -> list[Branch]:
     return [branch for branch in branches if not (branch.is_global or branch.is_default)]
 
 
-def _has_pass_thru_aware_attributes(node_schema: NodeSchema, mapping: dict[str, InputForDestField]) -> bool:
+def _has_pass_thru_aware_attributes(node_schema: NodeSchema, mapping: dict[str, ConversionFieldInput]) -> bool:
     aware_attributes = [attr for attr in node_schema.attributes if attr.branch != BranchSupportType.AGNOSTIC]
     aware_attributes_pass_thru = [
         attr.name for attr in aware_attributes if attr.name in mapping and mapping[attr.name].source_field is not None
@@ -157,7 +123,7 @@ async def validate_conversion(
 async def convert_and_validate_object_type(
     node: Node,
     target_schema: NodeSchema,
-    mapping: dict[str, InputForDestField],
+    mapping: dict[str, ConversionFieldInput],
     branch: Branch,
     db: InfrahubDatabase,
 ) -> Node:
@@ -180,7 +146,7 @@ async def convert_and_validate_object_type(
 async def convert_object_type(
     node: Node,
     target_schema: NodeSchema,
-    mapping: dict[str, InputForDestField],
+    mapping: dict[str, ConversionFieldInput],
     branch: Branch,
     db: InfrahubDatabase,
 ) -> Node:

@@ -9,7 +9,7 @@ import pytest
 
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
-from infrahub.core.convert_object_type.object_conversion import InputDataForDestField, InputForDestField
+from infrahub.core.convert_object_type.object_conversion import ConversionFieldInput, ConversionFieldValue
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.query.delete import DeleteAfterTimeQuery
@@ -210,11 +210,11 @@ class TestConvertRepository(TestInfrahubApp):
         mapping = {}
         for field_name, field_infos in conversion_response["FieldsMappingTypeConversion"]["mapping"].items():
             if field_infos["source_field_name"] is not None:
-                mapping[field_name] = InputForDestField(source_field=field_infos["source_field_name"])
+                mapping[field_name] = ConversionFieldInput(source_field=field_infos["source_field_name"])
             else:
                 assert field_name == "ref"
 
-        mapping["ref"] = InputForDestField(data=InputDataForDestField(attribute_value=repository.commit.value))
+        mapping["ref"] = ConversionFieldInput(data=ConversionFieldValue(attribute_value=repository.commit.value))
         mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
 
         with patch("infrahub.git.tasks.lock"):
@@ -356,11 +356,11 @@ class TestConvertRepository(TestInfrahubApp):
         mapping = {}
         for field_name, field_infos in conversion_response["FieldsMappingTypeConversion"]["mapping"].items():
             if field_infos["source_field_name"] is not None:
-                mapping[field_name] = InputForDestField(source_field=field_infos["source_field_name"])
+                mapping[field_name] = ConversionFieldInput(source_field=field_infos["source_field_name"])
             else:
                 assert field_name == "default_branch"
 
-        mapping["default_branch"] = InputForDestField(data=InputDataForDestField(attribute_value=default_branch.name))
+        mapping["default_branch"] = ConversionFieldInput(data=ConversionFieldValue(attribute_value=default_branch.name))
         mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
 
         with patch("infrahub.git.tasks.lock"):
@@ -495,11 +495,11 @@ class TestConvertRepository(TestInfrahubApp):
         mapping = {}
         for field_name, field_infos in conversion_response["FieldsMappingTypeConversion"]["mapping"].items():
             if field_infos["source_field_name"] is not None:
-                mapping[field_name] = InputForDestField(source_field=field_infos["source_field_name"])
+                mapping[field_name] = ConversionFieldInput(source_field=field_infos["source_field_name"])
             else:
                 assert field_name == "default_branch"
 
-        mapping["default_branch"] = InputForDestField(data=InputDataForDestField(attribute_value=default_branch.name))
+        mapping["default_branch"] = ConversionFieldInput(data=ConversionFieldValue(attribute_value=default_branch.name))
         mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
 
         with patch("infrahub.git.tasks.lock"):

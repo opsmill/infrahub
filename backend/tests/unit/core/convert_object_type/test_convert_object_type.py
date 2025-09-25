@@ -9,8 +9,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipCardinality
 from infrahub.core.convert_object_type.object_conversion import (
-    InputDataForDestField,
-    InputForDestField,
+    ConversionFieldInput,
+    ConversionFieldValue,
     convert_and_validate_object_type,
 )
 from infrahub.core.convert_object_type.schema_mapping import SchemaMappingValue, get_schema_mapping
@@ -36,12 +36,14 @@ class TestSchemaConversionMapping(TestInfrahubApp):
         source_schema = registry.get_node_schema(name="TestconvPerson1", branch=branch)
         target_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
         mapping = get_schema_mapping(source_schema=source_schema, target_schema=target_schema)
-        assert len(mapping) == 12
+        assert len(mapping) == 13
         assert mapping["name"] == SchemaMappingValue(source_field_name="name", is_mandatory=True)
         assert mapping["height"] == SchemaMappingValue(source_field_name="height", is_mandatory=False)
         assert mapping["age"] == SchemaMappingValue(source_field_name=None, is_mandatory=True)
         assert mapping["citizenship"] == SchemaMappingValue(source_field_name=None, is_mandatory=False)
-
+        assert mapping["favorite_color"] == SchemaMappingValue(
+            source_field_name="favorite_color", relationship_cardinality=None, is_mandatory=False
+        )
         assert mapping["favorite_car"] == SchemaMappingValue(
             source_field_name="favorite_car", relationship_cardinality=RelationshipCardinality.ONE, is_mandatory=False
         )
@@ -105,14 +107,14 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name": InputForDestField(source_field="name"),
-            "height": InputForDestField(source_field="height"),
-            "age": InputForDestField(data=InputDataForDestField(attribute_value=25)),
-            "favorite_car": InputForDestField(source_field="favorite_car"),
-            "worst_car": InputForDestField(data=InputDataForDestField(peer_id=car_3.id)),
-            "fastest_cars": InputForDestField(source_field="fastest_cars"),
-            "slowest_cars": InputForDestField(data=InputDataForDestField(peers_ids=[car_3.id])),
-            "bags": InputForDestField(source_field="bags"),
+            "name": ConversionFieldInput(source_field="name"),
+            "height": ConversionFieldInput(source_field="height"),
+            "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=25)),
+            "favorite_car": ConversionFieldInput(source_field="favorite_car"),
+            "worst_car": ConversionFieldInput(data=ConversionFieldValue(peer_id=car_3.id)),
+            "fastest_cars": ConversionFieldInput(source_field="fastest_cars"),
+            "slowest_cars": ConversionFieldInput(data=ConversionFieldValue(peers_ids=[car_3.id])),
+            "bags": ConversionFieldInput(source_field="bags"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
@@ -136,6 +138,7 @@ class TestConvertObjectType(TestInfrahubApp):
         assert jack_2.name.value == jack_1.name.value
         assert jack_2.height.value == jack_1.height.value
         assert jack_2.age.value == 25
+        assert jack_2.favorite_color.value == "blue"
         assert jack_2.citizenship.value is None
 
         assert (await jack_2.favorite_car.get_peer(db=db)).id == car_1.id
@@ -176,7 +179,7 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name": InputForDestField(source_field="name"),
+            "name": ConversionFieldInput(source_field="name"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestmoPerson2", branch=branch)
@@ -187,8 +190,8 @@ class TestConvertObjectType(TestInfrahubApp):
 
         # And make sure it works when setting a new owner to the car
         mapping = {
-            "name": InputForDestField(source_field="name"),
-            "my_car": InputForDestField(data=InputDataForDestField(peer_id=car_1.id)),
+            "name": ConversionFieldInput(source_field="name"),
+            "my_car": ConversionFieldInput(data=ConversionFieldValue(peer_id=car_1.id)),
         }
         await convert_and_validate_object_type(
             node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch
@@ -225,7 +228,7 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name": InputForDestField(source_field="name"),
+            "name": ConversionFieldInput(source_field="name"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestudPerson2", branch=default_branch)
@@ -254,9 +257,9 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name_agnostic": InputForDestField(source_field="name_agnostic"),
-            "age_2_aware": InputForDestField(source_field="age_1_agnostic"),
-            "height_2_agnostic": InputForDestField(source_field="height_1_aware"),
+            "name_agnostic": ConversionFieldInput(source_field="name_agnostic"),
+            "age_2_aware": ConversionFieldInput(source_field="age_1_agnostic"),
+            "height_2_agnostic": ConversionFieldInput(source_field="height_1_aware"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestbsPerson2", branch=default_branch)
@@ -305,11 +308,11 @@ class TestConvertObjectType(TestInfrahubApp):
         _ = await create_branch(branch_name=branch_name, db=db)
 
         mapping = {
-            "name_agnostic": InputForDestField(source_field="name_agnostic"),
-            "age_aware": InputForDestField(source_field="age_aware"),
-            "height_aware": InputForDestField(data=InputDataForDestField(attribute_value=170)),
-            "favorite_car": InputForDestField(source_field="favorite_car"),
-            "other_cars": InputForDestField(source_field="other_cars"),
+            "name_agnostic": ConversionFieldInput(source_field="name_agnostic"),
+            "age_aware": ConversionFieldInput(source_field="age_aware"),
+            "height_aware": ConversionFieldInput(data=ConversionFieldValue(attribute_value=170)),
+            "favorite_car": ConversionFieldInput(source_field="favorite_car"),
+            "other_cars": ConversionFieldInput(source_field="other_cars"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestaaPerson2", branch=default_branch)
