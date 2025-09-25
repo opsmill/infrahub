@@ -1,5 +1,4 @@
 import { useAtomValue } from "jotai";
-import React from "react";
 
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -52,31 +51,69 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
   }
 
   const formDefaultValues = fields.reduce((acc, field) => {
-    return { ...acc, [field.name]: field.defaultValue };
-  }, {});
+    const hasMapping = !!mappings[field.name]?.source_field_name;
 
-  const formMappingsDefaultValues = fields.reduce((acc, field) => {
-    return {
-      ...acc,
-      [field.name]: {
-        source: {
-          type: "convert",
-        },
-        value: {
-          value:
-            // Attribute
-            objectDetailsData[field.name]?.value ??
-            // Relationship one
-            objectDetailsData[field.name]?.node?.id ??
-            // Relationship many
-            objectDetailsData[field.name]?.edges?.map((edge) => {
-              return edge.node.id;
+    if (hasMapping) {
+      // Relationship many
+      if (objectDetailsData[field.name]?.edges) {
+        const nodes = objectDetailsData[field.name]?.edges?.map((edge) => {
+          return edge.node;
+        });
+
+        return {
+          ...acc,
+          [field.name]: {
+            source: {
+              type: "source",
+              label: field.label,
+              name: field.name,
+              values: nodes.reduce((acc, node) => {
+                return {
+                  ...acc,
+                  [node.id]: {
+                    label: field.label,
+                    name: field.name,
+                  },
+                };
+              }, {}),
+            },
+            value: nodes.map((node) => {
+              return node.id;
             }),
-          label: field.label,
-          name: field.name,
+          },
+        };
+      }
+
+      // Relationship one
+      if (objectDetailsData[field.name]?.node) {
+        return {
+          ...acc,
+          [field.name]: {
+            source: {
+              type: "source",
+              label: field.label,
+              name: field.name,
+            },
+            value: objectDetailsData[field.name]?.node?.id,
+          },
+        };
+      }
+
+      // Attribute
+      return {
+        ...acc,
+        [field.name]: {
+          source: {
+            type: "source",
+            label: field.label,
+            name: field.name,
+          },
+          value: objectDetailsData[field.name]?.value,
         },
-      },
-    };
+      };
+    }
+
+    return { ...acc, [field.name]: field.defaultValue };
   }, {});
 
   const handleSubmit = (data) => {
@@ -84,46 +121,31 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form defaultValue={formDefaultValues} onSubmit={handleSubmit}>
       {fields.map(({ name, label, unique, description, rules, attribute, relationship }) => {
+        const defaultValue = formDefaultValues[name];
+
         return (
           <FormField
             key={name}
             name={name}
             rules={rules}
+            defaultValue={defaultValue}
             render={({ field }) => {
-              const hasMapping = !!mappings[name]?.source_field_name;
-
-              const initialSource = hasMapping ? "source" : "custom";
-              const [sourceSelection, setSourceSelection] = React.useState(initialSource);
-
-              const defaultValue =
-                hasMapping && sourceSelection === "source"
-                  ? formMappingsDefaultValues[name]
-                  : formDefaultValues[name];
-
-              const fieldData: FormAttributeValue = field.value ?? defaultValue;
+              const fieldData: FormAttributeValue = field.value;
 
               const handleSourceChange = (newSource: string) => {
-                setSourceSelection(newSource);
-
                 if (newSource === "source") {
                   field.onChange({
-                    source: { type: "source", label, name },
-                    value: {
-                      value: formMappingsDefaultValues[name]?.value,
-                      label,
-                      name,
-                    },
+                    source: { ...defaultValue?.source, type: "source" },
+                    value: defaultValue?.value,
                   });
                 }
 
                 if (newSource === "custom") {
                   field.onChange({
                     source: { type: "schema" },
-                    value: {
-                      value: formDefaultValues[name]?.value,
-                    },
+                    value: defaultValue?.value,
                   });
                 }
               };
@@ -141,9 +163,10 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                 });
               };
 
-              const handleSourceValuesChange = (newOptions) => {
+              const handleSourceValuesChange = (newOptions, valuesSourceMapping) => {
+                console.log("valuesSourceMapping: ", valuesSourceMapping);
                 field.onChange({
-                  source: { type: "source" },
+                  source: { type: "source", values: valuesSourceMapping },
                   value: newOptions,
                 });
               };
@@ -164,13 +187,13 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                     description={description}
                     kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
                     onChange={handleSourceChange}
-                    value={sourceSelection}
+                    value={field.value.source?.type ?? "custom"}
                   />
 
                   <Row>
                     <FormInput>
                       <div className="grow">
-                        {sourceSelection === "source" && attribute && (
+                        {field.value.source?.type === "source" && attribute && (
                           <ConvertSourceAttributeInput
                             objectDetailsData={objectDetailsData}
                             sourceSchema={sourceSchema}
@@ -181,7 +204,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                           />
                         )}
 
-                        {sourceSelection === "source" &&
+                        {field.value.source?.type === "source" &&
                           relationship?.peer &&
                           relationship.cardinality === "one" && (
                             <ConvertSourceRelationshipOneInput
@@ -194,7 +217,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                             />
                           )}
 
-                        {sourceSelection === "source" &&
+                        {field.value.source?.type === "source" &&
                           relationship?.peer &&
                           relationship.cardinality === "many" && (
                             <ConvertSourceRelationshipManyInput
@@ -207,12 +230,8 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                             />
                           )}
 
-                        {sourceSelection !== "source" && (
-                          <Input
-                            {...field}
-                            value={fieldData?.value ?? ""}
-                            onChange={handleInputValueChange}
-                          />
+                        {field.value.source?.type !== "source" && (
+                          <Input {...field} onChange={handleInputValueChange} />
                         )}
                       </div>
                     </FormInput>
