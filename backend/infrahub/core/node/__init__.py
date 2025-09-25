@@ -46,8 +46,7 @@ from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
-from .display_label import DisplayLabel
-from .hfid import HumanFriendlyIdentifier
+from .node_property_attribute import DisplayLabel, HumanFriendlyIdentifier
 
 if TYPE_CHECKING:
     from typing_extensions import Self
