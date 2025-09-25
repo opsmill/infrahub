@@ -10,6 +10,7 @@ builtin_tag = NodeSchema(
     include_in_menu=True,
     icon="mdi:tag-multiple",
     label="Tag",
+    human_friendly_id=["name__value"],
     default_filter="name__value",
     order_by=["name__value"],
     display_label="name__value",
