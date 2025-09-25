@@ -154,16 +154,14 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                 field.onChange({
                   source: {
                     type: "source",
-                  },
-                  value: {
-                    value: newOption.value,
                     label: newOption.source.label,
                     name: newOption.source.name,
                   },
+                  value: newOption.value?.id,
                 });
               };
 
-              const handleSourceValuesChange = (newOptions, valuesSourceMapping) => {
+              const handleSourceValuesChange = (newOptions: Array<string>, valuesSourceMapping) => {
                 console.log("valuesSourceMapping: ", valuesSourceMapping);
                 field.onChange({
                   source: { type: "source", values: valuesSourceMapping },

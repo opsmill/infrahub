@@ -198,23 +198,44 @@ export const ConvertSourceRelationshipManyInput = ({
 
   const availableOptions = sourceSchema?.relationships
     ?.filter((relationship) => {
+      // Get all relationships that use the same peer (can be cardinality one and many)
       return relationship.peer === peer;
     })
     .reduce((acc, relationship) => {
-      const objectOptions =
-        objectDetailsData[relationship.name]?.edges?.map((edge) => {
-          return {
-            value: edge.node,
-            label: edge.node.display_label,
-            source: {
-              label: relationship.label,
-              name: relationship.name,
-            },
-            isDefaultMatch: relationship.name === mapping.source_field_name,
-          };
-        }) ?? [];
+      // Get available options if values are used in cardinality one
+      if (objectDetailsData[relationship.name]?.node) {
+        const objectOption = {
+          value: objectDetailsData[relationship.name]?.node,
+          label: objectDetailsData[relationship.name]?.node.display_label,
+          source: {
+            label: relationship.label,
+            name: relationship.name,
+          },
+          isDefaultMatch: relationship.name === mapping.source_field_name,
+        };
 
-      return [...acc, ...objectOptions];
+        return [...acc, objectOption];
+      }
+
+      // Get available options if values are used in cardinality many
+      if (objectDetailsData[relationship.name]?.edges) {
+        const objectsOptions =
+          objectDetailsData[relationship.name]?.edges?.map((edge) => {
+            return {
+              value: edge.node,
+              label: edge.node.display_label,
+              source: {
+                label: relationship.label,
+                name: relationship.name,
+              },
+              isDefaultMatch: relationship.name === mapping.source_field_name,
+            };
+          }) ?? [];
+
+        return [...acc, ...objectsOptions];
+      }
+
+      return acc;
     }, []);
 
   const handleSelect = (selectedId, selectedSource) => {
