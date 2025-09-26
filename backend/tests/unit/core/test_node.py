@@ -273,6 +273,9 @@ async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_sche
     await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
     await dog1.save(db=db)
 
+    assert dog1._human_friendly_id
+    assert dog1._human_friendly_id.value == ["Jack", "Rocky"]
+
     assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
     assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
 
