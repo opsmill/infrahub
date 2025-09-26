@@ -126,7 +126,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
   }, {});
 
   const handleSubmit = async (formData) => {
-    const data = Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {
+    const fieldsMapping = Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {
       if (fieldData.source.type === "source") {
         return {
           ...acc,
@@ -172,7 +172,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     }, {});
 
     await convertObject(
-      { fieldsMapping: data },
+      { nodeId: objectDetailsData.id, targetKind: targetSchema.kind, fieldsMapping },
       {
         onSuccess: async (result) => {
           console.log("result: ", result);
