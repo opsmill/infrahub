@@ -213,6 +213,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == "John"
+    assert await obj.get_display_label(db=db) == "John"
+    assert not obj._display_label
 
     # Display Labels with 2 attributes
     schema_01["display_labels"] = ["firstname__value", "age__value"]
@@ -222,6 +224,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == "John 99"
+    assert await obj.get_display_label(db=db) == "John 99"
+    assert not obj._display_label
 
     # Empty Display Label
     schema_01["display_labels"] = []
@@ -231,6 +235,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
+    assert await obj.get_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
+    assert not obj._display_label
 
     # Display Labels with an ENUM String
     schema_01["display_labels"] = ["firstname__value", "color__value"]
@@ -240,6 +246,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, color="red")
     assert await obj.render_display_label(db=db) == "John red"
+    assert await obj.get_display_label(db=db) == "John red"
+    assert not obj._display_label
 
     # Display Labels with an ENUM Number
     schema_01["display_labels"] = ["firstname__value", "height__value"]
@@ -249,6 +257,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, height=180)
     assert await obj.render_display_label(db=db) == "John 180"
+    assert await obj.get_display_label(db=db) == "John 180"
+    assert not obj._display_label
 
 
 async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
