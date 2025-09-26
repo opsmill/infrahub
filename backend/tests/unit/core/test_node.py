@@ -267,7 +267,9 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
         ("firstname__value", "John"),
         ("{{ firstname__value }} {{ age__value }}", "John 99"),
         ("{{ firstname__value }} {{ color__value.value }}", "John red"),
+        ("color__value", "red"),
         ("{{ firstname__value }} {{ height__value.value }}", "John 170"),
+        ("height__value", "170"),
     ],
 )
 async def test_display_label(
