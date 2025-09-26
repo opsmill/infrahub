@@ -25,6 +25,8 @@ from .model import (
 )
 
 Primitives = str | bool | int | float
+# Ignore those attributes as we rely on recomputing them after the merge
+ATTRIBUTES_TO_IGNORE = ["display_label", "human_friendly_id"]
 
 
 class DiffMergeSerializer:
@@ -155,8 +157,7 @@ class DiffMergeSerializer:
                 continue
             serial_attr_diffs = []
             for attr_diff in node.attributes:
-                if attr_diff.name in ("display_label", "human_friendly_id"):
-                    # Ignore those attributes as we rely on recomputing them after the merge
+                if attr_diff.name in ATTRIBUTES_TO_IGNORE:
                     continue
                 serial_attr_diff, attribute_property_diff = self._serialize_attribute(
                     attribute_diff=attr_diff, node_uuid=node.uuid, node_kind=node.kind
