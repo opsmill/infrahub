@@ -4,10 +4,11 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
 export interface ConvertObjectFromApiApiParams extends BranchContextParams {
-  data: Record<string, any>;
+  fieldsMapping: Record<string, any>;
 }
 
-export function convertObjectFromApi({ data, branchName }: ConvertObjectFromApiApiParams) {
+export function convertObjectFromApi({ fieldsMapping, branchName }: ConvertObjectFromApiApiParams) {
+  console.log("fieldsMapping: ", fieldsMapping);
   const mutation = gql`
     mutation {
       ConvertObjectType(
@@ -15,10 +16,10 @@ export function convertObjectFromApi({ data, branchName }: ConvertObjectFromApiA
           fields_mapping: $data
         }
       ) {
-        ok
+        node
       }
     }
-  }`;
+  `;
 
   return graphqlClient.mutate({
     mutation,
@@ -26,7 +27,7 @@ export function convertObjectFromApi({ data, branchName }: ConvertObjectFromApiA
       branch: branchName,
     },
     variables: {
-      data,
+      fieldsMapping,
     },
   });
 }

@@ -1,5 +1,8 @@
 import { useAtomValue } from "jotai";
+import { useNavigate } from "react-router";
+import { toast } from "react-toastify";
 
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ConvertLabelFormField } from "@/shared/components/form/fields/common";
@@ -19,6 +22,8 @@ import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 
+import { ALERT_TYPES, Alert } from "../ui/alert";
+
 export type ConvertFormProps = {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
@@ -26,6 +31,8 @@ export type ConvertFormProps = {
 };
 
 const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
+  const navigate = useNavigate();
+
   const schemaKindLabel = useAtomValue(schemaKindNameState);
   const {
     data: mappings,
@@ -36,7 +43,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     targetKind: targetSchema.kind!,
   });
 
-  const { mutateAsync } = useConvertObjectMutation();
+  const { mutateAsync: convertObject } = useConvertObjectMutation();
 
   const fields = getFormFieldsFromSchema({
     schema: targetSchema,
@@ -118,8 +125,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     return { ...acc, [field.name]: field.defaultValue };
   }, {});
 
-  const handleSubmit = (formData) => {
-    console.log("formData: ", formData);
+  const handleSubmit = async (formData) => {
     const data = Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {
       if (fieldData.source.type === "source") {
         return {
@@ -164,7 +170,28 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
         },
       };
     }, {});
-    console.log("data: ", data);
+
+    await convertObject(
+      { fieldsMapping: data },
+      {
+        onSuccess: async (result) => {
+          console.log("result: ", result);
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message="Object converted!" />);
+          const path = constructPath(`/objects/${targetSchema.kind}/${result.id}`);
+
+          navigate(path);
+        },
+        onError: (error) => {
+          console.error("Error when logging in: ", error);
+          toast(
+            <Alert
+              type={ALERT_TYPES.ERROR}
+              message="An error occurred while converting the object"
+            />
+          );
+        },
+      }
+    );
   };
 
   return (

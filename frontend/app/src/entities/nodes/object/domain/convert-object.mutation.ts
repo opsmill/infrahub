@@ -1,17 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import {
-  type CreateObjectParams,
-  createObject,
-} from "@/entities/nodes/object/domain/create-object";
+
+import { type ConvertObjectParams, convertObject } from "./convert-object";
 
 export function useConvertObjectMutation() {
   const { currentBranch } = useCurrentBranch();
 
   return useMutation({
-    mutationFn: (params: Omit<CreateObjectParams, "branchName">) => {
-      return createObject({
+    mutationFn: (params: Omit<ConvertObjectParams, "branchName">) => {
+      return convertObject({
         branchName: currentBranch.name,
         ...params,
       });

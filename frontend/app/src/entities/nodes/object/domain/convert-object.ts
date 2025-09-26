@@ -15,5 +15,5 @@ export const convertObject: ConvertObject = async (params) => {
     throw new Error(errors[0].message);
   }
 
-  return data.ConvertObjectType;
+  return data.ConvertObjectType.node;
 };
