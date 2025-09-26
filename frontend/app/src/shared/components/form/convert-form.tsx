@@ -14,6 +14,7 @@ import { Input } from "@/shared/components/inputs/input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 
+import { useConvertObjectMutation } from "@/entities/nodes/object/domain/convert-object.mutation";
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/object/domain/get-object-convert-fields-mapping.query";
 import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
@@ -35,6 +36,8 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     sourceKind: sourceSchema.kind!,
     targetKind: targetSchema.kind!,
   });
+
+  const { mutateAsync } = useConvertObjectMutation();
 
   const fields = getFormFieldsFromSchema({
     schema: targetSchema,
@@ -116,7 +119,52 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     return { ...acc, [field.name]: field.defaultValue };
   }, {});
 
-  const handleSubmit = (data) => {
+  const handleSubmit = (formData) => {
+    console.log("formData: ", formData);
+    const data = Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {
+      if (fieldData.source.type === "source") {
+        return {
+          ...acc,
+          [fieldName]: {
+            source_field: fieldData.source.name,
+          },
+        };
+      }
+
+      if (fieldData.source.type === "schema") {
+        return {
+          ...acc,
+          [fieldName]: {
+            is_default: true,
+          },
+        };
+      }
+
+      if (Array.isArray(fieldData.value)) {
+        return {
+          ...acc,
+          [fieldName]: {
+            peer_ids: fieldData.value,
+          },
+        };
+      }
+
+      if (fieldData.source.node) {
+        return {
+          ...acc,
+          [fieldName]: {
+            peer_id: fieldData.value,
+          },
+        };
+      }
+
+      return {
+        ...acc,
+        [fieldName]: {
+          attribute_value: fieldData.value,
+        },
+      };
+    }, {});
     console.log("data: ", data);
   };
 
@@ -167,6 +215,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                     type: "source",
                     label: newOption.source.label,
                     name: newOption.source.name,
+                    node: newOption.value,
                   },
                   value: newOption.value?.id,
                 });
