@@ -134,7 +134,14 @@ async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_p
     assert c1_changelog.relationships["owner"].properties["source"].value == p3.id
     assert c1_changelog.relationships["owner"].properties["source"].value_previous == p2.id
 
-    assert sorted(c2_changelog.attributes.keys()) == ["color", "is_electric", "name", "nbr_seats", "transmission"]
+    assert sorted(c2_changelog.attributes.keys()) == [
+        "color",
+        "human_friendly_id",
+        "is_electric",
+        "name",
+        "nbr_seats",
+        "transmission",
+    ]
     assert len(c2_changelog.relationships.keys()) == 1
     assert isinstance(c2_changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
     assert c2_changelog.relationships["owner"].properties["owner"].value == p1.id
