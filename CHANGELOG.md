@@ -11,6 +11,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.9) - 2025-09-26
+
+### Fixed
+
+- Fix prefix/IP Address creation when passing in `ip_namespace`'s HFID ([#7239](https://github.com/opsmill/infrahub/issues/7239))
+- Fix bug in schema integrity checks of a proposed change that prevented resolved violations from being removed ([#7278](https://github.com/opsmill/infrahub/issues/7278))
+
 ## [Infrahub - v1.4.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.8) - 2025-09-23
 
 ### Fixed
