@@ -17,7 +17,6 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
-import { Button } from "../buttons/button-primitive";
 import { PopoverTrigger } from "../ui/popover";
 import { inputStyle } from "../ui/style";
 
@@ -49,7 +48,7 @@ export const ConvertSourceAttributeInput = ({
   field,
   kind,
 }: ConvertSourceAttributeInputParams) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const availableOptions = sourceSchema?.attributes
     ?.filter((attribute) => {
@@ -72,7 +71,7 @@ export const ConvertSourceAttributeInput = ({
   });
 
   return (
-    <Combobox open={isOpen} onOpenChange={setIsOpen}>
+    <Combobox open={open} onOpenChange={setOpen}>
       <ComboboxTrigger>
         {currentOption && (
           <Badge className="space-x-1">
@@ -100,7 +99,7 @@ export const ConvertSourceAttributeInput = ({
                     },
                     value: option.value,
                   });
-                  setIsOpen(false);
+                  setOpen(false);
                 }}
               >
                 <div className="flex grow items-center justify-between">
@@ -128,7 +127,7 @@ export const ConvertSourceRelationshipOneInput = ({
   field,
   peer,
 }: ConvertSourceRelationshipInputParams) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const availableOptions = sourceSchema?.relationships
     ?.filter((relationship) => {
@@ -150,7 +149,7 @@ export const ConvertSourceRelationshipOneInput = ({
   });
 
   return (
-    <Combobox open={isOpen} onOpenChange={setIsOpen}>
+    <Combobox open={open} onOpenChange={setOpen}>
       <ComboboxTrigger>
         <Badge className="space-x-1">
           <span>{currentOption?.value?.display_label || "-"}</span>
@@ -177,7 +176,7 @@ export const ConvertSourceRelationshipOneInput = ({
                     },
                     value: option.value?.id,
                   });
-                  setIsOpen(false);
+                  setOpen(false);
                 }}
               >
                 <div className="flex grow items-center justify-between">
@@ -212,83 +211,30 @@ export const ConvertSourceRelationshipManyInput = ({
   const availableOptions = sourceSchema?.relationships
     ?.filter((relationship) => {
       // Get all relationships that use the same peer (can be cardinality one and many)
-      return relationship.peer === peer;
+      return relationship.peer === peer && relationship.cardinality === "many";
     })
     .reduce((acc, relationship) => {
-      // Get available options if values are used in cardinality one
-      if (objectDetailsData[relationship.name]?.node) {
-        const objectOption = {
-          value: objectDetailsData[relationship.name]?.node,
-          label: objectDetailsData[relationship.name]?.node.display_label,
-          source: {
-            label: relationship.label,
-            name: relationship.name,
-          },
-          isDefaultMatch: relationship.name === mapping.source_field_name,
-        };
+      const objectsOptions =
+        objectDetailsData[relationship.name]?.edges?.map((edge) => {
+          return edge.node;
+        }) ?? [];
 
-        return [...acc, objectOption];
-      }
-
-      // Get available options if values are used in cardinality many
-      if (objectDetailsData[relationship.name]?.edges) {
-        const objectsOptions =
-          objectDetailsData[relationship.name]?.edges?.map((edge) => {
-            return {
-              value: edge.node,
-              label: edge.node.display_label,
-              source: {
-                label: relationship.label,
-                name: relationship.name,
-              },
-              isDefaultMatch: relationship.name === mapping.source_field_name,
-            };
-          }) ?? [];
-
-        return [...acc, ...objectsOptions];
-      }
-
-      return acc;
-    }, []);
-
-  const handleSelect = (selectedId, selectedSource) => {
-    const hasSelectedOption = !!fieldData.value?.includes(selectedId);
-
-    const filteredOptions =
-      fieldData.value?.filter((optionId) => {
-        return selectedId !== optionId;
-      }) ?? [];
-
-    if (hasSelectedOption) {
-      const cleanedSourceMapping = fieldData.source.values
-        ? Object.entries(fieldData.source.values).reduce((acc, [nodeId, nodeSource]) => {
-            if (nodeId === selectedId) {
-              return acc;
-            }
-
-            return {
-              ...acc,
-              [nodeId]: nodeSource,
-            };
-          }, {})
-        : {};
-
-      field.onChange({
-        source: { type: "source", values: cleanedSourceMapping },
-        value: filteredOptions,
-      });
-    } else {
-      const newSourceMapping = {
-        ...fieldData.source.values,
-        [selectedId]: selectedSource,
+      const option = {
+        source: {
+          type: "schema",
+          name: relationship.name,
+          label: relationship.label,
+        },
+        value: objectsOptions,
+        isDefaultMatch: relationship.name === mapping.source_field_name,
       };
 
-      field.onChange({
-        source: { type: "source", values: newSourceMapping },
-        value: [...filteredOptions, selectedId],
-      });
-    }
-  };
+      return [...acc, option];
+    }, []);
+
+  const currentOption = availableOptions?.find((nodeOption) => {
+    return nodeOption.source.name === field.value.source?.name;
+  });
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
@@ -302,37 +248,18 @@ export const ConvertSourceRelationshipManyInput = ({
           )}
         >
           <div className="space-x-2">
-            {field.value?.value?.map((nodeId: string) => {
-              const node = availableOptions.find((nodeOption) => {
-                return nodeOption.value?.id === nodeId;
-              })?.value;
-
-              if (!node) {
-                return null;
-              }
-
-              return (
-                <Badge key={nodeId} className="space-x-1">
-                  <span>{getNodeLabel(node)}</span>
-                  <span className="font-light text-gray-700">
-                    • {field.value.source?.values?.[nodeId].label}
-                  </span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelect(nodeId);
-                    }}
-                    className="size-4 text-gray-500 hover:text-gray-800"
-                    aria-label="Remove"
-                    data-testid="remove-option"
-                  >
-                    &times;
-                  </Button>
-                </Badge>
-              );
-            })}
+            {currentOption?.source?.name && (
+              <Badge className="space-x-1">
+                <span>
+                  {currentOption?.value
+                    .map((node) => {
+                      return getNodeLabel(node);
+                    })
+                    .join(" - ") || "-"}
+                </span>
+                <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
+              </Badge>
+            )}
           </div>
 
           <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
@@ -351,20 +278,37 @@ export const ConvertSourceRelationshipManyInput = ({
             .map((option) => {
               return (
                 <ComboboxItem
-                  key={option.value?.id}
-                  value={option.value?.id}
-                  selectedValue={fieldData?.value?.id}
-                  onSelect={(newId) => {
-                    handleSelect(newId, { name: option.source.name, label: option.source.label });
+                  key={option.source.name}
+                  value={option.source.name}
+                  selectedValue={fieldData?.source.name}
+                  onSelect={() => {
+                    field.onChange({
+                      source: {
+                        type: "source",
+                        label: option.source.label,
+                        name: option.source.name,
+                        node: option.value,
+                      },
+                      value: option.value?.map((node) => {
+                        return node.id;
+                      }),
+                    });
+                    setOpen(false);
                   }}
                 >
                   <div className="flex grow items-center justify-between">
-                    <span className="grow">{option.label}</span>
+                    <span className="grow">
+                      {option?.value
+                        .map((node) => {
+                          return getNodeLabel(node);
+                        })
+                        .join(" - ") || "-"}
+                    </span>
 
                     <div className="space-x-2">
                       {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
 
-                      <Badge variant={"gray-outline"}>{option.source.name}</Badge>
+                      <Badge variant={"gray-outline"}>{option.source.label}</Badge>
                     </div>
                   </div>
                 </ComboboxItem>
