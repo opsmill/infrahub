@@ -1,6 +1,7 @@
 import random
 
 from fast_depends import Depends, inject
+from prefect.client.schemas.objects import ConcurrencyLimitStrategy
 
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
@@ -179,6 +180,8 @@ GIT_REPOSITORIES_SYNC = WorkflowDefinition(
     cron="* * * * *",
     module="infrahub.git.tasks",
     function="sync_remote_repositories",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
 )
 
 GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
@@ -530,6 +533,16 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
     function="validate_schema_number_pools",
 )
 
+CLEAN_UP_DEADLOCKS = WorkflowDefinition(
+    name="clean-up-deadlocks",
+    type=WorkflowType.INTERNAL,
+    cron="* * * * *",
+    module="infrahub.locks.tasks",
+    function="clean_up_deadlocks",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+)
+
 
 WORKER_POOLS = [INFRAHUB_WORKER_POOL]
 
@@ -547,6 +560,7 @@ WORKFLOWS = [
     BRANCH_MERGE_POST_PROCESS,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
+    CLEAN_UP_DEADLOCKS,
     COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
     COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,

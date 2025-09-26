@@ -81,7 +81,7 @@ class TestBranchCreate(TestInfrahubApp):
         )
         assert result.errors
         assert len(result.errors) == 1
-        assert "The branch branch2, already exist" in result.errors[0].message
+        assert "The branch branch2 already exists" in result.errors[0].message
 
         # Create another branch with different inputs
         query = """

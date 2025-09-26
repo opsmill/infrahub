@@ -483,3 +483,33 @@ async def test_relationship_timestamp_changes(
     tag_rels = await after_save_person_jack.tags.get_relationships(db=db)
     assert len(tag_rels) == 1
     assert [r.peer_id for r in tag_rels] == [tag_red_main.id]
+
+
+async def test_relationship_second_delete_is_ignored(
+    db: InfrahubDatabase, person_jack_main: Node, tag_blue_main: Node, branch: Branch
+):
+    person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
+    await person_jack.tags.update(db=db, data=[tag_blue_main.id])
+    await person_jack.save(db=db)
+    rels = await person_jack.tags.get_relationships(db=db)
+
+    blue_tag_rel = rels[0]
+    await blue_tag_rel.delete(db=db)
+    await blue_tag_rel.delete(db=db)
+
+    # verify that only 1 delete path exists
+    query = """
+MATCH (s:Node {uuid: $source_id})-[r1:IS_RELATED {status: "deleted", branch: $branch}]-(:Relationship {name: $rel_name})
+    -[r2:IS_RELATED {status: "deleted", branch: $branch}]-(d:Node {uuid: $dest_id})
+RETURN count(*) AS num_paths
+    """
+    result = await db.execute_query(
+        query=query,
+        params={
+            "source_id": person_jack_main.id,
+            "branch": branch.name,
+            "rel_name": "builtintag__testperson",
+            "dest_id": tag_blue_main.id,
+        },
+    )
+    assert result[0].get("num_paths") == 1

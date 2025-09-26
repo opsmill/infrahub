@@ -18,6 +18,7 @@ from infrahub.core.query.relationship import (
     RelationshipDeleteQuery,
     RelationshipGetByIdentifierQuery,
     RelationshipGetPeerQuery,
+    RelationshipGetQuery,
     RelationshipPeerData,
     RelationshipQuery,
     RelData,
@@ -1096,3 +1097,57 @@ async def test_query_RelationshipGetByIdentifierQuery(
     )
     await query.execute(db=db)
     assert await query.count(db=db) == 5
+
+    # test owner update on branch
+    branch_yaris = await NodeManager.get_one(db=db, branch=branch, id=car_yaris_main.id)
+    await branch_yaris.owner.update(db=db, data=person_jane_main)
+    await branch_yaris.save(db=db)
+    query = await RelationshipGetByIdentifierQuery.init(
+        db=db, branch=branch, identifiers=["testcar__testperson"], excluded_namespaces=[]
+    )
+    await query.execute(db=db)
+    assert await query.count(db=db) == 5
+
+    # test delete
+    branch_prius = await NodeManager.get_one(db=db, branch=branch, id=car_prius_main.id)
+    await branch_prius.delete(db=db)
+    query = await RelationshipGetByIdentifierQuery.init(
+        db=db, branch=branch, identifiers=["testcar__testperson"], excluded_namespaces=[]
+    )
+    await query.execute(db=db)
+    assert await query.count(db=db) == 4
+
+
+async def test_query_RelationshipGetQuery(
+    db: InfrahubDatabase,
+    car_prius_main: Node,
+    person_john_main: Node,
+    branch: Branch,
+):
+    person_john = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
+    car_prius = await NodeManager.get_one(db=db, branch=branch, id=car_prius_main.id)
+    owner_rels = await car_prius.owner.get_relationships(db=db)
+    owner_rel = owner_rels[0]
+
+    # test query on active Relationship
+    query = await RelationshipGetQuery.init(
+        db=db, branch=branch, source=car_prius, rel=owner_rel, destination=person_john
+    )
+    await query.execute(db=db)
+    results = list(query.get_results())
+    assert len(results) == 1
+    assert results[0].get("s").get("uuid") == car_prius_main.id
+    assert results[0].get("d").get("uuid") == person_john_main.id
+    assert results[0].get("is_active") is True
+
+    # test query on deleted Relationship
+    await owner_rel.delete(db=db)
+    query = await RelationshipGetQuery.init(
+        db=db, branch=branch, source=car_prius, rel=owner_rel, destination=person_john
+    )
+    await query.execute(db=db)
+    results = list(query.get_results())
+    assert len(results) == 1
+    assert results[0].get("s").get("uuid") == car_prius_main.id
+    assert results[0].get("d").get("uuid") == person_john_main.id
+    assert results[0].get("is_active") is False
