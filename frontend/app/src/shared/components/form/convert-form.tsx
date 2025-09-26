@@ -135,7 +135,7 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
         return {
           ...acc,
           [fieldName]: {
-            is_default: true,
+            use_default_value: true,
           },
         };
       }
