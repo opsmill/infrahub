@@ -376,7 +376,9 @@ async def test_ipprefix_create_with_ipnamespace(
     await ns.new(db=db, name="ns1")
     await ns.save(db=db)
 
-    query = """
+    ns_hfid = await ns.get_hfid_as_string(db=db)
+    # Test with namespace by ID
+    query_id = """
     mutation CreatePrefix($prefix: String!, $namespace: String!) {
         IpamIPPrefixCreate(
             data: {
@@ -401,9 +403,47 @@ async def test_ipprefix_create_with_ipnamespace(
     supernet = ipaddress.ip_network("2001:db8::/32")
     result = await graphql(
         schema=gql_params.schema,
-        source=query,
+        source=query_id,
         context_value=gql_params.context,
         variable_values={"prefix": str(supernet), "namespace": ns.id},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+    assert result.data["IpamIPPrefixCreate"]["object"]["id"]
+
+    ip_prefix = await registry.manager.get_one(
+        id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db, branch=branch
+    )
+    ip_namespace = await ip_prefix.ip_namespace.get_peer(db=db)
+    assert ip_namespace.id == ns.id
+
+    # Test with namespace by HFID
+    query_hfid = """
+    mutation CreatePrefixHFID($prefix: String!, $namespace_hfid: String!) {
+        IpamIPPrefixCreate(
+            data: {
+                prefix: {
+                    value: $prefix
+                }
+                ip_namespace: {
+                    hfid: [$namespace_hfid]
+                }
+            }
+        ) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query_hfid,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(supernet), "namespace_hfid": ns_hfid},
     )
 
     assert not result.errors
@@ -507,9 +547,11 @@ async def test_ipprefix_update_within_namespace(
     await test_ns.new(db=db, name="test")
     await test_ns.save(db=db)
 
+    ns_hfid = await test_ns.get_hfid_as_string(db=db)
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
+    # Test with namespace by ID
     result = await graphql(
         schema=gql_params.schema,
         source="""
@@ -575,6 +617,81 @@ async def test_ipprefix_update_within_namespace(
         """,
         context_value=gql_params.context,
         variable_values={"id": subnet_id, "namespace": test_ns.name.value},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixUpdate"]["ok"]
+    assert result.data["IpamIPPrefixUpdate"]["object"]["ip_namespace"]["node"]["name"]["value"] == test_ns.name.value
+
+    # Test with namespace by HFID
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation CreatePrefixInNamespaceHFID($prefix: String!, $namespace_hfid: String!) {
+            IpamIPPrefixCreate(
+                data: {
+                    prefix: {
+                        value: $prefix
+                    }
+                    ip_namespace: {
+                        hfid: [$namespace_hfid]
+                    }
+                }
+            ) {
+                ok
+                object {
+                    id
+                    ip_namespace {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"prefix": str(subnet), "namespace_hfid": ns_hfid},
+    )
+
+    assert not result.errors
+    assert result.data["IpamIPPrefixCreate"]["ok"]
+    assert result.data["IpamIPPrefixCreate"]["object"]["ip_namespace"]["node"]["name"]["value"] == test_ns.name.value
+
+    subnet_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation UpdatePrefixInNamespaceHFID($id: String!, $namespace_hfid: String!) {
+            IpamIPPrefixUpdate(
+                data: {
+                    id: $id
+                    description: {
+                        value: "Do not change namespace"
+                    }
+                    ip_namespace: {
+                        hfid: [$namespace_hfid]
+                    }
+                }
+            ) {
+                ok
+                object {
+                    id
+                    ip_namespace {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"id": subnet_id, "namespace_hfid": ns_hfid},
     )
 
     assert not result.errors

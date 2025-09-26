@@ -90,7 +90,7 @@ async def build_subquery_filter(
         {branch_level_str} AS branch_level,
         {froms_str} AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active{with_extra}
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, {node_alias}{with_extra}])) AS latest_node_details
     WHERE {is_active_filter}
     WITH latest_node_details[1] AS {prefix}{final_with_extra}
@@ -176,7 +176,7 @@ async def build_subquery_order(
     OPTIONAL MATCH path = {filter_str}
     WHERE {where_str}
     WITH {with_str_to_alias}
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, {with_str_alias}])) AS latest_node_details
     WITH {with_str_from_list}
     RETURN {to_return_str}

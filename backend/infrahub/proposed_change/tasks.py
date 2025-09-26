@@ -441,9 +441,6 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
                 )
             )
 
-    if not conflicts:
-        return
-
     database = await get_database()
     async with database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
