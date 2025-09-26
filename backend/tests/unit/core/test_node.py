@@ -307,6 +307,46 @@ async def test_display_label(
     assert await obj.get_display_label(db=db) == expected
 
 
+@pytest.mark.parametrize(
+    "display_label,expected",
+    [
+        ("firstname__value", "John"),
+        ("{{ firstname__value }} {{ age__value }}", "John 99"),
+        ("{{ firstname__value }} {{ color__value.value }}", "John red"),
+        ("{{ firstname__value }} {{ height__value.value }}", "John 170"),
+    ],
+)
+async def test_display_label(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, display_label: str, expected: str
+):
+    schema_01 = {
+        "name": "Display",
+        "namespace": "Test",
+        "display_label": display_label,
+        "attributes": [
+            {"name": "firstname", "kind": "Text"},
+            {"name": "lastname", "kind": "Text"},
+            {"name": "age", "kind": "Number"},
+            {"name": "color", "kind": "Text", "enum": ["blue", "red"], "default_value": "red"},
+            {"name": "height", "kind": "Number", "enum": [170, 180], "default_value": 170},
+        ],
+    }
+
+    kind = f"{schema_01['namespace']}{schema_01['name']}"
+    registry.schema.set(name=kind, schema=NodeSchema(**schema_01))
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    node_schema = registry.schema.get_node_schema(name=kind, duplicate=False)
+
+    obj = await Node.init(db=db, schema=node_schema)
+    await obj.new(db=db, firstname="John", lastname="Doe", age=99)
+    await obj.save(db=db)
+
+    assert obj._display_label
+    assert obj._display_label.value == expected
+    assert await obj.get_display_label(db=db) == expected
+
+
 async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
