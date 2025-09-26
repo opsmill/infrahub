@@ -180,12 +180,12 @@ class TestDiffReadQuery(TestInfrahub):
         [
             pytest.param(
                 {},
-                DiffSummaryCounters(num_added=2, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=3, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
                 id="no-filters",
             ),
             pytest.param(
                 {"kind": {"includes": ["TestThing"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=3, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
                 id="kind-includes",
             ),
             pytest.param(
@@ -195,12 +195,12 @@ class TestDiffReadQuery(TestInfrahub):
             ),
             pytest.param(
                 {"namespace": {"includes": ["Test"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=3, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
                 id="namespace-includes",
             ),
             pytest.param(
                 {"namespace": {"excludes": ["Location"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=3, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
                 id="namespace-excludes",
             ),
             pytest.param(
@@ -210,7 +210,7 @@ class TestDiffReadQuery(TestInfrahub):
             ),
             pytest.param(
                 {"status": {"excludes": ["unchanged"]}},
-                DiffSummaryCounters(num_added=2, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=3, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
                 id="status-excludes",
             ),
             pytest.param(
