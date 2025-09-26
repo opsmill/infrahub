@@ -76,7 +76,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| `INFRAHUB_DB_INFRAHUB_DB_TYPE` | None | None | neo4j |
+| `INFRAHUB_DB_INFRAHUB_DB_TYPE` | None | string (neo4j, memgraph) | neo4j |
 | `INFRAHUB_DB_PROTOCOL` | None | string | bolt |
 | `INFRAHUB_DB_USERNAME` | None | string | neo4j |
 | `INFRAHUB_DB_PASSWORD` | None | string | admin |
@@ -112,7 +112,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_BROKER_MAXIMUM_MESSAGE_RETRIES` | The maximum number of retries that are attempted for failed messages | integer | 10 |
 | `INFRAHUB_BROKER_MAXIMUM_CONCURRENT_MESSAGES` | The maximum number of concurrent messages fetched by each worker | integer | 2 |
 | `INFRAHUB_BROKER_VIRTUALHOST` | The virtual host to connect to | string | / |
-| `INFRAHUB_BROKER_DRIVER` | None | None | rabbitmq |
+| `INFRAHUB_BROKER_DRIVER` | None | string (rabbitmq, nats) | rabbitmq |
 
 ## Cache
 
@@ -122,7 +122,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_CACHE_ADDRESS` | None | string | localhost |
 | `INFRAHUB_CACHE_PORT` | Specified if running on a non default port (6379) | None | None |
 | `INFRAHUB_CACHE_DATABASE` | Id of the database to use | integer | 0 |
-| `INFRAHUB_CACHE_DRIVER` | None | None | redis |
+| `INFRAHUB_CACHE_DRIVER` | None | string (redis, nats) | redis |
 | `INFRAHUB_CACHE_USERNAME` | None | string |  |
 | `INFRAHUB_CACHE_PASSWORD` | None | string |  |
 | `INFRAHUB_CACHE_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
@@ -137,10 +137,10 @@ Configuration settings for the message bus.
 | `INFRAHUB_WORKFLOW_ADDRESS` | None | string | localhost |
 | `INFRAHUB_WORKFLOW_PORT` | Specified if running on a non default port. | None | None |
 | `INFRAHUB_WORKFLOW_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
-| `INFRAHUB_WORKFLOW_DRIVER` | None | None | worker |
+| `INFRAHUB_WORKFLOW_DRIVER` | None | string (local, worker) | worker |
 | `INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE` | None | string | infrahubasync |
 | `INFRAHUB_WORKFLOW_EXTRA_LOGGERS` | A list of additional logger that will be captured during task execution. | array[string] | None |
-| `INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL` | Log level applied to all extra loggers. | None | INFO |
+| `INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL` | Log level applied to all extra loggers. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | INFO |
 | `INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL` | Specify how often the worker should poll the server for tasks (sec) | integer | 2 |
 
 ## Miscellaneous
@@ -185,11 +185,100 @@ Configuration settings for the message bus.
 | `INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME` | Lifetime of refresh token in seconds | integer | 2592000 |
 | `INFRAHUB_SECURITY_SECRET_KEY` | The secret key used to validate authentication tokens | string | None |
 | `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` | The selected OAuth2 providers | array | None |
-| `INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS` | None | None | None |
+| `INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS` | None | object | Check nested parameters |
 | `INFRAHUB_SECURITY_OIDC_PROVIDERS` | The selected OIDC providers | array | None |
-| `INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS` | None | None | None |
+| `INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS` | None | object | Check nested parameters |
 | `INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS` | Indicates if untrusted Jinja2 filters should be disallowed for computed attributes | boolean | True |
 | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group to which users authenticated via SSO will belong if not provided by identity provider | None | None |
+
+### INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_OAUTH2_GOOGLE_ICON` | None | string | mdi:google |
+| `INFRAHUB_OAUTH2_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OAUTH2_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
+| `INFRAHUB_OAUTH2_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OAUTH2_GOOGLE_AUTHORIZATION_URL` | None | string | https://accounts.google.com/o/oauth2/auth |
+| `INFRAHUB_OAUTH2_GOOGLE_TOKEN_URL` | None | string | https://oauth2.googleapis.com/token |
+| `INFRAHUB_OAUTH2_GOOGLE_USERINFO_URL` | None | string | https://www.googleapis.com/oauth2/v3/userinfo |
+| `INFRAHUB_OAUTH2_GOOGLE_SCOPES` | None | array[string] | None |
+| `INFRAHUB_OAUTH2_GOOGLE_DISPLAY_LABEL` | None | string | Google |
+| `INFRAHUB_OAUTH2_GOOGLE_FETCH_GROUPS` | Whether to use Cloud Identity API to fetch user groups. Note: requires additional scopes: https://www.googleapis.com/auth/cloud-identity.groups.readonly | boolean | False |
+| `INFRAHUB_OAUTH2_GOOGLE_CLOUDIDENTITY_URL` | Google Cloud endpoint for Cloud Identity. Using searchDirectGroups by default because it is available for the Free plan | string | https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchDirectGroups |
+| `INFRAHUB_OAUTH2_PROVIDER1_ICON` | None | string | mdi:account-key |
+| `INFRAHUB_OAUTH2_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL` | None | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER1_TOKEN_URL` | None | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER1_USERINFO_URL` | None | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER1_SCOPES` | None | array[string] | None |
+| `INFRAHUB_OAUTH2_PROVIDER1_DISPLAY_LABEL` | None | string | Single Sign on |
+| `INFRAHUB_OAUTH2_PROVIDER2_ICON` | None | string | mdi:account-key |
+| `INFRAHUB_OAUTH2_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER2_AUTHORIZATION_URL` | None | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER2_TOKEN_URL` | None | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER2_USERINFO_URL` | None | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER2_SCOPES` | None | array[string] | None |
+| `INFRAHUB_OAUTH2_PROVIDER2_DISPLAY_LABEL` | None | string | Single Sign on |
+
+### INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_OIDC_GOOGLE_ICON` | None | string | mdi:google |
+| `INFRAHUB_OIDC_GOOGLE_DISPLAY_LABEL` | None | string | Google |
+| `INFRAHUB_OIDC_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OIDC_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
+| `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OIDC_GOOGLE_DISCOVERY_URL` | None | string | https://accounts.google.com/.well-known/openid-configuration |
+| `INFRAHUB_OIDC_GOOGLE_SCOPES` | None | array[string] | None |
+| `INFRAHUB_OIDC_GOOGLE_FETCH_GROUPS` | Whether to use Cloud Identity API to fetch user groups. Note: requires additional scope: https://www.googleapis.com/auth/cloud-identity.groups.readonly | boolean | False |
+| `INFRAHUB_OIDC_GOOGLE_CLOUDIDENTITY_URL` | Google Cloud endpoint for Cloud Identity. Using searchDirectGroups by default because it is available for the Free plan | string | https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchDirectGroups |
+| `INFRAHUB_OIDC_PROVIDER1_ICON` | None | string | mdi:account-key |
+| `INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL` | None | string | Single Sign on |
+| `INFRAHUB_OIDC_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OIDC_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
+| `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
+| `INFRAHUB_OIDC_PROVIDER1_SCOPES` | None | array[string] | None |
+| `INFRAHUB_OIDC_PROVIDER2_ICON` | None | string | mdi:account-key |
+| `INFRAHUB_OIDC_PROVIDER2_DISPLAY_LABEL` | None | string | Single Sign on |
+| `INFRAHUB_OIDC_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OIDC_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
+| `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OIDC_PROVIDER2_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
+| `INFRAHUB_OIDC_PROVIDER2_SCOPES` | None | array[string] | None |
+
+## Storage
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_STORAGE_DRIVER` | None | string (local, s3) | local |
+| `INFRAHUB_STORAGE_LOCAL` | None | object | Check nested parameters |
+| `INFRAHUB_STORAGE_S3` | None | object | Check nested parameters |
+
+### INFRAHUB_STORAGE_LOCAL
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_STORAGE_LOCAL_PATH` | None | string | /opt/infrahub/storage |
+
+### INFRAHUB_STORAGE_S3
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `AWS_ACCESS_KEY_ID` | None | string |  |
+| `AWS_SECRET_ACCESS_KEY` | None | string |  |
+| `INFRAHUB_STORAGE_BUCKET_NAME` | None | string |  |
+| `INFRAHUB_STORAGE_ENDPOINT_URL` | None | string |  |
+| `INFRAHUB_STORAGE_USE_SSL` | None | boolean | True |
+| `INFRAHUB_STORAGE_DEFAULT_ACL` | None | string | private |
+| `INFRAHUB_STORAGE_QUERYSTRING_AUTH` | None | boolean | False |
+| `INFRAHUB_STORAGE_CUSTOM_DOMAIN` | None | string |  |
 
 ## Trace
 
@@ -197,8 +286,8 @@ Configuration settings for the message bus.
 |------|-------------|------|---------|
 | `INFRAHUB_TRACE_ENABLE` | None | boolean | False |
 | `INFRAHUB_TRACE_INSECURE` | Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS) | boolean | True |
-| `INFRAHUB_TRACE_EXPORTER_TYPE` | Type of exporter to be used for tracing | None | console |
-| `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | Protocol to be used for exporting traces | None | grpc |
+| `INFRAHUB_TRACE_EXPORTER_TYPE` | Type of exporter to be used for tracing | string (console, otlp) | console |
+| `INFRAHUB_TRACE_EXPORTER_PROTOCOL` | Protocol to be used for exporting traces | string (grpc, http/protobuf) | grpc |
 | `INFRAHUB_TRACE_EXPORTER_ENDPOINT` | OTLP endpoint for exporting traces | None | None |
 
 ## Experimental features
