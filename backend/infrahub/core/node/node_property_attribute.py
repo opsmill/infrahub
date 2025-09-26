@@ -150,7 +150,9 @@ class DisplayLabel(NodePropertyAttribute):
             )
 
         if not self.is_jinja2_template:
-            self.set_value(value=str(await node.get_path_value(db=db, path=self.template)))
+            path_value = await node.get_path_value(db=db, path=self.template)
+            # Use .value for enum to keep compat with old style display label
+            self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
             return
 
         jinja2_template = Jinja2Template(template=self.template)
@@ -231,12 +233,8 @@ class HumanFriendlyIdentifier(NodePropertyAttribute):
         value: list[str] = []
         for path in self.template:
             path_value = await node.get_path_value(db=db, path=path)
-
-            # NOTE: should we go .name or .value?
-            if isinstance(path_value, Enum):
-                path_value = path_value.name
-
-            value.append(path_value)
+            # Use .value for enum to be consistent with display label
+            value.append(path_value if not isinstance(path_value, Enum) else path_value.value)
 
         self.set_value(value=value)
 
