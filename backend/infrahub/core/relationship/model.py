@@ -381,14 +381,33 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         node = await self.get_node(db=db)
 
+        flag_properties_to_update = {}
+        for prop_name in self._flag_properties:
+            if prop_name not in properties_to_update:
+                continue
+            value = getattr(self, prop_name)
+            if value is not None:
+                flag_properties_to_update[prop_name] = value
+
+        node_properties_to_update = {}
+        for prop_name in self._node_properties:
+            if prop_name not in properties_to_update:
+                continue
+            if value := getattr(self, f"{prop_name}_id"):
+                node_properties_to_update[prop_name] = value
+
+        if not flag_properties_to_update and not node_properties_to_update:
+            return
+
         query = await RelationshipUpdatePropertyQuery.init(
             db=db,
+            branch=branch,
             source=node,
             rel=self,
-            properties_to_update=properties_to_update,
-            data=data,
-            branch=branch,
             at=update_at,
+            flag_properties_to_update=flag_properties_to_update,
+            node_properties_to_update=node_properties_to_update,
+            rel_node_id=data.rel_node_id,
         )
         await query.execute(db=db)
 
