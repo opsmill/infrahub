@@ -307,6 +307,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
             "weight": "6",
             "part_number": "NULL",
             "airflow": "Front to rear",
+            "human_friendly_id": '["device-01"]',
         }
 
         # verify sfp created with profile
