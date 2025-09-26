@@ -113,7 +113,7 @@ async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_p
     assert len(p2_changelog.relationships["cars"].peers) == 1
     assert p2_changelog.relationships["cars"].peers[0].peer_id == car1.id
 
-    assert len(p4_changelog.attributes.keys()) == 2
+    assert len(p4_changelog.attributes.keys()) == 3
     assert p4_changelog.attributes["name"].value_update_status == DiffAction.ADDED
     assert p4_changelog.attributes["height"].value_update_status == DiffAction.ADDED
     assert not p4_changelog.relationships

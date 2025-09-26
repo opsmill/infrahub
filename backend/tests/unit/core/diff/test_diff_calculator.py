@@ -388,7 +388,7 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
     assert node_diff.is_node_kind_migration is False
     assert before_change < node_diff.changed_at < after_change
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"name", "height"}
+    assert set(attributes_by_name.keys()) == {"name", "height", "human_friendly_id"}
     attribute_diff = attributes_by_name["name"]
     assert attribute_diff.action is DiffAction.ADDED
     assert before_change < attribute_diff.changed_at < after_change
@@ -483,7 +483,7 @@ async def test_attribute_property_branch_create_multiple_updates(
     assert node_diff.action is DiffAction.ADDED
     assert node_diff.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in node_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"name", "height"}
+    assert set(attributes_by_name.keys()) == {"name", "height", "human_friendly_id"}
     # name attribute
     attribute_diff = attributes_by_name["name"]
     assert attribute_diff.action is DiffAction.ADDED
@@ -978,9 +978,16 @@ async def test_add_node_branch(
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.ADDED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 5
+    assert len(node_diff.attributes) == 6
     attributes_by_name = {a.name: a for a in node_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"name", "color", "transmission", "nbr_seats", "is_electric"}
+    assert set(attributes_by_name.keys()) == {
+        "name",
+        "color",
+        "transmission",
+        "nbr_seats",
+        "is_electric",
+        "human_friendly_id",
+    }
     assert all(a.action is DiffAction.ADDED for a in node_diff.attributes)
     attribute_diff = attributes_by_name["name"]
     assert len(attribute_diff.properties) == 3
@@ -1541,6 +1548,7 @@ async def test_agnostic_owner_relationship_added(
     assert diff_node_car.is_node_kind_migration is False
     assert diff_node_car.action is DiffAction.ADDED
     assert {(attr.name, attr.action) for attr in diff_node_car.attributes} == {
+        ("human_friendly_id", DiffAction.ADDED),
         ("name", DiffAction.ADDED),
         ("color", DiffAction.ADDED),
         ("is_electric", DiffAction.ADDED),
@@ -2944,7 +2952,7 @@ async def test_create_local_and_aware_nodes_on_branch(
     assert node_diff.is_node_kind_migration is False
     assert len(node_diff.relationships) == 0
     attrs_by_name = {a.name: a for a in node_diff.attributes}
-    assert set(attrs_by_name.keys()) == {"name", "height"}
+    assert set(attrs_by_name.keys()) == {"name", "height", "human_friendly_id"}
     for attr_diff in node_diff.attributes:
         assert attr_diff.action is DiffAction.ADDED
 
@@ -2984,7 +2992,7 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     assert rel_diff.action is DiffAction.ADDED
     attrs_by_name = {a.name: a for a in node_diff.attributes}
     # nbr_seats is agnostic, so is not included
-    assert set(attrs_by_name.keys()) == {"name", "color", "is_electric"}
+    assert set(attrs_by_name.keys()) == {"name", "color", "is_electric", "human_friendly_id"}
     for attr_diff in node_diff.attributes:
         assert attr_diff.action is DiffAction.ADDED
     # check person relationship
@@ -3456,7 +3464,7 @@ async def test_calculate_with_migrated_kind_node(
     assert branch_car_diff.action is DiffAction.ADDED
     assert branch_car_diff.is_node_kind_migration is True
     attr_diffs_by_name = {a.name: a for a in branch_car_diff.attributes}
-    assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission"}
+    assert set(attr_diffs_by_name) == {"name", "nbr_seats", "is_electric", "color", "transmission", "human_friendly_id"}
     for attr_name, expected_value in [
         ("name", "nova"),
         ("nbr_seats", 2),
