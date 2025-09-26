@@ -143,9 +143,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return "__".join(hfid)
 
     async def get_display_label(self, db: InfrahubDatabase) -> str | None:
-        if not self._schema.display_label and self._schema.display_labels is None:
-            return None
-
         if self._display_label:
             return self._display_label.value
 
