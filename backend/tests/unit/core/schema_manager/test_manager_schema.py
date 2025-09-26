@@ -1315,7 +1315,7 @@ async def test_validate_display_label_success(schema_all_in_one, display_label: 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_labels()
+    schema.validate_display_label()
 
 
 @pytest.mark.parametrize(
