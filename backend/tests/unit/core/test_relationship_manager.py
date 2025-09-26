@@ -310,7 +310,7 @@ async def test_get_parent(db: InfrahubDatabase, car_accord_main: Node, person_jo
 
 
 @dataclass
-class TestCaseData:
+class RelationshipManagerOptionalAndCountTestCaseData:
     name: str
     optional: bool
     schema_min_count: int
@@ -319,8 +319,8 @@ class TestCaseData:
     expected_max_count: int
 
 
-TEST_CASES = [
-    TestCaseData(
+RELATIONSHIP_MANAGER_OPTIONAL_AND_COUNT_CONSTRAINTS_TEST_CASES = [
+    RelationshipManagerOptionalAndCountTestCaseData(
         name="not-optional-with-min-count-only",
         optional=False,
         schema_min_count=2,
@@ -328,7 +328,7 @@ TEST_CASES = [
         expected_min_count=2,
         expected_max_count=0,
     ),
-    TestCaseData(
+    RelationshipManagerOptionalAndCountTestCaseData(
         name="optional-with-min-count-only",
         optional=True,
         schema_min_count=2,
@@ -336,7 +336,7 @@ TEST_CASES = [
         expected_min_count=0,
         expected_max_count=0,
     ),
-    TestCaseData(
+    RelationshipManagerOptionalAndCountTestCaseData(
         name="not-optional-with-min-and-max-count",
         optional=False,
         schema_min_count=2,
@@ -344,7 +344,7 @@ TEST_CASES = [
         expected_min_count=2,
         expected_max_count=5,
     ),
-    TestCaseData(
+    RelationshipManagerOptionalAndCountTestCaseData(
         name="optional-with-min-and-max-count",
         optional=True,
         schema_min_count=2,
@@ -357,14 +357,14 @@ TEST_CASES = [
 
 @pytest.mark.parametrize(
     "test_case",
-    [pytest.param(tc, id=tc.name) for tc in TEST_CASES],
+    [pytest.param(tc, id=tc.name) for tc in RELATIONSHIP_MANAGER_OPTIONAL_AND_COUNT_CONSTRAINTS_TEST_CASES],
 )
 async def test_can_create_relationship_manager_with_optional_and_count_constraints(
     db: InfrahubDatabase,
     tag_blue_main: Node,
     person_jack_primary_tag_main: Node,
     branch: Branch,
-    test_case: TestCaseData,
+    test_case: RelationshipManagerOptionalAndCountTestCaseData,
 ):
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
