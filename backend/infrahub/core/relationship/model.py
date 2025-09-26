@@ -570,7 +570,9 @@ class RelationshipValidatorList:
         ValidationError: If the number of relationships is not within the min and max count.
     """
 
-    def __init__(self, *relationships: Relationship, name: str, min_count: int = 0, max_count: int = 0) -> None:
+    def __init__(
+        self, *relationships: Relationship, name: str, min_count: int | None = 0, max_count: int | None = 0
+    ) -> None:
         """Initialize list for Relationship but with validation against min/max count.
 
         Args:
@@ -580,8 +582,14 @@ class RelationshipValidatorList:
         Raises:
             ValidationError: The number of relationships is not within the min and max count.
         """
-        if max_count < min_count:
+        if max_count is not None and min_count is not None and max_count < min_count:
             raise ValidationError({"msg": "max_count must be greater than min_count"})
+
+        if max_count is None:
+            max_count = 0
+        if min_count is None:
+            min_count = 0
+
         self.min_count: int = min_count
         self.max_count: int = max_count
         self.name = name
@@ -726,14 +734,21 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        self._relationships: RelationshipValidatorList = RelationshipValidatorList(
-            name=self.schema.name,
-            min_count=0 if self.schema.optional else self.schema.min_count,
-            max_count=self.schema.max_count,
-        )
+        self._relationships: RelationshipValidatorList = self._get_init_relationships()
         self._relationship_id_details: RelationshipUpdateDetails | None = None
         self.has_fetched_relationships: bool = False
         self.lock = asyncio.Lock()
+
+    def _get_init_relationships(self) -> RelationshipValidatorList:
+        min_count = self.schema.min_count
+        max_count: int | None = self.schema.max_count if self.schema.max_count > 0 else None
+        if self.schema.optional:
+            min_count = 0
+        return RelationshipValidatorList(
+            name=self.schema.name,
+            min_count=min_count,
+            max_count=max_count,
+        )
 
     @classmethod
     async def init(
