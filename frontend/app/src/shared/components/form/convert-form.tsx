@@ -3,7 +3,6 @@ import { useAtomValue } from "jotai";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ConvertLabelFormField } from "@/shared/components/form/fields/common";
-import type { FormAttributeValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import {
   ConvertSourceAttributeInput,
@@ -180,8 +179,6 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
             rules={rules}
             defaultValue={defaultValue}
             render={({ field }) => {
-              const fieldData: FormAttributeValue = field.value;
-
               const handleSourceChange = (newSource: string) => {
                 if (newSource === "source") {
                   field.onChange({
@@ -196,36 +193,6 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                     value: defaultValue?.value,
                   });
                 }
-              };
-
-              const handleSourceAttributeValueChange = (newOption) => {
-                field.onChange({
-                  source: {
-                    type: "source",
-                    label: newOption.source.label,
-                    name: newOption.source.name,
-                  },
-                  value: newOption.value,
-                });
-              };
-
-              const handleSourceRelationshipOneValueChange = (newOption) => {
-                field.onChange({
-                  source: {
-                    type: "source",
-                    label: newOption.source.label,
-                    name: newOption.source.name,
-                    node: newOption.value,
-                  },
-                  value: newOption.value?.id,
-                });
-              };
-
-              const handleSourceRelationshipManyValueChange = (newOptions, valuesSourceMapping) => {
-                field.onChange({
-                  source: { type: "source", values: valuesSourceMapping },
-                  value: newOptions,
-                });
               };
 
               const handleInputValueChange = (newValue: string) => {
@@ -255,9 +222,8 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                             objectDetailsData={objectDetailsData}
                             sourceSchema={sourceSchema}
                             mapping={mappings?.[field.name]}
-                            onSelect={handleSourceAttributeValueChange}
                             kind={attribute.kind}
-                            fieldData={fieldData}
+                            field={field}
                           />
                         )}
 
@@ -268,9 +234,8 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                               objectDetailsData={objectDetailsData}
                               sourceSchema={sourceSchema}
                               mapping={mappings?.[field.name]}
-                              onSelect={handleSourceRelationshipOneValueChange}
                               peer={relationship.peer}
-                              fieldData={fieldData}
+                              field={field}
                             />
                           )}
 
@@ -281,9 +246,8 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
                               objectDetailsData={objectDetailsData}
                               sourceSchema={sourceSchema}
                               mapping={mappings?.[field.name]}
-                              onSelect={handleSourceRelationshipManyValueChange}
                               peer={relationship.peer}
-                              fieldData={fieldData}
+                              field={field}
                             />
                           )}
 

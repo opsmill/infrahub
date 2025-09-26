@@ -30,8 +30,7 @@ interface Mapping {
 interface ConvertSourceInputParams {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
-  fieldData: any;
-  onSelect: (option: any) => void;
+  field: any;
   mapping: Mapping;
 }
 
@@ -47,8 +46,7 @@ export const ConvertSourceAttributeInput = ({
   objectDetailsData,
   sourceSchema,
   mapping,
-  fieldData,
-  onSelect,
+  field,
   kind,
 }: ConvertSourceAttributeInputParams) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -70,7 +68,7 @@ export const ConvertSourceAttributeInput = ({
     });
 
   const currentOption = availableOptions?.find((option) => {
-    return option.source.name === fieldData?.source?.name;
+    return option.source.name === field.value?.source?.name;
   });
 
   return (
@@ -92,9 +90,16 @@ export const ConvertSourceAttributeInput = ({
               <ComboboxItem
                 key={option.source.name}
                 value={option.source.name}
-                selectedValue={fieldData.source?.name}
+                selectedValue={field.value.source?.name}
                 onSelect={() => {
-                  onSelect(option);
+                  field.onChange({
+                    source: {
+                      type: "source",
+                      label: option.source.label,
+                      name: option.source.name,
+                    },
+                    value: option.value,
+                  });
                   setIsOpen(false);
                 }}
               >
@@ -120,8 +125,7 @@ export const ConvertSourceRelationshipOneInput = ({
   objectDetailsData,
   sourceSchema,
   mapping,
-  fieldData,
-  onSelect,
+  field,
   peer,
 }: ConvertSourceRelationshipInputParams) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -142,7 +146,7 @@ export const ConvertSourceRelationshipOneInput = ({
     });
 
   const currentOption = availableOptions?.find((nodeOption) => {
-    return nodeOption.source.name === fieldData.source?.name;
+    return nodeOption.source.name === field.value.source?.name;
   });
 
   return (
@@ -162,9 +166,17 @@ export const ConvertSourceRelationshipOneInput = ({
               <ComboboxItem
                 key={option.source.name}
                 value={option.source.name}
-                selectedValue={fieldData.source?.name}
+                selectedValue={field.value.source?.name}
                 onSelect={() => {
-                  onSelect(option);
+                  field.onChange({
+                    source: {
+                      type: "source",
+                      label: option.source.label,
+                      name: option.source.name,
+                      node: option.value,
+                    },
+                    value: option.value?.id,
+                  });
                   setIsOpen(false);
                 }}
               >
@@ -190,11 +202,12 @@ export const ConvertSourceRelationshipManyInput = ({
   objectDetailsData,
   sourceSchema,
   mapping,
-  fieldData,
-  onSelect,
+  field,
   peer,
 }: ConvertSourceRelationshipInputParams) => {
   const [open, setOpen] = useState(false);
+
+  const fieldData = field.value;
 
   const availableOptions = sourceSchema?.relationships
     ?.filter((relationship) => {
@@ -260,13 +273,20 @@ export const ConvertSourceRelationshipManyInput = ({
           }, {})
         : {};
 
-      onSelect(filteredOptions, cleanedSourceMapping);
+      field.onChange({
+        source: { type: "source", values: cleanedSourceMapping },
+        value: filteredOptions,
+      });
     } else {
       const newSourceMapping = {
         ...fieldData.source.values,
         [selectedId]: selectedSource,
       };
-      onSelect([...filteredOptions, selectedId], newSourceMapping);
+
+      field.onChange({
+        source: { type: "source", values: newSourceMapping },
+        value: [...filteredOptions, selectedId],
+      });
     }
   };
 
@@ -282,7 +302,7 @@ export const ConvertSourceRelationshipManyInput = ({
           )}
         >
           <div className="space-x-2">
-            {fieldData?.value?.map((nodeId: string) => {
+            {field.value?.value?.map((nodeId: string) => {
               const node = availableOptions.find((nodeOption) => {
                 return nodeOption.value?.id === nodeId;
               })?.value;
@@ -295,7 +315,7 @@ export const ConvertSourceRelationshipManyInput = ({
                 <Badge key={nodeId} className="space-x-1">
                   <span>{getNodeLabel(node)}</span>
                   <span className="font-light text-gray-700">
-                    • {fieldData.source?.values?.[nodeId].label}
+                    • {field.value.source?.values?.[nodeId].label}
                   </span>
                   <Button
                     size="icon"
