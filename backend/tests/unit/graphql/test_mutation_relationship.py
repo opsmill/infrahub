@@ -604,7 +604,7 @@ async def test_relationship_groups_remove(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
-
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
     )
@@ -862,6 +862,7 @@ async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branc
         c1.id,
     )
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
