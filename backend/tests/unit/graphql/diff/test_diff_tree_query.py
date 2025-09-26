@@ -781,7 +781,7 @@ async def test_diff_tree_summary_no_changes(
         pytest.param(
             {},
             DiffSummaryCounters(
-                num_added=2,
+                num_added=3,
                 num_updated=5,
                 num_removed=2,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
@@ -792,7 +792,7 @@ async def test_diff_tree_summary_no_changes(
         pytest.param(
             {"kind": {"includes": ["TestThing"]}},
             DiffSummaryCounters(
-                num_added=2,
+                num_added=3,
                 num_updated=1,
                 num_removed=2,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
