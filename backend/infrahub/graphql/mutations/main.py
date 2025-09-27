@@ -260,13 +260,13 @@ class InfrahubMutationMixin:
             if field_to_remove in fields:
                 fields.remove(field_to_remove)
 
-        await obj.save(db=db, fields=fields)
-
         after_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
-        if after_mutate_profile_ids:
+        if after_mutate_profile_ids or (not after_mutate_profile_ids and obj.uses_profiles()):
             node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
             await node_profiles_applier.apply_profiles(node=obj)
             await obj.save(db=db)
+        else:
+            obj.save(db=db, fields=fields)
 
         return obj
 
