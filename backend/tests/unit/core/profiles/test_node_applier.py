@@ -185,8 +185,3 @@ async def test_get_many_with_multiple_profiles_same_priority(
         updated_node=updated_crit_medium,
         expected_profile_attrs=[],
     )
-
-
-# TODO: test deleting profile relationships
-# TODO: test updating profile priorities
-# TODO: test updating profile attribute values (including NULL)

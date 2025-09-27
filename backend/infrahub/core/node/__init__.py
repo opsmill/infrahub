@@ -100,6 +100,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_updated_at(self) -> Timestamp | None:
         return self._updated_at
 
+    def uses_profiles(self) -> bool:
+        for attr_name in self.get_schema().attribute_names:
+            node_attr = getattr(self, attr_name, None)
+            if node_attr and node_attr.is_from_profile:
+                return True
+        return False
+
     async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> list[str] | None:
         """Return the Human friendly id of the node."""
         if not self._schema.human_friendly_id:
