@@ -133,9 +133,9 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
             workflow=DISPLAY_LABELS_PROCESS_JINJA2,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
+                "node_kind": node_kind,
                 "object_id": "{{ event.resource['infrahub.node.id'] }}",
-                "target_kind": "{{ event.resource['infrahub.node.kind'] }}",
+                "target_kind": target_kind,
                 "context": {
                     "__prefect_kind": "json",
                     "value": {
