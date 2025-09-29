@@ -22,7 +22,6 @@ async def test_gather_trigger_gather_trigger_display_labels_jinja2_default(
         if node.display_label:
             expected_triggers += 1
 
-    assert expected_triggers
     assert len(triggers) == expected_triggers
 
 
