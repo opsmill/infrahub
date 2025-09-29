@@ -387,7 +387,7 @@ COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
 DISPLAY_LABELS_SETUP_JINJA2 = WorkflowDefinition(
     name="display-labels-setup-jinja2",
     type=WorkflowType.CORE,
-    module="infrahub.displaylabels.tasks",
+    module="infrahub.display_labels.tasks",
     function="display_labels_setup_jinja2",
 )
 
