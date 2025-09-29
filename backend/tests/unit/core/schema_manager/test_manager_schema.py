@@ -1363,23 +1363,19 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
         ),
         (
             "my_generic_name__something",
-            "InfraGenericInterface.display_label: something is not a valid property of my_generic_name",
+            "InfraGenericInterface.display_label - non Jinja2: something is not a valid property of my_generic_name",
         ),
         (
             "status__value",
-            "InfraGenericInterface.display_label: value is not a valid attribute of BuiltinStatus",
+            "InfraGenericInterface.display_label - non Jinja2: value is not a valid attribute of BuiltinStatus",
         ),
         (
             "badges__name__value",
-            re.escape(
-                "InfraGenericInterface.display_label: cannot use badges relationship, relationship must be of cardinality one (`badges__name__value`)"
-            ),
+            "InfraGenericInterface.display_label - non Jinja2: this property only supports attributes, not relationships",
         ),
         (
             "badges",
-            re.escape(
-                "InfraGenericInterface.display_label: cannot use badges relationship, relationship must be of cardinality one (`badges`)"
-            ),
+            "InfraGenericInterface.display_label - non Jinja2: this property only supports attributes, not relationships",
         ),
     ],
 )
