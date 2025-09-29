@@ -972,6 +972,7 @@ class TestUserWorkflow01(TestInfrahubApp):
             "speed": "1000",
             "status": "active",
             "lacp_rate": "Normal",
+            "human_friendly_id": '["spine1","Ethernet8"]',
         }
         expected_new_interface = {
             "uuid": state.data["spine1_ethernet8_id"],
@@ -984,7 +985,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                 "relationship_name": "interfaces",
             },
             "contains_conflict": False,
-            "num_added": 10,
+            "num_added": 11,
             "num_removed": 0,
             "num_updated": 0,
             "num_conflicts": 0,
