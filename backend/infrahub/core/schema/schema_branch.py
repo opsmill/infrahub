@@ -19,6 +19,7 @@ from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     RESERVED_ATTR_GEN_NAMES,
+    RESERVED_ATTR_REL_HIERARCHICAL_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     BranchSupportType,
@@ -979,13 +980,25 @@ class SchemaBranch:
                 continue
 
             for attr in node.attributes:
-                if attr.name in RESERVED_ATTR_REL_NAMES or (
-                    isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
+                if (
+                    attr.name in RESERVED_ATTR_REL_NAMES
+                    or (isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES)
+                    or (
+                        node.is_generic_schema
+                        and node.hierarchical
+                        and attr.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES
+                    )
                 ):
                     raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
             for rel in node.relationships:
-                if rel.name in RESERVED_ATTR_REL_NAMES or (
-                    isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
+                if (
+                    rel.name in RESERVED_ATTR_REL_NAMES
+                    or (isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES)
+                    or (
+                        node.is_generic_schema
+                        and node.hierarchical
+                        and rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES
+                    )
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
