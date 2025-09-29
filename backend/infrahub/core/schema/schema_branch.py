@@ -1188,14 +1188,9 @@ class SchemaBranch:
             | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
         )
         for variable in variables:
-            try:
-                schema_path = self.validate_schema_path(
-                    node_schema=node, path=variable, allowed_path_types=allowed_path_types, element_name="display_label"
-                )
-            except ValueError as exc:
-                raise ValueError(
-                    f"{node.kind}: display_label the '{variable}' variable is not found within the schema path"
-                ) from exc
+            schema_path = self.validate_schema_path(
+                node_schema=node, path=variable, allowed_path_types=allowed_path_types, element_name="display_label"
+            )
 
             if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == "display_label":
                 raise ValueError(f"{node.kind}: display_label the '{variable}' variable is a reference to itself")
