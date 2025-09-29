@@ -1056,7 +1056,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if self._display_label is None:
             return
 
-        self._display_label.set_value(value=value)
+        self._display_label.set_value(value=value, manually_assigned=True)
 
     def _get_parent_relationship_name(self) -> str | None:
         """Return the name of the parent relationship is one is present"""
