@@ -41,9 +41,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
       <Card className="w-1/2 p-0">
         <CardWithBorder.Title className="flex h-19 flex-col">
           <span className="font-normal">SOURCE</span>{" "}
-          <div className="flex h-full items-center">
-            {objectDetailsData.display_label ?? objectDetailsData.hfid}
-          </div>
+          <div className="flex h-full items-center">{objectSchema.label}</div>
         </CardWithBorder.Title>
 
         <ObjectDetailsContent
@@ -80,14 +78,12 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
         )}
 
         {targetSchema?.kind && objectSchema.kind && (
-          <div className="p-2">
-            <ConvertForm
-              key={targetSchema.kind}
-              objectDetailsData={objectDetailsData}
-              sourceSchema={objectSchema}
-              targetSchema={targetSchema}
-            />
-          </div>
+          <ConvertForm
+            key={targetSchema.kind}
+            objectDetailsData={objectDetailsData}
+            sourceSchema={objectSchema}
+            targetSchema={targetSchema}
+          />
         )}
       </Card>
     </div>

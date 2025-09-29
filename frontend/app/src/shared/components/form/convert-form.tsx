@@ -1,4 +1,5 @@
 import { useAtomValue } from "jotai";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
@@ -12,7 +13,6 @@ import {
   ConvertSourceRelationshipManyInput,
   ConvertSourceRelationshipOneInput,
 } from "@/shared/components/inputs/convert-source-input";
-import { Input } from "@/shared/components/inputs/input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 
@@ -22,7 +22,9 @@ import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 
+import { Radio, RadioGroup } from "../aria/radio-group";
 import { ALERT_TYPES, Alert } from "../ui/alert";
+import { DynamicField } from "./dynamic-form";
 
 export type ConvertFormProps = {
   objectDetailsData: NodeObject;
@@ -30,10 +32,7 @@ export type ConvertFormProps = {
   targetSchema: ModelSchema;
 };
 
-const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
-  const navigate = useNavigate();
-
-  const schemaKindLabel = useAtomValue(schemaKindNameState);
+const ConvertFormWapper = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
   const {
     data: mappings,
     isPending,
@@ -43,14 +42,6 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     targetKind: targetSchema.kind!,
   });
 
-  const { mutateAsync: convertObject } = useConvertObjectMutation();
-
-  const fields = getFormFieldsFromSchema({
-    schema: targetSchema,
-    parentSchema: null,
-    parentData: null,
-  });
-
   if (isPending) {
     return <LoadingIndicator />;
   }
@@ -58,6 +49,34 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
   if (error) {
     return <ErrorScreen message="An error occurred while fetching the fields mapping" />;
   }
+
+  return (
+    <ConvertForm
+      mappings={mappings}
+      objectDetailsData={objectDetailsData}
+      sourceSchema={sourceSchema}
+      targetSchema={targetSchema}
+    />
+  );
+};
+
+const ConvertForm = ({
+  mappings,
+  objectDetailsData,
+  sourceSchema,
+  targetSchema,
+}: ConvertFormProps) => {
+  const navigate = useNavigate();
+
+  const schemaKindLabel = useAtomValue(schemaKindNameState);
+
+  const { mutateAsync: convertObject } = useConvertObjectMutation();
+
+  const fields = getFormFieldsFromSchema({
+    schema: targetSchema,
+    parentSchema: null,
+    parentData: null,
+  });
 
   const formDefaultValues = fields.reduce((acc, field) => {
     const hasMapping = !!mappings[field.name]?.source_field_name;
@@ -125,6 +144,8 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
     return { ...acc, [field.name]: field.defaultValue };
   }, {});
 
+  const form = useForm({ defaultValues: formDefaultValues });
+
   const handleSubmit = async (formData) => {
     const fieldsMapping = Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {
       if (fieldData.source.type === "source") {
@@ -175,7 +196,6 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
       { nodeId: objectDetailsData.id, targetKind: targetSchema.kind, fieldsMapping },
       {
         onSuccess: async (result) => {
-          console.log("result: ", result);
           toast(<Alert type={ALERT_TYPES.SUCCESS} message="Object converted!" />);
           const path = constructPath(`/objects/${targetSchema.kind}/${result.id}`);
 
@@ -195,109 +215,130 @@ const ConvertForm = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertF
   };
 
   return (
-    <Form defaultValue={formDefaultValues} onSubmit={handleSubmit}>
-      {fields.map(({ name, label, unique, description, rules, attribute, relationship }) => {
-        const defaultValue = formDefaultValues[name];
+    <Form form={form} onSubmit={handleSubmit}>
+      <div className="divide-y divide-gray-300">
+        {fields.map((fieldProps) => {
+          const { name, label, unique, description, rules, attribute, relationship } = fieldProps;
 
-        return (
-          <FormField
-            key={name}
-            name={name}
-            rules={rules}
-            defaultValue={defaultValue}
-            render={({ field }) => {
-              const handleSourceChange = (newSource: string) => {
-                if (newSource === "source") {
-                  field.onChange({
-                    source: { ...defaultValue?.source, type: "source" },
-                    value: defaultValue?.value,
-                  });
-                }
+          const defaultValue = formDefaultValues[name];
 
-                if (newSource === "custom") {
-                  field.onChange({
-                    source: { type: "schema" },
-                    value: defaultValue?.value,
-                  });
-                }
-              };
+          const currentField = form.watch(name);
 
-              const handleInputValueChange = (newValue: string) => {
-                field.onChange({
-                  source: { type: "user" },
-                  value: newValue,
-                });
-              };
+          const handleSourceChange = (newSource: string) => {
+            if (newSource === "source") {
+              form.setValue(name, {
+                source: { ...defaultValue?.source, type: "source" },
+                value: defaultValue?.value,
+              });
+            }
 
-              return (
-                <div className="space-y-2">
-                  <ConvertLabelFormField
-                    label={label}
-                    unique={unique}
-                    required={!!rules?.required}
-                    description={description}
-                    kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
-                    onChange={handleSourceChange}
-                    value={field.value.source?.type === "source" ? "source" : "custom"}
-                  />
+            if (newSource === "schema") {
+              form.setValue(name, {
+                source: { type: "schema" },
+                value: defaultValue?.value,
+              });
+            }
+          };
 
-                  <Row>
-                    <FormInput>
-                      <div className="grow">
-                        {field.value.source?.type === "source" && attribute && (
-                          <ConvertSourceAttributeInput
-                            objectDetailsData={objectDetailsData}
-                            sourceSchema={sourceSchema}
-                            mapping={mappings?.[field.name]}
-                            kind={attribute.kind}
-                            field={field}
+          const handleInputChange = (newValue) => {
+            form.setValue(name, {
+              source: { type: "user" },
+              value: newValue,
+            });
+          };
+
+          return (
+            <div key={name} className="flex items-center gap-2 px-2 py-4">
+              <div className="flex-grow">
+                {currentField?.source?.type !== "source" && (
+                  <DynamicField {...fieldProps} onChange={handleInputChange} />
+                )}
+
+                {currentField?.source?.type === "source" && (
+                  <FormField
+                    name={name}
+                    rules={rules}
+                    defaultValue={defaultValue}
+                    render={({ field }) => {
+                      return (
+                        <div className="space-y-2">
+                          <ConvertLabelFormField
+                            label={label}
+                            unique={unique}
+                            required={!!rules?.required}
+                            description={description}
+                            kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
                           />
-                        )}
 
-                        {field.value.source?.type === "source" &&
-                          relationship?.peer &&
-                          relationship.cardinality === "one" && (
-                            <ConvertSourceRelationshipOneInput
-                              objectDetailsData={objectDetailsData}
-                              sourceSchema={sourceSchema}
-                              mapping={mappings?.[field.name]}
-                              peer={relationship.peer}
-                              field={field}
-                            />
-                          )}
+                          <Row>
+                            <FormInput>
+                              <div className="grow">
+                                {field.value.source?.type === "source" && attribute && (
+                                  <ConvertSourceAttributeInput
+                                    objectDetailsData={objectDetailsData}
+                                    sourceSchema={sourceSchema}
+                                    mapping={mappings?.[field.name]}
+                                    kind={attribute.kind}
+                                    field={field}
+                                  />
+                                )}
 
-                        {field.value.source?.type === "source" &&
-                          relationship?.peer &&
-                          relationship.cardinality === "many" && (
-                            <ConvertSourceRelationshipManyInput
-                              objectDetailsData={objectDetailsData}
-                              sourceSchema={sourceSchema}
-                              mapping={mappings?.[field.name]}
-                              peer={relationship.peer}
-                              field={field}
-                            />
-                          )}
+                                {field.value.source?.type === "source" &&
+                                  relationship?.peer &&
+                                  relationship.cardinality === "one" && (
+                                    <ConvertSourceRelationshipOneInput
+                                      objectDetailsData={objectDetailsData}
+                                      sourceSchema={sourceSchema}
+                                      mapping={mappings?.[field.name]}
+                                      peer={relationship.peer}
+                                      field={field}
+                                    />
+                                  )}
 
-                        {field.value.source?.type !== "source" && (
-                          <Input {...field} onChange={handleInputValueChange} />
-                        )}
-                      </div>
-                    </FormInput>
-                  </Row>
+                                {field.value.source?.type === "source" &&
+                                  relationship?.peer &&
+                                  relationship.cardinality === "many" && (
+                                    <ConvertSourceRelationshipManyInput
+                                      objectDetailsData={objectDetailsData}
+                                      sourceSchema={sourceSchema}
+                                      mapping={mappings?.[field.name]}
+                                      peer={relationship.peer}
+                                      field={field}
+                                    />
+                                  )}
+                              </div>
+                            </FormInput>
+                          </Row>
 
-                  <FormMessage />
-                </div>
-              );
-            }}
-          />
-        );
-      })}
+                          <FormMessage />
+                        </div>
+                      );
+                    }}
+                  />
+                )}
+              </div>
 
-      <div className="text-right">
-        <FormSubmit>Convert</FormSubmit>
+              <RadioGroup
+                orientation="vertical"
+                value={currentField?.source?.type === "source" ? "source" : "schema"}
+                onChange={(newValue) => {
+                  return handleSourceChange(newValue);
+                }}
+                className="text-sm"
+              >
+                <Radio value="source">From source</Radio>
+                <Radio value="schema">Custom value</Radio>
+              </RadioGroup>
+            </div>
+          );
+        })}
+
+        <div className="text-right">
+          <FormSubmit>Convert</FormSubmit>
+        </div>
       </div>
     </Form>
   );
 };
 
-export default ConvertForm;
+export default ConvertFormWapper;
