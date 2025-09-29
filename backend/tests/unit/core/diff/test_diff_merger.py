@@ -641,7 +641,7 @@ class TestMergeDiff:
                 "_relation__source": person_node_main2.id,
             },
         )
-        await car_main.owner.save(db=db)
+        await car_main.save(db=db)
 
         source_branch = await create_branch(db=db, branch_name="source")
 

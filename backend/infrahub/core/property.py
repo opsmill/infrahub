@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -24,6 +25,10 @@ class ValuePropertyData(BaseModel):
 class NodePropertyData(BaseModel):
     name: str
     peer_id: str
+
+
+class ClearValue(Enum):
+    CLEAR = "clear"
 
 
 class FlagPropertyMixin:
@@ -51,6 +56,7 @@ class NodePropertyMixin:
         for node in self._node_properties:
             setattr(self, f"_{node}", None)
             setattr(self, f"{node}_id", None)
+            setattr(self, f"_clear_{node}", False)
 
         if not kwargs:
             return
@@ -79,12 +85,14 @@ class NodePropertyMixin:
 
     def clear_owner(self) -> None:
         self._set_node_property(name="owner", value=None)
+        self._clear_owner = True
 
     async def get_source(self, db: InfrahubDatabase) -> Node | None:
         return await self._get_node_property(name="source", db=db)
 
     def clear_source(self) -> None:
         self._set_node_property(name="source", value=None)
+        self._clear_source = True
 
     def set_source(self, value: str | Node | UUID) -> None:
         self._set_node_property(name="source", value=value)
@@ -94,6 +102,9 @@ class NodePropertyMixin:
 
     def set_owner(self, value: str | Node | UUID) -> None:
         self._set_node_property(name="owner", value=value)
+
+    def is_clear(self, name: str) -> bool:
+        return getattr(self, f"_clear_{name}", False)
 
     def _get_node_property_from_cache(self, name: str) -> Node:
         """Return the node attribute if it's already present locally,

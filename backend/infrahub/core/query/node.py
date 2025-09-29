@@ -668,16 +668,32 @@ class NodeListGetAttributeQuery(Query):
 
         if self.include_source:
             query = """
-            OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
-            WHERE all(r IN [rel_source] WHERE ( %(branch_filter)s ))
+            CALL (a) {
+                OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
+                WHERE all(r IN [rel_source] WHERE ( %(branch_filter)s ))
+                RETURN source, rel_source
+                ORDER BY rel_source.branch_level DESC, rel_source.from DESC, rel_source.status ASC
+                LIMIT 1
+            }
+            WITH *,
+                CASE WHEN rel_source.status = "active" THEN source ELSE NULL END AS source,
+                CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
             """ % {"branch_filter": branch_filter}
             self.add_to_query(query)
             self.return_labels.extend(["source", "rel_source"])
 
         if self.include_owner:
             query = """
-            OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
-            WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
+            CALL (a) {
+                OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
+                WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
+                RETURN owner, rel_owner
+                ORDER BY rel_owner.branch_level DESC, rel_owner.from DESC, rel_owner.status ASC
+                LIMIT 1
+            }
+            WITH *,
+                CASE WHEN rel_owner.status = "active" THEN owner ELSE NULL END AS owner,
+                CASE WHEN rel_owner.status = "active" THEN rel_owner ELSE NULL END AS rel_owner
             """ % {"branch_filter": branch_filter}
             self.add_to_query(query)
             self.return_labels.extend(["owner", "rel_owner"])
