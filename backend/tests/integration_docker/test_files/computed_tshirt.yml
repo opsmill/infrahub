@@ -59,8 +59,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "{{ name__value }} - {{ color__name__value }}"
     inherit_from:
       - TestingWearable
     attributes:
