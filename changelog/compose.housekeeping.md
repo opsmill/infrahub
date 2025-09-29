@@ -1,0 +1,1 @@
+Update docs to download compose file first and then run compose up/down.
