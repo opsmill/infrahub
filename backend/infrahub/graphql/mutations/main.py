@@ -266,7 +266,7 @@ class InfrahubMutationMixin:
             await node_profiles_applier.apply_profiles(node=obj)
             await obj.save(db=db)
         else:
-            obj.save(db=db, fields=fields)
+            await obj.save(db=db, fields=fields)
 
         return obj
 
