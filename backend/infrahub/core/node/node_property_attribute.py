@@ -29,11 +29,14 @@ class NodePropertyAttribute:
         self.node_schema = node_schema
         self.node_attributes: list[str] = []
         self.node_relationships: list[str] = []
+        self._manually_assigned = False
 
         self.analyze_variables()
 
     def needs_update(self, fields: list[str] | None) -> bool:
-        """Tell if a display label must be recomputed given a list of updated fields of a node."""
+        """Tell if a display label must be recomputed given a list of updated fields of a node or by manual assignment."""
+        if self._manually_assigned:
+            return True
         for field in fields or []:
             if field in self.node_attributes or field in self.node_relationships:
                 return True
@@ -81,12 +84,15 @@ class DisplayLabel(NodePropertyAttribute):
             return self._value.value
         return self._value
 
-    def set_value(self, value: str | None) -> None:
+    def set_value(self, value: str | None, manually_assigned: bool = False) -> None:
         """Force the value of the display label to the given one."""
         if isinstance(self._value, AttributeFromDB):
             self._value.value = value
         else:
             self._value = value
+
+        if manually_assigned:
+            self._manually_assigned = True
 
     def _analyze_plain_value(self) -> None:
         if self.template is None or "__" not in self.template:
@@ -121,7 +127,7 @@ class DisplayLabel(NodePropertyAttribute):
 
     async def compute(self, db: InfrahubDatabase, node: Node) -> None:
         """Update the display label value by recomputing it from the template."""
-        if self.template is None:
+        if self.template is None or self._manually_assigned:
             return
 
         if node.get_schema() != self.node_schema:

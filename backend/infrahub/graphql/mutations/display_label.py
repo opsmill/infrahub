@@ -9,9 +9,13 @@ from infrahub.core.constants import PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
+from infrahub.events import EventMeta
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
+from infrahub.log import get_log_data
+from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -33,7 +37,7 @@ class UpdateDisplayLabel(Mutation):
     ok = Boolean()
 
     @classmethod
-    @retry_db_transaction(name="update_computed_attribute")
+    @retry_db_transaction(name="update_display_label")
     async def mutate(
         cls,
         _: dict,
@@ -46,7 +50,7 @@ class UpdateDisplayLabel(Mutation):
             name=str(data.kind), branch=graphql_context.branch.name, duplicate=False
         )
         if not node_schema.display_label:
-            raise ValidationError(input_value=f"{node_schema.kind}.display_label has not been defined for this kind")
+            raise ValidationError(input_value=f"{node_schema.kind}.display_label has not been defined for this kind.")
 
         graphql_context.active_permissions.raise_for_permission(
             permission=ObjectPermission(
@@ -70,16 +74,35 @@ class UpdateDisplayLabel(Mutation):
             )
         ):
             raise NodeNotFoundError(
-                node_type="target_node",
+                node_type=node_schema.kind,
                 identifier=str(data.id),
-                message="The indicated node was not found in the database",
+                message="The targeted node was not found in the database",
             )
 
         existing_label = target_node._display_label.value if target_node._display_label else None
-        print(existing_label)
+        if str(data.value) != existing_label:
+            await target_node.set_display_label(value=str(data.value))
 
-        # TODO: Add the proper code here and send the correct event to
-        # indicate that the display_label was updated
+            async with graphql_context.db.start_transaction() as dbt:
+                await target_node.save(db=dbt, fields=["display_label"])
+
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
+
+            event = NodeUpdatedEvent(
+                kind=node_schema.kind,
+                node_id=target_node.get_id(),
+                changelog=target_node.node_changelog.model_dump(),
+                fields=["display_label"],
+                meta=EventMeta(
+                    context=graphql_context.get_context(),
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=request_id,
+                    account_id=graphql_context.active_account_session.account_id,
+                    branch=graphql_context.branch,
+                ),
+            )
+            await graphql_context.active_service.event.send(event=event)
 
         result: dict[str, Any] = {"ok": True}
 
