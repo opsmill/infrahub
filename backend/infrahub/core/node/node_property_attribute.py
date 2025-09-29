@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from abc import abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -85,7 +84,7 @@ class DisplayLabel(NodePropertyAttribute):
         if self.template is None:
             return False
 
-        return bool(re.search(r"{{.+}}", self.template) or re.search(r"{%.+%}", self.template))
+        return any(c in self.template for c in "{}")
 
     @property
     def attribute_value(self) -> AttributeFromDB | dict[str, str | None]:
@@ -111,12 +110,10 @@ class DisplayLabel(NodePropertyAttribute):
             return
 
         items = self.template.split("__", maxsplit=1)
-        if items[0] in self.node_schema.attribute_names:
-            self.node_attributes.append(items[0])
-        elif items[0] in self.node_schema.relationship_names:
-            self.node_relationships.append(items[0])
-        else:
-            raise ValueError(f"{items[0]} is neither an attribute or a relationship of {self.node_schema.kind}")
+        if items[0] not in self.node_schema.attribute_names:
+            raise ValueError(f"{items[0]} is not an attribute of {self.node_schema.kind}")
+
+        self.node_attributes.append(items[0])
 
     def _analyze_jinja2_value(self) -> None:
         if self.template is None or not self.is_jinja2_template:
