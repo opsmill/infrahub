@@ -26,19 +26,24 @@ This guide shows you how to create comprehensive backups of your Infrahub deploy
 Install the infrahubops CLI tool:
 
 ```bash
-curl -L https://github.com/opsmill/infrahub-ops-cli/releases/latest/download/infrahubops-$(uname -s)-$(uname -m) -o infrahubops
+curl https://infrahub.opsmill.io/ops/$(uname -s)/$(uname -m) -o infrahubops
 chmod +x infrahubops
 ```
 
 </TabItem>
-<TabItem value="manual" label="Manual Process">
+<TabItem value="manual" label="Docker Compose">
 
 If you prefer manual control, proceed to backup each component individually as described in the following steps.
 
 </TabItem>
+<TabItem value="remote" label="Remote Database">
+
+Alternatively, you can use the [legacy tool](#using-the-python-based-backup-utility) to backup a remote Neo4j database.
+
+</TabItem>
 </Tabs>
 
-### Step 2: Backup the Neo4j database
+### Step 2: Backup the databases
 
 <Tabs groupId="backup-method">
 <TabItem value="infrahubops" label="infrahubops CLI" default>
@@ -62,7 +67,7 @@ Artifact storage backup is planned for future versions and must currently be han
 :::
 
 </TabItem>
-<TabItem value="docker" label="Docker Compose">
+<TabItem value="manual" label="Docker Compose">
 
 Connect to your Neo4j container and create a backup:
 
@@ -77,6 +82,14 @@ neo4j-admin database backup --to-path=backups/
 # Verify backup creation
 ls backups/
 # Output: neo4j-2025-03-24T19-57-18.backup
+```
+
+Backup the Prefect PostgreSQL database containing task logs and execution history:
+
+```bash
+# Export Prefect database (using default credentials)
+docker compose exec -T task-manager-db \
+  pg_dump -Fc -U postgres -d prefect > prefect.dump
 ```
 
 </TabItem>
@@ -119,27 +132,17 @@ For local filesystem storage, copy the artifact directory:
 
 ```bash
 # Copy artifacts directory to backup location
-cp -r /path/to/infrahub/artifacts /backup/artifacts/
+docker compose cp -r infrahub-server:/opt/infrahub/storage /backup/artifacts/
 ```
 
 </TabItem>
 </Tabs>
 
-### Step 4: Backup the task management database
-
-Backup the Prefect PostgreSQL database containing task logs and execution history:
-
-```bash
-# Export Prefect database (using default credentials)
-docker compose exec -T task-manager-db \
-  pg_dump -Fc -U postgres -d prefect > prefect.dump
-```
-
 ## Restore from backup
 
 ### Step 1: Prepare the environment
 
-Ensure Infrahub services are running before starting the restore process.
+Ensure Infrahub services are running before starting the restore process. You can start from a scratch/blank deployment.
 
 <Tabs groupId="restore-method">
 <TabItem value="infrahubops" label="infrahubops CLI" default>
@@ -167,12 +170,20 @@ If restoring manually, follow the steps below for each component.
 </TabItem>
 </Tabs>
 
-### Step 2: Restore the Neo4j database
+### Step 2: Restore the databases
 
 <Tabs groupId="restore-method">
-<TabItem value="docker" label="Docker Compose" default>
+<TabItem value="infrahubops" label="infrahubops CLI" default>
+
+This is automatically handled by infrahubops.
+
+</TabItem>
+<TabItem value="manual" label="Docker Compose">
 
 ```bash
+# Stop app services
+docker compose stop task-worker infrahub-server task-manager
+
 # Copy backup directory to container
 docker cp database-backup infrahub-database-1:/tmp/backup
 
@@ -197,6 +208,17 @@ neo4j-admin database restore \
 cypher-shell -d system -u neo4j
 CREATE DATABASE neo4j;
 SHOW DATABASES;
+```
+
+Restore the task manager PostgreSQL database
+
+```bash
+# Restore Prefect database
+docker compose exec -T task-manager-db \
+  pg_restore -d postgres -U postgres --clean --create prefect.dump
+
+# Restart task manager to apply changes
+docker compose restart task-manager
 ```
 
 </TabItem>
@@ -233,28 +255,27 @@ cp -r /backup/artifacts/ /path/to/infrahub/artifacts/
 </TabItem>
 </Tabs>
 
-### Step 4: Restore the task management database
+### Step 4: Restart Infrahub services
 
-```bash
-# Restore Prefect database
-docker compose exec -T task-manager-db \
-  pg_restore -d postgres -U postgres --clean --create prefect.dump
+<Tabs groupId="restore-restart-services">
+<TabItem value="infrahubops" label="infrahubops CLI" default>
 
-# Restart task manager to apply changes
-docker compose restart task-manager
-```
+This is automatically handled by infrahubops.
 
-### Step 5: Restart Infrahub services
-
+</TabItem>
+<TabItem value="manual" label="Docker Compose">
 Restart services in the correct order to ensure proper initialization:
 
 ```bash
 # Restart API servers first
-docker compose start infrahub-server
+docker compose restart infrahub-server
 
 # Then restart task workers
-docker compose start task-worker
+docker compose restart task-worker
 ```
+
+</TabItem>
+</Tabs>
 
 ## Validation
 
@@ -301,6 +322,14 @@ If you're running Infrahub with a Neo4j cluster, follow these steps to backup fr
 :::caution
 Always run backup and restore commands as the `neo4j` user inside containers to avoid permission issues with data files.
 :::
+
+Example cluster topology
+
+| Node             | Role     |
+|------------------|----------|
+| `database`       | Leader   |
+| `database-core2` | Follower |
+| `database-core3` | Follower |
 
 ### Step 1: Create backup from a follower node
 
