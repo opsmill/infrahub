@@ -1356,10 +1356,15 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
 @pytest.mark.parametrize(
     "display_label,expected_error",
     [
-        ("{{ mybool }}", ""),
+        (
+            "{{ mybool }}",
+            re.escape(
+                "InfraGenericInterface.display_label: invalid attribute, it must end with one of the following properties: value. (`mybool`)"
+            ),
+        ),
         (
             "{{ mybool__value }} {{ notanattribute__value }}",
-            "InfraGenericInterface: display_label the 'notanattribute__value' variable is not found within the schema path",
+            "InfraGenericInterface.display_label: notanattribute__value is invalid on schema InfraGenericInterface",
         ),
         (
             "my_generic_name__something",
