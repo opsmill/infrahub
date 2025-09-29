@@ -375,14 +375,16 @@ You can also specify a sizing preset in the URL. This will automatically configu
 <TabItem value="macOS" default>
 
 ```bash
-curl https://infrahub.opsmill.io/enterprise | docker compose -p infrahub -f - up -d
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+docker compose -p infrahub up -d
 ```
 
 </TabItem>
 <TabItem value="Linux">
 
-```bash
-curl https://infrahub.opsmill.io/enterprise | sudo docker compose -p infrahub -f - up -d
+    ```bash
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+sudo docker compose -p infrahub up -d
 ```
 
 </TabItem>
@@ -394,14 +396,16 @@ curl https://infrahub.opsmill.io/enterprise | sudo docker compose -p infrahub -f
 <TabItem value="macOS" default>
 
 ```bash
-curl https://infrahub.opsmill.io/enterprise | docker compose -p infrahub -f - down -v
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+docker compose -p infrahub down -v
 ```
 
 </TabItem>
 <TabItem value="Linux">
 
 ```bash
-curl https://infrahub.opsmill.io/enterprise | sudo docker compose -p infrahub -f - down -v
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+sudo docker compose -p infrahub down -v
 ```
 
 </TabItem>
