@@ -1,1 +1,1 @@
-Update docs to download compose file first and then run compose up/down.
+Update docs to download compose file first and then run compose up/down. This change was made due to community members using the one liner for long standing installations without the docker-compose.yml file locally. The new approach is more explicit and easier for the community to maintain their Infrahub instances in the future.
