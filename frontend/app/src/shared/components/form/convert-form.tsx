@@ -191,6 +191,8 @@ const ConvertForm = ({
       return acc;
     }, {});
 
+    console.log("fieldsMapping: ", fieldsMapping);
+    return;
     await convertObject(
       { nodeId: objectDetailsData.id, targetKind: targetSchema.kind, fieldsMapping },
       {
@@ -214,162 +216,126 @@ const ConvertForm = ({
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
-      <div className="divide-y divide-gray-300">
-        {fields.map(({ ...fieldProps }) => {
-          console.log("fieldProps: ", fieldProps);
-          const {
-            name,
-            label,
-            type,
-            unique,
-            description,
-            rules,
-            attribute,
-            relationship,
-            defaultValue: fieldDefaultValue,
-          } = fieldProps;
+    <Form onSubmit={handleSubmit} className="divide-y divide-gray-300">
+      {fields.map(({ ...fieldProps }) => {
+        const {
+          name,
+          label,
+          unique,
+          description,
+          rules,
+          attribute,
+          relationship,
+          defaultValue: fieldDefaultValue,
+        } = fieldProps;
 
-          const hasMapping = !!mappings[name]?.source_field_name;
-          console.log("hasMapping: ", hasMapping);
+        const hasMapping = !!mappings[name]?.source_field_name;
 
-          const schemaKindLabel = useAtomValue(schemaKindNameState);
+        const schemaKindLabel = useAtomValue(schemaKindNameState);
 
-          const defaultValue = formDefaultValues[name];
+        const defaultValue = formDefaultValues[name];
 
-          return (
-            <FormField
-              key={name}
-              name={name}
-              rules={rules}
-              defaultValue={defaultValue}
-              render={({ field }) => {
-                const fieldData = field.value;
-                console.log("---");
-                console.log("fieldData: ", name, fieldData);
-                console.log("fieldDefaultValue?.source: ", fieldDefaultValue?.source);
-                console.log(
-                  'fieldData?.source?.type === "source": ',
-                  fieldData?.source?.type === "source"
-                );
+        return (
+          <FormField
+            key={name}
+            name={name}
+            rules={rules}
+            render={({ field }) => {
+              const fieldData = field.value;
 
-                const sourceDefaultValue = {
-                  source: { ...defaultValue?.source, type: "source" },
-                  value: defaultValue?.value,
-                };
-                console.log("sourceDefaultValue: ", sourceDefaultValue);
+              const handleSourceChange = (newSource: string) => {
+                if (newSource === "source") {
+                  field.onChange({
+                    source: { ...defaultValue?.source, type: "source" },
+                    value: defaultValue?.value,
+                  });
+                }
 
-                const handleSourceChange = (newSource: string) => {
-                  if (newSource === "source") {
-                    field.onChange(sourceDefaultValue);
-                  }
+                if (newSource === "schema") {
+                  field.onChange(fieldDefaultValue);
+                }
+              };
 
-                  if (newSource === "schema") {
-                    field.onChange(fieldDefaultValue);
-                  }
-                };
+              return (
+                <div className="flex items-center gap-2 px-2 py-4">
+                  <div className="flex-grow">
+                    {fieldData?.source?.type !== "source" && <DynamicField {...fieldProps} />}
 
-                // const handleInputChange = (newValue) => {
-                //   field.onChange({
-                //     source: { type: "user" },
-                //     value: newValue,
-                //   });
-                // };
-
-                return (
-                  <div className="flex items-center gap-2 px-2 py-4">
-                    <div className="flex-grow">
-                      {fieldData?.source?.type !== "source" && (
-                        <DynamicField
-                          name={name}
+                    {fieldData?.source?.type === "source" && (
+                      <div className="space-y-2">
+                        <ConvertLabelFormField
                           label={label}
+                          unique={unique}
+                          required={!!rules?.required}
                           description={description}
-                          defaultValue={
-                            fieldData?.source?.type === "source" ? sourceDefaultValue : defaultValue
-                          }
-                          rules={rules}
-                          type={type}
-                          attribute={attribute}
-                          relationship={relationship}
+                          kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
                         />
-                      )}
 
-                      {fieldData?.source?.type === "source" && (
-                        <div className="space-y-2">
-                          <ConvertLabelFormField
-                            label={label}
-                            unique={unique}
-                            required={!!rules?.required}
-                            description={description}
-                            kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
-                          />
+                        <Row>
+                          <FormInput>
+                            <div className="grow">
+                              {fieldData.source?.type === "source" && attribute && (
+                                <ConvertSourceAttributeInput
+                                  objectDetailsData={objectDetailsData}
+                                  sourceSchema={sourceSchema}
+                                  mapping={mappings[name]}
+                                  kind={attribute.kind}
+                                  field={field}
+                                />
+                              )}
 
-                          <Row>
-                            <FormInput>
-                              <div className="grow">
-                                {fieldData.source?.type === "source" && attribute && (
-                                  <ConvertSourceAttributeInput
+                              {fieldData.source?.type === "source" &&
+                                relationship?.peer &&
+                                relationship.cardinality === "one" && (
+                                  <ConvertSourceRelationshipOneInput
                                     objectDetailsData={objectDetailsData}
                                     sourceSchema={sourceSchema}
                                     mapping={mappings[name]}
-                                    kind={attribute.kind}
+                                    peer={relationship.peer}
                                     field={field}
                                   />
                                 )}
 
-                                {fieldData.source?.type === "source" &&
-                                  relationship?.peer &&
-                                  relationship.cardinality === "one" && (
-                                    <ConvertSourceRelationshipOneInput
-                                      objectDetailsData={objectDetailsData}
-                                      sourceSchema={sourceSchema}
-                                      mapping={mappings[name]}
-                                      peer={relationship.peer}
-                                      field={field}
-                                    />
-                                  )}
+                              {fieldData.source?.type === "source" &&
+                                relationship?.peer &&
+                                relationship.cardinality === "many" && (
+                                  <ConvertSourceRelationshipManyInput
+                                    objectDetailsData={objectDetailsData}
+                                    sourceSchema={sourceSchema}
+                                    mapping={mappings[name]}
+                                    peer={relationship.peer}
+                                    field={field}
+                                  />
+                                )}
+                            </div>
+                          </FormInput>
+                        </Row>
 
-                                {fieldData.source?.type === "source" &&
-                                  relationship?.peer &&
-                                  relationship.cardinality === "many" && (
-                                    <ConvertSourceRelationshipManyInput
-                                      objectDetailsData={objectDetailsData}
-                                      sourceSchema={sourceSchema}
-                                      mapping={mappings[name]}
-                                      peer={relationship.peer}
-                                      field={field}
-                                    />
-                                  )}
-                              </div>
-                            </FormInput>
-                          </Row>
-
-                          <FormMessage />
-                        </div>
-                      )}
-                    </div>
-
-                    <RadioGroup
-                      orientation="vertical"
-                      value={fieldData?.source?.type === "source" ? "source" : "schema"}
-                      onChange={(newValue) => {
-                        return handleSourceChange(newValue);
-                      }}
-                      className="text-sm"
-                    >
-                      <Radio value="source">From source</Radio>
-                      <Radio value="schema">Custom value</Radio>
-                    </RadioGroup>
+                        <FormMessage />
+                      </div>
+                    )}
                   </div>
-                );
-              }}
-            />
-          );
-        })}
 
-        <div className="text-right">
-          <FormSubmit>Convert</FormSubmit>
-        </div>
+                  <RadioGroup
+                    orientation="vertical"
+                    value={fieldData?.source?.type === "source" ? "source" : "schema"}
+                    onChange={(newValue) => {
+                      return handleSourceChange(newValue);
+                    }}
+                    className="text-sm"
+                  >
+                    <Radio value="source">From source</Radio>
+                    <Radio value="schema">Custom value</Radio>
+                  </RadioGroup>
+                </div>
+              );
+            }}
+          />
+        );
+      })}
+
+      <div className="text-right">
+        <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>
   );

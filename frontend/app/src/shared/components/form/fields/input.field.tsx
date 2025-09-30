@@ -31,7 +31,6 @@ const InputField = ({
   isBulkUpdate,
   ...props
 }: InputFieldProps) => {
-  console.log("defaultValue: ", defaultValue);
   return (
     <FormField
       key={name}
