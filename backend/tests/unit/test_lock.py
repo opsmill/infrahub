@@ -60,3 +60,34 @@ def test_generate_name():
     assert generate_name("simple.name", namespace="other") == "other.simple.name"
     assert generate_name("simple", namespace="other", local=True) == "local.other.simple"
     assert generate_name("simple", namespace="other", local=False) == "global.other.simple"
+
+
+async def test_reentrant_lock_allows_nested_acquisitions():
+    lock.initialize_lock(local_only=True)
+
+    events: list[str] = []
+
+    async def reentrant_task() -> None:
+        async with lock.registry.get(name="resource_pool.test"):
+            events.append("outer acquired")
+            async with lock.registry.get(name="resource_pool.test"):
+                events.append("inner acquired")
+                await sleep(delay=0.1)
+            events.append("inner released")
+            await sleep(delay=0.1)
+        events.append("outer released")
+
+    async def waiting_task() -> None:
+        await sleep(delay=0.05)
+        async with lock.registry.get(name="resource_pool.test"):
+            events.append("waiter acquired")
+
+    await gather(reentrant_task(), waiting_task())
+
+    assert events == [
+        "outer acquired",
+        "inner acquired",
+        "inner released",
+        "outer released",
+        "waiter acquired",
+    ]

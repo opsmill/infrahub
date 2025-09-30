@@ -4,7 +4,7 @@ import asyncio
 import time
 import uuid
 from asyncio import Lock as LocalLock
-from asyncio import sleep
+from asyncio import Task, current_task, sleep
 from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
@@ -132,6 +132,8 @@ class InfrahubLock:
         self.lock_type: str = "multi" if self.in_multi else "individual"
         self.acquire_time: int | None = None
         self.event = asyncio.Event()
+        self._owner_task: Task | None = None
+        self._recursion_depth: int = 0
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -155,6 +157,14 @@ class InfrahubLock:
         await self.release()
 
     async def acquire(self) -> None:
+        task = current_task()
+        if task is None:
+            raise RuntimeError("Cannot acquire lock outside of an asyncio Task.")
+
+        if self._owner_task is task:
+            self._recursion_depth += 1
+            return
+
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
             if not self.use_local:
                 await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
@@ -162,14 +172,33 @@ class InfrahubLock:
                 await self.local.acquire()
         self.acquire_time = time.time_ns()
         self.event.clear()
+        self._owner_task = task
+        self._recursion_depth = 1
 
     async def release(self) -> None:
-        duration_ns = time.time_ns() - self.acquire_time
-        LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
+        task = current_task()
+        if task is None:
+            raise RuntimeError("Cannot release lock outside of an asyncio Task.")
+
+        if self._owner_task is not task:
+            raise RuntimeError("Lock release attempted by non-owner task.")
+
+        if self._recursion_depth > 1:
+            self._recursion_depth -= 1
+            return
+
+        if self.acquire_time is not None:
+            duration_ns = time.time_ns() - self.acquire_time
+            LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
+            self.acquire_time = None
+
         if not self.use_local:
             await self.remote.release()
         else:
             self.local.release()
+
+        self._owner_task = None
+        self._recursion_depth = 0
         self.event.set()
 
     async def locked(self) -> bool:
