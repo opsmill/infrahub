@@ -803,17 +803,22 @@ async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNames
 
 
 @pytest.mark.parametrize(
-    "reserved_name",
-    [pytest.param(reserved_name, id=reserved_name) for reserved_name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES],
+    "index,reserved_name",
+    [
+        pytest.param(index, reserved_name, id=reserved_name)
+        for index, reserved_name in enumerate(RESERVED_ATTR_REL_HIERARCHICAL_NAMES)
+    ],
 )
-async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_from_api(reserved_name: str):
+async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_from_api(
+    index: int, reserved_name: str
+):
     schema1 = {
         "generics": [
             {
                 "name": "Location",
                 "namespace": "Generic",
                 "hierarchical": True,
-                "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
+                "attributes": [{"name": f"name_location_{index}", "unique": True, "optional": False, "kind": "Text"}],
             }
         ],
         "nodes": [
@@ -843,10 +848,10 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
             {
                 "name": "Child",
                 "namespace": "Testing",
-                "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
+                "attributes": [{"name": f"name_{index}", "unique": True, "optional": False, "kind": "Text"}],
                 "relationships": [
                     {
-                        "name": "parent",
+                        "name": f"relation_{index}",
                         "kind": "Attribute",
                         "optional": False,
                         "peer": "TestingParent",
@@ -856,7 +861,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
             },
         ],
     }
-    schema = SchemaBranch(cache={}, name="test")
+    schema = SchemaBranch(cache={}, name=f"test_{index}")
     schema.load_schema(schema=SchemaRoot(**schema1), loading_from_api=True)
 
     with pytest.raises(ValueError) as exc:
@@ -872,7 +877,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
                 "name": "Location",
                 "namespace": "Generic",
                 "hierarchical": True,
-                "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
+                "attributes": [{"name": f"name_location_{index}", "unique": True, "optional": False, "kind": "Text"}],
             }
         ],
         "nodes": [
@@ -892,7 +897,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
                 "attributes": [{"name": reserved_name, "unique": True, "optional": False, "kind": "Text"}],
                 "relationships": [
                     {
-                        "name": "name",
+                        "name": f"relationship_{index}",
                         "kind": "Generic",
                         "optional": True,
                         "peer": "TestingChild",
@@ -903,10 +908,10 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
             {
                 "name": "Child",
                 "namespace": "Testing",
-                "attributes": [{"name": "parent", "unique": True, "optional": False, "kind": "Text"}],
+                "attributes": [{"name": f"sample_{index}", "unique": True, "optional": False, "kind": "Text"}],
                 "relationships": [
                     {
-                        "name": "name_2",
+                        "name": f"child_name_{index}",
                         "kind": "Attribute",
                         "optional": False,
                         "peer": "TestingParent",
@@ -916,7 +921,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_
             },
         ],
     }
-    schema = SchemaBranch(cache={}, name="test")
+    schema = SchemaBranch(cache={}, name=f"test_{index}")
     schema.load_schema(schema=SchemaRoot(**schema2), loading_from_api=True)
 
     with pytest.raises(ValueError) as exc:

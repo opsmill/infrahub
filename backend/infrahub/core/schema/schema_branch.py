@@ -514,7 +514,6 @@ class SchemaBranch:
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
-        self.validate_hierarchical_nodes_restricted_words()
         self.process_branch_support()
         self.manage_object_template_schemas()
         self.manage_object_template_relationships()
@@ -524,6 +523,7 @@ class SchemaBranch:
         self.add_hierarchy_node()
 
     def process_validate(self) -> None:
+        self.validate_hierarchical_nodes_restricted_words()
         self.validate_names()
         self.validate_python_keywords()
         self.validate_kinds()
