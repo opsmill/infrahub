@@ -13,7 +13,6 @@ from ..attribute import BaseAttribute, ListAttribute, String
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
-    from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
@@ -32,22 +31,6 @@ class NodePropertyAttribute:
         self.node_relationships: list[str] = []
 
         self.analyze_variables()
-
-    async def _get_element_value(self, db: InfrahubDatabase, path: str, node: Node) -> Any:
-        schema_path = self.node_schema.parse_schema_path(
-            path=path, schema=db.schema.get_schema_branch(name=node.get_branch().name)
-        )
-
-        if schema_path.is_type_attribute:
-            attr = getattr(node, schema_path.active_attribute_schema.name)
-            return getattr(node, schema_path.active_attribute_property_name)
-
-        # Not an attribute so matching schema_path.is_type_relationship:
-        relm: RelationshipManager = getattr(self, schema_path.active_relationship_schema.name)
-        await relm.resolve(db=db)
-        peer = await relm.get_peer(db=db)
-        attr = getattr(peer, schema_path.active_attribute_schema.name)
-        return getattr(attr, schema_path.active_attribute_property_name)
 
     def needs_update(self, fields: list[str] | None) -> bool:
         """Tell if a display label must be recomputed given a list of updated fields of a node."""
