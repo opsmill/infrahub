@@ -1026,7 +1026,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if self._human_friendly_id is None:
             return
 
-        self._human_friendly_id.set_value(value=value)
+        self._human_friendly_id.set_value(value=value, manually_assigned=True)
 
     async def set_display_label(self, value: str | None) -> None:
         """Set the display label of this node if one is set. `save()` must be called to commit the change in the database."""

@@ -185,12 +185,15 @@ class HumanFriendlyIdentifier(NodePropertyAttribute):
             return self._value.value
         return self._value
 
-    def set_value(self, value: list[str] | None) -> None:
+    def set_value(self, value: list[str] | None, manually_assigned: bool = False) -> None:
         """Force the value of the HFID to the given one."""
         if isinstance(self._value, AttributeFromDB):
             self._value.value = value
         else:
             self._value = value
+
+        if manually_assigned:
+            self._manually_assigned = True
 
     def _analyze_single_variable(self, value: str) -> None:
         items = value.split("__", maxsplit=1)
@@ -208,7 +211,7 @@ class HumanFriendlyIdentifier(NodePropertyAttribute):
 
     async def compute(self, db: InfrahubDatabase, node: Node) -> None:
         """Update the HFID value by recomputing it from the template."""
-        if self.template is None:
+        if self.template is None or self._manually_assigned:
             return
 
         if node.get_schema() != self.node_schema:
