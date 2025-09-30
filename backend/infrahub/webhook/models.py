@@ -231,7 +231,7 @@ class TransformWebhook(Webhook):
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",
             convert_query_response=self.convert_query_response,
-            data={"data": data, **context.model_dump()},
+            data={"data": {"data": data, **context.model_dump()}},
             client=client,
         )  # type: ignore[misc]
 
