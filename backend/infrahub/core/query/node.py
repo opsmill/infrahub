@@ -11,6 +11,7 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
     RelationshipDirection,
     RelationshipHierarchyDirection,
@@ -605,6 +606,7 @@ class NodeListGetAttributeQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
+        self.params["profile_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
@@ -613,6 +615,7 @@ class NodeListGetAttributeQuery(Query):
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
+        WITH n, exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_relationship_name})) AS might_use_profile
         MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
         """
         if self.fields:
@@ -625,18 +628,18 @@ class NodeListGetAttributeQuery(Query):
         CALL (n, a) {
             MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
             WHERE %(branch_filter)s
-            RETURN n as n1, r as r1, a as a1
+            RETURN r AS r1
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n1 as n, r1, a1 as a
+        WITH n, r1, a, might_use_profile
         WHERE r1.status = "active"
-        WITH n, r1, a
+        WITH n, r1, a, might_use_profile
         MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
         WHERE %(branch_filter)s
-        CALL (a) {
+        CALL (a, might_use_profile) {
             OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
-            WHERE %(branch_filter)s
+            WHERE might_use_profile = TRUE AND %(branch_filter)s
             RETURN r.status = "active" AS has_active_profile
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
