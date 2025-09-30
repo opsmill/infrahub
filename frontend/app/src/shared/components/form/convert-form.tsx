@@ -127,7 +127,7 @@ const ConvertForm = ({
             label: field.label,
             name: field.name,
           },
-          value: objectDetailsData[field.name]?.node?.id,
+          value: objectDetailsData[field.name]?.node,
         },
       };
     }
@@ -147,6 +147,7 @@ const ConvertForm = ({
   }, {});
 
   const handleSubmit = async (formData) => {
+    console.log("formData: ", formData);
     const fieldsMapping = Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {
       if (fieldData.source?.type === "source") {
         return {
@@ -228,6 +229,10 @@ const ConvertForm = ({
 
         const [source, setSource] = useState(hasMapping ? "source" : "schema");
 
+        const handleSourceChange = (newSource: string) => {
+          setSource(newSource);
+        };
+
         return (
           <div key={name} className="flex items-center gap-4 px-2 py-4">
             <div className="flex-grow">
@@ -249,7 +254,7 @@ const ConvertForm = ({
             <RadioGroup
               orientation="vertical"
               value={source}
-              onChange={setSource}
+              onChange={handleSourceChange}
               className="text-sm"
               aria-label="Select source"
             >

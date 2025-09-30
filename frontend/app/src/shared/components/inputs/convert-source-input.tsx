@@ -178,7 +178,7 @@ export const ConvertSourceRelationshipOneInput = ({
                       name: option.source.name,
                       node: option.value,
                     },
-                    value: option.value?.id,
+                    value: option.value,
                   });
                   setOpen(false);
                 }}
