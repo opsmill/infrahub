@@ -720,7 +720,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
             self._updated_at = Timestamp(updated_at)
 
-        if self._schema.namespace != "Schema":
+        if not self._schema.is_schema_node:
             if hfid := kwargs.pop("human_friendly_id", None):
                 self._human_friendly_id = HumanFriendlyIdentifier(
                     node_schema=self._schema, template=self._schema.human_friendly_id, value=hfid
@@ -736,7 +736,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
 
-        if self._schema.namespace != "Schema":
+        if not self._schema.is_schema_node:
             if self._schema.human_friendly_id:
                 self._human_friendly_id = HumanFriendlyIdentifier(
                     node_schema=self._schema, template=self._schema.human_friendly_id
