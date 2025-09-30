@@ -13,6 +13,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    RESERVED_ATTR_REL_HIERARCHICAL_NAMES,
     AllowOverrideType,
     BranchSupportType,
     HashableModelState,
@@ -784,112 +785,6 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
         },
         expected_error="TestCriticality: save isn't allowed as an attribute name.",
     ),
-    SchemaBranchValidateNamesTestCaseData(
-        name="generics-relationship-reserved-names-test",
-        schema={
-            "generics": [
-                {
-                    "name": "Location",
-                    "namespace": "Generic",
-                    "hierarchical": True,
-                    "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
-                }
-            ],
-            "nodes": [
-                {
-                    "name": "Site",
-                    "namespace": "Location",
-                    "inherit_from": ["GenericLocation"],
-                    "children": "TestingParent",
-                    "parent": "",
-                },
-                {
-                    "name": "Parent",
-                    "namespace": "Testing",
-                    "inherit_from": ["GenericLocation"],
-                    "children": "",
-                    "parent": "LocationSite",
-                    "relationships": [
-                        {
-                            "name": "children",
-                            "kind": "Generic",
-                            "optional": True,
-                            "peer": "TestingChild",
-                            "cardinality": "many",
-                        }
-                    ],
-                },
-                {
-                    "name": "Child",
-                    "namespace": "Testing",
-                    "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
-                    "relationships": [
-                        {
-                            "name": "parent",
-                            "kind": "Attribute",
-                            "optional": False,
-                            "peer": "TestingParent",
-                            "cardinality": "one",
-                        }
-                    ],
-                },
-            ],
-        },
-        expected_error="TestingParent: children isn't allowed as a relationship name.",
-    ),
-    SchemaBranchValidateNamesTestCaseData(
-        name="generics-attribute-reserved-names-test",
-        schema={
-            "generics": [
-                {
-                    "name": "Location",
-                    "namespace": "Generic",
-                    "hierarchical": True,
-                    "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
-                }
-            ],
-            "nodes": [
-                {
-                    "name": "Site",
-                    "namespace": "Location",
-                    "inherit_from": ["GenericLocation"],
-                    "children": "TestingParent",
-                    "parent": "",
-                },
-                {
-                    "name": "Parent",
-                    "namespace": "Testing",
-                    "inherit_from": ["GenericLocation"],
-                    "children": "",
-                    "parent": "LocationSite",
-                    "relationships": [
-                        {
-                            "name": "name",
-                            "kind": "Generic",
-                            "optional": True,
-                            "peer": "TestingChild",
-                            "cardinality": "many",
-                        }
-                    ],
-                },
-                {
-                    "name": "Child",
-                    "namespace": "Testing",
-                    "attributes": [{"name": "parent", "unique": True, "optional": False, "kind": "Text"}],
-                    "relationships": [
-                        {
-                            "name": "name_2",
-                            "kind": "Attribute",
-                            "optional": False,
-                            "peer": "TestingParent",
-                            "cardinality": "one",
-                        }
-                    ],
-                },
-            ],
-        },
-        expected_error="TestingChild: parent isn't allowed as an attribute name.",
-    ),
 ]
 
 
@@ -905,6 +800,129 @@ async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNames
         schema.validate_names()
 
     assert str(exc.value) == test_case.expected_error
+
+
+@pytest.mark.parametrize(
+    "reserved_name",
+    [pytest.param(reserved_name, id=reserved_name) for reserved_name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES],
+)
+async def test_schema_validate_hierarchical_nodes_restricted_words(reserved_name: str):
+    schema1 = {
+        "generics": [
+            {
+                "name": "Location",
+                "namespace": "Generic",
+                "hierarchical": True,
+                "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["GenericLocation"],
+                "children": "TestingParent",
+                "parent": "",
+            },
+            {
+                "name": "Parent",
+                "namespace": "Testing",
+                "inherit_from": ["GenericLocation"],
+                "children": "",
+                "parent": "LocationSite",
+                "relationships": [
+                    {
+                        "name": reserved_name,
+                        "kind": "Generic",
+                        "optional": True,
+                        "peer": "TestingChild",
+                        "cardinality": "many",
+                    }
+                ],
+            },
+            {
+                "name": "Child",
+                "namespace": "Testing",
+                "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "parent",
+                        "kind": "Attribute",
+                        "optional": False,
+                        "peer": "TestingParent",
+                        "cardinality": "one",
+                    }
+                ],
+            },
+        ],
+    }
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema1))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process()
+
+    assert (
+        str(exc.value) == f"TestingParent: {reserved_name} isn't allowed as a relationship name on hierarchical nodes."
+    )
+
+    schema2 = {
+        "generics": [
+            {
+                "name": "Location",
+                "namespace": "Generic",
+                "hierarchical": True,
+                "attributes": [{"name": "name", "unique": True, "optional": False, "kind": "Text"}],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "inherit_from": ["GenericLocation"],
+                "children": "TestingParent",
+                "parent": "",
+            },
+            {
+                "name": "Parent",
+                "namespace": "Testing",
+                "inherit_from": ["GenericLocation"],
+                "children": "",
+                "parent": "LocationSite",
+                "attributes": [{"name": reserved_name, "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "name",
+                        "kind": "Generic",
+                        "optional": True,
+                        "peer": "TestingChild",
+                        "cardinality": "many",
+                    }
+                ],
+            },
+            {
+                "name": "Child",
+                "namespace": "Testing",
+                "attributes": [{"name": "parent", "unique": True, "optional": False, "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": "name_2",
+                        "kind": "Attribute",
+                        "optional": False,
+                        "peer": "TestingParent",
+                        "cardinality": "one",
+                    }
+                ],
+            },
+        ],
+    }
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema2))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process()
+
+    assert str(exc.value) == f"TestingParent: {reserved_name} isn't allowed as an attribute name on hierarchical nodes."
 
 
 async def test_schema_branch_validate_identifiers():

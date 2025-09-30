@@ -64,7 +64,7 @@ from infrahub.visuals import select_color
 
 from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER
-from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
+from .constants import CORE_SCHEMA_NODE_KINDS, INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
@@ -510,6 +510,7 @@ class SchemaBranch:
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
+        self.validate_hierarchical_nodes_restricted_words()
         self.process_branch_support()
         self.manage_object_template_schemas()
         self.manage_object_template_relationships()
@@ -980,27 +981,38 @@ class SchemaBranch:
                 continue
 
             for attr in node.attributes:
-                if (
-                    attr.name in RESERVED_ATTR_REL_NAMES
-                    or (isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES)
-                    or (
-                        node.is_generic_schema
-                        and node.hierarchical
-                        and attr.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES
-                    )
+                if attr.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
             for rel in node.relationships:
-                if (
-                    rel.name in RESERVED_ATTR_REL_NAMES
-                    or (isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES)
-                    or (
-                        node.is_generic_schema
-                        and node.hierarchical
-                        and rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES
-                    )
+                if rel.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+
+    def validate_hierarchical_nodes_restricted_words(self) -> None:
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            if node.kind in INTERNAL_SCHEMA_NODE_KINDS or node.kind in CORE_SCHEMA_NODE_KINDS:
+                continue
+
+            is_hierarchical_node = (isinstance(node, GenericSchema) and node.hierarchical) or (
+                isinstance(node, NodeSchema) and node.hierarchy
+            )
+
+            for attr in node.attributes:
+                if is_hierarchical_node and attr.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+                    raise ValueError(
+                        f"{node.kind}: {attr.name} isn't allowed as an attribute name on hierarchical nodes."
+                    )
+
+            for rel in node.relationships:
+                if is_hierarchical_node and rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+                    raise ValueError(
+                        f"{node.kind}: {rel.name} isn't allowed as a relationship name on hierarchical nodes."
+                    )
 
     def validate_python_keywords(self) -> None:
         """Validate that attribute and relationship names don't use Python keywords."""
