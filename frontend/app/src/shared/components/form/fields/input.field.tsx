@@ -40,7 +40,6 @@ const InputField = ({
       render={({ field }) => {
         const [override, setOverride] = React.useState(false);
         const fieldData: FormAttributeValue = field.value;
-        console.log("fieldData: ", fieldData);
         const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
         return (

@@ -1,4 +1,5 @@
 import { useAtomValue } from "jotai";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
@@ -76,6 +77,10 @@ const ConvertForm = ({
   });
 
   const formDefaultValues = fields.reduce((acc, field) => {
+    return { ...acc, [field.name]: field.defaultValue };
+  }, {});
+
+  const sourceDefaultValues = fields.reduce((acc, field) => {
     const hasMapping = !!mappings[field.name]?.source_field_name;
 
     if (!hasMapping) {
@@ -217,120 +222,41 @@ const ConvertForm = ({
 
   return (
     <Form onSubmit={handleSubmit} className="divide-y divide-gray-300">
-      {fields.map(({ ...fieldProps }) => {
-        const {
-          name,
-          label,
-          unique,
-          description,
-          rules,
-          attribute,
-          relationship,
-          defaultValue: fieldDefaultValue,
-        } = fieldProps;
-
+      {fields.map((fieldProps) => {
+        const { name } = fieldProps;
         const hasMapping = !!mappings[name]?.source_field_name;
 
-        const schemaKindLabel = useAtomValue(schemaKindNameState);
-
-        const defaultValue = formDefaultValues[name];
+        const [source, setSource] = useState(hasMapping ? "source" : "schema");
 
         return (
-          <FormField
-            key={name}
-            name={name}
-            rules={rules}
-            render={({ field }) => {
-              const fieldData = field.value;
+          <div key={name} className="flex items-center gap-4 px-2 py-4">
+            <div className="flex-grow">
+              {source !== "source" && (
+                <DynamicField {...fieldProps} defaultValue={formDefaultValues[name]} />
+              )}
 
-              const handleSourceChange = (newSource: string) => {
-                if (newSource === "source") {
-                  field.onChange({
-                    source: { ...defaultValue?.source, type: "source" },
-                    value: defaultValue?.value,
-                  });
-                }
+              {source === "source" && (
+                <SourceField
+                  {...fieldProps}
+                  objectDetailsData={objectDetailsData}
+                  sourceSchema={sourceSchema}
+                  mapping={mappings[name]}
+                  defaultValue={sourceDefaultValues[name]}
+                />
+              )}
+            </div>
 
-                if (newSource === "schema") {
-                  field.onChange(fieldDefaultValue);
-                }
-              };
-
-              return (
-                <div className="flex items-center gap-2 px-2 py-4">
-                  <div className="flex-grow">
-                    {fieldData?.source?.type !== "source" && <DynamicField {...fieldProps} />}
-
-                    {fieldData?.source?.type === "source" && (
-                      <div className="space-y-2">
-                        <ConvertLabelFormField
-                          label={label}
-                          unique={unique}
-                          required={!!rules?.required}
-                          description={description}
-                          kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
-                        />
-
-                        <Row>
-                          <FormInput>
-                            <div className="grow">
-                              {fieldData.source?.type === "source" && attribute && (
-                                <ConvertSourceAttributeInput
-                                  objectDetailsData={objectDetailsData}
-                                  sourceSchema={sourceSchema}
-                                  mapping={mappings[name]}
-                                  kind={attribute.kind}
-                                  field={field}
-                                />
-                              )}
-
-                              {fieldData.source?.type === "source" &&
-                                relationship?.peer &&
-                                relationship.cardinality === "one" && (
-                                  <ConvertSourceRelationshipOneInput
-                                    objectDetailsData={objectDetailsData}
-                                    sourceSchema={sourceSchema}
-                                    mapping={mappings[name]}
-                                    peer={relationship.peer}
-                                    field={field}
-                                  />
-                                )}
-
-                              {fieldData.source?.type === "source" &&
-                                relationship?.peer &&
-                                relationship.cardinality === "many" && (
-                                  <ConvertSourceRelationshipManyInput
-                                    objectDetailsData={objectDetailsData}
-                                    sourceSchema={sourceSchema}
-                                    mapping={mappings[name]}
-                                    peer={relationship.peer}
-                                    field={field}
-                                  />
-                                )}
-                            </div>
-                          </FormInput>
-                        </Row>
-
-                        <FormMessage />
-                      </div>
-                    )}
-                  </div>
-
-                  <RadioGroup
-                    orientation="vertical"
-                    value={fieldData?.source?.type === "source" ? "source" : "schema"}
-                    onChange={(newValue) => {
-                      return handleSourceChange(newValue);
-                    }}
-                    className="text-sm"
-                  >
-                    <Radio value="source">From source</Radio>
-                    <Radio value="schema">Custom value</Radio>
-                  </RadioGroup>
-                </div>
-              );
-            }}
-          />
+            <RadioGroup
+              orientation="vertical"
+              value={source}
+              onChange={setSource}
+              className="text-sm"
+              aria-label="Select source"
+            >
+              <Radio value="source">From source</Radio>
+              <Radio value="schema">Custom value</Radio>
+            </RadioGroup>
+          </div>
         );
       })}
 
@@ -338,6 +264,81 @@ const ConvertForm = ({
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>
+  );
+};
+
+const SourceField = ({
+  objectDetailsData,
+  sourceSchema,
+  mapping,
+  name,
+  label,
+  unique,
+  description,
+  rules,
+  attribute,
+  relationship,
+  defaultValue,
+}) => {
+  const schemaKindLabel = useAtomValue(schemaKindNameState);
+
+  return (
+    <FormField
+      name={name}
+      rules={rules}
+      defaultValue={defaultValue}
+      render={({ field }) => {
+        return (
+          <div className="space-y-2">
+            <ConvertLabelFormField
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+              kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
+            />
+
+            <Row>
+              <FormInput>
+                <div className="grow">
+                  {attribute && (
+                    <ConvertSourceAttributeInput
+                      objectDetailsData={objectDetailsData}
+                      sourceSchema={sourceSchema}
+                      mapping={mapping}
+                      kind={attribute.kind}
+                      field={field}
+                    />
+                  )}
+
+                  {relationship?.peer && relationship.cardinality === "one" && (
+                    <ConvertSourceRelationshipOneInput
+                      objectDetailsData={objectDetailsData}
+                      sourceSchema={sourceSchema}
+                      mapping={mapping}
+                      peer={relationship.peer}
+                      field={field}
+                    />
+                  )}
+
+                  {relationship?.peer && relationship.cardinality === "many" && (
+                    <ConvertSourceRelationshipManyInput
+                      objectDetailsData={objectDetailsData}
+                      sourceSchema={sourceSchema}
+                      mapping={mapping}
+                      peer={relationship.peer}
+                      field={field}
+                    />
+                  )}
+                </div>
+              </FormInput>
+            </Row>
+
+            <FormMessage />
+          </div>
+        );
+      }}
+    />
   );
 };
 

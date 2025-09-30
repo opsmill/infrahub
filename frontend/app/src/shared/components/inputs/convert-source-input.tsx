@@ -50,6 +50,8 @@ export const ConvertSourceAttributeInput = ({
 }: ConvertSourceAttributeInputParams) => {
   const [open, setOpen] = useState(false);
 
+  const fieldData = field.value;
+
   const availableOptions = sourceSchema?.attributes
     ?.filter((attribute) => {
       return attribute.kind === kind;
@@ -67,7 +69,7 @@ export const ConvertSourceAttributeInput = ({
     });
 
   const currentOption = availableOptions?.find((option) => {
-    return option.source.name === field.value?.source?.name;
+    return option.source.name === fieldData?.source?.name;
   });
 
   return (
@@ -89,7 +91,7 @@ export const ConvertSourceAttributeInput = ({
               <ComboboxItem
                 key={option.source.name}
                 value={option.source.name}
-                selectedValue={field.value.source?.name}
+                selectedValue={fieldData?.source?.name}
                 onSelect={() => {
                   field.onChange({
                     source: {
@@ -129,6 +131,8 @@ export const ConvertSourceRelationshipOneInput = ({
 }: ConvertSourceRelationshipInputParams) => {
   const [open, setOpen] = useState(false);
 
+  const fieldData = field.value;
+
   const availableOptions = sourceSchema?.relationships
     ?.filter((relationship) => {
       return relationship.peer === peer;
@@ -145,7 +149,7 @@ export const ConvertSourceRelationshipOneInput = ({
     });
 
   const currentOption = availableOptions?.find((nodeOption) => {
-    return nodeOption.source.name === field.value.source?.name;
+    return nodeOption.source.name === fieldData.source?.name;
   });
 
   return (
@@ -165,7 +169,7 @@ export const ConvertSourceRelationshipOneInput = ({
               <ComboboxItem
                 key={option.source.name}
                 value={option.source.name}
-                selectedValue={field.value.source?.name}
+                selectedValue={fieldData.source?.name}
                 onSelect={() => {
                   field.onChange({
                     source: {
@@ -233,7 +237,7 @@ export const ConvertSourceRelationshipManyInput = ({
     }, []);
 
   const currentOption = availableOptions?.find((nodeOption) => {
-    return nodeOption.source.name === field.value.source?.name;
+    return nodeOption.source.name === fieldData?.source?.name;
   });
 
   return (
