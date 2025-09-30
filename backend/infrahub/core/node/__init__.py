@@ -1021,15 +1021,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return repr(self)
         return display_label.strip()
 
-    async def update_human_friendly_id(self, value: list[str] | None) -> None:
-        """Update the human friendly ID of this node if one is set. `save()` must be called to commit the change in the database."""
+    async def set_human_friendly_id(self, value: list[str] | None) -> None:
+        """Set the human friendly ID of this node if one is set. `save()` must be called to commit the change in the database."""
         if self._human_friendly_id is None:
             return
 
         self._human_friendly_id.set_value(value=value)
 
-    async def update_display_label(self, value: str | None) -> None:
-        """Update the display label of this node if one is set. `save()` must be called to commit the change in the database."""
+    async def set_display_label(self, value: str | None) -> None:
+        """Set the display label of this node if one is set. `save()` must be called to commit the change in the database."""
         if self._display_label is None:
             return
 
