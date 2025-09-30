@@ -115,6 +115,9 @@ def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -
                 uc_lock_name = ".".join(uc_attributes_values)
                 ucs_lock_names.append(uc_lock_name)
 
+        if not ucs_lock_names:
+            continue
+
         partial_lock_name = kind + "." + ".".join(ucs_lock_names)
         lock_names.append(build_object_lock_name(partial_lock_name))
 
