@@ -379,6 +379,15 @@ class InfrahubMutationMixin:
             return updated_obj, mutation, False
 
     @classmethod
+    async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:
+        db = graphql_context.db
+        async with db.start_transaction() as dbt:
+            deleted = await NodeManager.delete(db=dbt, branch=branch, nodes=[obj])
+        deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
+        log.info(f"nodes deleted: {deleted_str}")
+        return deleted
+
+    @classmethod
     @retry_db_transaction(name="object_delete")
     async def mutate_delete(
         cls,
@@ -396,11 +405,7 @@ class InfrahubMutationMixin:
             branch=branch,
         )
 
-        async with graphql_context.db.start_transaction() as db:
-            deleted = await NodeManager.delete(db=db, branch=branch, nodes=[obj])
-
-        deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
-        log.info(f"nodes deleted: {deleted_str}")
+        deleted = await cls._delete_obj(graphql_context=graphql_context, branch=branch, obj=obj)
 
         ok = True
 

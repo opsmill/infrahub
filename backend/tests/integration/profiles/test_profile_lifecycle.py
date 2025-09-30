@@ -273,51 +273,16 @@ class TestProfileLifecycle(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch,
         person_1,
+        client: InfrahubClient,
     ):
-        mutation = """
-            mutation {
-                ProfileTestingPersonCreate(data: {
-                    profile_name: {value: "profile-two"},
-                    profile_priority: {value: 5},
-                    height: {value: 156}
-                    related_nodes: [{id: "%(person_id)s"}]
-                } ) {
-                    ok
-                    object {
-                        related_nodes { edges { node { id } } }
-                        profile_name { value }
-                        profile_priority { value }
-                        height { value }
-                    }
-                }
-            }
-        """ % {"person_id": person_1.id}
-
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-        result = await graphql(
-            schema=gql_params.schema,
-            source=mutation,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={},
+        profile = await client.create(
+            kind="ProfileTestingPerson",
+            profile_name="profile-two",
+            profile_priority=5,
+            height=156,
+            related_nodes=[person_1.id],
         )
-
-        assert result.errors is None
-        assert result.data
-        assert result.data["ProfileTestingPersonCreate"]["ok"] is True
-        nodes = result.data["ProfileTestingPersonCreate"]["object"]["related_nodes"]["edges"]
-        assert len(nodes) == 1
-        assert nodes == [{"node": {"id": person_1.id}}]
-        attributes = result.data["ProfileTestingPersonCreate"]["object"]
-        assert attributes["profile_name"] == {"value": "profile-two"}
-        assert attributes["profile_priority"] == {"value": 5}
-        assert attributes["height"] == {"value": 156}
-
-        # TODO: remove after profile-level update logic is added
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
-        node_profile_applier = NodeProfilesApplier(db=db, branch=default_branch)
-        await node_profile_applier.apply_profiles(node=retrieved_person)
-        await retrieved_person.save(db=db)
+        await profile.save()
 
     async def test_step_06_get_person_multiple_profiles(self, person_1, person_profile_1, client: InfrahubClient):
         person_profile_2 = await client.get(kind="ProfileTestingPerson", profile_name__value="profile-two")
