@@ -47,7 +47,6 @@ async def object_profiles_refresh(
 async def objects_profiles_refresh_multiple(
     branch_name: str,
     node_ids: list[str],
-    # context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
 
@@ -57,10 +56,8 @@ async def objects_profiles_refresh_multiple(
         log.info(f"Requesting profile refresh for {node_id}")
         await get_workflow().submit_workflow(
             workflow=PROFILE_REFRESH,
-            # context=context,
             parameters={
                 "branch_name": branch_name,
                 "node_id": node_id,
-                # "context": context,
             },
         )

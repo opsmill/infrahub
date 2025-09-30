@@ -79,7 +79,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     async def _get_profile_related_node_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
-        related_nodes = await obj.profiles.get_relationships(db=db)  # type: ignore[attr-defined]
+        related_nodes = await obj.related_nodes.get_relationships(db=db)  # type: ignore[attr-defined]
         if related_nodes:
             related_node_ids = {rel.peer_id for rel in related_nodes}
         else:
@@ -122,7 +122,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         original_attr_values = cls._get_profile_attr_values_map(obj=obj)
         original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
 
-        obj, mutation = await super().mutate_update(
+        obj, mutation = await super()._call_mutate_update(
             info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
         )
 
@@ -185,9 +185,11 @@ class InfrahubProfilesRefresh(Mutation):
             db=db,
             branch=branch,
             id=str(data.id),
+            include_source=True,
         )
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
-        await node_profiles_applier.apply_profiles(node=obj)
-        await obj.save(db=db)
+        updated_fields = await node_profiles_applier.apply_profiles(node=obj)
+        if updated_fields:
+            await obj.save(db=db, fields=updated_fields)
 
         return cls(ok=True)
