@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection
@@ -23,6 +23,15 @@ if TYPE_CHECKING:
 class RelationshipSchema(GeneratedRelationshipSchema):
     _exclude_from_hash: list[str] = ["filters"]
     _sort_by: list[str] = ["name"]
+    _loaded_from_api: bool = PrivateAttr(default=False)
+
+    @property
+    def loaded_from_api(self) -> bool:
+        return self._loaded_from_api
+
+    @loaded_from_api.setter
+    def loaded_from_api(self, value: bool) -> None:
+        self._loaded_from_api = value
 
     @property
     def is_attribute(self) -> bool:

@@ -806,7 +806,7 @@ async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNames
     "reserved_name",
     [pytest.param(reserved_name, id=reserved_name) for reserved_name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES],
 )
-async def test_schema_validate_hierarchical_nodes_restricted_words(reserved_name: str):
+async def test_schema_validate_hierarchical_nodes_restricted_words_when_loading_from_api(reserved_name: str):
     schema1 = {
         "generics": [
             {
@@ -857,7 +857,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words(reserved_name
         ],
     }
     schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(**schema1))
+    schema.load_schema(schema=SchemaRoot(**schema1), loading_from_api=True)
 
     with pytest.raises(ValueError) as exc:
         schema.process()
@@ -917,7 +917,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words(reserved_name
         ],
     }
     schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(**schema2))
+    schema.load_schema(schema=SchemaRoot(**schema2), loading_from_api=True)
 
     with pytest.raises(ValueError) as exc:
         schema.process()

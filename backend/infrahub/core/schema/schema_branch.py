@@ -64,7 +64,7 @@ from infrahub.visuals import select_color
 
 from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER
-from .constants import CORE_SCHEMA_NODE_KINDS, INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
+from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
@@ -466,7 +466,7 @@ class SchemaBranch:
 
         return fields or None
 
-    def load_schema(self, schema: SchemaRoot) -> None:
+    def load_schema(self, schema: SchemaRoot, loading_from_api: bool = False) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
@@ -491,6 +491,10 @@ class SchemaBranch:
                 self.set(name=item.kind, schema=new_item)
             except SchemaNotFoundError:
                 self.set(name=item.kind, schema=item)
+
+            if loading_from_api:
+                for relationship in item.relationships:
+                    relationship.loaded_from_api = True
 
         for node_extension in schema.extensions.nodes:
             new_item = self.get(name=node_extension.kind)
@@ -998,11 +1002,7 @@ class SchemaBranch:
                 isinstance(node, NodeSchema) and node.hierarchy
             )
 
-            if (
-                not is_hierarchical_node
-                or node.kind in INTERNAL_SCHEMA_NODE_KINDS
-                or node.kind in CORE_SCHEMA_NODE_KINDS
-            ):
+            if not is_hierarchical_node or node.kind in INTERNAL_SCHEMA_NODE_KINDS:
                 continue
 
             for attr in node.attributes:
@@ -1012,7 +1012,7 @@ class SchemaBranch:
                     )
 
             for rel in node.relationships:
-                if rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+                if rel.loaded_from_api and rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
                     raise ValueError(
                         f"{node.kind}: {rel.name} isn't allowed as a relationship name on hierarchical nodes."
                     )
