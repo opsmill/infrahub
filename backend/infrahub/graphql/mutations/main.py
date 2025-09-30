@@ -263,10 +263,9 @@ class InfrahubMutationMixin:
         after_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
         if after_mutate_profile_ids or (not after_mutate_profile_ids and obj.uses_profiles()):
             node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
-            await node_profiles_applier.apply_profiles(node=obj)
-            await obj.save(db=db)
-        else:
-            await obj.save(db=db, fields=fields)
+            updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
+            fields += updated_field_names
+        await obj.save(db=db, fields=fields)
 
         return obj
 

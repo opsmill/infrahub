@@ -58,9 +58,11 @@ async def test_get_many_with_profile(
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
 
-    await node_applier.apply_profiles(node=crit_low)
+    updated_field_names = await node_applier.apply_profiles(node=crit_low)
+    assert updated_field_names == ["color"]
     await crit_low.save(db=db)
-    await node_applier.apply_profiles(node=criticality_medium)
+    updated_field_names = await node_applier.apply_profiles(node=criticality_medium)
+    assert updated_field_names == []
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
@@ -87,6 +89,12 @@ async def test_get_many_with_profile(
         expected_profile_attrs=[],
     )
 
+    # make sure field names returned by apply_profiles is idempotent
+    updated_field_names = await node_applier.apply_profiles(node=crit_low)
+    assert updated_field_names == []
+    updated_field_names = await node_applier.apply_profiles(node=updated_crit_low)
+    assert updated_field_names == []
+
 
 async def test_get_many_with_profile_generic(
     db: InfrahubDatabase,
@@ -97,11 +105,15 @@ async def test_get_many_with_profile_generic(
 ):
     generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=branch)
     generic_profile = await Node.init(db=db, branch=branch, schema=generic_profile_schema)
-    await generic_profile.new(db=db, profile_name="generic_profile", color="green", profile_priority=1001)
+    await generic_profile.new(
+        db=db, profile_name="generic_profile", color="green", is_true=False, profile_priority=1001
+    )
     await generic_profile.save(db=db)
     crit_profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     crit_profile = await Node.init(db=db, branch=branch, schema=crit_profile_schema)
-    await crit_profile.new(db=db, profile_name="crit_profile", color="blue", profile_priority=1002)
+    await crit_profile.new(
+        db=db, profile_name="crit_profile", color="blue", description="more turquoise", profile_priority=1002
+    )
     await crit_profile.save(db=db)
     crit_low = await NodeManager.get_one(db=db, branch=branch, id=criticality_low.id)
     await crit_low.profiles.update(db=db, data=[crit_profile, generic_profile])
@@ -109,9 +121,11 @@ async def test_get_many_with_profile_generic(
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
 
-    await node_applier.apply_profiles(node=crit_low)
+    updated_field_names = await node_applier.apply_profiles(node=crit_low)
+    assert set(updated_field_names) == {"color", "description", "is_true"}
     await crit_low.save(db=db)
-    await node_applier.apply_profiles(node=criticality_medium)
+    updated_field_names = await node_applier.apply_profiles(node=criticality_medium)
+    assert updated_field_names == []
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
@@ -120,6 +134,8 @@ async def test_get_many_with_profile_generic(
     assert len(node_map) == 2
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="green", source_uuid=generic_profile.id),
+        ExpectedProfileAttr(name="is_true", value=False, source_uuid=generic_profile.id),
+        ExpectedProfileAttr(name="description", value="more turquoise", source_uuid=crit_profile.id),
     ]
     updated_crit_low = node_map[criticality_low.id]
     await _validate_node_profile_attrs(
@@ -137,6 +153,12 @@ async def test_get_many_with_profile_generic(
         updated_node=updated_crit_medium,
         expected_profile_attrs=[],
     )
+
+    # make sure field names returned by apply_profiles is idempotent
+    updated_field_names = await node_applier.apply_profiles(node=crit_low)
+    assert updated_field_names == []
+    updated_field_names = await node_applier.apply_profiles(node=updated_crit_low)
+    assert updated_field_names == []
 
 
 async def test_get_many_with_multiple_profiles_same_priority(
@@ -158,7 +180,8 @@ async def test_get_many_with_multiple_profiles_same_priority(
     await crit_low.save(db=db)
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
-    await node_applier.apply_profiles(node=crit_low)
+    updated_field_names = await node_applier.apply_profiles(node=crit_low)
+    assert updated_field_names == ["color"]
     await crit_low.save(db=db)
 
     lowest_uuid_profile = sorted(crit_profiles, key=lambda p: p.id)[0]
@@ -185,3 +208,9 @@ async def test_get_many_with_multiple_profiles_same_priority(
         updated_node=updated_crit_medium,
         expected_profile_attrs=[],
     )
+
+    # make sure field names returned by apply_profiles is idempotent
+    updated_field_names = await node_applier.apply_profiles(node=crit_low)
+    assert updated_field_names == []
+    updated_field_names = await node_applier.apply_profiles(node=updated_crit_low)
+    assert updated_field_names == []
