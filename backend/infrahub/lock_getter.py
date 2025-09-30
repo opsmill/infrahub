@@ -79,15 +79,25 @@ def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch:
     Lock names include kind, some generic kinds, and values of attributes of corresponding uniqueness constraints.
     """
 
-    lock_names = []
-    # Check if node is using resource manager allocation
+    lock_names: list[str] = []
+
+    def _add_pool_lock(pool_id: str) -> None:
+        lock_name = f"resource_pool.{pool_id}"
+        if lock_name not in lock_names:
+            lock_names.append(lock_name)
+
+    # Check if node is using resource manager allocation via attributes
+    for attr_name in getattr(node, "_attributes", []):
+        attribute = getattr(node, attr_name, None)
+        if attribute is not None and getattr(attribute, "from_pool", None) and "id" in attribute.from_pool:
+            _add_pool_lock(attribute.from_pool["id"])
+
+    # Check if relationships allocate resources
     for rel_name in node._relationships:
         rel_manager: RelationshipManager = getattr(node, rel_name)
         for rel in rel_manager._relationships:
             if rel.from_pool and "id" in rel.from_pool:
-                lock_names.append(
-                    f"resource_pool.{rel.from_pool['id']}"
-                )  # lock on resource manager using the same lock we have in get_resource()
+                _add_pool_lock(rel.from_pool["id"])
 
     if not branch.is_default and not _should_kind_be_locked_on_any_branch(node.get_kind(), schema_branch):
         return lock_names
@@ -99,7 +109,7 @@ def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch:
         if ucs is None:
             continue
 
-        ucs_lock_names = []
+        ucs_lock_names: list[str] = []
         uc_attributes_names = set()
 
         for uc in ucs:
