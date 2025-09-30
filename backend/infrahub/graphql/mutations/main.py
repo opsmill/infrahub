@@ -211,7 +211,6 @@ class InfrahubMutationMixin:
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
         """
         before_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
-        await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
         fields = list(data.keys())
 
@@ -219,8 +218,19 @@ class InfrahubMutationMixin:
             if field_to_remove in fields:
                 fields.remove(field_to_remove)
 
+        # Prepare a clone to compute locks without triggering pool allocations
+        preview_obj = await NodeManager.get_one_by_id_or_default_filter(
+            db=db,
+            kind=obj.get_kind(),
+            id=obj.get_id(),
+            branch=branch,
+            include_owner=True,
+            include_source=True,
+        )
+        await preview_obj.from_graphql(db=db, data=data, process_pools=False)
+
         schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = get_lock_names_on_object_mutation(node=obj, branch=branch, schema_branch=schema_branch)
+        lock_names = get_lock_names_on_object_mutation(node=preview_obj, branch=branch, schema_branch=schema_branch)
 
         async def _mutate(current_db: InfrahubDatabase) -> tuple[Node, Self]:
             updated_obj = await cls.mutate_update_object(
@@ -235,7 +245,7 @@ class InfrahubMutationMixin:
                 previous_profile_ids=before_mutate_profile_ids,
                 lock_names=lock_names,
                 manage_lock=False,
-                apply_data=False,
+                apply_data=True,
             )
             result = await cls.mutate_update_to_graphql(db=current_db, info=info, obj=updated_obj)
             return updated_obj, result

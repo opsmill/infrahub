@@ -965,15 +965,29 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return response
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
-        """Update object from a GraphQL payload."""
+    async def from_graphql(
+        self,
+        data: dict,
+        db: InfrahubDatabase,
+        process_pools: bool = True,
+    ) -> bool:
+        """Update object from a GraphQL payload.
+
+        Args:
+            data: GraphQL payload to apply.
+            db: Database connection used for related lookups.
+            process_pools: Whether resource pool allocations should be performed.
+
+        Returns:
+            True if any field changed, otherwise False.
+        """
 
         changed = False
 
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
                 attribute = getattr(self, key)
-                changed |= await attribute.from_graphql(data=value, db=db)
+                changed |= await attribute.from_graphql(data=value, db=db, process_pools=process_pools)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
