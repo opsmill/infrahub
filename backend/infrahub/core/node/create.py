@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
@@ -10,6 +11,8 @@ from infrahub.core.node import Node
 from infrahub.core.node.save import run_constraints_and_save
 from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.lock import InfrahubMultiLock
+from infrahub.lock_getter import get_lock_names_on_object_mutation
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -162,17 +165,13 @@ async def refresh_for_profile_update(
 
 
 async def _do_create_node(
-    node_class: type[Node],
+    obj: Node,
     db: InfrahubDatabase,
-    data: dict,
-    schema: NonGenericSchemaTypes,
-    fields_to_validate: list,
     branch: Branch,
+    fields_to_validate: list[str],
     node_constraint_runner: NodeConstraintRunner,
+    lock_names: Sequence[str],
 ) -> Node:
-    obj = await node_class.init(db=db, schema=schema, branch=branch)
-    await obj.new(db=db, **data)
-
     await run_constraints_and_save(
         node=obj,
         node_constraint_runner=node_constraint_runner,
@@ -180,6 +179,8 @@ async def _do_create_node(
         fields_to_save=[],
         db=db,
         branch=branch,
+        lock_names=lock_names,
+        manage_lock=False,
     )
 
     object_template = await obj.get_object_template(db=db)
@@ -190,6 +191,7 @@ async def _do_create_node(
             template=object_template,
             obj=obj,
             fields=fields_to_validate,
+            constraint_runner=node_constraint_runner,
         )
     return obj
 
@@ -203,35 +205,39 @@ async def create_node(
     """Create a node in the database if constraint checks succeed."""
 
     component_registry = get_component_registry()
-    node_constraint_runner = await component_registry.get_component(
-        NodeConstraintRunner, db=db.start_session() if not db.is_transaction else db, branch=branch
-    )
     node_class = Node
     if schema.kind in registry.node:
         node_class = registry.node[schema.kind]
 
     fields_to_validate = list(data)
-    if db.is_transaction:
-        obj = await _do_create_node(
-            node_class=node_class,
-            node_constraint_runner=node_constraint_runner,
-            db=db,
-            schema=schema,
+    preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
+    await preview_obj.new(db=db, process_pools=False, **data)
+    schema_branch = db.schema.get_schema_branch(name=branch.name)
+    lock_names = get_lock_names_on_object_mutation(node=preview_obj, branch=branch, schema_branch=schema_branch)
+
+    async def _persist(current_db: InfrahubDatabase) -> Node:
+        node_constraint_runner = await component_registry.get_component(
+            NodeConstraintRunner, db=current_db, branch=branch
+        )
+        obj = await node_class.init(db=current_db, schema=schema, branch=branch)
+        await obj.new(db=current_db, **data)
+
+        return await _do_create_node(
+            obj=obj,
+            db=current_db,
             branch=branch,
             fields_to_validate=fields_to_validate,
-            data=data,
+            node_constraint_runner=node_constraint_runner,
+            lock_names=lock_names,
         )
-    else:
-        async with db.start_transaction() as dbt:
-            obj = await _do_create_node(
-                node_class=node_class,
-                node_constraint_runner=node_constraint_runner,
-                db=dbt,
-                schema=schema,
-                branch=branch,
-                fields_to_validate=fields_to_validate,
-                data=data,
-            )
+
+    obj: Node
+    async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+        if db.is_transaction:
+            obj = await _persist(db)
+        else:
+            async with db.start_transaction() as dbt:
+                obj = await _persist(dbt)
 
     if await get_profile_ids(db=db, obj=obj):
         obj = await refresh_for_profile_update(db=db, branch=branch, schema=schema, obj=obj)

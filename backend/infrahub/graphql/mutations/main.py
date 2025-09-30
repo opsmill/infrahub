@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from typing_extensions import Self
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.core.constants import MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
@@ -30,6 +30,8 @@ from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.log import get_log_data, get_logger
 
 from ...core.node.save import run_constraints_and_save
+from ...lock import InfrahubMultiLock
+from ...lock_getter import get_lock_names_on_object_mutation
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -208,25 +210,42 @@ class InfrahubMutationMixin:
         """
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
         """
+        before_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
+        await obj.from_graphql(db=db, data=data)
+        fields_to_validate = list(data)
+        fields = list(data.keys())
 
-        if db.is_transaction:
-            obj = await cls.mutate_update_object(
-                db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
-            )
-            result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
-            return obj, result
+        for field_to_remove in ("id", "hfid"):
+            if field_to_remove in fields:
+                fields.remove(field_to_remove)
 
-        async with db.start_transaction() as dbt:
-            obj = await cls.mutate_update_object(
-                db=dbt,
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+        lock_names = get_lock_names_on_object_mutation(node=obj, branch=branch, schema_branch=schema_branch)
+
+        async def _mutate(current_db: InfrahubDatabase) -> tuple[Node, Self]:
+            updated_obj = await cls.mutate_update_object(
+                db=current_db,
                 info=info,
                 data=data,
                 branch=branch,
                 obj=obj,
                 skip_uniqueness_check=skip_uniqueness_check,
+                fields_to_validate=fields_to_validate,
+                fields=fields,
+                previous_profile_ids=before_mutate_profile_ids,
+                lock_names=lock_names,
+                manage_lock=False,
+                apply_data=False,
             )
-            result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
-            return obj, result
+            result = await cls.mutate_update_to_graphql(db=current_db, info=info, obj=updated_obj)
+            return updated_obj, result
+
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+            if db.is_transaction:
+                return await _mutate(db)
+
+            async with db.start_transaction() as dbt:
+                return await _mutate(dbt)
 
     @classmethod
     @retry_db_transaction(name="object_update")
@@ -258,34 +277,70 @@ class InfrahubMutationMixin:
         branch: Branch,
         obj: Node,
         skip_uniqueness_check: bool = False,
+        fields_to_validate: list[str] | None = None,
+        fields: list[str] | None = None,
+        previous_profile_ids: set[str] | None = None,
+        lock_names: Sequence[str] | None = None,
+        manage_lock: bool = True,
+        apply_data: bool = True,
     ) -> Node:
+        """Update an existing node while ensuring constraints and locking semantics.
+
+        Args:
+            db: Database connection or transaction to use.
+            info: GraphQL resolver info (unused).
+            data: GraphQL payload with updated field values.
+            branch: Active branch for the mutation.
+            obj: Node being updated.
+            skip_uniqueness_check: Whether uniqueness constraints should be skipped.
+            fields_to_validate: Optional list of fields requiring validation.
+            fields: Optional list of fields to persist on save.
+            previous_profile_ids: Optional set of profile IDs prior to mutation.
+            lock_names: Optional precomputed lock identifiers.
+            manage_lock: Whether this helper should manage lock acquisition.
+            apply_data: Whether to apply GraphQL data inside this helper.
+
+        Returns:
+            The updated node instance.
+        """
+
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        before_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
-        await obj.from_graphql(db=db, data=data)
-        fields_to_validate = list(data)
-        fields = list(data.keys())
+        profile_ids_before = previous_profile_ids or await get_profile_ids(db=db, obj=obj)
+
+        if apply_data:
+            await obj.from_graphql(db=db, data=data)
+
+        validation_fields = list(fields_to_validate) if fields_to_validate is not None else list(data)
+        fields_to_save = list(fields) if fields is not None else list(data.keys())
 
         for field_to_remove in ("id", "hfid"):
-            if field_to_remove in fields:
-                fields.remove(field_to_remove)
+            if field_to_remove in fields_to_save:
+                fields_to_save.remove(field_to_remove)
+
+        locks = lock_names
+        if locks is None:
+            schema_branch = db.schema.get_schema_branch(name=branch.name)
+            locks = get_lock_names_on_object_mutation(node=obj, branch=branch, schema_branch=schema_branch)
 
         await run_constraints_and_save(
             node=obj,
             node_constraint_runner=node_constraint_runner,
-            fields_to_validate=fields_to_validate,
-            fields_to_save=fields,
+            fields_to_validate=validation_fields,
+            fields_to_save=fields_to_save,
             db=db,
             skip_uniqueness_check=skip_uniqueness_check,
             branch=branch,
+            lock_names=locks,
+            manage_lock=manage_lock,
         )
 
         obj = await refresh_for_profile_update(
             db=db,
             branch=branch,
             obj=obj,
-            previous_profile_ids=before_mutate_profile_ids,
+            previous_profile_ids=profile_ids_before,
             schema=cls._meta.active_schema,
         )
         return obj

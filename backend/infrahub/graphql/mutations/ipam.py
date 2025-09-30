@@ -1,5 +1,4 @@
 import ipaddress
-from ipaddress import IPv4Interface
 from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
@@ -13,12 +12,14 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.create import get_profile_ids
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_logger
 
+from ...lock_getter import get_lock_names_on_object_mutation
 from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
@@ -118,7 +119,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         db: InfrahubDatabase,
-        ip_address: IPv4Interface | ipaddress.IPv6Interface,
+        ip_address: ipaddress.IPv4Interface | ipaddress.IPv6Interface,
         namespace_id: str,
     ) -> Node:
         address = await cls.mutate_create_object(data=data, db=db, branch=branch)
@@ -166,8 +167,24 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         db: InfrahubDatabase,
         address: Node,
         namespace_id: str,
+        fields_to_validate: list[str],
+        fields: list[str],
+        previous_profile_ids: set[str],
+        lock_names: list[str],
     ) -> Node:
-        address = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=address)
+        address = await cls.mutate_update_object(
+            db=db,
+            info=info,
+            data=data,
+            branch=branch,
+            obj=address,
+            fields_to_validate=fields_to_validate,
+            fields=fields,
+            previous_profile_ids=previous_profile_ids,
+            lock_names=lock_names,
+            manage_lock=False,
+            apply_data=False,
+        )
         reconciler = IpamReconciler(db=db, branch=branch)
         ip_address = ipaddress.ip_interface(address.address.value)
         if lock_name := cls._get_lock_name(namespace_id, branch):
@@ -205,11 +222,33 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         namespace = await address.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
 
-        async with db.start_transaction() as dbt:
-            reconciled_address = await cls._mutate_update_object_and_reconcile(
-                info=info, data=data, branch=branch, address=address, namespace_id=namespace_id, db=dbt
-            )
-            result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_address)
+        before_mutate_profile_ids = await get_profile_ids(db=db, obj=address)
+        await address.from_graphql(db=db, data=data)
+        fields_to_validate = list(data)
+        fields = list(data.keys())
+
+        for field_to_remove in ("id", "hfid"):
+            if field_to_remove in fields:
+                fields.remove(field_to_remove)
+
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+        lock_names = get_lock_names_on_object_mutation(node=address, branch=branch, schema_branch=schema_branch)
+
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+            async with db.start_transaction() as dbt:
+                reconciled_address = await cls._mutate_update_object_and_reconcile(
+                    info=info,
+                    data=data,
+                    branch=branch,
+                    db=dbt,
+                    address=address,
+                    namespace_id=namespace_id,
+                    fields_to_validate=fields_to_validate,
+                    fields=fields,
+                    previous_profile_ids=before_mutate_profile_ids,
+                    lock_names=lock_names,
+                )
+                result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_address)
 
         return address, result
 
@@ -310,8 +349,24 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         db: InfrahubDatabase,
         prefix: Node,
         namespace_id: str,
+        fields_to_validate: list[str],
+        fields: list[str],
+        previous_profile_ids: set[str],
+        lock_names: list[str],
     ) -> Node:
-        prefix = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=prefix)
+        prefix = await cls.mutate_update_object(
+            db=db,
+            info=info,
+            data=data,
+            branch=branch,
+            obj=prefix,
+            fields_to_validate=fields_to_validate,
+            fields=fields,
+            previous_profile_ids=previous_profile_ids,
+            lock_names=lock_names,
+            manage_lock=False,
+            apply_data=False,
+        )
         return await cls._reconcile_prefix(
             branch=branch, db=db, prefix=prefix, namespace_id=namespace_id, is_delete=False
         )
@@ -340,11 +395,33 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace = await prefix.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
 
-        async with db.start_transaction() as dbt:
-            reconciled_prefix = await cls._mutate_update_object_and_reconcile(
-                info=info, data=data, prefix=prefix, db=dbt, namespace_id=namespace_id, branch=branch
-            )
-            result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_prefix)
+        before_mutate_profile_ids = await get_profile_ids(db=db, obj=prefix)
+        await prefix.from_graphql(db=db, data=data)
+        fields_to_validate = list(data)
+        fields = list(data.keys())
+
+        for field_to_remove in ("id", "hfid"):
+            if field_to_remove in fields:
+                fields.remove(field_to_remove)
+
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+        lock_names = get_lock_names_on_object_mutation(node=prefix, branch=branch, schema_branch=schema_branch)
+
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+            async with db.start_transaction() as dbt:
+                reconciled_prefix = await cls._mutate_update_object_and_reconcile(
+                    info=info,
+                    data=data,
+                    branch=branch,
+                    db=dbt,
+                    prefix=prefix,
+                    namespace_id=namespace_id,
+                    fields_to_validate=fields_to_validate,
+                    fields=fields,
+                    previous_profile_ids=before_mutate_profile_ids,
+                    lock_names=lock_names,
+                )
+                result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_prefix)
 
         return prefix, result
 

@@ -257,7 +257,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def handle_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
+    async def handle_pool(
+        self,
+        db: InfrahubDatabase,
+        attribute: BaseAttribute,
+        errors: list,
+        allocate_resources: bool = True,
+    ) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
@@ -268,7 +274,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attribute.from_pool = {"id": attribute.schema.parameters.number_pool_id}
             attribute.is_default = False
 
-        if not attribute.from_pool:
+        if not attribute.from_pool or not allocate_resources:
             return
 
         try:
@@ -428,7 +434,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             elif relationship_peers := await relationship.get_peers(db=db):
                 fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
-    async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
+    async def _process_fields(
+        self,
+        fields: dict,
+        db: InfrahubDatabase,
+        process_pools: bool = True,
+    ) -> None:
         errors = []
 
         if "_source" in fields.keys():
@@ -482,7 +493,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Generate Attribute and Relationship and assign them
         # -------------------------------------------
         errors.extend(await self._process_fields_relationships(fields=fields, db=db))
-        errors.extend(await self._process_fields_attributes(fields=fields, db=db))
+        errors.extend(await self._process_fields_attributes(fields=fields, db=db, process_pools=process_pools))
 
         if errors:
             raise ValidationError(errors)
@@ -519,7 +530,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return errors
 
-    async def _process_fields_attributes(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:
+    async def _process_fields_attributes(
+        self,
+        fields: dict,
+        db: InfrahubDatabase,
+        process_pools: bool,
+    ) -> list[ValidationError]:
         errors: list[ValidationError] = []
 
         for attr_schema in self._schema.attributes:
@@ -544,9 +560,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self.handle_pool(db=db, attribute=attribute, errors=errors)
+                    await self.handle_pool(
+                        db=db,
+                        attribute=attribute,
+                        errors=errors,
+                        allocate_resources=process_pools,
+                    )
 
-                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
+                    if process_pools or attribute.from_pool is None:
+                        attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
                 errors.append(exc)
 
@@ -674,7 +696,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
                 self.label.is_default = False
 
-    async def new(self, db: InfrahubDatabase, id: str | None = None, **kwargs: Any) -> Self:
+    async def new(
+        self,
+        db: InfrahubDatabase,
+        id: str | None = None,
+        process_pools: bool = True,
+        **kwargs: Any,
+    ) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
         if id:
@@ -684,7 +712,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         self.id = id or str(UUIDT())
 
-        await self._process_fields(db=db, fields=kwargs)
+        await self._process_fields(db=db, fields=kwargs, process_pools=process_pools)
         await self._process_macros(db=db)
 
         return self
