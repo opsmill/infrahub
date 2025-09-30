@@ -994,22 +994,25 @@ class SchemaBranch:
     def validate_hierarchical_nodes_restricted_words(self) -> None:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
-
-            if node.kind in INTERNAL_SCHEMA_NODE_KINDS or node.kind in CORE_SCHEMA_NODE_KINDS:
-                continue
-
             is_hierarchical_node = (isinstance(node, GenericSchema) and node.hierarchical) or (
                 isinstance(node, NodeSchema) and node.hierarchy
             )
 
+            if (
+                not is_hierarchical_node
+                or node.kind in INTERNAL_SCHEMA_NODE_KINDS
+                or node.kind in CORE_SCHEMA_NODE_KINDS
+            ):
+                continue
+
             for attr in node.attributes:
-                if is_hierarchical_node and attr.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+                if attr.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
                     raise ValueError(
                         f"{node.kind}: {attr.name} isn't allowed as an attribute name on hierarchical nodes."
                     )
 
             for rel in node.relationships:
-                if is_hierarchical_node and rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
+                if rel.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES:
                     raise ValueError(
                         f"{node.kind}: {rel.name} isn't allowed as a relationship name on hierarchical nodes."
                     )
