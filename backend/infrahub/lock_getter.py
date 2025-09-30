@@ -1,8 +1,6 @@
 import hashlib
 from typing import TYPE_CHECKING
 
-from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -10,8 +8,6 @@ from infrahub.lock import build_object_lock_name
 
 if TYPE_CHECKING:
     from infrahub.core.relationship import RelationshipManager
-
-KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED = [InfrahubKind.GENERICGROUP]
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
@@ -48,31 +44,13 @@ def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch
     return kinds
 
 
-def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch) -> bool:
-    """
-    Check whether kind or any kind generic is in KINDS_TO_LOCK_ON_ANY_BRANCH.
-    """
-
-    if kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-        return True
-
-    node_schema = schema_branch.get(name=kind)
-    if isinstance(node_schema, GenericSchema):
-        return False
-
-    for generic_kind in node_schema.inherit_from:
-        if generic_kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-            return True
-    return False
-
-
 def _hash(value: str) -> str:
     # Do not use builtin `hash` for lock names as due to randomization results would differ between
     # different processes.
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch: SchemaBranch) -> list[str]:
+def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """
     Return lock names for object on which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
     concurrent mutations are only allowed on non-main branch as objects validations will be performed at least when merging in main branch.
@@ -98,9 +76,6 @@ def get_lock_names_on_object_mutation(node: Node, branch: Branch, schema_branch:
         for rel in rel_manager._relationships:
             if rel.from_pool and "id" in rel.from_pool:
                 _add_pool_lock(rel.from_pool["id"])
-
-    if not branch.is_default and not _should_kind_be_locked_on_any_branch(node.get_kind(), schema_branch):
-        return lock_names
 
     lock_kinds = _get_kinds_to_lock_on_object_mutation(node.get_kind(), schema_branch)
     for kind in lock_kinds:

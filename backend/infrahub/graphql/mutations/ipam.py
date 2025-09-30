@@ -107,10 +107,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @staticmethod
-    def _get_lock_names(namespace_id: str, branch: Branch) -> list[str]:
-        if not branch.is_default:
-            # Do not lock on other branches as reconciliation will be performed at least when merging in main branch.
-            return []
+    def _get_lock_names(namespace_id: str) -> list[str]:
         return [build_object_lock_name(InfrahubKind.IPADDRESS + "_" + namespace_id)]
 
     @classmethod
@@ -144,7 +141,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         ip_address = ipaddress.ip_interface(data["address"]["value"])
         namespace_id = await validate_namespace(db=db, branch=branch, data=data)
 
-        lock_names = cls._get_lock_names(namespace_id, branch)
+        lock_names = cls._get_lock_names(namespace_id)
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
             async with db.start_transaction() as dbt:
                 reconciled_address = await cls._mutate_create_object_and_reconcile(
@@ -222,9 +219,9 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
                 fields.remove(field_to_remove)
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = get_lock_names_on_object_mutation(node=address, branch=branch, schema_branch=schema_branch)
+        lock_names = get_lock_names_on_object_mutation(node=address, schema_branch=schema_branch)
 
-        namespace_lock_names = cls._get_lock_names(namespace_id, branch)
+        namespace_lock_names = cls._get_lock_names(namespace_id)
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=namespace_lock_names):
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
                 async with db.start_transaction() as dbt:
@@ -399,7 +396,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
                 fields.remove(field_to_remove)
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = get_lock_names_on_object_mutation(node=prefix, branch=branch, schema_branch=schema_branch)
+        lock_names = get_lock_names_on_object_mutation(node=prefix, schema_branch=schema_branch)
 
         namespace_lock_names = cls._get_lock_names(namespace_id)
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=namespace_lock_names):

@@ -230,7 +230,7 @@ class InfrahubMutationMixin:
         await preview_obj.from_graphql(db=db, data=data, process_pools=False)
 
         schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = get_lock_names_on_object_mutation(node=preview_obj, branch=branch, schema_branch=schema_branch)
+        lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
 
         async def _mutate(current_db: InfrahubDatabase) -> tuple[Node, Self]:
             updated_obj = await cls.mutate_update_object(
@@ -332,7 +332,7 @@ class InfrahubMutationMixin:
         locks = lock_names
         if locks is None:
             schema_branch = db.schema.get_schema_branch(name=branch.name)
-            locks = get_lock_names_on_object_mutation(node=obj, branch=branch, schema_branch=schema_branch)
+            locks = get_lock_names_on_object_mutation(node=obj, schema_branch=schema_branch)
 
         await run_constraints_and_save(
             node=obj,

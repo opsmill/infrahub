@@ -6,7 +6,6 @@ from infrahub.database import InfrahubDatabase
 from infrahub.lock_getter import (
     _get_kinds_to_lock_on_object_mutation,
     _hash,
-    _should_kind_be_locked_on_any_branch,
     get_lock_names_on_object_mutation,
 )
 from tests.helpers.test_app import TestInfrahubApp
@@ -48,19 +47,9 @@ class TestGetKindsLock(TestInfrahubApp):
         schema_branch = registry.schema.get_schema_branch(name=other_branch.name)
 
         person = await create_and_save(db=db, schema="TestPerson", name="John", branch=other_branch)
-        assert get_lock_names_on_object_mutation(person, branch=other_branch, schema_branch=schema_branch) == []
-
-    async def test_lock_groups_on_other_branches(
-        self,
-        db: InfrahubDatabase,
-        default_branch,
-        client,
-        register_core_models_schema,
-    ):
-        other_branch = await create_branch(branch_name="other_branch", db=db)
-        schema_branch = registry.schema.get_schema_branch(name=other_branch.name)
-
-        assert _should_kind_be_locked_on_any_branch(kind="CoreGraphQLQueryGroup", schema_branch=schema_branch) is True
+        assert get_lock_names_on_object_mutation(person, schema_branch=schema_branch) == [
+            "global.object.TestPerson." + _hash("John")
+        ]
 
     async def test_lock_names_only_attributes(
         self,
@@ -78,7 +67,7 @@ class TestGetKindsLock(TestInfrahubApp):
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person = await create_and_save(db=db, schema="TestPerson", name="John")
         car = await create_and_save(db=db, schema="TestCar", name="mercedes", color="blue", owner=person)
-        assert get_lock_names_on_object_mutation(car, branch=default_branch, schema_branch=schema_branch) == [
+        assert get_lock_names_on_object_mutation(car, schema_branch=schema_branch) == [
             "global.object.TestCar." + _hash("mercedes") + "." + _hash("blue")
         ]
 
@@ -95,6 +84,6 @@ class TestGetKindsLock(TestInfrahubApp):
 
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         person = await create_and_save(db=db, schema="TestPerson", name="John")
-        assert get_lock_names_on_object_mutation(person, branch=default_branch, schema_branch=schema_branch) == [
+        assert get_lock_names_on_object_mutation(person, schema_branch=schema_branch) == [
             "global.object.TestPerson." + _hash("") + "." + _hash("John")
         ]

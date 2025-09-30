@@ -41,7 +41,7 @@ async def run_constraints_and_save(
     locks = (
         list(lock_names)
         if lock_names is not None
-        else get_lock_names_on_object_mutation(node=node, branch=branch, schema_branch=schema_branch)
+        else get_lock_names_on_object_mutation(node=node, schema_branch=schema_branch)
     )
 
     async def _persist() -> None:

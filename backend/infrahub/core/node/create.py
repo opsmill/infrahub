@@ -213,7 +213,7 @@ async def create_node(
     preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
     await preview_obj.new(db=db, process_pools=False, **data)
     schema_branch = db.schema.get_schema_branch(name=branch.name)
-    lock_names = get_lock_names_on_object_mutation(node=preview_obj, branch=branch, schema_branch=schema_branch)
+    lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
 
     async def _persist(current_db: InfrahubDatabase) -> Node:
         node_constraint_runner = await component_registry.get_component(
