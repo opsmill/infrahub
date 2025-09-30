@@ -4,7 +4,8 @@ import asyncio
 import time
 import uuid
 from asyncio import Lock as LocalLock
-from asyncio import Task, current_task, sleep
+from asyncio import sleep
+from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
@@ -132,8 +133,7 @@ class InfrahubLock:
         self.lock_type: str = "multi" if self.in_multi else "individual"
         self.acquire_time: int | None = None
         self.event = asyncio.Event()
-        self._owner_task: Task | None = None
-        self._recursion_depth: int = 0
+        self._recursion_var: ContextVar[int | None] = ContextVar(f"infrahub_lock_recursion_{self.name}", default=None)
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -157,12 +157,9 @@ class InfrahubLock:
         await self.release()
 
     async def acquire(self) -> None:
-        task = current_task()
-        if task is None:
-            raise RuntimeError("Cannot acquire lock outside of an asyncio Task.")
-
-        if self._owner_task is task:
-            self._recursion_depth += 1
+        depth = self._recursion_var.get()
+        if depth is not None:
+            self._recursion_var.set(depth + 1)
             return
 
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
@@ -172,19 +169,15 @@ class InfrahubLock:
                 await self.local.acquire()
         self.acquire_time = time.time_ns()
         self.event.clear()
-        self._owner_task = task
-        self._recursion_depth = 1
+        self._recursion_var.set(1)
 
     async def release(self) -> None:
-        task = current_task()
-        if task is None:
-            raise RuntimeError("Cannot release lock outside of an asyncio Task.")
+        depth = self._recursion_var.get()
+        if depth is None:
+            raise RuntimeError("Lock release attempted without ownership context.")
 
-        if self._owner_task is not task:
-            raise RuntimeError("Lock release attempted by non-owner task.")
-
-        if self._recursion_depth > 1:
-            self._recursion_depth -= 1
+        if depth > 1:
+            self._recursion_var.set(depth - 1)
             return
 
         if self.acquire_time is not None:
@@ -197,8 +190,7 @@ class InfrahubLock:
         else:
             self.local.release()
 
-        self._owner_task = None
-        self._recursion_depth = 0
+        self._recursion_var.set(None)
         self.event.set()
 
     async def locked(self) -> bool:
