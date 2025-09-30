@@ -67,6 +67,7 @@ from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
+from .schema_branch_hfid import HFIDs
 
 log = get_logger()
 
@@ -79,6 +80,7 @@ class SchemaBranch:
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
+        hfids: HFIDs | None = None,
     ):
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
@@ -88,6 +90,7 @@ class SchemaBranch:
         self.templates: dict[str, str] = {}
         self.computed_attributes = computed_attributes or ComputedAttributes()
         self.display_labels = display_labels or DisplayLabels()
+        self.hfids = hfids or HFIDs()
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -274,6 +277,7 @@ class SchemaBranch:
             cache=self._cache,
             computed_attributes=self.computed_attributes.duplicate(),
             display_labels=self.display_labels.duplicate(),
+            hfids=self.hfids.duplicate(),
         )
 
     def set(self, name: str, schema: MainSchemaTypes) -> str:
@@ -760,6 +764,7 @@ class SchemaBranch:
                     )
 
     def validate_display_label(self) -> None:
+        self.display_labels = DisplayLabels()
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -868,6 +873,7 @@ class SchemaBranch:
         return False
 
     def validate_human_friendly_id(self) -> None:
+        self.hfids = HFIDs()
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -893,6 +899,11 @@ class SchemaBranch:
                     if rel_identifier not in rel_schemas_to_paths:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
                     rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
+
+                if node_schema.is_node_schema:
+                    self.hfids.register_hfid_schema_path(
+                        kind=node_schema.kind, schema_path=schema_path, hfid=node_schema.human_friendly_id
+                    )
 
             if config.SETTINGS.main.schema_strict_mode:
                 # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
