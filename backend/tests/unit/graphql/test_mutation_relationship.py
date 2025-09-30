@@ -1219,6 +1219,7 @@ async def test_with_permissions(
     }
     """
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, branch=default_branch, account_session=first_session
     )
