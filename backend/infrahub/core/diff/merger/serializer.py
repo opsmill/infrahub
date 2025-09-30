@@ -156,7 +156,7 @@ class DiffMergeSerializer:
                 continue
             serial_attr_diffs = []
             for attr_diff in node.attributes:
-                if attr_diff.name in NODE_ATTRIBUTES_TO_IGNORE and not node.kind.startswith("Schema"):
+                if attr_diff.name in NODE_ATTRIBUTES_TO_IGNORE and not node.is_schema_node:
                     # We ignore attributes on actual node and not schema nodes
                     # These ignored attributes are ignored because we rely on recomputing them after a merge operation
                     continue
