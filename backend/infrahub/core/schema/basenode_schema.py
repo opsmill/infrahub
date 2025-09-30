@@ -44,6 +44,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     _sort_by: list[str] = ["namespace", "name"]
 
     @property
+    def is_schema_node(self) -> bool:
+        """Tell if this node represent a part of the schema. Not to confuse this with `is_node_schema`."""
+        return self.namespace == "Schema"
+
+    @property
     def is_node_schema(self) -> bool:
         return False
 
