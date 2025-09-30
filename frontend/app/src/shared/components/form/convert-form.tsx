@@ -222,50 +222,52 @@ const ConvertForm = ({
   };
 
   return (
-    <Form onSubmit={handleSubmit} className="divide-y divide-gray-300">
-      {fields.map((fieldProps) => {
-        const { name } = fieldProps;
-        const hasMapping = !!mappings[name]?.source_field_name;
+    <Form onSubmit={handleSubmit} className="relative">
+      <div className="divide-y divide-gray-300">
+        {fields.map((fieldProps) => {
+          const { name } = fieldProps;
+          const hasMapping = !!mappings[name]?.source_field_name;
 
-        const [source, setSource] = useState(hasMapping ? "source" : "schema");
+          const [source, setSource] = useState(hasMapping ? "source" : "schema");
 
-        const handleSourceChange = (newSource: string) => {
-          setSource(newSource);
-        };
+          const handleSourceChange = (newSource: string) => {
+            setSource(newSource);
+          };
 
-        return (
-          <div key={name} className="flex items-center gap-4 px-2 py-4">
-            <div className="flex-grow">
-              {source !== "source" && (
-                <DynamicField {...fieldProps} defaultValue={formDefaultValues[name]} />
-              )}
+          return (
+            <div key={name} className="flex items-center gap-4 px-2 py-4">
+              <div className="flex-grow">
+                {source !== "source" && (
+                  <DynamicField {...fieldProps} defaultValue={formDefaultValues[name]} />
+                )}
 
-              {source === "source" && (
-                <SourceField
-                  {...fieldProps}
-                  objectDetailsData={objectDetailsData}
-                  sourceSchema={sourceSchema}
-                  mapping={mappings[name]}
-                  defaultValue={sourceDefaultValues[name]}
-                />
-              )}
+                {source === "source" && (
+                  <SourceField
+                    {...fieldProps}
+                    objectDetailsData={objectDetailsData}
+                    sourceSchema={sourceSchema}
+                    mapping={mappings[name]}
+                    defaultValue={sourceDefaultValues[name]}
+                  />
+                )}
+              </div>
+
+              <RadioGroup
+                orientation="vertical"
+                value={source}
+                onChange={handleSourceChange}
+                className="text-sm"
+                aria-label="Select source"
+              >
+                <Radio value="source">From source</Radio>
+                <Radio value="schema">Custom value</Radio>
+              </RadioGroup>
             </div>
+          );
+        })}
+      </div>
 
-            <RadioGroup
-              orientation="vertical"
-              value={source}
-              onChange={handleSourceChange}
-              className="text-sm"
-              aria-label="Select source"
-            >
-              <Radio value="source">From source</Radio>
-              <Radio value="schema">Custom value</Radio>
-            </RadioGroup>
-          </div>
-        );
-      })}
-
-      <div className="text-right">
+      <div className="sticky bottom-0 bg-white p-2 text-right">
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>
