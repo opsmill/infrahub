@@ -42,6 +42,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
 from ...log import get_logger
+from ..attribute import BaseAttribute
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
@@ -52,8 +53,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-
-    from ..attribute import BaseAttribute
 
 SchemaProtocol = TypeVar("SchemaProtocol")
 
@@ -100,9 +99,24 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_updated_at(self) -> Timestamp | None:
         return self._updated_at
 
+    def get_attribute(self, name: str) -> BaseAttribute:
+        attribute = getattr(self, name)
+        if not isinstance(attribute, BaseAttribute):
+            raise ValueError(f"{name} is not an attribute of {self.get_kind()}")
+        return attribute
+
+    def get_relationship(self, name: str) -> RelationshipManager:
+        relationship = getattr(self, name)
+        if not isinstance(relationship, RelationshipManager):
+            raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
+        return relationship
+
     def uses_profiles(self) -> bool:
         for attr_name in self.get_schema().attribute_names:
-            node_attr = getattr(self, attr_name, None)
+            try:
+                node_attr = self.get_attribute(attr_name)
+            except ValueError:
+                continue
             if node_attr and node_attr.is_from_profile:
                 return True
         return False
