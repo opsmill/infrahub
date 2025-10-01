@@ -876,7 +876,14 @@ class SchemaBranch:
             # Mapping relationship identifiers -> list of attributes paths
             rel_schemas_to_paths: dict[str, tuple[MainSchemaTypes, list[str]]] = {}
 
+            visited_paths: list[str] = []
             for hfid_path in node_schema.human_friendly_id:
+                if config.SETTINGS.main.schema_strict_mode and hfid_path in visited_paths:
+                    raise ValidationError(
+                        f"HFID of {node_schema.kind} cannot use the same path more than once: {hfid_path}"
+                    )
+
+                visited_paths.append(hfid_path)
                 schema_path = self.validate_schema_path(
                     node_schema=node_schema,
                     path=hfid_path,
