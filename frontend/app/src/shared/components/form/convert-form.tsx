@@ -26,11 +26,17 @@ import { Radio, RadioGroup } from "../aria/radio-group";
 import { ALERT_TYPES, Alert } from "../ui/alert";
 import { DynamicField } from "./dynamic-form";
 
+interface Mapping {
+  is_mandatory: boolean;
+  source_field_name: string | null;
+  relationship_cardinality: string | null;
+}
+
 export type ConvertFormProps = {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   targetSchema: ModelSchema;
-  mappings: Record<string, any>;
+  mappings: Record<string, Mapping>;
 };
 
 const ConvertFormWapper = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
@@ -261,7 +267,7 @@ const ConvertForm = ({
 
 type SourceFieldWrapperProps = {
   field: any;
-  mapping: any;
+  mapping?: Mapping;
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   sourceDefaultValue: any;
