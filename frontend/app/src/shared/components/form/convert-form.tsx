@@ -222,7 +222,7 @@ const ConvertForm = ({
           navigate(path);
         },
         onError: (error) => {
-          console.error("Error when logging in: ", error);
+          console.error("Error when retrieving mappings: ", error);
           toast(
             <Alert
               type={ALERT_TYPES.ERROR}
