@@ -474,3 +474,18 @@ async def test_schema_load_restricted_names(
         response.json()["errors"][0]["message"]
         == f"TestingParent: {reserved_name} isn't allowed as a relationship name on hierarchical nodes."
     )
+
+    schema = helper.schema_file("restricted_names_02.json")
+    schema["nodes"][1]["attributes"][0]["name"] = reserved_name
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [schema]},
+        )
+
+    assert response.status_code == 422
+    assert (
+        response.json()["errors"][0]["message"]
+        == f"TestingParent: {reserved_name} isn't allowed as an attribute name on hierarchical nodes."
+    )
