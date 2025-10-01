@@ -1,0 +1,1 @@
+Enable conversion of an object to another type by mapping fields or specifying custom values
