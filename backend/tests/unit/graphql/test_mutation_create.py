@@ -1309,7 +1309,7 @@ async def test_create_with_object_template(
 
     device_template: Node = await Node.init(schema=f"Template{TestKind.DEVICE}", db=db, branch=branch)
     await device_template.new(
-        db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
+        db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=0, airflow="Front to rear"
     )
     await device_template.save(db=db)
 
@@ -1323,7 +1323,11 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind=TestKind.DEVICE, branch=branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
+        db=db,
+        kind=TestKind.DEVICE,
+        branch=branch,
+        id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"],
+        include_source=True,
     )
     assert device
     assert device.name.value == "th2.par.asbr01"
@@ -1333,10 +1337,26 @@ async def test_create_with_object_template(
     # No interfaces as there are none on the object template
     device_interfaces = await device.interfaces.get_peers(db=db)
     assert not device_interfaces
+    # verify attributes and metadata
+    assert device.manufacturer.value == "Juniper"
+    assert device.manufacturer.is_default is False
+    assert device.manufacturer.source_id == device_template.id
+    assert device.height.value == 1
+    assert device.height.is_default is False
+    assert device.height.source_id == device_template.id
+    assert device.weight.value == 0
+    assert device.weight.is_default is False
+    assert device.weight.source_id == device_template.id
+    assert device.airflow.value.value == "Front to rear"
+    assert device.airflow.is_default is False
+    assert device.airflow.source_id == device_template.id
+    assert device.part_number.value is None
+    assert device.part_number.is_default is True
+    assert device.part_number.source_id is None
 
     # Create interfaces on object template
     if_names = ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]
-    interface_templates: list[Node] = []
+    interface_templates_by_name: dict[str, Node] = {}
     for if_name in if_names:
         interface_template: Node = await Node.init(
             schema=f"Template{TestKind.PHYSICAL_INTERFACE}", db=db, branch=branch
@@ -1345,9 +1365,9 @@ async def test_create_with_object_template(
             db=db, template_name=f"MX204 {if_name}", device=device_template, name=if_name, phys_type="QSFP28 (100GE)"
         )
         await interface_template.save(db=db)
-        interface_templates.append(interface_template)
+        interface_templates_by_name[if_name] = interface_template
 
-    await device_template.interfaces.update(db=db, data=interface_templates)
+    await device_template.interfaces.update(db=db, data=list(interface_templates_by_name.values()))
     await device_template.save(db=db)
 
     result = await graphql(
@@ -1368,14 +1388,27 @@ async def test_create_with_object_template(
     device_template_node = await device.object_template.get_peer(db=db)
     assert device_template_node.id == device_template.id
     # Validate that interfaces relationship has been populated according to object template
-    interfaces = await NodeManager.query(db=db, branch=branch, schema=TestKind.PHYSICAL_INTERFACE)
+    interfaces = await NodeManager.query(db=db, branch=branch, schema=TestKind.PHYSICAL_INTERFACE, include_source=True)
     assert len(interfaces) == len(if_names)
     device_interfaces = await device.interfaces.get_peers(db=db)
     assert len(device_interfaces) == len(if_names)
     assert sorted([interface.name.value for interface in device_interfaces.values()]) == if_names
+    # verify attributes and metadata on interfaces
+    for interface in interfaces:
+        assert interface.name.value in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]
+        template_obj = interface_templates_by_name[interface.name.value]
+        assert interface.name.is_default is False
+        assert interface.name.source_id == template_obj.id
+        assert interface.phys_type.value.value == "QSFP28 (100GE)"
+        assert interface.phys_type.is_default is False
+        assert interface.phys_type.source_id == template_obj.id
+        assert interface.enabled.value is True
+        assert interface.enabled.is_default is True
+        assert interface.enabled.source_id is None
 
     # Add a SFP to each interface of the object template
     template_interfaces = await device_template.interfaces.get_peers(db=db)
+    sfp_templates_by_interface_name: dict[str, Node] = {}
     for interface in template_interfaces.values():
         sfp_template: Node = await Node.init(schema=f"Template{TestKind.SFP}", db=db, branch=branch)
         await sfp_template.new(
@@ -1386,6 +1419,7 @@ async def test_create_with_object_template(
             serial_number=f"QSFP-{interface.name.value}",
         )
         await sfp_template.save(db=db)
+        sfp_templates_by_interface_name[interface.name.value] = sfp_template
 
     result = await graphql(
         schema=gql_params.schema,
@@ -1411,7 +1445,21 @@ async def test_create_with_object_template(
     # Validate that one SFP is attached to each interface
     device_sfps = [await interface.sfp.get_peer(db=db) for interface in device_interfaces.values()]
     assert len(device_sfps) == len(if_names)
-    assert sorted([(await sfp.interface.get_peer(db=db)).name.value for sfp in device_sfps]) == if_names
+    sfp_interfaces = [await sfp.interface.get_peer(db=db) for sfp in device_sfps]
+    assert sorted([interface.name.value for interface in sfp_interfaces]) == if_names
+    # verify attributes and metadata on SFPs
+    for sfp in device_sfps:
+        interface_name = sfp.serial_number.value.split("-", 1)[1]
+        template_obj = sfp_templates_by_interface_name[interface_name]
+        assert sfp.phys_type.value.value == "QSFP28 (100GE)"
+        assert sfp.phys_type.is_default is False
+        assert sfp.phys_type.source_id == template_obj.id
+        assert sfp.serial_number.value == f"QSFP-{interface_name}"
+        assert sfp.serial_number.is_default is False
+        assert sfp.serial_number.source_id == template_obj.id
+        assert sfp.part_number.value is None
+        assert sfp.part_number.is_default is True
+        assert sfp.part_number.source_id is None
 
 
 async def test_create_without_object_template(
