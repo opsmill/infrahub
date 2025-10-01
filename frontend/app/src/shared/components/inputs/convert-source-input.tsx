@@ -178,7 +178,7 @@ export const ConvertSourceRelationshipOneInput = ({
       : [];
 
   const currentOption = availableOptions?.find((nodeOption) => {
-    return nodeOption.source.name === fieldData.source?.name;
+    return nodeOption.source.name === fieldData?.source?.name;
   });
 
   return (
@@ -198,7 +198,7 @@ export const ConvertSourceRelationshipOneInput = ({
               <ComboboxItem
                 key={option.source.name}
                 value={option.source.name}
-                selectedValue={fieldData.source?.name}
+                selectedValue={fieldData?.source?.name}
                 onSelect={() => {
                   field.onChange({
                     source: {
