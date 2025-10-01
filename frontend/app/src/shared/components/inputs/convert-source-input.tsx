@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -43,6 +43,7 @@ interface ConvertSourceRelationshipInputParams extends ConvertSourceInputParams 
 
 interface ConvertSourceOption {
   source: {
+    type: "source";
     name: string;
     label: string | null | undefined;
   };
@@ -51,7 +52,7 @@ interface ConvertSourceOption {
 
 interface AttributeSourceOption extends ConvertSourceOption {
   value: string | string[] | number | boolean | null;
-  label: string;
+  label: ReactNode;
 }
 
 interface RelationshipOneSourceOption extends ConvertSourceOption {
@@ -85,6 +86,7 @@ export const ConvertSourceAttributeInput = ({
               value: attrData && "value" in attrData ? attrData.value : null,
               label: getDisplayValue(objectDetailsData, attribute) || "-",
               source: {
+                type: "source",
                 label: attribute.label ?? attribute.name,
                 name: attribute.name,
               },
@@ -169,6 +171,7 @@ export const ConvertSourceRelationshipOneInput = ({
             return {
               value: relationshipData && "node" in relationshipData ? relationshipData.node : null,
               source: {
+                type: "source",
                 label: relationship.label ?? relationship.name,
                 name: relationship.name,
               },
@@ -184,10 +187,12 @@ export const ConvertSourceRelationshipOneInput = ({
   return (
     <Combobox open={open} onOpenChange={setOpen}>
       <ComboboxTrigger>
-        <Badge className="space-x-1">
-          <span>{currentOption?.value?.display_label || "-"}</span>
-          <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
-        </Badge>
+        {currentOption && (
+          <Badge className="space-x-1">
+            <span>{currentOption?.value?.display_label || "-"}</span>
+            <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
+          </Badge>
+        )}
       </ComboboxTrigger>
       <ComboboxContent fitTriggerWidth={false}>
         <ComboboxList>
@@ -259,7 +264,7 @@ export const ConvertSourceRelationshipManyInput = ({
 
             const option = {
               source: {
-                type: "schema",
+                type: "source",
                 name: relationship.name,
                 label: relationship.label,
               },
