@@ -213,8 +213,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
-        marty_label = await marty.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -303,9 +303,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         doc_brown = initial_dataset["doc_brown"]
         marty = initial_dataset["marty"]
         biff = initial_dataset["biff"]
-        marty_label = await marty.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
         delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean.get_id())
-        delorean_label = await delorean_main.render_display_label(db=db)
+        delorean_label = await delorean_main.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -394,8 +394,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
-        marty_label = await marty.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -478,8 +478,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
-        doc_brown_label = await doc_brown.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        doc_brown_label = await doc_brown.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -558,8 +558,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     ):
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
-        doc_brown_label = await doc_brown.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        doc_brown_label = await doc_brown.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
