@@ -282,6 +282,10 @@ async def test_validate_human_friendly_id_uniqueness_success(
     dog_schema = schema.get("TestDog", duplicate=False)
     assert dog_schema.human_friendly_id == human_friendly_id
 
+    dog_schema.human_friendly_id = ["name__value", "breed__value", "name__value"]
+    with pytest.raises(ValidationError, match=r"cannot use the same path more than once"):
+        schema.validate_human_friendly_id()
+
 
 async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
