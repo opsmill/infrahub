@@ -302,7 +302,7 @@ PROPOSED_CHANGE_MERGE = WorkflowDefinition(
 
 GRAPHQL_QUERY_GROUP_UPDATE = WorkflowDefinition(
     name="graphql-query-group-update",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.groups.tasks",
     function="update_graphql_query_group",
 )
