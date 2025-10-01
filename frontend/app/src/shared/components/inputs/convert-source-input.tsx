@@ -315,7 +315,7 @@ export const ConvertSourceRelationshipManyInput = ({
               <ComboboxItem
                 key={option.source.name}
                 value={option.source.name}
-                selectedValue={fieldData?.source.name}
+                selectedValue={fieldData?.source?.name}
                 onSelect={() => {
                   field.onChange({
                     source: {
