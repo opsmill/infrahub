@@ -30,6 +30,7 @@ export type ConvertFormProps = {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   targetSchema: ModelSchema;
+  mappings: Record<string, any>;
 };
 
 const ConvertFormWapper = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
@@ -80,18 +81,21 @@ const ConvertForm = ({
     return { ...acc, [field.name]: field.defaultValue };
   }, {});
 
-  const sourceDefaultValues = fields.reduce((acc, field) => {
+  const sourceDefaultValues: Record<string, any> = fields.reduce((acc, field) => {
     const hasMapping = !!mappings[field.name]?.source_field_name;
+    const fieldData = objectDetailsData[field.name];
 
     if (!hasMapping) {
       return { ...acc, [field.name]: field.defaultValue };
     }
 
     // Relationship many
-    if (objectDetailsData[field.name]?.edges) {
-      const nodes = objectDetailsData[field.name]?.edges?.map((edge) => {
-        return edge.node;
-      });
+    if (fieldData && "edges" in fieldData) {
+      const nodes = fieldData?.edges
+        ?.map((edge) => edge.node)
+        .filter((node) => {
+          return node != null;
+        });
 
       return {
         ...acc,
@@ -118,7 +122,7 @@ const ConvertForm = ({
     }
 
     // Relationship one
-    if (objectDetailsData[field.name]?.node) {
+    if (fieldData && "node" in fieldData) {
       return {
         ...acc,
         [field.name]: {
@@ -127,7 +131,7 @@ const ConvertForm = ({
             label: field.label,
             name: field.name,
           },
-          value: objectDetailsData[field.name]?.node,
+          value: fieldData.node,
         },
       };
     }
@@ -141,12 +145,12 @@ const ConvertForm = ({
           label: field.label,
           name: field.name,
         },
-        value: objectDetailsData[field.name]?.value,
+        value: fieldData && "value" in fieldData ? fieldData.value : undefined,
       },
     };
   }, {});
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (formData: { [x: string]: any }) => {
     const fieldsMapping = fields.reduce((acc, field) => {
       const fieldData = formData[field.name];
 
@@ -194,8 +198,22 @@ const ConvertForm = ({
       };
     }, {});
 
+    if (!objectDetailsData.id || !targetSchema.kind) {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message="Missing required object ID or target kind for conversion"
+        />
+      );
+      return;
+    }
+
     await convertObject(
-      { nodeId: objectDetailsData.id, targetKind: targetSchema.kind, fieldsMapping },
+      {
+        nodeId: objectDetailsData.id as string,
+        targetKind: targetSchema.kind as string,
+        fieldsMapping,
+      },
       {
         onSuccess: async (result) => {
           toast(<Alert type={ALERT_TYPES.SUCCESS} message="Object converted!" />);
@@ -237,7 +255,7 @@ const ConvertForm = ({
                 )}
 
                 {source === "source" && (
-                  <SourceField
+                  <ConvertSourceField
                     {...fieldProps}
                     objectDetailsData={objectDetailsData}
                     sourceSchema={sourceSchema}
@@ -269,7 +287,21 @@ const ConvertForm = ({
   );
 };
 
-const SourceField = ({
+type ConvertSourceFieldProps = {
+  objectDetailsData: NodeObject;
+  sourceSchema: ModelSchema;
+  mapping: any;
+  name: string;
+  label: string;
+  unique?: boolean;
+  description?: string;
+  rules?: any;
+  attribute?: any;
+  relationship?: any;
+  defaultValue?: any;
+};
+
+const ConvertSourceField = ({
   objectDetailsData,
   sourceSchema,
   mapping,
@@ -281,7 +313,7 @@ const SourceField = ({
   attribute,
   relationship,
   defaultValue,
-}) => {
+}: ConvertSourceFieldProps) => {
   const schemaKindLabel = useAtomValue(schemaKindNameState);
 
   return (

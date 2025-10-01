@@ -14,7 +14,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
 import { PopoverTrigger } from "../ui/popover";
@@ -41,6 +41,27 @@ interface ConvertSourceRelationshipInputParams extends ConvertSourceInputParams 
   peer: string;
 }
 
+interface ConvertSourceOption {
+  source: {
+    name: string;
+    label: string | null | undefined;
+  };
+  isDefaultMatch: boolean;
+}
+
+interface AttributeSourceOption extends ConvertSourceOption {
+  value: string | string[] | number | boolean | null;
+  label: string;
+}
+
+interface RelationshipOneSourceOption extends ConvertSourceOption {
+  value: NodeCore | null;
+}
+
+interface RelationshipManySourceOption extends ConvertSourceOption {
+  value: Array<NodeCore> | null;
+}
+
 export const ConvertSourceAttributeInput = ({
   objectDetailsData,
   sourceSchema,
@@ -52,21 +73,25 @@ export const ConvertSourceAttributeInput = ({
 
   const fieldData = field.value;
 
-  const availableOptions = sourceSchema?.attributes
-    ?.filter((attribute) => {
-      return attribute.kind === kind;
-    })
-    .map((attribute) => {
-      return {
-        value: objectDetailsData[attribute.name]?.value,
-        label: getDisplayValue(objectDetailsData, attribute) || "-",
-        source: {
-          label: attribute.label,
-          name: attribute.name,
-        },
-        isDefaultMatch: attribute.name === mapping.source_field_name,
-      };
-    });
+  const availableOptions: Array<AttributeSourceOption> =
+    "attributes" in sourceSchema && sourceSchema.attributes
+      ? sourceSchema.attributes
+          .filter((attribute) => {
+            return attribute.kind === kind;
+          })
+          .map((attribute) => {
+            const attrData = objectDetailsData[attribute.name];
+            return {
+              value: attrData && "value" in attrData ? attrData.value : null,
+              label: getDisplayValue(objectDetailsData, attribute) || "-",
+              source: {
+                label: attribute.label ?? attribute.name,
+                name: attribute.name,
+              },
+              isDefaultMatch: attribute.name === mapping.source_field_name,
+            };
+          })
+      : [];
 
   const currentOption = availableOptions?.find((option) => {
     return option.source.name === fieldData?.source?.name;
@@ -133,20 +158,24 @@ export const ConvertSourceRelationshipOneInput = ({
 
   const fieldData = field.value;
 
-  const availableOptions = sourceSchema?.relationships
-    ?.filter((relationship) => {
-      return relationship.peer === peer;
-    })
-    .map((relationship) => {
-      return {
-        value: objectDetailsData[relationship.name]?.node,
-        source: {
-          label: relationship.label,
-          name: relationship.name,
-        },
-        isDefaultMatch: relationship.name === mapping.source_field_name,
-      };
-    });
+  const availableOptions: Array<RelationshipOneSourceOption> =
+    "relationships" in sourceSchema && sourceSchema.relationships
+      ? sourceSchema.relationships
+          .filter((relationship) => {
+            return relationship.peer === peer;
+          })
+          .map((relationship) => {
+            const relationshipData = objectDetailsData[relationship.name];
+            return {
+              value: relationshipData && "node" in relationshipData ? relationshipData.node : null,
+              source: {
+                label: relationship.label ?? relationship.name,
+                name: relationship.name,
+              },
+              isDefaultMatch: relationship.name === mapping.source_field_name,
+            };
+          })
+      : [];
 
   const currentOption = availableOptions?.find((nodeOption) => {
     return nodeOption.source.name === fieldData.source?.name;
@@ -212,29 +241,35 @@ export const ConvertSourceRelationshipManyInput = ({
 
   const fieldData = field.value;
 
-  const availableOptions = sourceSchema?.relationships
-    ?.filter((relationship) => {
-      // Get all relationships that use the same peer (can be cardinality one and many)
-      return relationship.peer === peer && relationship.cardinality === "many";
-    })
-    .reduce((acc, relationship) => {
-      const objectsOptions =
-        objectDetailsData[relationship.name]?.edges?.map((edge) => {
-          return edge.node;
-        }) ?? [];
+  const availableOptions: Array<RelationshipManySourceOption> =
+    "relationships" in sourceSchema && sourceSchema?.relationships
+      ? sourceSchema.relationships
+          ?.filter((relationship) => {
+            // Get all relationships that use the same peer (can be cardinality one and many)
+            return relationship.peer === peer && relationship.cardinality === "many";
+          })
+          .reduce((acc, relationship) => {
+            const relationshipData = objectDetailsData[relationship.name];
+            const objectsOptions =
+              relationshipData &&
+              "edges" in relationshipData &&
+              Array.isArray(relationshipData.edges)
+                ? relationshipData.edges.map((edge) => edge.node)
+                : [];
 
-      const option = {
-        source: {
-          type: "schema",
-          name: relationship.name,
-          label: relationship.label,
-        },
-        value: objectsOptions,
-        isDefaultMatch: relationship.name === mapping.source_field_name,
-      };
+            const option = {
+              source: {
+                type: "schema",
+                name: relationship.name,
+                label: relationship.label,
+              },
+              value: objectsOptions,
+              isDefaultMatch: relationship.name === mapping.source_field_name,
+            };
 
-      return [...acc, option];
-    }, []);
+            return [...acc, option];
+          }, [])
+      : [];
 
   const currentOption = availableOptions?.find((nodeOption) => {
     return nodeOption.source.name === fieldData?.source?.name;
@@ -252,11 +287,11 @@ export const ConvertSourceRelationshipManyInput = ({
           )}
         >
           <div className="space-x-2">
-            {currentOption?.source?.name && (
+            {currentOption?.source?.name && currentOption?.value && (
               <Badge className="space-x-1">
                 <span>
                   {currentOption?.value
-                    .map((node) => {
+                    .map((node: NodeCore) => {
                       return getNodeLabel(node);
                     })
                     .join(" - ") || "-"}
@@ -275,49 +310,45 @@ export const ConvertSourceRelationshipManyInput = ({
         <ComboboxList>
           <ComboboxEmpty>No available values</ComboboxEmpty>
 
-          {availableOptions
-            ?.filter((option) => {
-              return !fieldData.value?.includes(option?.value?.id);
-            })
-            .map((option) => {
-              return (
-                <ComboboxItem
-                  key={option.source.name}
-                  value={option.source.name}
-                  selectedValue={fieldData?.source.name}
-                  onSelect={() => {
-                    field.onChange({
-                      source: {
-                        type: "source",
-                        label: option.source.label,
-                        name: option.source.name,
-                        node: option.value,
-                      },
-                      value: option.value?.map((node) => {
-                        return node.id;
-                      }),
-                    });
-                    setOpen(false);
-                  }}
-                >
-                  <div className="flex grow items-center justify-between">
-                    <span className="grow">
-                      {option?.value
-                        .map((node) => {
-                          return getNodeLabel(node);
-                        })
-                        .join(" - ") || "-"}
-                    </span>
+          {availableOptions?.map((option) => {
+            return (
+              <ComboboxItem
+                key={option.source.name}
+                value={option.source.name}
+                selectedValue={fieldData?.source.name}
+                onSelect={() => {
+                  field.onChange({
+                    source: {
+                      type: "source",
+                      label: option.source.label,
+                      name: option.source.name,
+                      node: option.value,
+                    },
+                    value: option.value?.map((node) => {
+                      return node.id;
+                    }),
+                  });
+                  setOpen(false);
+                }}
+              >
+                <div className="flex grow items-center justify-between">
+                  <span className="grow">
+                    {option?.value
+                      ?.map((node) => {
+                        return getNodeLabel(node);
+                      })
+                      .join(" - ") || "-"}
+                  </span>
 
-                    <div className="space-x-2">
-                      {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
+                  <div className="space-x-2">
+                    {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
 
-                      <Badge variant={"gray-outline"}>{option.source.label}</Badge>
-                    </div>
+                    <Badge variant={"gray-outline"}>{option.source.label}</Badge>
                   </div>
-                </ComboboxItem>
-              );
-            })}
+                </div>
+              </ComboboxItem>
+            );
+          })}
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
