@@ -61,7 +61,7 @@ CALL (source_artifact) {
             target_node,
             (rrel1.status = "active" AND rrel2.status = "active") AS target_is_active,
             $source_branch_name IN [rrel1.branch, rrel2.branch] AS target_on_source_branch
-        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
+        ORDER BY rrel1.branch_level DESC, rrel2.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
         LIMIT 1
     }
     // -----------------------
@@ -75,7 +75,7 @@ CALL (source_artifact) {
             definition_node,
             (rrel1.status = "active" AND rrel2.status = "active") AS definition_is_active,
             $source_branch_name IN [rrel1.branch, rrel2.branch] AS definition_on_source_branch
-        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
+        ORDER BY rrel1.branch_level DESC, rrel2.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
         LIMIT 1
     }
     // -----------------------
