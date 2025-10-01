@@ -224,8 +224,6 @@ class InfrahubMutationMixin:
             kind=obj.get_kind(),
             id=obj.get_id(),
             branch=branch,
-            include_owner=True,
-            include_source=True,
         )
         await preview_obj.from_graphql(db=db, data=data, process_pools=False)
 

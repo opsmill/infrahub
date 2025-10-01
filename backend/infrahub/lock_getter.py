@@ -18,7 +18,7 @@ def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch
     it means node schema overrided this constraint, in which case we only need to lock on the generic.
     """
 
-    node_schema = schema_branch.get(name=kind)
+    node_schema = schema_branch.get(name=kind, duplicate=False)
 
     schema_uc = None
     kinds = []
@@ -33,7 +33,7 @@ def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch
 
     node_schema_kind_removed = False
     for generic_kind in generics_kinds:
-        generic_uc = schema_branch.get(name=generic_kind).uniqueness_constraints
+        generic_uc = schema_branch.get(name=generic_kind, duplicate=False).uniqueness_constraints
         if generic_uc:
             kinds.append(generic_kind)
             if not node_schema_kind_removed and generic_uc == schema_uc:
@@ -52,34 +52,28 @@ def _hash(value: str) -> str:
 
 def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """
-    Return lock names for object on which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
-    concurrent mutations are only allowed on non-main branch as objects validations will be performed at least when merging in main branch.
-    Lock names include kind, some generic kinds, and values of attributes of corresponding uniqueness constraints.
+    Return lock names for object on which we want to avoid concurrent mutation (create/update).
+    Lock names include kind, some generic kinds, resource pool ids, and values of attributes of corresponding uniqueness constraints.
     """
 
-    lock_names: list[str] = []
-
-    def _add_pool_lock(pool_id: str) -> None:
-        lock_name = f"resource_pool.{pool_id}"
-        if lock_name not in lock_names:
-            lock_names.append(lock_name)
+    lock_names: set[str] = set()
 
     # Check if node is using resource manager allocation via attributes
-    for attr_name in getattr(node, "_attributes", []):
+    for attr_name in node.get_schema().attribute_names:
         attribute = getattr(node, attr_name, None)
         if attribute is not None and getattr(attribute, "from_pool", None) and "id" in attribute.from_pool:
-            _add_pool_lock(attribute.from_pool["id"])
+            lock_names.add(f"resource_pool.{attribute.from_pool['id']}")
 
     # Check if relationships allocate resources
     for rel_name in node._relationships:
         rel_manager: RelationshipManager = getattr(node, rel_name)
         for rel in rel_manager._relationships:
             if rel.from_pool and "id" in rel.from_pool:
-                _add_pool_lock(rel.from_pool["id"])
+                lock_names.add(f"resource_pool.{rel.from_pool['id']}")
 
     lock_kinds = _get_kinds_to_lock_on_object_mutation(node.get_kind(), schema_branch)
     for kind in lock_kinds:
-        schema = schema_branch.get(name=kind)
+        schema = schema_branch.get(name=kind, duplicate=False)
         ucs = schema.uniqueness_constraints
         if ucs is None:
             continue
@@ -119,6 +113,6 @@ def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -
             continue
 
         partial_lock_name = kind + "." + ".".join(ucs_lock_names)
-        lock_names.append(build_object_lock_name(partial_lock_name))
+        lock_names.add(build_object_lock_name(partial_lock_name))
 
-    return lock_names
+    return list(lock_names)
