@@ -280,7 +280,7 @@ const ConvertForm = ({
         })}
       </div>
 
-      <div className="sticky bottom-0 bg-white p-2 text-right">
+      <div className="sticky bottom-0 rounded-b bg-white p-2 text-right">
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>

@@ -38,7 +38,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
 
   return (
     <div className="flex gap-2 p-2">
-      <Card className="w-1/2 p-0">
+      <Card className="w-1/2 rounded p-0">
         <CardWithBorder.Title className="flex h-19 flex-col">
           <span className="font-normal">SOURCE</span>{" "}
           <div className="flex h-full items-center">{objectSchema.label}</div>
@@ -51,7 +51,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
         />
       </Card>
 
-      <Card className="w-1/2 p-0">
+      <Card className="w-1/2 rounded p-0">
         <CardWithBorder.Title className="flex flex-col">
           <span className="font-normal">DESTINATION</span>
           <Combobox open={isOpen} onOpenChange={setIsOpen}>
