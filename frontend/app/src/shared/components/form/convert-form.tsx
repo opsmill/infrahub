@@ -147,22 +147,14 @@ const ConvertForm = ({
   }, {});
 
   const handleSubmit = async (formData) => {
-    console.log("formData: ", formData);
-    const fieldsMapping = Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {
+    const fieldsMapping = fields.reduce((acc, field) => {
+      const fieldData = formData[field.name];
+
       if (fieldData.source?.type === "source") {
         return {
           ...acc,
-          [fieldName]: {
+          [field.name]: {
             source_field: fieldData.source.name,
-          },
-        };
-      }
-
-      if (fieldData.source?.type === "schema") {
-        return {
-          ...acc,
-          [fieldName]: {
-            data: { use_default_value: true },
           },
         };
       }
@@ -170,7 +162,7 @@ const ConvertForm = ({
       if (Array.isArray(fieldData.value)) {
         return {
           ...acc,
-          [fieldName]: {
+          [field.name]: {
             data: { peer_ids: fieldData.value },
           },
         };
@@ -179,7 +171,7 @@ const ConvertForm = ({
       if (fieldData.source?.node) {
         return {
           ...acc,
-          [fieldName]: {
+          [field.name]: {
             data: { peer_id: fieldData.value },
           },
         };
@@ -188,17 +180,20 @@ const ConvertForm = ({
       if (fieldData.value) {
         return {
           ...acc,
-          [fieldName]: {
+          [field.name]: {
             data: { attribute_value: fieldData.value },
           },
         };
       }
 
-      return acc;
+      return {
+        ...acc,
+        [field.name]: {
+          use_default_value: true,
+        },
+      };
     }, {});
 
-    console.log("fieldsMapping: ", fieldsMapping);
-    return;
     await convertObject(
       { nodeId: objectDetailsData.id, targetKind: targetSchema.kind, fieldsMapping },
       {
