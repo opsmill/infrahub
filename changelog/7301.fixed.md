@@ -1,0 +1,1 @@
+Fix bug in artifact diff cypher query that could improperly exclude artifacts on the default branch
