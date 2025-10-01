@@ -1,0 +1,28 @@
+---
+title: Release 1.4.10
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.4.10</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>October 1st, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.4.10](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.4.10)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Fix issue with template that would set the value/source of all attributes even for the attribute that are not defined in the template. ([#7259](https://github.com/opsmill/infrahub/issues/7259))
+- Fix bug in artifact diff cypher query that could improperly exclude artifacts on the default branch ([#7301](https://github.com/opsmill/infrahub/issues/7301))
+
+### Housekeeping
+
+- Update docs to download compose file first and then run compose up/down. This change was made due to community members using the one liner for long standing installations without the docker-compose.yml file locally. The new approach is more explicit and easier for the community to maintain their Infrahub instances in the future. ([#compose](https://github.com/opsmill/infrahub/issues/compose))
