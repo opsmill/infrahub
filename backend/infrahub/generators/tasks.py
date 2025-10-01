@@ -15,6 +15,7 @@ from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.generators.models import (
+    GeneratorDefinitionModel,
     ProposedChangeGeneratorDefinition,
     RequestGeneratorDefinitionRun,
     RequestGeneratorRun,
@@ -52,6 +53,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         name=model.generator_definition.definition_name,
         class_name=model.generator_definition.class_name,
         file_path=model.generator_definition.file_path,
+        parameters=model.generator_definition.parameters,
         query=model.generator_definition.query_name,
         targets=model.generator_definition.group_id,
         convert_query_response=model.generator_definition.convert_query_response,
@@ -213,7 +215,7 @@ async def request_generator_definition_run(
 
         generator_instance = instance_by_member.get(member.id)
         request_generator_run_model = RequestGeneratorRun(
-            generator_definition=model.generator_definition,
+            generator_definition=GeneratorDefinitionModel.from_pc_generator_definition(model.generator_definition),
             commit=repository.commit.value,
             generator_instance=generator_instance,
             repository_id=repository.id,
