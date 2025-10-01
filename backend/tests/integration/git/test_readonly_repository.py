@@ -118,7 +118,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
             "car-owner-yaml",
             "car-spec-markdown",
         ]
-        john_display_label = await person_john.render_display_label(db=db)
+        john_display_label = await person_john.get_display_label(db=db)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         branch = await registry.get_branch(db=db, branch="ro_repository")
@@ -202,7 +202,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john.id)
         john_branch.name.value = "John2"
         await john_branch.save(db=db)
-        john_display_label = await john_branch.render_display_label(db=db)
+        john_display_label = await john_branch.get_display_label(db=db)
 
         artifact_definitions = await client.all(kind=CoreArtifactDefinition)
 
