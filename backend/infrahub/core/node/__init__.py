@@ -128,7 +128,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return None
 
         if self._human_friendly_id:
-            hfid_values = self._human_friendly_id.value
+            hfid_values = await self._human_friendly_id.get_value(node=self, at=self._at)
         else:
             hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
 
@@ -144,7 +144,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def get_display_label(self, db: InfrahubDatabase) -> str | None:
         if self._display_label:
-            return self._display_label.value
+            return await self._display_label.get_value(node=self, at=self._at)
 
         return await self.render_display_label(db=db)
 
