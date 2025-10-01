@@ -25,6 +25,7 @@ import type { ModelSchema } from "@/entities/schema/types";
 import { Radio, RadioGroup } from "../aria/radio-group";
 import { ALERT_TYPES, Alert } from "../ui/alert";
 import { DynamicField } from "./dynamic-form";
+import type { FormFieldValue } from "./type";
 
 interface Mapping {
   is_mandatory: boolean;
@@ -83,11 +84,11 @@ const ConvertForm = ({
     parentData: null,
   });
 
-  const formDefaultValues = fields.reduce((acc, field) => {
+  const formDefaultValues: Record<string, FormFieldValue> = fields.reduce((acc, field) => {
     return { ...acc, [field.name]: field.defaultValue };
   }, {});
 
-  const sourceDefaultValues: Record<string, any> = fields.reduce((acc, field) => {
+  const sourceDefaultValues: Record<string, FormFieldValue> = fields.reduce((acc, field) => {
     const hasMapping = !!mappings[field.name]?.source_field_name;
     const fieldData = objectDetailsData[field.name];
 
@@ -156,11 +157,11 @@ const ConvertForm = ({
     };
   }, {});
 
-  const handleSubmit = async (formData: { [x: string]: any }) => {
+  const handleSubmit = async (formData: { [key: string]: FormFieldValue }) => {
     const fieldsMapping = fields.reduce((acc, field) => {
       const fieldData = formData[field.name];
 
-      if (fieldData.source?.type === "source") {
+      if (fieldData?.source?.type === "source") {
         return {
           ...acc,
           [field.name]: {
@@ -169,7 +170,7 @@ const ConvertForm = ({
         };
       }
 
-      if (Array.isArray(fieldData.value)) {
+      if (Array.isArray(fieldData?.value)) {
         return {
           ...acc,
           [field.name]: {
@@ -178,7 +179,7 @@ const ConvertForm = ({
         };
       }
 
-      if (fieldData.source?.node) {
+      if (fieldData?.source?.node) {
         return {
           ...acc,
           [field.name]: {
@@ -187,7 +188,7 @@ const ConvertForm = ({
         };
       }
 
-      if (fieldData.value) {
+      if (fieldData?.value) {
         return {
           ...acc,
           [field.name]: {
