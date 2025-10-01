@@ -237,45 +237,17 @@ const ConvertForm = ({
   return (
     <Form onSubmit={handleSubmit} className="relative">
       <div className="divide-y divide-gray-300">
-        {fields.map((fieldProps) => {
-          const { name } = fieldProps;
-          const hasMapping = !!mappings[name]?.source_field_name;
-
-          const [source, setSource] = useState(hasMapping ? "source" : "schema");
-
-          const handleSourceChange = (newSource: string) => {
-            setSource(newSource);
-          };
-
+        {fields.map((field) => {
           return (
-            <div key={name} className="flex items-center gap-4 px-2 py-4">
-              <div className="flex-grow">
-                {source !== "source" && (
-                  <DynamicField {...fieldProps} defaultValue={formDefaultValues[name]} />
-                )}
-
-                {source === "source" && (
-                  <ConvertSourceField
-                    {...fieldProps}
-                    objectDetailsData={objectDetailsData}
-                    sourceSchema={sourceSchema}
-                    mapping={mappings[name]}
-                    defaultValue={sourceDefaultValues[name]}
-                  />
-                )}
-              </div>
-
-              <RadioGroup
-                orientation="vertical"
-                value={source}
-                onChange={handleSourceChange}
-                className="text-sm"
-                aria-label="Select source"
-              >
-                <Radio value="source">From source</Radio>
-                <Radio value="schema">Custom value</Radio>
-              </RadioGroup>
-            </div>
+            <SourceFieldWrapper
+              key={field.name}
+              field={field}
+              objectDetailsData={objectDetailsData}
+              sourceSchema={sourceSchema}
+              mapping={mappings[field.name]}
+              sourceDefaultValue={sourceDefaultValues[field.name]}
+              formDefaultValue={formDefaultValues[field.name]}
+            />
           );
         })}
       </div>
@@ -284,6 +256,61 @@ const ConvertForm = ({
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>
+  );
+};
+
+type SourceFieldWrapperProps = {
+  field: any;
+  mapping: any;
+  objectDetailsData: NodeObject;
+  sourceSchema: ModelSchema;
+  sourceDefaultValue: any;
+  formDefaultValue: any;
+};
+
+const SourceFieldWrapper = ({
+  field,
+  mapping,
+  objectDetailsData,
+  sourceSchema,
+  sourceDefaultValue,
+  formDefaultValue,
+}: SourceFieldWrapperProps) => {
+  const hasMapping = !!mapping?.source_field_name;
+
+  const [source, setSource] = useState(hasMapping ? "source" : "schema");
+
+  const handleSourceChange = (newSource: string) => {
+    setSource(newSource);
+  };
+
+  return (
+    <div className="flex items-center gap-4 px-2 py-4">
+      <div className="flex-grow">
+        {source !== "source" && <DynamicField {...field} defaultValue={formDefaultValue} />}
+
+        {source === "source" && (
+          <ConvertSourceField
+            {...field}
+            objectDetailsData={objectDetailsData}
+            sourceSchema={sourceSchema}
+            mapping={mapping}
+            defaultValue={sourceDefaultValue}
+          />
+        )}
+      </div>
+
+      <RadioGroup
+        orientation="vertical"
+        value={source}
+        onChange={handleSourceChange}
+        className="text-sm"
+        aria-label="Select source"
+      >
+        <Radio value="source">From source</Radio>
+        <Radio value="schema">Custom value</Radio>
+      </RadioGroup>
+    </div>
   );
 };
 
