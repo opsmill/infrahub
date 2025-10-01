@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from infrahub_sdk.template import Jinja2Template
 
@@ -17,24 +17,35 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
+T = TypeVar("T")
 
-class NodePropertyAttribute:
+
+class NodePropertyAttribute(Generic[T]):
     """A node property attribute is a construct that seats between a property and an attribute.
 
     View it as a property, set at the node level but stored in the database as an attribute. It usually is something computed from other components of
     a node, such as its attributes and its relationships.
     """
 
-    def __init__(self, node_schema: NodeSchema | ProfileSchema | TemplateSchema) -> None:
+    def __init__(
+        self,
+        node_schema: NodeSchema | ProfileSchema | TemplateSchema,
+        template: T | None,
+        value: AttributeFromDB | T | None = None,
+    ) -> None:
         self.node_schema = node_schema
+
         self.node_attributes: list[str] = []
         self.node_relationships: list[str] = []
+
+        self.template = template
+        self._value = value
         self._manually_assigned = False
 
         self.analyze_variables()
 
     def needs_update(self, fields: list[str] | None) -> bool:
-        """Tell if a display label must be recomputed given a list of updated fields of a node or by manual assignment."""
+        """Tell if this nod eproperty attribute must be recomputed given a list of updated fields of a node."""
         if self._manually_assigned:
             return True
         for field in fields or []:
@@ -42,6 +53,29 @@ class NodePropertyAttribute:
                 return True
 
         return False
+
+    @property
+    def attribute_value(self) -> AttributeFromDB | dict[str, T | None]:
+        if isinstance(self._value, AttributeFromDB):
+            return self._value
+        return {"value": self._value}
+
+    def set_value(self, value: T | None, manually_assigned: bool = False) -> None:
+        """Force the value of the node property attribute to the given one."""
+        if isinstance(self._value, AttributeFromDB):
+            self._value.value = value
+        else:
+            self._value = value
+
+        if manually_assigned:
+            self._manually_assigned = True
+
+    async def get_value(self, node: Node, at: Timestamp) -> T | None:
+        if isinstance(self._value, AttributeFromDB):
+            attr = await self.get_node_attribute(node=node, at=at)
+            return attr.value  # type: ignore
+
+        return self._value
 
     @abstractmethod
     def analyze_variables(self) -> None: ...
@@ -53,46 +87,13 @@ class NodePropertyAttribute:
     async def get_node_attribute(self, node: Node, at: Timestamp) -> BaseAttribute: ...
 
 
-class DisplayLabel(NodePropertyAttribute):
-    def __init__(
-        self,
-        node_schema: NodeSchema | ProfileSchema | TemplateSchema,
-        template: str | None,
-        value: str | AttributeFromDB | None = None,
-    ) -> None:
-        self.template = template
-        self._value = value
-
-        super().__init__(node_schema=node_schema)
-
+class DisplayLabel(NodePropertyAttribute[str]):
     @property
     def is_jinja2_template(self) -> bool:
         if self.template is None:
             return False
 
         return any(c in self.template for c in "{}")
-
-    @property
-    def attribute_value(self) -> AttributeFromDB | dict[str, str | None]:
-        if isinstance(self._value, AttributeFromDB):
-            return self._value
-        return {"value": self._value}
-
-    @property
-    def value(self) -> str | None:
-        if isinstance(self._value, AttributeFromDB):
-            return self._value.value
-        return self._value
-
-    def set_value(self, value: str | None, manually_assigned: bool = False) -> None:
-        """Force the value of the display label to the given one."""
-        if isinstance(self._value, AttributeFromDB):
-            self._value.value = value
-        else:
-            self._value = value
-
-        if manually_assigned:
-            self._manually_assigned = True
 
     def _analyze_plain_value(self) -> None:
         if self.template is None or "__" not in self.template:
@@ -161,40 +162,7 @@ class DisplayLabel(NodePropertyAttribute):
         )
 
 
-class HumanFriendlyIdentifier(NodePropertyAttribute):
-    def __init__(
-        self,
-        node_schema: NodeSchema | ProfileSchema | TemplateSchema,
-        template: list[str] | None,
-        value: list[str] | AttributeFromDB | None = None,
-    ) -> None:
-        self.template = template
-        self._value = value
-
-        super().__init__(node_schema=node_schema)
-
-    @property
-    def attribute_value(self) -> AttributeFromDB | dict[str, list[str] | None]:
-        if isinstance(self._value, AttributeFromDB):
-            return self._value
-        return {"value": self._value}
-
-    @property
-    def value(self) -> list[str] | None:
-        if isinstance(self._value, AttributeFromDB):
-            return self._value.value
-        return self._value
-
-    def set_value(self, value: list[str] | None, manually_assigned: bool = False) -> None:
-        """Force the value of the HFID to the given one."""
-        if isinstance(self._value, AttributeFromDB):
-            self._value.value = value
-        else:
-            self._value = value
-
-        if manually_assigned:
-            self._manually_assigned = True
-
+class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
     def _analyze_single_variable(self, value: str) -> None:
         items = value.split("__", maxsplit=1)
         if items[0] in self.node_schema.attribute_names:

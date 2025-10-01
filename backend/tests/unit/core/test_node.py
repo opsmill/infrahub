@@ -299,7 +299,11 @@ async def test_display_label(
     await obj.save(db=db)
 
     assert obj._display_label
-    assert obj._display_label.value == expected
+    assert await obj.get_display_label(db=db) == expected
+
+    obj = await NodeManager.get_one(db=db, kind=node_schema.kind, id=obj.id)
+
+    assert obj._display_label
     assert await obj.get_display_label(db=db) == expected
 
 
@@ -316,7 +320,16 @@ async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_sche
     await dog1.save(db=db)
 
     assert dog1._human_friendly_id
-    assert dog1._human_friendly_id.value == ["Jack", "Rocky"]
+
+    assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
+    assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
+
+    assert await dog1.get_hfid_as_string(db=db) == "Jack__Rocky"
+    assert await dog1.get_hfid_as_string(db=db, include_kind=True) == "TestDog__Jack__Rocky"
+
+    dog1 = await NodeManager.get_one(db=db, kind=dog_schema.kind, id=dog1.id)
+
+    assert dog1._human_friendly_id
 
     assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
     assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
