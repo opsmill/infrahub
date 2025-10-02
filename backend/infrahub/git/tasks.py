@@ -438,6 +438,7 @@ async def generate_request_artifact_definition(
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
         convert_query_response = transform.convert_query_response.value
 
+    batch = await client.create_batch()
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
@@ -467,9 +468,15 @@ async def generate_request_artifact_definition(
             context=context,
         )
 
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_ARTIFACT_GENERATE, context=context, parameters={"model": request_artifact_generate_model}
+        batch.add(
+            task=get_workflow().submit_workflow,
+            workflow=REQUEST_ARTIFACT_GENERATE,
+            context=context,
+            parameters={"model": request_artifact_generate_model},
         )
+
+    async for _, _ in batch.execute():
+        pass
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
