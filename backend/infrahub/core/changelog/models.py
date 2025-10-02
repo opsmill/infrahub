@@ -227,7 +227,6 @@ class NodeChangelog(BaseModel):
 
     node_id: str
     node_kind: str
-    display_label: str
 
     attributes: dict[str, AttributeChangelog] = Field(default_factory=dict)
     relationships: dict[str, RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog] = Field(
@@ -596,11 +595,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(
-                node_id=peer_id,
-                node_kind=peer_kind,
-                display_label="n/a",
-            )
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind)
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
@@ -634,11 +629,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(
-                node_id=peer_id,
-                node_kind=peer_kind,
-                display_label="n/a",
-            )
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind)
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
