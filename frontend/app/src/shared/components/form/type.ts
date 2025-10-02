@@ -35,8 +35,9 @@ export type ProfileSource = {
 };
 
 export type ConvertSource = {
-  type: "convert";
-  fieldLabel: string;
+  type: "source";
+  name: string;
+  label: string;
 };
 
 export type TemplateSource = {
