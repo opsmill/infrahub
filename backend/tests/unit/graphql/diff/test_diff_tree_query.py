@@ -783,7 +783,7 @@ async def test_diff_tree_summary_no_changes(
             DiffSummaryCounters(
                 num_added=3,
                 num_updated=5,
-                num_removed=2,
+                num_removed=3,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
                 to_time=Timestamp(datetime.now(UTC).isoformat()),
             ),
@@ -794,7 +794,7 @@ async def test_diff_tree_summary_no_changes(
             DiffSummaryCounters(
                 num_added=3,
                 num_updated=1,
-                num_removed=2,
+                num_removed=3,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
                 to_time=Timestamp(datetime.now(UTC).isoformat()),
             ),
