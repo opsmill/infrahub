@@ -20,6 +20,7 @@ const NumberField = ({
   rules,
   unique,
   pools,
+  shouldUnregister,
   ...props
 }: NumberFieldProps) => {
   return (
@@ -28,6 +29,7 @@ const NumberField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

@@ -20,6 +20,7 @@ const ColorField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: InputFieldProps) => {
   return (
@@ -28,6 +29,7 @@ const ColorField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

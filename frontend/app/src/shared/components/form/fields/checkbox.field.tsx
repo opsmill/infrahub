@@ -16,6 +16,7 @@ const CheckboxField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: CheckboxFieldProps) => {
   return (
@@ -33,6 +34,7 @@ const CheckboxField = ({
         },
       }}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

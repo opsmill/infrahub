@@ -15,6 +15,7 @@ const JsonField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: FormFieldProps) => {
   return (
@@ -23,6 +24,7 @@ const JsonField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

@@ -15,6 +15,7 @@ const ListField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: FormFieldProps) => {
   return (
@@ -34,6 +35,7 @@ const ListField = ({
         },
       }}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData = field.value;
 

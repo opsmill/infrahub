@@ -22,6 +22,7 @@ const DatetimeField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: DatetimeFieldProps) => {
   return (
@@ -30,6 +31,7 @@ const DatetimeField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 
