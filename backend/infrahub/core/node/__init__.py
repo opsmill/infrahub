@@ -799,7 +799,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._existing = True
 
         new_ids = query.get_ids()
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
 
         if self._human_friendly_id:
             node_changelog.create_attribute(
