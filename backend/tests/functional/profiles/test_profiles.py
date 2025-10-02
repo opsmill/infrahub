@@ -20,7 +20,16 @@ class AttributeProfileDetails:
     attribute_name: str
     value: Any
     is_default: bool
-    source_profile_id: str
+    source_profile_id: str | None = None
+    source_template_id: str | None = None
+
+    @property
+    def is_from_profile(self) -> bool:
+        return self.source_profile_id is not None
+
+    @property
+    def source_id(self) -> str | None:
+        return self.source_profile_id or self.source_template_id
 
 
 class TestProfiles(TestInfrahubApp):
@@ -92,6 +101,20 @@ class TestProfiles(TestInfrahubApp):
         await device_profile.save()
         return await client.get(kind=f"Profile{TestKind.DEVICE}", id=device_profile.id, property=True)
 
+    @pytest.fixture(scope="class")
+    async def device_template(
+        self,
+        client: InfrahubClient,
+        load_schema: None,
+    ) -> InfrahubNode:
+        device_template = await client.create(
+            kind=f"Template{TestKind.DEVICE}",
+            template_name="device-template",
+            height=501,
+        )
+        await device_template.save()
+        return await client.get(kind=f"Template{TestKind.DEVICE}", id=device_template.id)
+
     @pytest.fixture
     async def device_profile_2_with_empty_node(
         self, device_2_empty_attribute: InfrahubNode, client: InfrahubClient, load_schema: None, branch: BranchData
@@ -134,11 +157,8 @@ class TestProfiles(TestInfrahubApp):
             if expected_profile_attr := expected_profile_attrs_by_name.get(attribute_name):
                 assert current_attribute.value == expected_profile_attr.value
                 assert current_attribute.is_default == expected_profile_attr.is_default
-                assert current_attribute.is_from_profile == (expected_profile_attr.source_profile_id is not None)
-                if expected_profile_attr.source_profile_id:
-                    assert current_attribute.source.id == expected_profile_attr.source_profile_id
-                else:
-                    assert current_attribute.source is None
+                assert current_attribute.is_from_profile == expected_profile_attr.is_from_profile
+                assert current_attribute.source.id == expected_profile_attr.source_id
                 continue
             original_attribute = getattr(original_node, attribute_name)
             assert current_attribute.value == original_attribute.value
@@ -154,6 +174,7 @@ class TestProfiles(TestInfrahubApp):
         device_1_full_attributes: InfrahubNode,
         device_2_empty_attribute: InfrahubNode,
         device_3: InfrahubNode,
+        device_template: InfrahubNode,
         device_profile_1: InfrahubNode,
         branch: BranchData,
     ):
@@ -350,6 +371,176 @@ class TestProfiles(TestInfrahubApp):
                     value="part-number-profile-3",
                     is_default=False,
                     source_profile_id=device_profile_3_with_all_nodes.id,
+                ),
+            ],
+        )
+
+    async def test_update_profile_priority(
+        self,
+        device_1_full_attributes: InfrahubNode,
+        device_2_empty_attribute: InfrahubNode,
+        device_3: InfrahubNode,
+        device_profile_3_with_all_nodes: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ):
+        # make profile 3 the highest priority
+        device_profile_3 = await client.get(
+            branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_3_with_all_nodes.id
+        )
+        device_profile_3.profile_priority.value = 999
+        await device_profile_3.save()
+
+        updated_device_1 = await client.get(
+            branch=branch.name, kind=TestKind.DEVICE, id=device_1_full_attributes.id, property=True
+        )
+        self.validate_node(
+            original_node=device_1_full_attributes,
+            updated_node=updated_device_1,
+            expected_profile_attrs=[],
+        )
+
+        expected_profile_3_attrs = [
+            AttributeProfileDetails(
+                attribute_name="height",
+                value=301,
+                is_default=False,
+                source_profile_id=device_profile_3_with_all_nodes.id,
+            ),
+            AttributeProfileDetails(
+                attribute_name="part_number",
+                value="part-number-profile-3",
+                is_default=False,
+                source_profile_id=device_profile_3_with_all_nodes.id,
+            ),
+        ]
+        updated_device_2 = await client.get(
+            branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id, property=True
+        )
+        self.validate_node(
+            original_node=device_2_empty_attribute,
+            updated_node=updated_device_2,
+            expected_profile_attrs=expected_profile_3_attrs,
+        )
+
+        updated_device_3 = await client.get(branch=branch.name, kind=TestKind.DEVICE, id=device_3.id, property=True)
+        self.validate_node(
+            original_node=device_3,
+            updated_node=updated_device_3,
+            expected_profile_attrs=expected_profile_3_attrs,
+        )
+
+    async def test_delete_profile(
+        self,
+        device_1_full_attributes: InfrahubNode,
+        device_2_empty_attribute: InfrahubNode,
+        device_3: InfrahubNode,
+        device_profile_2_updated_values: InfrahubNode,
+        device_profile_3_with_all_nodes: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ):
+        # delete profile 3
+        device_profile_3 = await client.get(
+            branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_3_with_all_nodes.id
+        )
+        await device_profile_3.delete()
+
+        updated_device_1 = await client.get(
+            branch=branch.name, kind=TestKind.DEVICE, id=device_1_full_attributes.id, property=True
+        )
+        self.validate_node(
+            original_node=device_1_full_attributes,
+            updated_node=updated_device_1,
+            expected_profile_attrs=[],
+        )
+
+        updated_device_2 = await client.get(
+            branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id, property=True
+        )
+        self.validate_node(
+            original_node=device_2_empty_attribute,
+            updated_node=updated_device_2,
+            expected_profile_attrs=[
+                AttributeProfileDetails(
+                    attribute_name="height",
+                    value=1022,
+                    is_default=False,
+                    source_profile_id=device_profile_2_updated_values.id,
+                ),
+                AttributeProfileDetails(
+                    attribute_name="part_number",
+                    value="part-number-profile-2-updated",
+                    is_default=False,
+                    source_profile_id=device_profile_2_updated_values.id,
+                ),
+            ],
+        )
+
+        updated_device_3 = await client.get(branch=branch.name, kind=TestKind.DEVICE, id=device_3.id, property=True)
+        self.validate_node(
+            original_node=device_3,
+            updated_node=updated_device_3,
+            expected_profile_attrs=[],
+        )
+
+    @pytest.fixture
+    async def device_4_with_template(
+        self,
+        device_template: InfrahubNode,
+        device_profile_2_updated_values: InfrahubNode,
+        client: InfrahubClient,
+        load_schema: None,
+        branch: BranchData,
+    ) -> InfrahubNode:
+        try:
+            return await client.get(
+                branch=branch.name,
+                kind=f"{TestKind.DEVICE}",
+                name__value=f"device-4-{branch.name}",
+                property=True,
+            )
+        except NodeNotFoundError:
+            pass
+        device = await client.create(
+            branch=branch.name,
+            kind=f"{TestKind.DEVICE}",
+            name=f"device-4-{branch.name}",
+            manufacturer="manufacturer-4",
+            weight=4,
+            airflow="Passive",
+            profiles=[device_profile_2_updated_values.id],
+            object_template=device_template,
+        )
+        await device.save()
+        return await client.get(branch=branch.name, kind=f"{TestKind.DEVICE}", id=device.id, property=True)
+
+    async def test_create_device_with_template_and_profile(
+        self,
+        device_template: InfrahubNode,
+        device_profile_2_updated_values: InfrahubNode,
+        device_4_with_template: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ):
+        updated_device_4 = await client.get(
+            branch=branch.name, kind=f"{TestKind.DEVICE}", id=device_4_with_template.id, property=True
+        )
+        self.validate_node(
+            original_node=device_4_with_template,
+            updated_node=updated_device_4,
+            expected_profile_attrs=[
+                AttributeProfileDetails(
+                    attribute_name="height",
+                    value=501,
+                    is_default=False,
+                    source_template_id=device_template.id,
+                ),
+                AttributeProfileDetails(
+                    attribute_name="part_number",
+                    value="part-number-profile-2-updated",
+                    is_default=False,
+                    source_profile_id=device_profile_2_updated_values.id,
                 ),
             ],
         )
