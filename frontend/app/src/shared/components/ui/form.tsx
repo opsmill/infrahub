@@ -85,7 +85,7 @@ export const FormField = (props: ControllerProps) => {
 
   return (
     <FormFieldContext value={{ id, name: props.name }}>
-      <Controller control={control} {...props} shouldUnregister />
+      <Controller control={control} shouldUnregister {...props} />
     </FormFieldContext>
   );
 };
