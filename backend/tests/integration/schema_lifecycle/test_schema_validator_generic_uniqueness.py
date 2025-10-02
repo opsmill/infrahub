@@ -398,7 +398,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             # athena_branch,
             # starbuck_main,
             # president_branch,
-            display_label = await node.render_display_label(db=db)
+            display_label = await node.get_display_label(db=db)
             kind = "TestingHumanoid"
             for field in ("name", "favorite_color"):
                 value = getattr(node, field).value
@@ -410,7 +410,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                 assert expected_error_msg in exc.value.errors[0]["message"]
 
         for node in [boomer_main, athena_branch]:
-            display_label = await node.render_display_label(db=db)
+            display_label = await node.get_display_label(db=db)
             kind = "TestingCylon"
             for field in ("model_number", "favorite_color"):
                 value = getattr(node, field).value
@@ -422,7 +422,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                 assert expected_error_msg in exc.value.errors[0]["message"]
 
         for node in [starbuck_main, president_branch]:
-            display_label = await node.render_display_label(db=db)
+            display_label = await node.get_display_label(db=db)
             kind = "TestingPerson"
             for field in ("homeworld", "favorite_color"):
                 value = getattr(node, field).value
