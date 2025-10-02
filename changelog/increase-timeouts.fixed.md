@@ -1,0 +1,1 @@
+- Increase default timeout for transform/checks from 10 to 60 seconds
