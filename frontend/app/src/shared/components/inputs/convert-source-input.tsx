@@ -26,18 +26,19 @@ interface Mapping {
   source_field_name: string;
 }
 
-interface ConvertSourceInputParams {
+interface ConvertSourceInputProps {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   field: any;
   mapping: Mapping;
+  className?: string;
 }
 
-interface ConvertSourceAttributeInputParams extends ConvertSourceInputParams {
+interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
   kind: string;
 }
 
-interface ConvertSourceRelationshipInputParams extends ConvertSourceInputParams {
+interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
   peer: string;
 }
 
@@ -69,7 +70,8 @@ export const ConvertSourceAttributeInput = ({
   mapping,
   field,
   kind,
-}: ConvertSourceAttributeInputParams) => {
+  className,
+}: ConvertSourceAttributeInputProps) => {
   const [open, setOpen] = useState(false);
 
   const fieldData = field.value;
@@ -101,7 +103,7 @@ export const ConvertSourceAttributeInput = ({
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger>
+      <ComboboxTrigger className={className}>
         {currentOption && (
           <Badge className="space-x-1">
             <span>{currentOption.label}</span>
@@ -155,7 +157,8 @@ export const ConvertSourceRelationshipOneInput = ({
   mapping,
   field,
   peer,
-}: ConvertSourceRelationshipInputParams) => {
+  className,
+}: ConvertSourceRelationshipInputProps) => {
   const [open, setOpen] = useState(false);
 
   const fieldData = field.value;
@@ -186,7 +189,7 @@ export const ConvertSourceRelationshipOneInput = ({
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger>
+      <ComboboxTrigger className={className}>
         {currentOption && (
           <Badge className="space-x-1">
             <span>{currentOption?.value?.display_label || "-"}</span>
@@ -241,7 +244,8 @@ export const ConvertSourceRelationshipManyInput = ({
   mapping,
   field,
   peer,
-}: ConvertSourceRelationshipInputParams) => {
+  className,
+}: ConvertSourceRelationshipInputProps) => {
   const [open, setOpen] = useState(false);
 
   const fieldData = field.value;
@@ -288,7 +292,8 @@ export const ConvertSourceRelationshipManyInput = ({
             inputStyle,
             "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
             "w-full cursor-pointer",
-            "flex justify-between"
+            "flex justify-between",
+            className
           )}
         >
           <div className="space-x-2">

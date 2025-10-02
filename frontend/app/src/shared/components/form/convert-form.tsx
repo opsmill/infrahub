@@ -375,9 +375,9 @@ const ConvertSourceField = ({
             />
 
             <Row>
-              <FormInput>
-                <div className="grow">
-                  {attribute && (
+              <div className="grow">
+                {attribute && (
+                  <FormInput>
                     <ConvertSourceAttributeInput
                       objectDetailsData={objectDetailsData}
                       sourceSchema={sourceSchema}
@@ -385,9 +385,11 @@ const ConvertSourceField = ({
                       kind={attribute.kind}
                       field={field}
                     />
-                  )}
+                  </FormInput>
+                )}
 
-                  {relationship?.peer && relationship.cardinality === "one" && (
+                {relationship?.peer && relationship.cardinality === "one" && (
+                  <FormInput>
                     <ConvertSourceRelationshipOneInput
                       objectDetailsData={objectDetailsData}
                       sourceSchema={sourceSchema}
@@ -395,9 +397,11 @@ const ConvertSourceField = ({
                       peer={relationship.peer}
                       field={field}
                     />
-                  )}
+                  </FormInput>
+                )}
 
-                  {relationship?.peer && relationship.cardinality === "many" && (
+                {relationship?.peer && relationship.cardinality === "many" && (
+                  <FormInput>
                     <ConvertSourceRelationshipManyInput
                       objectDetailsData={objectDetailsData}
                       sourceSchema={sourceSchema}
@@ -405,9 +409,9 @@ const ConvertSourceField = ({
                       peer={relationship.peer}
                       field={field}
                     />
-                  )}
-                </div>
-              </FormInput>
+                  </FormInput>
+                )}
+              </div>
             </Row>
 
             <FormMessage />
