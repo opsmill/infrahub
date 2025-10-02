@@ -28,7 +28,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
     assert person1.node_changelog == NodeChangelog(
         node_id=person1.id,
         node_kind="TestPerson",
-        display_label="Jack",
         attributes={
             "human_friendly_id": AttributeChangelog(
                 name="human_friendly_id",
@@ -103,7 +102,6 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
     assert dog1.node_changelog == NodeChangelog(
         node_id=dog1.id,
         node_kind="TestDog",
-        display_label="Rocky Labrador",
         attributes={
             "human_friendly_id": AttributeChangelog(
                 name="human_friendly_id",
@@ -208,7 +206,6 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
     assert dog1_update.node_changelog == NodeChangelog(
         node_id=dog1.id,
         node_kind="TestDog",
-        display_label="Rocky Labrador",
         attributes={
             "color": AttributeChangelog(
                 name="color", value="Brown", value_previous="#444444", properties={}, kind="Color"
