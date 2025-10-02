@@ -142,10 +142,10 @@ class NodeCreateAllQuery(NodeQuery):
         attributes_ipnetwork: list[AttributeCreateData] = []
         attributes_indexed: list[AttributeCreateData] = []
 
-        if self.node._display_label:
+        if self.node.has_display_label():
             display_label_attr = await self.node._display_label.get_node_attribute(node=self.node, at=at)
             attributes_indexed.append(display_label_attr.get_create_data())
-        if self.node._human_friendly_id:
+        if self.node.has_human_friendly_id():
             hfid_attr = await self.node._human_friendly_id.get_node_attribute(node=self.node, at=at)
             attributes_indexed.append(hfid_attr.get_create_data())
 
