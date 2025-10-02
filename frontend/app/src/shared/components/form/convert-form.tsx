@@ -296,8 +296,22 @@ const ConvertFieldWrapper = ({
   const handleSourceChange = (newSource: string) => {
     setSource(newSource);
 
-    form.resetField(field.name);
+    // form.resetField(field.name);
+    // form.trigger(field.name);
+
+    if (source === "source") {
+      // form.setValue(field.name, sourceDefaultValue);
+      // form.resetField(field.name, sourceDefaultValue);
+    }
+
+    if (source === "source") {
+      // form.setValue(field.name, formDefaultValue);
+      // form.resetField(field.name, formDefaultValue);
+    }
   };
+
+  console.log("form.getValues(field.name): ", field.name, form.getValues(field.name));
+  console.log("form.getFieldState(field.name): ", field.name, form.getFieldState(field.name));
 
   return (
     <div className="flex items-center gap-4 px-2 py-4">
