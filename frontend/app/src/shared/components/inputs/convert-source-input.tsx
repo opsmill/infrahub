@@ -266,7 +266,7 @@ export const ConvertSourceRelationshipManyInput = ({
               source: {
                 type: "source",
                 name: relationship.name,
-                label: relationship.label,
+                label: relationship.label ?? relationship.name,
               },
               value: objectsOptions,
               isDefaultMatch: relationship.name === mapping.source_field_name,
@@ -348,7 +348,7 @@ export const ConvertSourceRelationshipManyInput = ({
                   <div className="space-x-2">
                     {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
 
-                    <Badge variant={"gray-outline"}>{option.source.label}</Badge>
+                    <Badge variant={"gray-outline"}>{option.source?.label}</Badge>
                   </div>
                 </div>
               </ComboboxItem>
