@@ -761,7 +761,16 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._existing = True
 
         new_ids = query.get_ids()
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
+
+        if self._human_friendly_id:
+            node_changelog.create_attribute(
+                attribute=await self._human_friendly_id.get_node_attribute(node=self, at=create_at)
+            )
+        if self._display_label:
+            node_changelog.create_attribute(
+                attribute=await self._display_label.get_node_attribute(node=self, at=create_at)
+            )
 
         # Go over the list of Attribute and assign the new IDs one by one
         for name in self._attributes:
@@ -778,7 +787,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.get_display_label(db=db) or ""
         return node_changelog
 
     async def _update(
@@ -830,7 +838,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
 
-        node_changelog.display_label = await self.get_display_label(db=db) or ""
         return node_changelog
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
@@ -849,14 +856,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         delete_at = Timestamp(at)
 
-        node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db) or ""
-        )
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            deleted_attribute = await attr.delete(at=delete_at, db=db)
-            if deleted_attribute:
+            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+                node_changelog.add_attribute(attribute=deleted_attribute)
+
+        if self._human_friendly_id:
+            attr = await self._human_friendly_id.get_node_attribute(node=self, at=delete_at)
+            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+                node_changelog.add_attribute(attribute=deleted_attribute)
+
+        if self._display_label:
+            attr = await self._display_label.get_node_attribute(node=self, at=delete_at)
+            if deleted_attribute := await attr.delete(at=delete_at, db=db):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         branch = self.get_branch_based_on_support_type()
