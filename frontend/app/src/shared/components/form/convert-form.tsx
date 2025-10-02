@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { useForm, useFormContext } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
@@ -41,7 +41,11 @@ export type ConvertFormProps = {
   mappings: Record<string, Mapping>;
 };
 
-const ConvertFormWapper = ({ objectDetailsData, sourceSchema, targetSchema }: ConvertFormProps) => {
+const ConvertFormWrapper = ({
+  objectDetailsData,
+  sourceSchema,
+  targetSchema,
+}: ConvertFormProps) => {
   const {
     data: mappings,
     isPending,
@@ -242,8 +246,6 @@ const ConvertForm = ({
     );
   };
 
-  const form = useForm();
-
   return (
     <Form onSubmit={handleSubmit} className="relative">
       <div className="divide-y divide-gray-300">
@@ -422,4 +424,4 @@ const ConvertSourceField = ({
   );
 };
 
-export default ConvertFormWapper;
+export default ConvertFormWrapper;
