@@ -39,7 +39,7 @@ const InputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        const [override, setOverride] = React.useState(autoFocus);
+        const [override, setOverride] = React.useState(false);
         const fieldData: FormAttributeValue = field.value;
         const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
@@ -63,7 +63,7 @@ const InputField = ({
                     onChange={(event) => {
                       field.onChange(updateFormFieldValue(event.target.value, defaultValue));
                     }}
-                    autoFocus={override}
+                    autoFocus={autoFocus || override}
                     onBlur={() => setOverride(false)}
                   />
                 ) : (
