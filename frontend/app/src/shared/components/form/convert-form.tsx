@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useState } from "react";
+import { useForm, useFormContext } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
@@ -241,6 +242,8 @@ const ConvertForm = ({
     );
   };
 
+  const form = useForm();
+
   return (
     <Form onSubmit={handleSubmit} className="relative">
       <div className="divide-y divide-gray-300">
@@ -286,9 +289,18 @@ const ConvertFieldWrapper = ({
   const hasMapping = !!mapping?.source_field_name;
 
   const [source, setSource] = useState(hasMapping ? "source" : "schema");
+  const form = useFormContext();
 
   const handleSourceChange = (newSource: string) => {
     setSource(newSource);
+
+    if (newSource === "source") {
+      form.setValue(field.name, sourceDefaultValue, { shouldTouch: true });
+    }
+
+    if (newSource === "schema") {
+      form.setValue(field.name, formDefaultValue, { shouldTouch: true });
+    }
   };
 
   return (
