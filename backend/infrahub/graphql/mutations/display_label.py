@@ -80,7 +80,7 @@ class UpdateDisplayLabel(Mutation):
             )
 
         existing_label = (
-            target_node.get_display_label(db=graphql_context.db) if target_node.has_display_label() else None
+            await target_node.get_display_label(db=graphql_context.db) if target_node.has_display_label() else None
         )
         if str(data.value) != existing_label:
             await target_node.set_display_label(value=str(data.value))
