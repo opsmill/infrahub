@@ -29,6 +29,7 @@ const InputField = ({
   unique,
   pool,
   isBulkUpdate,
+  autoFocus,
   ...props
 }: InputFieldProps) => {
   return (
@@ -38,7 +39,7 @@ const InputField = ({
       rules={rules}
       defaultValue={defaultValue}
       render={({ field }) => {
-        const [override, setOverride] = React.useState(false);
+        const [override, setOverride] = React.useState(autoFocus);
         const fieldData: FormAttributeValue = field.value;
         const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
