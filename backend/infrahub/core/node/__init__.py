@@ -795,7 +795,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
 
         # Update the HFID if one of its variable is being updated
         if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
