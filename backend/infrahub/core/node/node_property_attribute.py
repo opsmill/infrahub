@@ -162,7 +162,6 @@ class DisplayLabel(NodePropertyAttribute[str]):
         )
 
 
-
 class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
     def _analyze_single_variable(self, value: str) -> None:
         items = value.split("__", maxsplit=1)
