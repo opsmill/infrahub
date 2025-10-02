@@ -121,11 +121,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return None
         return "__".join(hfid)
 
+    def has_human_friendly_id(self) -> bool:
+        return self._human_friendly_id is not None
+
     async def get_display_label(self, db: InfrahubDatabase) -> str | None:
         if self._display_label:
             return await self._display_label.get_value(node=self, at=self._at)
 
         return await self.render_display_label(db=db)
+
+    def has_display_label(self) -> bool:
+        return self._display_label is not None
 
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
         schema_path = self._schema.parse_schema_path(
