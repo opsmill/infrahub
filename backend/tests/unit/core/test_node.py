@@ -214,7 +214,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == "John"
     assert await obj.get_display_label(db=db) == "John"
-    assert not obj._display_label
+    assert not obj.has_display_label()
 
     # Display Labels with 2 attributes
     schema_01["display_labels"] = ["firstname__value", "age__value"]
@@ -225,7 +225,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == "John 99"
     assert await obj.get_display_label(db=db) == "John 99"
-    assert not obj._display_label
+    assert not obj.has_display_label()
 
     # Empty Display Label
     schema_01["display_labels"] = []
@@ -236,7 +236,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
     assert await obj.get_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
-    assert not obj._display_label
+    assert not obj.has_display_label()
 
     # Display Labels with an ENUM String
     schema_01["display_labels"] = ["firstname__value", "color__value"]
@@ -247,7 +247,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, color="red")
     assert await obj.render_display_label(db=db) == "John red"
     assert await obj.get_display_label(db=db) == "John red"
-    assert not obj._display_label
+    assert not obj.has_display_label()
 
     # Display Labels with an ENUM Number
     schema_01["display_labels"] = ["firstname__value", "height__value"]
@@ -258,7 +258,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, height=180)
     assert await obj.render_display_label(db=db) == "John 180"
     assert await obj.get_display_label(db=db) == "John 180"
-    assert not obj._display_label
+    assert not obj.has_display_label()
 
 
 @pytest.mark.parametrize(
@@ -298,12 +298,12 @@ async def test_display_label(
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     await obj.save(db=db)
 
-    assert obj._display_label
+    assert obj.has_display_label()
     assert await obj.get_display_label(db=db) == expected
 
     obj = await NodeManager.get_one(db=db, kind=node_schema.kind, id=obj.id)
 
-    assert obj._display_label
+    assert obj.has_display_label()
     assert await obj.get_display_label(db=db) == expected
 
 
@@ -319,7 +319,7 @@ async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_sche
     await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
     await dog1.save(db=db)
 
-    assert dog1._human_friendly_id
+    assert dog1.has_human_friendly_id()
 
     assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
     assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
@@ -329,7 +329,7 @@ async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_sche
 
     dog1 = await NodeManager.get_one(db=db, kind=dog_schema.kind, id=dog1.id)
 
-    assert dog1._human_friendly_id
+    assert dog1.has_human_friendly_id()
 
     assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
     assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
