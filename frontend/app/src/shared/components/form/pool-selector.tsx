@@ -60,7 +60,7 @@ export function PoolSelector({ children, onChange, value, pools }: PoolSelectorP
               <ComboboxItem
                 key={pool.id}
                 value={pool.id}
-                keywords={[pool.display_label!, pool.id]}
+                keywords={[poolLabel, pool.id]}
                 onSelect={() =>
                   onChange({
                     from_pool: {
