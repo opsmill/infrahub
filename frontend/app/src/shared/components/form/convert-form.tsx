@@ -246,7 +246,7 @@ const ConvertForm = ({
       <div className="divide-y divide-gray-300">
         {fields.map((field) => {
           return (
-            <SourceFieldWrapper
+            <ConvertFieldWrapper
               key={field.name}
               field={field}
               objectDetailsData={objectDetailsData}
@@ -266,7 +266,7 @@ const ConvertForm = ({
   );
 };
 
-type SourceFieldWrapperProps = {
+type ConvertFieldWrapperProps = {
   field: any;
   mapping?: Mapping;
   objectDetailsData: NodeObject;
@@ -275,14 +275,14 @@ type SourceFieldWrapperProps = {
   formDefaultValue: any;
 };
 
-const SourceFieldWrapper = ({
+const ConvertFieldWrapper = ({
   field,
   mapping,
   objectDetailsData,
   sourceSchema,
   sourceDefaultValue,
   formDefaultValue,
-}: SourceFieldWrapperProps) => {
+}: ConvertFieldWrapperProps) => {
   const hasMapping = !!mapping?.source_field_name;
 
   const [source, setSource] = useState(hasMapping ? "source" : "schema");
