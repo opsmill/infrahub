@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
+import { CsvTable } from "@/shared/components/editor/csv-table";
 import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -95,6 +96,13 @@ function FileContent({
     case "image/svg+xml": {
       return (
         <Svg value={fileContent} className="grow rounded-lg border border-neutral-700 shadow-sm" />
+      );
+    }
+    case "text/csv": {
+      return (
+        <ScrollArea scrollX scrollBarClassName="bg-transparent">
+          <CsvTable content={fileContent} />
+        </ScrollArea>
       );
     }
     default: {
