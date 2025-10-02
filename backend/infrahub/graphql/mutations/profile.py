@@ -72,7 +72,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         attr_values_map = {}
         for attr_schema in obj.get_schema().attributes:
             # profile name update can be ignored
-            if attr_schema.name == "name":
+            if attr_schema.name == "profile_name":
                 continue
             attr_values_map[attr_schema.name] = getattr(obj, attr_schema.name).value
         return attr_values_map

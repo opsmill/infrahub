@@ -504,3 +504,52 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_2.height.is_from_profile is False
         assert retrieved_person_2.height.source is None
         assert retrieved_person_2.height.is_default is True
+
+    async def test_step_13_update_existing_profile_related_nodes(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        person_profile_1,
+        person_1,
+        client: InfrahubClient,
+    ):
+        person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
+        person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        await person_profile_1.related_nodes.fetch()
+        person_profile_1.related_nodes.remove(person_1.id)
+        person_profile_1.related_nodes.add(person_2)
+        await person_profile_1.save()
+
+        updated_person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        assert updated_person_profile_1.profile_name.value == "profile-one"
+        await updated_person_profile_1.related_nodes.fetch()
+        assert len(updated_person_profile_1.related_nodes.peers) == 1
+        assert updated_person_profile_1.related_nodes.peers[0].id == person_2.id
+
+    async def test_step_14_check_persons_again(
+        self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
+    ):
+        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
+        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
+
+        await retrieved_person_1.profiles.fetch()
+        assert retrieved_person_1.profiles.peer_ids == []
+        assert retrieved_person_1.name.value == "Kara Thrace"
+        assert retrieved_person_1.name.is_from_profile is False
+        assert retrieved_person_1.name.source is None
+        assert retrieved_person_1.name.is_default is False
+        assert retrieved_person_1.height.value == 145
+        assert retrieved_person_1.height.is_from_profile is False
+        assert retrieved_person_1.height.source is None
+        assert retrieved_person_1.height.is_default is False
+
+        await retrieved_person_2.profiles.fetch()
+        assert retrieved_person_2.profiles.peer_ids == [person_profile_1.id]
+        assert retrieved_person_2.name.value == "Apollo"
+        assert retrieved_person_2.name.is_from_profile is False
+        assert retrieved_person_2.name.source is None
+        assert retrieved_person_2.name.is_default is False
+        assert retrieved_person_2.height.value == 134
+        assert retrieved_person_2.height.is_from_profile is True
+        assert retrieved_person_2.height.source.id == person_profile_1.id
+        assert retrieved_person_2.height.is_default is False
