@@ -296,13 +296,7 @@ const ConvertFieldWrapper = ({
   const handleSourceChange = (newSource: string) => {
     setSource(newSource);
 
-    if (newSource === "source") {
-      form.setValue(field.name, sourceDefaultValue, { shouldTouch: true });
-    }
-
-    if (newSource === "schema") {
-      form.setValue(field.name, formDefaultValue, { shouldTouch: true });
-    }
+    form.resetField(field.name);
   };
 
   return (
