@@ -561,9 +561,10 @@ jobs:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install poetry
-          poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
+          python -m pip install --upgrade pip pipenv poetry
+          pipenv --python 3.12
+          pipenv install invoke toml
+          poetry config virtualenvs.in-project true
       - name: "Install Package"
         run: "poetry install"
 
@@ -590,7 +591,7 @@ jobs:
         run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
 
       - name: Start dependencies
-        run: invoke dev.deps
+        run: invoke dev.build dev.deps
 
       - name: Run validation
         run: poetry run invoke schema.validate-graphqlschema
