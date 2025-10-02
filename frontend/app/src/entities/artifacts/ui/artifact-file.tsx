@@ -30,7 +30,9 @@ const CONTENT_TYPE_CONFIG: Record<
   "application/hcl": { extension: "hcl", language: "hcl", label: "HCL" },
   "image/svg+xml": { extension: "svg", language: "svg", label: "SVG" },
   "text/plain": { extension: "txt", language: "text", label: "text" },
-};
+  "application/xml": { extension: "xml", language: "xml", label: "XML" },
+  "text/csv": { extension: "csv", language: "csv", label: "CSV" },
+} as const;
 
 function FileLayout({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -59,7 +61,7 @@ function FileHeader({
   className,
   ...props
 }: FileHeaderProps) {
-  const config = CONTENT_TYPE_CONFIG[contentType];
+  const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];
 
   return (
     <div className={classNames("flex items-center gap-1", className)} {...props}>
@@ -84,7 +86,7 @@ function FileContent({
   contentType: ArtifactContentType;
   fileContent: string;
 }) {
-  const config = CONTENT_TYPE_CONFIG[contentType];
+  const config = CONTENT_TYPE_CONFIG[contentType] ?? CONTENT_TYPE_CONFIG["text/plain"];
 
   switch (contentType) {
     case "text/markdown": {
