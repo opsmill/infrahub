@@ -153,7 +153,7 @@ export type FormFieldProps = {
   };
 };
 
-export type DynamicFieldProps = FormFieldProps & {
+export type DynamicInputFieldProps = FormFieldProps & {
   type: Exclude<AttributeKind, "Dropdown">;
 };
 
@@ -184,7 +184,7 @@ export type DynamicKindFieldProps = FormFieldProps & {
 };
 
 export type DynamicAttributeFieldProps =
-  | DynamicFieldProps
+  | DynamicInputFieldProps
   | DynamicNumberFieldProps
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
