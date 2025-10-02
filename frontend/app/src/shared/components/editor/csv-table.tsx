@@ -39,7 +39,7 @@ export function CsvTable({ content }: CsvTableProps) {
   const dataRows = rows.slice(1);
 
   return (
-    <table className="min-w-full border-collapse border border-neutral-700 text-sm">
+    <table className="border-collapse border border-neutral-700 text-sm">
       <thead className="bg-neutral-900">
         <tr>
           {headers.map((header, index) => (
