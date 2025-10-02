@@ -89,7 +89,9 @@ class UpdateHFID(Mutation):
             )
 
         # Fix updates for HFID
-        existing_hfid = target_node._human_friendly_id.value if target_node._human_friendly_id else None
+        existing_hfid = (
+            await target_node.get_hfid(db=graphql_context.db) if target_node.has_human_friendly_id() else None
+        )
         print(f"Existing HFID: {existing_hfid}")
         print(f"Updated HFID: {updated_hfid}")
         if updated_hfid != existing_hfid:
