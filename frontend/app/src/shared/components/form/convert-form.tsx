@@ -89,10 +89,6 @@ const ConvertForm = ({
     parentData: null,
   });
 
-  const formDefaultValues: Record<string, FormFieldValue> = fields.reduce((acc, field) => {
-    return { ...acc, [field.name]: field.defaultValue };
-  }, {});
-
   const sourceDefaultValues: Record<string, FormFieldValue> = fields.reduce((acc, field) => {
     const hasMapping = !!mappings[field.name]?.source_field_name;
     const fieldData = objectDetailsData[field.name];
@@ -258,7 +254,6 @@ const ConvertForm = ({
               sourceSchema={sourceSchema}
               mapping={mappings[field.name]}
               sourceDefaultValue={sourceDefaultValues[field.name]}
-              formDefaultValue={formDefaultValues[field.name]}
             />
           );
         })}
@@ -277,7 +272,6 @@ type ConvertFieldWrapperProps = {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   sourceDefaultValue: any;
-  formDefaultValue: any;
 };
 
 const ConvertFieldWrapper = ({
@@ -286,7 +280,6 @@ const ConvertFieldWrapper = ({
   objectDetailsData,
   sourceSchema,
   sourceDefaultValue,
-  formDefaultValue,
 }: ConvertFieldWrapperProps) => {
   const hasMapping = !!mapping?.source_field_name;
 
@@ -294,29 +287,21 @@ const ConvertFieldWrapper = ({
   const form = useFormContext();
 
   const handleSourceChange = (newSource: string) => {
+    if (newSource === "source") {
+      form.setValue(field.name, sourceDefaultValue, { shouldValidate: true });
+    }
+
+    if (newSource === "schema") {
+      form.setValue(field.name, field.defaultValue, { shouldValidate: true });
+    }
+
     setSource(newSource);
-
-    // form.resetField(field.name);
-    // form.trigger(field.name);
-
-    if (source === "source") {
-      // form.setValue(field.name, sourceDefaultValue);
-      // form.resetField(field.name, sourceDefaultValue);
-    }
-
-    if (source === "source") {
-      // form.setValue(field.name, formDefaultValue);
-      // form.resetField(field.name, formDefaultValue);
-    }
   };
-
-  console.log("form.getValues(field.name): ", field.name, form.getValues(field.name));
-  console.log("form.getFieldState(field.name): ", field.name, form.getFieldState(field.name));
 
   return (
     <div className="flex items-center gap-4 px-2 py-4">
       <div className="flex-grow">
-        {source !== "source" && <DynamicField {...field} defaultValue={formDefaultValue} />}
+        {source !== "source" && <DynamicField {...field} />}
 
         {source === "source" && (
           <ConvertSourceField
@@ -375,8 +360,9 @@ const ConvertSourceField = ({
   return (
     <FormField
       name={name}
-      rules={rules}
+      rules={{ validate: rules.validate }}
       defaultValue={defaultValue}
+      shouldUnregister={false}
       render={({ field }) => {
         return (
           <div className="space-y-2">
