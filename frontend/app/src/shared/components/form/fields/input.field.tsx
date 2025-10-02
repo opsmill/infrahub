@@ -30,6 +30,7 @@ const InputField = ({
   pool,
   isBulkUpdate,
   shouldUnregister,
+  autoFocus,
   ...props
 }: InputFieldProps) => {
   return (
@@ -64,7 +65,7 @@ const InputField = ({
                     onChange={(event) => {
                       field.onChange(updateFormFieldValue(event.target.value, defaultValue));
                     }}
-                    autoFocus={override}
+                    autoFocus={autoFocus || override}
                     onBlur={() => setOverride(false)}
                   />
                 ) : (
