@@ -227,6 +227,7 @@ class NodeChangelog(BaseModel):
 
     node_id: str
     node_kind: str
+    display_label: str
 
     attributes: dict[str, AttributeChangelog] = Field(default_factory=dict)
     relationships: dict[str, RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog] = Field(
