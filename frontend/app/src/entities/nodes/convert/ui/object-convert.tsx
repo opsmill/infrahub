@@ -5,12 +5,13 @@ import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Combobox, ComboboxContent, ComboboxTrigger } from "@/shared/components/ui/combobox";
 
 import ConvertForm from "@/entities/nodes/convert/ui/convert-form";
+import { TargetSchemaComboboxList } from "@/entities/nodes/convert/ui/target-schema-combobox-list";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { SchemaComboboxList } from "@/entities/nodes/object/ui/filters/schema-combobox-list";
 import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
@@ -66,14 +67,22 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
         </Card>
 
         <Card className="w-1/2 rounded-md p-0">
-          <CardWithBorder.Title className="flex flex-col">
-            <span className="font-normal">DESTINATION</span>
+          <CardWithBorder.Title className="flex flex-col font-normal">
+            <span>DESTINATION</span>
             <Combobox open={isOpen} onOpenChange={setIsOpen}>
               <ComboboxTrigger>
-                {targetSchema ? targetSchema.label : "Select destination kind"}
+                {targetSchema ? (
+                  <Row className="grow">
+                    <span className="truncate font-semibold">{targetSchema.label}</span>
+                    <Badge className="ml-auto font-medium">{targetSchema.namespace}</Badge>
+                  </Row>
+                ) : (
+                  "Select target object type"
+                )}
               </ComboboxTrigger>
+
               <ComboboxContent>
-                <SchemaComboboxList
+                <TargetSchemaComboboxList
                   onSelect={(newSchema) => {
                     setTargetSchema(newSchema);
                     setIsOpen(false);

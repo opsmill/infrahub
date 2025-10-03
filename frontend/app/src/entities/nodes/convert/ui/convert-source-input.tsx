@@ -33,14 +33,6 @@ interface ConvertSourceInputProps {
   className?: string;
 }
 
-interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
-  kind: string;
-}
-
-interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
-  peer: string;
-}
-
 interface ConvertSourceOption {
   source: {
     type: "source";
@@ -61,6 +53,10 @@ interface RelationshipOneSourceOption extends ConvertSourceOption {
 
 interface RelationshipManySourceOption extends ConvertSourceOption {
   value: Array<NodeCore> | null;
+}
+
+interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
+  kind: string;
 }
 
 export const ConvertSourceAttributeInput = ({
@@ -149,6 +145,10 @@ export const ConvertSourceAttributeInput = ({
     </Combobox>
   );
 };
+
+interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
+  peer: string;
+}
 
 export const ConvertSourceRelationshipOneInput = ({
   objectDetailsData,
