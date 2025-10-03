@@ -65,6 +65,9 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
                 node {
                     id
                     display_label
+                    query {
+                        value
+                    }
                     name {
                         value
                     }
