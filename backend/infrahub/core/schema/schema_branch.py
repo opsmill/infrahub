@@ -162,6 +162,14 @@ class SchemaBranch:
             "templates": {name: self.get(name, duplicate=duplicate) for name in self.templates},
         }
 
+    def to_dict_api_schema_object(self) -> dict[str, list[dict]]:
+        return {
+            "nodes": [self.get(name, duplicate=False).model_dump() for name in self.nodes],
+            "profiles": [self.get(name, duplicate=False).model_dump() for name in self.profiles],
+            "generics": [self.get(name, duplicate=False).model_dump() for name in self.generics],
+            "templates": [self.get(name, duplicate=False).model_dump() for name in self.templates],
+        }
+
     @classmethod
     def from_dict_schema_object(cls, data: dict) -> Self:
         type_mapping = {
