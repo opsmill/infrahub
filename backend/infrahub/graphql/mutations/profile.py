@@ -33,7 +33,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
     def __init_subclass_with_meta__(
         cls,
         schema: ProfileSchema,
-        _meta: Any | None = None,
+        _meta: InfrahubMutationOptions | None = None,
         **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
