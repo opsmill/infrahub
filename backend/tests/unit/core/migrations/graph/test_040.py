@@ -11,6 +11,7 @@ from infrahub.core.migrations.graph.m040_profile_attrs_in_db import Migration040
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
+from tests.helpers.test_app import TestInfrahubApp
 
 
 @dataclass
@@ -35,7 +36,7 @@ class WrappedMigration040(Migration040):
         return wrapped_profile_applier
 
 
-class TestMigration040:
+class TestMigration040(TestInfrahubApp):
     @pytest.fixture
     async def profile_1(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> Node:
         profile = await Node.init(db=db, schema="ProfileTestCriticality")
