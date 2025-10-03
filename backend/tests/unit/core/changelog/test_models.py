@@ -66,6 +66,24 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 },
                 kind="Text",
             ),
+            "display_label": AttributeChangelog(
+                name="display_label",
+                value="Jack",
+                value_previous=None,
+                properties={
+                    "is_protected": PropertyChangelog(
+                        name="is_protected",
+                        value=False,
+                        value_previous=None,
+                    ),
+                    "is_visible": PropertyChangelog(
+                        name="is_visible",
+                        value=True,
+                        value_previous=None,
+                    ),
+                },
+                kind="Text",
+            ),
             "height": AttributeChangelog(
                 name="height",
                 value=None,
@@ -141,6 +159,16 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 value_previous=None,
                 properties={
                     "owner": PropertyChangelog(name="owner", value=person1.id, value_previous=None),
+                    "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
+                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
+                },
+                kind="Text",
+            ),
+            "display_label": AttributeChangelog(
+                name="display_label",
+                value="Rocky Labrador",
+                value_previous=None,
+                properties={
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
                     "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
@@ -383,7 +411,7 @@ async def test_node_changelog_parent(db: InfrahubDatabase, default_branch, car_p
     car1_update1 = await NodeManager.get_one(id=car1.id, db=db)
     car1_update1.color.value = "Blue"
     await car1_update1.save(db=db)
-    assert sorted(car1_update1.node_changelog.attributes.keys()) == ["color"]
+    assert sorted(car1_update1.node_changelog.attributes.keys()) == ["color", "display_label"]
     assert not car1_update1.node_changelog.relationships
     assert car1_update1.node_changelog.parent
     assert car1_update1.node_changelog.parent.node_id == person1.id
