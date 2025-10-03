@@ -766,8 +766,18 @@ class SchemaBranch:
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
-            if node_schema.display_label and node_schema.display_labels is not None:
-                raise ValidationError(f"{node_schema.kind}: cannot define both `display_label` and `display_labels`")
+            if node_schema.display_label is None and node_schema.display_labels:
+                if len(node_schema.display_labels) == 1:
+                    # If the previous display_labels consist of a single attribute convert
+                    # it to an attribute based display label
+                    node_schema.display_label = node_schema.display_labels[0]
+                else:
+                    # If the previous display label consists of multiple attributes
+                    # convert it to a Jinja2 based display label
+                    node_schema.display_label = " ".join(
+                        [f"{{{{ {display_label} }}}}" for display_label in node_schema.display_labels]
+                    )
+                node_schema.display_labels = None
 
             if not node_schema.display_label:
                 continue
@@ -1183,7 +1193,7 @@ class SchemaBranch:
                 allowed_path_types=SchemaElementPathType.ATTR_WITH_PROP,
                 element_name="display_label - non Jinja2",
             )
-            if schema_path.attribute_schema:
+            if schema_path.attribute_schema and node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
                 self.display_labels.register_attribute_based_display_label(
                     kind=node.kind, attribute_name=schema_path.attribute_schema.name
                 )
@@ -1211,9 +1221,10 @@ class SchemaBranch:
             if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == "display_label":
                 raise ValueError(f"{node.kind}: display_label the '{variable}' variable is a reference to itself")
 
-            self.display_labels.register_template_schema_path(
-                kind=node.kind, schema_path=schema_path, template=node.display_label
-            )
+            if node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
+                self.display_labels.register_template_schema_path(
+                    kind=node.kind, schema_path=schema_path, template=node.display_label
+                )
 
     def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
