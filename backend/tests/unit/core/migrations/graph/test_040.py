@@ -46,7 +46,12 @@ class TestMigration040:
     async def profile_2(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> Node:
         profile = await Node.init(db=db, schema="ProfileTestCriticality")
         await profile.new(
-            db=db, profile_name="profile_2", description="profile2", is_false=False, color="profile2", profile_priority=1002
+            db=db,
+            profile_name="profile_2",
+            description="profile2",
+            is_false=False,
+            color="profile2",
+            profile_priority=1002,
         )
         await profile.save(db=db)
         return profile
@@ -116,11 +121,17 @@ class TestMigration040:
             updated_node=updated_criticality_low,
             expected_profile_attrs=[
                 AttributeProfileDetails(
-                    attribute_name="color", value="profile1", is_default=False, source_id=profile_1.id,
+                    attribute_name="color",
+                    value="profile1",
+                    is_default=False,
+                    source_id=profile_1.id,
                 ),
                 AttributeProfileDetails(
-                    attribute_name="is_true", value=True, is_default=False, source_id=profile_1.id,                    
-                )
+                    attribute_name="is_true",
+                    value=True,
+                    is_default=False,
+                    source_id=profile_1.id,
+                ),
             ],
         )
         updated_criticality_medium = await NodeManager.get_one(db=db, id=criticality_medium.id, include_source=True)
@@ -128,9 +139,7 @@ class TestMigration040:
             original_node=criticality_medium,
             updated_node=updated_criticality_medium,
             expected_profile_attrs=[
-                AttributeProfileDetails(
-                    attribute_name="is_true", value=True, is_default=False, source_id=profile_1.id
-                ),
+                AttributeProfileDetails(attribute_name="is_true", value=True, is_default=False, source_id=profile_1.id),
                 AttributeProfileDetails(
                     attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id
                 ),
@@ -153,7 +162,6 @@ class TestMigration040:
             call_args[1]["node"].id for call_args in wrapped_profile_applier.apply_profiles.call_args_list
         }
         assert refreshed_node_uuids == {criticality_low.id, criticality_medium.id, criticality_high.id}
-
 
 
 # TODO:
