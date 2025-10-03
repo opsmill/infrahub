@@ -784,7 +784,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._existing = True
 
         new_ids = query.get_ids()
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         if self._human_friendly_id:
             node_changelog.create_attribute(
@@ -810,6 +810,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
+        node_changelog.display_label = await self.get_display_label(db=db) or ""
         return node_changelog
 
     async def _update(
@@ -818,23 +819,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
-
-        # Update the HFID if one of its variable is being updated
-        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
-            await self._human_friendly_id.compute(db=db, node=self)
-            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
-
-        # Update the display label if one of its variable is being updated
-        if self._display_label and self._display_label.needs_update(fields=fields):
-            await self._display_label.compute(db=db, node=self)
-            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
@@ -861,6 +846,23 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
 
+        # Update the HFID if one of its variable is being updated
+        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
+            await self._human_friendly_id.compute(db=db, node=self)
+            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
+            updated_attribute = await attr.save(at=update_at, db=db)
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
+
+        # Update the display label if one of its variable is being updated
+        if self._display_label and self._display_label.needs_update(fields=fields):
+            await self._display_label.compute(db=db, node=self)
+            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
+            updated_attribute = await attr.save(at=update_at, db=db)
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
+
+        node_changelog.display_label = await self.get_display_label(db=db) or ""
         return node_changelog
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
@@ -879,7 +881,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         delete_at = Timestamp(at)
 
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
+        node_changelog = NodeChangelog(
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db) or ""
+        )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)

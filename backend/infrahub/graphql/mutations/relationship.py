@@ -91,7 +91,10 @@ class RelationshipAdd(Mutation):
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
-        node_changelog = NodeChangelog(node_id=source.get_id(), node_kind=source.get_kind())
+        display_label: str = await source.get_display_label(db=graphql_context.db) or ""
+        node_changelog = NodeChangelog(
+            node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
+        )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
 
@@ -211,7 +214,10 @@ class RelationshipRemove(Mutation):
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
-        node_changelog = NodeChangelog(node_id=source.get_id(), node_kind=source.get_kind())
+        display_label: str = await source.get_display_label(db=graphql_context.db) or ""
+        node_changelog = NodeChangelog(
+            node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
+        )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
         group_event_type = _get_group_event_type(
