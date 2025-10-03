@@ -88,7 +88,7 @@ class HFIDs:
         """Indicates if there is a human_friendly_id defined for the targeted node"""
         return kind in self._node_level_hfids
 
-    def get_template_node(self, kind: str) -> HFIDDefinition:
+    def get_node_definition(self, kind: str) -> HFIDDefinition:
         """Return node kinds together with their template definitions."""
         return self._node_level_hfids[kind]
 
@@ -99,3 +99,16 @@ class HFIDs:
     def get_related_trigger_nodes(self) -> dict[str, RelationshipTriggers]:
         """Return node kinds that other nodes use within their templates for display_labels."""
         return self._relationship_triggers
+
+    def get_related_definition(self, related_kind: str, target_kind: str) -> HFIDDefinition:
+        relationship_trigger = self._relationship_triggers[related_kind]
+        for applicable_kinds in relationship_trigger.attributes.values():
+            for relationship_identifier in applicable_kinds:
+                if target_kind == relationship_identifier.kind:
+                    template_label = self.get_node_definition(kind=target_kind)
+                    template_label.filter_key = relationship_identifier.filter_key
+                    return template_label
+
+        raise ValueError(
+            f"Unable to find registered template for {target_kind} registered on related node {related_kind}"
+        )
