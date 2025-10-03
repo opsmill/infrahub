@@ -781,9 +781,9 @@ async def test_diff_tree_summary_no_changes(
         pytest.param(
             {},
             DiffSummaryCounters(
-                num_added=3,
-                num_updated=7,
-                num_removed=3,
+                num_added=4,
+                num_updated=9,
+                num_removed=4,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
                 to_time=Timestamp(datetime.now(UTC).isoformat()),
             ),
@@ -792,9 +792,9 @@ async def test_diff_tree_summary_no_changes(
         pytest.param(
             {"kind": {"includes": ["TestThing"]}},
             DiffSummaryCounters(
-                num_added=3,
-                num_updated=2,
-                num_removed=3,
+                num_added=4,
+                num_updated=3,
+                num_removed=4,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
                 to_time=Timestamp(datetime.now(UTC).isoformat()),
             ),
@@ -803,8 +803,8 @@ async def test_diff_tree_summary_no_changes(
     ],
 )
 async def test_diff_summary_filters(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, counters
-):
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, counters: DiffSummaryCounters
+) -> None:
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
 
@@ -860,6 +860,7 @@ async def test_diff_summary_filters(
     assert result.errors is None
     counters.from_time = enriched_diff_metadata.from_time
     counters.to_time = enriched_diff_metadata.to_time
+    assert result.data
     diff: dict = result.data["DiffTreeSummary"]
     from_timestamp = Timestamp(result.data["DiffTreeSummary"]["from_time"])
     to_timestamp = Timestamp(result.data["DiffTreeSummary"]["to_time"])

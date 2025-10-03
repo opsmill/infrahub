@@ -1295,20 +1295,6 @@ async def test_validate_display_labels_success(schema_all_in_one, display_labels
     schema.validate_display_labels()
 
 
-async def test_validate_display_label_failure_both_defined(schema_all_in_one):
-    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
-    schema_dict["display_label"] = "{{ my_generic_name__value }} {{ mybool__value }}"
-    schema_dict["display_labels"] = ["my_generic_name__value", "mybool__value"]
-
-    schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
-
-    with pytest.raises(
-        ValidationError, match=r"InfraGenericInterface: cannot define both `display_label` and `display_labels`"
-    ):
-        schema.validate_display_label()
-
-
 @pytest.mark.parametrize(
     "display_label", ["{{ my_generic_name__value }} {{ mybool__value }}", "my_generic_name__value"]
 )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from infrahub.core.account import ObjectPermission
@@ -41,7 +41,27 @@ async def test_update_display_label_missing_kind(
 async def test_update_display_label_not_defined(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    query_kind = "CoreRepository"
+    SCHEMA: dict[str, Any] = {
+        "generics": [],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Testing",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    query_kind = "TestingWidget"
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,

@@ -285,7 +285,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert ed_209_node.action is DiffAction.REMOVED
         assert ed_209_node.label == ed_209_label
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "color", "description"}
+        assert set(attributes_by_name.keys()) == {"name", "color", "description", "display_label"}
         for attr_node in attributes_by_name.values():
             assert attr_node.action is DiffAction.REMOVED
             assert attr_node.contains_conflict is False

@@ -153,7 +153,7 @@ class TestDiffAndMerge:
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
-        assert len(conflicts_map) == 2
+        assert len(conflicts_map) == 3
         for conflict in conflicts_map.values():
             await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
