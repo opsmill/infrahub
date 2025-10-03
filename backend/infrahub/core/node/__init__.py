@@ -180,8 +180,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def get_display_label(self, db: InfrahubDatabase) -> str:
         if self._display_label:
-            if display_label := self._display_label.get_value(node=self, at=self._at):
-                return display_label
+            if isinstance(self._display_label._value, str):
+                return self._display_label._value
+            if self._display_label._value:
+                return self._display_label._value.value
 
         return await self.render_display_label(db=db)
 

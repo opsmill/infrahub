@@ -131,7 +131,7 @@ async def test_upsert_event_on_no_change(
     assert len(memory_event.events) == 1
     event = memory_event.events[0]
     assert isinstance(event, NodeMutatedEvent)
-    assert sorted(event.changelog.attributes.keys()) == ["height", "human_friendly_id", "name"]
+    assert sorted(event.changelog.attributes.keys()) == ["display_label", "height", "human_friendly_id", "name"]
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)

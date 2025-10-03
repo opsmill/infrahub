@@ -85,8 +85,12 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     async with application.state.db.start_session() as db:
         await initialization(db=db, add_database_indexes=True)
 
+    # Initialize the workflow after the registry has been setup
+    await service.initialize_workflow()
+
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
+
     if enable_scheduler:
         await service.scheduler.start_schedule()
 

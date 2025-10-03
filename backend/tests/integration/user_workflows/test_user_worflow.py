@@ -5,7 +5,8 @@ from whenever import Instant
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.registry import registry as graphql_registry
 from tests.helpers.test_app import TestInfrahubApp
-from tests.integration.conftest import load_infrastructure_schema
+from tests.helpers.test_client import InfrahubTestClient
+from tests.integration.conftest import IntegrationHelper, load_infrastructure_schema
 from tests.test_data import dataset01 as ds01
 
 main_branch = "main"
@@ -822,7 +823,9 @@ class TestUserWorkflow01(TestInfrahubApp):
         assert result["InfraInterfaceL3Create"]["object"]["name"]["value"] == "Ethernet8"
         state.data["spine1_ethernet8_id"] = result["InfraInterfaceL3Create"]["object"]["id"]
 
-    async def test_validate_diff_after_new_interface(self, test_client, integration_helper):
+    async def test_validate_diff_after_new_interface(
+        self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
+    ) -> None:
         headers = await integration_helper.admin_headers()
 
         response = await test_client.post(
@@ -965,6 +968,7 @@ class TestUserWorkflow01(TestInfrahubApp):
         expected_new_attributes = {
             "mtu": "1500",
             "description": "New interface added in Branch1",
+            "display_label": "Ethernet8",
             "lacp_priority": "32768",
             "enabled": "True",
             "name": "Ethernet8",
@@ -985,7 +989,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                 "relationship_name": "interfaces",
             },
             "contains_conflict": False,
-            "num_added": 11,
+            "num_added": 12,
             "num_removed": 0,
             "num_updated": 0,
             "num_conflicts": 0,
