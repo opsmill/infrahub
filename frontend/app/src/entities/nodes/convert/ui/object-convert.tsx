@@ -41,7 +41,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
   }
 
   return (
-    <Content.Card className="flex flex-col gap-2 p-2">
+    <Content.Card className="flex flex-col">
       <Content.CardTitle
         title="Object convert type"
         description={
@@ -52,11 +52,11 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
         }
       />
 
-      <Row className="items-start">
-        <Card className="w-1/2 rounded-md p-0">
-          <CardWithBorder.Title className="flex h-19 flex-col">
-            <span className="font-normal">SOURCE</span>
-            <div className="flex grow items-center">{objectSchema.label}</div>
+      <div className="grid grid-cols-2 gap-2 overflow-auto p-2">
+        <Card className="col-span-0 p-0">
+          <CardWithBorder.Title>
+            <h3 className="font-normal">SOURCE</h3>
+            <h4 className="leading-10">{objectSchema.label}</h4>
           </CardWithBorder.Title>
 
           <ObjectDetailsContent
@@ -66,9 +66,9 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
           />
         </Card>
 
-        <Card className="w-1/2 rounded-md p-0">
-          <CardWithBorder.Title className="flex flex-col font-normal">
-            <span>DESTINATION</span>
+        <Card className="col-span-1 p-0">
+          <CardWithBorder.Title>
+            <h3 className="font-normal">DESTINATION</h3>
             <Combobox open={isOpen} onOpenChange={setIsOpen}>
               <ComboboxTrigger>
                 {targetSchema ? (
@@ -81,7 +81,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
                 )}
               </ComboboxTrigger>
 
-              <ComboboxContent>
+              <ComboboxContent portal>
                 <TargetSchemaComboboxList
                   onSelect={(newSchema) => {
                     setTargetSchema(newSchema);
@@ -92,23 +92,21 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
             </Combobox>
           </CardWithBorder.Title>
 
-          {!targetSchema && (
+          {targetSchema ? (
+            <ConvertForm
+              sourceObject={objectDetailsData}
+              sourceSchema={objectSchema}
+              targetSchema={targetSchema}
+            />
+          ) : (
             <div className="col-span-full flex flex-col items-center justify-center py-12 text-stone-500">
               <Icon icon="mdi:table-off" className="mb-2 text-3xl" />
               <div className="font-medium text-lg">No kind selected</div>
               <div className="text-sm">Please select a kind for the conversion target</div>
             </div>
           )}
-
-          {targetSchema && objectSchema && (
-            <ConvertForm
-              objectDetailsData={objectDetailsData}
-              sourceSchema={objectSchema}
-              targetSchema={targetSchema}
-            />
-          )}
         </Card>
-      </Row>
+      </div>
     </Content.Card>
   );
 }

@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
-import type { FormFieldValue } from "@/shared/components/form/type";
+import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -25,7 +25,7 @@ interface Mapping {
 }
 
 export default function ConvertFormWrapper({
-  objectDetailsData,
+  sourceObject,
   sourceSchema,
   targetSchema,
 }: Omit<ConvertFormProps, "mappings">) {
@@ -45,7 +45,7 @@ export default function ConvertFormWrapper({
   return (
     <ConvertForm
       mappings={error ? {} : mappings}
-      objectDetailsData={objectDetailsData}
+      sourceObject={sourceObject}
       sourceSchema={sourceSchema}
       targetSchema={targetSchema}
     />
@@ -53,18 +53,13 @@ export default function ConvertFormWrapper({
 }
 
 export interface ConvertFormProps {
-  objectDetailsData: NodeObject;
+  sourceObject: NodeObject;
   sourceSchema: ModelSchema;
   targetSchema: ModelSchema;
   mappings: Record<string, Mapping>;
 }
 
-function ConvertForm({
-  mappings,
-  objectDetailsData,
-  sourceSchema,
-  targetSchema,
-}: ConvertFormProps) {
+function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: ConvertFormProps) {
   const navigate = useNavigate();
   const { mutateAsync: convertObject } = useConvertObjectMutation();
 
@@ -76,7 +71,7 @@ function ConvertForm({
 
   const sourceDefaultValues: Record<string, FormFieldValue> = fields.reduce((acc, field) => {
     const hasMapping = !!mappings[field.name]?.source_field_name;
-    const fieldData = objectDetailsData[field.name];
+    const fieldData = sourceObject[field.name];
 
     if (!hasMapping) {
       return { ...acc, [field.name]: field.defaultValue };
@@ -191,7 +186,7 @@ function ConvertForm({
       };
     }, {});
 
-    if (!objectDetailsData.id || !targetSchema.kind) {
+    if (!sourceObject.id || !targetSchema.kind) {
       toast(
         <Alert
           type={ALERT_TYPES.ERROR}
@@ -203,7 +198,7 @@ function ConvertForm({
 
     await convertObject(
       {
-        nodeId: objectDetailsData.id as string,
+        nodeId: sourceObject.id as string,
         targetKind: targetSchema.kind as string,
         fieldsMapping,
       },
@@ -235,7 +230,7 @@ function ConvertForm({
             <ConvertFormField
               key={field.name}
               field={field}
-              objectDetailsData={objectDetailsData}
+              objectDetailsData={sourceObject}
               sourceSchema={sourceSchema}
               mapping={mappings[field.name]}
               sourceDefaultValue={sourceDefaultValues[field.name]}
@@ -252,7 +247,7 @@ function ConvertForm({
 }
 
 interface ConvertFormFieldProps {
-  field: any;
+  field: DynamicFieldProps;
   mapping?: Mapping;
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
