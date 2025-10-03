@@ -105,6 +105,7 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
+        "useConsistentArrowReturn": "off",
         "useConsistentTypeDefinitions": "off",
         "useExhaustiveSwitchCases": "off",
         "useImageSize": "off",
