@@ -65,11 +65,9 @@ export function SelectField({
               </Select>
             </FormInput>
 
-            {!props.disabled &&
-              !props.disabled &&
-              canDisplayResetActions(attribute, isBulkUpdate) && (
-                <ResetAction field={field} defaultValue={defaultValue} />
-              )}
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>
