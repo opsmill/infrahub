@@ -70,9 +70,9 @@ class NodePropertyAttribute(Generic[T]):
         if manually_assigned:
             self._manually_assigned = True
 
-    async def get_value(self, node: Node, at: Timestamp) -> T | None:
+    def get_value(self, node: Node, at: Timestamp) -> T | None:
         if isinstance(self._value, AttributeFromDB):
-            attr = await self.get_node_attribute(node=node, at=at)
+            attr = self.get_node_attribute(node=node, at=at)
             return attr.value  # type: ignore
 
         return self._value
@@ -84,7 +84,7 @@ class NodePropertyAttribute(Generic[T]):
     async def compute(self, db: InfrahubDatabase, node: Node) -> None: ...
 
     @abstractmethod
-    async def get_node_attribute(self, node: Node, at: Timestamp) -> BaseAttribute: ...
+    def get_node_attribute(self, node: Node, at: Timestamp) -> BaseAttribute: ...
 
 
 class DisplayLabel(NodePropertyAttribute[str]):
@@ -150,7 +150,7 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
         self.set_value(value=await jinja2_template.render(variables=variables))
 
-    async def get_node_attribute(self, node: Node, at: Timestamp) -> String:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> String:
         """Return a node attribute that can be stored in the database for this display label and node."""
         return String(
             name="display_label",
@@ -195,7 +195,7 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
 
         self.set_value(value=value)
 
-    async def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttribute:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttribute:
         """Return a node attribute that can be stored in the database for this HFID and node."""
         return ListAttribute(
             name="human_friendly_id",

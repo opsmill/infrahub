@@ -107,7 +107,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return None
 
         if self._human_friendly_id:
-            hfid_values = await self._human_friendly_id.get_value(node=self, at=self._at)
+            hfid_values = self._human_friendly_id.get_value(node=self, at=self._at)
         else:
             hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
 
@@ -126,7 +126,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def get_display_label(self, db: InfrahubDatabase) -> str | None:
         if self._display_label:
-            return await self._display_label.get_value(node=self, at=self._at)
+            return self._display_label.get_value(node=self, at=self._at)
 
         return await self.render_display_label(db=db)
 
@@ -765,12 +765,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if self._human_friendly_id:
             node_changelog.create_attribute(
-                attribute=await self._human_friendly_id.get_node_attribute(node=self, at=create_at)
+                attribute=self._human_friendly_id.get_node_attribute(node=self, at=create_at)
             )
         if self._display_label:
-            node_changelog.create_attribute(
-                attribute=await self._display_label.get_node_attribute(node=self, at=create_at)
-            )
+            node_changelog.create_attribute(attribute=self._display_label.get_node_attribute(node=self, at=create_at))
 
         # Go over the list of Attribute and assign the new IDs one by one
         for name in self._attributes:
@@ -826,16 +824,18 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Update the HFID if one of its variable is being updated
         if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
             await self._human_friendly_id.compute(db=db, node=self)
-            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
+            updated_attribute = await self._human_friendly_id.get_node_attribute(node=self, at=update_at).save(
+                at=update_at, db=db
+            )
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
 
         # Update the display label if one of its variable is being updated
         if self._display_label and self._display_label.needs_update(fields=fields):
             await self._display_label.compute(db=db, node=self)
-            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
+            updated_attribute = await self._display_label.get_node_attribute(node=self, at=update_at).save(
+                at=update_at, db=db
+            )
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
 
@@ -848,9 +848,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if self._existing:
             self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
-            return self
+        else:
+            self._node_changelog = await self._create(at=save_at, db=db)
 
-        self._node_changelog = await self._create(at=save_at, db=db)
         return self
 
     async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
@@ -868,13 +868,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._human_friendly_id:
-            attr = await self._human_friendly_id.get_node_attribute(node=self, at=delete_at)
-            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+            if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
+                at=delete_at, db=db
+            ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._display_label:
-            attr = await self._display_label.get_node_attribute(node=self, at=delete_at)
-            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+            if deleted_attribute := await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
+                at=delete_at, db=db
+            ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         branch = self.get_branch_based_on_support_type()
