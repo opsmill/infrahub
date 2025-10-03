@@ -1,31 +1,22 @@
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Row } from "@/shared/components/container";
-import { ConvertLabelFormField } from "@/shared/components/form/fields/common";
+import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
+import { DynamicField } from "@/shared/components/form/dynamic-form";
+import type { FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import {
-  ConvertSourceAttributeInput,
-  ConvertSourceRelationshipManyInput,
-  ConvertSourceRelationshipOneInput,
-} from "@/shared/components/inputs/convert-source-input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Form, FormSubmit } from "@/shared/components/ui/form";
 
-import { useConvertObjectMutation } from "@/entities/nodes/object/domain/convert-object.mutation";
-import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/object/domain/get-object-convert-fields-mapping.query";
+import { useConvertObjectMutation } from "@/entities/nodes/convert/domain/convert-object.mutation";
+import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping.query";
+import { ConvertSourceField } from "@/entities/nodes/convert/ui/convert-source-field";
 import type { NodeObject } from "@/entities/nodes/types";
-import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import type { ModelSchema } from "@/entities/schema/types";
-
-import { Radio, RadioGroup } from "../aria/radio-group";
-import { ALERT_TYPES, Alert } from "../ui/alert";
-import { DynamicField } from "./dynamic-form";
-import type { FormFieldValue } from "./type";
 
 interface Mapping {
   is_mandatory: boolean;
@@ -281,12 +272,13 @@ function ConvertFormField({
   const form = useFormContext();
 
   const handleSourceChange = (newSource: string) => {
-    if (newSource === "source") {
-      form.setValue(field.name, sourceDefaultValue, { shouldValidate: true });
-    }
-
-    if (newSource === "schema") {
-      form.setValue(field.name, field.defaultValue, { shouldValidate: true });
+    switch (newSource) {
+      case "source":
+        form.setValue(field.name, sourceDefaultValue, { shouldValidate: true });
+        break;
+      case "schema":
+        form.setValue(field.name, field.defaultValue, { shouldValidate: true });
+        break;
     }
 
     setSource(newSource);
@@ -294,10 +286,8 @@ function ConvertFormField({
 
   return (
     <div className="flex items-center gap-4 px-2 py-4">
-      <div className="flex-grow">
-        {source !== "source" && <DynamicField {...field} />}
-
-        {source === "source" && (
+      <div className="grow">
+        {source === "source" ? (
           <ConvertSourceField
             {...field}
             objectDetailsData={objectDetailsData}
@@ -305,6 +295,8 @@ function ConvertFormField({
             mapping={mapping}
             defaultValue={sourceDefaultValue}
           />
+        ) : (
+          <DynamicField {...field} />
         )}
       </div>
 
@@ -319,99 +311,5 @@ function ConvertFormField({
         <Radio value="schema">Custom value</Radio>
       </RadioGroup>
     </div>
-  );
-}
-
-interface ConvertSourceFieldProps {
-  objectDetailsData: NodeObject;
-  sourceSchema: ModelSchema;
-  mapping: any;
-  name: string;
-  label: string;
-  unique?: boolean;
-  description?: string;
-  rules?: any;
-  attribute?: any;
-  relationship?: any;
-  defaultValue?: any;
-}
-
-function ConvertSourceField({
-  objectDetailsData,
-  sourceSchema,
-  mapping,
-  name,
-  label,
-  unique,
-  description,
-  rules,
-  attribute,
-  relationship,
-  defaultValue,
-}: ConvertSourceFieldProps) {
-  const schemaKindLabel = useAtomValue(schemaKindNameState);
-
-  return (
-    <FormField
-      name={name}
-      rules={{ validate: rules.validate }}
-      defaultValue={defaultValue}
-      shouldUnregister={false}
-      render={({ field }) => {
-        return (
-          <div className="space-y-2">
-            <ConvertLabelFormField
-              label={label}
-              unique={unique}
-              required={!!rules?.required}
-              description={description}
-              kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
-            />
-
-            <Row>
-              <div className="grow">
-                {attribute && (
-                  <FormInput>
-                    <ConvertSourceAttributeInput
-                      objectDetailsData={objectDetailsData}
-                      sourceSchema={sourceSchema}
-                      mapping={mapping}
-                      kind={attribute.kind}
-                      field={field}
-                    />
-                  </FormInput>
-                )}
-
-                {relationship?.peer && relationship.cardinality === "one" && (
-                  <FormInput>
-                    <ConvertSourceRelationshipOneInput
-                      objectDetailsData={objectDetailsData}
-                      sourceSchema={sourceSchema}
-                      mapping={mapping}
-                      peer={relationship.peer}
-                      field={field}
-                    />
-                  </FormInput>
-                )}
-
-                {relationship?.peer && relationship.cardinality === "many" && (
-                  <FormInput>
-                    <ConvertSourceRelationshipManyInput
-                      objectDetailsData={objectDetailsData}
-                      sourceSchema={sourceSchema}
-                      mapping={mapping}
-                      peer={relationship.peer}
-                      field={field}
-                    />
-                  </FormInput>
-                )}
-              </div>
-            </Row>
-
-            <FormMessage />
-          </div>
-        );
-      }}
-    />
   );
 }

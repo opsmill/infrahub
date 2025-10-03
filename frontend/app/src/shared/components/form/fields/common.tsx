@@ -61,36 +61,6 @@ export const LabelFormField = ({
   );
 };
 
-interface ConvertLabelFormFieldProps extends Omit<LabelProps, "onChange"> {
-  className?: string;
-  label?: string;
-  required?: boolean;
-  unique?: boolean;
-  description?: string | null;
-  kind: string;
-}
-
-export const ConvertLabelFormField = ({
-  className,
-  label,
-  required,
-  unique,
-  description,
-  variant,
-  kind,
-}: ConvertLabelFormFieldProps) => {
-  return (
-    <div className={classNames("flex h-4 items-center justify-between", className)}>
-      <FormLabel variant={variant} className="flex items-center gap-2">
-        {label} {required && "*"}
-        {kind && <Badge variant={"lightgray-outline"}>{kind}</Badge>}
-      </FormLabel>
-      {unique && <InputUniqueTips className="mb-px self-end" />}
-      {description && <QuestionMark message={description} className="ml-1" />}
-    </div>
-  );
-};
-
 const ProfileSourceBadge = ({ source }: { source: ProfileSource }) => {
   return (
     <Tooltip

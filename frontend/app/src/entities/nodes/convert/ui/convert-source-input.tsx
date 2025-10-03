@@ -10,15 +10,14 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
+import { PopoverTrigger } from "@/shared/components/ui/popover";
+import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
-
-import { PopoverTrigger } from "../ui/popover";
-import { inputStyle } from "../ui/style";
 
 interface Mapping {
   is_mandatory: boolean;
@@ -70,7 +69,7 @@ export const ConvertSourceAttributeInput = ({
   mapping,
   field,
   kind,
-  className,
+  ...props
 }: ConvertSourceAttributeInputProps) => {
   const [open, setOpen] = useState(false);
 
@@ -103,7 +102,7 @@ export const ConvertSourceAttributeInput = ({
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger className={className}>
+      <ComboboxTrigger {...props}>
         {currentOption && (
           <Badge className="space-x-1">
             <span>{currentOption.label}</span>

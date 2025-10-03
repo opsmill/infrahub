@@ -1,7 +1,7 @@
 import {
   type ConvertObjectFromApiApiParams,
   convertObjectFromApi,
-} from "@/entities/nodes/object/api/convert-object-from-api";
+} from "@/entities/nodes/convert/api/convert-object-from-api";
 import type { NodeCore } from "@/entities/nodes/types";
 
 export type ConvertObjectParams = ConvertObjectFromApiApiParams;

@@ -208,7 +208,7 @@ export const router = createBrowserRouter([
                         handle: {
                           breadcrumb: (match: UIMatch) => ({
                             type: "select",
-                            value: match.params.objectid,
+                            value: match.params.objectId,
                             kind: match.params.objectKind,
                           }),
                         },
