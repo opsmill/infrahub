@@ -763,6 +763,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         new_ids = query.get_ids()
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
+        if self._human_friendly_id:
+            node_changelog.create_attribute(
+                attribute=await self._human_friendly_id.get_node_attribute(node=self, at=create_at)
+            )
+        if self._display_label:
+            node_changelog.create_attribute(
+                attribute=await self._display_label.get_node_attribute(node=self, at=create_at)
+            )
+
         # Go over the list of Attribute and assign the new IDs one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
@@ -789,22 +798,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
-        # Update the HFID if one of its variable is being updated
-        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
-            await self._human_friendly_id.compute(db=db, node=self)
-            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
-
-        # Update the display label if one of its variable is being updated
-        if self._display_label and self._display_label.needs_update(fields=fields):
-            await self._display_label.compute(db=db, node=self)
-            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
-
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             if (fields and name in fields) or not fields:
@@ -829,6 +822,22 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     rel: RelationshipManager = getattr(self, parent_relationship)
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
+
+        # Update the HFID if one of its variable is being updated
+        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
+            await self._human_friendly_id.compute(db=db, node=self)
+            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
+            updated_attribute = await attr.save(at=update_at, db=db)
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
+
+        # Update the display label if one of its variable is being updated
+        if self._display_label and self._display_label.needs_update(fields=fields):
+            await self._display_label.compute(db=db, node=self)
+            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
+            updated_attribute = await attr.save(at=update_at, db=db)
+            if updated_attribute:
+                node_changelog.add_attribute(attribute=updated_attribute)
 
         node_changelog.display_label = await self.get_display_label(db=db) or ""
         return node_changelog
@@ -855,8 +864,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            deleted_attribute = await attr.delete(at=delete_at, db=db)
-            if deleted_attribute:
+            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+                node_changelog.add_attribute(attribute=deleted_attribute)
+
+        if self._human_friendly_id:
+            attr = await self._human_friendly_id.get_node_attribute(node=self, at=delete_at)
+            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+                node_changelog.add_attribute(attribute=deleted_attribute)
+
+        if self._display_label:
+            attr = await self._display_label.get_node_attribute(node=self, at=delete_at)
+            if deleted_attribute := await attr.delete(at=delete_at, db=db):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         branch = self.get_branch_based_on_support_type()

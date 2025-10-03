@@ -269,11 +269,18 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.REMOVED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 5
+    assert len(node_diff.attributes) == 6
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"name", "nbr_seats", "color", "is_electric", "transmission"}
+    assert set(attributes_by_name.keys()) == {
+        "name",
+        "nbr_seats",
+        "color",
+        "is_electric",
+        "transmission",
+        "human_friendly_id",
+    }
     for attribute_diff in attributes_by_name.values():
         assert attribute_diff.action is DiffAction.REMOVED
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
@@ -2065,11 +2072,18 @@ async def test_branch_node_delete_with_base_updates(
     assert node_diff.kind == "TestCar"
     assert node_diff.action is DiffAction.REMOVED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 5
+    assert len(node_diff.attributes) == 6
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"name", "nbr_seats", "color", "is_electric", "transmission"}
+    assert set(attributes_by_name.keys()) == {
+        "name",
+        "nbr_seats",
+        "color",
+        "is_electric",
+        "transmission",
+        "human_friendly_id",
+    }
     for attribute_diff in attributes_by_name.values():
         assert attribute_diff.action is DiffAction.REMOVED
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
@@ -2259,7 +2273,7 @@ async def test_node_deleted_on_base_update_on_branch(
     assert diff_node.uuid == person_alfred_main.id
     assert diff_node.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in diff_node.attributes}
-    assert set(attributes_by_name.keys()) == {"name", "height"}
+    assert set(attributes_by_name.keys()) == {"name", "height", "human_friendly_id"}
     for attr_diff in diff_node.attributes:
         assert attr_diff.action is DiffAction.REMOVED
         props_by_type = {p.property_type: p for p in attr_diff.properties}
@@ -2317,7 +2331,7 @@ async def test_node_deleted_on_both(
         assert diff_node.uuid == person_alfred_main.id
         assert diff_node.is_node_kind_migration is False
         attributes_by_name = {a.name: a for a in diff_node.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "height"}
+        assert set(attributes_by_name.keys()) == {"name", "height", "human_friendly_id"}
         for attr_diff in diff_node.attributes:
             assert attr_diff.action is DiffAction.REMOVED
             props_by_type = {p.property_type: p for p in attr_diff.properties}
@@ -2367,7 +2381,14 @@ async def test_relationship_updated_then_node_deleted(
     assert car_base_diff.action is DiffAction.REMOVED
     assert car_base_diff.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in car_base_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"color", "nbr_seats", "transmission", "is_electric", "name"}
+    assert set(attributes_by_name.keys()) == {
+        "color",
+        "nbr_seats",
+        "transmission",
+        "is_electric",
+        "name",
+        "human_friendly_id",
+    }
     for attr_diff in attributes_by_name.values():
         assert attr_diff.action is DiffAction.REMOVED
         properties_by_type = {p.property_type: p for p in attr_diff.properties}
@@ -2376,6 +2397,11 @@ async def test_relationship_updated_then_node_deleted(
             DatabaseEdgeType.IS_VISIBLE,
             DatabaseEdgeType.IS_PROTECTED,
         }
+
+        if attr_diff.name == "human_friendly_id":
+            # HFID is not at attr we can just getattr
+            continue
+
         for prop_type, previous_value in (
             (DatabaseEdgeType.HAS_VALUE, getattr(car_main, attr_diff.name).value),
             (DatabaseEdgeType.IS_VISIBLE, True),
