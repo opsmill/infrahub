@@ -6,7 +6,6 @@ import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
-import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ConvertLabelFormField } from "@/shared/components/form/fields/common";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import {
@@ -34,18 +33,11 @@ interface Mapping {
   relationship_cardinality: string | null;
 }
 
-export type ConvertFormProps = {
-  objectDetailsData: NodeObject;
-  sourceSchema: ModelSchema;
-  targetSchema: ModelSchema;
-  mappings: Record<string, Mapping>;
-};
-
-const ConvertFormWrapper = ({
+export default function ConvertFormWrapper({
   objectDetailsData,
   sourceSchema,
   targetSchema,
-}: ConvertFormProps) => {
+}: Omit<ConvertFormProps, "mappings">) {
   const {
     data: mappings,
     isPending,
@@ -56,31 +48,33 @@ const ConvertFormWrapper = ({
   });
 
   if (isPending) {
-    return <LoadingIndicator />;
-  }
-
-  if (error) {
-    return <ErrorScreen message="An error occurred while fetching the fields mapping" />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   return (
     <ConvertForm
-      mappings={mappings}
+      mappings={error ? {} : mappings}
       objectDetailsData={objectDetailsData}
       sourceSchema={sourceSchema}
       targetSchema={targetSchema}
     />
   );
-};
+}
 
-const ConvertForm = ({
+export interface ConvertFormProps {
+  objectDetailsData: NodeObject;
+  sourceSchema: ModelSchema;
+  targetSchema: ModelSchema;
+  mappings: Record<string, Mapping>;
+}
+
+function ConvertForm({
   mappings,
   objectDetailsData,
   sourceSchema,
   targetSchema,
-}: ConvertFormProps) => {
+}: ConvertFormProps) {
   const navigate = useNavigate();
-
   const { mutateAsync: convertObject } = useConvertObjectMutation();
 
   const fields = getFormFieldsFromSchema({
@@ -243,11 +237,11 @@ const ConvertForm = ({
   };
 
   return (
-    <Form onSubmit={handleSubmit} className="relative">
+    <Form onSubmit={handleSubmit}>
       <div className="divide-y divide-gray-300">
         {fields.map((field) => {
           return (
-            <ConvertFieldWrapper
+            <ConvertFormField
               key={field.name}
               field={field}
               objectDetailsData={objectDetailsData}
@@ -259,28 +253,28 @@ const ConvertForm = ({
         })}
       </div>
 
-      <div className="sticky bottom-0 rounded-b-md bg-white p-2 text-right">
+      <div className="-bottom-2 sticky border-gray-200 border-t bg-white p-2 text-right">
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>
   );
-};
+}
 
-type ConvertFieldWrapperProps = {
+interface ConvertFormFieldProps {
   field: any;
   mapping?: Mapping;
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   sourceDefaultValue: any;
-};
+}
 
-const ConvertFieldWrapper = ({
+function ConvertFormField({
   field,
   mapping,
   objectDetailsData,
   sourceSchema,
   sourceDefaultValue,
-}: ConvertFieldWrapperProps) => {
+}: ConvertFormFieldProps) {
   const hasMapping = !!mapping?.source_field_name;
 
   const [source, setSource] = useState(hasMapping ? "source" : "schema");
@@ -326,9 +320,9 @@ const ConvertFieldWrapper = ({
       </RadioGroup>
     </div>
   );
-};
+}
 
-type ConvertSourceFieldProps = {
+interface ConvertSourceFieldProps {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   mapping: any;
@@ -340,9 +334,9 @@ type ConvertSourceFieldProps = {
   attribute?: any;
   relationship?: any;
   defaultValue?: any;
-};
+}
 
-const ConvertSourceField = ({
+function ConvertSourceField({
   objectDetailsData,
   sourceSchema,
   mapping,
@@ -354,7 +348,7 @@ const ConvertSourceField = ({
   attribute,
   relationship,
   defaultValue,
-}: ConvertSourceFieldProps) => {
+}: ConvertSourceFieldProps) {
   const schemaKindLabel = useAtomValue(schemaKindNameState);
 
   return (
@@ -420,6 +414,4 @@ const ConvertSourceField = ({
       }}
     />
   );
-};
-
-export default ConvertFormWrapper;
+}

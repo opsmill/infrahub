@@ -190,7 +190,6 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/objects",
-                lazy: () => import("@/pages/objects/layout"),
                 children: [
                   {
                     path: ":objectKind",
@@ -205,11 +204,7 @@ export const router = createBrowserRouter([
                     },
                     children: [
                       {
-                        index: true,
-                        lazy: () => import("@/pages/objects/object-items"),
-                      },
-                      {
-                        path: ":objectid",
+                        path: ":objectId",
                         handle: {
                           breadcrumb: (match: UIMatch) => ({
                             type: "select",
@@ -218,10 +213,6 @@ export const router = createBrowserRouter([
                           }),
                         },
                         children: [
-                          {
-                            index: true,
-                            lazy: () => import("@/pages/objects/object-details"),
-                          },
                           {
                             path: "convert",
                             lazy: () => import("@/pages/objects/object-convert"),
@@ -235,6 +226,45 @@ export const router = createBrowserRouter([
                                   ),
                                 }) satisfies BreadcrumbItem,
                             },
+                          },
+                        ],
+                      },
+                      {
+                        lazy: () => import("@/pages/objects/layout"),
+                        children: [
+                          {
+                            index: true,
+                            lazy: () => import("@/pages/objects/object-items"),
+                          },
+                          {
+                            path: ":objectid",
+                            handle: {
+                              breadcrumb: (match: UIMatch) => ({
+                                type: "select",
+                                value: match.params.objectid,
+                                kind: match.params.objectKind,
+                              }),
+                            },
+                            children: [
+                              {
+                                index: true,
+                                lazy: () => import("@/pages/objects/object-details"),
+                              },
+                              {
+                                path: "convert",
+                                lazy: () => import("@/pages/objects/object-convert"),
+                                handle: {
+                                  breadcrumb: (match: UIMatch) =>
+                                    ({
+                                      type: "link",
+                                      label: "Convert",
+                                      to: constructPath(
+                                        `/objects/${match.params.objectKind}/${match.params.objectid}/convert`
+                                      ),
+                                    }) satisfies BreadcrumbItem,
+                                },
+                              },
+                            ],
                           },
                         ],
                       },
