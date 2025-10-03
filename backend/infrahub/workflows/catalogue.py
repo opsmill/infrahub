@@ -339,6 +339,30 @@ DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+HFID_PROCESS = WorkflowDefinition(
+    name="hfid-process",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="process_hfid",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+HFID_SETUP = WorkflowDefinition(
+    name="hfid-setup",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="hfid_setup",
+)
+
+
+HFID_UPDATE_VALUE = WorkflowDefinition(
+    name="hfid-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="hfid_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
     name="trigger-update-display-labels",
     type=WorkflowType.CORE,
@@ -347,6 +371,13 @@ TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+TRIGGER_UPDATE_HFID = WorkflowDefinition(
+    name="trigger-update-hfid",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="trigger_update_hfid",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
 
 TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     name="trigger_update_jinja2_computed_attributes",
@@ -640,6 +671,9 @@ WORKFLOWS = [
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
+    HFID_PROCESS,
+    HFID_SETUP,
+    HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
     PROFILE_REFRESH,
     PROFILE_REFRESH_MULTIPLE,
@@ -669,6 +703,7 @@ WORKFLOWS = [
     TRIGGER_CONFIGURE_ALL,
     TRIGGER_GENERATOR_DEFINITION_RUN,
     TRIGGER_UPDATE_DISPLAY_LABELS,
+    TRIGGER_UPDATE_HFID,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     VALIDATE_SCHEMA_NUMBER_POOLS,
