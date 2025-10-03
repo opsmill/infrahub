@@ -10,6 +10,8 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.graphql import graphql
 
 
@@ -115,6 +117,8 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     }
     """
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    # gql mutation needs function workflow
+    gql_params.context.service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
     result = await graphql(
         schema=gql_params.schema,
         source=query,

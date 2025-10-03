@@ -10,7 +10,6 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -273,51 +272,16 @@ class TestProfileLifecycle(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch,
         person_1,
+        client: InfrahubClient,
     ):
-        mutation = """
-            mutation {
-                ProfileTestingPersonCreate(data: {
-                    profile_name: {value: "profile-two"},
-                    profile_priority: {value: 5},
-                    height: {value: 156}
-                    related_nodes: [{id: "%(person_id)s"}]
-                } ) {
-                    ok
-                    object {
-                        related_nodes { edges { node { id } } }
-                        profile_name { value }
-                        profile_priority { value }
-                        height { value }
-                    }
-                }
-            }
-        """ % {"person_id": person_1.id}
-
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-        result = await graphql(
-            schema=gql_params.schema,
-            source=mutation,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={},
+        profile = await client.create(
+            kind="ProfileTestingPerson",
+            profile_name="profile-two",
+            profile_priority=5,
+            height=156,
+            related_nodes=[person_1.id],
         )
-
-        assert result.errors is None
-        assert result.data
-        assert result.data["ProfileTestingPersonCreate"]["ok"] is True
-        nodes = result.data["ProfileTestingPersonCreate"]["object"]["related_nodes"]["edges"]
-        assert len(nodes) == 1
-        assert nodes == [{"node": {"id": person_1.id}}]
-        attributes = result.data["ProfileTestingPersonCreate"]["object"]
-        assert attributes["profile_name"] == {"value": "profile-two"}
-        assert attributes["profile_priority"] == {"value": 5}
-        assert attributes["height"] == {"value": 156}
-
-        # TODO: remove after profile-level update logic is added
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
-        node_profile_applier = NodeProfilesApplier(db=db, branch=default_branch)
-        await node_profile_applier.apply_profiles(node=retrieved_person)
-        await retrieved_person.save(db=db)
+        await profile.save()
 
     async def test_step_06_get_person_multiple_profiles(self, person_1, person_profile_1, client: InfrahubClient):
         person_profile_2 = await client.get(kind="ProfileTestingPerson", profile_name__value="profile-two")
@@ -401,37 +365,11 @@ class TestProfileLifecycle(TestInfrahubApp):
         client: InfrahubClient,
     ):
         person_profile_2 = await client.get(kind="ProfileTestingPerson", profile_name__value="profile-two")
-        mutation = """
-            mutation {
-                ProfileTestingPersonDelete(data: {id: "%(profile_id)s"}) {
-                    ok
-                }
-            }
-        """ % {"profile_id": person_profile_2.id}
-
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-        result = await graphql(
-            schema=gql_params.schema,
-            source=mutation,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={},
-        )
-
-        assert not result.errors
-        assert result.data
-        assert result.data["ProfileTestingPersonDelete"]["ok"] is True
+        await person_profile_2.delete()
 
     async def test_step_09_check_persons(
         self, db: InfrahubDatabase, person_1, person_profile_1, client: InfrahubClient, default_branch: Branch
     ):
-        # TODO: remove after profile-level update logic
-        persons = await NodeManager.query(db=db, schema="TestingPerson")
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
-        for person in persons:
-            await node_profiles_applier.apply_profiles(node=person)
-            await person.save(db=db)
-
         retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
         await retrieved_person_1.profiles.fetch()
         retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
@@ -519,57 +457,31 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person.height.source_id is None
         assert retrieved_person.height.is_default is False
 
-    async def test_step_11_add_profile_with_person(
-        self, db: InfrahubDatabase, default_branch, person_profile_1, person_1
+    async def test_step_11_update_existing_profile(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        person_profile_1,
+        person_1,
+        client: InfrahubClient,
     ):
-        mutation = """
-            mutation {
-                ProfileTestingPersonUpdate(data: {
-                    id: "%(profile_id)s"
-                    profile_priority: {value: 11},
-                    height: {value: 134}
-                } ) {
-                    ok
-                    object {
-                        related_nodes { edges { node { id } } }
-                        profile_name { value }
-                        profile_priority { value }
-                        height { value }
-                    }
-                }
-            }
-        """ % {"profile_id": person_profile_1.id}
+        person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        person_profile_1.profile_priority.value = 11
+        person_profile_1.height.value = 134
+        await person_profile_1.save()
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
-        result = await graphql(
-            schema=gql_params.schema,
-            source=mutation,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={},
-        )
+        updated_person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        assert updated_person_profile_1.profile_name.value == "profile-one"
+        assert updated_person_profile_1.profile_priority.value == 11
+        assert updated_person_profile_1.height.value == 134
+        await updated_person_profile_1.related_nodes.fetch()
 
-        assert result.errors is None
-        assert result.data
-        assert result.data["ProfileTestingPersonUpdate"]["ok"] is True
-        nodes = result.data["ProfileTestingPersonUpdate"]["object"]["related_nodes"]["edges"]
-        assert len(nodes) == 1
-        assert nodes == [{"node": {"id": person_1.id}}]
-        attributes = result.data["ProfileTestingPersonUpdate"]["object"]
-        assert attributes["profile_name"] == {"value": "profile-one"}
-        assert attributes["profile_priority"] == {"value": 11}
-        assert attributes["height"] == {"value": 134}
+        assert len(updated_person_profile_1.related_nodes.peers) == 1
+        assert updated_person_profile_1.related_nodes.peers[0].id == person_1.id
 
     async def test_step_12_check_persons_again(
         self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
     ):
-        # TODO: remove after profile-level update logic
-        persons = await NodeManager.query(db=db, schema="TestingPerson")
-        node_profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
-        for person in persons:
-            await node_profiles_applier.apply_profiles(node=person)
-            await person.save(db=db)
-
         retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
         await retrieved_person_1.profiles.fetch()
         retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
@@ -592,3 +504,52 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_2.height.is_from_profile is False
         assert retrieved_person_2.height.source is None
         assert retrieved_person_2.height.is_default is True
+
+    async def test_step_13_update_existing_profile_related_nodes(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        person_profile_1,
+        person_1,
+        client: InfrahubClient,
+    ):
+        person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
+        person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        await person_profile_1.related_nodes.fetch()
+        person_profile_1.related_nodes.remove(person_1.id)
+        person_profile_1.related_nodes.add(person_2)
+        await person_profile_1.save()
+
+        updated_person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        assert updated_person_profile_1.profile_name.value == "profile-one"
+        await updated_person_profile_1.related_nodes.fetch()
+        assert len(updated_person_profile_1.related_nodes.peers) == 1
+        assert updated_person_profile_1.related_nodes.peers[0].id == person_2.id
+
+    async def test_step_14_check_persons_again(
+        self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
+    ):
+        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
+        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
+
+        await retrieved_person_1.profiles.fetch()
+        assert retrieved_person_1.profiles.peer_ids == []
+        assert retrieved_person_1.name.value == "Kara Thrace"
+        assert retrieved_person_1.name.is_from_profile is False
+        assert retrieved_person_1.name.source is None
+        assert retrieved_person_1.name.is_default is False
+        assert retrieved_person_1.height.value == 145
+        assert retrieved_person_1.height.is_from_profile is False
+        assert retrieved_person_1.height.source is None
+        assert retrieved_person_1.height.is_default is False
+
+        await retrieved_person_2.profiles.fetch()
+        assert retrieved_person_2.profiles.peer_ids == [person_profile_1.id]
+        assert retrieved_person_2.name.value == "Apollo"
+        assert retrieved_person_2.name.is_from_profile is False
+        assert retrieved_person_2.name.source is None
+        assert retrieved_person_2.name.is_default is False
+        assert retrieved_person_2.height.value == 134
+        assert retrieved_person_2.height.is_from_profile is True
+        assert retrieved_person_2.height.source.id == person_profile_1.id
+        assert retrieved_person_2.height.is_default is False
