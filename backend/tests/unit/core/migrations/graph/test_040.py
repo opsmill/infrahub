@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m040_profile_attrs_in_db import Migration040
 from infrahub.core.node import Node
@@ -50,9 +51,34 @@ class TestMigration040:
             profile_name="profile_2",
             description="profile2",
             is_false=False,
+            is_true=False,
             color="profile2",
             profile_priority=1002,
         )
+        await profile.save(db=db)
+        return profile
+
+    @pytest.fixture
+    async def value_branch(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
+        return await create_branch(db=db, branch_name="value_branch")
+
+    @pytest.fixture
+    async def profile_1_value_update(self, db: InfrahubDatabase, value_branch: Branch, profile_1: Node) -> Node:
+        profile = await NodeManager.get_one(db=db, branch=value_branch, id=profile_1.id)
+        profile.description.value = "profile1_value_update"
+        profile.is_true.value = False
+        profile.color.value = "profile1_value_update"
+        await profile.save(db=db)
+        return profile
+
+    @pytest.fixture
+    async def priority_branch(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
+        return await create_branch(db=db, branch_name="priority_branch")
+
+    @pytest.fixture
+    async def profile_2_priority_update(self, db: InfrahubDatabase, priority_branch: Branch, profile_2: Node) -> Node:
+        profile = await NodeManager.get_one(db=db, branch=priority_branch, id=profile_2.id)
+        profile.profile_priority.value = 999
         await profile.save(db=db)
         return profile
 
@@ -76,6 +102,16 @@ class TestMigration040:
         crit_high = await NodeManager.get_one(db=db, id=criticality_high.id)
         await crit_high.profiles.update(db=db, data=[profile_2])
         await crit_high.save(db=db)
+
+    @pytest.fixture
+    async def load_branch_data(
+        self,
+        value_branch: Branch,
+        profile_1_value_update: Node,
+        priority_branch: Branch,
+        profile_2_priority_update: Node,
+    ):
+        pass
 
     def validate_node(
         self,
@@ -108,6 +144,9 @@ class TestMigration040:
         profile_1: Node,
         profile_2: Node,
         load_data,
+        load_branch_data,
+        value_branch: Branch,
+        priority_branch: Branch,
     ):
         migration = WrappedMigration040()
         execution_result = await migration.execute(db=db)
@@ -115,6 +154,7 @@ class TestMigration040:
         validation_result = await migration.validate_migration(db=db)
         assert not validation_result.errors
 
+        # validate node-level changes on main
         updated_criticality_low = await NodeManager.get_one(db=db, id=criticality_low.id, include_source=True)
         self.validate_node(
             original_node=criticality_low,
@@ -153,17 +193,124 @@ class TestMigration040:
                 AttributeProfileDetails(
                     attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id
                 ),
+                AttributeProfileDetails(
+                    attribute_name="is_true", value=False, is_default=False, source_id=profile_2.id
+                ),
             ],
         )
 
-        wrapped_profile_applier = migration._appliers_by_branch[default_branch.name]
-        assert wrapped_profile_applier.apply_profiles.call_count == 3
+        # validate node-level changes on value branch
+        updated_criticality_low = await NodeManager.get_one(
+            db=db, branch=value_branch, id=criticality_low.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_low,
+            updated_node=updated_criticality_low,
+            expected_profile_attrs=[
+                AttributeProfileDetails(
+                    attribute_name="description",
+                    value="profile1_value_update",
+                    is_default=False,
+                    source_id=profile_1.id,
+                ),
+                AttributeProfileDetails(
+                    attribute_name="color",
+                    value="profile1_value_update",
+                    is_default=False,
+                    source_id=profile_1.id,
+                ),
+                AttributeProfileDetails(
+                    attribute_name="is_true",
+                    value=False,
+                    is_default=False,
+                    source_id=profile_1.id,
+                ),
+            ],
+        )
+        updated_criticality_medium = await NodeManager.get_one(
+            db=db, branch=value_branch, id=criticality_medium.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_medium,
+            updated_node=updated_criticality_medium,
+            expected_profile_attrs=[
+                AttributeProfileDetails(
+                    attribute_name="is_true", value=False, is_default=False, source_id=profile_1.id
+                ),
+                AttributeProfileDetails(
+                    attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id
+                ),
+            ],
+        )
+        updated_criticality_high = await NodeManager.get_one(
+            db=db, branch=value_branch, id=criticality_high.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_high,
+            updated_node=updated_criticality_high,
+            expected_profile_attrs=[],
+        )
+
+        # validate node-level changes on priority branch
+        updated_criticality_low = await NodeManager.get_one(
+            db=db, branch=priority_branch, id=criticality_low.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_low,
+            updated_node=updated_criticality_low,
+            expected_profile_attrs=[],
+        )
+        updated_criticality_medium = await NodeManager.get_one(
+            db=db, branch=priority_branch, id=criticality_medium.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_medium,
+            updated_node=updated_criticality_medium,
+            expected_profile_attrs=[
+                AttributeProfileDetails(
+                    attribute_name="is_true", value=False, is_default=False, source_id=profile_2.id
+                ),
+                AttributeProfileDetails(
+                    attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id
+                ),
+            ],
+        )
+        updated_criticality_high = await NodeManager.get_one(
+            db=db, branch=priority_branch, id=criticality_high.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_high,
+            updated_node=updated_criticality_high,
+            expected_profile_attrs=[
+                AttributeProfileDetails(
+                    attribute_name="is_true", value=False, is_default=False, source_id=profile_2.id
+                ),
+                AttributeProfileDetails(
+                    attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id
+                ),
+            ],
+        )
+
+        applier_branches = set(migration._appliers_by_branch.keys())
+        assert applier_branches == {default_branch.name, value_branch.name, priority_branch.name}
+
+        main_profile_applier = migration._appliers_by_branch[default_branch.name]
+        assert main_profile_applier.apply_profiles.call_count == 3
         refreshed_node_uuids = {
-            call_args[1]["node"].id for call_args in wrapped_profile_applier.apply_profiles.call_args_list
+            call_args[1]["node"].id for call_args in main_profile_applier.apply_profiles.call_args_list
         }
         assert refreshed_node_uuids == {criticality_low.id, criticality_medium.id, criticality_high.id}
 
+        value_profile_applier = migration._appliers_by_branch[value_branch.name]
+        assert value_profile_applier.apply_profiles.call_count == 2
+        refreshed_node_uuids = {
+            call_args[1]["node"].id for call_args in value_profile_applier.apply_profiles.call_args_list
+        }
+        assert refreshed_node_uuids == {criticality_low.id, criticality_medium.id}
 
-# TODO:
-# add testing for profile value update on branch
-# add testing for profile relationship updated on branch
+        priority_profile_applier = migration._appliers_by_branch[priority_branch.name]
+        assert priority_profile_applier.apply_profiles.call_count == 2
+        refreshed_node_uuids = {
+            call_args[1]["node"].id for call_args in priority_profile_applier.apply_profiles.call_args_list
+        }
+        assert refreshed_node_uuids == {criticality_medium.id, criticality_high.id}

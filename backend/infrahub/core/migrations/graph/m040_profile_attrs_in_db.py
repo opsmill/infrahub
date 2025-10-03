@@ -86,7 +86,11 @@ RETURN node_uuid, collect(branch) AS branches
 
 class Migration040(ArbitraryMigration):
     """
-    ...
+    Save profile attribute values on each node using the profile in the database
+    For any profile that has updates on a given branch (including default branch)
+    - run NodeProfilesApplier.apply_profiles on each node related to the profile on that branch
+    For any node that has an updated relationship to a profile on a given branch
+    - run NodeProfilesApplier.apply_profiles on the node on that branch
     """
 
     name: str = "040_profile_attrs_in_db"
