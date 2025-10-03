@@ -45,10 +45,10 @@ class NodePropertyAttribute(Generic[T]):
         self.analyze_variables()
 
     def needs_update(self, fields: list[str] | None) -> bool:
-        """Tell if this nod eproperty attribute must be recomputed given a list of updated fields of a node."""
-        if self._manually_assigned:
+        """Tell if this node property attribute must be recomputed given a list of updated fields of a node."""
+        if self._manually_assigned or not fields:
             return True
-        for field in fields or []:
+        for field in fields:
             if field in self.node_attributes or field in self.node_relationships:
                 return True
 
