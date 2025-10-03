@@ -15,11 +15,13 @@ from infrahub.events.node_action import NodeUpdatedEvent
 async def test_gather_trigger_gather_trigger_display_labels_jinja2_default(
     register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    triggers = await gather_trigger_display_labels_jinja2()
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema_branch.process()
+    triggers = await gather_trigger_display_labels_jinja2()
+
     expected_triggers = 0
     for node in schema_branch.get_all(duplicate=False).values():
-        if node.display_label:
+        if isinstance(node, NodeSchema) and node.display_label and node.namespace != "Internal":
             expected_triggers += 1
 
     assert len(triggers) == expected_triggers

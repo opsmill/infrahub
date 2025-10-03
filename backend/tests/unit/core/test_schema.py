@@ -144,7 +144,6 @@ async def test_node_schema_generate_fields_for_display_label_with_generic(defaul
     schema_root = SchemaRoot(generics=[generic_schema], nodes=[node_schema_1, node_schema_2])
     registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-
     generic_display_label = schema_branch.generate_fields_for_display_label(name="TestThingGeneric")
     assert generic_display_label == {"name": {"value": None}, "height": {"value": None}}
 

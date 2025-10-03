@@ -5,7 +5,7 @@
             "name": "Device",
             "namespace": "Test",
             "default_filter": "name__value",
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
                 {"name": "description", "kind": "Text", "optional": true, "order_weight": 900},
@@ -28,7 +28,7 @@
         {
             "name": "Interface",
             "namespace": "Test",
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": true},
@@ -51,7 +51,7 @@
             "name": "IPAddress",
             "namespace": "Test",
             "default_filter": "address__value",
-            "display_labels": ["address__value"],
+            "display_label": "address__value",
             "attributes": [
                 {"name": "address", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": true}
@@ -69,7 +69,7 @@
             "icon": "mdi:domain",
             "default_filter": "name__value",
             "order_by": ["name__value"],
-            "display_labels": ["label__value"],
+            "display_label": "label__value",
             "branch": "aware",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
@@ -95,7 +95,7 @@
             "label": "Site",
             "default_filter": "name__value",
             "order_by": ["name__value"],
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
                 {"name": "description", "kind": "Text", "optional": true},
