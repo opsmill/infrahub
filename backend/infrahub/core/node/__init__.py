@@ -799,7 +799,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._existing = True
 
         new_ids = query.get_ids()
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         if self._human_friendly_id:
             node_changelog.create_attribute(
@@ -832,23 +832,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
-        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind())
-
-        # Update the HFID if one of its variable is being updated
-        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
-            await self._human_friendly_id.compute(db=db, node=self)
-            attr = await self._human_friendly_id.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
-
-        # Update the display label if one of its variable is being updated
-        if self._display_label and self._display_label.needs_update(fields=fields):
-            await self._display_label.compute(db=db, node=self)
-            attr = await self._display_label.get_node_attribute(node=self, at=update_at)
-            updated_attribute = await attr.save(at=update_at, db=db)
-            if updated_attribute:
-                node_changelog.add_attribute(attribute=updated_attribute)
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:

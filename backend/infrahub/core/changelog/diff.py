@@ -71,7 +71,7 @@ class DiffChangelogCollector:
             return rel_schema.peer
 
     def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
-        node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind)
+        node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind, display_label=node.label)
         try:
             schema = self._db.schema.get(node_changelog.node_kind, branch=self._branch, duplicate=False)
         except SchemaNotFoundError:
