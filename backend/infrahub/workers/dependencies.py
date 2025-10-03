@@ -7,6 +7,7 @@ from infrahub_sdk.config import Config
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
+from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
@@ -38,7 +39,14 @@ def build_client() -> InfrahubClient:
 
 
 @inject
-def get_client(client: InfrahubClient = Depends(build_client)) -> InfrahubClient:  # noqa: B008
+def get_client(
+    branch: str | None = None,
+    client: InfrahubClient = Depends(build_client),  # noqa: B008
+) -> InfrahubClient:
+    # Populate client schema cache using our internal schema cache
+    _branch = branch or registry.default_branch
+    schema_branch = registry.schema.get_schema_branch(_branch)
+    client.schema.set_cache(schema=schema_branch.to_dict_api_schema_object(), branch=_branch)
     return client
 
 
