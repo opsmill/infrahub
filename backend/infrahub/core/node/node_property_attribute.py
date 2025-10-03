@@ -179,7 +179,7 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
 
     async def compute(self, db: InfrahubDatabase, node: Node) -> None:
         """Update the HFID value by recomputing it from the template."""
-        if self.template is None:
+        if self.template is None or self._manually_assigned:
             return
 
         if node.get_schema() != self.node_schema:
