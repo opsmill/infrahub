@@ -907,7 +907,7 @@ class SchemaBranch:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
                     rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
 
-                if node_schema.is_node_schema:
+                if node_schema.is_node_schema and node_schema.namespace not in ["Schema", "Internal"]:
                     self.hfids.register_hfid_schema_path(
                         kind=node_schema.kind, schema_path=schema_path, hfid=node_schema.human_friendly_id
                     )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from graphene import Boolean, InputObjectType, List, Mutation, String
+from graphene import Boolean, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import PermissionAction, PermissionDecision
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 class InfrahubHFIDUpdateInput(InputObjectType):
     id = String(required=True)
     kind = String(required=True)
-    value = List(String, required=True)
+    value = List(NonNull(String), required=True)
 
 
 class UpdateHFID(Mutation):
@@ -49,7 +49,7 @@ class UpdateHFID(Mutation):
         node_schema = registry.schema.get_node_schema(
             name=str(data.kind), branch=graphql_context.branch.name, duplicate=False
         )
-        if not node_schema.human_friendly_id:
+        if node_schema.human_friendly_id is None:
             raise ValidationError(
                 input_value=f"{node_schema.kind}.human_friendly_id has not been defined for this kind."
             )
@@ -88,18 +88,11 @@ class UpdateHFID(Mutation):
                 message="The targeted node was not found in the database",
             )
 
-        # Fix updates for HFID
-        existing_hfid = (
-            await target_node.get_hfid(db=graphql_context.db) if target_node.has_human_friendly_id() else None
-        )
-        print(f"Existing HFID: {existing_hfid}")
-        print(f"Updated HFID: {updated_hfid}")
-        if updated_hfid != existing_hfid:
+        existing = await target_node.get_hfid(db=graphql_context.db) if target_node.has_human_friendly_id() else None
+        if updated_hfid != existing:
             await target_node.set_human_friendly_id(value=updated_hfid)
-            print("I've set it")
 
             async with graphql_context.db.start_transaction() as dbt:
-                print("And also saved")
                 await target_node.save(db=dbt, fields=["human_friendly_id"])
 
             log_data = get_log_data()
