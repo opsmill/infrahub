@@ -59,6 +59,10 @@ This flexibility allows different workflows—from quick data fixes to comprehen
 
 ### Branch-aware vs branch-agnostic
 
+<center>
+  <VideoPlayer url='https://youtu.be/VSVToQ2XtHs?si=MypRDj1P90qhWb7F' light />
+</center>
+
 Unlike Git where all content is branch-specific, Infrahub introduces a nuanced approach where some elements of the schema can bypass the branching system and be global to all branches. This design decision allows for more efficient management of system-level configurations while still maintaining isolation for user data.
 
 - **Branch-aware**: Records that are local to branches and follow the standard branching workflow. Changes to branch-aware records in one branch do not affect other branches until explicitly merged. Most user-created infrastructure data falls into this category.
