@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 from typing import Match
 
-from graphql import GraphQLSchema, print_schema
 from invoke.context import Context
 from invoke.tasks import task
 
@@ -69,7 +68,9 @@ def write(file_path: Path, content: str) -> None:
     print(f"Wrote to {file_path}")
 
 
-def sorted_schema(schema: GraphQLSchema) -> str:
+def sorted_schema(schema) -> str:  # noqa: ANN001
+    from graphql import print_schema
+
     sdl = print_schema(schema)
 
     def sort_implements(match: Match[str]) -> str:
