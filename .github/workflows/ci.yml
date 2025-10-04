@@ -575,6 +575,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./package-lock.json
       - name: "Install format-graphql"
+        working-directory: schema
         run: npm install
 
       - name: Select infrahub db port
