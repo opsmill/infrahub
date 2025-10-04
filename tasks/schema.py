@@ -11,6 +11,7 @@ from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
 INFRAHUB_DIRECTORY = REPO_BASE / "generated" / "infrahub"
+SCHEMA_DIRECTORY = REPO_BASE / "schema"
 
 
 @task
@@ -125,8 +126,8 @@ async def generate_graphql_schema(context: Context) -> None:
         include_types=True,
     )
 
-    schema_file = Path(f"{REPO_BASE}/schema/schema.graphql")
+    schema_file = Path(f"{SCHEMA_DIRECTORY}/schema.graphql")
     write(file_path=schema_file, content=sorted_schema(schema=gql_schema))
 
-    with context.cd(f"{ESCAPED_REPO_PATH}/schema"):
+    with context.cd(SCHEMA_DIRECTORY):
         context.run("npm run format-graphql -- ./schema.graphql --write")
