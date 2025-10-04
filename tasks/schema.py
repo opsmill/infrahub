@@ -1,7 +1,10 @@
 import asyncio
 import json
+import re
 from pathlib import Path
+from typing import Match
 
+from graphql import GraphQLSchema, print_schema
 from invoke.context import Context
 from invoke.tasks import task
 
@@ -66,9 +69,21 @@ def write(file_path: Path, content: str) -> None:
     print(f"Wrote to {file_path}")
 
 
+def sorted_schema(schema: GraphQLSchema) -> str:
+    sdl = print_schema(schema)
+
+    def sort_implements(match: Match[str]) -> str:
+        interfaces = match.group(1).split("&")
+        interfaces = [i.strip() for i in interfaces]
+        interfaces.sort()
+        return "implements " + " & ".join(interfaces)
+
+    sdl = re.sub(r"implements (.*) {", lambda m: sort_implements(m) + " {", sdl)
+    return sdl
+
+
 async def generate_graphql_schema(context: Context) -> None:
     import neo4j.exceptions
-    from graphql import print_schema
 
     from infrahub import config
     from infrahub.core.initialization import initialization
@@ -110,6 +125,7 @@ async def generate_graphql_schema(context: Context) -> None:
     )
 
     schema_file = Path(f"{REPO_BASE}/schema/schema.graphql")
-    write(file_path=schema_file, content=print_schema(schema=gql_schema))
-    with context.cd(ESCAPED_REPO_PATH):
-        context.run("npm run format-graphql -- ./schema/schema.graphql --write")
+    write(file_path=schema_file, content=sorted_schema(schema=gql_schema))
+
+    with context.cd(f"{ESCAPED_REPO_PATH}/schema"):
+        context.run("npm run format-graphql -- ./schema.graphql --write")

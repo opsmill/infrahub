@@ -591,7 +591,7 @@ input ConvertObjectTypeInput {
 }
 
 """User Account for Infrahub"""
-type CoreAccount implements CoreNode & LineageSource & CoreGenericAccount & LineageOwner {
+type CoreAccount implements CoreGenericAccount & CoreNode & LineageOwner & LineageSource {
   _updated_at: DateTime
   account_type: TextAttribute
   description: TextAttribute
@@ -632,7 +632,7 @@ type CoreAccountDelete {
 }
 
 """A group of users to manage common permissions"""
-type CoreAccountGroup implements CoreGroup & LineageSource & LineageOwner {
+type CoreAccountGroup implements CoreGroup & LineageOwner & LineageSource {
   _updated_at: DateTime
   ancestors(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   children(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -857,7 +857,7 @@ input CoreActionUpdateInput {
   triggers: [RelatedNodeInput]
 }
 
-type CoreArtifact implements CoreTaskTarget & CoreNode {
+type CoreArtifact implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   """None"""
   checksum: TextAttribute
@@ -1018,7 +1018,7 @@ input CoreArtifactCreateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-type CoreArtifactDefinition implements CoreTaskTarget & CoreNode {
+type CoreArtifactDefinition implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   """None (required)"""
   artifact_name: TextAttribute
@@ -1384,7 +1384,7 @@ input CoreBasePermissionUpdateInput {
 }
 
 """A comment on proposed change"""
-type CoreChangeComment implements CoreNode & CoreComment {
+type CoreChangeComment implements CoreComment & CoreNode {
   _updated_at: DateTime
   change: NestedEdgedCoreProposedChange!
   created_at: TextAttribute
@@ -1552,7 +1552,7 @@ interface CoreCheck {
   validator: NestedEdgedCoreValidator!
 }
 
-type CoreCheckDefinition implements CoreTaskTarget & CoreNode {
+type CoreCheckDefinition implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   """None (required)"""
   class_name: TextAttribute
@@ -1730,7 +1730,7 @@ input CoreCredentialUpdateInput {
 }
 
 """A webhook that connects to an external integration"""
-type CoreCustomWebhook implements CoreTaskTarget & CoreNode & CoreWebhook {
+type CoreCustomWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   _updated_at: DateTime
   branch_scope: Dropdown
   description: TextAttribute
@@ -2218,7 +2218,7 @@ input CoreFileThreadUpsertInput {
 }
 
 """An action that runs a generator definition once triggered"""
-type CoreGeneratorAction implements CoreNode & CoreAction {
+type CoreGeneratorAction implements CoreAction & CoreNode {
   _updated_at: DateTime
   """A detailed description of the action"""
   description: TextAttribute
@@ -2398,7 +2398,7 @@ input CoreGeneratorCheckUpsertInput {
   validator: RelatedNodeInput!
 }
 
-type CoreGeneratorDefinition implements CoreTaskTarget & CoreNode {
+type CoreGeneratorDefinition implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   """None (required)"""
   class_name: TextAttribute
@@ -2571,7 +2571,7 @@ input CoreGeneratorGroupUpsertInput {
   subscribers: [RelatedNodeInput]
 }
 
-type CoreGeneratorInstance implements CoreTaskTarget & CoreNode {
+type CoreGeneratorInstance implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   definition: NestedEdgedCoreGeneratorDefinition!
   display_label: String
@@ -2813,7 +2813,7 @@ input CoreGenericRepositoryUpdateInput {
 }
 
 """A permission that grants global rights to perform actions in Infrahub"""
-type CoreGlobalPermission implements CoreNode & CoreBasePermission {
+type CoreGlobalPermission implements CoreBasePermission & CoreNode {
   _updated_at: DateTime
   """None (required)"""
   action: Dropdown
@@ -3087,7 +3087,7 @@ interface CoreGroup {
 }
 
 """A group action that adds or removes members from a group once triggered"""
-type CoreGroupAction implements CoreNode & CoreAction {
+type CoreGroupAction implements CoreAction & CoreNode {
   _updated_at: DateTime
   """A detailed description of the action"""
   description: TextAttribute
@@ -3308,7 +3308,7 @@ input CoreGroupUpdateInput {
 }
 
 """A pool of IP address resources"""
-type CoreIPAddressPool implements CoreResourcePool & LineageSource & CoreNode {
+type CoreIPAddressPool implements CoreNode & CoreResourcePool & LineageSource {
   _updated_at: DateTime
   """The object type to create when reserving a resource in the pool (required)"""
   default_address_type: TextAttribute
@@ -3395,7 +3395,7 @@ input CoreIPAddressPoolUpsertInput {
 }
 
 """A pool of IP prefix resources"""
-type CoreIPPrefixPool implements CoreResourcePool & LineageSource & CoreNode {
+type CoreIPPrefixPool implements CoreNode & CoreResourcePool & LineageSource {
   _updated_at: DateTime
   """None"""
   default_member_type: TextAttribute
@@ -3989,7 +3989,7 @@ input CoreNodeUpdateInput {
 }
 
 """A pool of number resources"""
-type CoreNumberPool implements CoreResourcePool & LineageSource & CoreNode {
+type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   _updated_at: DateTime
   description: TextAttribute
   display_label: String
@@ -4112,7 +4112,7 @@ input CoreObjectComponentTemplateUpdateInput {
 }
 
 """A permission that grants rights to perform actions on objects"""
-type CoreObjectPermission implements CoreNode & CoreBasePermission {
+type CoreObjectPermission implements CoreBasePermission & CoreNode {
   _updated_at: DateTime
   """None"""
   action: TextAttribute
@@ -4309,7 +4309,7 @@ input CoreObjectThreadUpsertInput {
 }
 
 """Username/Password based credential"""
-type CorePasswordCredential implements CoreNode & CoreCredential {
+type CorePasswordCredential implements CoreCredential & CoreNode {
   _updated_at: DateTime
   description: TextAttribute
   display_label: String
@@ -4414,7 +4414,7 @@ input CoreProfileUpdateInput {
 }
 
 """Metadata related to a proposed change"""
-type CoreProposedChange implements CoreTaskTarget & CoreNode {
+type CoreProposedChange implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime
   approved_by(account_type__is_protected: Boolean, account_type__is_visible: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__is_visible: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__is_visible: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
   comments(created_at__is_protected: Boolean, created_at__is_visible: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__is_visible: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreChangeComment!
@@ -4520,7 +4520,7 @@ input CoreProposedChangeUpsertInput {
 }
 
 """A Git Repository integrated with Infrahub, Git-side will not be updated"""
-type CoreReadOnlyRepository implements LineageOwner & CoreTaskTarget & CoreGenericRepository & LineageSource & CoreNode {
+type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget & LineageOwner & LineageSource {
   _updated_at: DateTime
   checks(class_name__is_protected: Boolean, class_name__is_visible: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], file_path__is_protected: Boolean, file_path__is_visible: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__is_visible: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreCheckDefinition!
   """None"""
@@ -4637,7 +4637,7 @@ input CoreReadOnlyRepositoryUpsertInput {
 }
 
 """A Git Repository integrated with Infrahub"""
-type CoreRepository implements LineageOwner & CoreTaskTarget & CoreGenericRepository & LineageSource & CoreNode {
+type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget & LineageOwner & LineageSource {
   _updated_at: DateTime
   checks(class_name__is_protected: Boolean, class_name__is_visible: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], file_path__is_protected: Boolean, file_path__is_visible: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__is_visible: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreCheckDefinition!
   """None"""
@@ -5318,7 +5318,7 @@ input CoreStandardGroupUpsertInput {
 }
 
 """A webhook that connects to an external integration"""
-type CoreStandardWebhook implements CoreTaskTarget & CoreNode & CoreWebhook {
+type CoreStandardWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   _updated_at: DateTime
   branch_scope: Dropdown
   description: TextAttribute
@@ -5455,7 +5455,7 @@ interface CoreThread {
 }
 
 """A comment on thread within a Proposed Change"""
-type CoreThreadComment implements CoreNode & CoreComment {
+type CoreThreadComment implements CoreComment & CoreNode {
   _updated_at: DateTime
   created_at: TextAttribute
   created_by: NestedEdgedCoreGenericAccount!
@@ -6834,7 +6834,7 @@ type InternalAccountToken implements CoreNode {
 }
 
 """IPv4 or IPv6 prefix also referred as network which has not been allocated yet"""
-type InternalIPPrefixAvailable implements CoreNode & BuiltinIPPrefix {
+type InternalIPPrefixAvailable implements BuiltinIPPrefix & CoreNode {
   _updated_at: DateTime
   ancestors(broadcast_address__is_protected: Boolean, broadcast_address__is_visible: Boolean, broadcast_address__owner__id: ID, broadcast_address__source__id: ID, broadcast_address__value: String, broadcast_address__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hostmask__is_protected: Boolean, hostmask__is_visible: Boolean, hostmask__owner__id: ID, hostmask__source__id: ID, hostmask__value: String, hostmask__values: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__is_visible: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], is_top_level__is_protected: Boolean, is_top_level__is_visible: Boolean, is_top_level__owner__id: ID, is_top_level__source__id: ID, is_top_level__value: Boolean, is_top_level__values: [Boolean], isnull: Boolean, limit: Int, member_type__is_protected: Boolean, member_type__is_visible: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], netmask__is_protected: Boolean, netmask__is_visible: Boolean, netmask__owner__id: ID, netmask__source__id: ID, netmask__value: String, netmask__values: [String], network_address__is_protected: Boolean, network_address__is_visible: Boolean, network_address__owner__id: ID, network_address__source__id: ID, network_address__value: String, network_address__values: [String], offset: Int, order: OrderInput, prefix__is_protected: Boolean, prefix__is_visible: Boolean, prefix__owner__id: ID, prefix__source__id: ID, prefix__value: String, prefix__values: [String], utilization__is_protected: Boolean, utilization__is_visible: Boolean, utilization__owner__id: ID, utilization__source__id: ID, utilization__value: BigInt, utilization__values: [BigInt]): NestedPaginatedBuiltinIPPrefix!
   broadcast_address: TextAttribute
@@ -6865,7 +6865,7 @@ type InternalIPPrefixAvailable implements CoreNode & BuiltinIPPrefix {
 }
 
 """Range of IPv4 or IPv6 addresses which has not been allocated yet"""
-type InternalIPRangeAvailable implements CoreNode & BuiltinIPAddress {
+type InternalIPRangeAvailable implements BuiltinIPAddress & CoreNode {
   _updated_at: DateTime
   address: IPHost
   description: TextAttribute
@@ -6930,7 +6930,7 @@ input IPAddressPoolInput {
 }
 
 """A namespace that segments IPAM"""
-type IpamNamespace implements CoreNode & BuiltinIPNamespace {
+type IpamNamespace implements BuiltinIPNamespace & CoreNode {
   _updated_at: DateTime
   """None"""
   default: CheckboxAttribute
@@ -9644,7 +9644,7 @@ type ProcessRepository {
 }
 
 """Profile for BuiltinIPAddress"""
-type ProfileBuiltinIPAddress implements CoreNode & LineageSource & CoreProfile {
+type ProfileBuiltinIPAddress implements CoreNode & CoreProfile & LineageSource {
   _updated_at: DateTime
   """None"""
   description: TextAttribute
@@ -9718,7 +9718,7 @@ input ProfileBuiltinIPAddressUpsertInput {
 }
 
 """Profile for BuiltinIPPrefix"""
-type ProfileBuiltinIPPrefix implements CoreNode & LineageSource & CoreProfile {
+type ProfileBuiltinIPPrefix implements CoreNode & CoreProfile & LineageSource {
   _updated_at: DateTime
   """None"""
   description: TextAttribute
@@ -9805,7 +9805,7 @@ input ProfileBuiltinIPPrefixUpsertInput {
 }
 
 """Profile for BuiltinTag"""
-type ProfileBuiltinTag implements CoreNode & LineageSource & CoreProfile {
+type ProfileBuiltinTag implements CoreNode & CoreProfile & LineageSource {
   _updated_at: DateTime
   """None"""
   description: TextAttribute
@@ -9879,7 +9879,7 @@ input ProfileBuiltinTagUpsertInput {
 }
 
 """Profile for IpamNamespace"""
-type ProfileIpamNamespace implements CoreNode & LineageSource & CoreProfile {
+type ProfileIpamNamespace implements CoreNode & CoreProfile & LineageSource {
   _updated_at: DateTime
   """None"""
   description: TextAttribute
