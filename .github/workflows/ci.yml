@@ -573,7 +573,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: ./package-lock.json
+          cache-dependency-path: ./schema/package-lock.json
       - name: "Install format-graphql"
         working-directory: schema
         run: npm install
