@@ -35,18 +35,17 @@ def get_component_type() -> ComponentType:
 
 
 def build_client() -> InfrahubClient:
-    return InfrahubClient(config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True))
+    client = InfrahubClient(config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True))
+    # Populate client schema cache using our internal schema cache
+    if registry.schema:
+        for branch in registry.schema.get_branches():
+            client.schema.set_cache(schema=registry.schema.get_sdk_schema_branch(name=branch), branch=branch)
+
+    return client
 
 
 @inject
-def get_client(
-    branch: str | None = None,
-    client: InfrahubClient = Depends(build_client),  # noqa: B008
-) -> InfrahubClient:
-    # Populate client schema cache using our internal schema cache
-    _branch = branch or registry.default_branch
-    schema_branch = registry.schema.get_schema_branch(_branch)
-    client.schema.set_cache(schema=schema_branch.to_dict_api_schema_object(), branch=_branch)
+def get_client(client: InfrahubClient = Depends(build_client)) -> InfrahubClient:  # noqa: B008
     return client
 
 
