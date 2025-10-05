@@ -378,7 +378,7 @@ async def generate_request_artifact_definition(
 ) -> None:
     await add_tags(branches=[model.branch])
 
-    client = get_client(branch=model.branch)
+    client = get_client()
 
     # Needs to be fetched before fetching group members otherwise `object` relationship would override
     # existing node in client store without the `name` attribute due to #521

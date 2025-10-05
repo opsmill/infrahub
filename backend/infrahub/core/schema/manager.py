@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
+
 from infrahub import lock
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
@@ -40,6 +42,7 @@ class SchemaManager(NodeManager):
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
         self._branches: dict[str, SchemaBranch] = {}
+        self._sdk_branches: dict[str, SDKBranchSchema] = {}
 
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
@@ -140,12 +143,16 @@ class SchemaManager(NodeManager):
         if name in self._branches:
             return self._branches[name]
 
-        self._branches[name] = SchemaBranch(cache=self._cache, name=name)
+        self.set_schema_branch(name, schema=SchemaBranch(cache=self._cache, name=name))
         return self._branches[name]
+
+    def get_sdk_schema_branch(self, name: str) -> SDKBranchSchema:
+        return self._sdk_branches[name]
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
         schema.name = name
         self._branches[name] = schema
+        self._sdk_branches[name] = SDKBranchSchema.from_api_response(data=schema.to_dict_api_schema_object())
 
     def process_schema_branch(self, name: str) -> None:
         schema_branch = self.get_schema_branch(name=name)
@@ -764,6 +771,8 @@ class SchemaManager(NodeManager):
         for branch_name in list(self._branches.keys()):
             if branch_name not in active_branches:
                 del self._branches[branch_name]
+                if branch_name in self._sdk_branches:
+                    del self._sdk_branches[branch_name]
                 removed_branches.append(branch_name)
 
         for hash_key in list(self._cache.keys()):
