@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
+from cachetools import TTLCache
+from cachetools.keys import hashkey
+from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
 from prefect import task
-from prefect.cache_policies import INPUTS
-from prefect.locking.memory import MemoryLockManager
-from prefect.transactions import IsolationLevel
+from prefect.cache_policies import NONE
 from pydantic import Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -251,14 +251,13 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
 
 
-@task(
-    name="Fetch repository commit",
-    description="Retrieve a git repository at a given commit, if it does not already exist locally",
-    cache_policy=INPUTS.configure(isolation_level=IsolationLevel.SERIALIZABLE, lock_manager=MemoryLockManager())
-    - "client",
-    cache_expiration=timedelta(seconds=30),
+@cached(
+    TTLCache(maxsize=100, ttl=30),
+    key=lambda *_, **kwargs: hashkey(
+        kwargs.get("repository_id"), kwargs.get("name"), kwargs.get("repository_kind"), kwargs.get("commit")
+    ),
 )
-async def get_initialized_repo(
+async def _get_initialized_repo(
     client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
@@ -268,3 +267,16 @@ async def get_initialized_repo(
         return await InfrahubReadOnlyRepository.init(id=repository_id, name=name, commit=commit, client=client)
 
     raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
+
+
+@task(
+    name="Fetch repository commit",
+    description="Retrieve a git repository at a given commit, if it does not already exist locally",
+    cache_policy=NONE,
+)
+async def get_initialized_repo(
+    client: InfrahubClient, repository_id: str, name: str, repository_kind: str, commit: str | None = None
+) -> InfrahubReadOnlyRepository | InfrahubRepository:
+    return await _get_initialized_repo(
+        client=client, repository_id=repository_id, name=name, repository_kind=repository_kind, commit=commit
+    )
