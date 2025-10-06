@@ -53,7 +53,9 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
                     branch=branch,
                     node_kind=node_kind,
                     target_kind=node_kind,
-                    fields=template_label.fields + ["!display_label"],
+                    fields=[
+                        "_trigger_placeholder"
+                    ],  # Triggers for the nodes themselves are only used to determine if all nodes should be regenerated
                     template_hash=template_label.get_hash(),
                     branches_out_of_scope=branches_out_of_scope,
                 )

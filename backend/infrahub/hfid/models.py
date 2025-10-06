@@ -53,7 +53,9 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
                     branch=branch,
                     node_kind=node_kind,
                     target_kind=node_kind,
-                    fields=hfid_definition.fields + ["!human_friendly_id"],
+                    fields=[
+                        "_trigger_placeholder"
+                    ],  # Triggers for the nodes themselves are only used to determine if all nodes should be regenerated
                     hfid_hash=hfid_definition.get_hash(),
                     branches_out_of_scope=branches_out_of_scope,
                 )
