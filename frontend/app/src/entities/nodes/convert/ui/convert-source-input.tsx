@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { type ReactNode, useState } from "react";
+import React from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -14,18 +14,19 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import type { ConvertFieldMapping } from "@/entities/nodes/convert/types";
-import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import { getDisplayValue, type Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 interface ConvertSourceInputProps {
-  objectDetailsData: NodeObject;
+  sourceObject: NodeObject;
   sourceSchema: ModelSchema;
-  field: any;
-  mapping: ConvertFieldMapping;
+  mapping?: ConvertFieldMapping;
   className?: string;
+  value: ConvertFormFieldValue;
+  onChange: (value: ConvertFormFieldValue) => void;
 }
 
 interface ConvertSourceOption {
@@ -39,7 +40,7 @@ interface ConvertSourceOption {
 
 interface AttributeSourceOption extends ConvertSourceOption {
   value: string | string[] | number | boolean | null;
-  label: ReactNode;
+  label: React.ReactNode;
 }
 
 interface RelationshipOneSourceOption extends ConvertSourceOption {
@@ -50,50 +51,63 @@ interface RelationshipManySourceOption extends ConvertSourceOption {
   value: Array<NodeCore> | null;
 }
 
-interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
+interface ConvertSourceAttributeComboboxProps extends ConvertSourceInputProps {
   attribute: AttributeSchema;
 }
 
-export const ConvertSourceAttributeInput = ({
-  objectDetailsData,
+export const ConvertSourceAttributeCombobox = ({
+  sourceObject,
   sourceSchema,
   mapping,
-  field,
   attribute,
+  value,
+  onChange,
   ...props
-}: ConvertSourceAttributeInputProps) => {
-  const [open, setOpen] = useState(false);
+}: ConvertSourceAttributeComboboxProps) => {
+  const [open, setOpen] = React.useState(false);
 
-  const fieldData = field.value;
+  const fieldData = value;
 
-  const availableOptions: Array<AttributeSourceOption> =
-    "attributes" in sourceSchema && sourceSchema.attributes
-      ? sourceSchema.attributes
-          .filter((sourceAttribute) => {
-            if (attribute.enum) {
-              const areEqual =
-                JSON.stringify(attribute.enum.sort()) ===
-                JSON.stringify(sourceAttribute?.enum?.sort());
+  const availableOptions: Array<AttributeSourceOption> = (sourceSchema.attributes ?? [])
+    .filter((sourceAttribute) => {
+      if (attribute.kind === "Text" && attribute.enum) {
+        const sortedAttributeEnumOptions = attribute.enum.sort();
+        const sortedSourceEnumOptions = sourceAttribute?.enum?.sort();
+        const areEqual =
+          JSON.stringify(sortedAttributeEnumOptions) === JSON.stringify(sortedSourceEnumOptions);
 
-              return !!sourceAttribute.enum && areEqual;
-            }
+        return areEqual;
+      }
 
-            return sourceAttribute.kind === attribute.kind;
-          })
-          .map((sourceAttribute) => {
-            const attrData = objectDetailsData[sourceAttribute.name];
-            return {
-              value: attrData && "value" in attrData ? attrData.value : null,
-              label: getDisplayValue(objectDetailsData, sourceAttribute) || "-",
-              source: {
-                type: "source",
-                label: sourceAttribute.label ?? sourceAttribute.name,
-                name: sourceAttribute.name,
-              },
-              isDefaultMatch: sourceAttribute.name === mapping.source_field_name,
-            };
-          })
-      : [];
+      if (attribute.kind === "Dropdown") {
+        const sortedAttributeDropdownOptions = attribute?.choices?.sort(
+          (itemA, itemB) => itemA.name - itemB.name
+        );
+        const sortedSourceDropdownOptions = sourceAttribute?.choices?.sort(
+          (itemA, itemB) => itemA.name - itemB.name
+        );
+        const areEqual =
+          JSON.stringify(sortedAttributeDropdownOptions) ===
+          JSON.stringify(sortedSourceDropdownOptions);
+
+        return areEqual;
+      }
+
+      return sourceAttribute.kind === attribute.kind;
+    })
+    .map((attribute) => {
+      const attrData = sourceObject[attribute.name];
+      return {
+        value: attrData && "value" in attrData ? attrData.value : null,
+        label: getDisplayValue(sourceObject, attribute) || "-",
+        source: {
+          type: "source",
+          label: attribute.label ?? attribute.name,
+          name: attribute.name,
+        },
+        isDefaultMatch: attribute.name === mapping?.source_field_name,
+      };
+    });
 
   const currentOption = availableOptions?.find((option) => {
     return option.source.name === fieldData?.source?.name;
@@ -109,9 +123,10 @@ export const ConvertSourceAttributeInput = ({
           </Badge>
         )}
       </ComboboxTrigger>
+
       <ComboboxContent fitTriggerWidth={false}>
         <ComboboxList>
-          <ComboboxEmpty>No available values</ComboboxEmpty>
+          <ComboboxEmpty>No available attributes</ComboboxEmpty>
 
           {availableOptions?.map((option) => {
             return (
@@ -120,10 +135,9 @@ export const ConvertSourceAttributeInput = ({
                 value={option.source.name}
                 selectedValue={fieldData?.source?.name}
                 onSelect={() => {
-                  field.onChange({
+                  onChange({
                     source: {
                       type: "source",
-                      label: option.source.label,
                       name: option.source.name,
                     },
                     value: option.value,
@@ -154,36 +168,32 @@ interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
 }
 
 export const ConvertSourceRelationshipOneInput = ({
-  objectDetailsData,
+  sourceObject,
   sourceSchema,
   mapping,
-  field,
+  value,
+  onChange,
   peer,
   className,
 }: ConvertSourceRelationshipInputProps) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
 
-  const fieldData = field.value;
+  const fieldData = value;
 
-  const availableOptions: Array<RelationshipOneSourceOption> =
-    "relationships" in sourceSchema && sourceSchema.relationships
-      ? sourceSchema.relationships
-          .filter((relationship) => {
-            return relationship.peer === peer;
-          })
-          .map((relationship) => {
-            const relationshipData = objectDetailsData[relationship.name];
-            return {
-              value: relationshipData && "node" in relationshipData ? relationshipData.node : null,
-              source: {
-                type: "source",
-                label: relationship.label ?? relationship.name,
-                name: relationship.name,
-              },
-              isDefaultMatch: relationship.name === mapping.source_field_name,
-            };
-          })
-      : [];
+  const availableOptions: Array<RelationshipOneSourceOption> = (sourceSchema.relationships ?? [])
+    .filter((relationship) => relationship.peer === peer)
+    .map((relationship) => {
+      const relationshipData = sourceObject[relationship.name];
+      return {
+        value: relationshipData && "node" in relationshipData ? relationshipData.node : null,
+        source: {
+          type: "source",
+          label: relationship.label ?? relationship.name,
+          name: relationship.name,
+        },
+        isDefaultMatch: relationship.name === mapping?.source_field_name,
+      };
+    });
 
   const currentOption = availableOptions?.find((nodeOption) => {
     return nodeOption.source.name === fieldData?.source?.name;
@@ -210,14 +220,14 @@ export const ConvertSourceRelationshipOneInput = ({
                 value={option.source.name}
                 selectedValue={fieldData?.source?.name}
                 onSelect={() => {
-                  field.onChange({
+                  onChange({
                     source: {
                       type: "source",
                       label: option.source.label,
                       name: option.source.name,
                       node: option.value,
                     },
-                    value: option.value,
+                    value: option.value as Node | null,
                   });
                   setOpen(false);
                 }}
@@ -241,46 +251,41 @@ export const ConvertSourceRelationshipOneInput = ({
 };
 
 export const ConvertSourceRelationshipManyInput = ({
-  objectDetailsData,
+  sourceObject,
   sourceSchema,
   mapping,
-  field,
   peer,
   className,
+  value,
+  onChange,
 }: ConvertSourceRelationshipInputProps) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
 
-  const fieldData = field.value;
+  const fieldData = value;
 
-  const availableOptions: Array<RelationshipManySourceOption> =
-    "relationships" in sourceSchema && sourceSchema?.relationships
-      ? sourceSchema.relationships
-          ?.filter((relationship) => {
-            // Get all relationships that use the same peer (can be cardinality one and many)
-            return relationship.peer === peer && relationship.cardinality === "many";
-          })
-          .reduce((acc, relationship) => {
-            const relationshipData = objectDetailsData[relationship.name];
-            const objectsOptions =
-              relationshipData &&
-              "edges" in relationshipData &&
-              Array.isArray(relationshipData.edges)
-                ? relationshipData.edges.map((edge) => edge.node)
-                : [];
+  const availableOptions: Array<RelationshipManySourceOption> = (sourceSchema.relationships ?? [])
+    .filter((relationship) => {
+      // Get all relationships that use the same peer (can be cardinality one and many)
+      return relationship.peer === peer && relationship.cardinality === "many";
+    })
+    .reduce<Array<RelationshipManySourceOption>>((acc, relationship) => {
+      const relationshipData = sourceObject[relationship.name];
+      const objectsOptions =
+        relationshipData && "edges" in relationshipData && Array.isArray(relationshipData.edges)
+          ? relationshipData.edges.map((edge) => edge.node).filter((n) => !!n)
+          : [];
 
-            const option = {
-              source: {
-                type: "source",
-                name: relationship.name,
-                label: relationship.label ?? relationship.name,
-              },
-              value: objectsOptions,
-              isDefaultMatch: relationship.name === mapping.source_field_name,
-            };
+      const option = {
+        source: {
+          type: "source",
+          name: relationship.name,
+        },
+        value: objectsOptions,
+        isDefaultMatch: relationship.name === mapping?.source_field_name,
+      };
 
-            return [...acc, option];
-          }, [])
-      : [];
+      return [...acc, option];
+    }, []);
 
   const currentOption = availableOptions?.find((nodeOption) => {
     return nodeOption.source.name === fieldData?.source?.name;
@@ -329,16 +334,15 @@ export const ConvertSourceRelationshipManyInput = ({
                 value={option.source.name}
                 selectedValue={fieldData?.source?.name}
                 onSelect={() => {
-                  field.onChange({
+                  onChange({
                     source: {
                       type: "source",
-                      label: option.source.label,
                       name: option.source.name,
-                      node: option.value,
                     },
-                    value: option.value?.map((node) => {
-                      return node.id;
-                    }),
+                    value:
+                      ((option.value?.map((node) => {
+                        return node;
+                      }) ?? null) as Array<Node>) || null,
                   });
                   setOpen(false);
                 }}
