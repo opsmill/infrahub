@@ -59,7 +59,7 @@ export function ConvertSourceField({
                   objectDetailsData={objectDetailsData}
                   sourceSchema={sourceSchema}
                   mapping={mapping}
-                  kind={attribute.kind}
+                  attribute={attribute}
                   field={field}
                 />
               </FormInput>

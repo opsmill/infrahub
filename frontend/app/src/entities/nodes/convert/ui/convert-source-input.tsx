@@ -18,7 +18,7 @@ import type { ConvertFieldMapping } from "@/entities/nodes/convert/types";
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 interface ConvertSourceInputProps {
   objectDetailsData: NodeObject;
@@ -51,7 +51,7 @@ interface RelationshipManySourceOption extends ConvertSourceOption {
 }
 
 interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
-  kind: string;
+  attribute: AttributeSchema;
 }
 
 export const ConvertSourceAttributeInput = ({
@@ -59,7 +59,7 @@ export const ConvertSourceAttributeInput = ({
   sourceSchema,
   mapping,
   field,
-  kind,
+  attribute,
   ...props
 }: ConvertSourceAttributeInputProps) => {
   const [open, setOpen] = useState(false);
@@ -69,20 +69,28 @@ export const ConvertSourceAttributeInput = ({
   const availableOptions: Array<AttributeSourceOption> =
     "attributes" in sourceSchema && sourceSchema.attributes
       ? sourceSchema.attributes
-          .filter((attribute) => {
-            return attribute.kind === kind;
+          .filter((sourceAttribute) => {
+            if (attribute.enum) {
+              const areEqual =
+                JSON.stringify(attribute.enum.sort()) ===
+                JSON.stringify(sourceAttribute?.enum?.sort());
+
+              return !!sourceAttribute.enum && areEqual;
+            }
+
+            return sourceAttribute.kind === attribute.kind;
           })
-          .map((attribute) => {
-            const attrData = objectDetailsData[attribute.name];
+          .map((sourceAttribute) => {
+            const attrData = objectDetailsData[sourceAttribute.name];
             return {
               value: attrData && "value" in attrData ? attrData.value : null,
-              label: getDisplayValue(objectDetailsData, attribute) || "-",
+              label: getDisplayValue(objectDetailsData, sourceAttribute) || "-",
               source: {
                 type: "source",
-                label: attribute.label ?? attribute.name,
-                name: attribute.name,
+                label: sourceAttribute.label ?? sourceAttribute.name,
+                name: sourceAttribute.name,
               },
-              isDefaultMatch: attribute.name === mapping.source_field_name,
+              isDefaultMatch: sourceAttribute.name === mapping.source_field_name,
             };
           })
       : [];
