@@ -1,12 +1,8 @@
-import { useState } from "react";
-import { useFormContext } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
-import { DynamicField } from "@/shared/components/form/dynamic-form";
-import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import type { FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -14,8 +10,8 @@ import { Form, FormSubmit } from "@/shared/components/ui/form";
 
 import { useConvertObjectMutation } from "@/entities/nodes/convert/domain/convert-object.mutation";
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping.query";
-import type { ConvertFieldMapping } from "@/entities/nodes/convert/types";
-import { ConvertSourceField } from "@/entities/nodes/convert/ui/convert-source-field";
+import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import { ConvertFormField } from "@/entities/nodes/convert/ui/convert-form-field";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -64,76 +60,9 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
     parentData: null,
   });
 
-  const sourceDefaultValues: Record<string, FormFieldValue> = fields.reduce((acc, field) => {
-    const hasMapping = !!mappings[field.name]?.source_field_name;
-    const fieldData = sourceObject[field.name];
-
-    if (!hasMapping) {
-      return { ...acc, [field.name]: field.defaultValue };
-    }
-
-    // Relationship many
-    if (fieldData && "edges" in fieldData) {
-      const nodes = fieldData?.edges
-        ?.map((edge) => edge.node)
-        .filter((node) => {
-          return node != null;
-        });
-
-      return {
-        ...acc,
-        [field.name]: {
-          source: {
-            type: "source",
-            label: field.label,
-            name: field.name,
-            values: nodes.reduce((acc, node) => {
-              return {
-                ...acc,
-                [node.id]: {
-                  label: field.label,
-                  name: field.name,
-                },
-              };
-            }, {}),
-          },
-          value: nodes.map((node) => {
-            return node.id;
-          }),
-        },
-      };
-    }
-
-    // Relationship one
-    if (fieldData && "node" in fieldData) {
-      return {
-        ...acc,
-        [field.name]: {
-          source: {
-            type: "source",
-            label: field.label,
-            name: field.name,
-          },
-          value: fieldData.node,
-        },
-      };
-    }
-
-    // Attribute
-    return {
-      ...acc,
-      [field.name]: {
-        source: {
-          type: "source",
-          label: field.label,
-          name: field.name,
-        },
-        value: fieldData && "value" in fieldData ? fieldData.value : undefined,
-      },
-    };
-  }, {});
-
-  const handleSubmit = async (formData: { [key: string]: FormFieldValue }) => {
+  const handleSubmit = async (formData: {
+    [key: string]: FormFieldValue | ConvertFormFieldValue;
+  }) => {
     const fieldsMapping = fields.reduce((acc, field) => {
       const fieldData = formData[field.name];
 
@@ -224,10 +153,9 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
           <ConvertFormField
             key={field.name}
             field={field}
-            objectDetailsData={sourceObject}
+            sourceObject={sourceObject}
             sourceSchema={sourceSchema}
-            mapping={mappings[field.name]}
-            sourceDefaultValue={sourceDefaultValues[field.name]}
+            conversionMapping={mappings[field.name]}
           />
         );
       })}
@@ -236,68 +164,5 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
         <FormSubmit>Convert</FormSubmit>
       </div>
     </Form>
-  );
-}
-
-interface ConvertFormFieldProps {
-  field: DynamicFieldProps;
-  mapping?: ConvertFieldMapping;
-  objectDetailsData: NodeObject;
-  sourceSchema: ModelSchema;
-  sourceDefaultValue: any;
-}
-
-function ConvertFormField({
-  field,
-  mapping,
-  objectDetailsData,
-  sourceSchema,
-  sourceDefaultValue,
-}: ConvertFormFieldProps) {
-  const hasMapping = !!mapping?.source_field_name;
-
-  const [source, setSource] = useState(hasMapping ? "source" : "schema");
-  const form = useFormContext();
-
-  const handleSourceChange = (newSource: string) => {
-    switch (newSource) {
-      case "source":
-        form.setValue(field.name, sourceDefaultValue, { shouldValidate: true });
-        break;
-      case "schema":
-        form.setValue(field.name, field.defaultValue, { shouldValidate: true });
-        break;
-    }
-
-    setSource(newSource);
-  };
-
-  return (
-    <div className="flex items-center gap-4 px-2 py-4">
-      <div className="grow">
-        {source === "source" ? (
-          <ConvertSourceField
-            {...field}
-            objectDetailsData={objectDetailsData}
-            sourceSchema={sourceSchema}
-            mapping={mapping}
-            defaultValue={sourceDefaultValue}
-          />
-        ) : (
-          <DynamicField {...field} />
-        )}
-      </div>
-
-      <RadioGroup
-        orientation="vertical"
-        value={source}
-        onChange={handleSourceChange}
-        className="mt-5 text-sm"
-        aria-label="Select source"
-      >
-        <Radio value="source">From source</Radio>
-        <Radio value="schema">Custom value</Radio>
-      </RadioGroup>
-    </div>
   );
 }

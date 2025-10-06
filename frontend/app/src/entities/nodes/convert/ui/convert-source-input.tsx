@@ -24,7 +24,7 @@ interface ConvertSourceInputProps {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   field: any;
-  mapping: ConvertFieldMapping;
+  mapping?: ConvertFieldMapping;
   className?: string;
 }
 
@@ -82,7 +82,7 @@ export const ConvertSourceAttributeInput = ({
                 label: attribute.label ?? attribute.name,
                 name: attribute.name,
               },
-              isDefaultMatch: attribute.name === mapping.source_field_name,
+              isDefaultMatch: attribute.name === mapping?.source_field_name,
             };
           })
       : [];
@@ -172,7 +172,7 @@ export const ConvertSourceRelationshipOneInput = ({
                 label: relationship.label ?? relationship.name,
                 name: relationship.name,
               },
-              isDefaultMatch: relationship.name === mapping.source_field_name,
+              isDefaultMatch: relationship.name === mapping?.source_field_name,
             };
           })
       : [];

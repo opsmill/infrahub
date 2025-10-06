@@ -1,10 +1,10 @@
 import { useAtomValue } from "jotai";
 
 import { Col } from "@/shared/components/container";
-import type { FormFieldProps } from "@/shared/components/form/type";
+import type { DynamicFieldProps } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import type { ConvertFieldMapping } from "@/entities/nodes/convert/types";
+import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
 import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
 import {
   ConvertSourceAttributeInput,
@@ -15,11 +15,12 @@ import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 
-interface ConvertSourceFieldProps extends FormFieldProps {
+type ConvertSourceFieldProps = Omit<DynamicFieldProps, "defaultValue"> & {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
-  mapping: ConvertFieldMapping;
-}
+  mapping?: ConvertFieldMapping;
+  defaultValue: ConvertFormFieldValue;
+};
 
 export function ConvertSourceField({
   objectDetailsData,

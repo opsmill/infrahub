@@ -34,12 +34,6 @@ export type ProfileSource = {
   id: string;
 };
 
-export type ConvertSource = {
-  type: "source";
-  name: string;
-  label: string;
-};
-
 export type TemplateSource = {
   type: "template";
   label: string | null;
@@ -55,11 +49,6 @@ export type AttributeValueFromProfile = {
 export type AttributeValueFromPool = {
   source: PoolSource;
   value: { from_pool: { id: string } };
-};
-
-export type AttributeValueFromConvert = {
-  source: ConvertSource;
-  value: string | number | boolean | null;
 };
 
 export type AttributeValueForCheckbox = {
@@ -86,7 +75,6 @@ export type FormAttributeValue =
   | AttributeValueFromProfile
   | AttributeValueFromPool
   | AttributeValueFromTemplate
-  | AttributeValueFromConvert
   | EmptyFieldValue;
 
 export type RelationshipOneValueFromUser = {

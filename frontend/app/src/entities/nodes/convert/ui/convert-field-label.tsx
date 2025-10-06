@@ -4,6 +4,7 @@ import { InputUniqueTips } from "@/shared/components/form/fields/common";
 import { Badge } from "@/shared/components/ui/badge";
 import { FormLabel } from "@/shared/components/ui/form";
 import type { LabelProps } from "@/shared/components/ui/label";
+import { classNames } from "@/shared/utils/common";
 
 interface ConvertFieldLabelProps extends Omit<LabelProps, "onChange"> {
   label?: string;
@@ -23,7 +24,7 @@ export const ConvertFieldLabel = ({
   kind,
 }: ConvertFieldLabelProps) => {
   return (
-    <Row className={className}>
+    <Row className={classNames("h-4", className)}>
       <FormLabel variant={variant}>
         {label} {required && "*"}
       </FormLabel>
