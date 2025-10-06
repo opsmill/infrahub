@@ -55,7 +55,7 @@ const InputField = ({
               fieldData={fieldData}
             />
 
-            <Row>
+            <Row className="gap-1">
               <FormInput>
                 {!selectedPoolId || override ? (
                   <Input

@@ -150,7 +150,7 @@ export const getFormFieldFromAttribute = ({
   }
 
   if (attributeSchema.kind === ATTRIBUTE_KIND.NUMBER) {
-    const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attributeSchema.name);
+    const numberPools = pools?.filter((pool) => pool.attributeName === attributeSchema.name);
 
     const dropdownField: DynamicNumberFieldProps = {
       ...basicFormFieldProps,
