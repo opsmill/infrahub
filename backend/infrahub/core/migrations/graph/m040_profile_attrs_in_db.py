@@ -157,9 +157,10 @@ class Migration040(ArbitraryMigration):
                 applier = await self._get_profile_applier(db=db, branch_name=branch_name)
                 for node_id in node_ids:
                     node = await NodeManager.get_one(db=db, branch=branch_name, id=node_id, at=right_now)
-                    updated_field_names = await applier.apply_profiles(node=node)
-                    if updated_field_names:
-                        await node.save(db=db, fields=updated_field_names, at=right_now)
+                    if node:
+                        updated_field_names = await applier.apply_profiles(node=node)
+                        if updated_field_names:
+                            await node.save(db=db, fields=updated_field_names, at=right_now)
                     progress.update(apply_task, advance=1)
 
         return result

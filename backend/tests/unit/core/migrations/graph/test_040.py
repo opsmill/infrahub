@@ -84,6 +84,24 @@ class TestMigration040(TestInfrahubApp):
         return profile
 
     @pytest.fixture
+    async def deleted_profile_branch(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
+        return await create_branch(db=db, branch_name="deleted_profile_branch")
+
+    @pytest.fixture
+    async def profile_2_deleted(self, db: InfrahubDatabase, deleted_profile_branch: Branch, profile_2: Node):
+        profile = await NodeManager.get_one(db=db, branch=deleted_profile_branch, id=profile_2.id)
+        await profile.delete(db=db)
+
+    @pytest.fixture
+    async def deleted_node_branch(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
+        return await create_branch(db=db, branch_name="deleted_node_branch")
+
+    @pytest.fixture
+    async def criticality_low_deleted(self, db: InfrahubDatabase, deleted_node_branch: Branch, criticality_low: Node):
+        profile = await NodeManager.get_one(db=db, branch=deleted_node_branch, id=criticality_low.id)
+        await profile.delete(db=db)
+
+    @pytest.fixture
     async def load_data(
         self,
         db: InfrahubDatabase,
@@ -111,6 +129,10 @@ class TestMigration040(TestInfrahubApp):
         profile_1_value_update: Node,
         priority_branch: Branch,
         profile_2_priority_update: Node,
+        deleted_profile_branch: Branch,
+        profile_2_deleted: Node,
+        deleted_node_branch: Branch,
+        criticality_low_deleted: Node,
     ):
         pass
 
@@ -148,6 +170,8 @@ class TestMigration040(TestInfrahubApp):
         load_branch_data,
         value_branch: Branch,
         priority_branch: Branch,
+        deleted_profile_branch: Branch,
+        deleted_node_branch: Branch,
     ):
         migration = WrappedMigration040()
         execution_result = await migration.execute(db=db)
@@ -292,8 +316,63 @@ class TestMigration040(TestInfrahubApp):
             ],
         )
 
+        # validate node-level changes on deleted profile branch
+        updated_criticality_low = await NodeManager.get_one(
+            db=db, branch=deleted_profile_branch, id=criticality_low.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_low,
+            updated_node=updated_criticality_low,
+            # branch would need to be rebased to get profile updates applied on main
+            expected_profile_attrs=[],
+        )
+        updated_criticality_medium = await NodeManager.get_one(
+            db=db, branch=deleted_profile_branch, id=criticality_medium.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_medium,
+            updated_node=updated_criticality_medium,
+            expected_profile_attrs=[
+                AttributeProfileDetails(attribute_name="is_true", value=True, is_default=False, source_id=profile_1.id),
+            ],
+        )
+        updated_criticality_high = await NodeManager.get_one(
+            db=db, branch=deleted_profile_branch, id=criticality_high.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_high,
+            updated_node=updated_criticality_high,
+            expected_profile_attrs=[],
+        )
+
+        # validate node-level changes on deleted node branch
+        updated_criticality_medium = await NodeManager.get_one(
+            db=db, branch=deleted_node_branch, id=criticality_medium.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_medium,
+            updated_node=updated_criticality_medium,
+            # branch would need to be rebased to get profile updates applied on main
+            expected_profile_attrs=[],
+        )
+        updated_criticality_high = await NodeManager.get_one(
+            db=db, branch=deleted_node_branch, id=criticality_high.id, include_source=True
+        )
+        self.validate_node(
+            original_node=criticality_high,
+            updated_node=updated_criticality_high,
+            expected_profile_attrs=[],
+        )
+
+        # validate apply_profiles is only called on the required nodes
         applier_branches = set(migration._appliers_by_branch.keys())
-        assert applier_branches == {default_branch.name, value_branch.name, priority_branch.name}
+        assert applier_branches == {
+            default_branch.name,
+            value_branch.name,
+            priority_branch.name,
+            deleted_profile_branch.name,
+            deleted_node_branch.name,
+        }
 
         main_profile_applier = migration._appliers_by_branch[default_branch.name]
         assert main_profile_applier.apply_profiles.call_count == 3
@@ -315,3 +394,13 @@ class TestMigration040(TestInfrahubApp):
             call_args[1]["node"].id for call_args in priority_profile_applier.apply_profiles.call_args_list
         }
         assert refreshed_node_uuids == {criticality_medium.id, criticality_high.id}
+
+        deleted_profile_profile_applier = migration._appliers_by_branch[deleted_profile_branch.name]
+        assert deleted_profile_profile_applier.apply_profiles.call_count == 2
+        refreshed_node_uuids = {
+            call_args[1]["node"].id for call_args in deleted_profile_profile_applier.apply_profiles.call_args_list
+        }
+        assert refreshed_node_uuids == {criticality_medium.id, criticality_high.id}
+
+        deleted_node_profile_applier = migration._appliers_by_branch[deleted_node_branch.name]
+        assert deleted_node_profile_applier.apply_profiles.call_count == 0
