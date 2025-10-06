@@ -691,6 +691,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 repository_kind=repository.kind,
                 branch_name=model.source_branch,
                 query=model.artifact_definition.query_name,
+                query_id=model.artifact_definition.query_id,
                 variables=await member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
                 target_kind=member.get_kind(),
@@ -1245,6 +1246,7 @@ query GatherArtifactDefinitions {
             }
             query {
               node {
+                id
                 models {
                   value
                 }
@@ -1466,6 +1468,7 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
             content_type=definition["node"]["content_type"]["value"],
             timeout=definition["node"]["transformation"]["node"]["timeout"]["value"],
             query_name=definition["node"]["transformation"]["node"]["query"]["node"]["name"]["value"],
+            query_id=definition["node"]["transformation"]["node"]["query"]["node"]["id"],
             query_models=definition["node"]["transformation"]["node"]["query"]["node"]["models"]["value"] or [],
             repository_id=definition["node"]["transformation"]["node"]["repository"]["node"]["id"],
             transform_kind=definition["node"]["transformation"]["node"]["__typename"],
