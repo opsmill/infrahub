@@ -1,13 +1,18 @@
 import { Icon } from "@iconify-icon/react";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { Slot } from "@radix-ui/react-slot";
-import React, { forwardRef } from "react";
+import React from "react";
+import { Button as AriaButton } from "react-aria-components";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Row } from "@/shared/components/container";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
-import { Popover, PopoverAnchor, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Popover, PopoverTrigger } from "@/shared/components/ui/popover";
+import { inputStyle } from "@/shared/components/ui/style";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { classNames } from "@/shared/utils/common";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
 
 export type PoolValue = {
@@ -25,73 +30,67 @@ type PoolSelectorProps = {
   value: FormFieldValue;
 };
 
-export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
-  ({ children, onChange, value, pools }, ref) => {
-    const [override, setOverride] = React.useState(false);
+export function PoolSelector({ children, onChange, value, pools }: PoolSelectorProps) {
+  const [override, setOverride] = React.useState(false);
 
-    const items = pools.map((pool) => ({
-      label: pool.label,
-      value: {
-        from_pool: {
-          id: pool.id,
-          name: pool.label,
-          kind: pool.kind,
-        },
-      },
-    }));
+  const displayFromPool =
+    typeof value.value === "object" && value.value && "from_pool" in value.value;
 
-    const displayFromPool =
-      typeof value.value === "object" && value.value && "from_pool" in value.value;
+  return (
+    <Popover>
+      <Row className="gap-1">
+        {value.source?.type !== "pool" || override || !displayFromPool ? (
+          <Slot autoFocus={override} onBlur={() => setOverride(false)}>
+            {children}
+          </Slot>
+        ) : (
+          <AriaButton onClick={() => setOverride(true)} className={inputStyle}>
+            Allocated by pool
+          </AriaButton>
+        )}
 
-    return (
-      <Popover>
-        <div className="flex w-full gap-1">
-          <PopoverAnchor asChild>
-            {value.source?.type !== "pool" || override || !displayFromPool ? (
-              <Slot autoFocus={override} onBlur={() => setOverride(false)} ref={ref}>
-                {children}
-              </Slot>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => setOverride(true)}
-                className="flex h-10 w-full justify-start gap-2 border-gray-300 px-2 font-normal shadow-none"
-              >
-                <Icon icon="mdi:view-grid-outline" />
-                <span>{value.source.label}</span>
-              </Button>
-            )}
-          </PopoverAnchor>
+        <PoolPopoverTrigger data-testid="number-pool-button" />
+      </Row>
 
-          <Tooltip content="select a pool" enabled>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-10 w-10 border-gray-300"
-                data-testid="number-pool-button"
-              >
-                <Icon icon="mdi:view-grid-outline" className="text-gray-500" />
-              </Button>
-            </PopoverTrigger>
-          </Tooltip>
-        </div>
-
-        <ComboboxContent portal={true}>
-          <ComboboxList>
-            {items.map((item) => (
+      <ComboboxContent align="end" fitTriggerWidth={false} portal>
+        <ComboboxList>
+          {pools.map((pool) => {
+            const poolLabel = getNodeLabel(pool);
+            return (
               <ComboboxItem
-                key={item.value.from_pool.id}
-                value={item.value.from_pool.id}
-                keywords={[item.label]}
-                onSelect={() => onChange(item.value)}
+                key={pool.id}
+                value={pool.id}
+                keywords={[poolLabel, pool.id]}
+                onSelect={() =>
+                  onChange({
+                    from_pool: {
+                      id: pool.id,
+                      name: poolLabel,
+                      kind: pool.__typename,
+                    },
+                  })
+                }
                 selectedValue={value?.source?.id}
               >
-                {item.label}
+                {poolLabel}
               </ComboboxItem>
-            ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Popover>
-    );
-  }
-);
+            );
+          })}
+        </ComboboxList>
+      </ComboboxContent>
+    </Popover>
+  );
+}
+
+export function PoolPopoverTrigger({ className, ...props }: PopoverTriggerProps) {
+  return (
+    <Tooltip content="select a pool" enabled>
+      <PopoverTrigger
+        className={classNames(inputStyle, "size-10 shrink-0 justify-center", className)}
+        {...props}
+      >
+        <Icon icon="mdi:view-grid-outline" className="text-gray-500" />
+      </PopoverTrigger>
+    </Tooltip>
+  );
+}
