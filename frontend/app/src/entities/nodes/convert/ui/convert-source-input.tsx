@@ -15,7 +15,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
-import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getDisplayValue, type Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -202,7 +202,7 @@ export const ConvertSourceRelationshipOneInput = ({
                       name: option.source.name,
                       node: option.value,
                     },
-                    value: option.value,
+                    value: option.value as Node | null,
                   });
                   setOpen(false);
                 }}
@@ -247,7 +247,7 @@ export const ConvertSourceRelationshipManyInput = ({
       const relationshipData = sourceObject[relationship.name];
       const objectsOptions =
         relationshipData && "edges" in relationshipData && Array.isArray(relationshipData.edges)
-          ? relationshipData.edges.map((edge) => edge.node)
+          ? relationshipData.edges.map((edge) => edge.node).filter((n) => !!n)
           : [];
 
       const option = {
@@ -314,9 +314,10 @@ export const ConvertSourceRelationshipManyInput = ({
                       type: "source",
                       name: option.source.name,
                     },
-                    value: option.value?.map((node) => {
-                      return node;
-                    }),
+                    value:
+                      ((option.value?.map((node) => {
+                        return node;
+                      }) ?? null) as Array<Node>) || null,
                   });
                   setOpen(false);
                 }}
