@@ -7,7 +7,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
 import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
 import {
-  ConvertSourceAttributeInput,
+  ConvertSourceAttributeCombobox,
   ConvertSourceRelationshipManyInput,
   ConvertSourceRelationshipOneInput,
 } from "@/entities/nodes/convert/ui/convert-source-input";
@@ -56,12 +56,13 @@ export function ConvertSourceField({
 
             {attribute && (
               <FormInput>
-                <ConvertSourceAttributeInput
-                  objectDetailsData={objectDetailsData}
+                <ConvertSourceAttributeCombobox
+                  sourceObject={objectDetailsData}
                   sourceSchema={sourceSchema}
                   mapping={mapping}
                   kind={attribute.kind}
-                  field={field}
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormInput>
             )}
@@ -69,11 +70,12 @@ export function ConvertSourceField({
             {relationship?.peer && relationship.cardinality === "one" && (
               <FormInput>
                 <ConvertSourceRelationshipOneInput
-                  objectDetailsData={objectDetailsData}
+                  sourceObject={objectDetailsData}
                   sourceSchema={sourceSchema}
                   mapping={mapping}
                   peer={relationship.peer}
-                  field={field}
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormInput>
             )}
@@ -81,11 +83,12 @@ export function ConvertSourceField({
             {relationship?.peer && relationship.cardinality === "many" && (
               <FormInput>
                 <ConvertSourceRelationshipManyInput
-                  objectDetailsData={objectDetailsData}
+                  sourceObject={objectDetailsData}
                   sourceSchema={sourceSchema}
                   mapping={mapping}
                   peer={relationship.peer}
-                  field={field}
+                  value={field.value}
+                  onChange={field.onChange}
                 />
               </FormInput>
             )}
