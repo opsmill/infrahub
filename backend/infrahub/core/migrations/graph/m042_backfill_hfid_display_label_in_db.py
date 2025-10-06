@@ -44,7 +44,7 @@ class Migration042(ArbitraryMigration):
             )
             for node in nodes:
                 await node.add_human_friendly_id(db=db)
-                await node.save(db=db)
+                await node.save(db=db, fields=["human_friendly_id"])
                 progress.update(update_hfid_task, advance=1)
 
     async def _create_display_labels_for_kind(
@@ -59,7 +59,7 @@ class Migration042(ArbitraryMigration):
             )
             for node in nodes:
                 await node.add_display_label(db=db)
-                await node.save(db=db)
+                await node.save(db=db, fields=["display_label"])
                 progress.update(update_display_label_task, advance=1)
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
