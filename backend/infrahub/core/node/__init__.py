@@ -854,8 +854,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
 
-        # Update the HFID if one of its variable is being updated
-        if self._human_friendly_id and self._human_friendly_id.needs_update(fields=fields):
+        # Update the HFID if one of its variables is being updated
+        if self._human_friendly_id and (
+            (fields and "human_friendly_id" in fields) or self._human_friendly_id.needs_update(fields=fields)
+        ):
             await self._human_friendly_id.compute(db=db, node=self)
             updated_attribute = await self._human_friendly_id.get_node_attribute(node=self, at=update_at).save(
                 at=update_at, db=db
@@ -863,9 +865,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
 
-        # Update the display label if one of its variable is being updated
-        if self._display_label and self._display_label.needs_update(fields=fields):
+        # Update the display label if one of its variables is being updated
+        if self._display_label and (
+            (fields and "display_label" in fields) or self._display_label.needs_update(fields=fields)
+        ):
             await self._display_label.compute(db=db, node=self)
+            self._display_label.get_node_attribute(node=self, at=update_at).get_create_data()
             updated_attribute = await self._display_label.get_node_attribute(node=self, at=update_at).save(
                 at=update_at, db=db
             )
