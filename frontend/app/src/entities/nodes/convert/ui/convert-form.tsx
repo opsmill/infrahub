@@ -146,7 +146,7 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
         };
       }
 
-      if (Array.isArray(fieldData?.value)) {
+      if (Array.isArray(fieldData?.value) && field.type !== "List") {
         return {
           ...acc,
           [field.name]: {
