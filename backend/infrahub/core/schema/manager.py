@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from cachetools import LRUCache
 from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
 
 from infrahub import lock
@@ -42,7 +43,8 @@ class SchemaManager(NodeManager):
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
         self._branches: dict[str, SchemaBranch] = {}
-        self._sdk_branches: dict[str, SDKBranchSchema] = {}
+        self._branch_hash_by_name: dict[str, str] = {}
+        self._sdk_branches: LRUCache[str, SDKBranchSchema] = LRUCache(maxsize=10)
 
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
@@ -147,12 +149,19 @@ class SchemaManager(NodeManager):
         return self._branches[name]
 
     def get_sdk_schema_branch(self, name: str) -> SDKBranchSchema:
-        return self._sdk_branches[name]
+        schema_hash = self._branch_hash_by_name[name]
+        branch_schema = self._sdk_branches.get(schema_hash)
+        if not branch_schema:
+            self._sdk_branches[schema_hash] = SDKBranchSchema.from_api_response(
+                data=self._branches[name].to_dict_api_schema_object()
+            )
+
+        return self._sdk_branches[schema_hash]
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
         schema.name = name
         self._branches[name] = schema
-        self._sdk_branches[name] = SDKBranchSchema.from_api_response(data=schema.to_dict_api_schema_object())
+        self._branch_hash_by_name[name] = schema.get_hash()
 
     def process_schema_branch(self, name: str) -> None:
         schema_branch = self.get_schema_branch(name=name)
@@ -771,8 +780,8 @@ class SchemaManager(NodeManager):
         for branch_name in list(self._branches.keys()):
             if branch_name not in active_branches:
                 del self._branches[branch_name]
-                if branch_name in self._sdk_branches:
-                    del self._sdk_branches[branch_name]
+                if branch_name in self._branch_hash_by_name:
+                    del self._branch_hash_by_name[branch_name]
                 removed_branches.append(branch_name)
 
         for hash_key in list(self._cache.keys()):
