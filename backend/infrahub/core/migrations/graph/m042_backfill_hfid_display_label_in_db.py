@@ -18,13 +18,13 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration040(ArbitraryMigration):
+class Migration042(ArbitraryMigration):
     """
     Backfill `human_friendly_id` and `display_label` attributes for nodes with schemas that define them.
     """
 
-    name: str = "040_create_hfid_display_label_in_db"
-    minimum_version: int = 39
+    name: str = "042_backfill_hfid_display_label_in_db"
+    minimum_version: int = 41
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
