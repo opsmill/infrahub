@@ -8,6 +8,7 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
 from prefect import settings as prefect_settings
 from prefect.client.schemas.objects import FlowRun
+from prefect.context import AsyncClientContext
 from prefect.flow_engine import run_flow_async
 from prefect.logging.handlers import APILogHandler
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
@@ -27,6 +28,7 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_http,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -154,7 +156,9 @@ class InfrahubWorkerAsync(BaseWorker):
         if task_status:
             task_status.started(True)
 
-        await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
+        async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
+            ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
+            await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 
