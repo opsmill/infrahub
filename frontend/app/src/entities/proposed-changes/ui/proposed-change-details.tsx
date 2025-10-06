@@ -156,7 +156,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
         </Card>
       )}
 
-      <div className={classNames("grid grid-cols-3 gap-2", className)} {...props}>
+      <div className={classNames("grid grid-cols-3 items-start gap-2", className)} {...props}>
         <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangesDetails?.description?.value && (
             <CardWithBorder contentClassName="" data-testid="pc-description">
