@@ -107,7 +107,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return None
 
         if self._human_friendly_id:
-            hfid_values = self._human_friendly_id.get_value(node=self, at=self._at)
+            hfid_values = self._human_friendly_id.get_value(node=self, at=self._at) or []
         else:
             hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
 
@@ -473,7 +473,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
             fields.pop("updated_at")
         for field_name in fields.keys():
-            if field_name not in self._schema.valid_input_names:
+            # FIXME: Clean this up somehow
+            if field_name not in self._schema.valid_input_names and not (
+                self._schema.is_schema_node and field_name in ["display_label", "human_friendly_id"]
+            ):
                 log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
         # Backfill fields with the ones from the template if there's one
