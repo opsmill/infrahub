@@ -459,6 +459,7 @@ async def generate_request_artifact_definition(
             repository_kind=repository.get_kind(),
             branch_name=model.branch,
             query=query.name.value,
+            query_id=query.id,
             variables=await member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
