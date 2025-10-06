@@ -4,6 +4,7 @@ import { Col } from "@/shared/components/container";
 import type { FormFieldProps } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
+import type { ConvertFieldMapping } from "@/entities/nodes/convert/types";
 import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
 import {
   ConvertSourceAttributeInput,
@@ -17,7 +18,7 @@ import type { ModelSchema } from "@/entities/schema/types";
 interface ConvertSourceFieldProps extends FormFieldProps {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
-  mapping: any;
+  mapping: ConvertFieldMapping;
 }
 
 export function ConvertSourceField({

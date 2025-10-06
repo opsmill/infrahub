@@ -14,15 +14,10 @@ import { Form, FormSubmit } from "@/shared/components/ui/form";
 
 import { useConvertObjectMutation } from "@/entities/nodes/convert/domain/convert-object.mutation";
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping.query";
+import type { ConvertFieldMapping } from "@/entities/nodes/convert/types";
 import { ConvertSourceField } from "@/entities/nodes/convert/ui/convert-source-field";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
-
-interface Mapping {
-  is_mandatory: boolean;
-  source_field_name: string | null;
-  relationship_cardinality: string | null;
-}
 
 export default function ConvertFormWrapper({
   sourceObject,
@@ -56,7 +51,7 @@ export interface ConvertFormProps {
   sourceObject: NodeObject;
   sourceSchema: ModelSchema;
   targetSchema: ModelSchema;
-  mappings: Record<string, Mapping>;
+  mappings: Record<string, ConvertFieldMapping>;
 }
 
 function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: ConvertFormProps) {
@@ -223,21 +218,19 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
-      <div className="divide-y divide-gray-300">
-        {fields.map((field) => {
-          return (
-            <ConvertFormField
-              key={field.name}
-              field={field}
-              objectDetailsData={sourceObject}
-              sourceSchema={sourceSchema}
-              mapping={mappings[field.name]}
-              sourceDefaultValue={sourceDefaultValues[field.name]}
-            />
-          );
-        })}
-      </div>
+    <Form onSubmit={handleSubmit} className="divide-y divide-gray-300">
+      {fields.map((field) => {
+        return (
+          <ConvertFormField
+            key={field.name}
+            field={field}
+            objectDetailsData={sourceObject}
+            sourceSchema={sourceSchema}
+            mapping={mappings[field.name]}
+            sourceDefaultValue={sourceDefaultValues[field.name]}
+          />
+        );
+      })}
 
       <div className="-bottom-2 sticky border-gray-200 border-t bg-white p-2 text-right">
         <FormSubmit>Convert</FormSubmit>
@@ -248,7 +241,7 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
 
 interface ConvertFormFieldProps {
   field: DynamicFieldProps;
-  mapping?: Mapping;
+  mapping?: ConvertFieldMapping;
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   sourceDefaultValue: any;
@@ -299,7 +292,7 @@ function ConvertFormField({
         orientation="vertical"
         value={source}
         onChange={handleSourceChange}
-        className="text-sm"
+        className="mt-5 text-sm"
         aria-label="Select source"
       >
         <Radio value="source">From source</Radio>

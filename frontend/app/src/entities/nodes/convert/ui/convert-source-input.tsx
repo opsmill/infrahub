@@ -14,22 +14,17 @@ import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
+import type { ConvertFieldMapping } from "@/entities/nodes/convert/types";
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
-interface Mapping {
-  is_mandatory: boolean;
-  relationship_cardinality: string;
-  source_field_name: string;
-}
-
 interface ConvertSourceInputProps {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   field: any;
-  mapping: Mapping;
+  mapping: ConvertFieldMapping;
   className?: string;
 }
 
