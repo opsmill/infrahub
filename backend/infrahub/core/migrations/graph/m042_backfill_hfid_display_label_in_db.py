@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 from rich.progress import Progress
 
@@ -32,35 +32,27 @@ class Migration042(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def _create_hfids_for_kind(
-        self, db: InfrahubDatabase, node_schema: MainSchemaTypes, nodes: list[Node]
-    ) -> None:
-        if not node_schema.human_friendly_id:
+    async def _update_kind(self, db: InfrahubDatabase, node_schema: MainSchemaTypes, nodes: Sequence[Node]) -> None:
+        if not node_schema.human_friendly_id and not node_schema.display_label:
             return
 
         with Progress() as progress:
-            update_hfid_task = progress.add_task(
-                f"Creating {len(nodes)} HFIDs in database for {node_schema.kind}", total=len(nodes)
+            update_task = progress.add_task(
+                f"Creating {len(nodes)} HFID/display_label in database for {node_schema.kind}", total=len(nodes)
             )
             for node in nodes:
-                await node.add_human_friendly_id(db=db)
-                await node.save(db=db, fields=["human_friendly_id"])
-                progress.update(update_hfid_task, advance=1)
+                fields = []
+                if node_schema.human_friendly_id:
+                    await node.add_human_friendly_id(db=db)
+                    fields.append("human_friendly_id")
+                if node_schema.display_label:
+                    await node.add_display_label(db=db)
+                    fields.append("display_label")
 
-    async def _create_display_labels_for_kind(
-        self, db: InfrahubDatabase, node_schema: MainSchemaTypes, nodes: list[Node]
-    ) -> None:
-        if not node_schema.display_label:
-            return
+                if fields:
+                    await node.save(db=db, fields=fields)
 
-        with Progress() as progress:
-            update_display_label_task = progress.add_task(
-                f"Creating {len(nodes)} display labels in database for {node_schema.kind}", total=len(nodes)
-            )
-            for node in nodes:
-                await node.add_display_label(db=db)
-                await node.save(db=db, fields=["display_label"])
-                progress.update(update_display_label_task, advance=1)
+                progress.update(update_task, advance=1)
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
@@ -75,8 +67,6 @@ class Migration042(ArbitraryMigration):
             nodes: list[Node] = await NodeManager.query(db=db, schema=node_schema)
             if not nodes:
                 continue
-
-            await self._create_hfids_for_kind(db=db, node_schema=node_schema, nodes=nodes)
-            await self._create_display_labels_for_kind(db=db, node_schema=node_schema, nodes=nodes)
+            await self._update_kind(db=db, node_schema=node_schema, nodes=nodes)
 
         return result
