@@ -9,7 +9,7 @@ from infrahub_sdk.template import Jinja2Template
 from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema.attribute_schema import AttributeSchema, TextAttributeSchema
 
-from ..attribute import BaseAttribute, ListAttribute, String
+from ..attribute import BaseAttribute, ListAttributeOptional, StringOptional
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -150,11 +150,13 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
         self.set_value(value=await jinja2_template.render(variables=variables))
 
-    def get_node_attribute(self, node: Node, at: Timestamp) -> String:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> StringOptional:
         """Return a node attribute that can be stored in the database for this display label and node."""
-        return String(
+        return StringOptional(
             name="display_label",
-            schema=TextAttributeSchema(name="display_label", kind="Text", branch=self.node_schema.branch),
+            schema=TextAttributeSchema(
+                name="display_label", kind="Text", optional=True, branch=self.node_schema.branch
+            ),
             branch=node.get_branch(),
             at=at,
             node=node,
@@ -195,11 +197,13 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
 
         self.set_value(value=value)
 
-    def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttribute:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttributeOptional:
         """Return a node attribute that can be stored in the database for this HFID and node."""
-        return ListAttribute(
+        return ListAttributeOptional(
             name="human_friendly_id",
-            schema=AttributeSchema(name="human_friendly_id", kind="List", branch=self.node_schema.branch),
+            schema=AttributeSchema(
+                name="human_friendly_id", kind="List", optional=True, branch=self.node_schema.branch
+            ),
             branch=node.get_branch(),
             at=at,
             node=node,
