@@ -80,6 +80,29 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
+    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
+        self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
+        self._branch: Branch = branch
+        self._at: Timestamp = at
+        self._existing: bool = False
+
+        self._updated_at: Timestamp | None = None
+        self.id: str = None
+        self.db_id: str = None
+
+        self._source: Node | None = None
+        self._owner: Node | None = None
+        self._is_protected: bool = None
+        self._computed_jinja2_attributes: list[str] = []
+
+        self._display_label: DisplayLabel | None = None
+        self._human_friendly_id: HumanFriendlyIdentifier | None = None
+
+        # Lists of attributes and relationships names
+        self._attributes: list[str] = []
+        self._relationships: list[str] = []
+        self._node_changelog: NodeChangelog | None = None
+
     def get_schema(self) -> NonGenericSchemaTypes:
         return self._schema
 
@@ -230,29 +253,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def __repr__(self) -> str:
         v = f"{self.get_kind()}(ID: {str(self.id)})"
         return v if self._existing else f"{v}[NEW]"
-
-    def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
-        self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
-        self._branch: Branch = branch
-        self._at: Timestamp = at
-        self._existing: bool = False
-
-        self._updated_at: Timestamp | None = None
-        self.id: str = None
-        self.db_id: str = None
-
-        self._source: Node | None = None
-        self._owner: Node | None = None
-        self._is_protected: bool = None
-        self._computed_jinja2_attributes: list[str] = []
-
-        self._display_label: DisplayLabel | None = None
-        self._human_friendly_id: HumanFriendlyIdentifier | None = None
-
-        # Lists of attributes and relationships names
-        self._attributes: list[str] = []
-        self._relationships: list[str] = []
-        self._node_changelog: NodeChangelog | None = None
 
     @property
     def node_changelog(self) -> NodeChangelog:
