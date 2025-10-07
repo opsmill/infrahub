@@ -6814,6 +6814,10 @@ type InfrahubMutatedRelationship {
   peer: RelatedNode!
 }
 
+type InfrahubProfilesRefresh {
+  ok: Boolean
+}
+
 """Token for User Account"""
 type InternalAccountToken implements CoreNode {
   _updated_at: DateTime
@@ -7683,6 +7687,7 @@ type Mutation {
   InfrahubAccountTokenDelete(data: InfrahubAccountTokenDeleteInput!): InfrahubAccountTokenDelete
   InfrahubIPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource
   InfrahubIPPrefixPoolGetResource(data: IPPrefixPoolGetResourceInput!): IPPrefixPoolGetResource
+  InfrahubProfilesRefresh(context: ContextInput, data: ProfilesRefreshInput!): InfrahubProfilesRefresh
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
@@ -9950,6 +9955,10 @@ input ProfileIpamNamespaceUpsertInput {
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
+}
+
+input ProfilesRefreshInput {
+  id: String
 }
 
 """An enumeration."""
