@@ -247,9 +247,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def get_attribute(self, name: str) -> AttributeSchema:
         # FIXME: Clean this up somehow
         if name == "human_friendly_id":
-            return AttributeSchema(name="human_friendly_id", kind="List", branch=self.branch)
+            return AttributeSchema(name="human_friendly_id", kind="List", optional=True, branch=self.branch)
         if name == "display_label":
-            return AttributeSchema(name="display_label", kind="Text", branch=self.branch)
+            return AttributeSchema(name="display_label", kind="Text", optional=True, branch=self.branch)
 
         for item in self.attributes:
             if item.name == name:
