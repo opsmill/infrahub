@@ -48,7 +48,7 @@ MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
 )
 CACHE_DOCKER_IMAGE = os.getenv(
     "CACHE_DOCKER_IMAGE",
-    "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
+    "redis:7.2.11" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
 )
 
 here = Path(__file__).parent.resolve()
