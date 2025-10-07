@@ -1,0 +1,1 @@
+Add support for updating existing Profiles when the associated node schema is updated to add or remove an attribute
