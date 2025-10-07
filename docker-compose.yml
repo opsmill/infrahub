@@ -170,7 +170,7 @@ services:
       - 15692:15692
 
   cache:
-    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.11}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]

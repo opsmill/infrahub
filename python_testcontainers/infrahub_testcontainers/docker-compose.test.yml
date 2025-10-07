@@ -20,7 +20,7 @@ services:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
   cache:
-    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.11}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]

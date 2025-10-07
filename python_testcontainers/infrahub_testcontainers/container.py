@@ -29,7 +29,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
     "MESSAGE_QUEUE_DOCKER_IMAGE": "rabbitmq:3.13.7-management",
-    "CACHE_DOCKER_IMAGE": "redis:7.2.4",
+    "CACHE_DOCKER_IMAGE": "redis:7.2.11",
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
