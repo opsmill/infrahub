@@ -82,6 +82,9 @@ async def test_update_webhook_with_optional_node_kind(
     assert not result.errors
     assert result.data
     webhook_id = result.data["CoreStandardWebhookCreate"]["object"]["id"]
+    webhook = await NodeManager.get_one_by_id_or_default_filter(db=db, id=webhook_id, kind=CoreStandardWebhook)
+    assert webhook.name.value == "builtin-tag-update-1"
+    assert webhook.node_kind.value == "BuiltinTag"
 
     result = await graphql(
         schema=gql_params.schema,
@@ -96,7 +99,7 @@ async def test_update_webhook_with_optional_node_kind(
     assert not result.errors
     assert result.data
     updated_webhook = await NodeManager.get_one_by_id_or_default_filter(db=db, id=webhook_id, kind=CoreStandardWebhook)
-    assert not updated_webhook.node_kind.value
+    assert updated_webhook.node_kind.value is None
 
 
 async def test_create_webhook_with_node_kind_and_all_events(
