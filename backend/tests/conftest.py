@@ -282,7 +282,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
-    container = DockerContainer(image="redis:7.2.4").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image="redis:7.2.11").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
