@@ -232,7 +232,7 @@ async def create_node(
         )
 
     obj: Node
-    async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+    async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
         if db.is_transaction:
             obj = await _persist(db)
         else:

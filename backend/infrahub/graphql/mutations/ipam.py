@@ -223,7 +223,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         namespace_lock_names = cls._get_lock_names(namespace_id)
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=namespace_lock_names):
-            async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
                 async with db.start_transaction() as dbt:
                     reconciled_address = await cls._mutate_update_object_and_reconcile(
                         info=info,
@@ -400,7 +400,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         namespace_lock_names = cls._get_lock_names(namespace_id)
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=namespace_lock_names):
-            async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
                 async with db.start_transaction() as dbt:
                     reconciled_prefix = await cls._mutate_update_object_and_reconcile(
                         info=info,

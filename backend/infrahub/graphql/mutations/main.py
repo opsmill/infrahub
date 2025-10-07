@@ -248,7 +248,7 @@ class InfrahubMutationMixin:
             result = await cls.mutate_update_to_graphql(db=current_db, info=info, obj=updated_obj)
             return updated_obj, result
 
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
             if db.is_transaction:
                 return await _mutate(db)
 

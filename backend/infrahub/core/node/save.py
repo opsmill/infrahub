@@ -51,7 +51,7 @@ async def run_constraints_and_save(
         await node.save(db=db, fields=fields_to_save)
 
     if manage_lock:
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=locks):
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=locks, metrics=False):
             await _persist()
     else:
         await _persist()
