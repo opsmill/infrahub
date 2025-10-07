@@ -93,7 +93,7 @@ export const ConvertSourceAttributeCombobox = ({
         return areEqual;
       }
 
-      return sourceAttribute.kind === attribute.kind;
+      return sourceAttribute.kind === attribute.kind && !sourceAttribute.enum;
     })
     .map((attribute) => {
       const attrData = sourceObject[attribute.name];
