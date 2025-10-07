@@ -14,7 +14,7 @@ export const RadioGroup = ({ className, ...props }: AriaRadioGroupProps) => {
     <AriaRadioGroup
       className={composeRenderProps(className, (className, renderProps) =>
         classNames(
-          "flex flex-col flex-wrap gap-2",
+          "relative flex flex-col flex-wrap gap-1",
           renderProps.orientation === "horizontal" && "flex-row items-center",
           className
         )

@@ -55,7 +55,6 @@ export const ContentCard = ({ className, ...props }: CardProps) => {
 
 export type ContentCardTitleProps = {
   title?: ReactNode;
-  subtitle?: ReactNode;
   description?: ReactNode;
   end?: ReactNode;
   badgeContent?: ReactNode;

@@ -43,6 +43,7 @@ export const GenericRelationshipField = ({
   parent,
   relationship,
   schema,
+  shouldUnregister,
   ...props
 }: GenericRelationshipFieldProps) => {
   const { schema: peerSchema, isGeneric } = useSchema(relationship?.peer);
@@ -116,6 +117,7 @@ export const GenericRelationshipField = ({
         key={`${name}_generic`}
         name={`${name}_generic`}
         defaultValue={defaultValue}
+        shouldUnregister={shouldUnregister}
         render={() => {
           const [open, setOpen] = useState(false);
 
@@ -173,6 +175,7 @@ export const GenericRelationshipField = ({
           key={`${name}_parent`}
           name={`${name}_parent`}
           defaultValue={defaultValue}
+          shouldUnregister={shouldUnregister}
           render={({ field }) => {
             return (
               <div className="relative flex flex-col space-y-2">
@@ -206,6 +209,7 @@ export const GenericRelationshipField = ({
         name={name}
         rules={rules}
         disabled={!selectedGeneric?.id}
+        shouldUnregister={shouldUnregister}
         render={({ field }) => {
           const fieldData = field.value;
 

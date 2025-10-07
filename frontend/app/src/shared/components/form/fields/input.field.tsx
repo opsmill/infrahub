@@ -29,6 +29,7 @@ const InputField = ({
   unique,
   pool,
   isBulkUpdate,
+  shouldUnregister,
   autoFocus,
   ...props
 }: InputFieldProps) => {
@@ -38,6 +39,7 @@ const InputField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const [override, setOverride] = React.useState(false);
         const fieldData: FormAttributeValue = field.value;

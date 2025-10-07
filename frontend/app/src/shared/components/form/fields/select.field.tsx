@@ -25,6 +25,7 @@ export function SelectField({
   rules,
   unique,
   items,
+  shouldUnregister,
   ...props
 }: SelectFieldProps) {
   return (
@@ -33,6 +34,7 @@ export function SelectField({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
         const currentSelectedKey = (fieldData?.value as string | undefined) ?? null;
@@ -63,11 +65,9 @@ export function SelectField({
               </Select>
             </FormInput>
 
-            {!props.disabled &&
-              !props.disabled &&
-              canDisplayResetActions(attribute, isBulkUpdate) && (
-                <ResetAction field={field} defaultValue={defaultValue} />
-              )}
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>
