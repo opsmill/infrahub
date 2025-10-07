@@ -84,7 +84,7 @@ class AttributeAddQuery(Query):
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH av, is_protected_value, is_visible_value
-        MATCH p = (n:%(node_kind)s)
+        MATCH (n:%(node_kind)s|Profile%(node_kind)s)
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s

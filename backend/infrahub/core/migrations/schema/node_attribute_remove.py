@@ -71,7 +71,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
 
         query = """
         // Find all the active nodes
-        MATCH (node:%(node_kind)s)
+        MATCH (node:%(node_kind)s|Profile%(node_kind)s)
         WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
         AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
         CALL (node) {
@@ -95,6 +95,7 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
         WHERE rb.status = "active"
         WITH active_attr
         MATCH (active_attr)-[]-(peer)
+        WITH DISTINCT active_attr, peer
         CALL (active_attr, peer) {
             MATCH (active_attr)-[r]-(peer)
             WHERE %(branch_filter)s

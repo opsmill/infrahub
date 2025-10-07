@@ -17,7 +17,7 @@ from tests.helpers.test_app import TestInfrahubApp
 
 class TestProfileLifecycle(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def schema_person_base(self, db: InfrahubDatabase, initialize_registry) -> None:
+    async def person_schema_root(self) -> SchemaRoot:
         person_schema = NodeSchema(
             name="Person",
             namespace="Testing",
@@ -29,7 +29,32 @@ class TestProfileLifecycle(TestInfrahubApp):
                 AttributeSchema(name="height", kind="Number", optional=True),
             ],
         )
-        await load_schema(db=db, schema=SchemaRoot(version="1.0", nodes=[person_schema]))
+        return SchemaRoot(version="1.0", nodes=[person_schema])
+
+    @pytest.fixture(scope="class")
+    async def person_schema_root_add_attribute(self, person_schema_root: SchemaRoot) -> SchemaRoot:
+        person_schema = person_schema_root.nodes[0].model_copy(deep=True)
+        person_schema.attributes.append(AttributeSchema(name="age", kind="Number", optional=True))
+        return SchemaRoot(version="1.0", nodes=[person_schema])
+
+    @pytest.fixture(scope="class")
+    async def person_schema_root_remove_attribute(
+        self, default_branch: Branch, person_schema_root_add_attribute: SchemaRoot, client: InfrahubClient
+    ) -> SchemaRoot:
+        person_schema = await client.schema.get(kind="ProfileTestingPerson", branch=default_branch.name, refresh=True)
+        current_height_attribute = person_schema.get_attribute("height")
+
+        person_schema = person_schema_root_add_attribute.nodes[0].model_copy(deep=True)
+        updated_height_attribute = person_schema.get_attribute("height")
+        updated_height_attribute.state = "absent"
+        updated_height_attribute.id = current_height_attribute.id
+        return SchemaRoot(version="1.0", nodes=[person_schema])
+
+    @pytest.fixture(scope="class")
+    async def schema_person_base(
+        self, db: InfrahubDatabase, default_branch: Branch, person_schema_root, client: InfrahubClient
+    ) -> None:
+        await load_schema(db=db, schema=person_schema_root, branch_name=default_branch.name, update_db=True)
 
     @pytest.fixture(scope="class")
     async def person_1(self, db: InfrahubDatabase, schema_person_base) -> Node:
@@ -558,3 +583,117 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_2.height.is_from_profile is True
         assert retrieved_person_2.height.source.id == person_profile_1.id
         assert retrieved_person_2.height.is_default is False
+
+    async def test_step_15_schema_update_add_attribute(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        person_schema_root_add_attribute: SchemaRoot,
+        client: InfrahubClient,
+    ):
+        await client.schema.load(schemas=[person_schema_root_add_attribute.model_dump()], branch=default_branch.name)
+
+    async def test_step_16_update_profile_with_new_attribute(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        person_profile_1,
+        client: InfrahubClient,
+    ):
+        updated_schema = await client.schema.get(kind="ProfileTestingPerson", branch=default_branch.name, refresh=True)
+        assert updated_schema.get_attribute("age") is not None
+
+        person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        person_profile_1.age.value = 25
+        await person_profile_1.save()
+
+    async def test_step_17_check_persons_again(
+        self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
+    ):
+        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
+        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
+
+        await retrieved_person_1.profiles.fetch()
+        assert retrieved_person_1.profiles.peer_ids == []
+        assert retrieved_person_1.name.value == "Kara Thrace"
+        assert retrieved_person_1.name.is_from_profile is False
+        assert retrieved_person_1.name.source is None
+        assert retrieved_person_1.name.is_default is False
+        assert retrieved_person_1.height.value == 145
+        assert retrieved_person_1.height.is_from_profile is False
+        assert retrieved_person_1.height.source is None
+        assert retrieved_person_1.height.is_default is False
+        assert retrieved_person_1.age.value is None
+        assert retrieved_person_1.age.is_from_profile is False
+        assert retrieved_person_1.age.source is None
+        assert retrieved_person_1.age.is_default is True
+
+        await retrieved_person_2.profiles.fetch()
+        assert retrieved_person_2.profiles.peer_ids == [person_profile_1.id]
+        assert retrieved_person_2.name.value == "Apollo"
+        assert retrieved_person_2.name.is_from_profile is False
+        assert retrieved_person_2.name.source is None
+        assert retrieved_person_2.name.is_default is False
+        assert retrieved_person_2.height.value == 134
+        assert retrieved_person_2.height.is_from_profile is True
+        assert retrieved_person_2.height.source.id == person_profile_1.id
+        assert retrieved_person_2.height.is_default is False
+        assert retrieved_person_2.age.value == 25
+        assert retrieved_person_2.age.is_from_profile is True
+        assert retrieved_person_2.age.source.id == person_profile_1.id
+        assert retrieved_person_2.age.is_default is False
+
+    async def test_step_18_schema_update_remove_attribute(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        person_schema_root_remove_attribute: SchemaRoot,
+        client: InfrahubClient,
+    ):
+        await client.schema.load(schemas=[person_schema_root_remove_attribute.model_dump()], branch=default_branch.name)
+
+    async def test_step_19_check_profile_for_removed_attribute(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        person_profile_1,
+        client: InfrahubClient,
+    ):
+        updated_schema = await client.schema.get(kind="ProfileTestingPerson", branch=default_branch.name, refresh=True)
+        assert "height" not in updated_schema.attribute_names
+
+        person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        with pytest.raises(AttributeError):
+            _ = person_profile_1.height
+
+    async def test_step_20_check_persons_again(
+        self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
+    ):
+        retrieved_person_1 = await client.get(kind="TestingPerson", id=person_1.id, property=True)
+        retrieved_person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
+
+        await retrieved_person_1.profiles.fetch()
+        assert retrieved_person_1.profiles.peer_ids == []
+        with pytest.raises(AttributeError):
+            _ = retrieved_person_1.height
+        assert retrieved_person_1.name.value == "Kara Thrace"
+        assert retrieved_person_1.name.is_from_profile is False
+        assert retrieved_person_1.name.source is None
+        assert retrieved_person_1.name.is_default is False
+        assert retrieved_person_1.age.value is None
+        assert retrieved_person_1.age.is_from_profile is False
+        assert retrieved_person_1.age.source is None
+        assert retrieved_person_1.age.is_default is True
+
+        await retrieved_person_2.profiles.fetch()
+        assert retrieved_person_2.profiles.peer_ids == [person_profile_1.id]
+        assert retrieved_person_2.name.value == "Apollo"
+        assert retrieved_person_2.name.is_from_profile is False
+        assert retrieved_person_2.name.source is None
+        assert retrieved_person_2.name.is_default is False
+        with pytest.raises(AttributeError):
+            _ = retrieved_person_2.height
+        assert retrieved_person_2.age.value == 25
+        assert retrieved_person_2.age.is_from_profile is True
+        assert retrieved_person_2.age.source.id == person_profile_1.id
+        assert retrieved_person_2.age.is_default is False
