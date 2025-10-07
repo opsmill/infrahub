@@ -20,6 +20,7 @@ from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.generator import GeneratorDefinitionRequestRun
+from .mutations.profile import InfrahubProfilesRefresh
 from .mutations.proposed_change import (
     ProposedChangeCheckForApprovalRevoke,
     ProposedChangeMerge,
@@ -125,3 +126,4 @@ class InfrahubBaseMutation(ObjectType):
 
     ConvertObjectType = ConvertObjectType.Field()
     CoreProposedChangeCheckForApprovalRevoke = ProposedChangeCheckForApprovalRevoke.Field()
+    InfrahubProfilesRefresh = InfrahubProfilesRefresh.Field()

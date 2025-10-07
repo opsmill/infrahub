@@ -1,0 +1,103 @@
+import { useAtomValue } from "jotai";
+
+import { Col } from "@/shared/components/container";
+import type { DynamicFieldProps } from "@/shared/components/form/type";
+import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
+
+import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
+import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
+import {
+  ConvertSourceAttributeCombobox,
+  ConvertSourceRelationshipManyInput,
+  ConvertSourceRelationshipOneInput,
+} from "@/entities/nodes/convert/ui/convert-source-input";
+import type { NodeObject } from "@/entities/nodes/types";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import type { ModelSchema } from "@/entities/schema/types";
+
+type ConvertSourceFieldProps = Omit<DynamicFieldProps, "defaultValue"> & {
+  objectDetailsData: NodeObject;
+  sourceSchema: ModelSchema;
+  mapping?: ConvertFieldMapping;
+  defaultValue: ConvertFormFieldValue;
+};
+
+export function ConvertSourceField({
+  objectDetailsData,
+  sourceSchema,
+  mapping,
+  name,
+  label,
+  unique,
+  description,
+  rules,
+  attribute,
+  relationship,
+  defaultValue,
+}: ConvertSourceFieldProps) {
+  const schemaKindLabel = useAtomValue(schemaKindNameState);
+
+  return (
+    <FormField
+      name={name}
+      rules={rules}
+      defaultValue={defaultValue}
+      shouldUnregister={false}
+      render={({ field }) => {
+        return (
+          <Col>
+            <ConvertFieldLabel
+              label={label}
+              unique={unique}
+              required={!!rules?.required}
+              description={description}
+              kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
+            />
+
+            {attribute && (
+              <FormInput>
+                <ConvertSourceAttributeCombobox
+                  sourceObject={objectDetailsData}
+                  sourceSchema={sourceSchema}
+                  mapping={mapping}
+                  attribute={attribute}
+                  field={field}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormInput>
+            )}
+
+            {relationship?.peer && relationship.cardinality === "one" && (
+              <FormInput>
+                <ConvertSourceRelationshipOneInput
+                  sourceObject={objectDetailsData}
+                  sourceSchema={sourceSchema}
+                  mapping={mapping}
+                  peer={relationship.peer}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormInput>
+            )}
+
+            {relationship?.peer && relationship.cardinality === "many" && (
+              <FormInput>
+                <ConvertSourceRelationshipManyInput
+                  sourceObject={objectDetailsData}
+                  sourceSchema={sourceSchema}
+                  mapping={mapping}
+                  peer={relationship.peer}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormInput>
+            )}
+
+            <FormMessage />
+          </Col>
+        );
+      }}
+    />
+  );
+}

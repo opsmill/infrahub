@@ -3811,14 +3811,14 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.4.19"
+version = "3.4.22"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.14,>=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect-3.4.19-py3-none-any.whl", hash = "sha256:64c1d6c933c750298b5f7a977f1f80bd255943e2c93ee6f2d4a66f55345944b4"},
-    {file = "prefect-3.4.19.tar.gz", hash = "sha256:a42d0ddc1bc14c25d97bbcabe350ef5e2d667beddad977fb6ec60141f666950c"},
+    {file = "prefect-3.4.22-py3-none-any.whl", hash = "sha256:41743e2817195e1ef8fdef2e65c4b16da1308cf8f5dd1a85e679c8cbe7186710"},
+    {file = "prefect-3.4.22.tar.gz", hash = "sha256:4b46a793e9907a4c8539b04bb2fdbc609c9810f690d7673a3bc8d0c9aebdfc84"},
 ]
 
 [package.dependencies]
@@ -3870,7 +3870,7 @@ semver = ">=3.0.4"
 sniffio = ">=1.3.0,<2.0.0"
 sqlalchemy = {version = ">=2.0,<3.0.0", extras = ["asyncio"]}
 toml = ">=0.10.0"
-typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.18.0"
+typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.20.0"
 typing-extensions = ">=4.10.0,<5.0.0"
 uv = ">=0.6.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
@@ -6494,4 +6494,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12, < 3.13"
-content-hash = "30241dc6978e0109cc3b73940f7012a2af0c538724cf0db7204886d4ac5ccc44"
+content-hash = "aad2211d899392c6c56b90f65f1a37e5a69ee06863b9d584b9fa7fd2be65d696"

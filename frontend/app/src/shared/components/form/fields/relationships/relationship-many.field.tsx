@@ -24,6 +24,7 @@ export default function RelationshipManyField({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: RelationshipManyInputProps) {
   return (
@@ -32,6 +33,7 @@ export default function RelationshipManyField({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field, fieldState }) => {
         const fieldData: FormRelationshipValue = field.value;
         const { error } = fieldState;

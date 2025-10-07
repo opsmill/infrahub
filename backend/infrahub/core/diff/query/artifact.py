@@ -148,7 +148,7 @@ CALL (target_node, definition_node){
         )
         RETURN
             target_artifact,
-            (trel1.status = "active" AND trel2.status = "active" AND drel1.status = "active" AND drel1.status = "active") AS artifact_is_active
+            (trel1.status = "active" AND trel2.status = "active" AND drel1.status = "active" AND drel2.status = "active") AS artifact_is_active
         ORDER BY trel1.from DESC, trel2.from DESC, drel1.from DESC, drel2.from DESC,
             trel1.status ASC, trel2.status ASC, drel1.status ASC, drel2.status ASC
         LIMIT 1

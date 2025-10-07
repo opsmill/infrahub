@@ -6,13 +6,13 @@ from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
-from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_kind_lock_names_on_object_mutation
 from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -132,30 +132,6 @@ async def get_profile_ids(db: InfrahubDatabase, obj: Node) -> set[str]:
     return {pr.peer_id for pr in profile_rels}
 
 
-async def refresh_for_profile_update(
-    db: InfrahubDatabase,
-    branch: Branch,
-    obj: Node,
-    schema: NonGenericSchemaTypes,
-    previous_profile_ids: set[str] | None = None,
-) -> Node:
-    if not hasattr(obj, "profiles"):
-        return obj
-    current_profile_ids = await get_profile_ids(db=db, obj=obj)
-    if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
-        refreshed_node = await NodeManager.get_one_by_id_or_default_filter(
-            db=db,
-            kind=schema.kind,
-            id=obj.get_id(),
-            branch=branch,
-            include_owner=True,
-            include_source=True,
-        )
-        refreshed_node._node_changelog = obj.node_changelog
-        return refreshed_node
-    return obj
-
-
 async def _do_create_node(
     node_class: type[Node],
     node_constraint_runner: NodeConstraintRunner,
@@ -269,6 +245,8 @@ async def create_node(
             )
 
     if await get_profile_ids(db=db, obj=obj):
-        obj = await refresh_for_profile_update(db=db, branch=branch, schema=schema, obj=obj)
+        node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+        await node_profiles_applier.apply_profiles(node=obj)
+        await obj.save(db=db)
 
     return obj
