@@ -220,6 +220,13 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
                 properties={"is_protected": PropertyChangelog(name="is_protected", value=True, value_previous=False)},
                 kind="Text",
             ),
+            "human_friendly_id": AttributeChangelog(
+                name="human_friendly_id",
+                value='["Jill","Rocky"]',
+                value_previous='["Jack","Rocky"]',
+                properties={},
+                kind="List",
+            ),
         },
         relationships={
             "owner": RelationshipCardinalityOneChangelog(
