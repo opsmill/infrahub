@@ -133,15 +133,6 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
 
           navigate(path);
         },
-        onError: (error) => {
-          console.error("Error when retrieving mappings: ", error);
-          toast(
-            <Alert
-              type={ALERT_TYPES.ERROR}
-              message="An error occurred while converting the object"
-            />
-          );
-        },
       }
     );
   };
