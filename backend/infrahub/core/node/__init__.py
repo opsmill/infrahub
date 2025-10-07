@@ -157,7 +157,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
         await self._human_friendly_id.compute(db=db, node=self)
 
-    async def get_display_label(self, db: InfrahubDatabase) -> str | None:
+    async def get_display_label(self, db: InfrahubDatabase) -> str:
         if self._display_label:
             if display_label := self._display_label.get_value(node=self, at=self._at):
                 return display_label
@@ -800,7 +800,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 rel.id, rel.db_id = new_ids[identifier]
                 node_changelog.create_relationship(relationship=rel)
 
-        node_changelog.display_label = await self.get_display_label(db=db) or ""
+        node_changelog.display_label = await self.get_display_label(db=db)
         return node_changelog
 
     async def _update(
@@ -859,7 +859,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if updated_attribute:
                 node_changelog.add_attribute(attribute=updated_attribute)
 
-        node_changelog.display_label = await self.get_display_label(db=db) or ""
+        node_changelog.display_label = await self.get_display_label(db=db)
         return node_changelog
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
@@ -879,7 +879,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(
-            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db) or ""
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.get_display_label(db=db)
         )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
