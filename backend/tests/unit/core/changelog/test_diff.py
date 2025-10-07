@@ -118,12 +118,15 @@ async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_p
     assert p4_changelog.attributes["height"].value_update_status == DiffAction.ADDED
     assert not p4_changelog.relationships
 
-    assert len(c1_changelog.attributes.keys()) == 1
+    assert len(c1_changelog.attributes.keys()) == 2
     assert c1_changelog.attributes["name"].value_update_status == DiffAction.UPDATED
     assert c1_changelog.attributes["name"].value == "Volvo 240"
     assert c1_changelog.attributes["name"].value_previous == "Volvo"
     assert c1_changelog.attributes["name"].properties["owner"].value == p2.id
     assert c1_changelog.attributes["name"].properties["owner"].value_previous == p1.id
+    assert c1_changelog.attributes["human_friendly_id"].value_update_status == DiffAction.UPDATED
+    assert c1_changelog.attributes["human_friendly_id"].value == '["Volvo 240"]'
+    assert c1_changelog.attributes["human_friendly_id"].value_previous == '["Volvo"]'
     assert len(c1_changelog.relationships.keys()) == 1
     assert isinstance(c1_changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
     assert c1_changelog.relationships["owner"].peer_kind == "TestPerson"
@@ -199,7 +202,7 @@ class TestConflict:
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
-        assert len(conflicts_map) == 1
+        assert len(conflicts_map) == 2
         conflict = next(iter(conflicts_map.values()))
         await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
