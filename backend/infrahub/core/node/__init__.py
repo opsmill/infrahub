@@ -150,9 +150,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not self._schema.human_friendly_id:
             return None
 
+        hfid_values: list[str] | None = None
         if self._human_friendly_id:
-            hfid_values = self._human_friendly_id.get_value(node=self, at=self._at) or []
-        else:
+            hfid_values = self._human_friendly_id.get_value(node=self, at=self._at)
+        if not hfid_values:
             hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
 
         hfid = [value for value in hfid_values if value is not None]
@@ -179,7 +180,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def get_display_label(self, db: InfrahubDatabase) -> str | None:
         if self._display_label:
-            return self._display_label.get_value(node=self, at=self._at)
+            if display_label := self._display_label.get_value(node=self, at=self._at):
+                return display_label
 
         return await self.render_display_label(db=db)
 
