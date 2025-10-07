@@ -25,6 +25,7 @@ class Migration041(InternalSchemaMigration):
     def init(cls, **kwargs: Any) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_node = internal_schema.get_node(name="SchemaNode")
+        schema_generic = internal_schema.get_node(name="SchemaGeneric")
 
         cls.migrations = [
             # HFID is not needed, it was introduced at graph v8
@@ -34,7 +35,14 @@ class Migration041(InternalSchemaMigration):
                 schema_path=SchemaPath(
                     schema_kind="SchemaNode", path_type=SchemaPathType.ATTRIBUTE, field_name="display_label"
                 ),
-            )
+            ),
+            NodeAttributeAddMigration(
+                new_node_schema=schema_generic,
+                previous_node_schema=schema_generic,
+                schema_path=SchemaPath(
+                    schema_kind="SchemaGeneric", path_type=SchemaPathType.ATTRIBUTE, field_name="display_label"
+                ),
+            ),
         ]
         return cls(migrations=cls.migrations, **kwargs)  # type: ignore[arg-type]
 
