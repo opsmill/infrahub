@@ -20,6 +20,7 @@ from infrahub.core.schema import (
 )
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
+from infrahub.graphql.mutations.profile import InfrahubProfileMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .directives import DIRECTIVES
@@ -489,6 +490,8 @@ class GraphQLSchemaManager:
                 base_class = InfrahubIPPrefixMutation
             elif isinstance(node_schema, NodeSchema) and node_schema.is_ip_address:
                 base_class = InfrahubIPAddressMutation
+            elif isinstance(node_schema, ProfileSchema):
+                base_class = InfrahubProfileMutation
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
