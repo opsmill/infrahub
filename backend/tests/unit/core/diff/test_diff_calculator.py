@@ -1972,6 +1972,9 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     diff_calculator = DiffCalculator(db=db)
     node_field_specifiers = NodeFieldSpecifierMap()
     node_field_specifiers.add_entry(node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="name")
+    node_field_specifiers.add_entry(
+        node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="human_friendly_id"
+    )
     node_field_specifiers.add_entry(node_uuid=car_accord_main.id, kind=car_accord_main.get_kind(), field_name="color")
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
@@ -2017,8 +2020,8 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert len(attribute_diff.properties) == 1
     property_diff = attribute_diff.properties[0]
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
-    assert property_diff.previous_value == person_alfred_main.name.value
-    assert property_diff.new_value == person_alfred_main.name.value
+    assert property_diff.previous_value == "Alfred"
+    assert property_diff.new_value == "Alfred"
     assert property_diff.action is DiffAction.UNCHANGED
     attribute_diff = node_diff.attributes[1]
     assert attribute_diff.name == "human_friendly_id"
