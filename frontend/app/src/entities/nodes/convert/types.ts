@@ -30,6 +30,10 @@ export interface ConvertSourceInputProps {
   onChange: (value: ConvertFormFieldValue) => void;
 }
 
+export interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
+  peer: string;
+}
+
 export interface ConvertSourceOption {
   source: {
     type: "source";

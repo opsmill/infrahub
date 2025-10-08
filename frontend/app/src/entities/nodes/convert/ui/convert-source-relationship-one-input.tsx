@@ -1,6 +1,5 @@
 import React from "react";
 
-import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
@@ -14,6 +13,10 @@ import type {
   ConvertSourceRelationshipInputProps,
   RelationshipOneSourceOption,
 } from "@/entities/nodes/convert/types";
+import {
+  SourceOptionItem,
+  SourceOptionValue,
+} from "@/entities/nodes/convert/ui/source-option-item";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 
 export const ConvertSourceRelationshipOneInput = ({
@@ -52,10 +55,10 @@ export const ConvertSourceRelationshipOneInput = ({
     <Combobox open={open} onOpenChange={setOpen}>
       <ComboboxTrigger className={className}>
         {currentOption && (
-          <Badge className="space-x-1">
-            <span>{currentOption?.value?.display_label || "-"}</span>
-            <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
-          </Badge>
+          <SourceOptionValue
+            optionLabel={currentOption?.value?.display_label || "-"}
+            sourceLabel={currentOption.source?.label}
+          />
         )}
       </ComboboxTrigger>
       <ComboboxContent fitTriggerWidth={false}>
@@ -81,15 +84,11 @@ export const ConvertSourceRelationshipOneInput = ({
                   setOpen(false);
                 }}
               >
-                <div className="flex grow items-center justify-between">
-                  <span className="grow">{option.value?.display_label || "-"}</span>
-
-                  <div className="space-x-2">
-                    {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
-
-                    <Badge variant={"gray-outline"}>{option.source?.label}</Badge>
-                  </div>
-                </div>
+                <SourceOptionItem
+                  optionLabel={option.value?.display_label || "-"}
+                  isDefaultMatch={option.isDefaultMatch}
+                  sourceLabel={option.source?.label}
+                />
               </ComboboxItem>
             );
           })}

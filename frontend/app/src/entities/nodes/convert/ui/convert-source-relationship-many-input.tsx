@@ -1,7 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 
-import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
@@ -14,16 +13,16 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type {
-  ConvertSourceInputProps,
+  ConvertSourceRelationshipInputProps,
   RelationshipManySourceOption,
 } from "@/entities/nodes/convert/types";
+import {
+  SourceOptionItem,
+  SourceOptionValue,
+} from "@/entities/nodes/convert/ui/source-option-item";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
-
-interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
-  peer: string;
-}
 
 export const ConvertSourceRelationshipManyInput = ({
   sourceObject,
@@ -80,16 +79,16 @@ export const ConvertSourceRelationshipManyInput = ({
         >
           <div className="space-x-2">
             {currentOption?.source?.name && currentOption?.value && (
-              <Badge className="space-x-1">
-                <span>
-                  {currentOption?.value
+              <SourceOptionValue
+                optionLabel={
+                  currentOption?.value
                     .map((node: NodeCore) => {
                       return getNodeLabel(node);
                     })
-                    .join(" - ") || "-"}
-                </span>
-                <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
-              </Badge>
+                    .join(" - ") || "-"
+                }
+                sourceLabel={currentOption?.source?.label}
+              />
             )}
           </div>
 
@@ -122,21 +121,17 @@ export const ConvertSourceRelationshipManyInput = ({
                   setOpen(false);
                 }}
               >
-                <div className="flex grow items-center justify-between">
-                  <span className="grow">
-                    {option?.value
+                <SourceOptionItem
+                  optionLabel={
+                    option?.value
                       ?.map((node) => {
                         return getNodeLabel(node);
                       })
-                      .join(" - ") || "-"}
-                  </span>
-
-                  <div className="space-x-2">
-                    {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
-
-                    <Badge variant={"gray-outline"}>{option.source?.label}</Badge>
-                  </div>
-                </div>
+                      .join(" - ") || "-"
+                  }
+                  isDefaultMatch={option.isDefaultMatch}
+                  sourceLabel={option.source?.label}
+                />
               </ComboboxItem>
             );
           })}

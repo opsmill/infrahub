@@ -1,6 +1,5 @@
 import React from "react";
 
-import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
@@ -14,6 +13,10 @@ import type {
   AttributeSourceOption,
   ConvertSourceInputProps,
 } from "@/entities/nodes/convert/types";
+import {
+  SourceOptionItem,
+  SourceOptionValue,
+} from "@/entities/nodes/convert/ui/source-option-item";
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { AttributeSchema } from "@/entities/schema/types";
 
@@ -83,10 +86,10 @@ export const ConvertSourceAttributeCombobox = ({
     <Combobox open={open} onOpenChange={setOpen}>
       <ComboboxTrigger {...props}>
         {currentOption && (
-          <Badge className="space-x-1">
-            <span>{currentOption.label}</span>
-            <span className="font-light text-gray-700">• {currentOption.source?.label}</span>
-          </Badge>
+          <SourceOptionValue
+            optionLabel={currentOption.label}
+            sourceLabel={currentOption.source?.label}
+          />
         )}
       </ComboboxTrigger>
 
@@ -111,15 +114,11 @@ export const ConvertSourceAttributeCombobox = ({
                   setOpen(false);
                 }}
               >
-                <div className="flex grow items-center justify-between">
-                  <span className="grow">{option.label}</span>
-
-                  <div className="space-x-2">
-                    {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
-
-                    <Badge variant={"gray-outline"}>{option.source?.label}</Badge>
-                  </div>
-                </div>
+                <SourceOptionItem
+                  optionLabel={option.label || "-"}
+                  isDefaultMatch={option.isDefaultMatch}
+                  sourceLabel={option.source?.label}
+                />
               </ComboboxItem>
             );
           })}
