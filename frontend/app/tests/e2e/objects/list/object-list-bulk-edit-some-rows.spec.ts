@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-import { ACCOUNT_STATE_PATH } from "../../constants";
-import { generateRandomBranchName } from "../../utils";
-import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
+import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { generateRandomBranchName } from "../../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
-test.describe("/objects/:objectKind - Bulk edit", () => {
+test.describe("/objects/:objectKind - Bulk edit some rows", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-  const BRANCH_NAME = generateRandomBranchName("bulk-edit");
+  const BRANCH_NAME = generateRandomBranchName("bulk-edit-some-rows");
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
