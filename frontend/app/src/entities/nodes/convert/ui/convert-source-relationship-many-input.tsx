@@ -14,12 +14,16 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type {
-  ConvertSourceRelationshipInputProps,
+  ConvertSourceInputProps,
   RelationshipManySourceOption,
 } from "@/entities/nodes/convert/types";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
+
+interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
+  peer: string;
+}
 
 export const ConvertSourceRelationshipManyInput = ({
   sourceObject,

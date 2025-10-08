@@ -1,7 +1,7 @@
 import type { EmptyFieldValue, FormFieldValue } from "@/shared/components/form/type";
 
 import type { NodeCore, NodeObject } from "@/entities/nodes/types";
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface ConvertFieldMapping {
   is_mandatory: boolean;
@@ -50,12 +50,4 @@ export interface RelationshipOneSourceOption extends ConvertSourceOption {
 
 export interface RelationshipManySourceOption extends ConvertSourceOption {
   value: Array<NodeCore> | null;
-}
-
-export interface ConvertSourceAttributeComboboxProps extends ConvertSourceInputProps {
-  attribute: AttributeSchema;
-}
-
-export interface ConvertSourceRelationshipInputProps extends ConvertSourceInputProps {
-  peer: string;
 }

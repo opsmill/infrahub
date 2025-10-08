@@ -12,9 +12,14 @@ import {
 
 import type {
   AttributeSourceOption,
-  ConvertSourceAttributeComboboxProps,
+  ConvertSourceInputProps,
 } from "@/entities/nodes/convert/types";
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeSchema } from "@/entities/schema/types";
+
+interface ConvertSourceAttributeComboboxProps extends ConvertSourceInputProps {
+  attribute: AttributeSchema;
+}
 
 export const ConvertSourceAttributeCombobox = ({
   sourceObject,
