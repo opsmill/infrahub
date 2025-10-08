@@ -3022,6 +3022,46 @@ def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
     assert "cannot both have required relationships" in exc.value.args[0]
 
 
+def test_schema_inherited_relationships_fields(schema_inherited_relationships_fields):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_inherited_relationships_fields))
+    schema.validate_inherited_relationships_fields()
+
+    ngi_schema = _get_schema_by_kind(full_schema=schema_inherited_relationships_fields, kind="NetworkGenericInterface")
+    ngi_schema["relationships"] = [
+        {
+            "name": "device",
+            "peer": "NetworkGenericDevice",
+            "identifier": "device__interface",
+            "optional": False,
+            "cardinality": "one",
+            "kind": "Parent",
+            "order_weight": 1025,
+        },
+    ]
+    lii_schema = _get_schema_by_kind(full_schema=schema_inherited_relationships_fields, kind="LogicalIndexedInterface")
+    lii_schema["relationships"] = [
+        {
+            "name": "device",
+            "peer": "LogicalDevice",
+            "cardinality": "one",
+            "identifier": "device__interface",
+            "optional": False,
+        },
+    ]
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_inherited_relationships_fields))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_inherited_relationships_fields()
+
+    assert "NetworkGenericInterface" in exc.value.args[0]
+    assert "LogicalIndexedInterface" in exc.value.args[0]
+    assert "InterfacePhysical" in exc.value.args[0]
+    assert "device" in exc.value.args[0]
+
+
 async def test_process_deprecations(organization_schema):
     SCHEMA1 = {
         "name": "Criticality",

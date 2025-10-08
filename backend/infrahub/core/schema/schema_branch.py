@@ -535,6 +535,7 @@ class SchemaBranch:
         self.validate_parent_component()
         self.validate_human_friendly_id()
         self.validate_required_relationships()
+        self.validate_inherited_relationships_fields()
 
     def process_post_validation(self) -> None:
         self.cleanup_inherited_elements()
@@ -1228,6 +1229,54 @@ class SchemaBranch:
                         raise ValueError(
                             f"{node.kind}: Relationship {rel.name!r} max_count must be 0 or greater than 1 when cardinality is MANY"
                         )
+
+    def validate_inherited_relationships_fields(self) -> None:
+        for name in self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+            if not node_schema.inherit_from:
+                continue
+
+            self.validate_node_inherited_relationship_fields(node_schema)
+
+    def validate_node_inherited_relationship_fields(self, node_schema: NodeSchema) -> None:
+        nodes = [self.get(name=node_name, duplicate=False) for node_name in node_schema.inherit_from]
+        relationship_names = [node.relationship_names for node in nodes]
+        related_relationship_names = set().union(
+            *[set(a) & set(b) for i, a in enumerate(relationship_names) for b in relationship_names[i + 1 :]]
+        )
+        compulsorily_matching_fields = (
+            "name",
+            "peer",
+            "kind",
+            "identifier",
+            "cardinality",
+            "min_count",
+            "max_count",
+            "common_parent",
+            "common_relatives",
+            "optional",
+            "branch",
+            "direction",
+            "on_delete",
+            "read_only",
+        )
+        for i, a in enumerate(nodes):
+            for b in nodes[i + 1 :]:
+                for relationship_name in related_relationship_names:
+                    try:
+                        rel_a = a.get_relationship(name=relationship_name)
+                        rel_b = b.get_relationship(name=relationship_name)
+                    except ValueError:
+                        continue
+
+                    for field in compulsorily_matching_fields:
+                        if not hasattr(rel_a, field) or not hasattr(rel_b, field):
+                            continue
+                        if getattr(rel_a, field) != getattr(rel_b, field):
+                            raise ValueError(
+                                f"{node_schema.kind} inherits from '{a.kind}' & '{b.kind}' with different '{field}' "
+                                f"on the '{relationship_name}' relationship"
+                            )
 
     def process_dropdowns(self) -> None:
         for name in self.all_names:

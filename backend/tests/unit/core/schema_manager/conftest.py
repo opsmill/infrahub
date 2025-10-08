@@ -388,3 +388,106 @@ def schema_diff_attr_inheritance_types():
         ],
     }
     return FULL_SCHEMA
+
+
+@pytest.fixture
+def schema_inherited_relationships_fields() -> dict:
+    return {
+        "generics": [
+            {
+                "name": "GenericInterface",
+                "namespace": "Network",
+                "description": "Generic Network Interface",
+                "label": "Interface",
+                "include_in_menu": False,
+                "display_labels": ["name__value"],
+                "order_by": ["device__name__value", "name__value"],
+                "uniqueness_constraints": [["device", "name__value"]],
+                "human_friendly_id": ["device__name__value", "name__value"],
+                "attributes": [
+                    {
+                        "name": "name",
+                        "kind": "Text",
+                        "description": "Name of the interface",
+                        "order_weight": 1000,
+                    }
+                ],
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "NetworkDevice",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "cardinality": "one",
+                        "kind": "Parent",
+                    }
+                ],
+            },
+            {
+                "name": "IndexedInterface",
+                "namespace": "Logical",
+                "description": "Generic for an interface that is part of a logical device and has an index",
+                "include_in_menu": False,
+                "human_friendly_id": ["device__name__value", "index__value"],
+                "uniqueness_constraints": [["device", "index__value"]],
+                "attributes": [
+                    {
+                        "name": "index",
+                        "kind": "Number",
+                        "description": "Index of the interface in the device",
+                    }
+                ],
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "NetworkDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "kind": "Parent",
+                    }
+                ],
+            },
+            {
+                "name": "Device",
+                "namespace": "Logical",
+                "description": "Generic for a logical device that could be part of a logical network",
+                "include_in_menu": False,
+                "attributes": [
+                    {
+                        "name": "index",
+                        "kind": "Number",
+                        "description": "Index of the device in the network",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Network",
+                "label": "Network device",
+                "description": "Physical network port on a device",
+                "attributes": [
+                    {
+                        "name": "name",
+                        "kind": "Text",
+                        "description": "Name of the interface",
+                        "unique": True,
+                        "optional": False,
+                        "order_weight": 1000,
+                    }
+                ],
+            },
+            {
+                "name": "Physical",
+                "namespace": "Interface",
+                "label": "Physical Interface",
+                "description": "Physical network port on a device",
+                "inherit_from": [
+                    "NetworkGenericInterface",
+                    "LogicalIndexedInterface",
+                ],
+            },
+        ],
+    }
