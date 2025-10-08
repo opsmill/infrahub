@@ -986,6 +986,7 @@ jobs:
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
+      - prepare-environment
       - javascript-lint
       - files-changed
       - yaml-lint
@@ -1018,6 +1019,7 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
