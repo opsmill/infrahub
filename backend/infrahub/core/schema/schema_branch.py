@@ -1619,11 +1619,14 @@ class SchemaBranch:
             if node.id or (not node.id and not node.relationships):
                 continue
 
-            relationships = []
-            for relationship in node.relationships:
-                if relationship.state != HashableModelState.ABSENT:
-                    relationships.append(relationship)
-            node.relationships = relationships
+            filtered_relationships = [
+                relationship for relationship in node.relationships if relationship.state != HashableModelState.ABSENT
+            ]
+            if len(filtered_relationships) == len(node.relationships):
+                continue
+            updated_node = node.duplicate()
+            updated_node.relationships = filtered_relationships
+            self.set(name=name, schema=updated_node)
 
     def _generate_weight_generics(self) -> None:
         """Generate order_weight for all generic schemas."""
