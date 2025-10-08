@@ -11,6 +11,7 @@ import { IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { IpPrefixAvailableIdentifier } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-available-identifier";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import { getToggleSelectedRowHandler } from "@/entities/ipam/ip-prefixes/utils/get-toggle-selected-row-handler";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
@@ -41,7 +42,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
           />
         );
       },
-      cell: ({ cell, row }) => {
+      cell: ({ cell, row, table }) => {
         const value: string = cell.getValue() ?? "-";
         const ipPrefixNode = row.original;
 
@@ -64,7 +65,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
             objectKind={ipPrefixNode.__typename as string}
             objectId={ipPrefixNode.id as string}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
             label={
               <Row className="gap-2.5">
                 {[...Array(ipPrefixNode.ancestors.count)].map((_, i) => (

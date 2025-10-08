@@ -5,6 +5,7 @@ import * as R from "remeda";
 import { TableCell } from "@/shared/components/table/table-cell";
 
 import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
+import { getToggleSelectedRowHandler } from "@/entities/ipam/ip-prefixes/utils/get-toggle-selected-row-handler";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
@@ -37,16 +38,16 @@ export function getObjectIdentifierColumns(
           />
         );
       },
-      cell: ({ cell, row }) => {
-        const value: string = cell.getValue() ?? "-";
+      cell: ({ cell, row, table }) => {
+        const label = cell.getValue() ?? "-";
 
         return (
           <TableIdentifierCell
-            objectKind={row.original.__typename as string}
-            objectId={row.original.id as string}
-            label={value}
+            objectKind={row.original.__typename}
+            objectId={row.original.id}
+            label={label}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
           />
         );
       },

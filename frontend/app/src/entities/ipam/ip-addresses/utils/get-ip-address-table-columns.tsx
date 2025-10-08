@@ -10,6 +10,7 @@ import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain
 import { IpAddressAvailableCreateFormTrigger } from "@/entities/ipam/ip-addresses/ui/ip-address-available-create-form-trigger";
 import { getIpAddressAttributesVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-attributes-visible-in-list-view";
 import { getIpAddressRelationshipsVisibleInListView } from "@/entities/ipam/ip-addresses/utils/get-ip-address-relationships-visible-in-list-view";
+import { getToggleSelectedRowHandler } from "@/entities/ipam/ip-prefixes/utils/get-toggle-selected-row-handler";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
@@ -42,7 +43,7 @@ export const getIpAddressTableColumns = (
           />
         );
       },
-      cell: ({ cell, row }) => {
+      cell: ({ cell, row, table }) => {
         const displayLabel: string = cell.getValue() ?? "-";
 
         if (row.original.__typename === IP_ADDRESS_AVAILABLE_KIND) {
@@ -69,7 +70,7 @@ export const getIpAddressTableColumns = (
             objectId={row.original.id as string}
             label={displayLabel}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
           />
         );
       },
