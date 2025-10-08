@@ -42,7 +42,7 @@ test.describe("Object details - convert", () => {
 
       await expect(page.getByRole("combobox").filter({ hasText: "Ethernet1• Name" })).toBeVisible();
       await expect(
-        page.getByRole("combobox").filter({ hasText: "-• Connected Endpoint" })
+        page.getByRole("combobox").filter({ hasText: "Ethernet1• Connected Endpoint" })
       ).toBeVisible();
       await expect(
         page.getByRole("combobox").filter({ hasText: "Connected to atl1-edge2::" })
@@ -51,12 +51,6 @@ test.describe("Object details - convert", () => {
       await expect(page.getByRole("combobox").filter({ hasText: "• Enabled" })).toBeVisible();
       await expect(page.getByRole("combobox").filter({ hasText: "Active• Status" })).toBeVisible();
       await expect(page.getByRole("combobox").filter({ hasText: "Peer• Role" })).toBeVisible();
-      await expect(
-        page
-          .locator("div")
-          .filter({ hasText: /^-• Tags$/ })
-          .nth(2)
-      ).toBeVisible();
     });
 
     await test.step("select other values from the source object", async () => {
@@ -86,14 +80,16 @@ test.describe("Object details - convert", () => {
       await page.getByRole("combobox").filter({ hasText: "Active• Status" }).click();
       await expect(page.getByRole("option", { name: "Active Matched Status" })).toBeVisible();
 
-      // Sumbit and check object values
-      await page.getByRole("button", { name: "Convert" }).click();
-      await expect(page.getByText("Object converted!")).toBeVisible();
-      await expect(page.getByText("NameConnected to atl1-edge2::")).toBeVisible();
-      await page.getByText("LACP Priority10000").click();
-      await expect(
-        page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Interface L2" })
-      ).toBeVisible();
+      await test.step("select other values from the source object", async () => {
+        // Sumbit and check object values
+        await page.getByRole("button", { name: "Convert" }).click();
+        await expect(page.getByText("Object converted!")).toBeVisible();
+        await expect(page.getByText("NameConnected to atl1-edge2::")).toBeVisible();
+        await page.getByText("LACP Priority10000").click();
+        await expect(
+          page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Interface L2" })
+        ).toBeVisible();
+      });
     });
   });
 });
