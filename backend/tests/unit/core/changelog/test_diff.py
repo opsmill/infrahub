@@ -203,8 +203,8 @@ class TestConflict:
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 2
-        conflict = next(iter(conflicts_map.values()))
-        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        for conflict in conflicts_map.values():
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         diff = await diff_merger.merge_graph(at=at)
         diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch2)
@@ -222,6 +222,8 @@ class TestConflict:
                 assert action == DiffAction.UPDATED
                 assert node_changelog.attributes["name"].value == "John-branch"
                 assert node_changelog.attributes["name"].value_previous == "John"
+                assert node_changelog.attributes["human_friendly_id"].value == '["John-branch"]'
+                assert node_changelog.attributes["human_friendly_id"].value_previous == '["John"]'
 
     @pytest.mark.parametrize(
         "conflict_selection",
