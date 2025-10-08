@@ -533,6 +533,25 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
     function="validate_schema_number_pools",
 )
 
+
+PROFILE_REFRESH_MULTIPLE = WorkflowDefinition(
+    name="objects-profiles-refresh-multiple",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="objects_profiles_refresh_multiple",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
+PROFILE_REFRESH = WorkflowDefinition(
+    name="object-profiles-refresh",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="object_profiles_refresh",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
 CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     name="clean-up-deadlocks",
     type=WorkflowType.INTERNAL,
@@ -586,6 +605,8 @@ WORKFLOWS = [
     GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
     IPAM_RECONCILIATION,
+    PROFILE_REFRESH,
+    PROFILE_REFRESH_MULTIPLE,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
     REMOVE_ADD_NODE_FROM_GROUP,

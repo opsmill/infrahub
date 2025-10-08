@@ -338,69 +338,6 @@ async def test_get_many_prefetch_hierarchical(
     assert parent_europe is None
 
 
-async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profile_1 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
-    await crit_profile_1.save(db=db)
-    crit_profile_2 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_2.new(db=db, profile_name="crit_profile_2", color="blue", profile_priority=1002)
-    await crit_profile_2.save(db=db)
-    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
-    await crit_low.profiles.update(db=db, data=[crit_profile_1, crit_profile_2])
-    await crit_low.save(db=db)
-
-    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
-    assert len(node_map) == 2
-    assert node_map[criticality_low.id].color.value == "green"
-    source = await node_map[criticality_low.id].color.get_source(db=db)
-    assert source.id == crit_profile_1.id
-
-
-async def test_get_many_with_profile_generic(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
-):
-    generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
-    generic_profile = await Node.init(db=db, schema=generic_profile_schema)
-    await generic_profile.new(db=db, profile_name="generic_profile", color="green", profile_priority=1001)
-    await generic_profile.save(db=db)
-    crit_profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profile = await Node.init(db=db, schema=crit_profile_schema)
-    await crit_profile.new(db=db, profile_name="crit_profile", color="blue", profile_priority=1002)
-    await crit_profile.save(db=db)
-    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
-    await crit_low.profiles.update(db=db, data=[crit_profile, generic_profile])
-    await crit_low.save(db=db)
-
-    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
-    assert len(node_map) == 2
-    assert node_map[criticality_low.id].color.value == "green"
-    source = await node_map[criticality_low.id].color.get_source(db=db)
-    assert source.id == generic_profile.id
-
-
-async def test_get_many_with_multiple_profiles_same_priority(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
-):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profiles = []
-    for i in range(1, 10):
-        crit_profile = await Node.init(db=db, schema=profile_schema)
-        await crit_profile.new(db=db, profile_name=f"crit_profile_{i}", color=f"green{i}", profile_priority=1000)
-        await crit_profile.save(db=db)
-        crit_profiles.append(crit_profile)
-    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
-    await crit_low.profiles.update(db=db, data=crit_profiles)
-    await crit_low.save(db=db)
-
-    lowest_uuid_profile = sorted(crit_profiles, key=lambda p: p.id)[0]
-    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
-    assert len(node_map) == 2
-    assert node_map[criticality_low.id].color.value == lowest_uuid_profile.color.value
-    source = await node_map[criticality_low.id].color.get_source(db=db)
-    assert source.id == lowest_uuid_profile.id
-
-
 async def test_get_many_branch_agnostic(
     db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
 ):
@@ -623,7 +560,6 @@ async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_bra
         schema=car_schema,
         node_id=33,
         node_uuid=str(UUIDT()),
-        profile_uuids=[],
         updated_at=Timestamp().to_string(),
         branch=default_branch,
         labels=["Node", "TestCar"],

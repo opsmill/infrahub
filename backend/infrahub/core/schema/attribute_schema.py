@@ -202,7 +202,6 @@ class AttributeSchema(GeneratedAttributeSchema):
         param_prefix: str | None = None,
         db: InfrahubDatabase | None = None,
         partial_match: bool = False,
-        support_profiles: bool = False,
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         if self.enum:
             filter_value = self.convert_enum_to_value(filter_value)
@@ -217,7 +216,6 @@ class AttributeSchema(GeneratedAttributeSchema):
             param_prefix=param_prefix,
             db=db,
             partial_match=partial_match,
-            support_profiles=support_profiles,
         )
 
 
