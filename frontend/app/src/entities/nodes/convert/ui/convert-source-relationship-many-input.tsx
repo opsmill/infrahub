@@ -1,0 +1,143 @@
+import { Icon } from "@iconify-icon/react";
+import React from "react";
+
+import { Badge } from "@/shared/components/ui/badge";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+} from "@/shared/components/ui/combobox";
+import { PopoverTrigger } from "@/shared/components/ui/popover";
+import { inputStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
+
+import type {
+  ConvertSourceRelationshipInputProps,
+  RelationshipManySourceOption,
+} from "@/entities/nodes/convert/types";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeCore } from "@/entities/nodes/types";
+
+export const ConvertSourceRelationshipManyInput = ({
+  sourceObject,
+  sourceSchema,
+  mapping,
+  peer,
+  className,
+  value,
+  onChange,
+}: ConvertSourceRelationshipInputProps) => {
+  const [open, setOpen] = React.useState(false);
+
+  const fieldData = value;
+
+  const availableOptions: Array<RelationshipManySourceOption> = (sourceSchema.relationships ?? [])
+    .filter((relationship) => {
+      // Get all relationships that use the same peer (can be cardinality one and many)
+      return relationship.peer === peer && relationship.cardinality === "many";
+    })
+    .reduce<Array<RelationshipManySourceOption>>((acc, relationship) => {
+      const relationshipData = sourceObject[relationship.name];
+      const objectsOptions =
+        relationshipData && "edges" in relationshipData && Array.isArray(relationshipData.edges)
+          ? relationshipData.edges.map((edge) => edge.node).filter((n) => !!n)
+          : [];
+
+      const option = {
+        source: {
+          type: "source",
+          name: relationship.name,
+        },
+        value: objectsOptions,
+        isDefaultMatch: relationship.name === mapping?.source_field_name,
+      };
+
+      return [...acc, option];
+    }, []);
+
+  const currentOption = availableOptions?.find((nodeOption) => {
+    return nodeOption.source.name === fieldData?.source?.name;
+  });
+
+  return (
+    <Combobox open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div
+          className={classNames(
+            inputStyle,
+            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+            "w-full cursor-pointer",
+            "flex justify-between",
+            className
+          )}
+        >
+          <div className="space-x-2">
+            {currentOption?.source?.name && currentOption?.value && (
+              <Badge className="space-x-1">
+                <span>
+                  {currentOption?.value
+                    .map((node: NodeCore) => {
+                      return getNodeLabel(node);
+                    })
+                    .join(" - ") || "-"}
+                </span>
+                <span className="font-light text-gray-700">• {currentOption?.source?.label}</span>
+              </Badge>
+            )}
+          </div>
+
+          <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
+            <Icon icon="mdi:unfold-more-horizontal" />
+          </button>
+        </div>
+      </PopoverTrigger>
+      <ComboboxContent fitTriggerWidth={false}>
+        <ComboboxList>
+          <ComboboxEmpty>No available values</ComboboxEmpty>
+
+          {availableOptions?.map((option) => {
+            return (
+              <ComboboxItem
+                key={option.source.name}
+                value={option.source.name}
+                selectedValue={fieldData?.source?.name}
+                onSelect={() => {
+                  onChange({
+                    source: {
+                      type: "source",
+                      name: option.source.name,
+                    },
+                    value:
+                      ((option.value?.map((node) => {
+                        return node;
+                      }) ?? null) as Array<Node>) || null,
+                  });
+                  setOpen(false);
+                }}
+              >
+                <div className="flex grow items-center justify-between">
+                  <span className="grow">
+                    {option?.value
+                      ?.map((node) => {
+                        return getNodeLabel(node);
+                      })
+                      .join(" - ") || "-"}
+                  </span>
+
+                  <div className="space-x-2">
+                    {option.isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
+
+                    <Badge variant={"gray-outline"}>{option.source?.label}</Badge>
+                  </div>
+                </div>
+              </ComboboxItem>
+            );
+          })}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
+};
