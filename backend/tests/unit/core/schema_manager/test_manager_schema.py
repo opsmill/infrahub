@@ -3060,6 +3060,30 @@ async def test_schema_branch_processes_relationships_state(
     assert "other_thing" not in returned_schema.get(name="InfraThing").relationship_names
 
 
+async def test_schema_branch_processes_attributes_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+):
+    schema = {
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "state": "absent"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "description" not in returned_schema.get(name="TestWidget").attribute_names
+
+
 async def test_process_deprecations(organization_schema):
     SCHEMA1 = {
         "name": "Criticality",
