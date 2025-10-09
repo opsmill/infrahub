@@ -50,9 +50,8 @@ async def test_add_context_invalid_account(
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=session_first_account
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_first_account)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -98,8 +97,9 @@ async def test_add_context_valid_account(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -139,9 +139,9 @@ async def test_add_context_missing_permissions(
     }
     """ % (first_account.id)
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         branch=default_branch,
         account_session=session_second_account,
     )

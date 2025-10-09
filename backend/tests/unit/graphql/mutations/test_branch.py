@@ -65,9 +65,9 @@ class TestBranchCreate(TestInfrahubApp):
         assert branch2.schema_hash == branch2_schema.get_hash_full()
 
         # Validate that we can't create a branch with a name that already exist
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -97,9 +97,9 @@ class TestBranchCreate(TestInfrahubApp):
             }
         }
         """
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -142,9 +142,9 @@ class TestBranchCreate(TestInfrahubApp):
         }
         """
 
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -218,9 +218,9 @@ class TestBranchCreate(TestInfrahubApp):
         }
         """
 
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -321,9 +321,9 @@ async def test_branch_rebase_wrong_branch(
     }
     """
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         service=local_services,
         branch=default_branch,
         account_session=session_admin,
@@ -357,7 +357,8 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02, 
     }
     """
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch4, service=local_services)
+    branch4.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch4, service=local_services)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -391,8 +392,9 @@ async def test_branch_merge_wrong_branch(
     }
     """
 
+    branch1.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=local_services
+        db=db, branch=branch1, account_session=session_admin, service=local_services
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -429,8 +431,9 @@ async def test_branch_merge_with_conflict_fails(
     car_branch.name.value += "-branch"
     await car_branch.save(db=db)
 
+    branch2.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=local_services
+        db=db, branch=branch2, account_session=session_admin, service=local_services
     )
     result = await graphql(
         schema=gql_params.schema,

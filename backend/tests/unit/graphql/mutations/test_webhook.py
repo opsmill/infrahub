@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 async def test_create_webhook_invalid_node(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -32,7 +33,8 @@ async def test_create_webhook_invalid_node(
 async def test_create_webhook_invalid_node_event(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -47,7 +49,8 @@ async def test_create_webhook_invalid_node_event(
 async def test_create_webhook_with_node_kind_and_valid_node_event(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -71,7 +74,8 @@ async def test_create_webhook_with_node_kind_and_valid_node_event(
 async def test_update_webhook_with_optional_node_kind(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -105,7 +109,8 @@ async def test_update_webhook_with_optional_node_kind(
 async def test_create_webhook_with_node_kind_and_all_events(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -137,7 +142,8 @@ async def test_create_webhook_with_node_kind_and_all_events(
 async def test_update_to_invalid_states(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -179,7 +185,8 @@ async def test_update_to_invalid_states(
 async def test_update_to_valid_states(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -216,7 +223,8 @@ async def test_update_to_valid_states(
 async def test_update_description_only(
     db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
 ) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_WEBHOOK,
@@ -254,7 +262,8 @@ async def test_update_description_only(
 
 
 async def test_upsert_webhook(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch) -> None:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=UPSERT_WEBHOOK,

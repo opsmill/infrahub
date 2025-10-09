@@ -45,7 +45,8 @@ async def test_create_with_jinja2_computed_attributes_on_related_node(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -94,7 +95,8 @@ async def test_create_with_jinja2_computed_attributes_on_hierarchial_node(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -134,7 +136,8 @@ async def test_create_with_jinja2_with_generics(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     continent_result = await graphql(
         schema=gql_params.schema,
         source=continent_query,
@@ -166,7 +169,8 @@ async def test_create_with_jinja2_with_generics(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     country_result = await graphql(
         schema=gql_params.schema,
         source=country_query,
@@ -201,7 +205,8 @@ async def test_create_with_jinja2_with_generics(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     site_result = await graphql(
         schema=gql_params.schema,
         source=site_query,

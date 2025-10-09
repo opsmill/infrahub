@@ -33,8 +33,8 @@ async def test_relationship(
         }
     }
     """
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     # No identifiers
     result = await graphql(

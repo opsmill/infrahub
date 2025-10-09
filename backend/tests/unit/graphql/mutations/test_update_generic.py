@@ -5,7 +5,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema, branch: Branch):
+async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema, branch: Branch) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
     cat_schema = animal_person_schema.get(name="TestCat")
@@ -35,7 +35,8 @@ async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema,
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -45,5 +46,6 @@ async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema,
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestAnimalUpdate"]["ok"] is True
     assert result.data["TestAnimalUpdate"]["object"]["weight"]["value"]

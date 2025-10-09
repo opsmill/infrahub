@@ -35,7 +35,8 @@ async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_sc
     """
         % obj1.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -64,7 +65,8 @@ async def test_delete_prevented(
     """
         % person_jane_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -110,7 +112,8 @@ async def test_delete_allowed_when_peer_rel_optional_on_generic(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -149,7 +152,8 @@ async def test_delete_prevented_when_peer_rel_required_on_generic(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -187,8 +191,9 @@ async def test_delete_events_with_cascade(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
     query = """
     mutation DeletePerson($human_id: String!){

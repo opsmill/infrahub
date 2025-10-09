@@ -110,9 +110,9 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     await account.new(db=db, name="user", password="password")
     await account.save(db=db)
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         branch=default_branch,
         account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
     )
@@ -175,10 +175,9 @@ async def test_create_invalid_state_combinations(
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(db=db, name="user", password="password")
     await account.save(db=db)
-
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         branch=default_branch,
         account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
     )

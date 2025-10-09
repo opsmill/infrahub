@@ -10,7 +10,8 @@ async def _prepare_group_action(
     db: InfrahubDatabase,
     default_branch: Branch,
 ) -> str:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     query = """
     mutation {
         CoreStandardGroupCreate(data: {
@@ -64,7 +65,8 @@ async def test_create_node_trigger_failure_states(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, car_person_schema: None
 ) -> None:
     group_id = await _prepare_group_action(db=db, default_branch=default_branch)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=CREATE_NODE_TRIGGER,
@@ -92,7 +94,8 @@ async def test_modify_action_node_attribute_matches(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, car_person_schema: None
 ) -> None:
     group_id = await _prepare_group_action(db=db, default_branch=default_branch)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -153,7 +156,8 @@ async def test_modify_action_node_relationship_matches(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, car_person_schema: None
 ) -> None:
     group_id = await _prepare_group_action(db=db, default_branch=default_branch)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     result = await graphql(
         schema=gql_params.schema,

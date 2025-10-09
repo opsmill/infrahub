@@ -175,9 +175,7 @@ async def test_update_artifact_definition(
         authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
     )
     branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch, service=service, account_session=account_session
-    )
+    gql_params = await prepare_graphql_params(db=db, branch=branch, service=service, account_session=account_session)
     with patch(
         "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
     ) as mock_submit_workflow:

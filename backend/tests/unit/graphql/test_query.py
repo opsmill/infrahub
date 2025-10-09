@@ -41,7 +41,9 @@ async def execute_query(
         raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
 
     gql_params = await prepare_graphql_params(
-        branch=branch, db=db, at=at, include_mutation=False, include_subscription=False
+        branch=branch,
+        db=db,
+        at=at,
     )
 
     result = await graphql(
@@ -55,7 +57,7 @@ async def execute_query(
     return result
 
 
-async def test_execute_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_execute_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -68,13 +70,15 @@ async def test_execute_query(db: InfrahubDatabase, default_branch: Branch, regis
     await q1.new(db=db, name="query01", query="query { BuiltinTag { count }}")
     await q1.save(db=db)
 
+    default_branch.update_schema_hash()
     result = await execute_query(name="query01", db=db, branch=default_branch)
 
     assert result.errors is None
     assert result.data == {"BuiltinTag": {"count": 2}}
 
 
-async def test_execute_missing_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_execute_missing_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+    default_branch.update_schema_hash()
     with pytest.raises(ValueError) as exc:
         await execute_query(name="query02", db=db, branch=default_branch)
 

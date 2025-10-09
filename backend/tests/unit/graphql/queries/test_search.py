@@ -31,8 +31,9 @@ async def test_search_anywhere_by_uuid(
     car_prius_main: Node,
     car_yaris_main: Node,
     branch: Branch,
-):
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+) -> None:
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -60,7 +61,8 @@ async def test_search_anywhere_by_string(
     car_yaris_main: Node,
     branch: Branch,
 ):
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -102,8 +104,9 @@ async def test_search_ipv6_address_extended_format(
     db: InfrahubDatabase,
     ip_dataset_01,
     branch: Branch,
-):
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+) -> None:
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     res_collapsed = await graphql(
         schema=gql_params.schema,
@@ -145,7 +148,8 @@ async def test_search_ipv6_network_extended_format(
     ip_dataset_01,
     branch: Branch,
 ):
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     res_collapsed = await graphql(
         schema=gql_params.schema,
@@ -181,8 +185,9 @@ async def test_search_ipv6_partial_address(
     db: InfrahubDatabase,
     ip_dataset_01,
     branch: Branch,
-):
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+) -> None:
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     res_two_segments = await graphql(
         schema=gql_params.schema,
@@ -230,12 +235,12 @@ async def test_search_ipv4(
     db: InfrahubDatabase,
     ip_dataset_01,
     branch: Branch,
-):
+) -> None:
     """
     This only tests that ipv6 search specific behavior does not break ipv4 search.
     """
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     result_address = await graphql(
         schema=gql_params.schema,
@@ -301,12 +306,12 @@ async def test_search_groups(
     register_core_models_schema,
     register_builtin_models_schema,
     car_person_data_generic,
-):
+) -> None:
     group1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await group1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await group1.save(db=db)
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -328,7 +333,8 @@ async def test_search_anywhere_by_string_no_results(
     register_builtin_models_schema: None,
 ) -> None:
     """Validate that the GraphQL an empty result is returned as an empty array and not a `null` value"""
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     result = await graphql(
         schema=gql_params.schema,
