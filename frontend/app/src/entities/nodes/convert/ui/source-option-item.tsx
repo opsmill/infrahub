@@ -1,41 +1,42 @@
 import type { ReactNode } from "react";
 
+import { Row } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
 
 interface SourceOptionItemProps {
   optionLabel: ReactNode;
-  sourceLabel: ReactNode;
+  sourceFieldName: ReactNode;
   isDefaultMatch?: boolean;
 }
 
 export const SourceOptionItem = ({
   optionLabel,
   isDefaultMatch,
-  sourceLabel,
+  sourceFieldName,
 }: SourceOptionItemProps) => {
   return (
     <div className="flex grow items-center justify-between">
       <span className="grow">{optionLabel}</span>
 
-      <div className="space-x-2">
+      <Row>
         {isDefaultMatch && <Badge variant={"blue-outline"}>Matched</Badge>}
 
-        <Badge variant={"gray-outline"}>{sourceLabel}</Badge>
-      </div>
+        <Badge variant={"gray-outline"}>{sourceFieldName}</Badge>
+      </Row>
     </div>
   );
 };
 
 interface SourceOptionValueProps {
   optionLabel: ReactNode;
-  sourceLabel: ReactNode;
+  sourceFieldName: ReactNode;
 }
 
-export const SourceOptionValue = ({ optionLabel, sourceLabel }: SourceOptionValueProps) => {
+export const SourceOptionValue = ({ optionLabel, sourceFieldName }: SourceOptionValueProps) => {
   return (
     <Badge className="space-x-1">
       <span>{optionLabel}</span>
-      <span className="font-light text-gray-700">• {sourceLabel}</span>
+      <span className="font-light text-gray-700">• {sourceFieldName}</span>
     </Badge>
   );
 };

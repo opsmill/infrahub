@@ -72,7 +72,7 @@ export const ConvertSourceAttributeInput = ({
         {currentOption && (
           <SourceOptionValue
             optionLabel={currentOption.label}
-            sourceLabel={currentOption.source?.label}
+            sourceFieldName={currentOption.source?.label}
           />
         )}
       </ComboboxTrigger>
@@ -101,7 +101,7 @@ export const ConvertSourceAttributeInput = ({
                 <SourceOptionItem
                   optionLabel={option.label || "-"}
                   isDefaultMatch={option.isDefaultMatch}
-                  sourceLabel={option.source?.label}
+                  sourceFieldName={option.source?.label}
                 />
               </ComboboxItem>
             );

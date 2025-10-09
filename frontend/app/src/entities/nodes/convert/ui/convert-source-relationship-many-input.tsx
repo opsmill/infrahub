@@ -88,7 +88,7 @@ export const ConvertSourceRelationshipManyInput = ({
                     })
                     .join(" - ") || "-"
                 }
-                sourceLabel={currentOption?.source?.label}
+                sourceFieldName={currentOption?.source?.label}
               />
             )}
           </div>
@@ -129,7 +129,7 @@ export const ConvertSourceRelationshipManyInput = ({
                       .join(" - ") || "-"
                   }
                   isDefaultMatch={option.isDefaultMatch}
-                  sourceLabel={option.source?.label}
+                  sourceFieldName={option.source?.label}
                 />
               </ComboboxItem>
             );
