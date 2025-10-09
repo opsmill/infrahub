@@ -78,17 +78,17 @@ test.describe("Object details - convert", () => {
       // Select an option for the dropdown value from another field in the source object
       await page.getByRole("combobox").filter({ hasText: "Active• Status" }).click();
       await expect(page.getByRole("option", { name: "Active Matched Status" })).toBeVisible();
+    });
 
-      await test.step("select other values from the source object", async () => {
-        // Submit and check object values
-        await page.getByRole("button", { name: "Convert" }).click();
-        await expect(page.getByText("Object converted!")).toBeVisible();
-        await expect(page.getByText("NameConnected to atl1-edge2::")).toBeVisible();
-        await page.getByText("LACP Priority10000").click();
-        await expect(
-          page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Interface L2" })
-        ).toBeVisible();
-      });
+    await test.step("select other values from the source object", async () => {
+      // Submit and check object values
+      await page.getByRole("button", { name: "Convert" }).click();
+      await expect(page.getByText("Object converted!")).toBeVisible();
+      await expect(page.getByText("NameConnected to atl1-edge2::")).toBeVisible();
+      await page.getByText("LACP Priority10000").click();
+      await expect(
+        page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Interface L2" })
+      ).toBeVisible();
     });
   });
 });
