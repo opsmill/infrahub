@@ -611,7 +611,7 @@ jobs:
         run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
 
       - name: Start dependencies
-        run: invoke dev.build dev.deps
+        run: poetry run invoke dev.build dev.deps
 
       - name: Run validation
         run: poetry run invoke schema.validate-graphqlschema
