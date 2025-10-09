@@ -12,6 +12,7 @@ import { useConvertObjectMutation } from "@/entities/nodes/convert/domain/conver
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping.query";
 import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
 import { ConvertFormField } from "@/entities/nodes/convert/ui/convert-form-field";
+import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -63,67 +64,12 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
   const handleSubmit = async (formData: {
     [key: string]: FormFieldValue | ConvertFormFieldValue;
   }) => {
-    const fieldsMapping = fields.reduce((acc, field) => {
-      const fieldData = formData[field.name];
-
-      if (fieldData?.source?.type === "source") {
-        return {
-          ...acc,
-          [field.name]: {
-            source_field: fieldData.source.name,
-          },
-        };
-      }
-
-      if (Array.isArray(fieldData?.value) && field.type !== "List") {
-        return {
-          ...acc,
-          [field.name]: {
-            data: { peer_ids: fieldData.value },
-          },
-        };
-      }
-
-      if (fieldData?.source?.node) {
-        return {
-          ...acc,
-          [field.name]: {
-            data: { peer_id: fieldData.value },
-          },
-        };
-      }
-
-      if (fieldData?.value) {
-        return {
-          ...acc,
-          [field.name]: {
-            data: { attribute_value: fieldData.value },
-          },
-        };
-      }
-
-      return {
-        ...acc,
-        [field.name]: {
-          use_default_value: true,
-        },
-      };
-    }, {});
-
-    if (!sourceObject.id || !targetSchema.kind) {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message="Missing required object ID or target kind for conversion"
-        />
-      );
-      return;
-    }
+    const fieldsMapping = getFieldsMappingPayload(fields, formData);
 
     await convertObject(
       {
         nodeId: sourceObject.id,
-        targetKind: targetSchema.kind,
+        targetKind: targetSchema.kind!,
         fieldsMapping,
       },
       {
