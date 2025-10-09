@@ -61,19 +61,6 @@ test.describe("/objects/:objectKind - Bulk edit some rows", () => {
     await expect(page.getByTestId("identifier-checkbox-cell").nth(3)).not.toBeChecked();
   });
 
-  // test("should handle shift-click on same row (no-op)", async ({ page }) => {
-  //   await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
-  //   await page.getByTestId("identifier-checkbox-cell").nth(2).click();
-  //   await page
-  //     .getByTestId("identifier-checkbox-cell")
-  //     .nth(2)
-  //     .click({ modifiers: ["Shift"] });
-  //
-  //   await expect(page.getByTestId("identifier-checkbox-cell").nth(1)).not.toBeChecked();
-  //   await expect(page.getByTestId("identifier-checkbox-cell").nth(2)).toBeChecked();
-  //   await expect(page.getByTestId("identifier-checkbox-cell").nth(3)).not.toBeChecked();
-  // });
-
   test("should extend range with additional shift-click", async ({ page }) => {
     await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
     await page.getByTestId("identifier-checkbox-cell").nth(1).click();
