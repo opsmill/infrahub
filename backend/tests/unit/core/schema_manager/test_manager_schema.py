@@ -3064,6 +3064,18 @@ async def test_schema_branch_processes_nodes_state(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
 ):
     schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "state": "absent",
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
+                ],
+            },
+        ],
         "nodes": [
             {
                 "name": "Widget",
@@ -3085,6 +3097,10 @@ async def test_schema_branch_processes_nodes_state(
     with pytest.raises(SchemaNotFoundError) as exc:
         returned_schema.get(name="TestWidget")
     assert exc.value.args[0] == "Unable to find the schema 'TestWidget' in the registry"
+
+    with pytest.raises(SchemaNotFoundError) as exc:
+        returned_schema.get(name="TestGenericInterface")
+    assert exc.value.args[0] == "Unable to find the schema 'TestGenericInterface' in the registry"
 
 
 async def test_process_deprecations(organization_schema):
