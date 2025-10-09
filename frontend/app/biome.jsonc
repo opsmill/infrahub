@@ -112,6 +112,7 @@
         "noUnnecessaryConditions": "off",
         "useMaxParams": "off",
         "noNonNullAssertedOptionalChain": "off",
+        "noReactForwardRef": "off",
         "noShadow": "off"
       },
       "performance": {
@@ -186,6 +187,11 @@
       "enabled": true
     },
     "linter": {
+      "enabled": true
+    }
+  },
+  "html": {
+    "formatter": {
       "enabled": true
     }
   },
