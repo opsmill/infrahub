@@ -75,9 +75,7 @@ export const ConvertSourceRelationshipOneInput = ({
                   onChange({
                     source: {
                       type: "source",
-                      label: option.source.label,
                       name: option.source.name,
-                      node: option.value,
                     },
                     value: option.value as Node | null,
                   });

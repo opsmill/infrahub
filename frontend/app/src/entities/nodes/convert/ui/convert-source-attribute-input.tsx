@@ -36,16 +36,14 @@ export const ConvertSourceAttributeInput = ({
 }: ConvertSourceAttributeInputProps) => {
   const [open, setOpen] = React.useState(false);
 
-  const fieldData = value;
-
   const availableOptions: Array<AttributeSourceOption> = (sourceSchema.attributes ?? [])
     .filter((sourceAttribute) => {
       if (attribute.kind === "Text" && attribute.enum) {
-        return isDeepEqual(attribute.enum, sourceAttribute?.enum);
+        return isDeepEqual(attribute.enum, sourceAttribute.enum);
       }
 
       if (attribute.kind === "Dropdown") {
-        return isDeepEqual(attribute.choices, sourceAttribute?.choices);
+        return isDeepEqual(attribute.choices, sourceAttribute.choices);
       }
 
       return sourceAttribute.kind === attribute.kind && !sourceAttribute.enum;
@@ -65,7 +63,7 @@ export const ConvertSourceAttributeInput = ({
     });
 
   const currentOption = availableOptions?.find((option) => {
-    return option.source.name === fieldData?.source?.name;
+    return option.source.name === value?.source?.name;
   });
 
   return (
@@ -88,7 +86,7 @@ export const ConvertSourceAttributeInput = ({
               <ComboboxItem
                 key={option.source.name}
                 value={option.source.name}
-                selectedValue={fieldData?.source?.name}
+                selectedValue={value?.source?.name}
                 onSelect={() => {
                   onChange({
                     source: {

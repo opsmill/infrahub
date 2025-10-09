@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -14,6 +13,7 @@ import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/node
 import { ConvertFormField } from "@/entities/nodes/convert/ui/convert-form-field";
 import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";
 import type { NodeObject } from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/types";
 
 export default function ConvertFormWrapper({
@@ -74,13 +74,18 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
       },
       {
         onSuccess: async (result) => {
-          toast(<Alert type={ALERT_TYPES.SUCCESS} message="Object converted!" />);
-          const path = constructPath(`/objects/${targetSchema.kind}/${result.id}`);
+          toast(
+            <Alert
+              type={ALERT_TYPES.SUCCESS}
+              message={`Successfully converted ${sourceSchema.label} to ${targetSchema.label}`}
+            />
+          );
+          const path = getObjectDetailsUrl(targetSchema.kind!, result.id);
 
           navigate(path);
         },
         onError: (error) => {
-          console.error("Error when retrieving mappings: ", error);
+          console.error("Error during object conversion: ", error);
           toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
         },
       }

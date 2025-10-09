@@ -49,10 +49,11 @@ export const ConvertSourceRelationshipManyInput = ({
           ? relationshipData.edges.map((edge) => edge.node).filter((n) => !!n)
           : [];
 
-      const option = {
+      const option: RelationshipManySourceOption = {
         source: {
           type: "source",
           name: relationship.name,
+          label: relationship.label ?? relationship.name,
         },
         value: objectsOptions,
         isDefaultMatch: relationship.name === mapping?.source_field_name,
@@ -97,6 +98,7 @@ export const ConvertSourceRelationshipManyInput = ({
           </button>
         </div>
       </PopoverTrigger>
+
       <ComboboxContent fitTriggerWidth={false}>
         <ComboboxList>
           <ComboboxEmpty>No available values</ComboboxEmpty>
@@ -113,10 +115,7 @@ export const ConvertSourceRelationshipManyInput = ({
                       type: "source",
                       name: option.source.name,
                     },
-                    value:
-                      ((option.value?.map((node) => {
-                        return node;
-                      }) ?? null) as Array<Node>) || null,
+                    value: (option.value as Array<Node> | null) ?? null,
                   });
                   setOpen(false);
                 }}

@@ -51,7 +51,7 @@ export function ConvertSourceField({
               unique={unique}
               required={!!rules?.required}
               description={description}
-              kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
+              kind={attribute?.kind ?? schemaKindLabel[relationship?.peer ?? ""] ?? ""}
             />
 
             {attribute && (
@@ -61,7 +61,6 @@ export function ConvertSourceField({
                   sourceSchema={sourceSchema}
                   mapping={mapping}
                   attribute={attribute}
-                  field={field}
                   value={field.value}
                   onChange={field.onChange}
                 />
