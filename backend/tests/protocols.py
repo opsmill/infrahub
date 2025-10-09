@@ -240,6 +240,22 @@ class LineageSource(CoreNode):
     pass
 
 
+class SnowTask(CoreNode):
+    title: String
+    number: Integer
+    identifier: String
+
+
+class TestingInterface(CoreNode):
+    name: String
+    enabled: Boolean
+    device: RelationshipManager
+
+
+class TestingInterfaceHolder(CoreNode):
+    interfaces: RelationshipManager
+
+
 class BuiltinTag(CoreNode):
     name: String
     description: StringOptional
@@ -574,3 +590,60 @@ class InternalRefreshToken(CoreNode):
 
 class IpamNamespace(BuiltinIPNamespace):
     default: BooleanOptional
+
+
+class SnowIncident(SnowTask):
+    identifier: String
+
+
+class SnowRequest(SnowTask):
+    identifier: String
+
+
+class TestingCar(CoreNode):
+    name: String
+    description: StringOptional
+    color: String
+    owner: RelationshipManager
+    previous_owner: RelationshipManager
+    manufacturer: RelationshipManager
+
+
+class TestingDevice(TestingInterfaceHolder):
+    name: String
+    manufacturer: String
+    height: Integer
+    weight: Integer
+    airflow: Enum
+    part_number: StringOptional
+
+
+class TestingManufacturer(CoreNode):
+    name: String
+    description: StringOptional
+    cars: RelationshipManager
+    customers: RelationshipManager
+
+
+class TestingPerson(LineageOwner, LineageSource, CoreArtifactTarget):
+    name: String
+    description: StringOptional
+    height: IntegerOptional
+    age: IntegerOptional
+    cars: RelationshipManager
+
+
+class TestingPhysicalInterface(TestingInterface):
+    phys_type: Enum
+    sfp: RelationshipManager
+
+
+class TestingSfp(CoreNode):
+    phys_type: Enum
+    serial_number: String
+    part_number: StringOptional
+    interface: RelationshipManager
+
+
+class TestingVirtualInterface(TestingInterface):
+    pass
