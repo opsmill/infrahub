@@ -226,7 +226,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
@@ -238,6 +238,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -249,8 +250,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Unit Tests"
@@ -279,7 +283,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -291,6 +295,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -302,8 +307,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
@@ -325,7 +333,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -337,6 +345,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -348,8 +357,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
@@ -386,6 +398,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -412,8 +425,11 @@ jobs:
         run: "invoke dev.build"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Run tests"
@@ -542,6 +558,63 @@ jobs:
           flag-name: frontend-unit
           parallel: true
           file: frontend/app/coverage/lcov.info
+
+  graphql-schema:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.12
+      - name: "Setup environment"
+        run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+          poetry run pip install invoke toml
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
+      - name: "Install Package"
+        run: "poetry install"
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ./schema/package-lock.json
+      - name: "Install format-graphql"
+        working-directory: schema
+        run: npm install
+
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Create docker compose override
+        run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
+
+      - name: Start dependencies
+        run: poetry run invoke dev.build dev.deps
+
+      - name: Run validation
+        run: poetry run invoke schema.validate-graphqlschema
 
   documentation:
     defaults:
@@ -725,6 +798,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/app/package-lock.json
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
@@ -897,6 +971,7 @@ jobs:
           submodules: true
 
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -968,6 +1043,7 @@ jobs:
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
+      - prepare-environment
       - javascript-lint
       - files-changed
       - yaml-lint
@@ -988,6 +1064,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -999,8 +1076,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: Update PATH

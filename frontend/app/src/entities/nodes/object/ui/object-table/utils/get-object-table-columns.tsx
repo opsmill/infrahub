@@ -1,11 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 import * as R from "remeda";
 
-import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
-import { classNames } from "@/shared/utils/common";
 
 import { IP_ADDRESS_AVAILABLE_KIND, IP_PREFIX_AVAILABLE_KIND } from "@/entities/ipam/constants";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
@@ -13,7 +10,9 @@ import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/ge
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
+import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
+import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
@@ -29,22 +28,26 @@ export function getObjectIdentifierColumns(
   return [
     columnHelper.accessor((node) => getNodeLabel(node), {
       id: "id",
-      header: () => (
-        <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
-          {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
-          <span className="truncate">{schema.label}</span>
-        </div>
-      ),
-      cell: ({ cell, row }) => {
-        const value: string = cell.getValue() ?? "-";
+      header: ({ table }) => {
+        return (
+          <TableIdentifierHeader
+            schema={schema}
+            isSelected={table.getIsAllRowsSelected()}
+            isIndeterminate={table.getIsSomePageRowsSelected()}
+            onChange={table.toggleAllRowsSelected}
+          />
+        );
+      },
+      cell: ({ cell, row, table }) => {
+        const label = cell.getValue() ?? "-";
 
         return (
           <TableIdentifierCell
-            objectKind={row.original.__typename as string}
-            objectId={row.original.id as string}
-            label={value}
+            objectKind={row.original.__typename}
+            objectId={row.original.id}
+            label={label}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
           />
         );
       },

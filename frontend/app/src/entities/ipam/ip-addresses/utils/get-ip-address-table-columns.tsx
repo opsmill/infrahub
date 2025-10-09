@@ -1,8 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
-import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
+import { cellMutedStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 
@@ -15,8 +14,10 @@ import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/st
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
+import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
+import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
+import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -32,13 +33,17 @@ export const getIpAddressTableColumns = (
   return [
     columnHelper.accessor("display_label", {
       id: "id",
-      header: () => (
-        <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
-          {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
-          <span className="truncate">{schema.label}</span>
-        </div>
-      ),
-      cell: ({ cell, row }) => {
+      header: ({ table }) => {
+        return (
+          <TableIdentifierHeader
+            schema={schema}
+            isSelected={table.getIsAllRowsSelected()}
+            isIndeterminate={table.getIsSomePageRowsSelected()}
+            onChange={table.toggleAllRowsSelected}
+          />
+        );
+      },
+      cell: ({ cell, row, table }) => {
         const displayLabel: string = cell.getValue() ?? "-";
 
         if (row.original.__typename === IP_ADDRESS_AVAILABLE_KIND) {
@@ -65,7 +70,7 @@ export const getIpAddressTableColumns = (
             objectId={row.original.id as string}
             label={displayLabel}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
           />
         );
       },

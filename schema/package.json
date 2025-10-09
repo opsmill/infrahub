@@ -1,0 +1,10 @@
+{
+    "name": "infrahub",
+    "dependencies": {
+      "format-graphql": "^1.5.0"
+    },
+    "devDependencies": {},
+    "scripts": {
+        "format-graphql": "format-graphql"
+    }
+}
