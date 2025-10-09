@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useId } from "react";
+import { useAtomValue } from "jotai";
+import { useEffect, useId } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -44,90 +44,89 @@ export const ProfilesSelector = ({
 
   const genericSchemas = useAtomValue(genericSchemasAtom);
   const profileSchemas = useAtomValue(profileSchemasAtom);
-
+  
   const nodeGenerics = schema?.inherit_from ?? [];
-
+  
   // Get all available generic profiles
   const nodeGenericsProfiles = nodeGenerics
-    // Find all generic schema
-    .map((nodeGeneric) => genericSchemas.find((generic) => generic.kind === nodeGeneric))
-    // Filter for generate_profile ones
-    .filter((generic) => generic?.generate_profile)
-    // Get only the kind
-    .map((generic) => generic?.kind)
-    .filter(Boolean);
-
+  // Find all generic schema
+  .map((nodeGeneric) => genericSchemas.find((generic) => generic.kind === nodeGeneric))
+  // Filter for generate_profile ones
+  .filter((generic) => generic?.generate_profile)
+  // Get only the kind
+  .map((generic) => generic?.kind)
+  .filter(Boolean);
+  
   // The profiles should include the current object profile + all generic profiles
   const kindList = [schema.kind, ...nodeGenericsProfiles];
 
   // Add attributes for each profile to get the values in the form
   const profilesList = kindList
-    .map((profile) => {
-      // Get the profile schema for the current kind
-      const profileSchema = profileSchemas.find(
-        (profileSchema) => profileSchema.name === profile?.replace("Template", "")
-      );
-
-      // Get attributes for query + form data
-      const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
-
-      if (!attributes.length) return null;
-
-      return {
-        name: profileSchema?.kind,
-        schema: profileSchema,
-        attributes,
-      };
-    })
-    .filter(Boolean);
-
+  .map((profile) => {
+    // Get the profile schema for the current kind
+    const profileSchema = profileSchemas.find((profileSchema) => profileSchema.name === profile?.replace("Template", ""));
+    
+    // Get attributes for query + form data
+    const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
+    
+    if (!attributes.length) return null;
+    
+    return {
+      name: profileSchema?.kind,
+      schema: profileSchema,
+      attributes,
+    };
+  })
+  .filter(Boolean);
+  
   if (!profilesList.length)
     return <ErrorScreen message="Something went wrong while fetching profiles" />;
-
+  
   const queryString = getProfiles({ profiles: profilesList });
-
+  
   const query = gql`
     ${queryString}
   `;
 
-  const { data, error, loading } = useQuery(query);
+const { data, error, loading } = useQuery(query);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
+if (loading) return <LoadingIndicator className="p-4" />;
 
-  if (error) return <ErrorScreen message={error.message} />;
+if (error) return <ErrorScreen message={error.message} />;
 
-  // Get all profiles name to retrieve the information from the result
-  const profilesNameList: string[] = profilesList
-    .map((profile) => profile?.name ?? "")
-    .filter(Boolean);
+// Get all profiles name to retrieve the information from the result
+const profilesNameList: string[] = profilesList
+.map((profile) => profile?.name ?? "")
+.filter(Boolean);
 
-  // Get data for each profile in the query result
-  const profiles = profilesNameList.reduce<Array<ProfileData>>(
-    (acc, profile) => [
-      ...acc,
-      ...(data?.[profile!]?.edges.map((edge: { node: ProfileData }) => edge.node) ?? []),
-    ],
-    []
-  );
+// Get data for each profile in the query result
+const profiles = profilesNameList.reduce<Array<ProfileData>>(
+  (acc, profile) => [
+    ...acc,
+    ...(data?.[profile!]?.edges.map((edge: { node: ProfileData }) => edge.node) ?? []),
+  ],
+  []
+);
 
-  if (!value && defaultValue) {
-    onChange(profiles.filter((profile) => defaultValue.some((def) => def.id === profile.id)));
-  }
+if (!value && defaultValue) {
+  onChange(profiles.filter((profile) => defaultValue.some((def) => def.id === profile.id)));
+}
 
-  if (!profiles || profiles.length === 0) return null;
 
-  const selectedValues = value ?? [];
+if (!profiles || profiles.length === 0) return null;
 
-  const handleChange = (profile: ProfileData) => {
-    onChange([...selectedValues, profile]);
-  };
+const selectedValues = value ?? [];
 
-  const handleRemove = (profile: ProfileData) => {
-    onChange(selectedValues.filter((item) => item.id !== profile.id));
-  };
+const handleChange = (profile: ProfileData) => {
+  onChange([...selectedValues, profile]);
+};
 
-  return (
-    <div className="bg-gray-100 p-4">
+const handleRemove = (profile: ProfileData) => {
+  onChange(selectedValues.filter((item) => item.id !== profile.id));
+};
+
+return (
+  <div className="bg-gray-100 p-4">
       <Label htmlFor={id}>
         Select profiles <span className="ml-1 text-gray-500 text-xs italic">optional</span>
       </Label>

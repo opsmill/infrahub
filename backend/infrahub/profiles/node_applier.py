@@ -5,6 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import TemplateSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.core.schema import TemplateSchema
 
 from .queries.get_profile_data import GetProfileDataQuery, ProfileData
 

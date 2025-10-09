@@ -81,6 +81,14 @@ profiles_rel_settings: dict[str, Any] = {
     "branch": BranchSupportType.AWARE,
 }
 
+profiles_rel_settings: dict[str, Any] = {
+    "name": "profiles",
+    "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    "peer": InfrahubKind.PROFILE,
+    "kind": RelationshipKind.PROFILE,
+    "cardinality": RelationshipCardinality.MANY,
+    "branch": BranchSupportType.AWARE,
+}
 
 class SchemaBranch:
     def __init__(
