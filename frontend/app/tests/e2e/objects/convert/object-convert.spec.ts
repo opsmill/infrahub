@@ -8,7 +8,7 @@ test.describe("Object details - convert", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  const BRANCH_NAME = generateRandomBranchName("events-rules-actions");
+  const BRANCH_NAME = generateRandomBranchName("object-convert");
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
