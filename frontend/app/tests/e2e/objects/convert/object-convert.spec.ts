@@ -80,7 +80,7 @@ test.describe("Object details - convert", () => {
       await expect(page.getByRole("option", { name: "Active Matched Status" })).toBeVisible();
 
       await test.step("select other values from the source object", async () => {
-        // Sumbit and check object values
+        // Submit and check object values
         await page.getByRole("button", { name: "Convert" }).click();
         await expect(page.getByText("Object converted!")).toBeVisible();
         await expect(page.getByText("NameConnected to atl1-edge2::")).toBeVisible();
