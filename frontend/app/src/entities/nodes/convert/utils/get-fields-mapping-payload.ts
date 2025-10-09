@@ -21,7 +21,8 @@ export function getFieldsMappingPayload(
 ): Record<string, FieldMappingData> {
   return fields.reduce((acc, field) => {
     const fieldData = formData[field.name];
-    if (!fieldData) {
+
+    if (!fieldData || !fieldData?.source) {
       return {
         ...acc,
         [field.name]: {

@@ -82,8 +82,8 @@ test.describe("Object details - convert", () => {
 
     await test.step("select other values from the source object", async () => {
       // Submit and check object values
-      await page.getByRole("button", { name: "Convert" }).click();
-      await expect(page.getByText("Object converted!")).toBeVisible();
+      await page.getByRole("button", { name: "Convert", exact: true }).click();
+      await expect(page.getByText("Successfully converted")).toBeVisible();
       await expect(page.getByText("NameConnected to atl1-edge2::")).toBeVisible();
       await page.getByText("LACP Priority10000").click();
       await expect(

@@ -26,6 +26,14 @@ describe("getFieldsMappingPayload", () => {
         name: "field1",
         type: "text",
       } as unknown as DynamicFieldProps,
+      {
+        name: "field2",
+        type: "relationship",
+        relationship: {
+          cardinality: "one",
+        },
+        peer: "peerKind",
+      } as unknown as DynamicFieldProps,
     ];
     const formData = {};
 
@@ -35,6 +43,7 @@ describe("getFieldsMappingPayload", () => {
     // THEN
     expect(result).toEqual({
       field1: { use_default_value: true },
+      field2: { use_default_value: true },
     });
   });
 
@@ -226,7 +235,7 @@ describe("getFieldsMappingPayload", () => {
         data: { peer_id: "owner123" },
       },
       description: {
-        data: { attribute_value: null },
+        use_default_value: true,
       },
     });
   });
