@@ -2,7 +2,7 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
-
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export const generateObjectEditFormQuery = ({
@@ -12,6 +12,10 @@ export const generateObjectEditFormQuery = ({
   schema: NodeSchema | ProfileSchema;
   objectId: string;
 }): string => {
+  let parentSchema: NodeSchema | ProfileSchema | undefined = undefined;
+  if (schema.kind && schema.kind.includes("Template")) {
+    parentSchema = getSchema(schema.name).schema;
+  }
   const request = {
     query: {
       __name: "GetObjectForEditForm",
@@ -32,7 +36,8 @@ export const generateObjectEditFormQuery = ({
               getRelationshipsForForm(schema.relationships ?? [], true, schema),
               { withMetadata: true }
             ),
-            ...("generate_profile" in schema && schema.generate_profile
+            ...(("generate_profile" in schema && schema.generate_profile) ||
+              (parentSchema && "generate_profile" in parentSchema && parentSchema.generate_profile)
               ? {
                   profiles: {
                     edges: {
