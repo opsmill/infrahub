@@ -80,6 +80,7 @@ profiles_rel_settings: dict[str, Any] = {
     "branch": BranchSupportType.AWARE,
 }
 
+
 class SchemaBranch:
     def __init__(
         self,
@@ -2415,11 +2416,8 @@ class SchemaBranch:
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
         if getattr(node, "generate_profile", False) and getattr(node, "generate_template", False):
-            profile_kind = self._get_profile_kind(node_kind=node.kind)
             if "profiles" not in [r.name for r in template_schema.relationships]:
-                template_schema.relationships.append(
-                    RelationshipSchema(**profiles_rel_settings)
-                )
+                template_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
 
         self.set(name=template_schema.kind, schema=template_schema)
 

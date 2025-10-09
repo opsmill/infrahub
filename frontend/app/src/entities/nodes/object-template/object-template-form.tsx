@@ -80,7 +80,15 @@ export default function ObjectTemplateForm({
   }
 
   if (selectedObjectTemplate !== undefined) {
-    return <ObjectForm {...props} currentProfiles={selectedObjectTemplate?.profiles?.edges?.map((edge: any) => edge?.node) ?? []} objectTemplate={selectedObjectTemplate} />;
+    return (
+      <ObjectForm
+        {...props}
+        currentProfiles={
+          selectedObjectTemplate?.profiles?.edges?.map((edge: any) => edge?.node) ?? []
+        }
+        objectTemplate={selectedObjectTemplate}
+      />
+    );
   }
 
   return (
