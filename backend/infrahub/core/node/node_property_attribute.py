@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 from infrahub_sdk.template import Jinja2Template
 
 from infrahub.core.query.node import AttributeFromDB
+from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 from infrahub.core.schema.attribute_schema import AttributeSchema, TextAttributeSchema
 
 from ..attribute import BaseAttribute, ListAttributeOptional, StringOptional
@@ -41,6 +42,8 @@ class NodePropertyAttribute(Generic[T]):
         self.template = template
         self._value = value
         self._manually_assigned = False
+
+        self.schema: AttributeSchema
 
         self.analyze_variables()
 
@@ -88,6 +91,16 @@ class NodePropertyAttribute(Generic[T]):
 
 
 class DisplayLabel(NodePropertyAttribute[str]):
+    def __init__(
+        self,
+        node_schema: NodeSchema | ProfileSchema | TemplateSchema,
+        template: str | None,
+        value: AttributeFromDB | str | None = None,
+    ) -> None:
+        super().__init__(node_schema=node_schema, template=template, value=value)
+
+        self.schema = TextAttributeSchema(name="display_label", kind="Text", optional=True, branch=node_schema.branch)
+
     @property
     def is_jinja2_template(self) -> bool:
         if self.template is None:
@@ -154,9 +167,7 @@ class DisplayLabel(NodePropertyAttribute[str]):
         """Return a node attribute that can be stored in the database for this display label and node."""
         return StringOptional(
             name="display_label",
-            schema=TextAttributeSchema(
-                name="display_label", kind="Text", optional=True, branch=self.node_schema.branch
-            ),
+            schema=self.schema,
             branch=node.get_branch(),
             at=at,
             node=node,
@@ -165,6 +176,16 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
 
 class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
+    def __init__(
+        self,
+        node_schema: NodeSchema | ProfileSchema | TemplateSchema,
+        template: list[str] | None,
+        value: AttributeFromDB | list[str] | None = None,
+    ) -> None:
+        super().__init__(node_schema=node_schema, template=template, value=value)
+
+        self.schema = AttributeSchema(name="human_friendly_id", kind="List", optional=True, branch=node_schema.branch)
+
     def _analyze_single_variable(self, value: str) -> None:
         items = value.split("__", maxsplit=1)
         if items[0] in self.node_schema.attribute_names:
@@ -201,9 +222,7 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
         """Return a node attribute that can be stored in the database for this HFID and node."""
         return ListAttributeOptional(
             name="human_friendly_id",
-            schema=AttributeSchema(
-                name="human_friendly_id", kind="List", optional=True, branch=self.node_schema.branch
-            ),
+            schema=self.schema,
             branch=node.get_branch(),
             at=at,
             node=node,
