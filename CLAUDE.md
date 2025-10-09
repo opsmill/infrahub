@@ -89,7 +89,6 @@ vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./doc
 - Use `async def` for asynchronous functions
 - Use `await` for asynchronous calls
 - Use Pydantic models for dataclasses
-- All Python functions must have docstrings
 
 **Python Docstring Standards:**
 
