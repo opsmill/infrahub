@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class Migration041(InternalSchemaMigration):
     name: str = "041_create_hfid_display_label_in_db"
-    minimum_version: int = 39  # FIXME: Will switch to 40 later
+    minimum_version: int = 40
 
     @classmethod
     def init(cls, **kwargs: Any) -> Self:
