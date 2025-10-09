@@ -3060,6 +3060,33 @@ async def test_schema_branch_processes_relationships_state(
     assert "other_thing" not in returned_schema.get(name="InfraThing").relationship_names
 
 
+async def test_schema_branch_processes_nodes_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+):
+    schema = {
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "state": "absent",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    with pytest.raises(SchemaNotFoundError) as exc:
+        returned_schema.get(name="TestWidget")
+    assert exc.value.args[0] == "Unable to find the schema 'TestWidget' in the registry"
+
+
 async def test_process_deprecations(organization_schema):
     SCHEMA1 = {
         "name": "Criticality",
