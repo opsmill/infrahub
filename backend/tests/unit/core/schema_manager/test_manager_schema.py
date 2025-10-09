@@ -3022,6 +3022,44 @@ def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
     assert "cannot both have required relationships" in exc.value.args[0]
 
 
+async def test_schema_branch_processes_relationships_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+):
+    schema = {
+        "nodes": [
+            {
+                "name": "Thing",
+                "namespace": "Infra",
+                "label": "Thing",
+                "attributes": [{"name": "name", "label": "Name", "kind": "Text", "optional": False, "unique": True}],
+                "relationships": [
+                    {
+                        "name": "other_thing",
+                        "peer": "InfraOtherThing",
+                        "kind": "Attribute",
+                        "state": "absent",
+                        "cardinality": "one",
+                        "optional": True,
+                    },
+                ],
+            },
+            {
+                "name": "OtherThing",
+                "namespace": "Infra",
+                "label": "OtherThing",
+                "attributes": [
+                    {"name": "name", "label": "Name", "kind": "Text", "optional": False, "unique": True},
+                ],
+            },
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "other_thing" not in returned_schema.get(name="InfraThing").relationship_names
+
+
 async def test_process_deprecations(organization_schema):
     SCHEMA1 = {
         "name": "Criticality",
