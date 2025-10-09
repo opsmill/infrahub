@@ -279,10 +279,14 @@ def _sort_and_filter_models(
 
 
 def _generate_protocols(context: Context) -> None:
+    import sys
+
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
-    from tests.helpers.schema import test_models
 
     from infrahub.core.schema.definitions.core import core_models
+
+    sys.path.append(f"{ESCAPED_REPO_PATH}/backend")
+    from tests.helpers.schema import test_models
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
     env.filters["inheritance"] = _jinja2_filter_inheritance
