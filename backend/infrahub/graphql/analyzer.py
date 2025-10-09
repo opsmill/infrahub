@@ -639,7 +639,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         self, node: InlineFragmentNode, query_node: GraphQLQueryNode
     ) -> GraphQLQueryNode:
         context_type = query_node.context_type
-        infrahub_model = self.schema_branch.get(name=node.type_condition.name.value)
+        infrahub_model = self.schema_branch.get(name=node.type_condition.name.value, duplicate=False)
         context_type = ContextType.DIRECT
         current_node = GraphQLQueryNode(
             parent=query_node,
