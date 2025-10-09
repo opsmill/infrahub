@@ -5,7 +5,6 @@ import { generateRandomBranchName } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
 test.describe("Object details - convert", () => {
-  test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   const BRANCH_NAME = generateRandomBranchName("object-convert");
