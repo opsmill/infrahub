@@ -1,4 +1,5 @@
 import React from "react";
+import { isDeepEqual } from "remeda";
 
 import {
   Combobox,
@@ -40,26 +41,11 @@ export const ConvertSourceAttributeCombobox = ({
   const availableOptions: Array<AttributeSourceOption> = (sourceSchema.attributes ?? [])
     .filter((sourceAttribute) => {
       if (attribute.kind === "Text" && attribute.enum) {
-        const sortedAttributeEnumOptions = attribute.enum.sort();
-        const sortedSourceEnumOptions = sourceAttribute?.enum?.sort();
-        const areEqual =
-          JSON.stringify(sortedAttributeEnumOptions) === JSON.stringify(sortedSourceEnumOptions);
-
-        return areEqual;
+        return isDeepEqual(attribute.enum, sourceAttribute?.enum);
       }
 
       if (attribute.kind === "Dropdown") {
-        const sortedAttributeDropdownOptions = attribute?.choices?.sort((itemA, itemB) => {
-          return itemA.name.localeCompare(itemB.name);
-        });
-        const sortedSourceDropdownOptions = sourceAttribute?.choices?.sort((itemA, itemB) => {
-          return itemA.name.localeCompare(itemB.name);
-        });
-        const areEqual =
-          JSON.stringify(sortedAttributeDropdownOptions) ===
-          JSON.stringify(sortedSourceDropdownOptions);
-
-        return areEqual;
+        return isDeepEqual(attribute.choices, sourceAttribute?.choices);
       }
 
       return sourceAttribute.kind === attribute.kind && !sourceAttribute.enum;
