@@ -7,7 +7,9 @@ from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import HashableModelState, RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
-from tests.helpers.schema import CAR_SCHEMA
+from infrahub.core.schema.definitions.core.artifact import core_artifact_target
+from infrahub.core.schema.definitions.core.lineage import lineage_owner, lineage_source
+from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.schema.car import CAR
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -23,9 +25,12 @@ if TYPE_CHECKING:
 class TestLoadOnBranchAndMain(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def load_schema(self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient) -> None:
-        schema_root_dict = CAR_SCHEMA.model_dump()
-        schema_root_dict["version"] = "1.0"
-        response = await client.schema.load(schemas=[schema_root_dict])
+        internal_schema_root = SchemaRoot(version="1.0", generics=[lineage_source, lineage_owner, core_artifact_target])
+        await load_schema(db=db, schema=internal_schema_root, branch_name=default_branch.name, update_db=True)
+
+        schema_root = CAR_SCHEMA.duplicate()
+        schema_root.version = "1.0"
+        response = await client.schema.load(schemas=[schema_root.model_dump()])
         assert len(response.errors) == 0, response.errors
 
     @pytest.fixture(scope="class")
