@@ -122,8 +122,8 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
 
     await convertObject(
       {
-        nodeId: sourceObject.id as string,
-        targetKind: targetSchema.kind as string,
+        nodeId: sourceObject.id,
+        targetKind: targetSchema.kind,
         fieldsMapping,
       },
       {
@@ -132,6 +132,10 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
           const path = constructPath(`/objects/${targetSchema.kind}/${result.id}`);
 
           navigate(path);
+        },
+        onError: (error) => {
+          console.error("Error when retrieving mappings: ", error);
+          toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
         },
       }
     );
