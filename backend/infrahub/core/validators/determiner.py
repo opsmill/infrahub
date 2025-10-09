@@ -81,7 +81,11 @@ class ConstraintValidatorDeterminer:
 
     async def _get_all_property_constraints(self) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
-        for schema in self.schema_branch.get_all().values():
+        schemas = list(self.schema_branch.get_all(duplicate=False).values())
+        # added here to check their uniqueness constraints
+        schemas.append(self.schema_branch.get_node(name="SchemaAttribute", duplicate=False))
+        schemas.append(self.schema_branch.get_node(name="SchemaRelationship", duplicate=False))
+        for schema in schemas:
             constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         return constraints
 
