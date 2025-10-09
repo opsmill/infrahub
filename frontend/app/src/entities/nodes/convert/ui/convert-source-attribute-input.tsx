@@ -49,12 +49,12 @@ export const ConvertSourceAttributeCombobox = ({
       }
 
       if (attribute.kind === "Dropdown") {
-        const sortedAttributeDropdownOptions = attribute?.choices?.sort(
-          (itemA, itemB) => itemA.name.localeCompare(itemB.name)
-        );
-        const sortedSourceDropdownOptions = sourceAttribute?.choices?.sort(
-          (itemA, itemB) => itemA.name.localeCompare(itemB.name)
-        );
+        const sortedAttributeDropdownOptions = attribute?.choices?.sort((itemA, itemB) => {
+          return itemA.name.localeCompare(itemB.name);
+        });
+        const sortedSourceDropdownOptions = sourceAttribute?.choices?.sort((itemA, itemB) => {
+          return itemA.name.localeCompare(itemB.name);
+        });
         const areEqual =
           JSON.stringify(sortedAttributeDropdownOptions) ===
           JSON.stringify(sortedSourceDropdownOptions);
