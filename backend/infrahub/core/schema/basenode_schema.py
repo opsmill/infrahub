@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
+NODE_PROPERTY_ATTRIBUTES = ["display_label", "human_friendly_id"]
 INHERITED = "INHERITED"
 
 OPTIONAL_TEXT_FIELDS = [
@@ -340,7 +341,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @property
     def valid_input_names(self) -> list[str]:
-        return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES
+        return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES + NODE_PROPERTY_ATTRIBUTES
 
     @property
     def valid_local_names(self) -> list[str]:
