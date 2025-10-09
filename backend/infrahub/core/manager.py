@@ -63,12 +63,15 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
 
 
 def get_schema(
-    db: InfrahubDatabase, branch: Branch, node_schema: type[SchemaProtocol] | MainSchemaTypes | str
+    db: InfrahubDatabase,
+    branch: Branch,
+    node_schema: type[SchemaProtocol] | MainSchemaTypes | str,
+    duplicate: bool = False,
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
-        return db.schema.get(name=node_schema, branch=branch.name)
+        return db.schema.get(name=node_schema, branch=branch.name, duplicate=duplicate)
     if hasattr(node_schema, "_is_runtime_protocol") and node_schema._is_runtime_protocol:
-        return db.schema.get(name=node_schema.__name__, branch=branch.name)
+        return db.schema.get(name=node_schema.__name__, branch=branch.name, duplicate=duplicate)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
 
