@@ -6,4 +6,6 @@ export type ArtifactContentType =
   | "application/hcl"
   | "image/svg+xml"
   | "text/plain"
-  | "text/markdown";
+  | "text/markdown"
+  | "application/xml"
+  | "text/csv";

@@ -21,6 +21,7 @@ const EnumField = ({
   unique,
   items,
   schema,
+  shouldUnregister,
   ...props
 }: EnumFieldProps) => {
   return (
@@ -29,6 +30,7 @@ const EnumField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

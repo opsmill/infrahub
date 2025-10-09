@@ -18,6 +18,7 @@ from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -2012,7 +2013,7 @@ class SchemaBranch:
 
             profiles_rel_settings: dict[str, Any] = {
                 "name": "profiles",
-                "identifier": "node__profile",
+                "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
                 "peer": InfrahubKind.PROFILE,
                 "kind": RelationshipKind.PROFILE,
                 "cardinality": RelationshipCardinality.MANY,
@@ -2075,7 +2076,7 @@ class SchemaBranch:
             relationships=[
                 RelationshipSchema(
                     name="related_nodes",
-                    identifier="node__profile",
+                    identifier=PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
                     peer=node.kind,
                     kind=RelationshipKind.PROFILE,
                     cardinality=RelationshipCardinality.MANY,

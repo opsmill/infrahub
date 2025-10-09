@@ -16,13 +16,14 @@ export const getNumberPools: GetNumberPools = async (params) => {
     throw new Error(errors[0].message);
   }
 
-  return data[NUMBER_POOL_KIND].edges.map(({ node }: any) => ({
-    id: node.id,
-    label: node.display_label,
-    kind: node.__typename,
-    nodeAttribute: {
-      id: node.node_attribute.id,
-      name: node.node_attribute.value,
-    },
-  }));
+  return data[NUMBER_POOL_KIND].edges.map(
+    ({ node }: any): NumberPool => ({
+      id: node.id,
+      hfid: node.hfid,
+      display_label: node.display_label,
+      __typename: node.__typename,
+      schemaKind: node.node.value,
+      attributeName: node.node_attribute.value,
+    })
+  );
 };

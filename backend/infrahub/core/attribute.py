@@ -324,7 +324,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         save_at = Timestamp(at)
 
-        if not self.id or self.is_from_profile:
+        if not self.id:
             return None
 
         return await self._update(at=save_at, db=db)

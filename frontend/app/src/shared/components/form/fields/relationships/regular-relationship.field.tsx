@@ -37,6 +37,7 @@ export const NodeRelationshipField = ({
   options,
   parent,
   schema,
+  shouldUnregister,
   ...props
 }: RegularRelationshipFieldProps) => {
   const parentRelationship = getParentRelationship(relationship.peer);
@@ -76,6 +77,7 @@ export const NodeRelationshipField = ({
           name={name}
           rules={rules}
           defaultValue={defaultValue}
+          shouldUnregister={shouldUnregister}
           render={({ field }) => {
             return (
               <div className="relative flex flex-col">
@@ -110,6 +112,7 @@ export const NodeRelationshipField = ({
         name={name}
         rules={rules}
         defaultValue={defaultValue}
+        shouldUnregister={shouldUnregister}
         render={({ field }) => {
           const fieldData: FormRelationshipValue = field.value;
 

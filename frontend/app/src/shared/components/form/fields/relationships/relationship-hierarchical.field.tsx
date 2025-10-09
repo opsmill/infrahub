@@ -31,12 +31,14 @@ export default function RelationshipHierarchicalField({
   name,
   rules,
   unique,
+  shouldUnregister,
 }: RelationshipHierarchicalFieldProps) {
   return (
     <FormField
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormRelationshipValue = field.value;
         const value: RelationshipNode | RelationshipNode[] | null =

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .protocols_base import CoreNode
+from infrahub.core.protocols_base import CoreNode
 
 if TYPE_CHECKING:
     from enum import Enum

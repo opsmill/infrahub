@@ -1,3 +1,5 @@
+import { ARTIFACT_OBJECT } from "@/config/constants";
+
 import { CopyToClipboardMenuItem } from "@/shared/components/aria/menu";
 import {
   ObjectDetailsButton,
@@ -11,7 +13,7 @@ export interface ArtifactDetailsMenuProps extends ObjectDetailsButtonProps {
 
 export function ArtifactDetailsMenu({ id, hfid, checksum, storageId }: ArtifactDetailsMenuProps) {
   return (
-    <ObjectDetailsButton id={id} hfid={hfid}>
+    <ObjectDetailsButton id={id} hfid={hfid} objectKind={ARTIFACT_OBJECT}>
       {checksum && (
         <CopyToClipboardMenuItem textToCopy={checksum}>Copy Checksum</CopyToClipboardMenuItem>
       )}

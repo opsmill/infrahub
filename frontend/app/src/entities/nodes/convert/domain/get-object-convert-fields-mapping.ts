@@ -1,7 +1,7 @@
 import {
   type GetObjectConvertFieldsMappingFromApiParams,
   getObjectConvertFieldsMappingFromApi,
-} from "@/entities/nodes/object/api/get-object-convert-fields-mapping-from-api";
+} from "@/entities/nodes/convert/api/get-object-convert-fields-mapping-from-api";
 
 export type GetObjectConvertFieldsMappingParams = GetObjectConvertFieldsMappingFromApiParams;
 

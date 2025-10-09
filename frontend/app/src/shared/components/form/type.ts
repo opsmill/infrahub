@@ -139,6 +139,7 @@ export type FormFieldProps = {
     kind: string;
     defaultAllocatedObjectKind: string;
   };
+  shouldUnregister?: boolean;
 };
 
 export type DynamicInputFieldProps = FormFieldProps & {

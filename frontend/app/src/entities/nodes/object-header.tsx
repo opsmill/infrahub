@@ -88,6 +88,7 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
 
       <ObjectDetailsButton
         id={objectId}
+        objectKind={schema.kind!}
         data-testid="object-details-button"
         hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}
       />
