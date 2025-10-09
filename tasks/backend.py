@@ -285,7 +285,10 @@ def _generate_protocols(context: Context) -> None:
 
     from infrahub.core.schema.definitions.core import core_models
 
-    sys.path.append(f"{ESCAPED_REPO_PATH}/backend")
+    # We need to insert this folder in the search order to ensure
+    # that it appears before the python_sdk folder since that folder also has
+    # a 'tests' module and the sys.path seems to be random between runs.
+    sys.path.insert(0, f"{ESCAPED_REPO_PATH}/backend")
     from tests.helpers.schema import test_models
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
