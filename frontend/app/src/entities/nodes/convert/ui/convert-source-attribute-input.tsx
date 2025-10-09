@@ -21,11 +21,11 @@ import {
 import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { AttributeSchema } from "@/entities/schema/types";
 
-interface ConvertSourceAttributeComboboxProps extends ConvertSourceInputProps {
+interface ConvertSourceAttributeInputProps extends ConvertSourceInputProps {
   attribute: AttributeSchema;
 }
 
-export const ConvertSourceAttributeCombobox = ({
+export const ConvertSourceAttributeInput = ({
   sourceObject,
   sourceSchema,
   mapping,
@@ -33,7 +33,7 @@ export const ConvertSourceAttributeCombobox = ({
   value,
   onChange,
   ...props
-}: ConvertSourceAttributeComboboxProps) => {
+}: ConvertSourceAttributeInputProps) => {
   const [open, setOpen] = React.useState(false);
 
   const fieldData = value;

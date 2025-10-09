@@ -6,7 +6,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
 import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
-import { ConvertSourceAttributeCombobox } from "@/entities/nodes/convert/ui/convert-source-attribute-input";
+import { ConvertSourceAttributeInput } from "@/entities/nodes/convert/ui/convert-source-attribute-input";
 import { ConvertSourceRelationshipManyInput } from "@/entities/nodes/convert/ui/convert-source-relationship-many-input";
 import { ConvertSourceRelationshipOneInput } from "@/entities/nodes/convert/ui/convert-source-relationship-one-input";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -56,7 +56,7 @@ export function ConvertSourceField({
 
             {attribute && (
               <FormInput>
-                <ConvertSourceAttributeCombobox
+                <ConvertSourceAttributeInput
                   sourceObject={objectDetailsData}
                   sourceSchema={sourceSchema}
                   mapping={mapping}
