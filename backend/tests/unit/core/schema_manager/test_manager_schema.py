@@ -3064,6 +3064,17 @@ async def test_schema_branch_processes_attributes_state(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
 ):
     schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String", "state": "absent"},
+                ],
+            },
+        ],
         "nodes": [
             {
                 "name": "Widget",
@@ -3082,6 +3093,7 @@ async def test_schema_branch_processes_attributes_state(
     returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
     assert "description" not in returned_schema.get(name="TestWidget").attribute_names
+    assert "my_generic_name" not in returned_schema.get(name="TestGenericInterface").attribute_names
 
 
 async def test_process_deprecations(organization_schema):
