@@ -498,10 +498,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
             fields.pop("updated_at")
         for field_name in fields.keys():
-            # FIXME: Clean this up somehow
-            if field_name not in self._schema.valid_input_names and not (
-                self._schema.is_schema_node and field_name in ["display_label", "human_friendly_id"]
-            ):
+            if field_name not in self._schema.valid_input_names:
                 log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
         # Backfill fields with the ones from the template if there's one
