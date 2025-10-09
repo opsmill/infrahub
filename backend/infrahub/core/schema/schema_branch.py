@@ -69,6 +69,14 @@ from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
 
+profiles_rel_settings: dict[str, Any] = {
+    "name": "profiles",
+    "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    "peer": InfrahubKind.PROFILE,
+    "kind": RelationshipKind.PROFILE,
+    "cardinality": RelationshipCardinality.MANY,
+    "branch": BranchSupportType.AWARE,
+}
 
 class SchemaBranch:
     def __init__(
@@ -1933,15 +1941,6 @@ class SchemaBranch:
             ):
                 continue
 
-            profiles_rel_settings: dict[str, Any] = {
-                "name": "profiles",
-                "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
-                "peer": InfrahubKind.PROFILE,
-                "kind": RelationshipKind.PROFILE,
-                "cardinality": RelationshipCardinality.MANY,
-                "branch": BranchSupportType.AWARE,
-            }
-
             # Add relationship between node and profile
             if "profiles" not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
@@ -2135,6 +2134,15 @@ class SchemaBranch:
             ):
                 template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
+
+        if getattr(node, "generate_profile", False) and getattr(node, "generate_template", False):
+            profile_kind = self._get_profile_kind(node_kind=node.kind)
+            if "profiles" not in [r.name for r in template_schema.relationships]:
+                template_schema.relationships.append(
+                    RelationshipSchema(**profiles_rel_settings)
+                )
+
+        self.set(name=template_schema.kind, schema=template_schema)
 
     def generate_object_template_from_node(
         self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]

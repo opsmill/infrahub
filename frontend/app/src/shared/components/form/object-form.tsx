@@ -63,7 +63,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
 }
 
 const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
-  const { schema, isNode, isGeneric } = useSchema(kind);
+  const { schema, isNode, isGeneric, isTemplate } = useSchema(kind);
 
   if (!schema) {
     return (
@@ -148,7 +148,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (isNode && schema.generate_profile) {
+  if ((isNode && schema.generate_profile) || isTemplate) {
     return <NodeWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
