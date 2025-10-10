@@ -98,10 +98,10 @@ class NATSLock:
         while True:
             if await self.do_acquire(token):
                 self.token = token
-                return True
+                return
             await sleep(0.1)  # default Redis GlobalLock value
 
-    async def do_acquire(self, token: str) -> bool:
+    async def do_acquire(self, token: str) -> bool | None:
         return await self.service.cache.set(key=self.name, value=token, not_exists=True)
 
     async def release(self) -> None:
@@ -124,14 +124,14 @@ class InfrahubLock:
         local: bool | None = None,
         in_multi: bool = False,
     ) -> None:
-        self.use_local: bool = local
+        self.use_local: bool | None = local
         self.local: LocalLock = None
         self.remote: GlobalLock = None
         self.name: str = name
         self.connection: redis.Redis | None = connection
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
-        self.acquire_time: int | None = None
+        self._acquire_time: int | None = None
         self.event = asyncio.Event()
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
@@ -143,6 +143,17 @@ class InfrahubLock:
             self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
         else:
             self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
+
+    @property
+    def acquire_time(self) -> int:
+        if self._acquire_time is not None:
+            return self._acquire_time
+
+        raise ValueError("The lock has not been initialized")
+
+    @acquire_time.setter
+    def acquire_time(self, value: int) -> None:
+        self._acquire_time = value
 
     async def __aenter__(self):
         await self.acquire()
