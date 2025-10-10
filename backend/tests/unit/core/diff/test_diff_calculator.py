@@ -69,7 +69,8 @@ async def test_diff_attribute_branch_update(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -80,6 +81,16 @@ async def test_diff_attribute_branch_update(
     assert property_diff.new_value == "Big Alfred"
     assert property_diff.action is DiffAction.UPDATED
     assert main_before_change < property_diff.changed_at < main_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Big Alfred"]'
+    assert property_diff.action is DiffAction.UPDATED
+    assert main_before_change < property_diff.changed_at < main_after_change
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
     assert len(branch_root_path.nodes) == 1
@@ -88,7 +99,8 @@ async def test_diff_attribute_branch_update(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -97,6 +109,16 @@ async def test_diff_attribute_branch_update(
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Little Alfred"
+    assert property_diff.action is DiffAction.UPDATED
+    assert branch_before_change < property_diff.changed_at < branch_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Little Alfred"]'
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
 
@@ -440,7 +462,8 @@ async def test_attribute_property_multiple_branch_updates(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -449,6 +472,15 @@ async def test_attribute_property_multiple_branch_updates(
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Alfred Four"
+    assert before_last_change < property_diff.changed_at < after_last_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Alfred Four"]'
     assert before_last_change < property_diff.changed_at < after_last_change
 
 
@@ -1700,7 +1732,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
 
     base_root_path = calculated_diffs.base_branch_diff
     assert base_root_path.branch == default_branch.name
-    assert len(base_root_path.nodes) == 0
+    assert len(base_root_path.nodes) == 1
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
     assert len(branch_root_path.nodes) == 1
@@ -1709,7 +1741,8 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
+    assert len(node_diff.attributes) == 2
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -1718,6 +1751,16 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Little Alfred"
+    assert property_diff.action is DiffAction.UPDATED
+    assert branch_before_change < property_diff.changed_at < branch_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Little Alfred"]'
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
 
@@ -1762,7 +1805,8 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -1773,6 +1817,16 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     assert property_diff.new_value == "Big Alfred"
     assert property_diff.action is DiffAction.UPDATED
     assert base_before_change < property_diff.changed_at < base_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Big Alfred"]'
+    assert property_diff.action is DiffAction.UPDATED
+    assert base_before_change < property_diff.changed_at < base_after_change
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
     assert len(branch_root_path.nodes) == 1
@@ -1781,7 +1835,8 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -1790,6 +1845,16 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Little Alfred"
+    assert property_diff.action is DiffAction.UPDATED
+    assert branch_before_change < property_diff.changed_at < branch_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Little Alfred"]'
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
 
@@ -1831,7 +1896,8 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -1842,6 +1908,16 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     assert property_diff.new_value == "Big Alfred"
     assert property_diff.action is DiffAction.UPDATED
     assert base_before_change < property_diff.changed_at < base_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Big Alfred"]'
+    assert property_diff.action is DiffAction.UPDATED
+    assert base_before_change < property_diff.changed_at < base_after_change
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
     assert len(branch_root_path.nodes) == 1
@@ -1850,7 +1926,8 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -1859,6 +1936,16 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Little Alfred"
+    assert property_diff.action is DiffAction.UPDATED
+    assert branch_before_change < property_diff.changed_at < branch_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Little Alfred"]'
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
 
@@ -1885,6 +1972,9 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     diff_calculator = DiffCalculator(db=db)
     node_field_specifiers = NodeFieldSpecifierMap()
     node_field_specifiers.add_entry(node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="name")
+    node_field_specifiers.add_entry(
+        node_uuid=alfred_main.id, kind=alfred_main.get_kind(), field_name="human_friendly_id"
+    )
     node_field_specifiers.add_entry(node_uuid=car_accord_main.id, kind=car_accord_main.get_kind(), field_name="color")
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
@@ -1922,15 +2012,25 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert node_diff.action is DiffAction.UNCHANGED
     assert node_diff.is_node_kind_migration is False
     assert len(node_diff.relationships) == 0
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UNCHANGED
     assert len(attribute_diff.properties) == 1
     property_diff = attribute_diff.properties[0]
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
-    assert property_diff.previous_value == person_alfred_main.name.value
-    assert property_diff.new_value == person_alfred_main.name.value
+    assert property_diff.previous_value == "Alfred"
+    assert property_diff.new_value == "Alfred"
+    assert property_diff.action is DiffAction.UNCHANGED
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UNCHANGED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Alfred"]'
     assert property_diff.action is DiffAction.UNCHANGED
 
     branch_root_path = calculated_diffs.diff_branch_diff
@@ -1941,7 +2041,8 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -1950,6 +2051,16 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Little Alfred"
+    assert property_diff.action is DiffAction.UPDATED
+    assert branch_before_change < property_diff.changed_at < branch_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Little Alfred"]'
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
 
@@ -2293,15 +2404,26 @@ async def test_node_deleted_on_base_update_on_branch(
     assert diff_node.uuid == person_alfred_main.id
     assert diff_node.is_node_kind_migration is False
     attributes_by_name = {a.name: a for a in diff_node.attributes}
-    assert set(attributes_by_name.keys()) == {"name"}
-    attr_diff = diff_node.attributes.pop()
+    assert set(attributes_by_name.keys()) == {"human_friendly_id", "name"}
+    diff_node.attributes.sort(key=lambda da: da.name, reverse=True)
+    attr_diff = diff_node.attributes[0]
+    assert attr_diff.name == "name"
     assert attr_diff.action is DiffAction.UPDATED
     props_by_type = {p.property_type: p for p in attr_diff.properties}
     assert set(props_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
-    prop_diff = attr_diff.properties.pop()
+    prop_diff = attr_diff.properties[0]
     assert prop_diff.action is DiffAction.UPDATED
     assert prop_diff.previous_value == "Alfred"
     assert prop_diff.new_value == "Still Alfred"
+    attr_diff = diff_node.attributes[1]
+    assert attr_diff.name == "human_friendly_id"
+    assert attr_diff.action is DiffAction.UPDATED
+    props_by_type = {p.property_type: p for p in attr_diff.properties}
+    assert set(props_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+    prop_diff = attr_diff.properties[0]
+    assert prop_diff.action is DiffAction.UPDATED
+    assert prop_diff.previous_value == '["Alfred"]'
+    assert prop_diff.new_value == '["Still Alfred"]'
     assert len(diff_node.relationships) == 0
 
 
@@ -2917,7 +3039,8 @@ async def test_diff_unchanged_included_when_not_first_diff(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UNCHANGED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UNCHANGED
@@ -2926,6 +3049,15 @@ async def test_diff_unchanged_included_when_not_first_diff(
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Alfred"
+    assert property_diff.action is DiffAction.UNCHANGED
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UNCHANGED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Alfred"]'
     assert property_diff.action is DiffAction.UNCHANGED
 
     branch_root_path = calculated_diffs.diff_branch_diff
@@ -2936,7 +3068,8 @@ async def test_diff_unchanged_included_when_not_first_diff(
     assert node_diff.kind == "TestPerson"
     assert node_diff.action is DiffAction.UPDATED
     assert node_diff.is_node_kind_migration is False
-    assert len(node_diff.attributes) == 1
+    assert len(node_diff.attributes) == 2
+    node_diff.attributes.sort(key=lambda da: da.name, reverse=True)
     attribute_diff = node_diff.attributes[0]
     assert attribute_diff.name == "name"
     assert attribute_diff.action is DiffAction.UPDATED
@@ -2945,6 +3078,16 @@ async def test_diff_unchanged_included_when_not_first_diff(
     assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
     assert property_diff.previous_value == "Alfred"
     assert property_diff.new_value == "Little Alfred"
+    assert property_diff.action is DiffAction.UPDATED
+    assert branch_before_change < property_diff.changed_at < branch_after_change
+    attribute_diff = node_diff.attributes[1]
+    assert attribute_diff.name == "human_friendly_id"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == '["Alfred"]'
+    assert property_diff.new_value == '["Little Alfred"]'
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
 
@@ -3697,7 +3840,7 @@ async def test_calculate_with_migrated_kind_node(
     assert main_camry_diff.action is DiffAction.UPDATED
     assert main_camry_diff.is_node_kind_migration is False
     attr_diffs_by_name = {a.name: a for a in main_camry_diff.attributes}
-    assert set(attr_diffs_by_name.keys()) == {"color", "name"}
+    assert set(attr_diffs_by_name.keys()) == {"color", "human_friendly_id", "name"}
     for attr_name, new_value, previous_value in (
         ("color", final_main_camry_color, car_camry_main.color.value),
         ("name", final_main_camry_name, car_camry_main.name.value),
@@ -3757,7 +3900,7 @@ async def test_calculate_with_migrated_kind_node(
     assert branch_camry_diff.action is DiffAction.UPDATED
     assert branch_camry_diff.is_node_kind_migration is False
     attr_diffs_by_name = {a.name: a for a in branch_camry_diff.attributes}
-    assert set(attr_diffs_by_name.keys()) == {"color", "name"}
+    assert set(attr_diffs_by_name.keys()) == {"color", "human_friendly_id", "name"}
     for attr_name, new_value, previous_value in (
         ("color", final_branch_camry_color, car_camry_main.color.value),
         ("name", final_branch_camry_name, car_camry_main.name.value),
@@ -4225,7 +4368,7 @@ async def test_migrated_kind_with_property_level_changes(
     assert john_previous_diff.relationships == []
     assert john_new_diff.is_node_kind_migration is True
     attributes_by_name = {a.name: a for a in john_new_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"name"}
+    assert set(attributes_by_name.keys()) == {"human_friendly_id", "name"}
     name_attr = attributes_by_name["name"]
     # it would be more correct if this was DiffAction.UPDATED, but ADDED is also technically correct for a node kind migration
     assert name_attr.action is DiffAction.ADDED
@@ -4259,7 +4402,7 @@ async def test_migrated_kind_with_property_level_changes(
     assert jane_previous_diff.relationships == []
     assert jane_new_diff.is_node_kind_migration is True
     attributes_by_name = {a.name: a for a in jane_new_diff.attributes}
-    assert set(attributes_by_name.keys()) == {"name"}
+    assert set(attributes_by_name.keys()) == {"human_friendly_id", "name"}
     name_attr = attributes_by_name["name"]
     # it would be more correct if this was DiffAction.UPDATED, but ADDED is also technically correct for a node kind migration
     assert name_attr.action is DiffAction.ADDED

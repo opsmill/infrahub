@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 from infrahub_sdk.template import Jinja2Template
 
 from infrahub.core.query.node import AttributeFromDB
+from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 from infrahub.core.schema.attribute_schema import AttributeSchema, TextAttributeSchema
 
-from ..attribute import BaseAttribute, ListAttribute, String
+from ..attribute import BaseAttribute, ListAttributeOptional, StringOptional
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -42,13 +43,15 @@ class NodePropertyAttribute(Generic[T]):
         self._value = value
         self._manually_assigned = False
 
+        self.schema: AttributeSchema
+
         self.analyze_variables()
 
     def needs_update(self, fields: list[str] | None) -> bool:
-        """Tell if this nod eproperty attribute must be recomputed given a list of updated fields of a node."""
-        if self._manually_assigned:
+        """Tell if this node property attribute must be recomputed given a list of updated fields of a node."""
+        if self._manually_assigned or not fields:
             return True
-        for field in fields or []:
+        for field in fields:
             if field in self.node_attributes or field in self.node_relationships:
                 return True
 
@@ -70,9 +73,9 @@ class NodePropertyAttribute(Generic[T]):
         if manually_assigned:
             self._manually_assigned = True
 
-    async def get_value(self, node: Node, at: Timestamp) -> T | None:
+    def get_value(self, node: Node, at: Timestamp) -> T | None:
         if isinstance(self._value, AttributeFromDB):
-            attr = await self.get_node_attribute(node=node, at=at)
+            attr = self.get_node_attribute(node=node, at=at)
             return attr.value  # type: ignore
 
         return self._value
@@ -84,10 +87,20 @@ class NodePropertyAttribute(Generic[T]):
     async def compute(self, db: InfrahubDatabase, node: Node) -> None: ...
 
     @abstractmethod
-    async def get_node_attribute(self, node: Node, at: Timestamp) -> BaseAttribute: ...
+    def get_node_attribute(self, node: Node, at: Timestamp) -> BaseAttribute: ...
 
 
 class DisplayLabel(NodePropertyAttribute[str]):
+    def __init__(
+        self,
+        node_schema: NodeSchema | ProfileSchema | TemplateSchema,
+        template: str | None,
+        value: AttributeFromDB | str | None = None,
+    ) -> None:
+        super().__init__(node_schema=node_schema, template=template, value=value)
+
+        self.schema = TextAttributeSchema(name="display_label", kind="Text", optional=True, branch=node_schema.branch)
+
     @property
     def is_jinja2_template(self) -> bool:
         if self.template is None:
@@ -150,11 +163,11 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
         self.set_value(value=await jinja2_template.render(variables=variables))
 
-    async def get_node_attribute(self, node: Node, at: Timestamp) -> String:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> StringOptional:
         """Return a node attribute that can be stored in the database for this display label and node."""
-        return String(
+        return StringOptional(
             name="display_label",
-            schema=TextAttributeSchema(name="display_label", kind="Text", branch=self.node_schema.branch),
+            schema=self.schema,
             branch=node.get_branch(),
             at=at,
             node=node,
@@ -163,6 +176,16 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
 
 class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
+    def __init__(
+        self,
+        node_schema: NodeSchema | ProfileSchema | TemplateSchema,
+        template: list[str] | None,
+        value: AttributeFromDB | list[str] | None = None,
+    ) -> None:
+        super().__init__(node_schema=node_schema, template=template, value=value)
+
+        self.schema = AttributeSchema(name="human_friendly_id", kind="List", optional=True, branch=node_schema.branch)
+
     def _analyze_single_variable(self, value: str) -> None:
         items = value.split("__", maxsplit=1)
         if items[0] in self.node_schema.attribute_names:
@@ -195,11 +218,11 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
 
         self.set_value(value=value)
 
-    async def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttribute:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttributeOptional:
         """Return a node attribute that can be stored in the database for this HFID and node."""
-        return ListAttribute(
+        return ListAttributeOptional(
             name="human_friendly_id",
-            schema=AttributeSchema(name="human_friendly_id", kind="List", branch=self.node_schema.branch),
+            schema=self.schema,
             branch=node.get_branch(),
             at=at,
             node=node,
