@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import * as R from "ramda";
 import { useEffect, useRef, useState } from "react";
+import * as R from "remeda";
 import { ArrayParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
@@ -43,9 +43,10 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   );
 
   const schemasPerNamespace = R.pipe(
-    R.sortBy<ModelSchema>(R.prop("name")),
-    R.groupBy(R.prop("namespace"))
-  )(schemas);
+    schemas,
+    R.sortBy((schema) => schema.name),
+    R.groupBy((schema) => schema.namespace)
+  );
 
   return (
     <section className={classNames("space-y-2 bg-white p-4", className)}>
