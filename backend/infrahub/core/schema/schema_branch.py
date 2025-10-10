@@ -1632,9 +1632,8 @@ class SchemaBranch:
     def process_nodes_state(self) -> None:
         for name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=name, duplicate=False)
-            if node.id or (not node.id and node.state != HashableModelState.ABSENT):
-                continue
-            self.delete(name=name)
+            if not node.id and node.state == HashableModelState.ABSENT:
+                self.delete(name=name)
 
     def _generate_weight_generics(self) -> None:
         """Generate order_weight for all generic schemas."""
