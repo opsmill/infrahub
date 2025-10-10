@@ -3931,18 +3931,18 @@ sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.4"
+version = "0.2.5"
 description = "Prefect integrations with Redis."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect_redis-0.2.4-py3-none-any.whl", hash = "sha256:ed6effb75f84d959812fcd3b8dd016f2d2ad8dfa25354008ca733babb83a112c"},
-    {file = "prefect_redis-0.2.4.tar.gz", hash = "sha256:9b3be094665d98aee4f51fd67d6fe0c1fadd8e89f5be4f8aabf0df215c72f6bb"},
+    {file = "prefect_redis-0.2.5-py3-none-any.whl", hash = "sha256:a0febf43c1a5bf671e3cc975b4b66f35432a29f73468b3fd4bb60b6821de68f8"},
+    {file = "prefect_redis-0.2.5.tar.gz", hash = "sha256:18885e64cf088d5489799a5b53890880a690a15c99b36c738990a4b91d18e093"},
 ]
 
 [package.dependencies]
-prefect = ">=3.4.9"
+prefect = ">=3.4.18"
 redis = ">=6.0.0"
 
 [[package]]
@@ -6527,4 +6527,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12, < 3.13"
-content-hash = "c9afd3d7842b1d8a0e8300eb414243b1f7cd136fbebe4c9a52e4cae8312b69b0"
+content-hash = "0d327220e0406608d72c881f9dd382cbd0a88b060697189d8e3b61895a2d82ce"
