@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from rich.progress import Progress
 from typing_extensions import Self
 
 from infrahub.core import registry
@@ -78,13 +79,17 @@ class Migration041(InternalSchemaMigration):
                 ]
             )
 
-        for migration in migrations:
-            try:
-                execution_result = await migration.execute(db=db, branch=default_branch)
-                result.errors.extend(execution_result.errors)
-            except Exception as exc:
-                result.errors.append(str(exc))
-                return result
+        with Progress() as progress:
+            update_task = progress.add_task("Adding HFID and display label to nodes", total=len(migrations))
+
+            for migration in migrations:
+                try:
+                    execution_result = await migration.execute(db=db, branch=default_branch)
+                    result.errors.extend(execution_result.errors)
+                    progress.update(update_task, advance=1)
+                except Exception as exc:
+                    result.errors.append(str(exc))
+                    return result
 
         return result
 
