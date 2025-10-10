@@ -98,7 +98,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       event.stopPropagation();
     }
 
-    onClick && onClick(event);
+    onClick?.(event);
   };
 
   return (
