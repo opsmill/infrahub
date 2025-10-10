@@ -10,8 +10,7 @@ from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import (
     AttributeSchema,
-    GenericSchema,
-    NodeSchema,
+    MainSchemaTypes,
     RelationshipSchema,
     SchemaRoot,
     internal_schema,
@@ -43,8 +42,8 @@ class SchemaMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[MigrationQuery]] = Field(..., description="List of queries to execute for this migration")
 
-    new_node_schema: NodeSchema | GenericSchema | None = None
-    previous_node_schema: NodeSchema | GenericSchema | None = None
+    new_node_schema: MainSchemaTypes | None = None
+    previous_node_schema: MainSchemaTypes | None = None
     schema_path: SchemaPath
 
     async def execute_pre_queries(
@@ -91,13 +90,13 @@ class SchemaMigration(BaseModel):
         return result
 
     @property
-    def new_schema(self) -> NodeSchema | GenericSchema:
+    def new_schema(self) -> MainSchemaTypes:
         if self.new_node_schema:
             return self.new_node_schema
         raise ValueError("new_node_schema hasn't been initialized")
 
     @property
-    def previous_schema(self) -> NodeSchema | GenericSchema:
+    def previous_schema(self) -> MainSchemaTypes:
         if self.previous_node_schema:
             return self.previous_node_schema
         raise ValueError("previous_node_schema hasn't been initialized")

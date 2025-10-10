@@ -10,7 +10,6 @@ from infrahub.core.initialization import initialization
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationResult
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import NodeSchema
 from infrahub.lock import initialize_lock
 
 if TYPE_CHECKING:
@@ -59,31 +58,25 @@ class Migration041(InternalSchemaMigration):
         migrations = list(self.migrations)
 
         for node_schema_kind in schema_branch.node_names:
-            schema = schema_branch.get_node(name=node_schema_kind, duplicate=False)
-            if not isinstance(schema, NodeSchema):
-                continue
-
-            if schema.human_friendly_id:
-                migrations.append(
+            schema = schema_branch.get(name=node_schema_kind, duplicate=False)
+            migrations.extend(
+                [
                     NodeAttributeAddMigration(
                         new_node_schema=schema,
                         previous_node_schema=schema,
                         schema_path=SchemaPath(
                             schema_kind=schema.kind, path_type=SchemaPathType.ATTRIBUTE, field_name="human_friendly_id"
                         ),
-                    )
-                )
-
-            if schema.display_label or schema.display_labels:
-                migrations.append(
+                    ),
                     NodeAttributeAddMigration(
                         new_node_schema=schema,
                         previous_node_schema=schema,
                         schema_path=SchemaPath(
                             schema_kind=schema.kind, path_type=SchemaPathType.ATTRIBUTE, field_name="display_label"
                         ),
-                    )
-                )
+                    ),
+                ]
+            )
 
         for migration in migrations:
             try:
