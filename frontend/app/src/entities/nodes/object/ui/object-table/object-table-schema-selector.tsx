@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { useQueryState } from "nuqs";
 import React from "react";
-import { StringParam, useQueryParams } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -23,12 +23,9 @@ import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [, setQsp] = useQueryParams({
-    [QSP.KIND]: StringParam,
-    [QSP.FILTER]: StringParam,
-  });
+  const [, setKind] = useQueryState(QSP.KIND);
+  const [, setFilter] = useQueryState(QSP.FILTER);
   const { filters, baseSchema, selectedSchema } = useObjectTableContext();
-
   const items = React.useMemo<ModelSchema[]>(() => {
     if (!isGenericSchema(baseSchema)) return [];
     const inheritingKind = baseSchema.used_by ?? [];
@@ -55,12 +52,12 @@ export function ObjectTableSchemaSelector() {
           <ComboboxItem
             value={baseSchema.hash}
             selectedValue={selectedSchema.hash}
-            onSelect={() => {
+            onSelect={async () => {
               const pruned = removeFiltersNotInSchema(filters, baseSchema);
-              setQsp({
-                [QSP.KIND]: undefined,
-                [QSP.FILTER]: pruned.length ? JSON.stringify(pruned) : undefined,
-              });
+              await Promise.all([
+                setKind(null),
+                setFilter(pruned.length ? JSON.stringify(pruned) : null),
+              ]);
               setIsOpen(false);
             }}
           >
@@ -73,12 +70,12 @@ export function ObjectTableSchemaSelector() {
                 key={schema.hash}
                 value={schema.hash}
                 selectedValue={selectedSchema.hash}
-                onSelect={() => {
+                onSelect={async () => {
                   const pruned = removeFiltersNotInSchema(filters, schema);
-                  setQsp({
-                    [QSP.KIND]: schema.kind,
-                    [QSP.FILTER]: pruned.length ? JSON.stringify(pruned) : undefined,
-                  });
+                  await Promise.all([
+                    setKind(schema.kind!),
+                    setFilter(pruned.length ? JSON.stringify(pruned) : null),
+                  ]);
                   setIsOpen(false);
                 }}
               >

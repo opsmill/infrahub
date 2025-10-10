@@ -1,5 +1,5 @@
+import { parseAsString, useQueryState } from "nuqs";
 import React from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -8,11 +8,11 @@ import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {
-  const [kindInQsp, setKindInQsp] = useQueryParam(QSP.KIND, StringParam);
+  const [kindInQsp, setKindInQsp] = useQueryState(QSP.KIND, parseAsString);
 
   React.useEffect(() => {
     if (!isGenericSchema(schema) || !schema.used_by?.find((kind) => kind === kindInQsp)) {
-      return setKindInQsp(undefined, "replaceIn");
+      setKindInQsp(null);
     }
   }, [kindInQsp, schema.hash]);
 

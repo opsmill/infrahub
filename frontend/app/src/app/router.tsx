@@ -1,4 +1,3 @@
-import queryString from "query-string";
 import { RouterProvider } from "react-aria-components";
 import {
   createBrowserRouter,
@@ -11,14 +10,12 @@ import {
   useNavigate,
 } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
-import { QueryParamProvider } from "use-query-params";
 
 import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
 import type { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
-import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
 
 import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
@@ -48,25 +45,17 @@ function RootProviders({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   return (
-    <QueryParamProvider
-      adapter={ReactRouter7Adapter}
-      options={{
-        searchStringToObject: queryString.parse,
-        objectToSearchString: queryString.stringify,
-      }}
-    >
-      <RouterProvider navigate={navigate} useHref={useAbsoluteHref}>
-        <ToastContainer
-          hideProgressBar={true}
-          transition={Slide}
-          autoClose={5000}
-          closeOnClick={false}
-          newestOnTop
-          position="bottom-right"
-        />
-        {children}
-      </RouterProvider>
-    </QueryParamProvider>
+    <RouterProvider navigate={navigate} useHref={useAbsoluteHref}>
+      <ToastContainer
+        hideProgressBar={true}
+        transition={Slide}
+        autoClose={5000}
+        closeOnClick={false}
+        newestOnTop
+        position="bottom-right"
+      />
+      {children}
+    </RouterProvider>
   );
 }
 

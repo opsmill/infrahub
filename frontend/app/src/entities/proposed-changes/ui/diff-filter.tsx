@@ -1,6 +1,6 @@
 import { useQuery } from "@apollo/client";
+import { parseAsString, useQueryState } from "nuqs";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -36,7 +36,7 @@ type ProposedChangeDiffFilterProps = {
 };
 
 export const ProposedChangeDiffFilter = ({ branch, filters }: ProposedChangeDiffFilterProps) => {
-  const [qsp, setQsp] = useQueryParam(QSP.STATUS, StringParam);
+  const [qsp, setQsp] = useQueryState(QSP.STATUS, parseAsString.withOptions({ shallow: false }));
 
   const { error, data = {} } = useQuery(getProposedChangesDiffSummary, {
     skip: !branch,
@@ -54,11 +54,7 @@ export const ProposedChangeDiffFilter = ({ branch, filters }: ProposedChangeDiff
   });
 
   const handleFilter = (value: string) => {
-    // Removes filter
-    if (value === qsp) return setQsp(undefined);
-
-    // Set filter
-    setQsp(value);
+    setQsp(value === qsp ? null : value);
   };
 
   if (error) {

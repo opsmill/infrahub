@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
-import { ArrayParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -28,7 +28,10 @@ import { SchemaHelpMenu } from "./schema-help-menu";
 import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
-  const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
+  const [selectedKind, setKinds] = useQueryState(
+    QSP.KIND,
+    parseAsNativeArrayOf(parseAsString).withDefault([])
+  );
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
@@ -51,8 +54,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
             className="absolute top-0 max-h-full w-full"
             schema={schema}
             onClose={() => {
-              const nextKinds = [...selectedKind];
-              delete nextKinds[index];
+              const nextKinds = selectedKind.filter((_, i) => i !== index);
               setKinds(nextKinds);
             }}
             style={{

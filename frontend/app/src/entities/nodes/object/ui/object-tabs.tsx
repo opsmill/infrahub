@@ -1,5 +1,5 @@
+import { useQueryState } from "nuqs";
 import { Link, type LinkProps, useLocation } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -53,7 +53,7 @@ export function RelationshipTab({
     relationshipName: relationshipSchema.name,
   });
   const { pathname } = useLocation();
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
 
   return (
     <ObjectDetailsTab

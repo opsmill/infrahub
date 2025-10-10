@@ -1,8 +1,8 @@
 import { atom, useAtom } from "jotai";
 import { CornerDownLeftIcon } from "lucide-react";
+import { useQueryState } from "nuqs";
 import React from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Col } from "@/shared/components/container";
@@ -21,7 +21,7 @@ export const currentIpNamespaceAtom = atom<NodeCore>(undefined as unknown as Nod
 
 export function IpNamespaceProvider({ children }: { children: React.ReactNode }) {
   const [currentIpNamespace, setCurrentIpNamespace] = useAtom(currentIpNamespaceAtom);
-  const [namespaceQSP] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const [namespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
   const { data, error, isPending } = useGetIpNamespaceList();
   const namespaceList = React.useMemo(() => data?.pages.flat() ?? [], [data]);
 
@@ -68,14 +68,14 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
 export function useCurrentIpNamespace() {
   const { objectKind } = useParams();
   const navigate = useNavigate();
-  const [_, setNamespaceQSP] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
+  const [_, setNamespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
   const [currentIpNamespace, setCurrentIpNamespace] = useAtom(currentIpNamespaceAtom);
 
   const handleSetCurrentIpNamespace = React.useCallback(
     (newValue: IpNamespace) => {
       setCurrentIpNamespace(newValue);
       if (!newValue.id || newValue.id === currentIpNamespace?.id || newValue?.default?.value) {
-        setNamespaceQSP(undefined); // Removes QSP for default namespace
+        setNamespaceQSP(null); // Removes QSP for default namespace
       } else {
         setNamespaceQSP(newValue.id);
       }

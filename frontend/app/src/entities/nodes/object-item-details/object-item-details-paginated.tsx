@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useCallback } from "react";
 import { Navigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import {
   DEFAULT_BRANCH_NAME,
@@ -53,7 +53,7 @@ export default function ObjectItemDetails({
 }: ObjectDetailsProps) {
   const { objectKind, objectid } = useParams();
 
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);

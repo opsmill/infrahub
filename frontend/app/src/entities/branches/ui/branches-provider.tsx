@@ -1,8 +1,8 @@
 import { useAtom } from "jotai";
+import { useQueryState } from "nuqs";
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -35,7 +35,7 @@ export function useCurrentBranch() {
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: branches, isPending, error } = useGetBranches();
   const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
-  const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const [branchInQueryString] = useQueryState(QSP.BRANCH);
   const navigate = useNavigate();
 
   useEffect(() => {
