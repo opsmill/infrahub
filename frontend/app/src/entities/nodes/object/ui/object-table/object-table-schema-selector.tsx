@@ -24,8 +24,7 @@ import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
   const [, setKind] = useQueryState(QSP.KIND);
-  const [, setFilter] = useQueryState(QSP.FILTER);
-  const { filters, baseSchema, selectedSchema } = useObjectTableContext();
+  const { filters, setFilters, baseSchema, selectedSchema } = useObjectTableContext();
   const items = React.useMemo<ModelSchema[]>(() => {
     if (!isGenericSchema(baseSchema)) return [];
     const inheritingKind = baseSchema.used_by ?? [];
@@ -54,10 +53,7 @@ export function ObjectTableSchemaSelector() {
             selectedValue={selectedSchema.hash}
             onSelect={async () => {
               const pruned = removeFiltersNotInSchema(filters, baseSchema);
-              await Promise.all([
-                setKind(null),
-                setFilter(pruned.length ? JSON.stringify(pruned) : null),
-              ]);
+              await Promise.all([setKind(null), setFilters(pruned)]);
               setIsOpen(false);
             }}
           >
@@ -72,10 +68,7 @@ export function ObjectTableSchemaSelector() {
                 selectedValue={selectedSchema.hash}
                 onSelect={async () => {
                   const pruned = removeFiltersNotInSchema(filters, schema);
-                  await Promise.all([
-                    setKind(schema.kind!),
-                    setFilter(pruned.length ? JSON.stringify(pruned) : null),
-                  ]);
+                  await Promise.all([setKind(schema.kind!), setFilters(pruned)]);
                   setIsOpen(false);
                 }}
               >

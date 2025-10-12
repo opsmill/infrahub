@@ -1,4 +1,4 @@
-import { parseAsString, useQueryState } from "nuqs";
+import { useQueryState } from "nuqs";
 import React from "react";
 
 import { QSP } from "@/config/qsp";
@@ -8,7 +8,7 @@ import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export const useSchemaSelectedInObjectTable = (schema: ModelSchema) => {
-  const [kindInQsp, setKindInQsp] = useQueryState(QSP.KIND, parseAsString);
+  const [kindInQsp, setKindInQsp] = useQueryState(QSP.KIND);
 
   React.useEffect(() => {
     if (!isGenericSchema(schema) || !schema.used_by?.find((kind) => kind === kindInQsp)) {

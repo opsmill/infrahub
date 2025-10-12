@@ -25,7 +25,10 @@ export function GlobalBranchFilter({ ...props }: FilterTagProps) {
   const currentFilter = filters.find((filter) => filter.name === branchFilterName);
 
   const handleRemoveFilter = () => {
-    setFilters([...filters, { name: branchFilterName, value: null }]);
+    setFilters([
+      ...filters.filter((filter) => filter.name !== branchFilterName),
+      { name: branchFilterName, value: null },
+    ]);
   };
 
   useEffect(() => {

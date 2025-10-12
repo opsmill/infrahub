@@ -23,7 +23,7 @@ export type Filter = z.infer<typeof FilterSchema>[number];
 const useFilters = (): [Array<Filter>, (filter: Array<Filter>) => void] => {
   const [filters, setFiltersInQueryString] = useQueryState(
     QSP.FILTER,
-    parseAsJson(FilterSchema).withDefault([])
+    parseAsJson(FilterSchema).withDefault([]).withOptions({ history: "push" })
   );
 
   const setFilters = (newFilters: Filter[]) => {
