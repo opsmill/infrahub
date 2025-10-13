@@ -38,6 +38,7 @@ export const ObjectTableProvider = ({
   );
 
   React.useEffect(() => {
+    if (!kindInQsp) return;
     if (!isGenericSchema(schema) || !schema.used_by?.find((kind) => kind === kindInQsp)) {
       setObjectTableQueryParams({ kind: null });
     }

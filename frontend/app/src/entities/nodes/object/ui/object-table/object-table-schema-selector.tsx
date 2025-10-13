@@ -59,7 +59,7 @@ export function ObjectTableSchemaSelector() {
           <ComboboxItem
             value={baseSchema.hash}
             selectedValue={selectedSchema.hash}
-            onSelect={async () => {
+            onSelect={() => {
               const pruned = removeFiltersNotInSchema(filters, baseSchema);
               setObjectTableQueryParams({
                 kind: null,
@@ -77,7 +77,7 @@ export function ObjectTableSchemaSelector() {
                 key={schema.hash}
                 value={schema.hash}
                 selectedValue={selectedSchema.hash}
-                onSelect={async () => {
+                onSelect={() => {
                   const pruned = removeFiltersNotInSchema(filters, schema);
                   setObjectTableQueryParams({
                     kind: schema.kind,
