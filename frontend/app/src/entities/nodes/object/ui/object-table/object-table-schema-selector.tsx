@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useQueryState } from "nuqs";
+import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
 import { QSP } from "@/config/qsp";
@@ -14,6 +14,7 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
+import { FilterSchema } from "@/shared/hooks/useFilters";
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { getSchema } from "@/entities/schema/domain/get-schema";
@@ -23,8 +24,15 @@ import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [, setKind] = useQueryState(QSP.KIND);
-  const { filters, setFilters, baseSchema, selectedSchema } = useObjectTableContext();
+  const [{ filters }, setObjectTableQueryParams] = useQueryStates(
+    {
+      [QSP.KIND]: parseAsString,
+      [QSP.FILTER]: parseAsJson(FilterSchema).withDefault([]),
+    },
+    { history: "push" }
+  );
+
+  const { baseSchema, selectedSchema } = useObjectTableContext();
   const items = React.useMemo<ModelSchema[]>(() => {
     if (!isGenericSchema(baseSchema)) return [];
     const inheritingKind = baseSchema.used_by ?? [];
@@ -53,7 +61,10 @@ export function ObjectTableSchemaSelector() {
             selectedValue={selectedSchema.hash}
             onSelect={async () => {
               const pruned = removeFiltersNotInSchema(filters, baseSchema);
-              await Promise.all([setKind(null), setFilters(pruned)]);
+              setObjectTableQueryParams({
+                kind: null,
+                filters: pruned,
+              });
               setIsOpen(false);
             }}
           >
@@ -68,7 +79,10 @@ export function ObjectTableSchemaSelector() {
                 selectedValue={selectedSchema.hash}
                 onSelect={async () => {
                   const pruned = removeFiltersNotInSchema(filters, schema);
-                  await Promise.all([setKind(schema.kind!), setFilters(pruned)]);
+                  setObjectTableQueryParams({
+                    kind: schema.kind,
+                    filters: pruned,
+                  });
                   setIsOpen(false);
                 }}
               >
