@@ -1,4 +1,4 @@
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 
 import { DiffNodeProperty } from "@/entities/diff/node-diff/node-property";
 import { DiffThread } from "@/entities/diff/node-diff/thread";
@@ -22,6 +22,7 @@ export const DiffNodeAttribute = ({
   status,
 }: DiffNodeAttributeProps) => {
   const { "*": branchName } = useParams();
+  const { pathname } = useLocation();
 
   return (
     <DiffRow
@@ -43,7 +44,9 @@ export const DiffNodeAttribute = ({
       right={newValue}
     >
       <div className="divide-y divide-gray-200 border-gray-200 border-t">
-        {attribute.conflict && <Conflict conflict={attribute.conflict} />}
+        {attribute.conflict && pathname.includes("/proposed-changes") && (
+          <Conflict conflict={attribute.conflict} />
+        )}
 
         {attribute.properties.map((property, index: number) => (
           <DiffNodeProperty key={index} property={property} status={status} />
