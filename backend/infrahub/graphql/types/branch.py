@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, String
+from graphene import Boolean, Field, Int, List, NonNull, String
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -44,3 +44,11 @@ class BranchType(InfrahubObjectType):
                 return []
 
             return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
+
+
+class InfrahubBranchType(InfrahubObjectType):
+    total_count = Int()
+    total_pages = Int()
+    current_page = Int()
+    per_page = Int()
+    branches = List(of_type=NonNull(BranchType))

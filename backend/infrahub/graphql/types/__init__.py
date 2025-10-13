@@ -21,7 +21,7 @@ from .attribute import (
     StrAttributeType,
     TextAttributeType,
 )
-from .branch import BranchType
+from .branch import BranchType, InfrahubBranchType
 from .interface import InfrahubInterface
 from .node import InfrahubObject
 from .permission import PaginatedObjectPermission
@@ -41,6 +41,7 @@ __all__ = [
     "DropdownType",
     "IPHostType",
     "IPNetworkType",
+    "InfrahubBranchType",
     "InfrahubInterface",
     "InfrahubObject",
     "InfrahubObjectType",
