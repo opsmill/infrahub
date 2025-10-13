@@ -504,13 +504,13 @@ class SchemaBranch:
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
+        self.process_nodes_state()
+        self.process_attributes_state()
+        self.process_relationships_state()
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
         self.process_cardinality_counts()
-        self.process_attributes_state()
-        self.process_nodes_state()
-        self.process_relationships_state()
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
