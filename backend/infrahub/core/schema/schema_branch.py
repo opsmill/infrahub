@@ -1278,6 +1278,15 @@ class SchemaBranch:
                     for field in compulsorily_matching_fields:
                         if not hasattr(relationship_a, field) or not hasattr(relationship_b, field):
                             continue
+
+                        equal_delete_actions = (None, RelationshipDeleteBehavior.NO_ACTION)
+                        if (
+                            field == "on_delete"
+                            and getattr(relationship_a, field) in equal_delete_actions
+                            and getattr(relationship_b, field) in equal_delete_actions
+                        ):
+                            continue
+
                         if getattr(relationship_a, field) != getattr(relationship_b, field):
                             raise ValueError(
                                 f"{node_schema.kind} inherits from '{node_a.kind}' & '{node_b.kind}'"
