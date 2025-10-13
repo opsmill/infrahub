@@ -16,7 +16,7 @@ export type ResolveConflictFromApiParams = {
   selection: ConflictSelection;
 };
 
-export const resolveConflictFromApi = ({ id, selection }: ResolveConflictFromApiParams) => {
+export const resolveConflictFromApi = async ({ id, selection }: ResolveConflictFromApiParams) => {
   return graphqlClient.mutate({
     mutation: RESOLVE_CONFLICT,
     variables: {
