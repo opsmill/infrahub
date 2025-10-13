@@ -4,7 +4,7 @@ import { resolveConflictFromApi } from "@/entities/diff/api/resolve-conflict-fro
 
 export type ResolveConflictParams = {
   id: string;
-  selection: ConflictSelection;
+  selection: ConflictSelection | null;
 };
 
 export type ResolveConflict = (params: ResolveConflictParams) => Promise<void>;

@@ -13,7 +13,7 @@ mutation RESOLVE_CONFLICT ($id: String, $selection: ConflictSelection) {
 
 export type ResolveConflictFromApiParams = {
   id: string;
-  selection: ConflictSelection;
+  selection: ConflictSelection | null;
 };
 
 export const resolveConflictFromApi = async ({ id, selection }: ResolveConflictFromApiParams) => {

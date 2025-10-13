@@ -25,7 +25,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
 
   const { isAuthenticated } = useAuth();
 
-  const handleAccept = async (conflictValue: ConflictSelection) => {
+  const handleAccept = (conflictValue: ConflictSelection) => {
     const newValue = conflictValue === selectedBranch ? null : conflictValue;
 
     mutate(
