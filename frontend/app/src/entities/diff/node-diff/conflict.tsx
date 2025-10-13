@@ -16,7 +16,7 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 
 interface ConflictData {
   id: string;
-  selectedBranch: ConflictSelection;
+  selectedBranch?: ConflictSelection;
 }
 
 export const Conflict = ({ id, selectedBranch }: ConflictData) => {
