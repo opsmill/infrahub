@@ -1,12 +1,11 @@
 import { useLocation, useParams } from "react-router";
 
+import { Conflict } from "@/entities/diff/node-diff/conflict";
 import { DiffNodeProperty } from "@/entities/diff/node-diff/node-property";
 import { DiffThread } from "@/entities/diff/node-diff/thread";
 import { DiffAttribute, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffRow } from "@/entities/diff/node-diff/utils";
-
-import { BadgeConflict } from "../ui/diff-badge";
-import { Conflict } from "./conflict";
+import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 
 type DiffNodeAttributeProps = {
   attribute: DiffAttribute;
