@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import type { FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -12,7 +11,9 @@ import { useConvertObjectMutation } from "@/entities/nodes/convert/domain/conver
 import { useGetObjectConvertFieldsMapping } from "@/entities/nodes/convert/domain/get-object-convert-fields-mapping.query";
 import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
 import { ConvertFormField } from "@/entities/nodes/convert/ui/convert-form-field";
+import { getFieldsMappingPayload } from "@/entities/nodes/convert/utils/get-fields-mapping-payload";
 import type { NodeObject } from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/types";
 
 export default function ConvertFormWrapper({
@@ -63,84 +64,29 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
   const handleSubmit = async (formData: {
     [key: string]: FormFieldValue | ConvertFormFieldValue;
   }) => {
-    const fieldsMapping = fields.reduce((acc, field) => {
-      const fieldData = formData[field.name];
-
-      if (fieldData?.source?.type === "source") {
-        return {
-          ...acc,
-          [field.name]: {
-            source_field: fieldData.source.name,
-          },
-        };
-      }
-
-      if (Array.isArray(fieldData?.value) && field.type !== "List") {
-        return {
-          ...acc,
-          [field.name]: {
-            data: { peer_ids: fieldData.value },
-          },
-        };
-      }
-
-      if (fieldData?.source?.node) {
-        return {
-          ...acc,
-          [field.name]: {
-            data: { peer_id: fieldData.value },
-          },
-        };
-      }
-
-      if (fieldData?.value) {
-        return {
-          ...acc,
-          [field.name]: {
-            data: { attribute_value: fieldData.value },
-          },
-        };
-      }
-
-      return {
-        ...acc,
-        [field.name]: {
-          use_default_value: true,
-        },
-      };
-    }, {});
-
-    if (!sourceObject.id || !targetSchema.kind) {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message="Missing required object ID or target kind for conversion"
-        />
-      );
-      return;
-    }
+    const fieldsMapping = getFieldsMappingPayload(fields, formData);
 
     await convertObject(
       {
-        nodeId: sourceObject.id as string,
-        targetKind: targetSchema.kind as string,
+        nodeId: sourceObject.id,
+        targetKind: targetSchema.kind!,
         fieldsMapping,
       },
       {
         onSuccess: async (result) => {
-          toast(<Alert type={ALERT_TYPES.SUCCESS} message="Object converted!" />);
-          const path = constructPath(`/objects/${targetSchema.kind}/${result.id}`);
+          toast(
+            <Alert
+              type={ALERT_TYPES.SUCCESS}
+              message={`Successfully converted ${sourceSchema.label} to ${targetSchema.label}`}
+            />
+          );
+          const path = getObjectDetailsUrl(targetSchema.kind!, result.id);
 
           navigate(path);
         },
         onError: (error) => {
-          console.error("Error when retrieving mappings: ", error);
-          toast(
-            <Alert
-              type={ALERT_TYPES.ERROR}
-              message="An error occurred while converting the object"
-            />
-          );
+          console.error("Error during object conversion: ", error);
+          toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
         },
       }
     );

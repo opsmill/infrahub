@@ -12,6 +12,7 @@ import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
+import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
@@ -37,16 +38,16 @@ export function getObjectIdentifierColumns(
           />
         );
       },
-      cell: ({ cell, row }) => {
-        const value: string = cell.getValue() ?? "-";
+      cell: ({ cell, row, table }) => {
+        const label = cell.getValue() ?? "-";
 
         return (
           <TableIdentifierCell
-            objectKind={row.original.__typename as string}
-            objectId={row.original.id as string}
-            label={value}
+            objectKind={row.original.__typename}
+            objectId={row.original.id}
+            label={label}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
           />
         );
       },

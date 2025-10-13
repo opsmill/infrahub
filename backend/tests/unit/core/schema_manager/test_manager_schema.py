@@ -3380,6 +3380,87 @@ def test_schema_branch_validates_inherited_relationships_fields(test_case: Inher
     assert exc.value.args[0] == test_case.error_message
 
 
+async def test_schema_branch_processes_relationships_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+):
+    schema = {
+        "nodes": [
+            {
+                "name": "Thing",
+                "namespace": "Infra",
+                "label": "Thing",
+                "attributes": [{"name": "name", "label": "Name", "kind": "Text", "optional": False, "unique": True}],
+                "relationships": [
+                    {
+                        "name": "other_thing",
+                        "peer": "InfraOtherThing",
+                        "kind": "Attribute",
+                        "state": "absent",
+                        "cardinality": "one",
+                        "optional": True,
+                    },
+                ],
+            },
+            {
+                "name": "OtherThing",
+                "namespace": "Infra",
+                "label": "OtherThing",
+                "attributes": [
+                    {"name": "name", "label": "Name", "kind": "Text", "optional": False, "unique": True},
+                ],
+            },
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "other_thing" not in returned_schema.get(name="InfraThing").relationship_names
+
+
+async def test_schema_branch_processes_nodes_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+):
+    schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "state": "absent",
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "state": "absent",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    with pytest.raises(SchemaNotFoundError) as exc:
+        returned_schema.get(name="TestWidget")
+    assert exc.value.args[0] == "Unable to find the schema 'TestWidget' in the registry"
+
+    with pytest.raises(SchemaNotFoundError) as exc:
+        returned_schema.get(name="TestGenericInterface")
+    assert exc.value.args[0] == "Unable to find the schema 'TestGenericInterface' in the registry"
+
+
 async def test_process_deprecations(organization_schema):
     SCHEMA1 = {
         "name": "Criticality",

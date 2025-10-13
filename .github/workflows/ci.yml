@@ -559,6 +559,63 @@ jobs:
           parallel: true
           file: frontend/app/coverage/lcov.info
 
+  graphql-schema:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.12
+      - name: "Setup environment"
+        run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+          poetry run pip install invoke toml
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
+      - name: "Install Package"
+        run: "poetry install"
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ./schema/package-lock.json
+      - name: "Install format-graphql"
+        working-directory: schema
+        run: npm install
+
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Create docker compose override
+        run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
+
+      - name: Start dependencies
+        run: poetry run invoke dev.build dev.deps
+
+      - name: Run validation
+        run: poetry run invoke schema.validate-graphqlschema
+
   documentation:
     defaults:
       run:

@@ -1,9 +1,9 @@
 import { gql, useQuery } from "@apollo/client";
-import { formatISO, isBefore, parseISO } from "date-fns";
-import { useAtomValue } from "jotai/index";
-import * as R from "ramda";
+import { formatISO } from "date-fns";
+import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import * as R from "remeda";
 
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
 
@@ -35,13 +35,6 @@ type tThread = {
   refetch?: Function;
   displayContext?: boolean; // For conversation view only
 };
-
-// Sort by date desc
-export const sortByDate = R.sort((a: any, b: any) =>
-  isBefore(parseISO(a.created_at?.value || new Date()), parseISO(b.created_at?.value || new Date()))
-    ? -1
-    : 1
-);
 
 export const Thread = (props: tThread) => {
   const { thread, refetch, displayContext } = props;
@@ -167,7 +160,9 @@ export const Thread = (props: tThread) => {
   };
 
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
-  const sortedComments = sortByDate(comments);
+
+  const sortedComments = R.sortBy(comments, (x) => new Date(x.created_at.value).getTime());
+
   const isResolved = thread?.resolved?.value;
   const idForLabel = `checkbox-resolve-thread${thread?.id}`;
 
