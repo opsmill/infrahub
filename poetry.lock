@@ -3843,14 +3843,14 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.4.22"
+version = "3.4.23"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.14,>=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect-3.4.22-py3-none-any.whl", hash = "sha256:41743e2817195e1ef8fdef2e65c4b16da1308cf8f5dd1a85e679c8cbe7186710"},
-    {file = "prefect-3.4.22.tar.gz", hash = "sha256:4b46a793e9907a4c8539b04bb2fdbc609c9810f690d7673a3bc8d0c9aebdfc84"},
+    {file = "prefect-3.4.23-py3-none-any.whl", hash = "sha256:0422861f0d1729d56546501eeebadf255ddf21b8041aa2bc2715168b4eb615bb"},
+    {file = "prefect-3.4.23.tar.gz", hash = "sha256:5c6800737bd577ede070fa3852f608235c715e72a897d41fd3b9317f67fde8c3"},
 ]
 
 [package.dependencies]
@@ -3931,18 +3931,18 @@ sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.4"
+version = "0.2.5"
 description = "Prefect integrations with Redis."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect_redis-0.2.4-py3-none-any.whl", hash = "sha256:ed6effb75f84d959812fcd3b8dd016f2d2ad8dfa25354008ca733babb83a112c"},
-    {file = "prefect_redis-0.2.4.tar.gz", hash = "sha256:9b3be094665d98aee4f51fd67d6fe0c1fadd8e89f5be4f8aabf0df215c72f6bb"},
+    {file = "prefect_redis-0.2.5-py3-none-any.whl", hash = "sha256:a0febf43c1a5bf671e3cc975b4b66f35432a29f73468b3fd4bb60b6821de68f8"},
+    {file = "prefect_redis-0.2.5.tar.gz", hash = "sha256:18885e64cf088d5489799a5b53890880a690a15c99b36c738990a4b91d18e093"},
 ]
 
 [package.dependencies]
-prefect = ">=3.4.9"
+prefect = ">=3.4.18"
 redis = ">=6.0.0"
 
 [[package]]
@@ -6527,4 +6527,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12, < 3.13"
-content-hash = "5b8d31ecc13ad87dc98da7f2122d2a9979b9a8ea1078cb15941ff3ac26e5c15f"
+content-hash = "0d327220e0406608d72c881f9dd382cbd0a88b060697189d8e3b61895a2d82ce"

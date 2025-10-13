@@ -6,21 +6,21 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 import type { ConvertFieldMapping, ConvertFormFieldValue } from "@/entities/nodes/convert/types";
 import { ConvertFieldLabel } from "@/entities/nodes/convert/ui/convert-field-label";
-import {
-  ConvertSourceAttributeCombobox,
-  ConvertSourceRelationshipManyInput,
-  ConvertSourceRelationshipOneInput,
-} from "@/entities/nodes/convert/ui/convert-source-input";
+import { ConvertSourceAttributeInput } from "@/entities/nodes/convert/ui/convert-source-attribute-input";
+import { ConvertSourceRelationshipManyInput } from "@/entities/nodes/convert/ui/convert-source-relationship-many-input";
+import { ConvertSourceRelationshipOneInput } from "@/entities/nodes/convert/ui/convert-source-relationship-one-input";
 import type { NodeObject } from "@/entities/nodes/types";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
-type ConvertSourceFieldProps = Omit<DynamicFieldProps, "defaultValue"> & {
+interface ConvertSourceFieldProps extends Omit<DynamicFieldProps, "defaultValue"> {
   objectDetailsData: NodeObject;
   sourceSchema: ModelSchema;
   mapping?: ConvertFieldMapping;
   defaultValue: ConvertFormFieldValue;
-};
+  attribute?: AttributeSchema;
+  relationship?: RelationshipSchema;
+}
 
 export function ConvertSourceField({
   objectDetailsData,
@@ -51,17 +51,16 @@ export function ConvertSourceField({
               unique={unique}
               required={!!rules?.required}
               description={description}
-              kind={attribute?.kind ?? schemaKindLabel[relationship?.peer]}
+              kind={attribute?.kind ?? schemaKindLabel[relationship?.peer ?? ""] ?? ""}
             />
 
             {attribute && (
               <FormInput>
-                <ConvertSourceAttributeCombobox
+                <ConvertSourceAttributeInput
                   sourceObject={objectDetailsData}
                   sourceSchema={sourceSchema}
                   mapping={mapping}
                   attribute={attribute}
-                  field={field}
                   value={field.value}
                   onChange={field.onChange}
                 />

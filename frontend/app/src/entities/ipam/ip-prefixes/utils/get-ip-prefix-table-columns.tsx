@@ -17,7 +17,8 @@ import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
+import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
+import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -41,7 +42,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
           />
         );
       },
-      cell: ({ cell, row }) => {
+      cell: ({ cell, row, table }) => {
         const value: string = cell.getValue() ?? "-";
         const ipPrefixNode = row.original;
 
@@ -64,7 +65,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
             objectKind={ipPrefixNode.__typename as string}
             objectId={ipPrefixNode.id as string}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
             label={
               <Row className="gap-2.5">
                 {[...Array(ipPrefixNode.ancestors.count)].map((_, i) => (
