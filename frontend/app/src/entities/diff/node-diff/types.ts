@@ -1,3 +1,5 @@
+import { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
+
 export const DIFF_STATUS = {
   ADDED: "ADDED",
   REMOVED: "REMOVED",
@@ -24,7 +26,7 @@ export type DiffConflict = {
   diff_branch_changed_at: "2024-08-21T19:06:12.429813+00:00";
   diff_branch_value: any;
   uuid: string;
-  selected_branch?: string;
+  selected_branch?: ConflictSelection | null;
 };
 
 export type DiffProperty = {
