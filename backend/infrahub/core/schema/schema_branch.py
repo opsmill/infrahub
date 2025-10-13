@@ -1241,8 +1241,8 @@ class SchemaBranch:
             self.validate_node_inherited_relationship_fields(node_schema)
 
     def validate_node_inherited_relationship_fields(self, node_schema: NodeSchema) -> None:
-        nodes = [self.get(name=node_name, duplicate=False) for node_name in node_schema.inherit_from]
-        relationship_names = [node.relationship_names for node in nodes]
+        generics = [self.get(name=node_name, duplicate=False) for node_name in node_schema.inherit_from]
+        relationship_names = [node.relationship_names for node in generics]
         related_relationship_names = set().union(
             *[
                 set(relationship_name_a) & set(relationship_name_b)
@@ -1250,7 +1250,30 @@ class SchemaBranch:
                 for relationship_name_b in relationship_names[index + 1 :]
             ]
         )
-        compulsorily_matching_fields = (
+        # Check that the relationship properties match
+        # for every generic node in generics list having related relationship names
+        for index, generic_a in enumerate(generics):
+            for generic_b in generics[index + 1 :]:
+                for relationship_name in related_relationship_names:
+                    try:
+                        relationship_a = generic_a.get_relationship(name=relationship_name)
+                        relationship_b = generic_b.get_relationship(name=relationship_name)
+                    except ValueError:
+                        continue
+
+                    matched, _property = self._check_relationship_properties_match(
+                        relationship_a=relationship_a, relationship_b=relationship_b
+                    )
+                    if not matched:
+                        raise ValueError(
+                            f"{node_schema.kind} inherits from '{generic_a.kind}' & '{generic_b.kind}'"
+                            f" with different '{_property}' on the '{relationship_name}' relationship"
+                        )
+
+    def _check_relationship_properties_match(
+        self, relationship_a: RelationshipSchema, relationship_b: RelationshipSchema
+    ) -> tuple[bool, str | None]:
+        compulsorily_matching_properties = (
             "name",
             "peer",
             "kind",
@@ -1266,32 +1289,21 @@ class SchemaBranch:
             "on_delete",
             "read_only",
         )
-        for index, node_a in enumerate(nodes):
-            for node_b in nodes[index + 1 :]:
-                for relationship_name in related_relationship_names:
-                    try:
-                        relationship_a = node_a.get_relationship(name=relationship_name)
-                        relationship_b = node_b.get_relationship(name=relationship_name)
-                    except ValueError:
-                        continue
+        for _property in compulsorily_matching_properties:
+            if not hasattr(relationship_a, _property) or not hasattr(relationship_b, _property):
+                continue
 
-                    for field in compulsorily_matching_fields:
-                        if not hasattr(relationship_a, field) or not hasattr(relationship_b, field):
-                            continue
+            equal_delete_actions = (None, RelationshipDeleteBehavior.NO_ACTION)
+            if (
+                _property == "on_delete"
+                and getattr(relationship_a, _property) in equal_delete_actions
+                and getattr(relationship_b, _property) in equal_delete_actions
+            ):
+                continue
 
-                        equal_delete_actions = (None, RelationshipDeleteBehavior.NO_ACTION)
-                        if (
-                            field == "on_delete"
-                            and getattr(relationship_a, field) in equal_delete_actions
-                            and getattr(relationship_b, field) in equal_delete_actions
-                        ):
-                            continue
-
-                        if getattr(relationship_a, field) != getattr(relationship_b, field):
-                            raise ValueError(
-                                f"{node_schema.kind} inherits from '{node_a.kind}' & '{node_b.kind}'"
-                                f" with different '{field}' on the '{relationship_name}' relationship"
-                            )
+            if getattr(relationship_a, _property) != getattr(relationship_b, _property):
+                return False, _property
+        return True, None
 
     def process_dropdowns(self) -> None:
         for name in self.all_names:

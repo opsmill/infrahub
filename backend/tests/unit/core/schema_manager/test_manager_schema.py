@@ -3032,112 +3032,159 @@ class InheritedRelationshipsTestData:
 
 
 INHERITED_RELATIONSHIPS_TEST_CASES = [
-    InheritedRelationshipsTestData(
-        name="inherit-from-2-generics-peer-fail",
-        schema={
-            "generics": [
-                {
-                    "name": "GenericInterface",
-                    "namespace": "Network",
-                    "description": "Generic Network Interface",
-                    "label": "Interface",
-                    "include_in_menu": False,
-                    "display_labels": ["name__value"],
-                    "order_by": ["device__name__value", "name__value"],
-                    "uniqueness_constraints": [["device", "name__value"]],
-                    "human_friendly_id": ["device__name__value", "name__value"],
-                    "attributes": [
-                        {
-                            "name": "name",
-                            "kind": "Text",
-                            "description": "Name of the interface",
-                            "order_weight": 1000,
-                        }
-                    ],
-                    "relationships": [
-                        {
-                            "name": "device",
-                            "peer": "NetworkGenericDevice",
-                            "identifier": "device__interface",
-                            "optional": False,
-                            "cardinality": "one",
-                            "kind": "Parent",
-                            "order_weight": 1025,
-                        },
-                    ],
-                },
-                {
-                    "name": "IndexedInterface",
-                    "namespace": "Logical",
-                    "description": "Generic for an interface that is part of a logical device and has an index",
-                    "include_in_menu": False,
-                    "human_friendly_id": ["device__name__value", "index__value"],
-                    "uniqueness_constraints": [["device", "index__value"]],
-                    "attributes": [
-                        {
-                            "name": "index",
-                            "kind": "Number",
-                            "description": "Index of the interface in the device",
-                        }
-                    ],
-                    "relationships": [
-                        {
-                            "name": "device",
-                            "peer": "LogicalDevice",
-                            "cardinality": "one",
-                            "identifier": "device__interface",
-                            "optional": False,
-                        },
-                    ],
-                },
-                {
-                    "name": "Device",
-                    "namespace": "Logical",
-                    "description": "Generic for a logical device that could be part of a logical network",
-                    "include_in_menu": False,
-                    "attributes": [
-                        {
-                            "name": "index",
-                            "kind": "Number",
-                            "description": "Index of the device in the network",
-                        },
-                    ],
-                },
-            ],
-            "nodes": [
-                {
-                    "name": "Device",
-                    "namespace": "Network",
-                    "label": "Network device",
-                    "description": "Physical network port on a device",
-                    "attributes": [
-                        {
-                            "name": "name",
-                            "kind": "Text",
-                            "description": "Name of the interface",
-                            "unique": True,
-                            "optional": False,
-                            "order_weight": 1000,
-                        }
-                    ],
-                },
-                {
-                    "name": "Physical",
-                    "namespace": "Interface",
-                    "label": "Physical Interface",
-                    "description": "Physical network port on a device",
-                    "inherit_from": [
-                        "NetworkGenericInterface",
-                        "LogicalIndexedInterface",
-                    ],
-                },
-            ],
-        },
-        error_message=(
-            "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalIndexedInterface'"
-            " with different 'peer' on the 'device' relationship"
-        ),
-    ),
+    *[
+        InheritedRelationshipsTestData(
+            name=f"inherit-from-2-generics-{test_data['property']}-fail",
+            schema={
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Network",
+                        "description": "Generic Network Interface",
+                        "label": "Interface",
+                        "include_in_menu": False,
+                        "display_labels": ["name__value"],
+                        "order_by": ["device__name__value", "name__value"],
+                        "uniqueness_constraints": [["device", "name__value"]],
+                        "human_friendly_id": ["device__name__value", "name__value"],
+                        "attributes": [
+                            {
+                                "name": "name",
+                                "kind": "Text",
+                                "description": "Name of the interface",
+                                "order_weight": 1000,
+                            }
+                        ],
+                        "relationships": [test_data["relationships"][0]],
+                    },
+                    {
+                        "name": "IndexedInterface",
+                        "namespace": "Logical",
+                        "description": "Generic for an interface that is part of a logical device and has an index",
+                        "include_in_menu": False,
+                        "human_friendly_id": ["device__name__value", "index__value"],
+                        "uniqueness_constraints": [["device", "index__value"]],
+                        "attributes": [
+                            {
+                                "name": "index",
+                                "kind": "Number",
+                                "description": "Index of the interface in the device",
+                            }
+                        ],
+                        "relationships": [test_data["relationships"][1]],
+                    },
+                    {
+                        "name": "Device",
+                        "namespace": "Logical",
+                        "description": "Generic for a logical device that could be part of a logical network",
+                        "include_in_menu": False,
+                        "attributes": [
+                            {
+                                "name": "index",
+                                "kind": "Number",
+                                "description": "Index of the device in the network",
+                            },
+                        ],
+                    },
+                ],
+                "nodes": [
+                    {
+                        "name": "Device",
+                        "namespace": "Network",
+                        "label": "Network device",
+                        "description": "Physical network port on a device",
+                        "attributes": [
+                            {
+                                "name": "name",
+                                "kind": "Text",
+                                "description": "Name of the interface",
+                                "unique": True,
+                                "optional": False,
+                                "order_weight": 1000,
+                            }
+                        ],
+                    },
+                    {
+                        "name": "Physical",
+                        "namespace": "Interface",
+                        "label": "Physical Interface",
+                        "description": "Physical network port on a device",
+                        "inherit_from": [
+                            "NetworkGenericInterface",
+                            "LogicalIndexedInterface",
+                        ],
+                    },
+                ],
+            },
+            error_message=(
+                "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalIndexedInterface'"
+                f" with different '{test_data['property']}' on the 'device' relationship"
+            ),
+        )
+        for test_data in [
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "many",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                ],
+                "property": "cardinality",
+            },
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "NetworkGenericDevice",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "cardinality": "one",
+                        "kind": "Parent",
+                        "order_weight": 1025,
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                ],
+                "property": "peer",
+            },
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "on_delete": "cascade",
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "on_delete": "no-action",
+                    },
+                ],
+                "property": "on_delete",
+            },
+        ]
+    ],
     InheritedRelationshipsTestData(
         name="inherit-from-3-generics-peer-fail",
         schema={
@@ -3268,99 +3315,6 @@ INHERITED_RELATIONSHIPS_TEST_CASES = [
         error_message=(
             "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalDevice'"
             " with different 'peer' on the 'device' relationship"
-        ),
-    ),
-    InheritedRelationshipsTestData(
-        name="inherit-from-2-generics-cardinality-fail",
-        schema={
-            "generics": [
-                {
-                    "name": "GenericInterface",
-                    "namespace": "Network",
-                    "description": "Generic Network Interface",
-                    "label": "Interface",
-                    "include_in_menu": False,
-                    "display_labels": ["name__value"],
-                    "order_by": ["device__name__value", "name__value"],
-                    "uniqueness_constraints": [["device", "name__value"]],
-                    "human_friendly_id": ["device__name__value", "name__value"],
-                    "attributes": [
-                        {
-                            "name": "name",
-                            "kind": "Text",
-                            "description": "Name of the interface",
-                            "order_weight": 1000,
-                        }
-                    ],
-                    "relationships": [
-                        {
-                            "name": "device",
-                            "peer": "NetworkDevice",
-                            "identifier": "device__interface",
-                            "optional": False,
-                            "cardinality": "many",
-                            "kind": "Parent",
-                        }
-                    ],
-                },
-                {
-                    "name": "IndexedInterface",
-                    "namespace": "Logical",
-                    "description": "Generic for an interface that is part of a logical device and has an index",
-                    "include_in_menu": False,
-                    "human_friendly_id": ["device__name__value", "index__value"],
-                    "uniqueness_constraints": [["device", "index__value"]],
-                    "attributes": [
-                        {
-                            "name": "index",
-                            "kind": "Number",
-                            "description": "Index of the interface in the device",
-                        }
-                    ],
-                    "relationships": [
-                        {
-                            "name": "device",
-                            "peer": "NetworkDevice",
-                            "identifier": "device__interface",
-                            "optional": False,
-                            "cardinality": "one",
-                            "kind": "Parent",
-                        }
-                    ],
-                },
-            ],
-            "nodes": [
-                {
-                    "name": "Device",
-                    "namespace": "Network",
-                    "label": "Network device",
-                    "description": "Physical network port on a device",
-                    "attributes": [
-                        {
-                            "name": "name",
-                            "kind": "Text",
-                            "description": "Name of the interface",
-                            "unique": True,
-                            "optional": False,
-                            "order_weight": 1000,
-                        }
-                    ],
-                },
-                {
-                    "name": "Physical",
-                    "namespace": "Interface",
-                    "label": "Physical Interface",
-                    "description": "Physical network port on a device",
-                    "inherit_from": [
-                        "NetworkGenericInterface",
-                        "LogicalIndexedInterface",
-                    ],
-                },
-            ],
-        },
-        error_message=(
-            "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalIndexedInterface'"
-            " with different 'cardinality' on the 'device' relationship"
         ),
     ),
 ]
