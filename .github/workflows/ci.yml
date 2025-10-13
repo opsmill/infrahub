@@ -570,7 +570,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
