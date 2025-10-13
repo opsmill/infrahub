@@ -34,6 +34,9 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
     template_hash: str
     target_kind: str | None = Field(default=None)
 
+    def get_description(self) -> str:
+        return f"{super().get_description()} | hash:{self.template_hash}"
+
     @classmethod
     def from_schema_display_labels(
         cls,

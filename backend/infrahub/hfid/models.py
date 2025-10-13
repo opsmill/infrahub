@@ -34,6 +34,9 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
     hfid_hash: str
     target_kind: str | None = Field(default=None)
 
+    def get_description(self) -> str:
+        return f"{super().get_description()} | hash:{self.hfid_hash}"
+
     @classmethod
     def from_schema_hfids(
         cls,
