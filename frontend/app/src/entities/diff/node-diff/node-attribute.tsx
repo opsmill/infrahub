@@ -45,7 +45,10 @@ export const DiffNodeAttribute = ({
     >
       <div className="divide-y divide-gray-200 border-gray-200 border-t">
         {attribute.conflict && pathname.includes("/proposed-changes") && (
-          <Conflict conflict={attribute.conflict} />
+          <Conflict
+            id={attribute.conflict.uuid}
+            selectedBranch={attribute.conflict.selected_branch}
+          />
         )}
 
         {attribute.properties.map((property, index: number) => (

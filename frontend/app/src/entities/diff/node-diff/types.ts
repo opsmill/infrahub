@@ -24,6 +24,7 @@ export type DiffConflict = {
   diff_branch_changed_at: "2024-08-21T19:06:12.429813+00:00";
   diff_branch_value: any;
   uuid: string;
+  selected_branch?: string;
 };
 
 export type DiffProperty = {

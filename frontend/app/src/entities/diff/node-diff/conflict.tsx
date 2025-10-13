@@ -13,18 +13,23 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useResolveConflictMutation } from "@/entities/diff/domain/resolve-conflict.mutation";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 
-export const Conflict = ({ conflict }: any) => {
+interface ConflictData {
+  id: string;
+  selectedBranch: "BASE_BRANCH" | "DIFF_BRANCH" | null;
+}
+
+export const Conflict = ({ id, selectedBranch }: ConflictData) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const { mutate, isPending } = useResolveConflictMutation();
 
   const { isAuthenticated } = useAuth();
 
   const handleAccept = async (conflictValue: string) => {
-    const newValue = conflictValue === conflict.selected_branch ? null : conflictValue;
+    const newValue = conflictValue === selectedBranch ? null : conflictValue;
 
     mutate(
       {
-        id: conflict.uuid,
+        id,
         selection: newValue,
       },
       {
@@ -67,14 +72,12 @@ export const Conflict = ({ conflict }: any) => {
           <Checkbox
             id={"base"}
             disabled={isPending || !isAuthenticated}
-            checked={conflict.selected_branch === "BASE_BRANCH"}
+            checked={selectedBranch === "BASE_BRANCH"}
             onChange={() => handleAccept("BASE_BRANCH")}
           />
           <label
             htmlFor={"base"}
-            className={
-              conflict.selected_branch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"
-            }
+            className={selectedBranch === "BASE_BRANCH" ? "cursor-default" : "cursor-pointer"}
           >
             <Badge variant="green">
               <Icon icon="mdi:layers-triple" className="mr-1" />
@@ -87,14 +90,12 @@ export const Conflict = ({ conflict }: any) => {
           <Checkbox
             id={"diff"}
             disabled={isPending || !isAuthenticated}
-            checked={conflict.selected_branch === "DIFF_BRANCH"}
+            checked={selectedBranch === "DIFF_BRANCH"}
             onChange={() => handleAccept("DIFF_BRANCH")}
           />
           <label
             htmlFor={"diff"}
-            className={
-              conflict.selected_branch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"
-            }
+            className={selectedBranch === "DIFF_BRANCH" ? "cursor-default" : "cursor-pointer"}
           >
             <Badge variant="blue">
               <Icon icon="mdi:layers-triple" className="mr-1" />
