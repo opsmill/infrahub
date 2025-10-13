@@ -8,13 +8,13 @@ from infrahub_sdk.template import Jinja2Template
 
 from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
-from infrahub.core.schema.attribute_schema import AttributeSchema, TextAttributeSchema
 
 from ..attribute import BaseAttribute, ListAttributeOptional, StringOptional
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
+    from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -99,7 +99,7 @@ class DisplayLabel(NodePropertyAttribute[str]):
     ) -> None:
         super().__init__(node_schema=node_schema, template=template, value=value)
 
-        self.schema = TextAttributeSchema(name="display_label", kind="Text", optional=True, branch=node_schema.branch)
+        self.schema = node_schema.get_attribute(name="display_label")
 
     @property
     def is_jinja2_template(self) -> bool:
@@ -184,7 +184,7 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
     ) -> None:
         super().__init__(node_schema=node_schema, template=template, value=value)
 
-        self.schema = AttributeSchema(name="human_friendly_id", kind="List", optional=True, branch=node_schema.branch)
+        self.schema = node_schema.get_attribute(name="human_friendly_id")
 
     def _analyze_single_variable(self, value: str) -> None:
         items = value.split("__", maxsplit=1)
