@@ -1,6 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { type ResolveConflictParams, resolveConflict } from "./resolve-conflict";
+import {
+  type ResolveConflictParams,
+  resolveConflict,
+} from "@/entities/diff/domain/resolve-conflict";
 
 export const RESOLVE_CONFLICT_KEY = "update-diff";
 

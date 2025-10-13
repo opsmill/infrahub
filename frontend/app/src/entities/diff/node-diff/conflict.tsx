@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 
+import { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -15,7 +16,7 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 
 interface ConflictData {
   id: string;
-  selectedBranch: "BASE_BRANCH" | "DIFF_BRANCH" | null;
+  selectedBranch: ConflictSelection;
 }
 
 export const Conflict = ({ id, selectedBranch }: ConflictData) => {
@@ -24,7 +25,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
 
   const { isAuthenticated } = useAuth();
 
-  const handleAccept = async (conflictValue: string) => {
+  const handleAccept = async (conflictValue: ConflictSelection) => {
     const newValue = conflictValue === selectedBranch ? null : conflictValue;
 
     mutate(
