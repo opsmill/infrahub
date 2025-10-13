@@ -21,13 +21,13 @@ This guide shows you how to create comprehensive backups of your Infrahub deploy
 ### Step 1: Install the backup tool
 
 <Tabs groupId="backup-method">
-<TabItem value="infrahubops" label="infrahubops CLI (Recommended)" default>
+<TabItem value="infrahubops" label="infrahub-backup CLI (Recommended)" default>
 
-Install the infrahubops CLI tool:
+Install the infrahub-backup CLI tool:
 
 ```bash
-curl https://infrahub.opsmill.io/ops/$(uname -s)/$(uname -m) -o infrahubops
-chmod +x infrahubops
+curl https://infrahub.opsmill.io/ops/$(uname -s)/$(uname -m)/infrahub-backup -o infrahub-backup
+chmod +x infrahub-backup
 ```
 
 </TabItem>
@@ -46,12 +46,12 @@ Alternatively, you can use the [legacy tool](#using-the-python-based-backup-util
 ### Step 2: Backup the databases
 
 <Tabs groupId="backup-method">
-<TabItem value="infrahubops" label="infrahubops CLI" default>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 Create a backup of your running Infrahub instance:
 
 ```bash
-./infrahubops backup create
+./infrahub-backup create
 ```
 
 The tool automatically:
@@ -145,12 +145,12 @@ docker compose cp -r infrahub-server:/opt/infrahub/storage /backup/artifacts/
 Ensure Infrahub services are running before starting the restore process. You can start from a scratch/blank deployment.
 
 <Tabs groupId="restore-method">
-<TabItem value="infrahubops" label="infrahubops CLI" default>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
 Restore from a backup archive:
 
 ```bash
-./infrahubops backup restore infrahub_backup_20250129_153045.tar.gz
+./infrahub-backup restore infrahub_backup_20250129_153045.tar.gz
 ```
 
 The tool automatically:
@@ -173,9 +173,9 @@ If restoring manually, follow the steps below for each component.
 ### Step 2: Restore the databases
 
 <Tabs groupId="restore-method">
-<TabItem value="infrahubops" label="infrahubops CLI" default>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
-This is automatically handled by infrahubops.
+This is automatically handled by infrahub-backup.
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -258,9 +258,9 @@ cp -r /backup/artifacts/ /path/to/infrahub/artifacts/
 ### Step 4: Restart Infrahub services
 
 <Tabs groupId="restore-restart-services">
-<TabItem value="infrahubops" label="infrahubops CLI" default>
+<TabItem value="infrahubops" label="infrahub-backup CLI" default>
 
-This is automatically handled by infrahubops.
+This is automatically handled by infrahub-backup.
 
 </TabItem>
 <TabItem value="manual" label="Docker Compose">
@@ -570,7 +570,7 @@ This process restores only data, not cluster roles, replication, or configuratio
 ### Using the Python-based backup utility
 
 :::info Legacy Tool
-The Python-based utility (`utilities/db_backup`) is still available in the main Infrahub repository but is being replaced by infrahubops. Use it only if infrahubops doesn't meet your specific requirements.
+The Python-based utility (`utilities/db_backup`) is still available in the main Infrahub repository but is being replaced by infrahub-backup. Use it only if infrahub-backup doesn't meet your specific requirements.
 :::
 
 ### Use non-default ports
