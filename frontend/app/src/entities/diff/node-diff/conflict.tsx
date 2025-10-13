@@ -82,7 +82,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
           >
             <Badge variant="green">
               <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.destination_branch?.value}
+              {proposedChangesDetails.destination_branch?.value ?? "Base Branch"}
             </Badge>
           </label>
         </div>
@@ -100,7 +100,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
           >
             <Badge variant="blue">
               <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.source_branch?.value}
+              {proposedChangesDetails.source_branch?.value ?? "Diff Branch"}
             </Badge>
           </label>
         </div>
