@@ -246,7 +246,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return None
 
     def get_attribute(self, name: str) -> AttributeSchema:
-        # FIXME: Clean this up somehow
         if name == "human_friendly_id":
             return AttributeSchema(name="human_friendly_id", kind="List", optional=True, branch=self.branch)
         if name == "display_label":
