@@ -31,7 +31,7 @@ const useFilters = (): [Array<Filter>, (filter: Array<Filter>) => void] => {
     const cleanedFilters = uniqueItemsArray(newFilters, "name");
 
     if (!cleanedFilters || !cleanedFilters?.length) {
-      // Set undefined to remove from QSP
+      // Set null to remove from QSP
       setFiltersInQueryString(null);
     } else {
       setFiltersInQueryString(cleanedFilters);
