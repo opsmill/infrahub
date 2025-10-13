@@ -1,16 +1,17 @@
-import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import { toast } from "react-toastify";
 
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { toast } from "react-toastify";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useResolveConflictMutation } from "@/entities/diff/domain/resolve-conflict.mutation";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 
 export const Conflict = ({ conflict }: any) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -21,17 +22,21 @@ export const Conflict = ({ conflict }: any) => {
   const handleAccept = async (conflictValue: string) => {
     const newValue = conflictValue === conflict.selected_branch ? null : conflictValue;
 
-      mutate({
-          id: conflict.uuid,
-          selection: newValue,
-        }, {
+    mutate(
+      {
+        id: conflict.uuid,
+        selection: newValue,
+      },
+      {
         onSuccess: async () => {
           await queryClient.invalidateQueries({ queryKey: ["diff-tree"] });
           await graphqlClient.refetchQueries({
             include: ["TASK_DETAILS_CHECK"],
           });
 
-          const message = newValue ? "Conflict marked as resolved" : "Conflict marked as not resolved";
+          const message = newValue
+            ? "Conflict marked as resolved"
+            : "Conflict marked as not resolved";
 
           toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
         },
@@ -47,7 +52,8 @@ export const Conflict = ({ conflict }: any) => {
             />
           );
         },
-      })
+      }
+    );
   };
 
   return (
