@@ -1,0 +1,26 @@
+import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+export const RESOLVE_CONFLICT = gql`
+mutation RESOLVE_CONFLICT ($id: String, $selection: ConflictSelection) {
+  ResolveDiffConflict(data:{conflict_id: $id, selected_branch: $selection}){
+    ok
+  }
+}
+`;
+
+export type ResolveConflictFromApiParams = {
+  id: string;
+  selection: string | null;
+};
+
+export const resolveConflictFromApi = ({ id, selection }: ResolveConflictFromApiParams) => {
+  return graphqlClient.mutate({
+    mutation: RESOLVE_CONFLICT,
+    variables: {
+      id,
+      selection,
+    },
+  });
+};
