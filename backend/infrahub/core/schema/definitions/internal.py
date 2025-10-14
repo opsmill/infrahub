@@ -568,7 +568,7 @@ attribute_schema = SchemaNode(
             "Mainly relevant for internal object.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.ALLOWED},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="unique",
@@ -585,7 +585,7 @@ attribute_schema = SchemaNode(
             default_value=False,
             override_default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="branch",
