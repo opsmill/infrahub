@@ -179,6 +179,7 @@ class SchemaNode(BaseModel):
     default_filter: str | None = None
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
+    display_label: str | None = None
     display_labels: list[str]
 
     def to_dict(self) -> dict[str, Any]:
@@ -194,6 +195,7 @@ class SchemaNode(BaseModel):
                 if attribute.name not in ["id", "attributes", "relationships"]
             ],
             "relationships": [relationship.to_dict() for relationship in self.relationships],
+            "display_label": self.display_label,
             "display_labels": self.display_labels,
         }
 
@@ -293,10 +295,17 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
+            name="display_label",
+            kind="Text",
+            description="Attribute or Jinja2 template to use to generate the display label",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="display_labels",
             kind="List",
             internal_kind=str,
-            description="List of attributes to use to generate the display label",
+            description="List of attributes to use to generate the display label (deprecated)",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),

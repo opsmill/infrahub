@@ -338,7 +338,7 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
                 read_only=True,
                 computed_attribute=ComputedAttribute(
                     kind=ComputedAttributeKind.JINJA2,
-                    jinja2_template="{{ related_object__name__value }} {{ name__value | upper }} ",
+                    jinja2_template="{{ related_object__name__value }} {{ name__value | upper }}",
                 ),
             ),
         ],

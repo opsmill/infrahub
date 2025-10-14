@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
+NODE_PROPERTY_ATTRIBUTES = ["display_label", "human_friendly_id"]
 INHERITED = "INHERITED"
 
 OPTIONAL_TEXT_FIELDS = [
@@ -42,6 +43,11 @@ OPTIONAL_TEXT_FIELDS = [
 class BaseNodeSchema(GeneratedBaseNodeSchema):
     _exclude_from_hash: list[str] = ["attributes", "relationships"]
     _sort_by: list[str] = ["namespace", "name"]
+
+    @property
+    def is_schema_node(self) -> bool:
+        """Tell if this node represent a part of the schema. Not to confuse this with `is_node_schema`."""
+        return self.namespace == "Schema"
 
     @property
     def is_node_schema(self) -> bool:
@@ -240,6 +246,11 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return None
 
     def get_attribute(self, name: str) -> AttributeSchema:
+        if name == "human_friendly_id":
+            return AttributeSchema(name="human_friendly_id", kind="List", optional=True, branch=self.branch)
+        if name == "display_label":
+            return AttributeSchema(name="display_label", kind="Text", optional=True, branch=self.branch)
+
         for item in self.attributes:
             if item.name == name:
                 return item
@@ -329,7 +340,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @property
     def valid_input_names(self) -> list[str]:
-        return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES
+        return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES + NODE_PROPERTY_ATTRIBUTES
 
     @property
     def valid_local_names(self) -> list[str]:
