@@ -14,6 +14,54 @@ from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
+PERSON_UPDATE_QUERY = """
+mutation ($update_data: TestingPersonUpdateInput!) {
+    TestingPersonUpdate(data: $update_data) {
+        ok
+        object {
+            id
+            profiles { edges { node { id } } }
+            name {
+                value
+                source { id }
+                is_from_profile
+                is_default
+            }
+            height {
+                value
+                source { id }
+                is_from_profile
+                is_default
+            }
+            weight {
+                value
+                source { id }
+                is_from_profile
+                is_default
+            }
+            eye_color {
+                value
+                source { id }
+                is_from_profile
+                is_default
+            }
+            description {
+                value
+                source { id }
+                is_from_profile
+                is_default
+            }
+            nothing {
+                value
+                source { id }
+                is_from_profile
+                is_default
+            }
+        }
+    }
+}
+"""
+
 
 class TestProfileLifecycle(TestInfrahubApp):
     @pytest.fixture(scope="class")
@@ -25,29 +73,45 @@ class TestProfileLifecycle(TestInfrahubApp):
             label="Person",
             attributes=[
                 AttributeSchema(name="name", kind="Text"),
+                # weight will become optional later to test that it is added to profiles
+                AttributeSchema(name="weight", kind="Number", optional=False),
+                # height will become mandatory later to test that it is removed from profiles
+                AttributeSchema(name="height", kind="Number", optional=True, default_value=150),
+                # eye_color will become read_only=False later to test that it is added to profiles
+                AttributeSchema(name="eye_color", kind="Text", optional=True, read_only=True),
+                # description will become read_only=True later to test that it is removed from profiles
                 AttributeSchema(name="description", kind="Text", optional=True),
-                AttributeSchema(name="height", kind="Number", optional=True),
+                # nothing will be removed later to test that it is removed from profiles
+                AttributeSchema(name="nothing", kind="Text", optional=True),
             ],
         )
         return SchemaRoot(version="1.0", nodes=[person_schema])
 
     @pytest.fixture(scope="class")
-    async def person_schema_root_add_attribute(self, person_schema_root: SchemaRoot) -> SchemaRoot:
+    async def person_schema_root_add_attributes_to_profiles(self, person_schema_root: SchemaRoot) -> SchemaRoot:
         person_schema = person_schema_root.nodes[0].model_copy(deep=True)
+        weight_attribute = person_schema.get_attribute("weight")
+        weight_attribute.optional = False
+        eye_color_attribute = person_schema.get_attribute("eye_color")
+        eye_color_attribute.read_only = False
         person_schema.attributes.append(AttributeSchema(name="age", kind="Number", optional=True))
         return SchemaRoot(version="1.0", nodes=[person_schema])
 
     @pytest.fixture(scope="class")
-    async def person_schema_root_remove_attribute(
-        self, default_branch: Branch, person_schema_root_add_attribute: SchemaRoot, client: InfrahubClient
+    async def person_schema_root_remove_attributes_from_profiles(
+        self, default_branch: Branch, person_schema_root_add_attributes_to_profiles: SchemaRoot, client: InfrahubClient
     ) -> SchemaRoot:
         person_schema = await client.schema.get(kind="ProfileTestingPerson", branch=default_branch.name, refresh=True)
-        current_height_attribute = person_schema.get_attribute("height")
+        current_nothing_attribute = person_schema.get_attribute("nothing")
 
-        person_schema = person_schema_root_add_attribute.nodes[0].model_copy(deep=True)
-        updated_height_attribute = person_schema.get_attribute("height")
-        updated_height_attribute.state = "absent"
-        updated_height_attribute.id = current_height_attribute.id
+        person_schema = person_schema_root_add_attributes_to_profiles.nodes[0].model_copy(deep=True)
+        height_attribute = person_schema.get_attribute("height")
+        height_attribute.optional = False
+        description_attribute = person_schema.get_attribute("description")
+        description_attribute.read_only = True
+        nothing_attribute = person_schema.get_attribute("nothing")
+        nothing_attribute.state = "absent"
+        nothing_attribute.id = current_nothing_attribute.id
         return SchemaRoot(version="1.0", nodes=[person_schema])
 
     @pytest.fixture(scope="class")
@@ -60,14 +124,21 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def person_1(self, db: InfrahubDatabase, schema_person_base) -> Node:
         schema = registry.schema.get_node_schema(name="TestingPerson", duplicate=False)
         person_1 = await Node.init(db=db, schema=schema)
-        await person_1.new(db=db, name="Starbuck")
+        await person_1.new(db=db, name="Starbuck", weight=70)
         await person_1.save(db=db)
         return person_1
 
     @pytest.fixture(scope="class")
     async def person_profile_1(self, db: InfrahubDatabase, schema_person_base) -> Node:
         person_profile_1 = await Node.init(db=db, schema="ProfileTestingPerson")
-        await person_profile_1.new(db=db, profile_name="profile-one", profile_priority=10, height=167)
+        await person_profile_1.new(
+            db=db,
+            profile_name="profile-one",
+            profile_priority=10,
+            height=167,
+            description="profile-one description",
+            nothing="profile-one nothing",
+        )
         await person_profile_1.save(db=db)
         return person_profile_1
 
@@ -81,10 +152,14 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source is None
         assert retrieved_person.name.is_default is False
-        assert retrieved_person.height.value is None
+        assert retrieved_person.height.value == 150
         assert retrieved_person.height.is_from_profile is False
         assert retrieved_person.height.source is None
         assert retrieved_person.height.is_default is True
+        assert retrieved_person.weight.value == 70
+        assert retrieved_person.weight.is_from_profile is False
+        assert retrieved_person.weight.source is None
+        assert retrieved_person.weight.is_default is False
 
     async def test_step_02_one_person_add_profile(
         self,
@@ -92,39 +167,14 @@ class TestProfileLifecycle(TestInfrahubApp):
         default_branch: Branch,
         person_1,
         person_profile_1,
-    ) -> None:
-        mutation = """
-            mutation {
-                TestingPersonUpdate(data: {id: "%(person_id)s", profiles: [{ id: "%(profile_id)s"}]}) {
-                    ok
-                    object {
-                        id
-                        profiles { edges { node { id } } }
-                        name {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                        height {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                    }
-                }
-            }
-        """ % {"person_id": person_1.id, "profile_id": person_profile_1.id}
-
-        default_branch.update_schema_hash()
+    ):
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
-            source=mutation,
+            source=PERSON_UPDATE_QUERY,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={},
+            variable_values={"update_data": {"id": person_1.id, "profiles": [{"id": person_profile_1.id}]}},
         )
 
         assert result.errors is None
@@ -147,6 +197,30 @@ class TestProfileLifecycle(TestInfrahubApp):
             "source": {"id": person_profile_1.id},
             "is_default": False,
         }
+        assert attributes["weight"] == {
+            "value": 70,
+            "is_from_profile": False,
+            "source": None,
+            "is_default": False,
+        }
+        assert attributes["eye_color"] == {
+            "value": None,
+            "is_from_profile": False,
+            "source": None,
+            "is_default": True,
+        }
+        assert attributes["description"] == {
+            "value": "profile-one description",
+            "is_from_profile": True,
+            "source": {"id": person_profile_1.id},
+            "is_default": False,
+        }
+        assert attributes["nothing"] == {
+            "value": "profile-one nothing",
+            "is_from_profile": True,
+            "source": {"id": person_profile_1.id},
+            "is_default": False,
+        }
         retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
         assert retrieved_person.name.value == "Starbuck"
         assert retrieved_person.name.is_from_profile is False
@@ -156,6 +230,22 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person.height.is_from_profile is True
         assert retrieved_person.height.source_id == person_profile_1.id
         assert retrieved_person.height.is_default is False
+        assert retrieved_person.weight.value == 70
+        assert retrieved_person.weight.is_from_profile is False
+        assert retrieved_person.weight.source_id is None
+        assert retrieved_person.weight.is_default is False
+        assert retrieved_person.eye_color.value is None
+        assert retrieved_person.eye_color.is_from_profile is False
+        assert retrieved_person.eye_color.source_id is None
+        assert retrieved_person.eye_color.is_default is True
+        assert retrieved_person.description.value == "profile-one description"
+        assert retrieved_person.description.is_from_profile is True
+        assert retrieved_person.description.source_id == person_profile_1.id
+        assert retrieved_person.description.is_default is False
+        assert retrieved_person.nothing.value == "profile-one nothing"
+        assert retrieved_person.nothing.is_from_profile is True
+        assert retrieved_person.nothing.source_id == person_profile_1.id
+        assert retrieved_person.nothing.is_default is False
 
     async def test_step_03_create_person_with_profile(
         self,
@@ -165,7 +255,11 @@ class TestProfileLifecycle(TestInfrahubApp):
     ) -> None:
         mutation = """
             mutation {
-                TestingPersonCreate(data: {name: {value: "Apollo"}, profiles: [{ id: "%(profile_id)s"}]}) {
+                TestingPersonCreate(data: {
+                    name: {value: "Apollo"},
+                    weight: {value: 85},
+                    profiles: [{ id: "%(profile_id)s"}]
+                }) {
                     ok
                     object {
                         id
@@ -177,6 +271,30 @@ class TestProfileLifecycle(TestInfrahubApp):
                             is_default
                         }
                         height {
+                            value
+                            source { id }
+                            is_from_profile
+                            is_default
+                        }
+                        weight {
+                            value
+                            source { id }
+                            is_from_profile
+                            is_default
+                        }
+                        eye_color {
+                            value
+                            source { id }
+                            is_from_profile
+                            is_default
+                        }
+                        description {
+                            value
+                            source { id }
+                            is_from_profile
+                            is_default
+                        }
+                        nothing {
                             value
                             source { id }
                             is_from_profile
@@ -212,6 +330,30 @@ class TestProfileLifecycle(TestInfrahubApp):
             "source": {"id": person_profile_1.id},
             "is_default": False,
         }
+        assert attributes["weight"] == {
+            "value": 85,
+            "is_from_profile": False,
+            "source": None,
+            "is_default": False,
+        }
+        assert attributes["eye_color"] == {
+            "value": None,
+            "is_from_profile": False,
+            "source": None,
+            "is_default": True,
+        }
+        assert attributes["description"] == {
+            "value": "profile-one description",
+            "is_from_profile": True,
+            "source": {"id": person_profile_1.id},
+            "is_default": False,
+        }
+        assert attributes["nothing"] == {
+            "value": "profile-one nothing",
+            "is_from_profile": True,
+            "source": {"id": person_profile_1.id},
+            "is_default": False,
+        }
         retrieved_person = await NodeManager.get_one(db=db, id=new_person_id, include_source=True)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
@@ -221,6 +363,22 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person.height.is_from_profile is True
         assert retrieved_person.height.source_id == person_profile_1.id
         assert retrieved_person.height.is_default is False
+        assert retrieved_person.weight.value == 85
+        assert retrieved_person.weight.is_from_profile is False
+        assert retrieved_person.weight.source_id is None
+        assert retrieved_person.weight.is_default is False
+        assert retrieved_person.eye_color.value is None
+        assert retrieved_person.eye_color.is_from_profile is False
+        assert retrieved_person.eye_color.source_id is None
+        assert retrieved_person.eye_color.is_default is True
+        assert retrieved_person.description.value == "profile-one description"
+        assert retrieved_person.description.is_from_profile is True
+        assert retrieved_person.description.source_id == person_profile_1.id
+        assert retrieved_person.description.is_default is False
+        assert retrieved_person.nothing.value == "profile-one nothing"
+        assert retrieved_person.nothing.is_from_profile is True
+        assert retrieved_person.nothing.source_id == person_profile_1.id
+        assert retrieved_person.nothing.is_default is False
 
     async def test_step_04_update_non_profile_attribute(
         self,
@@ -228,41 +386,14 @@ class TestProfileLifecycle(TestInfrahubApp):
         default_branch: Branch,
         person_1,
         person_profile_1,
-    ) -> None:
-        mutation = """
-            mutation {
-                TestingPersonUpdate(data: {id: "%(person_id)s", name: {value: "Kara Thrace"}}) {
-                    ok
-                    object {
-                        id
-                        profiles { edges { node { id } } }
-                        name {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                        height {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                    }
-                }
-            }
-        """ % {
-            "person_id": person_1.id,
-        }
-
-        default_branch.update_schema_hash()
+    ):
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
-            source=mutation,
+            source=PERSON_UPDATE_QUERY,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={},
+            variable_values={"update_data": {"id": person_1.id, "name": {"value": "Kara Thrace"}}},
         )
 
         assert result.errors is None
@@ -325,6 +456,22 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person.height.is_from_profile is True
         assert retrieved_person.height.source.id == person_profile_2.id
         assert retrieved_person.height.is_default is False
+        assert retrieved_person.weight.value == 70
+        assert retrieved_person.weight.is_from_profile is False
+        assert retrieved_person.weight.source is None
+        assert retrieved_person.weight.is_default is False
+        assert retrieved_person.eye_color.value is None
+        assert retrieved_person.eye_color.is_from_profile is False
+        assert retrieved_person.eye_color.source is None
+        assert retrieved_person.eye_color.is_default is True
+        assert retrieved_person.description.value == "profile-one description"
+        assert retrieved_person.description.is_from_profile is True
+        assert retrieved_person.description.source.id == person_profile_1.id
+        assert retrieved_person.description.is_default is False
+        assert retrieved_person.nothing.value == "profile-one nothing"
+        assert retrieved_person.nothing.is_from_profile is True
+        assert retrieved_person.nothing.source.id == person_profile_1.id
+        assert retrieved_person.nothing.is_default is False
 
     async def test_step_07_update_person_delete_profile(
         self,
@@ -333,38 +480,13 @@ class TestProfileLifecycle(TestInfrahubApp):
         client,
     ) -> None:
         person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
-        mutation = """
-            mutation {
-                TestingPersonUpdate(data: {id: "%(person_id)s", profiles: []}) {
-                    ok
-                    object {
-                        id
-                        profiles { edges { node { id } } }
-                        name {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                        height {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                    }
-                }
-            }
-        """ % {"person_id": person_2.id}
-
-        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
-            source=mutation,
+            source=PERSON_UPDATE_QUERY,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={},
+            variable_values={"update_data": {"id": person_2.id, "profiles": []}},
         )
 
         assert result.errors is None
@@ -375,14 +497,14 @@ class TestProfileLifecycle(TestInfrahubApp):
         attributes = result.data["TestingPersonUpdate"]["object"]
         assert attributes["id"] == person_2.id
         assert attributes["name"] == {"value": "Apollo", "is_from_profile": False, "source": None, "is_default": False}
-        assert attributes["height"] == {"value": None, "is_from_profile": False, "source": None, "is_default": True}
+        assert attributes["height"] == {"value": 150, "is_from_profile": False, "source": None, "is_default": True}
 
         retrieved_person = await NodeManager.get_one(db=db, id=person_2.id, include_source=True)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
         assert retrieved_person.name.is_default is False
-        assert retrieved_person.height.value is None
+        assert retrieved_person.height.value == 150
         assert retrieved_person.height.is_from_profile is False
         assert retrieved_person.height.source_id is None
         assert retrieved_person.height.is_default is True
@@ -412,15 +534,48 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_1.height.is_from_profile is True
         assert retrieved_person_1.height.source.id == person_profile_1.id
         assert retrieved_person_1.height.is_default is False
+        assert retrieved_person_1.weight.value == 70
+        assert retrieved_person_1.weight.is_from_profile is False
+        assert retrieved_person_1.weight.source is None
+        assert retrieved_person_1.weight.is_default is False
+        assert retrieved_person_1.eye_color.value is None
+        assert retrieved_person_1.eye_color.is_from_profile is False
+        assert retrieved_person_1.eye_color.source is None
+        assert retrieved_person_1.eye_color.is_default is True
+        assert retrieved_person_1.description.value == "profile-one description"
+        assert retrieved_person_1.description.is_from_profile is True
+        assert retrieved_person_1.description.source.id == person_profile_1.id
+        assert retrieved_person_1.description.is_default is False
+        assert retrieved_person_1.nothing.value == "profile-one nothing"
+        assert retrieved_person_1.nothing.is_from_profile is True
+        assert retrieved_person_1.nothing.source.id == person_profile_1.id
+        assert retrieved_person_1.nothing.is_default is False
+
         assert retrieved_person_2.profiles.peer_ids == []
         assert retrieved_person_2.name.value == "Apollo"
         assert retrieved_person_2.name.is_from_profile is False
         assert retrieved_person_2.name.source is None
         assert retrieved_person_2.name.is_default is False
-        assert retrieved_person_2.height.value is None
+        assert retrieved_person_2.height.value == 150
         assert retrieved_person_2.height.is_from_profile is False
         assert retrieved_person_2.height.source is None
         assert retrieved_person_2.height.is_default is True
+        assert retrieved_person_2.weight.value == 85
+        assert retrieved_person_2.weight.is_from_profile is False
+        assert retrieved_person_2.weight.source is None
+        assert retrieved_person_2.weight.is_default is False
+        assert retrieved_person_2.eye_color.value is None
+        assert retrieved_person_2.eye_color.is_from_profile is False
+        assert retrieved_person_2.eye_color.source is None
+        assert retrieved_person_2.eye_color.is_default is True
+        assert retrieved_person_2.description.value is None
+        assert retrieved_person_2.description.is_from_profile is False
+        assert retrieved_person_2.description.source is None
+        assert retrieved_person_2.description.is_default is True
+        assert retrieved_person_2.nothing.value is None
+        assert retrieved_person_2.nothing.is_from_profile is False
+        assert retrieved_person_2.nothing.source is None
+        assert retrieved_person_2.nothing.is_default is True
 
     async def test_step_10_update_person_override_profile(
         self,
@@ -428,39 +583,14 @@ class TestProfileLifecycle(TestInfrahubApp):
         default_branch: Branch,
         person_1,
         person_profile_1,
-    ) -> None:
-        mutation = """
-            mutation {
-                TestingPersonUpdate(data: {id: "%(person_id)s", height: {value: 145}}) {
-                    ok
-                    object {
-                        id
-                        profiles { edges { node { id } } }
-                        name {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                        height {
-                            value
-                            source { id }
-                            is_from_profile
-                            is_default
-                        }
-                    }
-                }
-            }
-        """ % {"person_id": person_1.id}
-
-        default_branch.update_schema_hash()
+    ):
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
-            source=mutation,
+            source=PERSON_UPDATE_QUERY,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={},
+            variable_values={"update_data": {"id": person_1.id, "height": {"value": 145}}},
         )
 
         assert result.errors is None
@@ -525,12 +655,13 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_1.height.is_from_profile is False
         assert retrieved_person_1.height.source is None
         assert retrieved_person_1.height.is_default is False
+
         assert retrieved_person_2.profiles.peer_ids == []
         assert retrieved_person_2.name.value == "Apollo"
         assert retrieved_person_2.name.is_from_profile is False
         assert retrieved_person_2.name.source is None
         assert retrieved_person_2.name.is_default is False
-        assert retrieved_person_2.height.value is None
+        assert retrieved_person_2.height.value == 150
         assert retrieved_person_2.height.is_from_profile is False
         assert retrieved_person_2.height.source is None
         assert retrieved_person_2.height.is_default is True
@@ -584,14 +715,35 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_2.height.source.id == person_profile_1.id
         assert retrieved_person_2.height.is_default is False
 
-    async def test_step_15_schema_update_add_attribute(
+    async def test_step_15_schema_update_add_attributes(
         self,
         db: InfrahubDatabase,
         default_branch,
-        person_schema_root_add_attribute: SchemaRoot,
+        person_schema_root_add_attributes_to_profiles: SchemaRoot,
+        person_profile_1: Node,
         client: InfrahubClient,
     ):
-        await client.schema.load(schemas=[person_schema_root_add_attribute.model_dump()], branch=default_branch.name)
+        await client.schema.load(
+            schemas=[person_schema_root_add_attributes_to_profiles.model_dump()], branch=default_branch.name
+        )
+
+        updated_schema = await client.schema.get(kind="ProfileTestingPerson", branch=default_branch.name, refresh=True)
+        assert set(updated_schema.attribute_names) == {
+            "profile_name",
+            "profile_priority",
+            "height",
+            "eye_color",
+            "description",
+            "nothing",
+            "age",
+        }
+
+        updated_person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
+        assert updated_person_profile_1.height.value == 134
+        assert updated_person_profile_1.description.value == "profile-one description"
+        assert updated_person_profile_1.nothing.value == "profile-one nothing"
+        assert updated_person_profile_1.age.value is None
+        assert updated_person_profile_1.eye_color.value is None
 
     async def test_step_16_update_profile_with_new_attribute(
         self,
@@ -602,9 +754,11 @@ class TestProfileLifecycle(TestInfrahubApp):
     ):
         updated_schema = await client.schema.get(kind="ProfileTestingPerson", branch=default_branch.name, refresh=True)
         assert updated_schema.get_attribute("age") is not None
+        assert updated_schema.get_attribute("eye_color") is not None
 
         person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
         person_profile_1.age.value = 25
+        person_profile_1.eye_color.value = "blurple"
         await person_profile_1.save()
 
     async def test_step_17_check_persons_again(
@@ -623,6 +777,22 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_1.height.is_from_profile is False
         assert retrieved_person_1.height.source is None
         assert retrieved_person_1.height.is_default is False
+        assert retrieved_person_1.weight.value == 70
+        assert retrieved_person_1.weight.is_from_profile is False
+        assert retrieved_person_1.weight.source is None
+        assert retrieved_person_1.weight.is_default is False
+        assert retrieved_person_1.eye_color.value is None
+        assert retrieved_person_1.eye_color.is_from_profile is False
+        assert retrieved_person_1.eye_color.source is None
+        assert retrieved_person_1.eye_color.is_default is True
+        assert retrieved_person_1.description.value is None
+        assert retrieved_person_1.description.is_from_profile is False
+        assert retrieved_person_1.description.source is None
+        assert retrieved_person_1.description.is_default is True
+        assert retrieved_person_1.nothing.value is None
+        assert retrieved_person_1.nothing.is_from_profile is False
+        assert retrieved_person_1.nothing.source is None
+        assert retrieved_person_1.nothing.is_default is True
         assert retrieved_person_1.age.value is None
         assert retrieved_person_1.age.is_from_profile is False
         assert retrieved_person_1.age.source is None
@@ -638,19 +808,38 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_2.height.is_from_profile is True
         assert retrieved_person_2.height.source.id == person_profile_1.id
         assert retrieved_person_2.height.is_default is False
+        assert retrieved_person_2.weight.value == 85
+        assert retrieved_person_2.weight.is_from_profile is False
+        assert retrieved_person_2.weight.source is None
+        assert retrieved_person_2.weight.is_default is False
+        assert retrieved_person_2.eye_color.value == "blurple"
+        assert retrieved_person_2.eye_color.is_from_profile is True
+        assert retrieved_person_2.eye_color.source.id == person_profile_1.id
+        assert retrieved_person_2.eye_color.is_default is False
+        assert retrieved_person_2.description.value == "profile-one description"
+        assert retrieved_person_2.description.is_from_profile is True
+        assert retrieved_person_2.description.source.id == person_profile_1.id
+        assert retrieved_person_2.description.is_default is False
+        assert retrieved_person_2.nothing.value == "profile-one nothing"
+        assert retrieved_person_2.nothing.is_from_profile is True
+        assert retrieved_person_2.nothing.source.id == person_profile_1.id
+        assert retrieved_person_2.nothing.is_default is False
         assert retrieved_person_2.age.value == 25
         assert retrieved_person_2.age.is_from_profile is True
         assert retrieved_person_2.age.source.id == person_profile_1.id
         assert retrieved_person_2.age.is_default is False
 
-    async def test_step_18_schema_update_remove_attribute(
+    async def test_step_18_schema_update_remove_attributes(
         self,
         db: InfrahubDatabase,
         default_branch,
-        person_schema_root_remove_attribute: SchemaRoot,
+        person_schema_root_remove_attributes_from_profiles: SchemaRoot,
         client: InfrahubClient,
     ):
-        await client.schema.load(schemas=[person_schema_root_remove_attribute.model_dump()], branch=default_branch.name)
+        await client.schema.load(
+            schemas=[person_schema_root_remove_attributes_from_profiles.model_dump()], branch=default_branch.name
+        )
+        # TODO: validate schema update
 
     async def test_step_19_check_profile_for_removed_attribute(
         self,
@@ -665,6 +854,7 @@ class TestProfileLifecycle(TestInfrahubApp):
         person_profile_1 = await client.get(kind="ProfileTestingPerson", id=person_profile_1.id)
         with pytest.raises(AttributeError):
             _ = person_profile_1.height
+        # TODO: validate profile updated
 
     async def test_step_20_check_persons_again(
         self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
