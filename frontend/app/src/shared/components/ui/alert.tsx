@@ -104,8 +104,8 @@ export const Alert = (props: AlertProps) => {
   };
 
   const handleDismiss = () => {
-    closeToast && closeToast();
-    onDismiss && onDismiss();
+    closeToast?.();
+    onDismiss?.();
   };
 
   const alertClasses = getClassName();

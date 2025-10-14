@@ -89,7 +89,6 @@ vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./doc
 - Use `async def` for asynchronous functions
 - Use `await` for asynchronous calls
 - Use Pydantic models for dataclasses
-- All Python functions must have docstrings
 
 **Python Docstring Standards:**
 
@@ -110,6 +109,7 @@ vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./doc
 - Validate formatting: `poetry run invoke lint`
 - Lint markdown files: `markdownlint --config .markdownlint.yaml "**/*.md" "**/*.mdx"`
 - Lint documentation prose: `vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")`
+- **ALWAYS run Vale after documentation updates**: Check style, sentence-case, and spelling before considering documentation changes complete
 
 ### Tooling Standards (from .github/instructions/)
 
@@ -268,7 +268,8 @@ vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./doc
 - Content is accurate and reflects the latest version of Infrahub
 - Instructions are clear, with step-by-step guidance where needed
 - Markdown formatting is correct and compliant with Infrahub's style
-- Spelling and grammar are checked
+- Spelling and grammar are checked with Vale
+- **Vale style checks pass**: Run `vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")` and address all issues
 
 **For Guides:**
 

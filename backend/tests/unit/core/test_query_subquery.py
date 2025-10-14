@@ -30,7 +30,7 @@ async def test_build_subquery_filter_attribute_text(
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter1
@@ -67,7 +67,7 @@ async def test_build_subquery_filter_attribute_text_area(
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter1
@@ -104,7 +104,7 @@ async def test_build_subquery_filter_attribute_list(
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter1
@@ -141,7 +141,7 @@ async def test_build_subquery_filter_attribute_int(
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter2
@@ -178,7 +178,7 @@ async def test_build_subquery_filter_relationship(db: InfrahubDatabase, default_
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter1
@@ -219,7 +219,7 @@ async def test_build_subquery_filter_relationship_ids(db: InfrahubDatabase, defa
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter1
@@ -249,7 +249,7 @@ async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_b
     OPTIONAL MATCH path = (n:Node {uuid: n.uuid})-[:IS_RELATED]->(:Relationship { name: $order1_rel_name })-[:IS_RELATED]->(:Node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $order1_name })-[:HAS_VALUE]-(last:AttributeValueIndexed)
     WHERE all(r IN relationships(path) WHERE (PLACEHOLDER))
     WITH last, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level, %(froms_var)s AS froms, all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, last])) AS latest_node_details
     WITH latest_node_details[0] AS is_active, latest_node_details[1] AS last
     RETURN CASE WHEN is_active = TRUE THEN last.value ELSE NULL END AS order1
@@ -285,7 +285,7 @@ async def test_build_subquery_filter_attribute_multiple_values(
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter1
@@ -324,7 +324,7 @@ async def test_build_subquery_filter_relationship_multiple_values(
         reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,
         %(froms_var)s AS froms,
         all(r IN relationships(path) WHERE r.status = "active") AS is_active
-    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
     WITH head(collect([is_active, n])) AS latest_node_details
     WHERE latest_node_details[0] = TRUE
     WITH latest_node_details[1] AS filter1

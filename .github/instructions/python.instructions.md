@@ -9,7 +9,6 @@ applyTo: '**/*.py'
 - Use `async def` for asynchronous functions
 - Use `await` for asynchronous calls
 - Use Pydantic models for dataclasses
-- All python functions should have a docstring
 
 ## Formatting and Linting
 

@@ -408,7 +408,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for attribute_name in template._attributes:
             if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
                 continue
-            fields[attribute_name] = {"value": getattr(template, attribute_name).value, "source": template.id}
+            attr_value = getattr(template, attribute_name).value
+            if attr_value is not None:
+                fields[attribute_name] = {"value": attr_value, "source": template.id}
 
         for relationship_name in template._relationships:
             relationship_schema = template._schema.get_relationship(name=relationship_name)

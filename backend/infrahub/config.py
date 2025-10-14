@@ -281,7 +281,6 @@ class DatabaseSettings(BaseSettings):
     query_size_limit: int = Field(
         default=5_000,
         ge=1,
-        le=20_000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
     )
     max_depth_search_hierarchy: int = Field(

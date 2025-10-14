@@ -1,53 +1,77 @@
 ---
-title: Object-storage
+title: Object storage
 ---
 
-# Object-storage
+# Object storage
 
-Infrahub provides an interface to store and retrieve files or objects in an object-storage. The object-storage is used internally within Infrahub to store rendered artifacts, but it can be used to store any text based file or content.
+Infrahub provides an interface to store and retrieve files or objects in object storage. Object storage is used internally within Infrahub to store rendered artifacts, but you can also use it to store any text-based file or content.
 
-You can interface with the object-storage through the REST API and Python SDK.
-See the [object-storage guide](../guides/object-storage) and [object-storage Python SDK]($(base_url)python-sdk/guides/object-storage) guide for more information.
+You can interact with object storage through the REST API and Python SDK. For practical steps, see the [object storage guide](../guides/object-storage) and the [object storage Python SDK guide]($(base_url)python-sdk/guides/object-storage).
 
-## Supported backends
+## Supported storage backends
 
-At this moment Infrahub supports using local storage, or AWS S3 storage backends. Support for other storage backends will be added in the future.
+Infrahub supports two storage backends:
+
+- Local storage (configured by default)
+- AWS S3 (or S3-compatible) storage
+
+You configure the backend by setting the appropriate environment variables. These variables are typically set in your Docker Compose YAML file or in the deployment environment for your containers. See the [Infrahub configuration reference](../reference/configuration.mdx) for a full list of options.
+
+---
 
 ### Local storage
 
-Infrahub can use local storage as a storage backend. It can be any directory on a filesystem that is attached to the system on which Infrahub runs. The only requirement is that all the Infrahub API servers and Task workers need access to the filesystem.
+By default, Infrahub uses local storage for artifacts and files. No additional configuration is required unless you want to change the storage location.
 
-To setup Infrahub to use local storage backend you can use the following configuration:
+To explicitly configure local storage, set the following environment variables in your Docker Compose YAML file or deployment environment:
 
-```toml
-[storage]
-driver = "local"
-
-[storage.local]
-path = "/opt/infrahub/storage/"
+```yaml
+    # ... other configuration ...
+      INFRAHUB_STORAGE_DRIVER: "local"
+      INFRAHUB_STORAGE_LOCAL_PATH: "/opt/infrahub/storage"
+    # ... other configuration ...
 ```
 
-More details can be found in the [configuration documentation](../reference/configuration).
+All Infrahub API servers and task workers must have access to the specified directory.
+
+---
 
 ### AWS S3 storage
 
-Infrahub can use AWS S3 or any other S3 API compatible storage as a storage system.
+To use AWS S3 or any S3-compatible storage, set the following environment variables in your Docker Compose YAML file or deployment environment:
 
-To setup Infrahub to use AWS S3 as a storage backend you can use the following configuration:
-
-```toml
-[storage]
-driver = "s3"
-
-[storage.s3]
-access_key_id = "my_access_key"
-secret_access_key = "secret_access_key"
-bucket_name = "my-infrahub-bucket"
-endpoint_url = "https://s3.eu-central-1.amazonaws.com"
+```yaml
+    # ... other configuration ...
+    INFRAHUB_STORAGE_DRIVER: "s3"
+    AWS_ACCESS_KEY_ID: "my_access_key"
+    AWS_SECRET_ACCESS_KEY: "secret_access_key"
+    INFRAHUB_STORAGE_BUCKET_NAME: "my-infrahub-bucket"
+    INFRAHUB_STORAGE_ENDPOINT_URL: "s3.eu-central-1.amazonaws.com"
+    # ... other configuration ...
 ```
 
-More details can be found in the [configuration documentation](../reference/configuration).
+For all available configuration options and environment variables, refer to the [Infrahub configuration reference](../reference/configuration.mdx#infrahub_storage_s3).
+
+---
+
+:::info
+You can switch between storage backends by changing the value of `INFRAHUB_STORAGE_DRIVER` and updating the relevant environment variables in your deployment configuration.
+:::
+
+:::warning
+If you change the storage driver (for example, from `local` to `s3` or vice versa), **existing artifacts will not be automatically migrated**.  
+To regenerate artifacts:
+
+- You must either delete the old artifacts, or
+- Manually update their checksum values and regenerate them.
+
+Failing to do so may result in missing or stale artifact files.
+:::
+
+---
 
 ## Object model
 
-Objects or files stored within the object-storage, are identified by an identifier (UUID). An identifier is assigned to the object at time of creation within the object-storage. Interactions with the object then happen leveraging that identifier.
+Objects or files stored within object storage are identified by a unique identifier (UUID). This identifier is assigned when the object is created. All interactions with the object use this identifier.
+
+For more details on configuration options, see the [Infrahub configuration reference](../reference/configuration.mdx).

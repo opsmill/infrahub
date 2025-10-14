@@ -1,38 +1,38 @@
 ---
-title: Groups
+title: Understanding groups in Infrahub
 ---
 
-# Groups
+# Understanding groups in Infrahub
 
-Groups in Infrahub allow you to create and manage collections of objects, enabling organized and efficient handling of related entities within your infrastructure. They provide a flexible way to define relationships between different objects and can be extended to suit various use cases through inheritance and customization.
+Groups represent a fundamental organizational concept in Infrahub, providing a way to create logical collections of infrastructure objects. This topic explores how groups work, their underlying architecture, and the design principles that make them a powerful tool for infrastructure management.
 
-## Summary
+## What are groups?
 
-- **Groups** consist of members and subscribers, both of which can be objects of any type.
-- The base group model is the **CoreGroup**, from which specialized group types inherit.
-- Groups are integral to Infrahub's architecture, acting as a glue between various features such as generators, artifacts, and checks.
-- There are two main group types: **default** (user-managed) and **internal** (system-managed), with the latter being hidden from the Groups Manager by default to avoid clutter.
+At their core, groups are containers that establish relationships between objects in your infrastructure. Think of them as dynamic collections that can span across different object types - you might group together devices, locations, and configurations that share a common purpose or characteristic.
 
-The **CoreGroup** is the generic model for all group types in Infrahub. It defines the essential attributes and relationships that can be extended by specialized group types to cater to specific requirements.
+Unlike traditional static lists, Infrahub groups are first-class objects in the graph database, meaning they have their own attributes, relationships, and lifecycle. This design allows groups to participate in the broader infrastructure model as active entities rather than passive containers.
 
-For detailed information, see the [Groups Reference Guide](../reference/schema/groups).
+## The group architecture
 
-## Group concepts
+### CoreGroup - the foundation
 
-### CoreGroup
+Every group in Infrahub inherits from `CoreGroup`, a generic model that provides the essential structure. This inheritance model creates consistency while allowing specialization.
 
-#### Relationships and access
+The CoreGroup defines two primary relationships:
 
-Infrahub automatically adds relationships to all objects for seamless integration and management.
+- **Members**: Objects that belong to the group
+- **Subscribers**: Objects that observe or react to changes in the group
 
-#### Automatic relationships
+This dual-relationship model reflects a key design decision: groups aren't just about membership, they're about creating actionable connections between objects.
 
-- `member_of_groups`: Retrieves all groups that a particular object is a member of.
-- `subscriber_of_groups`: Retrieves all groups that a particular object is subscribed to.
+### Bidirectional relationships
 
-**GraphQL Access**: These relationships can be accessed and managed through GraphQL queries and mutations, allowing for efficient and flexible interaction with group data.
+When an object becomes a member of a group, Infrahub automatically creates inverse relationships. Every object gains:
 
-**Example Query**:
+- `member_of_groups`: A computed relationship showing all groups containing this object
+- `subscriber_of_groups`: A computed relationship showing all groups this object subscribes to
+
+These automatic relationships enable powerful graph traversals. You can easily answer questions like "What groups does this device belong to?" or "What objects are affected by changes to this group?"
 
 ```graphql
 query {
@@ -45,34 +45,61 @@ query {
 }
 ```
 
-### Specialized groups
+## Types of groups
 
-Several specialized group types inherit from CoreGroup, each serving a specific purpose within Infrahub:
+Infrahub implements several specialized group types, each serving distinct purposes:
 
-- CoreStandardGroup: Group of nodes of any kind.
-- CoreGeneratorGroup: Group of nodes that are created by a generator.
-- CoreGraphQLQueryGroup: Group of nodes associated with a given GraphQLQuery.
+### Standard groups
 
-## Group types
+Standard groups (`CoreStandardGroup`) are the general-purpose groups that users create and manage directly. They represent logical collections based on business needs - perhaps grouping all devices in a specific data center or all interfaces participating in a particular service.
+
+Standard groups embody the principle of user control. You define the membership criteria, manage the members, and determine how the group integrates with your workflows.
+
+### Generator groups
+
+Generator groups (`CoreGeneratorGroup`) represent a different paradigm: dynamic membership based on generation rules. Rather than manually adding members, a generator creates objects and automatically adds them to the group.
+
+This design solves the problem of maintaining consistency between generated objects and their logical groupings. When a generator creates 100 interfaces based on a template, they automatically belong to a group that tracks their origin and purpose.
+
+### Query groups
+
+Query groups (`CoreGraphQLQueryGroup`) introduce the concept of dynamic membership based on query results. The group's membership changes as the underlying data changes, maintaining a live view of objects matching specific criteria.
+
+This approach reflects a shift from imperative (explicitly adding members) to declarative (defining membership criteria) group management.
+
+## The visibility model
+
+Infrahub distinguishes between two visibility levels for groups:
 
 ### Default groups
 
-These are user-managed groups, meaning they are created and managed by the user.
-Use Cases: Ideal for organizing and managing resources, users, or devices according to the user's specific needs.
+User-managed groups appear in the standard interface and are intended for direct interaction. These groups represent the organizational structure that users actively maintain and reference in their daily operations.
 
 ### Internal groups
 
-These are system-managed groups, automatically generated by Infrahub to support internal processes such as tracking nodes for artifact definitions.
-In the groups manager view in the UI, a toggle is available to show or hide internal groups. By default, internal groups are hidden to reduce visual clutter and prevent confusion, as they are typically used behind the scenes by Infrahub.
+System-managed groups operate behind the scenes, supporting Infrahub's internal processes. They track relationships that the system needs but users don't typically interact with directly.
 
-## Integration with other features
+The decision to hide internal groups by default reflects a focus on user experience - reducing visual complexity while maintaining the power of the underlying system. Users can toggle visibility when needed for debugging or advanced operations.
 
-Groups can be used as targets for generators (GeneratorDefinition), artifacts (ArtifactDefinition), and checks (CheckDefinition), allowing automated processes to apply configurations or perform actions on a specified set of objects.
+## Groups as integration points
 
-### Future developments
+Groups serve as a bridge between different Infrahub features, creating a unified way to target operations across the system.
 
-The group functionality in Infrahub is designed to be extensible and is expected to evolve over time:
+### Artifact generation
 
-- Dynamic Membership Rules: Ability to define dynamic rules for group membership based on object attributes or conditions.
-- Integration with Access Control: Deeper integration with permission systems to control access and operations based on group memberships.
-- Performance Optimizations: Efficient handling and querying of large groups for better scalability.
+When an artifact definition needs to generate configurations for multiple devices, it targets a group. This design decouples the artifact logic from specific device lists, making definitions more reusable and maintainable.
+
+### Transformation targets
+
+Transformations can operate on entire groups, applying consistent changes across all members. The group becomes the unit of operation, simplifying bulk updates and ensuring consistency.
+
+### Check definitions
+
+Validation checks can target groups, running the same validation logic across all members. This approach scales validation from individual objects to entire collections without duplicating logic.
+
+## Further reading
+
+- [How to organize objects with groups](../guides/groups.mdx) - Practical guide for creating and managing groups
+- [Groups schema reference](../reference/schema/groups) - Technical reference for group attributes and relationships
+- [Artifact definitions](./artifact) - How groups integrate with artifact generation
+- [Transformations](./transformation) - Using groups as transformation targets

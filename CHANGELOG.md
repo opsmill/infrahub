@@ -11,6 +11,49 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.10) - 2025-10-01
+
+### Fixed
+
+- Fix issue with template that would set the value/source of all attributes even for the attribute that are not defined in the template. ([#7259](https://github.com/opsmill/infrahub/issues/7259))
+- Fix bug in artifact diff cypher query that could improperly exclude artifacts on the default branch ([#7301](https://github.com/opsmill/infrahub/issues/7301))
+
+### Housekeeping
+
+- Update docs to download compose file first and then run compose up/down. This change was made due to community members using the one liner for long standing installations without the docker-compose.yml file locally. The new approach is more explicit and easier for the community to maintain their Infrahub instances in the future. ([#compose](https://github.com/opsmill/infrahub/issues/compose))
+
+## [Infrahub - v1.4.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.9) - 2025-09-26
+
+### Fixed
+
+- Fix prefix/IP Address creation when passing in `ip_namespace`'s HFID ([#7239](https://github.com/opsmill/infrahub/issues/7239))
+- Fix bug in schema integrity checks of a proposed change that prevented resolved violations from being removed ([#7278](https://github.com/opsmill/infrahub/issues/7278))
+
+## [Infrahub - v1.4.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.8) - 2025-09-23
+
+### Fixed
+
+- Report proper branch when read-only repositories fail to synchronize due to invalid branch ([#5713](https://github.com/opsmill/infrahub/issues/5713))
+- Add an HFID for Attribute and Relationship matches for a Node Trigger Rule ([#6713](https://github.com/opsmill/infrahub/issues/6713))
+- Use the prune flag when fetching updates from remote git repositories to clear deleted remote references locally ([#6884](https://github.com/opsmill/infrahub/issues/6884))
+- Fix branch delete query to avoid out-of-memory error when using the community edition ([#7161](https://github.com/opsmill/infrahub/issues/7161))
+- Fix bug in GraphQL queries that filter on the ID(s) of peer nodes that could cause nodes to be improperly excluded if the peer's schema had its name, namespace, or inheritance updated. ([#7247](https://github.com/opsmill/infrahub/issues/7247))
+- Convert GraphQL query group update tasks to interval to hide it from the task list
+- Ensure the default branch is used when a node is part of the global branch
+- Update a cypher query that did not correctly account for deleted Relationships. It was only used during a delete, so would not have caused any issues visible to the user.
+
+## [Infrahub - v1.4.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.7) - 2025-09-16
+
+### Added
+
+- Added optional configuration to fetch and map groups when using Google as an identity provider for OAuth/OIDC.
+- Added the name of the artifact definition to the payload of artifact webhook events.
+
+### Fixed
+
+- Allow RequestGraphQLQueryGroupUpdate parameters to accept any type of value, not just strings. ([#7208](https://github.com/opsmill/infrahub/issues/7208))
+- The available IPs filter in IPAM list views now stays applied when switching kind.
+
 ## [Infrahub - v1.4.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.6) - 2025-09-10
 
 ### Added

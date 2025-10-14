@@ -179,7 +179,7 @@ jobs:
 
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -226,7 +226,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
@@ -238,7 +238,8 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: python
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: "Setup git credentials"
@@ -249,8 +250,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Unit Tests"
@@ -279,7 +283,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -291,7 +295,8 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: python
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: "Setup git credentials"
@@ -302,8 +307,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
@@ -325,7 +333,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -337,7 +345,8 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: python
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: "Setup git credentials"
@@ -348,8 +357,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
@@ -386,7 +398,8 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: python
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Install tini
@@ -412,8 +425,11 @@ jobs:
         run: "invoke dev.build"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Run tests"
@@ -455,7 +471,7 @@ jobs:
   #       with:
   #         submodules: true
   #     - name: Set up Python
-  #       uses: actions/setup-python@v5
+  #       uses: actions/setup-python@v6
   #       with:
   #         python-version: '3.12'
   #     - name: "Setup git credentials"
@@ -489,7 +505,7 @@ jobs:
           submodules: true
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
       - name: "Setup environment"
@@ -568,7 +584,7 @@ jobs:
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
       - name: "Setup python environment"
@@ -608,7 +624,7 @@ jobs:
           cache-dependency-path: docs/package-lock.json
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: "Setup Python environment"
@@ -725,7 +741,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/app/package-lock.json
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: python
+        uses: actions/setup-python@v6
         with:
           python-version: 3.12
 
@@ -897,7 +914,8 @@ jobs:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -968,6 +986,7 @@ jobs:
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
+      - prepare-environment
       - javascript-lint
       - files-changed
       - yaml-lint
@@ -988,7 +1007,8 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v5
+        id: python
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: "Setup git credentials"
@@ -999,8 +1019,11 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
+          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: Update PATH
@@ -1008,17 +1031,19 @@ jobs:
 
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v3
+        uses: CodSpeedHQ/action@v4
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
+          mode: instrumentation
           run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
 
       - name: Run non-intensive benchmarks
         if: |
           !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@v3
+        uses: CodSpeedHQ/action@v4
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
+          mode: instrumentation
           run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
 
   # ------------------------------------------ Coverall Report  ------------------------------------------

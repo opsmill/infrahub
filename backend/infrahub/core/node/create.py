@@ -41,10 +41,19 @@ async def extract_peer_data(
 ) -> Mapping[str, Any]:
     obj_peer_data: dict[str, Any] = {}
 
-    for attr in template_peer.get_schema().attribute_names:
-        if attr not in obj_peer_schema.attribute_names:
+    for attr_name in template_peer.get_schema().attribute_names:
+        template_attr = getattr(template_peer, attr_name)
+        if template_attr.value is None:
             continue
-        obj_peer_data[attr] = {"value": getattr(template_peer, attr).value, "source": template_peer.id}
+        if template_attr.is_default:
+            # if template attr is_default and the value matches the object schema, then do not set the source
+            try:
+                if obj_peer_schema.get_attribute(name=attr_name).default_value == template_attr.value:
+                    continue
+            except ValueError:
+                pass
+
+        obj_peer_data[attr_name] = {"value": template_attr.value, "source": template_peer.id}
 
     for rel in template_peer.get_schema().relationship_names:
         rel_manager: RelationshipManager = getattr(template_peer, rel)

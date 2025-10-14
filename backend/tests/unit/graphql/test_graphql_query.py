@@ -6,9 +6,11 @@ from deepdiff import DeepDiff
 from infrahub import __version__, config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -1192,6 +1194,51 @@ async def test_query_multiple_filters(
     assert result.errors is None
     assert len(result.data["TestCar"]["edges"]) == 1
     assert result.data["TestCar"]["edges"][0]["node"]["id"] == c2.id
+
+    # test filter by peer ID after node kind migration
+    person_schema = registry.schema.get("TestPerson", branch=default_branch)
+    person_schema.name = "NewPerson"
+    person_schema.namespace = "Test2"
+    assert person_schema.kind == "Test2NewPerson"
+    registry.schema.set(name="Test2NewPerson", schema=person_schema, branch=default_branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=registry.schema.get(name="TestPerson", branch=default_branch),
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewPerson", field_name="namespace"
+        ),
+    )
+    execution_result = await migration.execute(db=db, branch=default_branch)
+    assert not execution_result.errors
+
+    query05 = """
+    query {
+        TestCar(owner__ids: ["%s"]) {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (p1.id)
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query05,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestCar"]["edges"]) == 2
+    assert {node["node"]["id"] for node in result.data["TestCar"]["edges"]} == {c1.id, c2.id}
 
 
 async def test_query_filter_relationships(

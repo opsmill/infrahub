@@ -1422,6 +1422,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             target_id=message.target_id,
             target_kind=message.target_kind,
             artifact_definition_id=message.artifact_definition,
+            artifact_definition_name=message.artifact_definition_name,
             meta=EventMeta.from_context(context=message.context, branch=branch),
             checksum=checksum,
             checksum_previous=previous_checksum,

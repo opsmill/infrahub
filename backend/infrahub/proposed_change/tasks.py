@@ -441,9 +441,6 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
                 )
             )
 
-    if not conflicts:
-        return
-
     database = await get_database()
     async with database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
@@ -683,6 +680,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 artifact_name=model.artifact_definition.artifact_name,
                 artifact_id=artifact_id,
                 artifact_definition=model.artifact_definition.definition_id,
+                artifact_definition_name=model.artifact_definition.definition_name,
                 commit=repository.source_commit,
                 content_type=model.artifact_definition.content_type,
                 transform_type=model.artifact_definition.transform_kind,

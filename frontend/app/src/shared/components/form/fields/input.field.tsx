@@ -29,6 +29,7 @@ const InputField = ({
   unique,
   pool,
   isBulkUpdate,
+  autoFocus,
   ...props
 }: InputFieldProps) => {
   return (
@@ -52,7 +53,7 @@ const InputField = ({
               fieldData={fieldData}
             />
 
-            <Row>
+            <Row className="gap-1">
               <FormInput>
                 {!selectedPoolId || override ? (
                   <Input
@@ -62,7 +63,7 @@ const InputField = ({
                     onChange={(event) => {
                       field.onChange(updateFormFieldValue(event.target.value, defaultValue));
                     }}
-                    autoFocus={override}
+                    autoFocus={autoFocus || override}
                     onBlur={() => setOverride(false)}
                   />
                 ) : (

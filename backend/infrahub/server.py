@@ -10,7 +10,6 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -30,7 +29,7 @@ from infrahub.exceptions import Error, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.middleware import InfrahubCORSMiddleware
+from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
@@ -184,7 +183,17 @@ app.add_middleware(
     skip_paths=["/health"],
 )
 app.add_middleware(InfrahubCORSMiddleware)
-app.add_middleware(GZipMiddleware, minimum_size=100_000)
+app.add_middleware(
+    ConditionalGZipMiddleware,
+    minimum_size=100_000,
+    compresslevel=1,
+    include_paths=(
+        "/assets",
+        "/favicons",
+        "/docs",
+        "/api/schema",
+    ),
+)
 
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))

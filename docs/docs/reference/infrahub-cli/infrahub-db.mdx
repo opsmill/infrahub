@@ -17,6 +17,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `check`: Run database sanity checks and output the...
+* `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `check-inheritance`: Check the database for any vertices with...
 * `constraint`: Manage Database Constraints
 * `index`: Manage Database Indexes
@@ -42,6 +43,25 @@ $ infrahub db check [OPTIONS]
 
 * `--output-dir PATH`: Directory to save detailed check results (defaults to infrahub_db_check_YYYYMMDD-HHMMSS)
 * `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+* `--help`: Show this message and exit.
+
+## `infrahub db check-duplicate-schema-fields`
+
+Check for any duplicate schema attributes or relationships on the default branch
+
+**Usage**:
+
+```console
+$ infrahub db check-duplicate-schema-fields [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
+* `--fix / --no-fix`: Fix the duplicate schema fields on the default branch.  [default: no-fix]
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-inheritance`

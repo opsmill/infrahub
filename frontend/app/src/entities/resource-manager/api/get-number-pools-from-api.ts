@@ -9,11 +9,8 @@ export const GET_NUMBER_POOLS = gql`
       edges {
         node {
           id
+          hfid
           display_label
-          name {
-            id
-            value
-          }
           node {
             id
             value

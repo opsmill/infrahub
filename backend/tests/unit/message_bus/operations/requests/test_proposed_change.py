@@ -10,6 +10,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
 from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
@@ -128,8 +129,8 @@ async def test_get_proposed_change_schema_integrity_constraints(
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 217
-    assert len(non_generate_profile_constraints) == 130
+    assert len(constraints) == 225
+    assert len(non_generate_profile_constraints) == 136
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -282,6 +283,7 @@ async def test_schema_integrity(
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
         await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
         await person.save(db=db)
+        person_john = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
 
         branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
         person_schema = branch2_schema.get(name="TestPerson")
@@ -329,3 +331,14 @@ async def test_schema_integrity(
                 ),
             }
         ] in all_conflicts
+
+        # verify integrity checks are removed after being fixed
+        person_john.name.value = "JOHN"
+        await person_john.save(db=db)
+
+        await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
+
+        checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
+        assert len(checks) == 1
+        assert checks[0].conclusion.value.value == "success"
+        assert checks[0].conflicts.value == []

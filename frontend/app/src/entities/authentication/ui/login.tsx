@@ -58,7 +58,12 @@ export const LoginForm = ({ className }: { className?: string }) => {
         await login(data);
       }}
     >
-      <InputField name="username" label="Username" rules={{ validate: { required: isRequired } }} />
+      <InputField
+        name="username"
+        label="Username"
+        rules={{ validate: { required: isRequired } }}
+        autoFocus
+      />
 
       <PasswordInputField
         name="password"
