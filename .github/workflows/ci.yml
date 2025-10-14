@@ -1027,17 +1027,7 @@ jobs:
 
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
   E2E-testing-version-upgrade:
-    needs:
-      - javascript-lint
-      - files-changed
-      - yaml-lint
-      - python-lint
-      - infrahub-testcontainers-check
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
+
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
