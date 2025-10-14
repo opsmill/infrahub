@@ -874,7 +874,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             (fields and "display_label" in fields) or self._display_label.needs_update(fields=fields)
         ):
             await self._display_label.compute(db=db, node=self)
-            self._display_label.get_node_attribute(node=self, at=update_at).get_create_data()
+            self._display_label.get_node_attribute(node=self, at=update_at).get_create_data(node_schema=self._schema)
             updated_attribute = await self._display_label.get_node_attribute(node=self, at=update_at).save(
                 at=update_at, db=db
             )
