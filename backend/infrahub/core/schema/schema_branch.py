@@ -2287,7 +2287,7 @@ class SchemaBranch:
         )
 
         for node_attr in node.attributes:
-            if node_attr.read_only or node_attr.optional is False:
+            if not node_attr.support_profiles:
                 continue
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(
