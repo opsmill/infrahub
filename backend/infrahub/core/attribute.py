@@ -36,7 +36,7 @@ from .schema.attribute_parameters import NumberAttributeParameters
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import AttributeSchema
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
 
@@ -630,7 +630,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 
-    def get_create_data(self) -> AttributeCreateData:
+    def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
@@ -645,7 +645,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch=branch.name,
             status="active",
             branch_level=hierarchy_level,
-            branch_support=self.schema.branch.value,
+            branch_support=self.schema.branch.value if self.schema.branch is not None else node_schema.branch,
             content=self.to_db(),
             is_default=self.is_default,
             is_protected=self.is_protected,

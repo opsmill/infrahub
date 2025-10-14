@@ -144,16 +144,20 @@ class NodeCreateAllQuery(NodeQuery):
 
         if self.node.has_display_label():
             attributes_indexed.append(
-                self.node._display_label.get_node_attribute(node=self.node, at=at).get_create_data()
+                self.node._display_label.get_node_attribute(node=self.node, at=at).get_create_data(
+                    node_schema=self.node.get_schema()
+                )
             )
         if self.node.has_human_friendly_id():
             attributes_indexed.append(
-                self.node._human_friendly_id.get_node_attribute(node=self.node, at=at).get_create_data()
+                self.node._human_friendly_id.get_node_attribute(node=self.node, at=at).get_create_data(
+                    node_schema=self.node.get_schema()
+                )
             )
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
-            attr_data = attr.get_create_data()
+            attr_data = attr.get_create_data(node_schema=self.node.get_schema())
             node_type = attr.get_db_node_type()
 
             if AttributeDBNodeType.IPHOST in node_type:
