@@ -269,21 +269,42 @@ async def get_groups_from_provider(
 
 
 def safe_get_response_body(response: httpx.Response) -> str | dict[str, Any]:
-    """Safely extract response body from HTTP response.
+    """Safely extract response body from HTTP response. If the response body cannot be JSON parsed or is empty,
+    it raises a GatewayError.
 
     Args:
         response: The HTTP response object
 
     Returns:
-        The response body as JSON dict if possible, otherwise as text, or error message
+        The response body as JSON dict if possible, otherwise as text
+
+    Raises:
+        GatewayError: When the response body cannot be parsed or is empty
     """
+    # Try to parse as JSON first
     try:
         return response.json()
-    except Exception:
+    except Exception as json_error:
         try:
-            return response.text
+            # Try to get as text
+            text_body = response.text
+            if not text_body.strip():  # Check for empty or whitespace-only response
+                log.error(
+                    "Empty response body from authentication provider",
+                    url=response.url,
+                    status_code=response.status_code,
+                )
+                raise GatewayError(message="Authentication provider returned an empty response") from json_error
         except Exception:
-            return "Unable to parse response body"
+            log.error(
+                "Unable to read response body from authentication provider",
+                url=response.url,
+                status_code=response.status_code,
+            )
+            raise GatewayError(message="Unable to read response from authentication provider") from json_error
+
+    # Here it means we got a text response but not JSON
+    return text_body
 
 
 def extract_auth_error_message(response_body: str | dict[str, Any], base_message: str) -> str:
@@ -321,89 +342,46 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
     Raises:
         GatewayError: When the response indicates an error or invalid state
     """
-    if 200 <= response.status_code <= 299:
-        return
-
     # Safely extract response body
     response_body = safe_get_response_body(response)
 
+    # If the status code is successful, simply return
+    if 200 <= response.status_code <= 299:
+        return
+
+    # Prepare variables with default values for logging
+    log_message: str = f"Unexpected response from {provider_type} provider"
+    base_msg: str = "Unexpected response from authentication provider"
+
     # Handle specific HTTP status codes with appropriate error messages
-    if response.status_code == 400:
-        log.error(
-            f"Bad request to {provider_type} provider",
-            url=response.url,
-            status_code=response.status_code,
-            body=response_body,
-        )
-        error_msg = extract_auth_error_message(
-            response_body,
-            f"Bad request to authentication provider. Please check your {provider_type} configuration parameters.",
-        )
-        raise GatewayError(message=error_msg)
+    match response.status_code:
+        case 400:
+            log_message = f"Bad request to {provider_type} provider"
+            base_msg = (
+                f"Bad request to authentication provider. Please check your {provider_type} configuration parameters."
+            )
 
-    if response.status_code == 401:
-        log.error(
-            f"Unauthorized request to {provider_type} provider",
-            url=response.url,
-            status_code=response.status_code,
-            body=response_body,
-        )
-        error_msg = extract_auth_error_message(
-            response_body, f"Authentication failed. Please check your {provider_type} client credentials."
-        )
-        raise GatewayError(message=error_msg)
+        case 401:
+            log_message = f"Unauthorized request to {provider_type} provider"
+            base_msg = f"Authentication failed. Please check your {provider_type} client credentials."
 
-    if response.status_code == 403:
-        log.error(
-            f"Forbidden request to {provider_type} provider",
-            url=response.url,
-            status_code=response.status_code,
-            body=response_body,
-        )
-        error_msg = extract_auth_error_message(
-            response_body, "Access forbidden by authentication provider. Please check your client permissions."
-        )
-        raise GatewayError(message=error_msg)
+        case 403:
+            log_message = f"Forbidden request to {provider_type} provider"
+            base_msg = "Access forbidden by authentication provider. Please check your client permissions."
 
-    if response.status_code == 404:
-        log.error(
-            "Resource not found",
-            url=response.url,
-            status_code=response.status_code,
-            body=response_body,
-        )
-        message = (
-            f"Authentication provider endpoint not found. Please verify your {provider_type} provider configuration."
-        )
-        raise GatewayError(message=message)
+        case 404:
+            log_message = "Resource not found"
+            base_msg = f"Authentication provider endpoint not found. Please verify your {provider_type} provider configuration."
 
-    if response.status_code == 429:
-        log.error(
-            f"Rate limited by {provider_type} provider",
-            url=response.url,
-            status_code=response.status_code,
-            body=response_body,
-        )
-        raise GatewayError(message="Rate limited by authentication provider. Please try again later.")
+        case 429:
+            log_message = f"Rate limited by {provider_type} provider"
+            base_msg = "Rate limited by authentication provider. Please try again later."
 
-    if 500 <= response.status_code <= 599:
-        log.error(
-            f"Server error from {provider_type} provider",
-            url=response.url,
-            status_code=response.status_code,
-            body=response_body,
-        )
-        raise GatewayError(
-            message="Authentication provider is experiencing server issues. Please try again later or contact your administrator."
-        )
+        case status_code if 500 <= status_code <= 599:
+            log_message = f"Server error from {provider_type} provider"
+            base_msg = "Authentication provider is experiencing server issues. Please try again later or contact your administrator."
 
-    # Generic error for any other status codes
-    log.error(
-        f"Unexpected response from {provider_type} provider",
-        url=response.url,
-        status_code=response.status_code,
-        body=response_body,
-    )
-
-    error_msg = extract_auth_error_message(response_body, "Unexpected response from authentication provider")
+    # Print proper log and raise gateway error
+    log.error(log_message, url=response.url, status_code=response.status_code, body=response_body)
+    error_msg = extract_auth_error_message(response_body, base_msg)
     raise GatewayError(message=error_msg)
