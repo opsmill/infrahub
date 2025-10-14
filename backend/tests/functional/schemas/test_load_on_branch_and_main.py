@@ -99,22 +99,12 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
             "car_2": car_2,
         }
 
-    @pytest.fixture(scope="class")
-    async def load_data_on_branch(self, client: InfrahubClient, branch: BranchData) -> dict[str, InfrahubNode]:
-        return await self._load_data(client, branch.name)
-
-    @pytest.fixture(scope="class")
-    async def load_data_on_main(self, client: InfrahubClient, default_branch: Branch) -> dict[str, InfrahubNode]:
-        return await self._load_data(client, default_branch.name)
-
     async def test_merge_fails_with_duplicates(
         self,
         client: InfrahubClient,
         default_branch: Branch,
         load_schema_on_branch,
         load_schema_on_main,
-        # load_data_on_branch: dict[str, InfrahubNode],
-        # load_data_on_main: dict[str, InfrahubNode],
         branch: BranchData,
     ):
         car_schema_main = await client.schema.get(kind="TestingCar", branch=default_branch.name, refresh=True)
@@ -128,21 +118,25 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
         car_relationships_by_name_branch = {rel.name: rel for rel in car_schema_branch.relationships}
         partner_car_rel_branch = car_relationships_by_name_branch["partner_car"]
 
-        with pytest.raises(GraphQLError) as excinfo:
-            await client.branch.merge(branch_name=branch.name)
+        for operation in [
+            client.branch.merge(branch_name=branch.name),
+            client.branch.rebase(branch_name=branch.name),
+        ]:
+            with pytest.raises(GraphQLError) as excinfo:
+                await operation
 
-        expected_error_messages = [
-            f"Node (SchemaAttribute: {smell_attr_main.id}) is not compliant. The error relates to field name.value='smell'",
-            f"Node (SchemaAttribute: {smell_attr_branch.id}) is not compliant. The error relates to field name.value='smell'",
-            f"Node (SchemaAttribute: {smell_attr_main.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
-            f"Node (SchemaAttribute: {smell_attr_branch.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
-            f"Node (SchemaRelationship: {partner_car_rel_main.id}) is not compliant. The error relates to field name.value='partner_car'",
-            f"Node (SchemaRelationship: {partner_car_rel_branch.id}) is not compliant. The error relates to field name.value='partner_car'",
-            f"Node (SchemaRelationship: {partner_car_rel_main.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
-            f"Node (SchemaRelationship: {partner_car_rel_branch.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
-        ]
-        for expected_err in expected_error_messages:
-            assert expected_err in excinfo.value.errors[0]["message"]
+            expected_error_messages = [
+                f"(SchemaAttribute: {smell_attr_main.id}) is not compliant. The error relates to field name.value='smell'",
+                f"(SchemaAttribute: {smell_attr_branch.id}) is not compliant. The error relates to field name.value='smell'",
+                f"(SchemaAttribute: {smell_attr_main.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
+                f"(SchemaAttribute: {smell_attr_branch.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
+                f"(SchemaRelationship: {partner_car_rel_main.id}) is not compliant. The error relates to field name.value='partner_car'",
+                f"(SchemaRelationship: {partner_car_rel_branch.id}) is not compliant. The error relates to field name.value='partner_car'",
+                f"(SchemaRelationship: {partner_car_rel_main.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
+                f"(SchemaRelationship: {partner_car_rel_branch.id}) is not compliant. The error relates to field node.id='{car_schema_main.id}'",
+            ]
+            for expected_err in expected_error_messages:
+                assert expected_err in excinfo.value.errors[0]["message"]
 
     async def test_merge_succeeds_after_schema_duplicates_are_deleted(
         self, client: InfrahubClient, default_branch: Branch, branch: BranchData, car_schema_updated: NodeSchema
