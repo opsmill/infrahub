@@ -14,6 +14,7 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
     ProposedChangeGeneratorDefinition,
@@ -57,6 +58,8 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         query=model.generator_definition.query_name,
         targets=model.generator_definition.group_id,
         convert_query_response=model.generator_definition.convert_query_response,
+        execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
+        execute_after_merge=model.generator_definition.execute_after_merge,
     )
 
     commit_worktree = repository.get_commit_worktree(commit=model.commit)
@@ -80,6 +83,8 @@ async def run_generator(model: RequestGeneratorRun) -> None:
             params=model.variables,
             generator_instance=generator_instance.id,
             convert_query_response=generator_definition.convert_query_response,
+            execute_in_proposed_change=generator_definition.execute_in_proposed_change,
+            execute_after_merge=generator_definition.execute_after_merge,
             infrahub_node=InfrahubNode,
         )
         await generator.run(identifier=generator_definition.name)
@@ -129,28 +134,39 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
 
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
-async def run_generator_definition(branch: str, context: InfrahubContext) -> None:
+async def run_generator_definition(
+    branch: str, context: InfrahubContext, source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN
+) -> None:
     await add_tags(branches=[branch])
 
     generators = await get_client().filters(
         kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
-    generator_definitions = [
-        ProposedChangeGeneratorDefinition(
-            definition_id=generator.id,
-            definition_name=generator.name.value,
-            class_name=generator.class_name.value,
-            file_path=generator.file_path.value,
-            query_name=generator.query.peer.name.value,
-            query_models=generator.query.peer.models.value,
-            repository_id=generator.repository.peer.id,
-            parameters=generator.parameters.value,
-            group_id=generator.targets.peer.id,
-            convert_query_response=generator.convert_query_response.value,
+    generator_definitions: list[ProposedChangeGeneratorDefinition] = []
+
+    for generator in generators:
+        if (
+            source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value
+        ) or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value):
+            continue
+
+        generator_definitions.append(
+            ProposedChangeGeneratorDefinition(
+                definition_id=generator.id,
+                definition_name=generator.name.value,
+                class_name=generator.class_name.value,
+                file_path=generator.file_path.value,
+                query_name=generator.query.peer.name.value,
+                query_models=generator.query.peer.models.value,
+                repository_id=generator.repository.peer.id,
+                parameters=generator.parameters.value,
+                group_id=generator.targets.peer.id,
+                convert_query_response=generator.convert_query_response.value,
+                execute_in_proposed_change=generator.execute_in_proposed_change.value,
+                execute_after_merge=generator.execute_after_merge.value,
+            )
         )
-        for generator in generators
-    ]
 
     for generator_definition in generator_definitions:
         model = RequestGeneratorDefinitionRun(branch=branch, generator_definition=generator_definition)

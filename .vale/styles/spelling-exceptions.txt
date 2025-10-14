@@ -64,6 +64,8 @@ enums
 env
 eslint
 excalidraw
+execute_in_proposed_change
+execute_after_merge
 failover
 fanout
 file_path

@@ -70,10 +70,10 @@ core_standard_group = NodeSchema(
 core_generator_group = NodeSchema(
     name="GeneratorGroup",
     namespace="Core",
-    description="Group of nodes that are created by a generator.",
+    description="Group of nodes that are created by a generator. (local)",
     include_in_menu=False,
     icon="mdi:state-machine",
-    label="Generator Group",
+    label="Generator Group (local)",
     default_filter="name__value",
     order_by=["name__value"],
     display_labels=["name__value"],
@@ -82,6 +82,20 @@ core_generator_group = NodeSchema(
     generate_profile=False,
 )
 
+core_generator_aware_group = NodeSchema(
+    name="GeneratorAwareGroup",
+    namespace="Core",
+    description="Group of nodes that are created by a generator. (Aware)",
+    include_in_menu=False,
+    icon="mdi:state-machine",
+    label="Generator Group (aware)",
+    default_filter="name__value",
+    order_by=["name__value"],
+    display_labels=["name__value"],
+    branch=BranchSupportType.AWARE,
+    inherit_from=[InfrahubKind.GENERICGROUP],
+    generate_profile=False,
+)
 
 core_graphql_query_group = NodeSchema(
     name="GraphQLQueryGroup",

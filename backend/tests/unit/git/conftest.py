@@ -736,7 +736,7 @@ async def check_definition_data_01() -> dict:
                 "owner": None,
             },
             "timeout": {
-                "value": 10,
+                "value": 60,
                 "is_protected": True,
                 "is_visible": True,
                 "source": {
