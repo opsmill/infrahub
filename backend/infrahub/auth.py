@@ -352,27 +352,31 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
     # Prepare variables with default values for logging
     response_body = safe_get_response_body(response, raise_error_on_empty_body=False)
     log_message: str = f"Unexpected response from {provider_type} provider"
-    base_msg: str = "Unexpected response from authentication provider"
+    base_msg: str = "Unexpected response from authentication provider."
 
     # Handle specific HTTP status codes with appropriate error messages
     match response.status_code:
         case 400:
             log_message = f"Bad request to {provider_type} provider"
-            base_msg = (
-                f"Bad request to authentication provider. Please check your {provider_type} configuration parameters."
-            )
+            base_msg = "Bad request to authentication provider. Please try again later or contact your administrator."
 
         case 401:
             log_message = f"Unauthorized request to {provider_type} provider"
-            base_msg = f"Authentication failed. Please check your {provider_type} client credentials."
+            base_msg = (
+                "Unauthorized request to authentication provider. Please try again later or contact your administrator."
+            )
 
         case 403:
             log_message = f"Forbidden request to {provider_type} provider"
-            base_msg = "Access forbidden by authentication provider. Please check your client permissions."
+            base_msg = (
+                "Access forbidden by authentication provider. Please try again later or contact your administrator."
+            )
 
         case 404:
-            log_message = "Resource not found"
-            base_msg = f"Authentication provider endpoint not found. Please verify your {provider_type} provider configuration."
+            log_message = f"Resource not found for {provider_type} provider"
+            base_msg = (
+                "Authentication provider endpoint not found. Please try again later or contact your administrator."
+            )
 
         case 429:
             log_message = f"Rate limited by {provider_type} provider"
