@@ -82,7 +82,7 @@ const BranchesItems = () => {
 
                 <div className="flex flex-col items-end">
                   <div className="flex items-center">
-                    <div className="mr-2">Branched:</div>
+                    <div className="mr-2">Last rebase on main:</div>
                     <DateDisplay date={branch.branched_from} />
                   </div>
 

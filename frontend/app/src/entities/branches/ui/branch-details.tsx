@@ -105,12 +105,12 @@ export const BranchDetails = () => {
       label: "Origin branch",
     },
     {
-      name: "branched_at",
-      label: "Started at",
+      name: "created_at",
+      label: "Created at",
     },
     {
-      name: "created_at",
-      label: "Completed at",
+      name: "branched_from",
+      label: "Last rebase on main",
     },
   ];
 
@@ -118,7 +118,7 @@ export const BranchDetails = () => {
     values: {
       name: branch.name,
       origin_branch: <Badge className="text-sm">{branch.origin_branch}</Badge>,
-      branched_at: <DateDisplay date={branch.branched_at} />,
+      branched_from: <DateDisplay date={branch.branched_from} />,
       created_at: <DateDisplay date={branch.created_at} />,
     },
   };
