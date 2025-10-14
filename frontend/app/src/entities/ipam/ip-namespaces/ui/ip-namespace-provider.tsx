@@ -2,7 +2,7 @@ import { atom, useAtom } from "jotai";
 import { CornerDownLeftIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, matchPath, useNavigate, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Col } from "@/shared/components/container";
@@ -76,10 +76,17 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
         setCurrentIpNamespace: (newIpNamespace) => {
           const newIpNamespaceId = newIpNamespace.default?.value ? null : newIpNamespace.id;
 
-          const { schema } = getSchema(objectKind);
-          const isViewingIpAddress = !!schema && isOfKind(IP_ADDRESS_GENERIC, schema);
+          const isViewingIpAddress = objectKind
+            ? (() => {
+                const { schema } = getSchema(objectKind);
+                return !!schema && isOfKind(IP_ADDRESS_GENERIC, schema);
+              })()
+            : !!matchPath("/ipam/ip_addresses", window.location.pathname);
+
+          const basePath = isViewingIpAddress ? "/ipam/ip_addresses" : "/ipam";
+
           navigate(
-            constructPathForIpam(isViewingIpAddress ? "/ipam/ip_addresses" : "/ipam", [
+            constructPathForIpam(basePath, [
               newIpNamespaceId
                 ? { name: IPAM_QSP.NAMESPACE, value: newIpNamespaceId }
                 : { name: IPAM_QSP.NAMESPACE, exclude: true },
