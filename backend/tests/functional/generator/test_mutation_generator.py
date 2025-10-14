@@ -73,7 +73,9 @@ class TestMutationGenerator(TestInfrahubApp):
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
 
-    async def test_execute_generator(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:
+    async def test_execute_generator_local(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+    ) -> None:
         generator = await client.get(kind=CoreGeneratorDefinition, branch="branch1", name__value="cartags")
         mutation = Mutation(
             mutation="CoreGeneratorDefinitionRun", input_data={"data": {"id": generator.id}}, query={"ok": None}
@@ -83,6 +85,25 @@ class TestMutationGenerator(TestInfrahubApp):
 
         tags = await client.all(kind="BuiltinTag", branch="branch1")
         assert "john-jesko" in [tag.name.value for tag in tags]
+
+        groups = await client.filters(kind=InfrahubKind.GENERATORGROUP, branch="branch1")
+        assert len(groups) == 1
+
+    async def test_execute_generator_aware(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
+    ) -> None:
+        generator = await client.get(kind=CoreGeneratorDefinition, branch="branch1", name__value="cartags_upper")
+        mutation = Mutation(
+            mutation="CoreGeneratorDefinitionRun", input_data={"data": {"id": generator.id}}, query={"ok": None}
+        )
+        response = await client.execute_graphql(query=mutation.render(), branch_name="branch1")
+        assert response["CoreGeneratorDefinitionRun"]["ok"]
+
+        tags = await client.all(kind="BuiltinTag", branch="branch1")
+        assert "JOHN__JESKO" in [tag.name.value for tag in tags]
+
+        groups = await client.filters(kind=InfrahubKind.GENERATORAWAREGROUP, branch="branch1")
+        assert len(groups) == 1
 
     async def test_execute_generator_background(
         self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient
