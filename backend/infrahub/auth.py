@@ -268,12 +268,13 @@ async def get_groups_from_provider(
     return []
 
 
-def safe_get_response_body(response: httpx.Response) -> str | dict[str, Any]:
+def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: bool = True) -> str | dict[str, Any]:
     """Safely extract response body from HTTP response. If the response body cannot be JSON parsed or is empty,
     it raises a GatewayError.
 
     Args:
         response: The HTTP response object
+        raise_error_on_empty_body: Whether to raise an error if the response body is empty
 
     Returns:
         The response body as JSON dict if possible, otherwise as text
@@ -288,7 +289,7 @@ def safe_get_response_body(response: httpx.Response) -> str | dict[str, Any]:
         try:
             # Try to get as text
             text_body = response.text
-            if not text_body.strip():  # Check for empty or whitespace-only response
+            if not text_body.strip() and raise_error_on_empty_body:  # Check for empty or whitespace-only response
                 log.error(
                     "Empty response body from authentication provider",
                     url=response.url,
@@ -342,14 +343,14 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
     Raises:
         GatewayError: When the response indicates an error or invalid state
     """
-    # Safely extract response body
-    response_body = safe_get_response_body(response)
-
     # If the status code is successful, simply return
     if 200 <= response.status_code <= 299:
+        # Verify that we can read the response body safely and it is not empty
+        safe_get_response_body(response)
         return
 
     # Prepare variables with default values for logging
+    response_body = safe_get_response_body(response, raise_error_on_empty_body=False)
     log_message: str = f"Unexpected response from {provider_type} provider"
     base_msg: str = "Unexpected response from authentication provider"
 
