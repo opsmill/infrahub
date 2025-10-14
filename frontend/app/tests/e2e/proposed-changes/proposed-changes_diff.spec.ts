@@ -15,15 +15,6 @@ test.describe("/proposed-changes diff data", () => {
     });
   });
 
-  // test.afterAll(async function ({ page }) {
-  //   await page.goto("/proposed-changes");
-  //   await page.getByTestId("actions-row-button-conflict-test").click();
-  //   await page.getByTestId("delete-row-button").click();
-  //   await expect(page.getByTestId("modal-delete")).toBeVisible();
-  //   await page.getByTestId("modal-delete-confirm").click();
-  //   await expect(page.getByText("Proposed changes conflict-test deleted")).toBeVisible();
-  // });
-
   test("should verify the diff data with conflicts", async ({ page }) => {
     await test.step("create a new proposed change with reviewers", async () => {
       await page.goto("/proposed-changes");
@@ -96,5 +87,14 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByRole("button", { name: "Confirm", exact: true }).click();
       await expect(page.getByLabel("Resolved")).toBeChecked();
     });
+  });
+
+  test("should delete the proposed change", async ({ page }) => {
+    await page.goto("/proposed-changes");
+    await page.getByTestId("actions-row-button-conflict-test").click();
+    await page.getByTestId("delete-row-button").click();
+    await expect(page.getByTestId("modal-delete")).toBeVisible();
+    await page.getByTestId("modal-delete-confirm").click();
+    await expect(page.getByText("Proposed changes conflict-test deleted")).toBeVisible();
   });
 });
