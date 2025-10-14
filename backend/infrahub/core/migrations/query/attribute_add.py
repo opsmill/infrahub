@@ -17,14 +17,14 @@ class AttributeAddQuery(Query):
 
     def __init__(
         self,
-        node_kind: str,
+        node_kinds: list[str],
         attribute_name: str,
         attribute_kind: str,
         branch_support: str,
         default_value: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        self.node_kind = node_kind
+        self.node_kinds = node_kinds
         self.attribute_name = attribute_name
         self.attribute_kind = attribute_kind
         self.branch_support = branch_support
@@ -36,7 +36,7 @@ class AttributeAddQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_kind
+        self.params["node_kinds"] = self.node_kinds
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
         self.params["current_time"] = self.at.to_string()
@@ -79,12 +79,13 @@ class AttributeAddQuery(Query):
             LIMIT 1
             """ % {"attr_value_label": attr_value_label}
 
+        node_kinds_str = "|".join(self.node_kinds)
         query = """
         %(match_query)s
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH av, is_protected_value, is_visible_value
-        MATCH (n:%(node_kind)s|Profile%(node_kind)s)
+        MATCH (n:%(node_kinds_str)s)
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
@@ -110,7 +111,7 @@ class AttributeAddQuery(Query):
         """ % {
             "match_query": match_query,
             "branch_filter": branch_filter,
-            "node_kind": self.node_kind,
+            "node_kinds_str": node_kinds_str,
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
         }
 
