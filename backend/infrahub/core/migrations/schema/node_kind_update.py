@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
+from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
-from ..shared import MigrationQuery, SchemaMigration
+from ..shared import SchemaMigration
 
 
 class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):

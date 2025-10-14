@@ -17,12 +17,12 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 
-from .query import MigrationQuery  # noqa: TC001
-
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+    from .query import MigrationBaseQuery
 
 
 class MigrationResult(BaseModel):
@@ -40,7 +40,9 @@ class MigrationResult(BaseModel):
 class SchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
-    queries: Sequence[type[MigrationQuery]] = Field(..., description="List of queries to execute for this migration")
+    queries: Sequence[type[MigrationBaseQuery]] = Field(
+        ..., description="List of queries to execute for this migration"
+    )
 
     new_node_schema: MainSchemaTypes | None = None
     previous_node_schema: MainSchemaTypes | None = None
@@ -65,9 +67,14 @@ class SchemaMigration(BaseModel):
         return result
 
     async def execute_queries(
-        self, db: InfrahubDatabase, result: MigrationResult, branch: Branch, at: Timestamp
+        self,
+        db: InfrahubDatabase,
+        result: MigrationResult,
+        branch: Branch,
+        at: Timestamp,
+        queries: Sequence[type[MigrationBaseQuery]],
     ) -> MigrationResult:
-        for migration_query in self.queries:
+        for migration_query in queries:
             try:
                 query = await migration_query.init(db=db, branch=branch, at=at, migration=self)
                 await query.execute(db=db)
@@ -78,13 +85,20 @@ class SchemaMigration(BaseModel):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> MigrationResult:
+    async def execute(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: Timestamp | str | None = None,
+        queries: Sequence[type[MigrationBaseQuery]] | None = None,
+    ) -> MigrationResult:
         async with db.start_transaction() as ts:
             result = MigrationResult()
             at = Timestamp(at)
 
             await self.execute_pre_queries(db=ts, result=result, branch=branch, at=at)
-            await self.execute_queries(db=ts, result=result, branch=branch, at=at)
+            queries_to_execute = queries or self.queries
+            await self.execute_queries(db=ts, result=result, branch=branch, at=at, queries=queries_to_execute)
             await self.execute_post_queries(db=ts, result=result, branch=branch, at=at)
 
         return result
