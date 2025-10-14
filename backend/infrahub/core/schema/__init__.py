@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, TypeAlias
+from typing import Any
 
 from infrahub_sdk.utils import deep_merge_dict
 from pydantic import BaseModel, ConfigDict, Field
@@ -21,8 +21,8 @@ from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
 from .template_schema import TemplateSchema
 
-NonGenericSchemaTypes: TypeAlias = NodeSchema | ProfileSchema | TemplateSchema
-MainSchemaTypes: TypeAlias = NonGenericSchemaTypes | GenericSchema
+NonGenericSchemaTypes = NodeSchema | ProfileSchema | TemplateSchema
+MainSchemaTypes = NonGenericSchemaTypes | GenericSchema
 
 
 # -----------------------------------------------------

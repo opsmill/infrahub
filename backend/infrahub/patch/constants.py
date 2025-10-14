@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class PatchPlanFilename(str, Enum):
+class PatchPlanFilename(StrEnum):
     VERTICES_TO_ADD = "vertices_to_add.json"
     VERTICES_TO_UPDATE = "vertices_to_update.json"
     VERTICES_TO_DELETE = "vertices_to_delete.json"

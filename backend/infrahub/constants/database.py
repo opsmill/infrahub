@@ -1,12 +1,12 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class DatabaseType(str, Enum):
+class DatabaseType(StrEnum):
     NEO4J = "neo4j"
     MEMGRAPH = "memgraph"
 
 
-class Neo4jRuntime(str, Enum):
+class Neo4jRuntime(StrEnum):
     DEFAULT = "default"
     INTERPRETED = "interpreted"
     SLOTTED = "slotted"
@@ -15,13 +15,13 @@ class Neo4jRuntime(str, Enum):
     UNDEFINED = "undefined"
 
 
-class IndexType(str, Enum):
+class IndexType(StrEnum):
     TEXT = "text"
     RANGE = "range"
     LOOKUP = "lookup"
     NOT_APPLICABLE = "not_applicable"
 
 
-class EntityType(str, Enum):
+class EntityType(StrEnum):
     NODE = "node"
     RELATIONSHIP = "relationship"
