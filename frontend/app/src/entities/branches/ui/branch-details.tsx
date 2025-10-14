@@ -107,10 +107,10 @@ export const BranchDetails = () => {
     {
       name: "branched_at",
       label: "Started at",
+      name: "created_at",
+      label: "Created at",
     },
     {
-      name: "created_at",
-      label: "Completed at",
     },
   ];
 
