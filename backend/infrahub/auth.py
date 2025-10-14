@@ -292,14 +292,14 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
             if not text_body.strip() and raise_error_on_empty_body:  # Check for empty or whitespace-only response
                 log.error(
                     "Empty response body from authentication provider",
-                    url=response.url,
+                    url=str(response.url),
                     status_code=response.status_code,
                 )
                 raise GatewayError(message="Authentication provider returned an empty response") from json_error
         except Exception:
             log.error(
                 "Unable to read response body from authentication provider",
-                url=response.url,
+                url=str(response.url),
                 status_code=response.status_code,
             )
             raise GatewayError(message="Unable to read response from authentication provider") from json_error
@@ -383,6 +383,6 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
             base_msg = "Authentication provider is experiencing server issues. Please try again later or contact your administrator."
 
     # Print proper log and raise gateway error
-    log.error(log_message, url=response.url, status_code=response.status_code, body=response_body)
+    log.error(log_message, url=str(response.url), status_code=response.status_code, body=response_body)
     error_msg = extract_auth_error_message(response_body, base_msg)
     raise GatewayError(message=error_msg)
