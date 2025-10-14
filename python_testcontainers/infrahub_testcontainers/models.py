@@ -1,13 +1,11 @@
-from __future__ import annotations
-
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Union
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class ContextUnit(str, Enum):
+class ContextUnit(StrEnum):
     COUNT = "count"
     TIME = "msec"  # time in milliseconds
     MEMORY = "memory"  # memory in bytes
