@@ -3,26 +3,36 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import bcrypt
 import jwt
 from pydantic import BaseModel
 
 from infrahub import config, models
-from infrahub.config import SecurityOAuth2Google, SecurityOAuth2Settings, SecurityOIDCGoogle, SecurityOIDCSettings
+from infrahub.config import (
+    SecurityOAuth2Google,
+    SecurityOAuth2Settings,
+    SecurityOIDCGoogle,
+    SecurityOIDCSettings,
+)
 from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
 from infrahub.core.registry import registry
-from infrahub.exceptions import AuthorizationError, NodeNotFoundError
+from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    import httpx
+
     from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+
+log = get_logger()
 
 
 class AuthType(str, Enum):
@@ -256,3 +266,144 @@ async def get_groups_from_provider(
                 return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
 
     return []
+
+
+def safe_get_response_body(response: httpx.Response) -> str | dict[str, Any]:
+    """Safely extract response body from HTTP response.
+
+    Args:
+        response: The HTTP response object
+
+    Returns:
+        The response body as JSON dict if possible, otherwise as text, or error message
+    """
+    try:
+        return response.json()
+    except Exception:
+        try:
+            return response.text
+        except Exception:
+            return "Unable to parse response body"
+
+
+def extract_auth_error_message(response_body: str | dict[str, Any], base_message: str) -> str:
+    """Extract error message from OAuth 2.0/OIDC provider response following RFC 6749.
+
+    Args:
+        response_body: The response body from the authentication provider
+        base_message: Base error message to use if no specific error is found
+
+    Returns:
+        Formatted error message with provider details if available
+    """
+    if not isinstance(response_body, dict):
+        return base_message
+
+    # RFC 6749 standard error response format
+    error_description = response_body.get("error_description")
+    error_code = response_body.get("error")
+
+    if error_description:
+        return f"{base_message}: {error_description}"
+    if error_code:
+        return f"{base_message}: {error_code}"
+
+    return base_message
+
+
+def validate_auth_response(response: httpx.Response, provider_type: str = "authentication") -> None:
+    """Validate HTTP response from OAuth 2.0/OIDC provider and raise appropriate errors.
+
+    Args:
+        response: The HTTP response from the authentication provider
+        provider_type: Type of provider for logging (e.g., "OAuth 2.0", "OIDC")
+
+    Raises:
+        GatewayError: When the response indicates an error or invalid state
+    """
+    if 200 <= response.status_code <= 299:
+        return
+
+    # Safely extract response body
+    response_body = safe_get_response_body(response)
+
+    # Handle specific HTTP status codes with appropriate error messages
+    if response.status_code == 400:
+        log.error(
+            f"Bad request to {provider_type} provider",
+            url=response.url,
+            status_code=response.status_code,
+            body=response_body,
+        )
+        error_msg = extract_auth_error_message(
+            response_body,
+            f"Bad request to authentication provider. Please check your {provider_type} configuration parameters.",
+        )
+        raise GatewayError(message=error_msg)
+
+    if response.status_code == 401:
+        log.error(
+            f"Unauthorized request to {provider_type} provider",
+            url=response.url,
+            status_code=response.status_code,
+            body=response_body,
+        )
+        error_msg = extract_auth_error_message(
+            response_body, f"Authentication failed. Please check your {provider_type} client credentials."
+        )
+        raise GatewayError(message=error_msg)
+
+    if response.status_code == 403:
+        log.error(
+            f"Forbidden request to {provider_type} provider",
+            url=response.url,
+            status_code=response.status_code,
+            body=response_body,
+        )
+        error_msg = extract_auth_error_message(
+            response_body, "Access forbidden by authentication provider. Please check your client permissions."
+        )
+        raise GatewayError(message=error_msg)
+
+    if response.status_code == 404:
+        log.error(
+            "Resource not found",
+            url=response.url,
+            status_code=response.status_code,
+            body=response_body,
+        )
+        message = (
+            f"Authentication provider endpoint not found. Please verify your {provider_type} provider configuration."
+        )
+        raise GatewayError(message=message)
+
+    if response.status_code == 429:
+        log.error(
+            f"Rate limited by {provider_type} provider",
+            url=response.url,
+            status_code=response.status_code,
+            body=response_body,
+        )
+        raise GatewayError(message="Rate limited by authentication provider. Please try again later.")
+
+    if 500 <= response.status_code <= 599:
+        log.error(
+            f"Server error from {provider_type} provider",
+            url=response.url,
+            status_code=response.status_code,
+            body=response_body,
+        )
+        raise GatewayError(
+            message="Authentication provider is experiencing server issues. Please try again later or contact your administrator."
+        )
+
+    # Generic error for any other status codes
+    log.error(
+        f"Unexpected response from {provider_type} provider",
+        url=response.url,
+        status_code=response.status_code,
+        body=response_body,
+    )
+
+    error_msg = extract_auth_error_message(response_body, "Unexpected response from authentication provider")
+    raise GatewayError(message=error_msg)
