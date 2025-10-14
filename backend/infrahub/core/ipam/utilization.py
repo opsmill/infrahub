@@ -152,4 +152,4 @@ class PrefixUtilizationGetter:
             grand_total_space += prefix_total_space
         if grand_total_space == 0:
             return 0.0
-        return (grand_total_used / grand_total_space) * 100
+        return min((grand_total_used / grand_total_space) * 100, 100)
