@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { Navigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { DIFF_TABS } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -87,7 +87,7 @@ const BranchTab = () => {
 };
 
 const BranchContent = ({ branchName }: { branchName: string }) => {
-  const [currentTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
+  const [currentTab] = useQueryState(QSP.BRANCH_TAB);
 
   switch (currentTab) {
     case DIFF_TABS.FILES: {

@@ -17,4 +17,4 @@ export const QSP = {
   TASK_ID: "task_id",
   SEARCH: "search",
   STATUS: "status",
-};
+} as const;

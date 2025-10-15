@@ -3,6 +3,7 @@ import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json" with { type: "json" };
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "jotai";
+import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import { ErrorBoundary } from "react-error-boundary";
 import { RouterProvider } from "react-router";
 
@@ -25,18 +26,20 @@ addCollection(mdiIcons);
 export function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
-      <Provider store={store}>
-        <QueryClientProvider client={queryClient}>
-          <ApolloProvider client={graphqlClient}>
-            <AuthProvider>
-              <ConfigProvider>
-                <RouterProvider router={router} />
-              </ConfigProvider>
-            </AuthProvider>
-          </ApolloProvider>
-          <TanStackQueryDevtools buttonPosition="bottom-left" />
-        </QueryClientProvider>
-      </Provider>
+      <NuqsAdapter>
+        <Provider store={store}>
+          <QueryClientProvider client={queryClient}>
+            <ApolloProvider client={graphqlClient}>
+              <AuthProvider>
+                <ConfigProvider>
+                  <RouterProvider router={router} />
+                </ConfigProvider>
+              </AuthProvider>
+            </ApolloProvider>
+            <TanStackQueryDevtools buttonPosition="bottom-left" />
+          </QueryClientProvider>
+        </Provider>
+      </NuqsAdapter>
     </ErrorBoundary>
   );
 }

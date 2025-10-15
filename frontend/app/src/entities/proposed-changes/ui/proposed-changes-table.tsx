@@ -1,5 +1,5 @@
+import { useQueryState } from "nuqs";
 import React from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -22,7 +22,7 @@ type ProposedChangesTableProps = {
 };
 
 export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
-  const [proposedChangeState] = useQueryParam(QSP.PROPOSED_CHANGES_STATE, StringParam);
+  const [proposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
 
   const [filters] = useFilters();
 

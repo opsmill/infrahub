@@ -32,12 +32,11 @@ const BadgeLink: React.FC<{
   proposedChangeId: string;
 }> = ({ status, count, proposedChangeId }) => {
   const proposedChangeDetailsPath = `/proposed-changes/${proposedChangeId}`;
-  const tabSearchParam = { name: QSP.PROPOSED_CHANGES_TAB, value: "data" };
 
   return (
     <Link
       to={constructPath(proposedChangeDetailsPath, [
-        tabSearchParam,
+        { name: QSP.PROPOSED_CHANGES_TAB, value: "data" },
         { name: QSP.STATUS, value: status },
       ])}
       data-testid={`diff-${status.toLowerCase()}-count`}
