@@ -52,7 +52,7 @@ async def get_diff_files(
     for branch_name, items in diff_files.items():
         for item in items:
             repository_id = item.repository.get_id()
-            display_label = await item.repository.render_display_label(db=db)
+            display_label = await item.repository.get_display_label(db=db)
             if repository_id not in response[branch_name]:
                 response[branch_name][repository_id] = BranchDiffRepository(
                     id=repository_id,

@@ -166,6 +166,8 @@ async def default_paginated_list_resolver(
 
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
+        if "hfid" in node_fields:
+            node_fields["human_friendly_id"] = None
 
         permission_set: dict[str, Any] | None = None
         permissions = (

@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { createContext, useEffect } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -31,7 +31,7 @@ type NodeDiffProps = {
 };
 
 export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
-  const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
+  const [qspStatus] = useQueryState(QSP.STATUS);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view

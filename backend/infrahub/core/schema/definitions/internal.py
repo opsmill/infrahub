@@ -179,7 +179,9 @@ class SchemaNode(BaseModel):
     default_filter: str | None = None
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
+    display_label: str | None = None
     display_labels: list[str]
+    uniqueness_constraints: list[list[str]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -194,7 +196,9 @@ class SchemaNode(BaseModel):
                 if attribute.name not in ["id", "attributes", "relationships"]
             ],
             "relationships": [relationship.to_dict() for relationship in self.relationships],
+            "display_label": self.display_label,
             "display_labels": self.display_labels,
+            "uniqueness_constraints": self.uniqueness_constraints,
         }
 
     def without_duplicates(self, other: SchemaNode) -> SchemaNode:
@@ -293,10 +297,17 @@ base_node_schema = SchemaNode(
             extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
+            name="display_label",
+            kind="Text",
+            description="Attribute or Jinja2 template to use to generate the display label",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="display_labels",
             kind="List",
             internal_kind=str,
-            description="List of attributes to use to generate the display label",
+            description="List of attributes to use to generate the display label (deprecated)",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
@@ -465,6 +476,7 @@ attribute_schema = SchemaNode(
     include_in_menu=False,
     default_filter=None,
     display_labels=["name__value"],
+    uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
             name="id",
@@ -669,6 +681,7 @@ relationship_schema = SchemaNode(
     include_in_menu=False,
     default_filter=None,
     display_labels=["name__value"],
+    uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
             name="id",

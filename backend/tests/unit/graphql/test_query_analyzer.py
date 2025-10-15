@@ -145,6 +145,7 @@ async def test_get_models_in_use(
     )
     assert await gqa.get_models_in_use(types=gql_params.context.types) == {
         InfrahubKind.GENERATORGROUP,
+        InfrahubKind.GENERATORAWAREGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,
@@ -157,6 +158,7 @@ async def test_get_models_in_use(
     }
     assert gqa.query_report.impacted_models == [
         InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.GENERATORAWAREGROUP,
         InfrahubKind.GENERATORGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,

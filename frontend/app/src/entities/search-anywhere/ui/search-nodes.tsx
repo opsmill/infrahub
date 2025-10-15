@@ -3,38 +3,39 @@ import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
 import type { ReactElement } from "react";
 
-import { SEARCH_QUERY_NAME } from "@/config/constants";
-
-import useQuery from "@/shared/api/graphql/useQuery";
-import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
-import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Skeleton } from "@/shared/components/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
-import { POOLS_PEER } from "@/entities/ipam/constants";
-import { SEARCH } from "@/entities/nodes/api/search";
+import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import type { ObjectResult } from "@/entities/search-anywhere/domain/search-anywhere";
+import { useGetSearchAnywhere } from "@/entities/search-anywhere/domain/search-anywhere.query";
+import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
+import { SearchAnywhereItem } from "@/entities/search-anywhere/ui/search-anywhere-item";
 
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query.trim(), 300);
 
-  const { data, error, loading } = useQuery(SEARCH, {
-    skip: !queryDebounced,
-    variables: { search: queryDebounced },
-  });
+  const { data, isPending, error } = useGetSearchAnywhere(
+    { search: queryDebounced },
+    {
+      enabled: !!queryDebounced,
+    }
+  );
 
   if (query === "") {
     return null;
   }
 
-  if (loading) {
+  if (isPending) {
     return (
       <SearchAnywhereGroup heading="Objects">
         <SearchAnywhereItem to="" disabled>
@@ -46,13 +47,11 @@ export const SearchNodes = () => {
 
   if (error) return null;
 
-  const results = data?.[SEARCH_QUERY_NAME];
-
-  if (!results || results?.count === 0) return null;
+  if (data.count === 0) return null;
 
   return (
     <SearchAnywhereGroup heading="Objects">
-      {results.edges.map(({ node }: NodesOptionsProps) => (
+      {data.matchingObjects.map((node) => (
         <NodesOptions key={node.id} node={node} />
       ))}
     </SearchAnywhereGroup>
@@ -60,14 +59,11 @@ export const SearchNodes = () => {
 };
 
 type NodesOptionsProps = {
-  node: {
-    id: string;
-    kind: string;
-  };
+  node: ObjectResult;
 };
 
 const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const { isGeneric, schema } = useSchema(node.kind);
+  const { schema } = useSchema(node.kind);
   const {
     data: objectDetailsData,
     isPending,
@@ -86,16 +82,13 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
 
-  const useIpNamespace =
-    !isGeneric &&
-    schema?.inherit_from?.some((generic) => {
-      return POOLS_PEER.includes(generic);
-    });
+  const displayIpNamespace =
+    isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
 
   const columns = getSchemaObjectColumns({
     schema,
     forListView: true,
-    limit: useIpNamespace ? 6 : 7,
+    limit: displayIpNamespace ? 6 : 7,
   });
 
   const url = getObjectDetailsUrl(objectDetailsData.__typename, objectDetailsData.id);
@@ -122,7 +115,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         </div>
 
         <div className="mt-1 flex gap-5 text-gray-600">
-          {useIpNamespace && (
+          {displayIpNamespace && (
             <NodeAttribute
               title={"IP Namespace"}
               value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}

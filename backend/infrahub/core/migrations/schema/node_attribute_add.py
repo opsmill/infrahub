@@ -52,8 +52,11 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         if self.new_attribute_schema.kind != "NumberPool":
             return result
 
-        number_pool: CoreNumberPool = await Node.fetch_or_create_number_pool(  # type: ignore[assignment]
-            db=db, branch=branch, schema_node=self.new_schema, schema_attribute=self.new_attribute_schema
+        number_pool: CoreNumberPool = await Node.fetch_or_create_number_pool(
+            db=db,
+            branch=branch,
+            schema_node=self.new_schema,  # type: ignore
+            schema_attribute=self.new_attribute_schema,
         )
 
         await update_branch_registry(db=db, branch=branch)

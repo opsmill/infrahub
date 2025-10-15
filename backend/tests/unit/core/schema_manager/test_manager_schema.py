@@ -284,6 +284,10 @@ async def test_validate_human_friendly_id_uniqueness_success(
     dog_schema = schema.get("TestDog", duplicate=False)
     assert dog_schema.human_friendly_id == human_friendly_id
 
+    dog_schema.human_friendly_id = ["name__value", "breed__value", "name__value"]
+    with pytest.raises(ValidationError, match=r"cannot use the same path more than once"):
+        schema.validate_human_friendly_id()
+
 
 async def test_schema_branch_process_human_friendly_id(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
@@ -1282,13 +1286,7 @@ async def test_validate_uniqueness_constraints_error(schema_all_in_one, uniquene
         schema.validate_uniqueness_constraints()
 
 
-@pytest.mark.parametrize(
-    "display_labels",
-    [
-        ["my_generic_name__value", "mybool__value"],
-        ["my_generic_name__value"],
-    ],
-)
+@pytest.mark.parametrize("display_labels", [["my_generic_name__value", "mybool__value"], ["my_generic_name__value"]])
 async def test_validate_display_labels_success(schema_all_in_one, display_labels):
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
     schema_dict["display_labels"] = display_labels
@@ -1297,6 +1295,19 @@ async def test_validate_display_labels_success(schema_all_in_one, display_labels
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "display_label", ["{{ my_generic_name__value }} {{ mybool__value }}", "my_generic_name__value"]
+)
+async def test_validate_display_label_success(schema_all_in_one, display_label: str):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = display_label
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_display_label()
 
 
 @pytest.mark.parametrize(
@@ -1332,6 +1343,48 @@ async def test_validate_display_labels_error(schema_all_in_one, display_labels, 
 
     with pytest.raises(ValueError, match=expected_error):
         schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "display_label,expected_error",
+    [
+        (
+            "{{ mybool }}",
+            re.escape(
+                "InfraGenericInterface.display_label: invalid attribute, it must end with one of the following properties: value. (`mybool`)"
+            ),
+        ),
+        (
+            "{{ mybool__value }} {{ notanattribute__value }}",
+            "InfraGenericInterface.display_label: notanattribute__value is invalid on schema InfraGenericInterface",
+        ),
+        (
+            "my_generic_name__something",
+            "InfraGenericInterface.display_label - non Jinja2: something is not a valid property of my_generic_name",
+        ),
+        (
+            "status__value",
+            "InfraGenericInterface.display_label - non Jinja2: value is not a valid attribute of BuiltinStatus",
+        ),
+        (
+            "badges__name__value",
+            "InfraGenericInterface.display_label - non Jinja2: this property only supports attributes, not relationships",
+        ),
+        (
+            "badges",
+            "InfraGenericInterface.display_label - non Jinja2: this property only supports attributes, not relationships",
+        ),
+    ],
+)
+async def test_validate_display_label_error(schema_all_in_one, display_label: str, expected_error: str):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = display_label
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_display_label()
 
 
 @pytest.mark.parametrize(
@@ -3413,6 +3466,74 @@ async def test_schema_branch_processes_nodes_state(
     with pytest.raises(SchemaNotFoundError) as exc:
         returned_schema.get(name="TestGenericInterface")
     assert exc.value.args[0] == "Unable to find the schema 'TestGenericInterface' in the registry"
+
+
+async def test_schema_branch_processes_attributes_state(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
+):
+    schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String", "state": "absent"},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "state": "absent"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "description" not in returned_schema.get(name="TestWidget").attribute_names
+    assert "my_generic_name" not in returned_schema.get(name="TestGenericInterface").attribute_names
+
+    schema = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Widget",
+                "namespace": "Test",
+                "label": "Widget",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text"},
+                ],
+            }
+        ],
+    }
+    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch.name)
+    returned_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
+
+    assert "description" in returned_schema.get(name="TestWidget").attribute_names
+    assert "my_generic_name" in returned_schema.get(name="TestGenericInterface").attribute_names
 
 
 async def test_process_deprecations(organization_schema):

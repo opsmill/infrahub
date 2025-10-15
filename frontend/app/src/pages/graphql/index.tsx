@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai";
 // with ?worker imports inside node_modules.
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker&module";
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&module";
-import { StringParam, useQueryParam } from "use-query-params";
+import { useQueryState } from "nuqs";
 
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
@@ -41,7 +41,7 @@ const fetcher =
   };
 
 const GraphqlSandboxPage = () => {
-  const [query] = useQueryParam(QSP.QUERY, StringParam);
+  const [query] = useQueryState(QSP.QUERY);
   const branch = useAtomValue(currentBranchAtom);
   const waybackMachineDate = useAtomValue(datetimeAtom);
 

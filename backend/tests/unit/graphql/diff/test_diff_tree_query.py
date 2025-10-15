@@ -429,9 +429,9 @@ async def test_diff_tree_one_relationship_change(
     before_change_datetime = Timestamp()
     await branch_car.save(db=db)
     after_change_datetime = Timestamp()
-    accord_label = await branch_car.render_display_label(db=db)
-    john_label = await person_john_main.render_display_label(db=db)
-    jane_label = await person_jane_main.render_display_label(db=db)
+    accord_label = await branch_car.get_display_label(db=db)
+    john_label = await person_john_main.get_display_label(db=db)
+    jane_label = await person_jane_main.get_display_label(db=db)
 
     enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
@@ -477,7 +477,7 @@ async def test_diff_tree_one_relationship_change(
     assert car_response == {
         "uuid": car_accord_main.id,
         "kind": car_accord_main.get_kind(),
-        "label": await car_accord_main.render_display_label(db=db),
+        "label": await car_accord_main.get_display_label(db=db),
         "last_changed_at": car_changed_at,
         "num_added": 0,
         "num_removed": 0,
@@ -549,7 +549,7 @@ async def test_diff_tree_one_relationship_change(
     assert john_response == {
         "uuid": person_john_main.id,
         "kind": person_john_main.get_kind(),
-        "label": await person_john_main.render_display_label(db=db),
+        "label": await person_john_main.get_display_label(db=db),
         "last_changed_at": john_changed_at,
         "num_added": 0,
         "num_removed": 0,
@@ -613,7 +613,7 @@ async def test_diff_tree_one_relationship_change(
     assert jane_response == {
         "uuid": person_jane_main.id,
         "kind": person_jane_main.get_kind(),
-        "label": await person_jane_main.render_display_label(db=db),
+        "label": await person_jane_main.get_display_label(db=db),
         "last_changed_at": jane_changed_at,
         "num_added": 0,
         "num_removed": 0,
@@ -781,9 +781,9 @@ async def test_diff_tree_summary_no_changes(
         pytest.param(
             {},
             DiffSummaryCounters(
-                num_added=2,
-                num_updated=5,
-                num_removed=2,
+                num_added=4,
+                num_updated=9,
+                num_removed=4,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
                 to_time=Timestamp(datetime.now(UTC).isoformat()),
             ),
@@ -792,9 +792,9 @@ async def test_diff_tree_summary_no_changes(
         pytest.param(
             {"kind": {"includes": ["TestThing"]}},
             DiffSummaryCounters(
-                num_added=2,
-                num_updated=1,
-                num_removed=2,
+                num_added=4,
+                num_updated=3,
+                num_removed=4,
                 from_time=Timestamp(datetime.now(UTC).isoformat()),
                 to_time=Timestamp(datetime.now(UTC).isoformat()),
             ),
@@ -803,8 +803,8 @@ async def test_diff_tree_summary_no_changes(
     ],
 )
 async def test_diff_summary_filters(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, counters
-):
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, counters: DiffSummaryCounters
+) -> None:
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
 
@@ -860,6 +860,7 @@ async def test_diff_summary_filters(
     assert result.errors is None
     counters.from_time = enriched_diff_metadata.from_time
     counters.to_time = enriched_diff_metadata.to_time
+    assert result.data
     diff: dict = result.data["DiffTreeSummary"]
     from_timestamp = Timestamp(result.data["DiffTreeSummary"]["from_time"])
     to_timestamp = Timestamp(result.data["DiffTreeSummary"]["to_time"])

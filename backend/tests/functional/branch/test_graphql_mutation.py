@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import pytest
 from infrahub_sdk.exceptions import BranchNotFoundError, GraphQLError
@@ -106,8 +107,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        assert isinstance(branch_server_id, str)
-        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, UUID)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=str(branch_server_id))
 
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_delete_sync")
@@ -124,8 +125,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        assert isinstance(branch_server_id, str)
-        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, UUID)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=str(branch_server_id))
 
     async def test_branch_rebase_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_rebase")

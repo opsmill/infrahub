@@ -394,7 +394,7 @@ class TestDiffCombiner:
         later_element = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED,
             peer_id=new_peer_id,
-            changed_at=early_element.changed_at.add_delta(minutes=1),
+            changed_at=early_element.changed_at.add(minutes=1),
             properties={later_only_property, later_peer_property},
             conflict=EnrichedConflictFactory.build(),
         )
@@ -1045,7 +1045,7 @@ class TestDiffCombiner:
         later_element = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED,
             peer_id=old_peer_id,
-            changed_at=early_element.changed_at.add_delta(minutes=1),
+            changed_at=early_element.changed_at.add(minutes=1),
             properties={later_only_property, later_peer_property},
         )
         early_relationship = EnrichedRelationshipGroupFactory.build(

@@ -90,6 +90,7 @@ class NodeSchema(GeneratedNodeSchema):
 
         properties_to_inherit = [
             "human_friendly_id",
+            "display_label",
             "display_labels",
             "default_filter",
             "menu_placement",

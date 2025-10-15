@@ -1,5 +1,5 @@
+import { useQueryState } from "nuqs";
 import { useLocation } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -18,7 +18,7 @@ export function RepositoryObjectsTab({ objectId, ...props }: TaskTabProps) {
     relationshipName: "members",
     queryFilter: "repository__ids",
   });
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
 
   const { pathname } = useLocation();
 

@@ -44,6 +44,11 @@ class GeneratorDefinitionModel(BaseModel):
     group_id: str = Field(..., description="The group to target when running this generator")
     parameters: dict = Field(..., description="The input parameters required to run this check")
 
+    execute_in_proposed_change: bool = Field(
+        ..., description="Indicates if the generator should execute in a proposed change."
+    )
+    execute_after_merge: bool = Field(..., description="Indicates if the generator should execute after a merge.")
+
     @classmethod
     def from_pc_generator_definition(cls, model: ProposedChangeGeneratorDefinition) -> GeneratorDefinitionModel:
         return GeneratorDefinitionModel(
@@ -55,6 +60,8 @@ class GeneratorDefinitionModel(BaseModel):
             file_path=model.file_path,
             group_id=model.group_id,
             parameters=model.parameters,
+            execute_in_proposed_change=model.execute_in_proposed_change,
+            execute_after_merge=model.execute_after_merge,
         )
 
 

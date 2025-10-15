@@ -25,11 +25,11 @@ import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
+import { useQueryState } from "nuqs";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
@@ -102,9 +102,9 @@ export const FileContentDiff = (props: any) => {
   const { repositoryId, repositoryDisplayName, file, commitFrom, commitTo } = props;
 
   const { proposedChangeId } = useParams();
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const [branchOnly] = useQueryState(QSP.BRANCH_FILTER_BRANCH_ONLY);
+  const [timeFrom] = useQueryState(QSP.BRANCH_FILTER_TIME_FROM);
+  const [timeTo] = useQueryState(QSP.BRANCH_FILTER_TIME_TO);
   const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [isLoading, setIsLoading] = useState(false);

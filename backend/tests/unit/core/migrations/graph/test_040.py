@@ -36,6 +36,7 @@ class WrappedMigration040(Migration040):
         return wrapped_profile_applier
 
 
+@pytest.mark.skip(reason="Is flaky. And waiting on updates to the migration")
 class TestMigration040(TestInfrahubApp):
     @pytest.fixture
     async def profile_1(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> Node:

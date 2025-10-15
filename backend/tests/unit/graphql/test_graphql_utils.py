@@ -54,6 +54,7 @@ async def test_schema_models_generics(
 
     expected_response = {
         InfrahubKind.GENERATORGROUP,
+        InfrahubKind.GENERATORAWAREGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,

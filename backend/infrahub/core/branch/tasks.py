@@ -33,6 +33,7 @@ from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
@@ -437,7 +438,7 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         await get_workflow().submit_workflow(
             workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
             context=context,
-            parameters={"branch": target_branch},
+            parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
         )
 
         for diff_root in branch_diff_roots:

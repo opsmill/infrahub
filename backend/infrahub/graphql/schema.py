@@ -19,7 +19,9 @@ from .mutations.computed_attribute import RecomputeComputedAttribute, UpdateComp
 from .mutations.convert_object_type import ConvertObjectType
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
+from .mutations.display_label import UpdateDisplayLabel
 from .mutations.generator import GeneratorDefinitionRequestRun
+from .mutations.hfid import UpdateHFID
 from .mutations.profile import InfrahubProfilesRefresh
 from .mutations.proposed_change import (
     ProposedChangeCheckForApprovalRevoke,
@@ -114,6 +116,8 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
+    InfrahubUpdateDisplayLabel = UpdateDisplayLabel.Field()
+    InfrahubUpdateHFID = UpdateHFID.Field()
     InfrahubRecomputeComputedAttribute = RecomputeComputedAttribute.Field()
 
     RelationshipAdd = RelationshipAdd.Field()
