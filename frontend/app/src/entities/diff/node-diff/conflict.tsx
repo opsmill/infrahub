@@ -36,7 +36,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
       },
       {
         onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: [treeQueryKeys.all] });
+          await queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
           await graphqlClient.refetchQueries({
             include: ["TASK_DETAILS_CHECK"],
           });
