@@ -11,6 +11,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
 import { useResolveConflictMutation } from "@/entities/diff/domain/resolve-conflict.mutation";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 
@@ -35,7 +36,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
       },
       {
         onSuccess: async () => {
-          await queryClient.invalidateQueries({ queryKey: ["diff-tree"] });
+          await queryClient.invalidateQueries({ queryKey: [treeQueryKeys.all] });
           await graphqlClient.refetchQueries({
             include: ["TASK_DETAILS_CHECK"],
           });

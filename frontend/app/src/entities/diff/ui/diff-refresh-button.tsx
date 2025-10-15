@@ -8,6 +8,7 @@ import { Button, ButtonProps } from "@/shared/components/buttons/button-primitiv
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
+import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
 import {
   UPDATE_DIFF_KEY,
   useUpdateDiffMutation,
@@ -29,7 +30,7 @@ export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonPro
   const handleRefreshDiff = async () => {
     updateDiffMutation.mutate(branchName, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["diff-tree"] });
+        queryClient.invalidateQueries({ queryKey: [treeQueryKeys.all] });
         graphqlClient.refetchQueries({
           include: ["GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
         });
