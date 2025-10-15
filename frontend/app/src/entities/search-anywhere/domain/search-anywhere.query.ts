@@ -14,7 +14,7 @@ import { searchAnywhereQueryKeys } from "@/entities/search-anywhere/domain/searc
 export function searchAnywhereQueryOptions(params: SearchAnywhereParams) {
   return queryOptions({
     queryKey: searchAnywhereQueryKeys.objects(params),
-    queryFn: async () => searchAnywhere(params),
+    queryFn: () => searchAnywhere(params),
   });
 }
 

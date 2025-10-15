@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import type { InfiniteQueryConfig } from "@/shared/api/types";
+import type { QueryConfig } from "@/shared/api/types";
 
 import { searchAnywhereQueryKeys } from "@/entities/search-anywhere/domain/search-anywhere.query-keys";
 import { type SearchDocsParams, searchDocs } from "@/entities/search-anywhere/domain/search-docs";
@@ -14,7 +14,7 @@ export function searchDocsQueryOptions({ query, limit = 3 }: SearchDocsParams) {
 
 export function useGetSearchDocs(
   params: SearchDocsParams,
-  config?: InfiniteQueryConfig<typeof searchDocsQueryOptions>
+  config?: QueryConfig<typeof searchDocsQueryOptions>
 ) {
   return useQuery({ ...searchDocsQueryOptions(params), ...config });
 }
