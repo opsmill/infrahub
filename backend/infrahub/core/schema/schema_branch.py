@@ -1384,6 +1384,8 @@ class SchemaBranch:
             "direction",
             "on_delete",
             "read_only",
+            "hierarchical",
+            "allow_override",
         )
         for _property in compulsorily_matching_properties:
             if not hasattr(relationship_a, _property) or not hasattr(relationship_b, _property):
