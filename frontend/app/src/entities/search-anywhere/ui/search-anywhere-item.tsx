@@ -1,8 +1,9 @@
 import type React from "react";
 import { useNavigate } from "react-router";
 
-import { useSearchAnywhereContext } from "@/shared/components/search/search-anywhere-context";
 import { CommandItem } from "@/shared/components/ui/command";
+
+import { useSearchAnywhereContext } from "@/entities/search-anywhere/ui/search-anywhere-context";
 
 export interface SearchAnywhereItemProps extends React.ComponentProps<typeof CommandItem> {
   to: string;
