@@ -1,10 +1,11 @@
 import { Icon } from "@iconify-icon/react";
-import React, { FC } from "react";
+import type React from "react";
+import type { FC } from "react";
 
 import { Button } from "@/shared/components/buttons/button";
-import { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
+import type { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
 
-import { boldCommand, EditorCommand, italicCommand, strikethroughCommand } from "../commands";
+import { boldCommand, type EditorCommand, italicCommand, strikethroughCommand } from "../commands";
 
 type ToolbarProps = { codeMirror: UseCodeMirror };
 

@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class RequestGeneratorRun(BaseModel):
     """Runs a generator."""
 
-    generator_definition: ProposedChangeGeneratorDefinition = Field(..., description="The Generator definition")
+    generator_definition: GeneratorDefinitionModel = Field(..., description="The Generator definition")
     generator_instance: str | None = Field(
         default=None, description="The id of the generator instance if it previously existed"
     )
@@ -31,14 +31,40 @@ class RequestGeneratorDefinitionRun(BaseModel):
     target_members: list[str] = Field(default_factory=list, description="List of targets to run the generator for")
 
 
-class ProposedChangeGeneratorDefinition(BaseModel):
-    definition_id: str
-    definition_name: str
-    query_name: str
-    convert_query_response: bool
-    query_models: list[str]
-    repository_id: str
-    class_name: str
-    file_path: str
-    parameters: dict
-    group_id: str
+class GeneratorDefinitionModel(BaseModel):
+    definition_id: str = Field(..., description="The id of the generator definition.")
+    definition_name: str = Field(..., description="The name of the generator definition.")
+    query_name: str = Field(..., description="The name of the query to use when collecting data.")
+    convert_query_response: bool = Field(
+        ...,
+        description="Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects.",
+    )
+    class_name: str = Field(..., description="The name of the generator class to run.")
+    file_path: str = Field(..., description="The file path of the generator in the repository.")
+    group_id: str = Field(..., description="The group to target when running this generator")
+    parameters: dict = Field(..., description="The input parameters required to run this check")
+
+    execute_in_proposed_change: bool = Field(
+        ..., description="Indicates if the generator should execute in a proposed change."
+    )
+    execute_after_merge: bool = Field(..., description="Indicates if the generator should execute after a merge.")
+
+    @classmethod
+    def from_pc_generator_definition(cls, model: ProposedChangeGeneratorDefinition) -> GeneratorDefinitionModel:
+        return GeneratorDefinitionModel(
+            definition_id=model.definition_id,
+            definition_name=model.definition_name,
+            query_name=model.query_name,
+            convert_query_response=model.convert_query_response,
+            class_name=model.class_name,
+            file_path=model.file_path,
+            group_id=model.group_id,
+            parameters=model.parameters,
+            execute_in_proposed_change=model.execute_in_proposed_change,
+            execute_after_merge=model.execute_after_merge,
+        )
+
+
+class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
+    query_models: list[str] = Field(..., description="The models to use when collecting data.")
+    repository_id: str = Field(..., description="The id of the repository.")

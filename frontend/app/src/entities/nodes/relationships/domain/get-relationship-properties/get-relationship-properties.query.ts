@@ -5,7 +5,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
-  GetRelationshipPropertiesParams,
+  type GetRelationshipPropertiesParams,
   getRelationshipProperties,
 } from "@/entities/nodes/relationships/domain/get-relationship-properties/get-relationship-properties";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";

@@ -1,14 +1,22 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from infrahub import config
-from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 async def test_graphql_endpoint(
-    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, create_test_admin, car_person_data
+    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch: Branch, create_test_admin, car_person_data
 ):
     query = """
     query {
@@ -50,7 +58,7 @@ async def test_graphql_endpoint(
 
 
 async def test_graphql_endpoint_with_timestamp(
-    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, create_test_admin, car_person_data
+    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch: Branch, create_test_admin, car_person_data
 ):
     time_before = Timestamp()
 

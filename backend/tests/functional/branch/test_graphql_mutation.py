@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import pytest
 from infrahub_sdk.exceptions import BranchNotFoundError, GraphQLError
@@ -106,8 +107,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        assert isinstance(branch_server_id, str)
-        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, UUID)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=str(branch_server_id))
 
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_delete_sync")
@@ -124,8 +125,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        assert isinstance(branch_server_id, str)
-        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, UUID)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=str(branch_server_id))
 
     async def test_branch_rebase_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_rebase")
@@ -264,6 +265,17 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchCreate"]["object"]["id"] is not None
         assert result["BranchCreate"]["task"] is None
 
+    async def test_branch_create_duplicate_branch_failed(self, initial_dataset: str, client: InfrahubClient) -> None:
+        branch_to_duplicate = await client.branch.create(branch_name="branch_to_duplicate")
+        query = Mutation(
+            mutation="BranchCreate",
+            input_data={"data": {"name": "branch_to_duplicate"}},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await client.execute_graphql(query=query.render())
+        assert f"The branch {branch_to_duplicate.name} already exists" in exc.value.message
+
     async def test_branch_create_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         query = Mutation(
             mutation="BranchCreate",
@@ -273,6 +285,19 @@ class TestBranchMutations(TestInfrahubApp):
         result = await client.execute_graphql(query=query.render())
         assert result["BranchCreate"]["ok"] is True
         assert result["BranchCreate"]["task"]["id"] is not None
+
+    async def test_branch_create_async_duplicate_branch_failed(
+        self, initial_dataset: str, client: InfrahubClient
+    ) -> None:
+        branch_to_duplicate_async = await client.branch.create(branch_name="branch_to_duplicate_async")
+        query = Mutation(
+            mutation="BranchCreate",
+            input_data={"data": {"name": "branch_to_duplicate_async"}, "wait_until_completion": False},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        with pytest.raises(GraphQLError) as exc:
+            await client.execute_graphql(query=query.render())
+        assert f"The branch {branch_to_duplicate_async.name} already exists" in exc.value.message
 
     async def test_branch_create_async_deprecated(self, initial_dataset: str, client: InfrahubClient) -> None:
         query = Mutation(

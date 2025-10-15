@@ -1,5 +1,5 @@
 import {
-  RunGeneratorFromApiParams,
+  type RunGeneratorFromApiParams,
   runGeneratorFromApi,
 } from "@/entities/generators/api/run-generator-from-api";
 

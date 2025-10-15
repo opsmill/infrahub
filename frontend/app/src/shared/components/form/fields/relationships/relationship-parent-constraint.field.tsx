@@ -1,13 +1,10 @@
 import { useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
-import { QSP } from "@/config/qsp";
-
-import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
+import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import RelationshipField from "./relationship.field";
@@ -17,7 +14,7 @@ export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
 // Select kind (select 2 steps) if needed
 const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps) => {
   const { objectid, objectKind } = useParams();
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+
   const { schema } = useSchema(objectKind);
 
   const parentRelationionshipSchema = schema?.relationships?.find((relationship) => {
@@ -33,10 +30,6 @@ const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps)
       });
     },
   });
-
-  if (!qspTab) {
-    return null;
-  }
 
   if (isPending) {
     return <LoadingIndicator />;

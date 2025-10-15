@@ -18,7 +18,7 @@ import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-moda
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface ActionsCellProps {

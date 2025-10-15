@@ -1,25 +1,23 @@
-import queryString from "query-string";
 import { RouterProvider } from "react-aria-components";
 import {
   createBrowserRouter,
   Navigate,
   type NavigateOptions,
   Outlet,
-  UIMatch,
+  type To,
+  type UIMatch,
   useHref,
   useNavigate,
 } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
-import { QueryParamProvider } from "use-query-params";
 
 import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
-import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
-import { ReactRouter7Adapter } from "@/shared/libs/use-query-params";
+import type { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
 
-import { RequireAuth } from "@/entities/authentication/ui/useAuth";
+import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -27,13 +25,17 @@ import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 
 declare module "react-aria-components" {
   interface RouterConfig {
+    href: To;
     routerOptions: NavigateOptions;
   }
 }
 
-function useAbsoluteHref(path: string) {
+function useAbsoluteHref(path: To) {
   const relative = useHref(path);
-  if (path.startsWith("https://") || path.startsWith("http://") || path.startsWith("mailto:")) {
+  if (
+    typeof path === "string" &&
+    (path.startsWith("https://") || path.startsWith("http://") || path.startsWith("mailto:"))
+  ) {
     return path;
   }
   return relative;
@@ -43,25 +45,17 @@ function RootProviders({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   return (
-    <QueryParamProvider
-      adapter={ReactRouter7Adapter}
-      options={{
-        searchStringToObject: queryString.parse,
-        objectToSearchString: queryString.stringify,
-      }}
-    >
-      <RouterProvider navigate={navigate} useHref={useAbsoluteHref}>
-        <ToastContainer
-          hideProgressBar={true}
-          transition={Slide}
-          autoClose={5000}
-          closeOnClick={false}
-          newestOnTop
-          position="bottom-right"
-        />
-        {children}
-      </RouterProvider>
-    </QueryParamProvider>
+    <RouterProvider navigate={navigate} useHref={useAbsoluteHref}>
+      <ToastContainer
+        hideProgressBar={true}
+        transition={Slide}
+        autoClose={5000}
+        closeOnClick={false}
+        newestOnTop
+        position="bottom-right"
+      />
+      {children}
+    </RouterProvider>
   );
 }
 
@@ -185,7 +179,6 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/objects",
-                lazy: () => import("@/pages/objects/layout"),
                 children: [
                   {
                     path: ":objectKind",
@@ -200,21 +193,69 @@ export const router = createBrowserRouter([
                     },
                     children: [
                       {
-                        index: true,
-                        lazy: () => import("@/pages/objects/object-items"),
+                        path: ":objectId",
+                        handle: {
+                          breadcrumb: (match: UIMatch) => ({
+                            type: "select",
+                            value: match.params.objectId,
+                            kind: match.params.objectKind,
+                          }),
+                        },
+                        children: [
+                          {
+                            path: "convert",
+                            lazy: () => import("@/pages/objects/object-convert"),
+                            handle: {
+                              breadcrumb: (match: UIMatch) =>
+                                ({
+                                  type: "link",
+                                  label: "Convert",
+                                  to: constructPath(
+                                    `/objects/${match.params.objectKind}/${match.params.objectid}/convert`
+                                  ),
+                                }) satisfies BreadcrumbItem,
+                            },
+                          },
+                        ],
                       },
                       {
-                        path: ":objectid",
-                        lazy: () => import("@/pages/objects/object-details"),
-                        handle: {
-                          breadcrumb: (match: UIMatch) => {
-                            return {
-                              type: "select",
-                              value: match.params.objectid,
-                              kind: match.params.objectKind,
-                            };
+                        lazy: () => import("@/pages/objects/layout"),
+                        children: [
+                          {
+                            index: true,
+                            lazy: () => import("@/pages/objects/object-items"),
                           },
-                        },
+                          {
+                            path: ":objectid",
+                            handle: {
+                              breadcrumb: (match: UIMatch) => ({
+                                type: "select",
+                                value: match.params.objectid,
+                                kind: match.params.objectKind,
+                              }),
+                            },
+                            children: [
+                              {
+                                index: true,
+                                lazy: () => import("@/pages/objects/object-details"),
+                              },
+                              {
+                                path: "convert",
+                                lazy: () => import("@/pages/objects/object-convert"),
+                                handle: {
+                                  breadcrumb: (match: UIMatch) =>
+                                    ({
+                                      type: "link",
+                                      label: "Convert",
+                                      to: constructPath(
+                                        `/objects/${match.params.objectKind}/${match.params.objectid}/convert`
+                                      ),
+                                    }) satisfies BreadcrumbItem,
+                                },
+                              },
+                            ],
+                          },
+                        ],
                       },
                     ],
                   },

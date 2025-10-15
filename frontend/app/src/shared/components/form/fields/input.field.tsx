@@ -4,7 +4,7 @@ import { Button } from "react-aria-components";
 import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
+import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import {
   updateAttributeFieldValue,
@@ -12,7 +12,7 @@ import {
 } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { Input, InputProps } from "@/shared/components/ui/input";
+import { Input, type InputProps } from "@/shared/components/ui/input";
 import { inputStyle } from "@/shared/components/ui/style";
 
 export interface InputFieldProps
@@ -29,6 +29,7 @@ const InputField = ({
   unique,
   pool,
   isBulkUpdate,
+  shouldUnregister,
   autoFocus,
   ...props
 }: InputFieldProps) => {
@@ -38,6 +39,7 @@ const InputField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const [override, setOverride] = React.useState(false);
         const fieldData: FormAttributeValue = field.value;

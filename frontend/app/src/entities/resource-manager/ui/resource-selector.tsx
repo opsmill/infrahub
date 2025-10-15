@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";

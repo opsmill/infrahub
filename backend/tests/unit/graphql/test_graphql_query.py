@@ -16,6 +16,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.registry import registry as graphql_registry
 from tests.helpers.graphql import graphql
 
 
@@ -163,7 +164,7 @@ async def test_display_hfid(db: InfrahubDatabase, default_branch: Branch, animal
     assert len(result.data["TestDog"]["edges"]) == 1
     assert result.data["TestDog"]["edges"][0] == {
         "node": {
-            "display_label": await dog1.render_display_label(db=db),
+            "display_label": await dog1.get_display_label(db=db),
             "hfid": ["Jack", "Rocky"],
             "id": dog1.id,
         },
@@ -1029,6 +1030,7 @@ async def test_query_filter_on_enum(
         }
     }
     """ % (enum_value)
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2022,6 +2024,7 @@ async def test_query_attribute_node_property_source(
         }
     }
     """
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2080,6 +2083,7 @@ async def test_query_attribute_node_property_owner(
         }
     }
     """
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2092,11 +2096,12 @@ async def test_query_attribute_node_property_owner(
     )
 
     assert result1.errors is None
+    assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]["id"] == first_account.id
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"][
         "display_label"
-    ] == await first_account.render_display_label(db=db)
+    ] == await first_account.get_display_label(db=db)
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
 
@@ -2139,11 +2144,12 @@ async def test_query_attribute_node_property_owner(
 
     assert result2.errors is None
 
+    assert result2.data
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]["id"] == first_account.id
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"][
         "display_label"
-    ] == await first_account.render_display_label(db=db)
+    ] == await first_account.get_display_label(db=db)
     assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {c1.id, p1.id, first_account.id}
 
@@ -2513,6 +2519,7 @@ async def test_query_attribute_flag_property(
         }
     }
     """
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2525,6 +2532,7 @@ async def test_query_attribute_flag_property(
     )
 
     assert result1.errors is None
+    assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_protected"] is True
     assert result1.data["TestPerson"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
@@ -2669,9 +2677,8 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -2681,6 +2688,7 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
     )
 
     assert result.errors is None
+    assert result.data
     assert sorted([car["node"]["name"]["value"] for car in result.data["TestCar"]["edges"]]) == [
         "Porsche 911",
         "Renaud Clio",
@@ -2734,6 +2742,7 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
         }
     }
     """
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2746,6 +2755,7 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestPerson"]["edges"][0]["node"]["vehicules"]["edges"]) == 2
     expected_results = {
         "name": {"value": "John Doe"},
@@ -2795,6 +2805,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
         }
     }
     """
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2807,6 +2818,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestBoat"]["edges"][0]["node"]["owners"]["edges"]) == 1
 
 
@@ -2828,6 +2840,7 @@ async def test_generic_root_with_pagination(
         }
     }
     """
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
@@ -2869,7 +2882,7 @@ async def test_generic_root_with_filters(
         }
     }
     """
-
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -2929,6 +2942,7 @@ async def test_member_of_groups(
         }
     }
     """
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )

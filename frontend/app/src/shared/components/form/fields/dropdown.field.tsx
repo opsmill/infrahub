@@ -1,9 +1,9 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import { DynamicDropdownFieldProps, FormAttributeValue } from "@/shared/components/form/type";
+import type { DynamicDropdownFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { Dropdown, DropdownProps } from "@/shared/components/inputs/dropdown";
+import { Dropdown, type DropdownProps } from "@/shared/components/inputs/dropdown";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface DropdownFieldProps
@@ -20,6 +20,7 @@ const DropdownField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: DropdownFieldProps) => {
   return (
@@ -28,6 +29,7 @@ const DropdownField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.registry import registry as graphql_registry
 
 from .car import CAR
 from .child import CHILD
@@ -20,6 +20,7 @@ from .tshirt import TSHIRT
 from .widget import WIDGET
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -43,7 +44,26 @@ async def load_schema(
     branch = registry.get_branch_from_registry(branch_name)
     branch.update_schema_hash()
     await branch.save(db=db)
-    GraphQLSchemaManager.clear_cache()
+    graphql_registry.clear_cache()
+
+
+test_generics: list[GenericSchema] = [SNOW_TASK, INTERFACE, INTERFACE_HOLDER]
+test_nodes: list[NodeSchema] = [
+    CAR,
+    MANUFACTURER,
+    PERSON,
+    SNOW_INCIDENT,
+    SNOW_REQUEST,
+    DEVICE,
+    PHYSICAL_INTERFACE,
+    VIRTUAL_INTERFACE,
+    SFP,
+]
+
+test_models: dict[str, Any] = {
+    "generics": [item.to_dict() for item in test_generics],
+    "nodes": [item.to_dict() for item in test_nodes],
+}
 
 
 __all__ = [

@@ -36,7 +36,7 @@ from .schema.attribute_parameters import NumberAttributeParameters
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import AttributeSchema
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
 
@@ -324,7 +324,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         save_at = Timestamp(at)
 
-        if not self.id or self.is_from_profile:
+        if not self.id:
             return None
 
         return await self._update(at=save_at, db=db)
@@ -395,7 +395,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         Get the current value
          - If the value is the same, do nothing
-         - If the value is inherited and is different, raise error (for now just ignore)
          - If the value is different, create new node and update relationship
 
         """
@@ -470,28 +469,32 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         # ---------- Update the Node Properties ----------
         for prop_name in self._node_properties:
-            if getattr(self, f"{prop_name}_id") and not (
-                prop_name in current_attr_data.node_properties
-                and current_attr_data.node_properties[prop_name].uuid == getattr(self, f"{prop_name}_id")
-            ):
-                previous_attribute_node_property = current_attr_data.node_properties.get(prop_name)
-                previous_value = None
-                if previous_attribute_node_property:
-                    previous_value = previous_attribute_node_property.uuid
+            current_prop_id = getattr(self, f"{prop_name}_id")
+            database_prop_id: str | None = None
+            if prop_name in current_attr_data.node_properties:
+                database_prop_id = current_attr_data.node_properties[prop_name].uuid
+            needs_update = current_prop_id is not None and current_prop_id != database_prop_id
+            needs_clear = self.is_clear(prop_name) and database_prop_id
 
-                changelog.add_property(
-                    name=prop_name,
-                    value_current=getattr(self, f"{prop_name}_id"),
-                    value_previous=previous_value,
-                )
+            if not needs_update and not needs_clear:
+                continue
+
+            changelog.add_property(
+                name=prop_name,
+                value_current=current_prop_id,
+                value_previous=database_prop_id,
+            )
+
+            if needs_update:
                 query = await AttributeUpdateNodePropertyQuery.init(
-                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=getattr(self, f"{prop_name}_id")
+                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=current_prop_id
                 )
                 await query.execute(db=db)
 
-                rel = current_attr_result.get(f"rel_{prop_name}")
-                if rel and rel.get("branch") == branch.name:
-                    await update_relationships_to([rel.element_id], to=update_at, db=db)
+            # set the to time on the previously active edge
+            rel = current_attr_result.get(f"rel_{prop_name}")
+            if rel and rel.get("branch") == branch.name:
+                await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         if changelog.has_updates:
             return changelog
@@ -627,7 +630,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 
-    def get_create_data(self) -> AttributeCreateData:
+    def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
@@ -642,7 +645,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch=branch.name,
             status="active",
             branch_level=hierarchy_level,
-            branch_support=self.schema.branch.value,
+            branch_support=self.schema.branch.value if self.schema.branch is not None else node_schema.branch,
             content=self.to_db(),
             is_default=self.is_default,
             is_protected=self.is_protected,

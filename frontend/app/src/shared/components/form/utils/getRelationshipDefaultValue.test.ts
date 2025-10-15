@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { store } from "@/shared/stores";
 
-import {
+import type {
   RelationshipManyType,
   RelationshipOneType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/types";
 
 import { generateNodeSchema, generateRelationshipSchema } from "../../../../../tests/fake/schema";
 

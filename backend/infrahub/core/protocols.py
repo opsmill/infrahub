@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .protocols_base import CoreNode
+from infrahub.core.protocols_base import CoreNode
 
 if TYPE_CHECKING:
     from enum import Enum
@@ -125,6 +125,7 @@ class CoreGenericRepository(CoreNode):
     queries: RelationshipManager
     checks: RelationshipManager
     generators: RelationshipManager
+    groups_objects: RelationshipManager
 
 
 class CoreGroup(CoreNode):
@@ -349,6 +350,10 @@ class CoreGeneratorAction(CoreAction):
     generator: RelationshipManager
 
 
+class CoreGeneratorAwareGroup(CoreGroup):
+    pass
+
+
 class CoreGeneratorCheck(CoreCheck):
     instance: String
 
@@ -360,6 +365,8 @@ class CoreGeneratorDefinition(CoreTaskTarget):
     file_path: String
     class_name: String
     convert_query_response: BooleanOptional
+    execute_in_proposed_change: BooleanOptional
+    execute_after_merge: BooleanOptional
     query: RelationshipManager
     repository: RelationshipManager
     targets: RelationshipManager

@@ -1,18 +1,18 @@
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
-import { FieldValues, useForm, useFormContext } from "react-hook-form";
+import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { DynamicInput } from "@/shared/components/form/dynamic-form";
+import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import PeerField from "@/shared/components/form/fields/peer.field";
-import { NodeFormProps } from "@/shared/components/form/node-form";
-import {
+import type { NodeFormProps } from "@/shared/components/form/node-form";
+import type {
   DynamicDropdownFieldProps,
   DynamicFieldProps,
   FormAttributeValue,
@@ -23,7 +23,7 @@ import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDef
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { DropdownOption } from "@/shared/components/inputs/dropdown";
+import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
@@ -32,7 +32,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -178,7 +178,7 @@ export const NodeRelationshipMatchForm = ({
         <NodeRelationshipField schemaFields={schemaFields} />
 
         {fields.map((field) => {
-          return <DynamicInput key={field.name} {...field} />;
+          return <DynamicField key={field.name} {...field} />;
         })}
 
         <div className="text-right">

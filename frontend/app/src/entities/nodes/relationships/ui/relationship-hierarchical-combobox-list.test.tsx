@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { store } from "@/shared/stores";
 
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 

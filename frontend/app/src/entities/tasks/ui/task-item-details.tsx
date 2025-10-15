@@ -1,6 +1,6 @@
+import { useQueryState } from "nuqs";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { TASK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -19,7 +19,7 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 
-import { Logs, tLog } from "./logs";
+import { Logs, type tLog } from "./logs";
 
 export const getStateBadge: { [key: string]: any } = {
   SCHEDULED: <Badge variant={"blue"}>SCHEDULED</Badge>,
@@ -34,7 +34,7 @@ export const getStateBadge: { [key: string]: any } = {
 };
 
 export const TaskItemDetails = forwardRef((_, ref) => {
-  const [idFromQsp] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [idFromQsp] = useQueryState(QSP.TASK_ID);
   const [search, setSearch] = useState("");
 
   const { task: idFromParams } = useParams();

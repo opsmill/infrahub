@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.log import get_logger
 from infrahub.worker import WORKER_IDENTITY
 
@@ -20,9 +21,8 @@ def update_graphql_schema(branch: Branch, schema_branch: SchemaBranch) -> None:
     """
     Update the GraphQL schema for the given branch.
     """
-    from infrahub.graphql.manager import GraphQLSchemaManager
 
-    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
+    gqlm = graphql_registry.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
     gqlm.get_graphql_schema(
         include_query=True,
         include_mutation=True,
@@ -67,6 +67,9 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
                 worker=WORKER_IDENTITY,
             )
             registry.branch[branch.name] = branch
+        elif existing_branch.status != branch.status:
+            log.info(f"Updating registry branch cache for {branch.name=}")
+            registry.branch[branch.name] = branch
         return
 
     log.info(
@@ -89,7 +92,6 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     If a branch is already present with a different value for the hash
     We pull the new schema from the database and we update the registry.
     """
-    from infrahub.graphql.manager import GraphQLSchemaManager
 
     async with lock.registry.local_schema_lock():
         active_branches = await registry.branch_object.get_list(db=db)
@@ -106,7 +108,7 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
 
         purged_branches = await registry.purge_inactive_branches(db=db, active_branches=active_branches)
         purged_branches.update(
-            GraphQLSchemaManager.purge_inactive(active_branches=[branch.name for branch in active_branches])
+            graphql_registry.purge_inactive(active_branches=[branch.name for branch in active_branches])
         )
         for branch_name in sorted(purged_branches):
             log.info(f"Removed branch {branch_name!r} from the registry", branch=branch_name, worker=WORKER_IDENTITY)

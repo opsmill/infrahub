@@ -1,5 +1,3 @@
-import * as R from "ramda";
-
 import {
   attributesKindForDetailsViewExclude,
   relationshipsForDetailsView,
@@ -9,7 +7,7 @@ import {
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
-import { AttributeKind, ModelSchema } from "@/entities/schema/types";
+import type { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 type tgetObjectAttributes = {
@@ -100,7 +98,7 @@ export const getSchemaObjectColumns = ({
   const attributes = getObjectAttributes({ schema, forListView, forQuery });
   const relationships = getObjectRelationships({ schema, forListView });
 
-  const columns = sortByOrderWeight(R.concat(attributes, relationships));
+  const columns = sortByOrderWeight([...attributes, ...relationships]);
 
   if (limit) {
     return columns.slice(0, limit);
@@ -114,11 +112,4 @@ export const getSchemaObjectColumns = ({
   // columns.length > 0 needed because of relationship-details-paginated.tsx
   // Relationship needs refactoring to handle this better
   return isGenericSchema(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
-};
-
-export const getObjectTabs = (tabs: any[], data: any) => {
-  return tabs.map((tab: any) => ({
-    ...tab,
-    count: data[tab.name]?.count,
-  }));
 };

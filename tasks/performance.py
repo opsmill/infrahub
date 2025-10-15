@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from pathlib import Path
 
 from invoke import Context, task
@@ -10,7 +9,10 @@ from .utils import git_info
 def run(context: Context, directory: str = "utilities", dataset: str = "dataset03") -> None:
     """Launch a performance test using Locust. Gunicorn must be running"""
     PERFORMANCE_FILE_PREFIX = "locust_"
-    NOW = datetime.now(tz=timezone.utc)
+    # Fix ability to run any invoke command under Python 3.10 (datetime.UTC was added in Python 3.11)
+    from datetime import UTC, datetime
+
+    NOW = datetime.now(tz=UTC)
     date_format = NOW.strftime("%Y-%m-%d-%H-%M-%S")
 
     local_dir = Path(__file__).parent.resolve()

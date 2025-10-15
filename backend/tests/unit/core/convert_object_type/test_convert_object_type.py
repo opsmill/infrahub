@@ -5,9 +5,16 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.convert_object_type.conversion import InputDataForDestField, InputForDestField, convert_object_type
+from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipCardinality
+from infrahub.core.convert_object_type.object_conversion import (
+    ConversionFieldInput,
+    ConversionFieldValue,
+    convert_and_validate_object_type,
+)
 from infrahub.core.convert_object_type.schema_mapping import SchemaMappingValue, get_schema_mapping
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from tests.helpers.test_app import TestInfrahubApp
@@ -29,12 +36,14 @@ class TestSchemaConversionMapping(TestInfrahubApp):
         source_schema = registry.get_node_schema(name="TestconvPerson1", branch=branch)
         target_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
         mapping = get_schema_mapping(source_schema=source_schema, target_schema=target_schema)
-        assert len(mapping) == 12
+        assert len(mapping) == 13
         assert mapping["name"] == SchemaMappingValue(source_field_name="name", is_mandatory=True)
         assert mapping["height"] == SchemaMappingValue(source_field_name="height", is_mandatory=False)
         assert mapping["age"] == SchemaMappingValue(source_field_name=None, is_mandatory=True)
         assert mapping["citizenship"] == SchemaMappingValue(source_field_name=None, is_mandatory=False)
-
+        assert mapping["favorite_color"] == SchemaMappingValue(
+            source_field_name="favorite_color", relationship_cardinality=None, is_mandatory=False
+        )
         assert mapping["favorite_car"] == SchemaMappingValue(
             source_field_name="favorite_car", relationship_cardinality=RelationshipCardinality.ONE, is_mandatory=False
         )
@@ -68,7 +77,7 @@ class TestSchemaConversionMapping(TestInfrahubApp):
 
 class TestConvertObjectType(TestInfrahubApp):
     async def test_convert_object_type(
-        self, db: InfrahubDatabase, client: InfrahubClient, schemas_conversion, branch
+        self, db: InfrahubDatabase, client: InfrahubClient, schemas_conversion, branch, service
     ) -> None:
         res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
         assert len(res.errors) == 0, res.errors
@@ -98,19 +107,23 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name": InputForDestField(source_field="name"),
-            "height": InputForDestField(source_field="height"),
-            "age": InputForDestField(data=InputDataForDestField(attribute_value=25)),
-            "favorite_car": InputForDestField(source_field="favorite_car"),
-            "worst_car": InputForDestField(data=InputDataForDestField(peer_id=car_3.id)),
-            "fastest_cars": InputForDestField(source_field="fastest_cars"),
-            "slowest_cars": InputForDestField(data=InputDataForDestField(peers_ids=[car_3.id])),
-            "bags": InputForDestField(source_field="bags"),
+            "name": ConversionFieldInput(source_field="name"),
+            "height": ConversionFieldInput(source_field="height"),
+            "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=25)),
+            "favorite_car": ConversionFieldInput(source_field="favorite_car"),
+            "worst_car": ConversionFieldInput(data=ConversionFieldValue(peer_id=car_3.id)),
+            "fastest_cars": ConversionFieldInput(source_field="fastest_cars"),
+            "slowest_cars": ConversionFieldInput(data=ConversionFieldValue(peers_ids=[car_3.id])),
+            "bags": ConversionFieldInput(source_field="bags"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestconvPerson2", branch=branch)
-        jack_2 = await convert_object_type(
-            node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch
+        jack_2 = await convert_and_validate_object_type(
+            node=jack_1,
+            target_schema=person_2_schema,
+            mapping=mapping,
+            db=db,
+            branch=branch,
         )
 
         with pytest.raises(NodeNotFoundError):
@@ -125,6 +138,7 @@ class TestConvertObjectType(TestInfrahubApp):
         assert jack_2.name.value == jack_1.name.value
         assert jack_2.height.value == jack_1.height.value
         assert jack_2.age.value == 25
+        assert jack_2.favorite_color.value == "blue"
         assert jack_2.citizenship.value is None
 
         assert (await jack_2.favorite_car.get_peer(db=db)).id == car_1.id
@@ -165,19 +179,23 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name": InputForDestField(source_field="name"),
+            "name": ConversionFieldInput(source_field="name"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestmoPerson2", branch=branch)
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at mandatory_owner"):
-            await convert_object_type(node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch)
+            await convert_and_validate_object_type(
+                node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch
+            )
 
         # And make sure it works when setting a new owner to the car
         mapping = {
-            "name": InputForDestField(source_field="name"),
-            "my_car": InputForDestField(data=InputDataForDestField(peer_id=car_1.id)),
+            "name": ConversionFieldInput(source_field="name"),
+            "my_car": ConversionFieldInput(data=ConversionFieldValue(peer_id=car_1.id)),
         }
-        await convert_object_type(node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch)
+        await convert_and_validate_object_type(
+            node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=branch
+        )
 
     async def test_raise_on_break_mandatory_unidirectional_relationship(
         self,
@@ -185,6 +203,7 @@ class TestConvertObjectType(TestInfrahubApp):
         client: InfrahubClient,
         schema_conversion_unidirectional_relationships,
         default_branch,
+        service,
     ) -> None:
         # Add a mandatory relationship between TestPerson1 and TestCar, that would no longer exist after converting a TestPerson1 to a TestPerson2.
         res = await client.schema.load(
@@ -209,17 +228,21 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name": InputForDestField(source_field="name"),
+            "name": ConversionFieldInput(source_field="name"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestudPerson2", branch=default_branch)
         with pytest.raises(ValidationError, match=r"Too few relationships, min 1 at unidirectional_owner"):
-            await convert_object_type(
-                node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
+            await convert_and_validate_object_type(
+                node=jack_1,
+                target_schema=person_2_schema,
+                mapping=mapping,
+                db=db,
+                branch=default_branch,
             )
 
     async def test_agnostic_attributes(
-        self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_aware_agnostic, default_branch
+        self, db: InfrahubDatabase, client: InfrahubClient, schema_conversion_aware_agnostic, default_branch, service
     ) -> None:
         res = await client.schema.load(schemas=[schema_conversion_aware_agnostic], branch=default_branch.name)
         assert len(res.errors) == 0, res.errors
@@ -234,17 +257,94 @@ class TestConvertObjectType(TestInfrahubApp):
         )
 
         mapping = {
-            "name_agnostic": InputForDestField(source_field="name_agnostic"),
-            "age_2_aware": InputForDestField(source_field="age_1_agnostic"),
-            "height_2_agnostic": InputForDestField(source_field="height_1_aware"),
+            "name_agnostic": ConversionFieldInput(source_field="name_agnostic"),
+            "age_2_aware": ConversionFieldInput(source_field="age_1_agnostic"),
+            "height_2_agnostic": ConversionFieldInput(source_field="height_1_aware"),
         }
 
         person_2_schema = registry.get_node_schema(name="TestbsPerson2", branch=default_branch)
-        jack_2 = await convert_object_type(
-            node=jack_1, target_schema=person_2_schema, mapping=mapping, db=db, branch=default_branch
+        jack_2 = await convert_and_validate_object_type(
+            node=jack_1,
+            target_schema=person_2_schema,
+            mapping=mapping,
+            db=db,
+            branch=default_branch,
         )
 
         assert jack_2 is not None
         assert jack_2.name_agnostic.value == jack_1.name_agnostic.value
         assert jack_2.height_2_agnostic.value == jack_1.height_1_aware.value
         assert jack_2.age_2_aware.value == jack_1.age_1_agnostic.value
+
+    async def test_agnostic_node_with_aware_attributes(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        schema_conversion_agnostic_node_with_aware_attributes,
+        default_branch,
+    ) -> None:
+        res = await client.schema.load(
+            schemas=[schema_conversion_agnostic_node_with_aware_attributes], branch=default_branch.name
+        )
+        assert len(res.errors) == 0, res.errors
+
+        car_1 = await create_and_save(
+            db=db,
+            schema="TestaaCar",
+            name="car_1",
+            branch=default_branch,
+        )
+
+        jack_1 = await create_and_save(
+            db=db,
+            schema="TestaaPerson1",
+            name_agnostic="Jack",
+            age_aware=25,
+            favorite_car=car_1,
+            other_cars=[car_1],
+        )
+
+        branch_name = "branch_convert_type"
+        _ = await create_branch(branch_name=branch_name, db=db)
+
+        mapping = {
+            "name_agnostic": ConversionFieldInput(source_field="name_agnostic"),
+            "age_aware": ConversionFieldInput(source_field="age_aware"),
+            "height_aware": ConversionFieldInput(data=ConversionFieldValue(attribute_value=170)),
+            "favorite_car": ConversionFieldInput(source_field="favorite_car"),
+            "other_cars": ConversionFieldInput(source_field="other_cars"),
+        }
+
+        person_2_schema = registry.get_node_schema(name="TestaaPerson2", branch=default_branch)
+
+        jack_2 = await convert_and_validate_object_type(
+            node=jack_1,
+            target_schema=person_2_schema,
+            mapping=mapping,
+            db=db,
+            branch=default_branch,
+        )
+
+        with pytest.raises(NodeNotFoundError):
+            await NodeManager.get_one_by_id_or_default_filter(
+                db=db,
+                id=jack_1.id,
+                kind="TestaaPerson1",
+            )
+
+        assert jack_2 is not None
+        assert jack_2.name_agnostic.value == jack_1.name_agnostic.value
+        assert jack_2.age_aware.value == 25
+        assert jack_2.height_aware.value == 170
+        assert (await jack_2.favorite_car.get_peer(db=db)).id == car_1.id
+        assert {node.id for _, node in (await jack_2.other_cars.get_peers(db=db)).items()} == {car_1.id}
+
+        # Make sure other branches are in need rebase state
+        br2 = await Branch.get_by_name(name=branch_name, db=db)
+        assert br2.status == BranchStatus.NEED_REBASE.value
+
+        # Make sure main/global branches are still in OPEN state
+        main_branch = await Branch.get_by_name(name=registry.default_branch, db=db)
+        assert main_branch.status == BranchStatus.OPEN.value
+        global_branch = await Branch.get_by_name(name=GLOBAL_BRANCH_NAME, db=db)
+        assert global_branch.status == BranchStatus.OPEN.value

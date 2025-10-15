@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import toml
+import tomllib
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
@@ -371,6 +371,11 @@ class CacheSettings(BaseSettings):
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
+    clean_up_deadlocks_interval_mins: int = Field(
+        default=15,
+        ge=1,
+        description="Age threshold in minutes: locks older than this and owned by inactive workers are deleted by the cleanup task.",
+    )
 
     @property
     def service_port(self) -> int:
@@ -975,7 +980,7 @@ def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, 
 
     if config_file.exists():
         config_string = config_file.read_text(encoding="utf-8")
-        config_tmp = toml.loads(config_string)
+        config_tmp = tomllib.loads(config_string)
 
         return Settings(**config_tmp)
 

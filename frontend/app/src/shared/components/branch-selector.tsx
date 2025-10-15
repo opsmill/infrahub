@@ -1,12 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
@@ -93,10 +93,10 @@ function BranchSelect({
 }) {
   const branches = useAtomValue(branchesState);
   const { setCurrentBranch } = useCurrentBranch();
-  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
 
   const handleBranchChange = (branch: Branch) => {
-    setBranchInQueryString(branch.is_default ? undefined : branch.name);
+    setBranchInQueryString(branch.is_default ? null : branch.name);
     setCurrentBranch(branch);
     setPopoverOpen(false);
   };

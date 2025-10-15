@@ -38,7 +38,11 @@ test.describe("Repository - Creation and objects view", () => {
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("link", { name: REPO_NAME })).toBeVisible();
     await page.getByRole("link", { name: REPO_NAME }).click();
-    await page.getByRole("link", { name: "Objects" }).click();
+    await page
+      .getByRole("link")
+      .filter({ hasNotText: "Group" })
+      .filter({ hasText: "Objects" })
+      .click();
     await expect(page.getByText("No objects found for this")).toBeVisible();
   });
 });

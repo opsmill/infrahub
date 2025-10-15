@@ -2,19 +2,19 @@ import {
   RELATIONSHIP_BULK_ADD_PREFIX,
   RELATIONSHIP_BULK_REMOVE_PREFIX,
 } from "@/shared/components/form/constants";
-import { ProfileData } from "@/shared/components/form/object-form";
-import { DynamicFieldProps } from "@/shared/components/form/type";
-import { FormContextType } from "@/shared/components/form/utils/form-context";
+import type { ProfileData } from "@/shared/components/form/object-form";
+import type { DynamicFieldProps } from "@/shared/components/form/type";
+import type { FormContextType } from "@/shared/components/form/utils/form-context";
 import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
 import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
-import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject } from "@/entities/nodes/types";
-import { NumberPool } from "@/entities/resource-manager/domain/type";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 interface GetFormFieldsFromSchema extends FormContextType {
   schema: ModelSchema;
@@ -45,7 +45,7 @@ export const getFormFieldsFromSchema = ({
     ...(schema.attributes ?? []).filter((attribute) => !isBulkUpdate || !attribute.unique),
     ...getRelationshipsForForm(schema.relationships ?? [], isUpdate || isBulkUpdate, schema),
   ].filter((attribute) => !attribute.read_only);
-  const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
+  const orderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
     if ("peer" in field) {

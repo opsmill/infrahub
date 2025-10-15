@@ -33,6 +33,7 @@ from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
@@ -345,7 +346,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
     async with database.start_session() as db:
         try:
             await Branch.get_by_name(db=db, name=model.name)
-            raise ValueError(f"The branch {model.name}, already exist")
+            raise ValidationError(f"The branch {model.name} already exists")
         except BranchNotFoundError:
             pass
 
@@ -356,7 +357,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             obj = Branch(**data_dict)
         except pydantic.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-            raise ValueError("\n".join(error_msgs)) from exc
+            raise ValidationError("\n".join(error_msgs)) from exc
 
         async with lock.registry.local_schema_lock():
             # Copy the schema from the origin branch and set the hash and the schema_changed_at value
@@ -437,7 +438,7 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
         await get_workflow().submit_workflow(
             workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
             context=context,
-            parameters={"branch": target_branch},
+            parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
         )
 
         for diff_root in branch_diff_roots:

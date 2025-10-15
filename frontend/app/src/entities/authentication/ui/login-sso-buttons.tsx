@@ -5,7 +5,7 @@ import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 
 import { classNames } from "@/shared/utils/common";
 
-import { SSOProvider } from "@/entities/config/types";
+import type { SSOProvider } from "@/entities/config/types";
 
 export interface LoginWithSSOButtonsProps {
   className?: string;

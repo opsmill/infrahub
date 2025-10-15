@@ -2,7 +2,7 @@ import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/config/constants";
 
 import {
   getProposedChangeThreadFromApi,
-  ProposedChangeThreadFromApiParams,
+  type ProposedChangeThreadFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-change-thread-from-api";
 
 export type GetProposedChangeThreadParams = ProposedChangeThreadFromApiParams;

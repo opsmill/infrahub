@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { LabelFormField } from "@/shared/components/form/fields/common";
-import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
+import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
@@ -17,7 +17,7 @@ import {
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/domain/get-default-parent.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -43,6 +43,7 @@ export const GenericRelationshipField = ({
   parent,
   relationship,
   schema,
+  shouldUnregister,
   ...props
 }: GenericRelationshipFieldProps) => {
   const { schema: peerSchema, isGeneric } = useSchema(relationship?.peer);
@@ -116,6 +117,7 @@ export const GenericRelationshipField = ({
         key={`${name}_generic`}
         name={`${name}_generic`}
         defaultValue={defaultValue}
+        shouldUnregister={shouldUnregister}
         render={() => {
           const [open, setOpen] = useState(false);
 
@@ -173,6 +175,7 @@ export const GenericRelationshipField = ({
           key={`${name}_parent`}
           name={`${name}_parent`}
           defaultValue={defaultValue}
+          shouldUnregister={shouldUnregister}
           render={({ field }) => {
             return (
               <div className="relative flex flex-col space-y-2">
@@ -206,6 +209,7 @@ export const GenericRelationshipField = ({
         name={name}
         rules={rules}
         disabled={!selectedGeneric?.id}
+        shouldUnregister={shouldUnregister}
         render={({ field }) => {
           const fieldData = field.value;
 

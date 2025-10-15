@@ -1,9 +1,9 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import { DynamicEnumFieldProps, FormAttributeValue } from "@/shared/components/form/type";
+import type { DynamicEnumFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { Enum, EnumProps } from "@/shared/components/inputs/enum";
+import { Enum, type EnumProps } from "@/shared/components/inputs/enum";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface EnumFieldProps
@@ -21,6 +21,7 @@ const EnumField = ({
   unique,
   items,
   schema,
+  shouldUnregister,
   ...props
 }: EnumFieldProps) => {
   return (
@@ -29,6 +30,7 @@ const EnumField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

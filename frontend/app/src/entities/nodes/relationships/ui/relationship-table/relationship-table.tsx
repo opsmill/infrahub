@@ -4,10 +4,10 @@ import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 
-import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
+import { getObjectTableColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
 import {
-  UseObjectRelationshipsParams,
+  type UseObjectRelationshipsParams,
   useObjectRelationships,
 } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships.query";
 import { getRelationshipActionsColumn } from "@/entities/nodes/relationships/ui/relationship-table/get-relationship-actions-column";

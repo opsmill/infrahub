@@ -1,8 +1,8 @@
-import { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 import { Retry } from "@/shared/components/buttons/retry";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardProps } from "@/shared/components/ui/card";
+import { Card, type CardProps } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 const ContentRoot = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {
@@ -55,7 +55,6 @@ export const ContentCard = ({ className, ...props }: CardProps) => {
 
 export type ContentCardTitleProps = {
   title?: ReactNode;
-  subtitle?: ReactNode;
   description?: ReactNode;
   end?: ReactNode;
   badgeContent?: ReactNode;

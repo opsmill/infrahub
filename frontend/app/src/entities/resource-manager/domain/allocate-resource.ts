@@ -1,6 +1,6 @@
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 import {
-  AllocateResourceFromApiParams,
+  type AllocateResourceFromApiParams,
   allocateResourceFromApi,
 } from "@/entities/resource-manager/api/allocate-resource-from-api";
 

@@ -7,13 +7,13 @@ import {
   addFiltersToRequest,
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { NodeObject } from "@/entities/nodes/types";
-import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

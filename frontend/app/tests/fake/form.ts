@@ -1,4 +1,4 @@
-import { DynamicFieldProps } from "../../src/shared/components/form/type";
+import type { DynamicFieldProps } from "../../src/shared/components/form/type";
 
 export const buildFormField = (override?: Partial<DynamicFieldProps>): DynamicFieldProps => {
   return {

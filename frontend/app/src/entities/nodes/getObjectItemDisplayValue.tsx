@@ -2,7 +2,7 @@ import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
 
-import {
+import type {
   AnyAttribute,
   CheckboxAttribute,
   Dropdown,
@@ -25,8 +25,8 @@ import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-ren
 import { Link } from "@/shared/components/ui/link";
 
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
+import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
   if (typeof data === "string" || typeof data === "number") {

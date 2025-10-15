@@ -6,7 +6,7 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { resolveSchema, SchemaResult } from "@/entities/schema/utils/resolve-schema";
+import { resolveSchema, type SchemaResult } from "@/entities/schema/utils/resolve-schema";
 
 export const getSchema = (kind?: string | null): SchemaResult => {
   return resolveSchema(kind, {

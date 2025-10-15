@@ -29,6 +29,7 @@ from infrahub.core.attribute import (
     StringOptional,
 )
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
@@ -280,7 +281,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     branch1 = Branch(
         name="branch1",
-        status="OPEN",
+        status=BranchStatus.OPEN.value,
         description="Second Branch",
         is_default=False,
         sync_with_git=False,
@@ -502,7 +503,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     branch1 = Branch(
         name="branch1",
-        status="OPEN",
+        status=BranchStatus.OPEN.value,
         description="Second Branch",
         is_default=False,
         sync_with_git=False,
@@ -729,7 +730,7 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     for branch_name, description, created_at, branched_from in branches:
         obj = Branch(
             name=branch_name,
-            status="OPEN",
+            status=BranchStatus.OPEN.value,
             description=description,
             is_default=False,
             sync_with_git=False,
@@ -1784,7 +1785,7 @@ async def all_attribute_default_types_schema(
 
 
 @pytest.fixture
-async def criticality_schema_root() -> SchemaRoot:
+async def criticality_schema_root(register_core_models_schema: None) -> SchemaRoot:
     generic_schema: dict[str, Any] = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -1829,7 +1830,11 @@ async def criticality_schema_root() -> SchemaRoot:
 
 @pytest.fixture
 async def criticality_schema(
-    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema, criticality_schema_root: SchemaRoot
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    group_schema,
+    data_schema,
+    criticality_schema_root: SchemaRoot,
 ) -> NodeSchema:
     registry.schema.register_schema(schema=criticality_schema_root, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
@@ -1884,7 +1889,9 @@ async def criticality_high(db: InfrahubDatabase, default_branch: Branch, critica
 
 
 @pytest.fixture
-async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GenericSchema:
+async def generic_vehicule_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> GenericSchema:
     SCHEMA: dict[str, Any] = {
         "name": "Vehicule",
         "namespace": "Test",

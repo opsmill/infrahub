@@ -381,14 +381,33 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         node = await self.get_node(db=db)
 
+        flag_properties_to_update = {}
+        for prop_name in self._flag_properties:
+            if prop_name not in properties_to_update:
+                continue
+            value = getattr(self, prop_name)
+            if value is not None:
+                flag_properties_to_update[prop_name] = value
+
+        node_properties_to_update = {}
+        for prop_name in self._node_properties:
+            if prop_name not in properties_to_update:
+                continue
+            if value := getattr(self, f"{prop_name}_id"):
+                node_properties_to_update[prop_name] = value
+
+        if not flag_properties_to_update and not node_properties_to_update:
+            return
+
         query = await RelationshipUpdatePropertyQuery.init(
             db=db,
+            branch=branch,
             source=node,
             rel=self,
-            properties_to_update=properties_to_update,
-            data=data,
-            branch=branch,
             at=update_at,
+            flag_properties_to_update=flag_properties_to_update,
+            node_properties_to_update=node_properties_to_update,
+            rel_node_id=data.rel_node_id,
         )
         await query.execute(db=db)
 
@@ -570,7 +589,9 @@ class RelationshipValidatorList:
         ValidationError: If the number of relationships is not within the min and max count.
     """
 
-    def __init__(self, *relationships: Relationship, name: str, min_count: int = 0, max_count: int = 0) -> None:
+    def __init__(
+        self, *relationships: Relationship, name: str, min_count: int | None = 0, max_count: int | None = 0
+    ) -> None:
         """Initialize list for Relationship but with validation against min/max count.
 
         Args:
@@ -580,8 +601,14 @@ class RelationshipValidatorList:
         Raises:
             ValidationError: The number of relationships is not within the min and max count.
         """
-        if max_count < min_count:
+        if max_count is not None and min_count is not None and max_count < min_count:
             raise ValidationError({"msg": "max_count must be greater than min_count"})
+
+        if max_count is None:
+            max_count = 0
+        if min_count is None:
+            min_count = 0
+
         self.min_count: int = min_count
         self.max_count: int = max_count
         self.name = name
@@ -726,14 +753,21 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        self._relationships: RelationshipValidatorList = RelationshipValidatorList(
-            name=self.schema.name,
-            min_count=0 if self.schema.optional else self.schema.min_count,
-            max_count=self.schema.max_count,
-        )
+        self._relationships: RelationshipValidatorList = self._get_init_relationships()
         self._relationship_id_details: RelationshipUpdateDetails | None = None
         self.has_fetched_relationships: bool = False
         self.lock = asyncio.Lock()
+
+    def _get_init_relationships(self) -> RelationshipValidatorList:
+        min_count = self.schema.min_count
+        max_count: int | None = self.schema.max_count if self.schema.max_count > 0 else None
+        if self.schema.optional:
+            min_count = 0
+        return RelationshipValidatorList(
+            name=self.schema.name,
+            min_count=min_count,
+            max_count=max_count,
+        )
 
     @classmethod
     async def init(
@@ -909,6 +943,19 @@ class RelationshipManager:
             return registry.get_global_branch()
         return self.branch
 
+    async def get_db_peers(
+        self, db: InfrahubDatabase, at: Timestamp | None = None, branch_agnostic: bool = False
+    ) -> list[RelationshipPeerData]:
+        query = await RelationshipGetPeerQuery.init(
+            db=db,
+            source=self.node,
+            at=at or self.at,
+            rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
+            branch_agnostic=branch_agnostic,
+        )
+        await query.execute(db=db)
+        return list(query.get_peers())
+
     async def fetch_relationship_ids(
         self,
         db: InfrahubDatabase,
@@ -926,16 +973,9 @@ class RelationshipManager:
 
         current_peer_ids = [rel.get_peer_id() for rel in self._relationships]
 
-        query = await RelationshipGetPeerQuery.init(
-            db=db,
-            source=self.node,
-            at=at or self.at,
-            rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
-            branch_agnostic=branch_agnostic,
-        )
-        await query.execute(db=db)
+        peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
 
-        peers_database: dict = {str(peer.peer_id): peer for peer in query.get_peers()}
+        peers_database: dict = {str(peer.peer_id): peer for peer in peers}
         peer_ids = list(peers_database.keys())
 
         # Calculate which peer should be added or removed

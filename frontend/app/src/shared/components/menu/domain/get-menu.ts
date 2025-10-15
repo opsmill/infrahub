@@ -1,6 +1,6 @@
 import { apiClient } from "@/shared/api/rest/client";
-import { ContextParams } from "@/shared/api/types";
-import { MenuData } from "@/shared/components/layout/menu-navigation/types";
+import type { ContextParams } from "@/shared/api/types";
+import type { MenuData } from "@/shared/components/layout/menu-navigation/types";
 
 type GetMenu = (params: ContextParams) => Promise<MenuData>;
 

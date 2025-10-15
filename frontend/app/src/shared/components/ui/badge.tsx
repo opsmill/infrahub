@@ -1,5 +1,5 @@
-import { cva, VariantProps } from "class-variance-authority";
-import React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import type React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -17,6 +17,7 @@ const badgeVariants = cva(
         yellow: "border-transparent bg-yellow-100 text-yellow-900",
         purple: "border-transparent bg-purple-50 text-purple-900",
         "gray-outline": "border-gray-400 bg-white text-gray-700",
+        "lightgray-outline": "border-gray-200 bg-white text-gray-500",
         "blue-outline": "border-custom-blue-700 bg-white text-custom-blue-700",
         "yellow-outline": "border-yellow-100 bg-white text-yellow-900",
         "green-outline": "border-2 border-green-500 text-green-700",

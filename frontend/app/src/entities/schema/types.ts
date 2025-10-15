@@ -1,6 +1,6 @@
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 
 export type NodeSchema = components["schemas"]["APINodeSchema"];
 export type GenericSchema = components["schemas"]["APIGenericSchema"];

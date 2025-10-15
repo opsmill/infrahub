@@ -1,4 +1,4 @@
-import { BranchContextParams } from "@/shared/api/types";
+import type { BranchContextParams } from "@/shared/api/types";
 
 import { getRepositoryGroupFromApi } from "@/entities/repository/api/get-repository-group-from-api";
 

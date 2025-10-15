@@ -1,20 +1,20 @@
 import { gql } from "@apollo/client";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import {
   buildGetIpPrefixListWithAvailabilityQuery,
   buildGetIpPrefixListWithoutAvailabilityQuery,
 } from "@/entities/ipam/ip-prefixes/api/get-ip-prefix-list-from-api";
-import { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
+import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface GetIpPrefixListParams extends ContextParams, PaginationParams {
   schema: ModelSchema;

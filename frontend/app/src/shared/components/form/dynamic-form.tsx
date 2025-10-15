@@ -18,8 +18,8 @@ import RelationshipManyField from "@/shared/components/form/fields/relationships
 import RelationshipParentConstraintField from "@/shared/components/form/fields/relationships/relationship-parent-constraint.field";
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
-import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
-import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
+import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
@@ -44,7 +44,7 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
     return (
       <Form ref={ref} {...props} defaultValues={formDefaultValues}>
         {fields.map((field) => (
-          <DynamicInput key={`${field.type}_${field.name}`} {...field} />
+          <DynamicField key={`${field.type}_${field.name}`} {...field} />
         ))}
 
         <div className="text-right">
@@ -61,7 +61,7 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
   }
 );
 
-export const DynamicInput = (props: DynamicFieldProps) => {
+export const DynamicField = (props: DynamicFieldProps) => {
   switch (props.type) {
     case ATTRIBUTE_KIND.DATETIME: {
       const { type, ...otherProps } = props;

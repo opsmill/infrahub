@@ -1,5 +1,5 @@
 import { cva } from "class-variance-authority";
-import { Label as AriaLabel, LabelProps as AriaLabelProps } from "react-aria-components";
+import { Label as AriaLabel, type LabelProps as AriaLabelProps } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";
 

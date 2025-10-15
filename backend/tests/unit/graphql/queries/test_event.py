@@ -496,6 +496,8 @@ async def test_event_query_prefect(
     ][0]
 
     assert created["node"]["attributes"] == [
+        {"action": "ADDED", "kind": "List", "name": "human_friendly_id", "value": "['red']", "value_previous": None},
+        {"action": "ADDED", "kind": "Text", "name": "display_label", "value": "red", "value_previous": None},
         {"action": "ADDED", "kind": "Text", "name": "name", "value": "red", "value_previous": None},
         {"action": "ADDED", "kind": "Text", "name": "description", "value": "The red tag", "value_previous": None},
     ]

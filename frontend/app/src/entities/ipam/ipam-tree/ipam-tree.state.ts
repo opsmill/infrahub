@@ -1,8 +1,8 @@
 import { atom } from "jotai";
-import * as R from "ramda";
+import * as R from "remeda";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { TreeProps } from "@/shared/components/ui/tree";
+import type { TreeProps } from "@/shared/components/ui/tree";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
@@ -15,10 +15,10 @@ import {
 } from "@/entities/ipam/ipam-tree/api/prefixes";
 
 import {
-  AncestorsData,
+  type AncestorsData,
   EMPTY_TREE,
   formatIPPrefixResponseForTreeView,
-  PrefixData,
+  type PrefixData,
   updateTreeData,
 } from "./utils";
 
@@ -106,11 +106,11 @@ export const reloadIpamTreeAtom = atom(null, async (get, set, currentPrefixId?: 
     },
   });
 
-  const newtreeItems = formatIPPrefixResponseForTreeView(getFetchPrefixesData);
+  const newTreeItems = formatIPPrefixResponseForTreeView(getFetchPrefixesData);
 
   const groupedByParent = R.groupBy(
-    (node) => node.parent?.toString() ?? TREE_ROOT_ID,
-    newtreeItems
+    newTreeItems,
+    (node) => node.parent?.toString() ?? TREE_ROOT_ID
   );
 
   const newTree = [...orderedAncestorIds, currentPrefixId].reduce((acc, currentAncestorId) => {

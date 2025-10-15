@@ -1,7 +1,6 @@
 import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import { toast } from "react-toastify";
 
@@ -13,6 +12,8 @@ import {
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
@@ -26,14 +27,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { Spinner } from "@/shared/components/ui/spinner";
 
+import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 
 export const AccountMenu = () => {
-  const { isAuthenticated, signOut } = useAuth();
+  const { isAuthenticated } = useAuth();
   const generics = useAtomValue(genericSchemasAtom);
   const schema = generics.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
@@ -45,7 +48,7 @@ export const AccountMenu = () => {
     return <AccountMenuSkeleton />;
   }
 
-  return <AuthenticatedAccountMenu schema={schema} signOut={signOut} />;
+  return <AuthenticatedAccountMenu schema={schema} />;
 };
 
 const CommonMenuItems = () => (
@@ -142,29 +145,30 @@ const UnauthenticatedAccountMenu = () => {
   );
 };
 
-const AuthenticatedAccountMenu = ({
-  schema,
-  signOut,
-}: {
-  schema: ModelSchema;
-  signOut: () => void;
-}) => {
+const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
   const query = gql(getProfileDetails({ ...schema }));
-  const { error, loading, data } = useQuery(query);
+  const { setToken } = useAuth();
+  const { loading, data } = useQuery(query);
+  const { mutateAsync: logout, isPending } = useLogoutMutation();
 
-  const handleSignOut = useCallback(async () => {
-    await signOut();
-
-    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
-      toastId: "profile-alert",
+  const handleSignOut = async () => {
+    await logout(undefined, {
+      onSuccess: () => {
+        setToken(null);
+        queryClient.refetchQueries();
+        graphqlClient.refetchQueries({
+          include: "active",
+          onQueryUpdated: ({ queryName }) => queryName !== "GET_PROFILE_DETAILS",
+        });
+      },
+      onError: (error) => {
+        console.error("Error when logging out: ", error);
+        toast(<Alert type={ALERT_TYPES.ERROR} message="Failed to log out" />, {
+          toastId: "alert-error-sign-out",
+        });
+      },
     });
-  }, []);
-
-  useEffect(() => {
-    if (error) {
-      handleSignOut();
-    }
-  }, [error, signOut]);
+  };
 
   if (loading) {
     return <AccountMenuSkeleton />;
@@ -203,8 +207,8 @@ const AuthenticatedAccountMenu = ({
         <DropdownMenuDivider />
         <CommonMenuItems />
         <DropdownMenuDivider />
-        <DropdownMenuItem onClick={signOut}>
-          <Icon icon="mdi:logout" className="text-base" />
+        <DropdownMenuItem onClick={handleSignOut} disabled={isPending}>
+          {isPending ? <Spinner /> : <Icon icon="mdi:logout" className="text-base" />}
           Logout
         </DropdownMenuItem>
         <DropdownMenuDivider />

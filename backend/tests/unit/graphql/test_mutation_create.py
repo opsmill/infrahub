@@ -15,6 +15,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.registry import registry as graphql_registry
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import DEVICE_SCHEMA
@@ -505,11 +506,11 @@ async def test_create_object_with_node_property(
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["source"]["id"] == first_account.id
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["source"][
         "display_label"
-    ] == await first_account.render_display_label(db=db)
+    ] == await first_account.get_display_label(db=db)
     assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["owner"]["id"] == second_account.id
     assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["owner"][
         "display_label"
-    ] == await second_account.render_display_label(db=db)
+    ] == await second_account.get_display_label(db=db)
 
 
 async def test_create_object_with_single_relationship(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -1281,6 +1282,7 @@ async def test_create_with_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    branch.update_schema_hash()
 
     query = """
     mutation NewDevice($device_name: String!, $template_id: String!) {
@@ -1295,7 +1297,7 @@ async def test_create_with_object_template(
       }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     # Random non-existing ID for template
     result = await graphql(
@@ -1378,6 +1380,7 @@ async def test_create_with_object_template(
         variable_values={"device_name": "th2.par.asbr02", "template_id": device_template.id},
     )
     assert not result.errors
+    assert result.data
 
     device = await NodeManager.get_one(
         db=db, kind=TestKind.DEVICE, branch=branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
@@ -1430,6 +1433,7 @@ async def test_create_with_object_template(
     )
     assert not result.errors
 
+    assert result.data
     device = await NodeManager.get_one(
         db=db, kind=TestKind.DEVICE, branch=branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
@@ -1466,6 +1470,7 @@ async def test_create_without_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    branch.update_schema_hash()
 
     query = """
     mutation NewDevice($device_name: String!, $manufacturer: String!) {
@@ -1483,7 +1488,7 @@ async def test_create_without_object_template(
       }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -1508,6 +1513,7 @@ async def test_create_sub_object_template_by_hfid(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ):
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
+    branch.update_schema_hash()
 
     device_template = await Node.init(db=db, schema=f"Template{TestKind.DEVICE}", branch=branch)
     await device_template.new(
@@ -1539,7 +1545,7 @@ async def test_create_sub_object_template_by_hfid(
     }
     """
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1597,6 +1603,7 @@ async def test_create_simple_object_with_enum(
         }
     }
     """ % (enum_value)
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -1607,6 +1614,7 @@ async def test_create_simple_object_with_enum(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestCarCreate"]["ok"] is True
     assert result.data["TestCarCreate"]["object"]["transmission"]["value"] == response_value
 
@@ -1680,6 +1688,7 @@ async def test_create_string_when_enums_on_fails(
         }
     }
     """
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -1689,5 +1698,6 @@ async def test_create_string_when_enums_on_fails(
         variable_values={},
     )
 
+    assert result.errors
     assert len(result.errors) == 1
     assert "'TestCarTransmissionValue' cannot represent non-enum value" in result.errors[0].message

@@ -7,7 +7,7 @@ import {
   Combobox,
   ComboboxContent,
   ComboboxTrigger,
-  ComboboxTriggerProps,
+  type ComboboxTriggerProps,
 } from "@/shared/components/ui/combobox";
 import {
   PopoverTabs,
@@ -19,12 +19,12 @@ import {
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import {
   RelationshipComboboxList,
-  RelationshipComboboxListProps,
+  type RelationshipComboboxListProps,
 } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
 

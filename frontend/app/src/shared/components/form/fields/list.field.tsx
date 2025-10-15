@@ -1,6 +1,6 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
+import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { List } from "@/shared/components/list";
@@ -15,6 +15,7 @@ const ListField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: FormFieldProps) => {
   return (
@@ -34,6 +35,7 @@ const ListField = ({
         },
       }}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData = field.value;
 

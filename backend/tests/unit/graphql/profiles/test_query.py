@@ -9,6 +9,9 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.graphql import graphql
 
 
@@ -114,6 +117,8 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     }
     """
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    # gql mutation needs function workflow
+    gql_params.context.service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -143,16 +148,20 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
+    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_1 = await Node.init(db=db, schema=crit_schema)
     await crit_1.new(db=db, name="crit_1")
     crit_1.level.is_default = True
     await crit_1.profiles.update(db=db, data=[prof_1])
+    await profiles_applier.apply_profiles(node=crit_1)
     await crit_1.save(db=db)
     crit_2 = await Node.init(db=db, schema=crit_schema)
     await crit_2.new(db=db, name="crit_2")
     crit_2.level.is_default = True
     await crit_2.profiles.update(db=db, data=[prof_2])
+    await profiles_applier.apply_profiles(node=crit_2)
     await crit_2.save(db=db)
 
     query = """
@@ -214,17 +223,21 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9)
     await prof_2.save(db=db)
 
+    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_1 = await Node.init(db=db, schema=crit_schema)
     await crit_1.new(db=db, name="crit_1")
     crit_1.level.is_default = True
     await crit_1.profiles.update(db=db, data=[prof_1])
+    await profiles_applier.apply_profiles(node=crit_1)
     await crit_1.save(db=db)
     colorful_crit_schema = registry.schema.get("TestColorfulCriticality", branch=default_branch)
     crit_2 = await Node.init(db=db, schema=colorful_crit_schema)
     await crit_2.new(db=db, name="crit_2", color="green")
     crit_2.level.is_default = True
     await crit_2.profiles.update(db=db, data=[prof_2])
+    await profiles_applier.apply_profiles(node=crit_2)
     await crit_2.save(db=db)
 
     query = """
@@ -378,6 +391,8 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
+    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)
     await crit_no_profile.new(db=db, name="crit_no_profile", fancy="always")
@@ -386,11 +401,13 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     crit_1_profile = await Node.init(db=db, schema=crit_schema)
     await crit_1_profile.new(db=db, name="crit_1_profile", fancy="never")
     await crit_1_profile.profiles.update(db=db, data=[prof_1])
+    await profiles_applier.apply_profiles(node=crit_1_profile)
     await crit_1_profile.save(db=db)
 
     crit_2_profile = await Node.init(db=db, schema=crit_schema)
     await crit_2_profile.new(db=db, name="crit_2_profile", level=7)
     await crit_2_profile.profiles.update(db=db, data=[prof_1, prof_2])
+    await profiles_applier.apply_profiles(node=crit_2_profile)
     await crit_2_profile.save(db=db)
 
     query = """
@@ -456,6 +473,8 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
     await prof_2.new(db=db, profile_name="prof2", profile_priority=2, level=9, fancy="sometimes")
     await prof_2.save(db=db)
 
+    profiles_applier = NodeProfilesApplier(db=db, branch=default_branch)
+
     crit_schema = registry.schema.get("TestCriticality", branch=default_branch)
     crit_no_profile = await Node.init(db=db, schema=crit_schema)
     await crit_no_profile.new(db=db, name="crit_no_profile", fancy="always")
@@ -464,11 +483,13 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
     crit_1_profile = await Node.init(db=db, schema=crit_schema)
     await crit_1_profile.new(db=db, name="crit_1_profile", fancy="never")
     await crit_1_profile.profiles.update(db=db, data=[prof_1])
+    await profiles_applier.apply_profiles(node=crit_1_profile)
     await crit_1_profile.save(db=db)
 
     crit_2_profile = await Node.init(db=db, schema=crit_schema)
     await crit_2_profile.new(db=db, name="crit_2_profile", level=7)
     await crit_2_profile.profiles.update(db=db, data=[prof_1, prof_2])
+    await profiles_applier.apply_profiles(node=crit_2_profile)
     await crit_2_profile.save(db=db)
 
     query = """
@@ -539,7 +560,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
             "is_from_profile": True,
             "source": {
                 "id": prof_1.id,
-                "display_label": await prof_1.render_display_label(db=db),
+                "display_label": await prof_1.get_display_label(db=db),
                 "__typename": "ProfileTestCriticality",
             },
         },
@@ -555,7 +576,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
             "is_from_profile": True,
             "source": {
                 "id": prof_2.id,
-                "display_label": await prof_2.render_display_label(db=db),
+                "display_label": await prof_2.get_display_label(db=db),
                 "__typename": "ProfileTestCriticality",
             },
         },

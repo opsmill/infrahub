@@ -3,7 +3,7 @@ import os
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Generator
 
@@ -127,7 +127,7 @@ class Neo4jBackupRestoreBase:
             return
         if not with_timestamp:
             print(message)
-        right_now = datetime.now(timezone.utc).astimezone()
+        right_now = datetime.now(UTC).astimezone()
         right_now_str = right_now.strftime("%H:%M:%S")
         print(f"{right_now_str} - {message}")
 
@@ -138,7 +138,7 @@ class Neo4jBackupRestoreBase:
         end = "" if completion_message else "\n"
         to_print = start
         if with_timestamp:
-            right_now = datetime.now(timezone.utc).astimezone()
+            right_now = datetime.now(UTC).astimezone()
             right_now_str = right_now.strftime("%H:%M:%S")
             to_print = f"{right_now_str} - {start}"
         print(to_print, end=end, flush=True)

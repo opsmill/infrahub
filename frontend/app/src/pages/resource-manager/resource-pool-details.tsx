@@ -8,7 +8,7 @@ import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-sli
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
@@ -26,9 +26,11 @@ import {
   RESOURCE_POOL_UTILIZATION_KIND,
 } from "@/entities/resource-manager/constants";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
-import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/ui/resource-selector";
+import ResourceSelector, {
+  type ResourceProps,
+} from "@/entities/resource-manager/ui/resource-selector";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/types";
 
 const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();

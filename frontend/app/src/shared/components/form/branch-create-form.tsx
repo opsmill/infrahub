@@ -1,8 +1,8 @@
-import { StringParam, useQueryParam } from "use-query-params";
+import { useQueryState } from "nuqs";
 
 import { QSP } from "@/config/qsp";
 
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -27,7 +27,7 @@ type BranchCreateFormProps = {
 };
 
 const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCreateFormProps) => {
-  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const [createBranch] = useMutation(BRANCH_CREATE);
 
   const handleSubmit = async (branchFormData: BranchFormData) => {
@@ -42,7 +42,7 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
       const { queryKey } = getBranchesQueryOptions();
       queryClient.setQueryData(queryKey, (oldBranches) => [...(oldBranches ?? []), branchCreated]);
       await queryClient.invalidateQueries({ queryKey });
-      setBranchInQueryString(branchCreated.is_default ? undefined : branchCreated.name);
+      setBranchInQueryString(branchCreated.is_default ? null : branchCreated.name);
 
       if (onSuccess) onSuccess(branchCreated);
     } catch (error) {

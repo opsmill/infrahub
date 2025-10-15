@@ -1,5 +1,5 @@
 import {
-  OperationVariables,
+  type OperationVariables,
   useLazyQuery as useApolloLazyQuery,
   useMutation as useApolloMutation,
   useQuery as useApolloQuery,

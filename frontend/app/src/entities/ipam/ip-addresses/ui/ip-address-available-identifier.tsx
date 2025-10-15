@@ -1,9 +1,9 @@
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
 
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { classNames } from "@/shared/utils/common";
 
-import { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
+import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";
 
 export interface IPAddressAvailableIdentifierProps extends ButtonProps {
   ipAddressAvailableNode: IpAddressAvailableNode;

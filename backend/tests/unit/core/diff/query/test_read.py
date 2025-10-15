@@ -180,42 +180,42 @@ class TestDiffReadQuery(TestInfrahub):
         [
             pytest.param(
                 {},
-                DiffSummaryCounters(num_added=2, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=4, num_updated=8, from_time=Timestamp(), to_time=Timestamp()),
                 id="no-filters",
             ),
             pytest.param(
                 {"kind": {"includes": ["TestThing"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=4, num_updated=3, from_time=Timestamp(), to_time=Timestamp()),
                 id="kind-includes",
             ),
             pytest.param(
                 {"kind": {"excludes": ["TestThing"]}},
-                DiffSummaryCounters(num_updated=3, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_updated=5, from_time=Timestamp(), to_time=Timestamp()),
                 id="kind-excludes",
             ),
             pytest.param(
                 {"namespace": {"includes": ["Test"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=4, num_updated=3, from_time=Timestamp(), to_time=Timestamp()),
                 id="namespace-includes",
             ),
             pytest.param(
                 {"namespace": {"excludes": ["Location"]}},
-                DiffSummaryCounters(num_added=2, num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=4, num_updated=3, from_time=Timestamp(), to_time=Timestamp()),
                 id="namespace-excludes",
             ),
             pytest.param(
                 {"status": {"includes": ["updated"]}},
-                DiffSummaryCounters(num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_updated=8, from_time=Timestamp(), to_time=Timestamp()),
                 id="status-includes",
             ),
             pytest.param(
                 {"status": {"excludes": ["unchanged"]}},
-                DiffSummaryCounters(num_added=2, num_updated=4, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_added=4, num_updated=8, from_time=Timestamp(), to_time=Timestamp()),
                 id="status-excludes",
             ),
             pytest.param(
                 {"kind": {"includes": ["TestThing"]}, "status": {"excludes": ["added"]}},
-                DiffSummaryCounters(num_updated=1, from_time=Timestamp(), to_time=Timestamp()),
+                DiffSummaryCounters(num_updated=3, from_time=Timestamp(), to_time=Timestamp()),
                 id="kind-includes-status-excludes",
             ),
         ],

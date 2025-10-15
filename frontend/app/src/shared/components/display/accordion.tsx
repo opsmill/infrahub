@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { CSSProperties, useState } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { classNames } from "@/shared/utils/common";
 

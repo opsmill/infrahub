@@ -454,6 +454,7 @@ async def test_relationship_groups_add(
     )
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
     )
@@ -603,7 +604,7 @@ async def test_relationship_groups_remove(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
-
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
     )
@@ -710,7 +711,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g1.id,
         g2.id,
     )
-
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -861,6 +862,7 @@ async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branc
         c1.id,
     )
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
@@ -1217,6 +1219,7 @@ async def test_with_permissions(
     }
     """
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, branch=default_branch, account_session=first_session
     )
@@ -1255,10 +1258,8 @@ async def test_without_permissions(
         }
     }
     """
-
-    gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=first_session
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=first_session)
     result = await graphql(
         schema=gql_params.schema,
         source=query % (person_jack_main.id, tag_red_main.id),

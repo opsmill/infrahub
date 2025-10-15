@@ -1,6 +1,6 @@
 import React from "react";
 
-import { PoolPopoverTrigger, PoolValue } from "@/shared/components/form/pool-selector";
+import { PoolPopoverTrigger, type PoolValue } from "@/shared/components/form/pool-selector";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";

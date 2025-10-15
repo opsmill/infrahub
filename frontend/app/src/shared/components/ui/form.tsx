@@ -1,8 +1,8 @@
 import { Slot } from "@radix-ui/react-slot";
 import React, {
   createContext,
-  FormHTMLAttributes,
-  HTMLAttributes,
+  type FormHTMLAttributes,
+  type HTMLAttributes,
   use,
   useEffect,
   useId,
@@ -10,16 +10,16 @@ import React, {
 } from "react";
 import {
   Controller,
-  ControllerProps,
+  type ControllerProps,
   FormProvider,
-  UseFormReturn,
+  type UseFormReturn,
   useForm,
   useFormContext,
 } from "react-hook-form";
 
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { SlideOverContext } from "@/shared/components/display/slide-over";
-import Label, { LabelProps } from "@/shared/components/ui/label";
+import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 
@@ -85,7 +85,7 @@ export const FormField = (props: ControllerProps) => {
 
   return (
     <FormFieldContext value={{ id, name: props.name }}>
-      <Controller control={control} {...props} shouldUnregister />
+      <Controller control={control} shouldUnregister {...props} />
     </FormFieldContext>
   );
 };

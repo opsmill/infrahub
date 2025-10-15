@@ -1,4 +1,4 @@
-import { Form, FormProps, FormSubmit } from "../../src/shared/components/ui/form";
+import { Form, type FormProps, FormSubmit } from "../../src/shared/components/ui/form";
 
 export const TestForm = ({ children, onSubmit = () => {}, ...props }: FormProps) => (
   <Form onSubmit={onSubmit} {...props}>

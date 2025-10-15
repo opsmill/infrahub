@@ -34,7 +34,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.exceptions import DatabaseError
-from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend, get_or_create_global_permission
@@ -196,7 +196,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
 
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    gqlm = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
     gqlm.get_graphql_schema(
         include_query=True,
         include_mutation=True,

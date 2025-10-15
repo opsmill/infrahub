@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { CONFIG } from "@/config/config";
 
 import { fetchUrl } from "@/shared/api/rest/fetch";
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 import { Skeleton } from "@/shared/components/skeleton";
 
 export const AppVersion = () => {

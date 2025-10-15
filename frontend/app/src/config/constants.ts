@@ -1,4 +1,4 @@
-import { RelationshipKind } from "@/entities/nodes/types";
+import type { RelationshipKind } from "@/entities/nodes/types";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 
 export const DEFAULT_BRANCH_NAME = "main";

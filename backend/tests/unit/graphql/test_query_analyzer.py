@@ -7,6 +7,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.registry import registry as graphql_registry
 from tests.helpers.schema.color import COLOR
 from tests.helpers.schema.tshirt import TSHIRT
 
@@ -34,6 +35,7 @@ async def test_is_valid_simple_schema(
     car_person_schema_generics,
 ):
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    graphql_registry.clear_cache()
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     gqa = InfrahubGraphQLQueryAnalyzer(
         query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
@@ -143,6 +145,7 @@ async def test_get_models_in_use(
     )
     assert await gqa.get_models_in_use(types=gql_params.context.types) == {
         InfrahubKind.GENERATORGROUP,
+        InfrahubKind.GENERATORAWAREGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,
         InfrahubKind.STANDARDGROUP,
@@ -155,6 +158,7 @@ async def test_get_models_in_use(
     }
     assert gqa.query_report.impacted_models == [
         InfrahubKind.ACCOUNTGROUP,
+        InfrahubKind.GENERATORAWAREGROUP,
         InfrahubKind.GENERATORGROUP,
         InfrahubKind.GRAPHQLQUERYGROUP,
         InfrahubKind.GENERICGROUP,

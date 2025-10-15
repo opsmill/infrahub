@@ -14,7 +14,7 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
 
-import { ProposedChangeActionButtonProps } from "./types";
+import type { ProposedChangeActionButtonProps } from "./types";
 
 export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();

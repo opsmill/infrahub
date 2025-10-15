@@ -1,5 +1,5 @@
-import { FormFieldValue } from "@/shared/components/form/type";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { FormFieldValue } from "@/shared/components/form/type";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 export const getFiltersFromFormData = (formData: Record<string, FormFieldValue>): Filter[] => {
   return Object.entries(formData).reduce((acc, [fieldName, fieldData]) => {

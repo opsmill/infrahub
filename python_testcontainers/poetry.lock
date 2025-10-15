@@ -935,14 +935,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "prefect-client"
-version = "3.4.13"
+version = "3.4.23"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = "<3.14,>=3.9"
 groups = ["main"]
 files = [
-    {file = "prefect_client-3.4.13-py3-none-any.whl", hash = "sha256:24d0599c1c3135b8fd55c195312d1b6020d146762b2b046ea2902478f6402cd5"},
-    {file = "prefect_client-3.4.13.tar.gz", hash = "sha256:96572081a14892d7d02667e9e4fa3a3634f5421ab6389bc8aa1e18f475b9e3f2"},
+    {file = "prefect_client-3.4.23-py3-none-any.whl", hash = "sha256:6d3ac95ced68a3d5d461e13f90df35871ce90e58194b8a354f840c6a8e6c1fa1"},
+    {file = "prefect_client-3.4.23.tar.gz", hash = "sha256:23d035c1e5a9df0c69c701c5f6ad3f8b80530c19a2383b4ca319a2397fe09ac4"},
 ]
 
 [package.dependencies]
@@ -986,7 +986,7 @@ toml = ">=0.10.0"
 typing-extensions = ">=4.10.0,<5.0.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
 websockets = ">=13.0,<16.0"
-whenever = {version = ">=0.7.3,<0.9.0", markers = "python_version >= \"3.13\""}
+whenever = {version = ">=0.7.3,<0.10.0", markers = "python_version >= \"3.13\""}
 
 [package.extras]
 notifications = ["apprise (>=1.1.0,<2.0.0)"]
@@ -2321,4 +2321,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9, < 3.14"
-content-hash = "d635a9f65d7c46eb12cc998588609149bfc9ead6608fa71dc8638b3556c23cb0"
+content-hash = "547912bb80cbcb2b45736214d3653b4a08cc2a12ce6b366abfb6a43c6ba39418"

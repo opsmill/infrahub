@@ -8,7 +8,7 @@ on:
       commit:
         type: string
         description: commit sha or branch name
-        default: ''
+        default: ""
         required: false
 
 env:
@@ -64,7 +64,7 @@ jobs:
         run: |
           pipx install -f poetry==${{ env.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
-          pip install invoke toml
+          pip install invoke
       - name: "Install Package"
         run: "poetry install"
       - name: "Set environment variables"
@@ -76,7 +76,7 @@ jobs:
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
-    # Initialize the demo environment with the Source Version
+      # Initialize the demo environment with the Source Version
       - name: Pull External Docker Images
         run: invoke demo.pull
         env:
@@ -117,7 +117,7 @@ jobs:
       - name: Stop Demo
         run: invoke demo.stop
 
-    # Build the local version and run the migrations
+      # Build the local version and run the migrations
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV

@@ -201,6 +201,7 @@ class TestIpamUtilization(TestIpam):
     ):
         container = initial_dataset["container"]
         prefix_pool = initial_dataset["prefix_pool"]
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
@@ -220,7 +221,7 @@ class TestIpamUtilization(TestIpam):
                 "edges": [
                     {
                         "node": {
-                            "display_label": await container.render_display_label(db=db),
+                            "display_label": await container.get_display_label(db=db),
                             "id": container.id,
                             "kind": "IpamIPPrefix",
                             "utilization": 12.5,
@@ -281,7 +282,7 @@ class TestIpamUtilization(TestIpam):
                 "edges": [
                     {
                         "node": {
-                            "display_label": await prefix.render_display_label(db=db),
+                            "display_label": await prefix.get_display_label(db=db),
                             "id": prefix.id,
                             "kind": "IpamIPPrefix",
                             "utilization": 50,
@@ -363,7 +364,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await container.render_display_label(db=db),
+                "display_label": await container.get_display_label(db=db),
                 "id": container.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 25.0,
@@ -374,7 +375,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await container_branch.render_display_label(db=db),
+                "display_label": await container_branch.get_display_label(db=db),
                 "id": container_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 0,
@@ -435,7 +436,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await prefix.render_display_label(db=db),
+                "display_label": await prefix.get_display_label(db=db),
                 "id": prefix.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 100,
@@ -446,7 +447,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await prefix_branch.render_display_label(db=db),
+                "display_label": await prefix_branch.get_display_label(db=db),
                 "id": prefix_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 100,
@@ -541,7 +542,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await container.render_display_label(db=db),
+                "display_label": await container.get_display_label(db=db),
                 "id": container.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 12.5,
@@ -552,7 +553,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await container_branch.render_display_label(db=db),
+                "display_label": await container_branch.get_display_label(db=db),
                 "id": container_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 0,
@@ -619,7 +620,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await prefix.render_display_label(db=db),
+                "display_label": await prefix.get_display_label(db=db),
                 "id": prefix.id,
                 "kind": "IpamIPPrefix",
                 "utilization": (12 / 14) * 100,
@@ -630,7 +631,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await prefix_branch.render_display_label(db=db),
+                "display_label": await prefix_branch.get_display_label(db=db),
                 "id": prefix_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": (13 / 14) * 100,

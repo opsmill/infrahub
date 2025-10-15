@@ -3,7 +3,7 @@ import React from "react";
 
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import {
-  DissociateRelationshipModalProps,
+  type DissociateRelationshipModalProps,
   DissociateRelationshipsModal,
 } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 

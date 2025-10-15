@@ -1,4 +1,4 @@
-import { StringParam, useQueryParam } from "use-query-params";
+import { useQueryState } from "nuqs";
 
 import { QSP } from "@/config/qsp";
 
@@ -8,17 +8,14 @@ import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
 import { useGetProposedChangesCounts } from "@/entities/proposed-changes/domain/get-proposed-changes-counts.query";
 import { ProposedChangeTableFilter } from "@/entities/proposed-changes/ui/proposed-change-table-filter";
 import { ProposedChangeTableFilterLink } from "@/entities/proposed-changes/ui/proposed-change-table-filter-link";
-import { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/types";
 
 interface ProposedChangesTableHeaderProps {
   schema: NodeSchema;
 }
 
 export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeaderProps) {
-  const [proposedChangeState, setProposedChangeState] = useQueryParam(
-    QSP.PROPOSED_CHANGES_STATE,
-    StringParam
-  );
+  const [proposedChangeState, setProposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
   const [filters] = useFilters();
 
   const { data } = useGetProposedChangesCounts({ filters });
@@ -53,7 +50,7 @@ export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeade
         <ProposedChangeTableFilterLink
           isActive={!proposedChangeState}
           onClick={() => {
-            setProposedChangeState(undefined);
+            setProposedChangeState(null);
           }}
         >
           Opened {data?.opened ? `(${data.opened})` : null}

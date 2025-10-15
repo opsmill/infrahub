@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.convert_object_type.conversion import InputDataForDestField, InputForDestField
+from infrahub.core.constants.infrahubkind import NUMBERPOOL
 from infrahub.core.query.resource_manager import NumberPoolGetReserved
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from tests.helpers.test_app import TestInfrahubApp
@@ -59,6 +59,11 @@ class TestGetConversionSchemaMapping(TestInfrahubApp):
                     "age": {"is_mandatory": True, "source_field_name": None, "relationship_cardinality": None},
                     "name": {"is_mandatory": True, "source_field_name": "name", "relationship_cardinality": None},
                     "height": {"is_mandatory": False, "source_field_name": "height", "relationship_cardinality": None},
+                    "favorite_color": {
+                        "is_mandatory": False,
+                        "source_field_name": "favorite_color",
+                        "relationship_cardinality": None,
+                    },
                     "subscriber_of_groups": {
                         "is_mandatory": False,
                         "source_field_name": "subscriber_of_groups",
@@ -112,18 +117,20 @@ class TestConvertObjectType(TestInfrahubApp):
             kind="TestconvPerson1",
             name="Jack",
             height=170,
+            favorite_color="green",
             favorite_car=car_1,
             fastest_cars=[car_1, car_2],
         )
         await jack_1.save()
 
         mapping = {
-            "name": InputForDestField(source_field="name"),
-            "age": InputForDestField(data=InputDataForDestField(attribute_value=25)),
-            "worst_car": InputForDestField(data=InputDataForDestField(peer_id=car_1.id)),
-            "fastest_cars": InputForDestField(source_field="fastest_cars"),
-            "slowest_cars": InputForDestField(data=InputDataForDestField(peers_ids=[car_1.id])),
-            "bags": InputForDestField(data=InputDataForDestField(peers_ids=[])),
+            "name": ConversionFieldInput(source_field="name"),
+            "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=25)),
+            "worst_car": ConversionFieldInput(data=ConversionFieldValue(peer_id=car_1.id)),
+            "fastest_cars": ConversionFieldInput(source_field="fastest_cars"),
+            "slowest_cars": ConversionFieldInput(data=ConversionFieldValue(peers_ids=[car_1.id])),
+            "bags": ConversionFieldInput(data=ConversionFieldValue(peers_ids=[])),
+            "favorite_color": ConversionFieldInput(use_default_value=True),
         }
 
         mapping_dict = {field_name: model.model_dump(mode="json") for field_name, model in mapping.items()}
@@ -143,6 +150,7 @@ class TestConvertObjectType(TestInfrahubApp):
         assert res_node["age"]["value"] == 25
         assert res_node["name"]["value"] == "Jack"
         assert res_node["height"]["value"] == 170
+        assert res_node["favorite_color"]["value"] == "blue"
 
 
 class TestConvertObjectTypeResourcePool(TestInfrahubApp):
@@ -192,7 +200,7 @@ class TestConvertObjectTypeResourcePool(TestInfrahubApp):
             persons[name] = person
 
         # Retrieve the pool used for the NumberPool attribute
-        pools = await client.all(kind=InfrahubKind.NUMBERPOOL)
+        pools = await client.all(kind=NUMBERPOOL)
         assert len(pools) == 1
         pool = pools[0]
 

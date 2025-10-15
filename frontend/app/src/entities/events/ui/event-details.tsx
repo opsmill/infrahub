@@ -9,7 +9,7 @@ import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 
-import { EventType } from "../types";
+import type { EventType } from "../types";
 import { EventAttributes } from "./node-events/event-attributes";
 import { EventRelationships } from "./node-events/event-relationships";
 
