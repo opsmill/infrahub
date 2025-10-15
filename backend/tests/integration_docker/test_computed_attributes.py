@@ -47,9 +47,11 @@ class TestComputedAttributes(TestInfrahubDockerClient):
     async def test_computed_attribute_update(self, client: InfrahubClient) -> None:
         """Validate that the computed attribute is registered and created and also updated correctly."""
         first_desc = "A Sunset Explorer t-shirt. A bold, vibrant orange that captures the warmth of the setting sun."
-        final_desc = (
-            "A Sunset Explorer t-shirt. A striking, lively shade of orange that radiates the golden warmth of a sunset."
-        )
+        final_desc = "A Sunrise Explorer t-shirt. A striking, lively shade of orange that radiates the golden warmth of a sunrise."
+        first_display_label = "Explorer - Sunset"
+        final_display_label = "Explorer - Sunrise"
+        first_hfid = ["Explorer", "Sunset"]
+        final_hfid = ["Explorer", "Sunrise"]
         data = {
             "name": "Sunset",
             "description": "A bold, vibrant orange that captures the warmth of the setting sun.",
@@ -74,23 +76,32 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         color1_initial = await client.get(kind="TestingColor", id=color1.id)
 
         assert tshirt1_initial.description.value == first_desc
+        assert tshirt1_initial.display_label == first_display_label
+        assert tshirt1_initial.hfid == first_hfid
 
         # Validate computed attribute defined on generic
         assert tshirt1_initial.name_code.value == "WEARABLE-EXPLORER"
 
+        color1_initial.name.value = "Sunrise"
         color1_initial.description.value = (
-            "A striking, lively shade of orange that radiates the golden warmth of a sunset."
+            "A striking, lively shade of orange that radiates the golden warmth of a sunrise."
         )
         await color1_initial.save()
 
         for _ in range(20):
             # Give the computed attribute triggers a little while to run
             tshirt1_updated = await client.get(kind="TestingTShirt", id=tshirt1.id)
-            if tshirt1_updated.description.value != first_desc:
+            if (
+                tshirt1_updated.description.value != first_desc
+                and tshirt1_updated.display_label != first_display_label
+                and tshirt1_updated.hfid != first_hfid
+            ):
                 break
             await sleep(1)
 
         assert tshirt1_updated.description.value == final_desc
+        assert tshirt1_updated.display_label == final_display_label
+        assert tshirt1_updated.hfid == final_hfid
 
         tshirt1_second_update = await client.get(kind="TestingTShirt", id=tshirt1.id)
         tshirt1_second_update.color = color2

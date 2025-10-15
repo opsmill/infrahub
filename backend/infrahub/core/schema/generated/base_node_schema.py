@@ -58,9 +58,14 @@ class GeneratedBaseNodeSchema(HashableModel):
         description="Human friendly and unique identifier for the object.",
         json_schema_extra={"update": "allowed"},
     )
+    display_label: str | None = Field(
+        default=None,
+        description="Attribute or Jinja2 template to use to generate the display label",
+        json_schema_extra={"update": "allowed"},
+    )
     display_labels: list[str] | None = Field(
         default=None,
-        description="List of attributes to use to generate the display label",
+        description="List of attributes to use to generate the display label (deprecated)",
         json_schema_extra={"update": "allowed"},
     )
     include_in_menu: bool | None = Field(

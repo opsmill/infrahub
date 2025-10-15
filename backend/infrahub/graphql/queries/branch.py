@@ -34,25 +34,34 @@ async def infrahub_branch_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     **kwargs: Any,
-) -> InfrahubBranchType:
+) -> dict[str, Any]:
     page = kwargs.pop("page", 1)
     limit = kwargs.pop("limit", 100)
     offset = (page - 1) * limit
+    fields = {"id": None, "name": None}  # extract_graphql_fields(info)
 
     branches = await BranchType.get_list(
-        fields=BranchType.fields, graphql_context=info.context, limit=limit, offset=offset, **kwargs
+        fields=fields, graphql_context=info.context, limit=limit, offset=offset, **kwargs
     )
     total_count = 100  # await BranchType.get_list_total_count(graphql_context=info.context, **kwargs)
 
     total_pages = (total_count + limit - 1) // limit
 
-    return InfrahubBranchType(
-        total_count=total_count,
-        total_pages=total_pages,
-        current_page=page,
-        per_page=limit,
-        branches=[BranchType(**branch) for branch in branches],
-    )
+    # return InfrahubBranchType(
+    #     total_count=total_count,
+    #     total_pages=total_pages,
+    #     current_page=page,
+    #     per_page=limit,
+    #     branches=[BranchType(**branch) for branch in branches],
+    # )
+
+    return {
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "current_page": page,
+        "per_page": limit,
+        "branches": branches,
+    }
 
 
 InfrahubBranchQueryList = Field(

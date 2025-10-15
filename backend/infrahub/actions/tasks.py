@@ -61,6 +61,12 @@ def get_generator_run_query(definition_id: str, target_ids: list[str]) -> Query:
                         "parameters": {
                             "value": None,
                         },
+                        "execute_in_proposed_change": {
+                            "value": None,
+                        },
+                        "execute_after_merge": {
+                            "value": None,
+                        },
                         "targets": {
                             "node": {
                                 "id": None,
@@ -287,6 +293,8 @@ async def _run_generators(
                 convert_query_response=data["convert_query_response"]["value"],
                 group_id=data["targets"]["node"]["id"],
                 parameters=data["parameters"]["value"],
+                execute_in_proposed_change=data["execute_in_proposed_change"]["value"],
+                execute_after_merge=data["execute_after_merge"]["value"],
             ),
             commit=data["repository"]["node"]["commit"]["value"],
             repository_id=data["repository"]["node"]["id"],

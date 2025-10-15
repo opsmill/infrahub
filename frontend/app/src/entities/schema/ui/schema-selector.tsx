@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import * as R from "remeda";
-import { ArrayParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -24,7 +24,10 @@ type SchemaSelectorProps = {
   className?: string;
 };
 export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
-  const [selectedKind, setKind] = useQueryParam(QSP.KIND, ArrayParam);
+  const [selectedKind, setKind] = useQueryState(
+    QSP.KIND,
+    parseAsNativeArrayOf(parseAsString).withDefault([])
+  );
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);

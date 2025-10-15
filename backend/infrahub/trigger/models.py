@@ -37,6 +37,8 @@ class TriggerType(str, Enum):
     COMPUTED_ATTR_JINJA2 = "computed_attr_jinja2"
     COMPUTED_ATTR_PYTHON = "computed_attr_python"
     COMPUTED_ATTR_PYTHON_QUERY = "computed_attr_python_query"
+    DISPLAY_LABEL_JINJA2 = "display_label_jinja2"
+    HUMAN_FRIENDLY_ID = "human_friendly_id"
     # OBJECT = "object"
 
 

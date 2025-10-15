@@ -101,7 +101,7 @@ class TestDiffUpdateMutation:
             variable_values={
                 "branch": diff_branch.name,
                 "name": self.diff_name,
-                "from_time": branched_from_timestamp.add_delta(seconds=-1).to_string(),
+                "from_time": branched_from_timestamp.add(seconds=-1).to_string(),
             },
         )
         assert result.errors is None
@@ -156,7 +156,7 @@ class TestDiffUpdateMutation:
             variable_values={
                 "branch": diff_branch.name,
                 "name": self.diff_name,
-                "from_time": named_diff.from_time.add_delta(microseconds=-1).to_string(),
+                "from_time": named_diff.from_time.add(microseconds=-1).to_string(),
             },
         )
         assert result.errors is not None
@@ -171,7 +171,7 @@ class TestDiffUpdateMutation:
             variable_values={
                 "branch": diff_branch.name,
                 "name": self.diff_name,
-                "to_time": named_diff.to_time.add_delta(seconds=-1).to_string(),
+                "to_time": named_diff.to_time.add(seconds=-1).to_string(),
             },
         )
         assert result.errors is not None

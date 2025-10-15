@@ -1,21 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
 import { useCommandState } from "cmdk";
 
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 
-import { searchDocsQueryOptions } from "@/shared/components/search/queries/get-doc-results";
-import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
-import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+
+import { useGetSearchDocs } from "@/entities/search-anywhere/domain/search-docs.query";
+import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
+import { SearchAnywhereItem } from "@/entities/search-anywhere/ui/search-anywhere-item";
 
 export const SearchDocs = () => {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query, 300);
-  const {
-    data: results,
-    error,
-    isPending,
-  } = useQuery(searchDocsQueryOptions({ query: queryDebounced }));
+  const { data: results, error, isPending } = useGetSearchDocs({ query: queryDebounced });
 
   if (query === "") {
     return null;

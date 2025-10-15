@@ -1,10 +1,10 @@
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { format, isPast } from "date-fns";
-import { useAtom } from "jotai/index";
-import { useEffect } from "react";
+import { useAtom } from "jotai";
+import { parseAsIsoDateTime, useQueryState } from "nuqs";
+import React from "react";
 import DateTimePicker from "react-datepicker";
-import { DateTimeParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -16,13 +16,13 @@ import { Button } from "./buttons/button-primitive";
 import "react-datepicker/dist/react-datepicker.css";
 
 export const TimeFrameSelector = () => {
+  const [qspDate, setQspDate] = useQueryState(QSP.DATETIME, parseAsIsoDateTime);
   const [date, setDate] = useAtom(datetimeAtom);
-  const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, DateTimeParam);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (date === qspDate) return;
     setDate(qspDate ?? null);
-  }, [qspDate]);
+  }, []);
 
   const onChange = (newDate: Date | null) => {
     setDate(newDate);
@@ -31,7 +31,7 @@ export const TimeFrameSelector = () => {
 
   const reset = () => {
     setDate(null);
-    setQspDate(undefined);
+    setQspDate(null);
   };
 
   return (

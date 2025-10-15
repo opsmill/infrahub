@@ -66,6 +66,8 @@ from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
+from .schema_branch_display import DisplayLabels
+from .schema_branch_hfid import HFIDs
 
 log = get_logger()
 
@@ -77,6 +79,8 @@ class SchemaBranch:
         name: str | None = None,
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
+        display_labels: DisplayLabels | None = None,
+        hfids: HFIDs | None = None,
     ):
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
         self.name: str | None = name
@@ -85,6 +89,8 @@ class SchemaBranch:
         self.profiles: dict[str, str] = {}
         self.templates: dict[str, str] = {}
         self.computed_attributes = computed_attributes or ComputedAttributes()
+        self.display_labels = display_labels or DisplayLabels()
+        self.hfids = hfids or HFIDs()
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -270,6 +276,8 @@ class SchemaBranch:
             data=copy.deepcopy(self.to_dict()),
             cache=self._cache,
             computed_attributes=self.computed_attributes.duplicate(),
+            display_labels=self.display_labels.duplicate(),
+            hfids=self.hfids.duplicate(),
         )
 
     def set(self, name: str, schema: MainSchemaTypes) -> str:
@@ -504,12 +512,13 @@ class SchemaBranch:
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
+        self.process_nodes_state()
+        self.process_attributes_state()
+        self.process_relationships_state()
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
         self.process_cardinality_counts()
-        self.process_nodes_state()
-        self.process_relationships_state()
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
@@ -531,6 +540,7 @@ class SchemaBranch:
         self.validate_identifiers()
         self.sync_uniqueness_constraints_and_unique_attributes()
         self.validate_uniqueness_constraints()
+        self.validate_display_label()
         self.validate_display_labels()
         self.validate_order_by()
         self.validate_default_filters()
@@ -754,6 +764,35 @@ class SchemaBranch:
                         element_name=element_name,
                     )
 
+    def validate_display_label(self) -> None:
+        self.display_labels = DisplayLabels()
+        for name in self.all_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if node_schema.display_label is None and node_schema.display_labels:
+                update_candidate = self.get(name=name, duplicate=True)
+                if len(node_schema.display_labels) == 1:
+                    # If the previous display_labels consist of a single attribute convert
+                    # it to an attribute based display label
+                    converted_display_label = node_schema.display_labels[0]
+                    if "__" not in converted_display_label:
+                        # Previously we allowed defining a raw attribute name as a component of a
+                        # display_label, if this is the case we need to append '__value'
+                        converted_display_label = f"{converted_display_label}__value"
+                    update_candidate.display_label = converted_display_label
+                else:
+                    # If the previous display label consists of multiple attributes
+                    # convert it to a Jinja2 based display label
+                    update_candidate.display_label = " ".join(
+                        [f"{{{{ {display_label} }}}}" for display_label in node_schema.display_labels]
+                    )
+                self.set(name=name, schema=update_candidate)
+
+            if not node_schema.display_label:
+                continue
+
+            self._validate_display_label(node=node_schema)
+
     def validate_display_labels(self) -> None:
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
@@ -851,6 +890,7 @@ class SchemaBranch:
         return False
 
     def validate_human_friendly_id(self) -> None:
+        self.hfids = HFIDs()
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -862,7 +902,14 @@ class SchemaBranch:
             # Mapping relationship identifiers -> list of attributes paths
             rel_schemas_to_paths: dict[str, tuple[MainSchemaTypes, list[str]]] = {}
 
+            visited_paths: list[str] = []
             for hfid_path in node_schema.human_friendly_id:
+                if config.SETTINGS.main.schema_strict_mode and hfid_path in visited_paths:
+                    raise ValidationError(
+                        f"HFID of {node_schema.kind} cannot use the same path more than once: {hfid_path}"
+                    )
+
+                visited_paths.append(hfid_path)
                 schema_path = self.validate_schema_path(
                     node_schema=node_schema,
                     path=hfid_path,
@@ -876,6 +923,11 @@ class SchemaBranch:
                     if rel_identifier not in rel_schemas_to_paths:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
                     rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
+
+                if node_schema.is_node_schema and node_schema.namespace not in ["Schema", "Internal"]:
+                    self.hfids.register_hfid_schema_path(
+                        kind=node_schema.kind, schema_path=schema_path, hfid=node_schema.human_friendly_id
+                    )
 
             if config.SETTINGS.main.schema_strict_mode:
                 # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
@@ -1138,6 +1190,50 @@ class SchemaBranch:
                         self.computed_attributes.validate_generic_inheritance(
                             node=node_schema, attribute=attribute, generic=generic_schema
                         )
+
+    def _validate_display_label(self, node: MainSchemaTypes) -> None:
+        if not node.display_label:
+            return
+
+        if not any(c in node.display_label for c in "{}"):
+            schema_path = self.validate_schema_path(
+                node_schema=node,
+                path=node.display_label,
+                allowed_path_types=SchemaElementPathType.ATTR_WITH_PROP,
+                element_name="display_label - non Jinja2",
+            )
+            if schema_path.attribute_schema and node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
+                self.display_labels.register_attribute_based_display_label(
+                    kind=node.kind, attribute_name=schema_path.attribute_schema.name
+                )
+            return
+
+        jinja_template = Jinja2Template(template=node.display_label)
+        try:
+            variables = jinja_template.get_variables()
+            jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+        except (JinjaTemplateOperationViolationError, JinjaTemplateError) as exc:
+            raise ValueError(
+                f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
+            ) from exc
+
+        allowed_path_types = (
+            SchemaElementPathType.ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
+        )
+        for variable in variables:
+            schema_path = self.validate_schema_path(
+                node_schema=node, path=variable, allowed_path_types=allowed_path_types, element_name="display_label"
+            )
+
+            if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == "display_label":
+                raise ValueError(f"{node.kind}: display_label the '{variable}' variable is a reference to itself")
+
+            if node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
+                self.display_labels.register_template_schema_path(
+                    kind=node.kind, schema_path=schema_path, template=node.display_label
+                )
 
     def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
@@ -1627,6 +1723,21 @@ class SchemaBranch:
                 continue
             updated_node = node.duplicate()
             updated_node.relationships = filtered_relationships
+            self.set(name=name, schema=updated_node)
+
+    def process_attributes_state(self) -> None:
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            if not node.attributes:
+                continue
+
+            filtered_attributes = [
+                attribute for attribute in node.attributes if attribute.state != HashableModelState.ABSENT
+            ]
+            if len(filtered_attributes) == len(node.attributes):
+                continue
+            updated_node = node.duplicate()
+            updated_node.attributes = filtered_attributes
             self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:

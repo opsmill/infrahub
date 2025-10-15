@@ -112,7 +112,7 @@ test.describe("/login", () => {
       });
 
       test("should redirect to the initial page after login", async ({ page }) => {
-        const date = encodeURIComponent(new Date().toISOString());
+        const date = new Date().toISOString();
         const initialPage = `/objects/BuiltinTag?at=${date}&branch=atl1-delete-upstream`;
         await page.goto(initialPage);
 

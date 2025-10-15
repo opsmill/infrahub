@@ -262,13 +262,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
-        omnicorp_label = await omnicorp_node.render_display_label(db=db)
+        omnicorp_label = await omnicorp_node.get_display_label(db=db)
         john_id = initial_dataset["john"].get_id()
         john_node = await NodeManager.get_one(db=db, id=john_id)
-        john_label = await john_node.render_display_label(db=db)
+        john_label = await john_node.get_display_label(db=db)
         ed_209_id = initial_dataset["ed_209"].get_id()
         ed_209_branch = await NodeManager.get_one(db=db, branch=branch1, id=ed_209_id)
-        ed_209_label = await ed_209_branch.render_display_label(db=db)
+        ed_209_label = await ed_209_branch.get_display_label(db=db)
         await ed_209_branch.delete(db=db)
 
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": BRANCH_NAME})
@@ -285,7 +285,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert ed_209_node.action is DiffAction.REMOVED
         assert ed_209_node.label == ed_209_label
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "color", "description"}
+        assert set(attributes_by_name.keys()) == {"name", "color", "description", "display_label"}
         for attr_node in attributes_by_name.values():
             assert attr_node.action is DiffAction.REMOVED
             assert attr_node.contains_conflict is False
@@ -451,10 +451,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         jesko_id = initial_dataset["jesko"].get_id()
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
         cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
-        cyberdyne_label = await cyberdyne_node.render_display_label(db=db)
+        cyberdyne_label = await cyberdyne_node.get_display_label(db=db)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
-        omnicorp_label = await omnicorp_node.render_display_label(db=db)
+        omnicorp_label = await omnicorp_node.get_display_label(db=db)
         jesko_main = await NodeManager.get_one(db=db, branch=default_branch, id=jesko_id)
         await jesko_main.manufacturer.update(db=db, data={"id": cyberdyne_id})
         await jesko_main.save(db=db)
@@ -513,20 +513,20 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         t_800_id = initial_dataset["t_800"].get_id()
         john_id = initial_dataset["john"].get_id()
         john_node = await NodeManager.get_one(db=db, id=john_id)
-        john_label = await john_node.render_display_label(db=db)
+        john_label = await john_node.get_display_label(db=db)
         cyberdyne_id = initial_dataset["cyberdyne"].get_id()
         cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
-        cyberdyne_label = await cyberdyne_node.render_display_label(db=db)
+        cyberdyne_label = await cyberdyne_node.get_display_label(db=db)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
-        omnicorp_label = await omnicorp_node.render_display_label(db=db)
+        omnicorp_label = await omnicorp_node.get_display_label(db=db)
         t_800_main = await NodeManager.get_one(db=db, branch=default_branch, id=t_800_id)
         await t_800_main.owner.update(db=db, data={"id": john_id, "_relation__owner": cyberdyne_id})
         await t_800_main.save(db=db)
         t_800_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=t_800_id)
         await t_800_branch.owner.update(db=db, data={"id": john_id, "_relation__owner": omnicorp_id})
         await t_800_branch.save(db=db)
-        t_800_label = await t_800_main.render_display_label(db=db)
+        t_800_label = await t_800_main.get_display_label(db=db)
         changes_done_time = Timestamp()
 
         result = await client.execute_graphql(

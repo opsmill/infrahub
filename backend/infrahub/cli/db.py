@@ -54,6 +54,7 @@ from infrahub.log import get_logger
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
+from .db_commands.clean_duplicate_schema_fields import clean_duplicate_schema_fields
 from .patch import patch_app
 
 
@@ -194,6 +195,29 @@ async def check_inheritance_cmd(
     await initialize_registry(db=dbdriver)
 
     success = await check_inheritance(db=dbdriver, fix=fix)
+    if not success:
+        raise typer.Exit(code=1)
+
+    await dbdriver.close()
+
+
+@app.command(name="check-duplicate-schema-fields")
+async def check_duplicate_schema_fields_cmd(
+    ctx: typer.Context,
+    fix: bool = typer.Option(False, help="Fix the duplicate schema fields on the default branch."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Check for any duplicate schema attributes or relationships on the default branch"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    success = await clean_duplicate_schema_fields(db=dbdriver, fix=fix)
     if not success:
         raise typer.Exit(code=1)
 
