@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
 
 from pydantic import Field
 
+from ..query import MigrationBaseQuery  # noqa: TC001
 from ..shared import SchemaMigration
-
-if TYPE_CHECKING:
-    from ..query import MigrationBaseQuery
 
 
 class PlaceholderDummyMigration(SchemaMigration):

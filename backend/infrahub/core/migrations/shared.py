@@ -17,12 +17,12 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 
+from .query import MigrationBaseQuery  # noqa: TC001
+
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-    from .query import MigrationBaseQuery
 
 
 class MigrationResult(BaseModel):
