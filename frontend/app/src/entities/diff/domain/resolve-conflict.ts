@@ -1,13 +1,9 @@
-import { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
+import {
+  ResolveConflictFromApiParams,
+  resolveConflictFromApi,
+} from "@/entities/diff/api/resolve-conflict-from-api";
 
-import { resolveConflictFromApi } from "@/entities/diff/api/resolve-conflict-from-api";
-
-export type ResolveConflictParams = {
-  id: string;
-  selection: ConflictSelection | null;
-};
-
-export type ResolveConflict = (params: ResolveConflictParams) => Promise<void>;
+export type ResolveConflict = (params: ResolveConflictFromApiParams) => Promise<void>;
 
 export const resolveConflict: ResolveConflict = async (params) => {
   await resolveConflictFromApi(params);
