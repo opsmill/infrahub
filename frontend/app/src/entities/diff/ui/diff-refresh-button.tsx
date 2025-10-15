@@ -30,7 +30,7 @@ export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonPro
   const handleRefreshDiff = async () => {
     updateDiffMutation.mutate(branchName, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: [treeQueryKeys.all] });
+        queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
         graphqlClient.refetchQueries({
           include: ["GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
         });
