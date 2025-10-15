@@ -1813,10 +1813,38 @@ class SchemaBranch:
 
             self.set(name=name, schema=template)
 
+    def _generate_generics_templates_weight(self) -> None:
+        """Generate order_weight for generic templates.
+
+        The order of the fields for the template must respect the order of the node.
+        """
+        for name in self.generic_names:
+            generic_node = self.get(name=name, duplicate=False)
+            try:
+                template = self.get(name=self._get_object_template_kind(node_kind=generic_node.kind), duplicate=True)
+            except SchemaNotFoundError:
+                continue
+
+            generic_node_weights = {
+                item.name: item.order_weight
+                for item in generic_node.attributes + generic_node.relationships
+                if item.order_weight is not None
+            }
+
+            for item in template.attributes + template.relationships:
+                if item.order_weight:
+                    continue
+                item.order_weight = (
+                    generic_node_weights[item.name] + 10000 if item.name in generic_node_weights else None
+                )
+
+            self.set(name=generic_node.kind, schema=template)
+
     def generate_weight(self) -> None:
         self._generate_weight_generics()
         self._generate_weight_nodes_profiles()
         self._generate_weight_templates()
+        self._generate_generics_templates_weight()
 
     def cleanup_inherited_elements(self) -> None:
         for name in self.node_names:
