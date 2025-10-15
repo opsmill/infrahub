@@ -49,9 +49,9 @@ from .m043_backfill_hfid_display_label_in_db import Migration043
 if TYPE_CHECKING:
     from infrahub.core.root import Root
 
-    from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
+    from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration, MigrationWithRebase
 
-MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration]] = [
+MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]] = [
     Migration001,
     Migration002,
     Migration003,
@@ -100,7 +100,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
 
 async def get_graph_migrations(
     root: Root,
-) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration]:
+) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
@@ -113,7 +113,7 @@ async def get_graph_migrations(
 
 def get_migration_by_number(
     migration_number: int | str,
-) -> GraphMigration | InternalSchemaMigration | ArbitraryMigration:
+) -> GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase:
     # Convert to string and pad with zeros if needed
     try:
         num = int(migration_number)
