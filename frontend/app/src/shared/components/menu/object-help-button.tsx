@@ -30,7 +30,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
     <MenuTrigger>
       <Pressable>
         <Button variant="outline" size="icon" {...props}>
-          ?qqqq
+          ?
         </Button>
       </Pressable>
 
