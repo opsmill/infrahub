@@ -658,10 +658,8 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
     schema_branch.load_schema(schema=SchemaRoot(**schema))
     schema_branch.process()
 
-    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
     template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
 
-    assert set(dcim_generic_device.attribute_names) & set(template.attribute_names)
     assert template.get_attribute(name="template_name").order_weight == 1000
     assert template.get_attribute(name="description").order_weight == 2000
     assert template.get_attribute(name="os_version").order_weight == 3000

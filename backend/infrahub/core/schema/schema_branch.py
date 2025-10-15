@@ -1838,7 +1838,7 @@ class SchemaBranch:
                     generic_node_weights[item.name] + 10000 if item.name in generic_node_weights else None
                 )
 
-            self.set(name=generic_node.kind, schema=template)
+            self.set(name=template.kind, schema=template)
 
     def generate_weight(self) -> None:
         self._generate_weight_generics()
