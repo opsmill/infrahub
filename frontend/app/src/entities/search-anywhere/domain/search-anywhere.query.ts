@@ -10,13 +10,7 @@ import {
   searchAnywhere,
 } from "@/entities/search-anywhere/domain/search-anywhere";
 
-type SearchObjectsQueryOptionsParams = SearchAnywhereParams;
-
-export function searchAnywhereQueryOptions({
-  branchName,
-  search,
-  atDate,
-}: SearchObjectsQueryOptionsParams) {
+export function searchAnywhereQueryOptions({ branchName, search, atDate }: SearchAnywhereParams) {
   return queryOptions({
     queryKey: [branchName, atDate, "search-objects", search],
     queryFn: async () => searchAnywhere({ branchName, search, atDate }),
@@ -24,7 +18,7 @@ export function searchAnywhereQueryOptions({
 }
 
 export function useGetSearchAnywhere(
-  params: Omit<SearchObjectsQueryOptionsParams, keyof ContextParams>,
+  params: Omit<SearchAnywhereParams, keyof ContextParams>,
   config?: QueryConfig<typeof searchAnywhereQueryOptions>
 ) {
   const { currentBranch } = useCurrentBranch();
