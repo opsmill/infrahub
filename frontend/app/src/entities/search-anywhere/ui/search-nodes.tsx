@@ -6,8 +6,6 @@ import type { ReactElement } from "react";
 import { SEARCH_QUERY_NAME } from "@/config/constants";
 
 import useQuery from "@/shared/api/graphql/useQuery";
-import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
-import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Skeleton } from "@/shared/components/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -20,6 +18,8 @@ import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaO
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
+import { SearchAnywhereItem } from "@/entities/search-anywhere/ui/search-anywhere-item";
 
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
