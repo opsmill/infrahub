@@ -26,7 +26,13 @@ from infrahub.workflows.initialization import (
     setup_worker_pools,
 )
 
-from .db import initialize_internal_schema, migrate_database, update_core_schema
+from .db import (
+    detect_migration_to_run,
+    initialize_internal_schema,
+    migrate_database,
+    rebase_and_migrate_branches,
+    update_core_schema,
+)
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -67,7 +73,11 @@ async def upgrade_cmd(
     # Upgrade Infrahub Database and Schema
     # -------------------------------------------
 
-    if not await migrate_database(db=dbdriver, initialize=False, check=check, with_rebase=False):
+    migrations = await detect_migration_to_run(db=dbdriver, check=check)
+    if check or not migrations:
+        return
+
+    if not await migrate_database(db=dbdriver, initialize=False, migrations=migrations):
         # A migration failed, stop the upgrade process
         rprint("Upgrade cancelled due to migration failure.")
         await dbdriver.close()
@@ -77,9 +87,9 @@ async def upgrade_cmd(
     await update_core_schema(db=dbdriver, initialize=False)
 
     # FIXME: will not do anything as graph version will be up to date
-    if not await migrate_database(db=dbdriver, initialize=False, check=check, with_rebase=True):
+    if not await rebase_and_migrate_branches(db=dbdriver, migrations=migrations):
         # A migration failed, stop the upgrade process
-        rprint("Upgrade cancelled due to migration failure.")
+        rprint("Upgrade cancelled due to branch rebase and migration failure.")
         await dbdriver.close()
         return
 
