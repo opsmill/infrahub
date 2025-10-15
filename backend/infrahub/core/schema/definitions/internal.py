@@ -181,6 +181,7 @@ class SchemaNode(BaseModel):
     relationships: list[SchemaRelationship]
     display_label: str | None = None
     display_labels: list[str]
+    uniqueness_constraints: list[list[str]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -197,6 +198,7 @@ class SchemaNode(BaseModel):
             "relationships": [relationship.to_dict() for relationship in self.relationships],
             "display_label": self.display_label,
             "display_labels": self.display_labels,
+            "uniqueness_constraints": self.uniqueness_constraints,
         }
 
     def without_duplicates(self, other: SchemaNode) -> SchemaNode:
@@ -474,6 +476,7 @@ attribute_schema = SchemaNode(
     include_in_menu=False,
     default_filter=None,
     display_labels=["name__value"],
+    uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
             name="id",
@@ -678,6 +681,7 @@ relationship_schema = SchemaNode(
     include_in_menu=False,
     default_filter=None,
     display_labels=["name__value"],
+    uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
             name="id",
