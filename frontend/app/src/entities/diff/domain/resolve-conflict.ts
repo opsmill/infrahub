@@ -1,5 +1,5 @@
 import {
-  ResolveConflictFromApiParams,
+  type ResolveConflictFromApiParams,
   resolveConflictFromApi,
 } from "@/entities/diff/api/resolve-conflict-from-api";
 
