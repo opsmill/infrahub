@@ -13,7 +13,7 @@ export function useCreateBranchMutation() {
 
       const { queryKey } = getBranchesQueryOptions();
       queryClient.setQueryData(queryKey, (oldBranches) => [...(oldBranches ?? []), branchCreated]);
-      await queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 }
