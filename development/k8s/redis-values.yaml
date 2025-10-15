@@ -1,5 +1,7 @@
 ---
 nameOverride: cache
+image:
+  repository: bitnamilegacy/redis
 architecture: replication
 auth:
   enabled: false

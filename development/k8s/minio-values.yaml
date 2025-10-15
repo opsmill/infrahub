@@ -1,4 +1,6 @@
 ---
+image:
+  repository: bitnamilegacy/minio
 mode: distributed
 statefulset:
   replicaCount: 3
