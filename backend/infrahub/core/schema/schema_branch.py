@@ -512,12 +512,13 @@ class SchemaBranch:
         self.process_post_validation()
 
     def process_pre_validation(self) -> None:
+        self.process_nodes_state()
+        self.process_attributes_state()
+        self.process_relationships_state()
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
         self.process_cardinality_counts()
-        self.process_nodes_state()
-        self.process_relationships_state()
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
@@ -1722,6 +1723,21 @@ class SchemaBranch:
                 continue
             updated_node = node.duplicate()
             updated_node.relationships = filtered_relationships
+            self.set(name=name, schema=updated_node)
+
+    def process_attributes_state(self) -> None:
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            if not node.attributes:
+                continue
+
+            filtered_attributes = [
+                attribute for attribute in node.attributes if attribute.state != HashableModelState.ABSENT
+            ]
+            if len(filtered_attributes) == len(node.attributes):
+                continue
+            updated_node = node.duplicate()
+            updated_node.attributes = filtered_attributes
             self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:
