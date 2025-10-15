@@ -1,13 +1,13 @@
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
+
 import {
   type GetBranchDetailsFromApiParams,
   getBranchDetailsFromApi,
 } from "@/entities/branches/api/get-branch-details-from-api";
 
 export type GetBranchDetailsParams = GetBranchDetailsFromApiParams;
-export type BranchDetails = Awaited<
-  ReturnType<typeof getBranchDetailsFromApi>
->["data"]["Branch"][0];
-export type GetBranchDetails = (params: GetBranchDetailsParams) => Promise<BranchDetails>;
+
+export type GetBranchDetails = (params: GetBranchDetailsParams) => Promise<Branch>;
 
 export const getBranchDetails: GetBranchDetails = async (params) => {
   const { data, errors } = await getBranchDetailsFromApi(params);
