@@ -199,6 +199,8 @@ resource "helm_release" "messagequeue_ha" {
   values = [
     <<EOT
 replicaCount: 3
+image:
+  repository: bitnamilegacy/rabbitmq
 auth:
   username: infrahub
   password: infrahub
@@ -221,6 +223,8 @@ resource "helm_release" "objectstore_ha" {
 
   values = [
     <<EOT
+image:
+  repository: bitnamilegacy/minio
 mode: distributed
 statefulset:
   replicaCount: 3
@@ -402,6 +406,8 @@ resource "helm_release" "cache_ha" {
   values = [
     <<EOT
 nameOverride: cache
+image:
+  repository: bitnamilegacy/redis
 architecture: replication
 auth:
   enabled: false
