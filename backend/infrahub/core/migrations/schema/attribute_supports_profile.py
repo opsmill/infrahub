@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.migrations.query.attribute_remove import AttributeRemoveQuery
+from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -11,12 +12,14 @@ from ..shared import AttributeSchemaMigration, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
-    from infrahub.core.schema.generic_schema import GenericSchema
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
-def _get_node_kinds(schema: NodeSchema | GenericSchema) -> list[str]:
+def _get_node_kinds(schema: MainSchemaTypes) -> list[str]:
+    if not isinstance(schema, (NodeSchema, GenericSchema)):
+        return [schema.kind]
     schema_kinds = [f"Profile{schema.kind}"]
     if isinstance(schema, NodeSchema) or not schema.used_by:
         return schema_kinds

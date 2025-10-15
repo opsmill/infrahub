@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.exceptions import PoolExhaustedError
 from infrahub.tasks.registry import update_branch_registry
 
@@ -14,8 +15,8 @@ from ..shared import AttributeSchemaMigration, MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema
-    from infrahub.core.schema.node_schema import NodeSchema
     from infrahub.database import InfrahubDatabase
 
     from ...branch import Branch
@@ -25,8 +26,10 @@ if TYPE_CHECKING:
 class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuery):
     name = "migration_node_attribute_add_01"
 
-    def _get_node_kinds(self, schema: NodeSchema | GenericSchema, new_attribute_schema: AttributeSchema) -> list[str]:
+    def _get_node_kinds(self, schema: MainSchemaTypes, new_attribute_schema: AttributeSchema) -> list[str]:
         schema_kinds = [schema.kind]
+        if not isinstance(schema, (NodeSchema, GenericSchema)):
+            return schema_kinds
         if new_attribute_schema.support_profiles:
             schema_kinds.append(f"Profile{schema.kind}")
             if isinstance(schema, GenericSchema) and schema.used_by:
