@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
 from infrahub.core.query import Query
 from infrahub.core.schema.generic_schema import GenericSchema
@@ -10,7 +10,6 @@ from infrahub.core.schema.generic_schema import GenericSchema
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
-    from infrahub.core.schema.node_schema import NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -21,13 +20,11 @@ class AttributeRemoveQuery(Query):
     def __init__(
         self,
         attribute_name: str,
-        new_node_schema: NodeSchema | GenericSchema,
-        branch_support: BranchSupportType,
+        node_kinds: list[str],
         **kwargs: Any,
     ) -> None:
         self.attribute_name = attribute_name
-        self.new_node_schema = new_node_schema
-        self.branch_support = branch_support
+        self.node_kinds = node_kinds
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
@@ -36,8 +33,12 @@ class AttributeRemoveQuery(Query):
 
         kinds_to_ignore = []
         profile_kinds_to_update = []
-        if isinstance(self.new_node_schema, GenericSchema) and self.attribute_name is not None:
-            for inheriting_schema_kind in self.new_node_schema.used_by:
+
+        for node_kind in self.node_kinds:
+            new_schema = db.schema.get(name=node_kind, branch=self.branch, duplicate=False)
+
+        if isinstance(new_schema, GenericSchema):
+            for inheriting_schema_kind in new_schema.used_by:
                 node_schema = db.schema.get_node_schema(
                     name=inheriting_schema_kind, branch=self.branch, duplicate=False
                 )
@@ -45,13 +46,12 @@ class AttributeRemoveQuery(Query):
                 if attr_schema and not attr_schema.inherited:
                     kinds_to_ignore.append(inheriting_schema_kind)
                 else:
-                    profile_kinds_to_update.append(inheriting_schema_kind)
+                    profile_kinds_to_update.append(f"Profile{inheriting_schema_kind}")
 
         self.params["kinds_to_ignore"] = kinds_to_ignore
         self.params["attr_name"] = self.attribute_name
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
-        self.params["branch_support"] = self.branch_support.value
 
         self.params["rel_props"] = {
             "branch": self.branch.name,
@@ -81,7 +81,7 @@ class AttributeRemoveQuery(Query):
         ]
         sub_query_all = "\nUNION\n".join(sub_queries)
 
-        node_kinds_str = "|".join([self.new_node_schema.kind] + profile_kinds_to_update)
+        node_kinds_str = "|".join(self.node_kinds + profile_kinds_to_update)
         query = """
         // Find all the active nodes
         MATCH (node:%(node_kinds)s)

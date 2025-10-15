@@ -18,9 +18,8 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery, AttributeRemo
     ):
         super().__init__(
             migration=migration,
-            attribute_name=migration.new_attribute_schema.name,
-            new_node_schema=migration.new_schema,
-            branch_support=migration.new_attribute_schema.get_branch().value,
+            attribute_name=migration.previous_attribute_schema.name,
+            node_kinds=[migration.new_schema.kind],
             **kwargs,
         )
 

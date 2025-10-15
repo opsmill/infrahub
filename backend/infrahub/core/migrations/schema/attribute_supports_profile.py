@@ -16,27 +16,28 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+def _get_node_kinds(schema: NodeSchema | GenericSchema) -> list[str]:
+    schema_kinds = [f"Profile{schema.kind}"]
+    if isinstance(schema, NodeSchema) or not schema.used_by:
+        return schema_kinds
+    return [f"Profile{kind}" for kind in schema.used_by]
+
+
 class ProfilesAttributeAddMigrationQuery(AttributeMigrationQuery, AttributeAddQuery):
     name = "migration_profiles_attribute_add"
-
-    def _get_node_kinds(self, schema: NodeSchema | GenericSchema) -> list[str]:
-        schema_kinds = [f"Profile{schema.kind}"]
-        if isinstance(schema, NodeSchema) or not schema.used_by:
-            return schema_kinds
-        return [f"Profile{kind}" for kind in schema.used_by]
 
     def __init__(
         self,
         migration: AttributeSchemaMigration,
         **kwargs: Any,
     ):
-        node_kinds = self._get_node_kinds(migration.new_schema)
+        node_kinds = _get_node_kinds(migration.new_schema)
         super().__init__(
             migration=migration,
             node_kinds=node_kinds,
             attribute_name=migration.new_attribute_schema.name,
             attribute_kind=migration.new_attribute_schema.kind,
-            branch_support=migration.new_attribute_schema.get_branch().value,
+            branch_support=migration.new_attribute_schema.get_branch(),
             default_value=migration.new_attribute_schema.default_value,
             **kwargs,
         )
@@ -50,11 +51,11 @@ class ProfilesAttributeRemoveMigrationQuery(AttributeMigrationQuery, AttributeRe
         migration: AttributeSchemaMigration,
         **kwargs: Any,
     ):
+        node_kinds = _get_node_kinds(migration.new_schema)
         super().__init__(
             migration=migration,
             attribute_name=migration.new_attribute_schema.name,
-            new_node_schema=migration.new_schema,
-            branch_support=migration.new_attribute_schema.get_branch().value,
+            node_kinds=node_kinds,
             **kwargs,
         )
 
