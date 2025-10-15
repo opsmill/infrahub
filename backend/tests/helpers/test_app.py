@@ -33,6 +33,7 @@ from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.events import query_events_by_name
+from infrahub.graphql.registry import registry as graphql_registry
 
 from .test_client import InfrahubTestClient
 
@@ -210,6 +211,7 @@ class TestInfrahubApp(TestInfrahub):
         await create_default_account_groups(db=db, admin_accounts=[admin_account], accounts=[unprivileged_account])
 
         # This call emits a warning related to the fact database index manager has not been initialized.
+        graphql_registry.clear_cache()
         await initialization(db=db)
 
     async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:
