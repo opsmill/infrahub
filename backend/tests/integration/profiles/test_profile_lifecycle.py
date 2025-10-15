@@ -95,7 +95,12 @@ class TestProfileLifecycle(TestInfrahubApp):
         weight_attribute.optional = True
         eye_color_attribute = person_schema.get_attribute("eye_color")
         eye_color_attribute.read_only = False
+        # new attribute that should be added to profiles
         person_schema.attributes.append(AttributeSchema(name="age", kind="Number", optional=True))
+        # new attribute that should NOT be added to profiles
+        person_schema.attributes.append(
+            AttributeSchema(name="not_for_profiles", kind="Text", optional=True, read_only=True)
+        )
         return SchemaRoot(version="1.0", nodes=[person_schema])
 
     @pytest.fixture(scope="class")
@@ -749,6 +754,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert updated_person_profile_1.age.value is None
         assert updated_person_profile_1.weight.value is None
         assert updated_person_profile_1.eye_color.value is None
+        with pytest.raises(AttributeError):
+            _ = updated_person_profile_1.not_for_profiles
 
     async def test_step_16_update_profile_with_new_attribute(
         self,
