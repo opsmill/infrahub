@@ -8061,7 +8061,6 @@ type Mutation {
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID
-  IPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource @deprecated(reason: "This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub.")
   """A namespace that segments IPAM"""
   IpamNamespaceCreate(context: ContextInput, data: IpamNamespaceCreateInput!): IpamNamespaceCreate
   """A namespace that segments IPAM"""
