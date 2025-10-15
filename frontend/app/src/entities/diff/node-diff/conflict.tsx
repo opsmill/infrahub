@@ -46,17 +46,8 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
 
           toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
         },
-        onError: () => {
-          toast(
-            <Alert
-              type={ALERT_TYPES.ERROR}
-              message={
-                newValue
-                  ? "An error occurred while resolving the conflict"
-                  : "An error occurred while marking the conflict as not resolved"
-              }
-            />
-          );
+        onError: ({ message }) => {
+          toast(<Alert type={ALERT_TYPES.ERROR} message={message} />);
         },
       }
     );
