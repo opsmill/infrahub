@@ -755,6 +755,9 @@ allow-dunder-method-names = [
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
 ]
 
+"backend/tests/unit/graphql/test_schema_sort.py" = [
+    "W293", # Blank line contains whitespace
+]
 
 "models/infrastructure_edge.py" = [
     "S106", # Hardcoded password
