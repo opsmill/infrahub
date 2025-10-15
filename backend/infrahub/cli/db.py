@@ -19,6 +19,7 @@ from rich.table import Table
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -37,6 +38,7 @@ from infrahub.core.initialization import (
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
+from infrahub.core.migrations.shared import MigrationWithRebase
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
@@ -268,8 +270,12 @@ async def index(
     await dbdriver.close()
 
 
-async def migrate_database(
-    db: InfrahubDatabase, initialize: bool = False, check: bool = False, migration_number: int | str | None = None
+async def migrate_database(  # noqa: PLR0911
+    db: InfrahubDatabase,
+    initialize: bool = False,
+    check: bool = False,
+    migration_number: int | str | None = None,
+    with_rebase: bool = False,
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
@@ -288,7 +294,9 @@ async def migrate_database(
     root_node = await get_root_node(db=db)
     if migration_number:
         migration = get_migration_by_number(migration_number)
-        migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration] = [migration]
+        migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase] = [
+            migration
+        ]
         if check:
             if root_node.graph_version > migration.minimum_version:
                 rprint(
@@ -312,8 +320,18 @@ async def migrate_database(
     if check:
         return True
 
+    # Simply exit if we want to apply rebase migrations without having any of them
+    if not [m for m in migrations if isinstance(m, MigrationWithRebase)] and not with_rebase:
+        return True
+
     for migration in migrations:
-        execution_result = await migration.execute(db=db)
+        # NOTE: this could be a different function
+        if isinstance(migration, MigrationWithRebase) and with_rebase:
+            branches = [b for b in await Branch.get_list(db=db) if b.name != registry.default_branch]
+            execution_result = await migration.execute_against_branches(db=db, branches=branches)
+        else:
+            execution_result = await migration.execute(db=db)
+
         validation_result = None
 
         if execution_result.success:

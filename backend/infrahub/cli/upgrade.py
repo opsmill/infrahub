@@ -67,7 +67,7 @@ async def upgrade_cmd(
     # Upgrade Infrahub Database and Schema
     # -------------------------------------------
 
-    if not await migrate_database(db=dbdriver, initialize=False, check=check):
+    if not await migrate_database(db=dbdriver, initialize=False, check=check, with_rebase=False):
         # A migration failed, stop the upgrade process
         rprint("Upgrade cancelled due to migration failure.")
         await dbdriver.close()
@@ -75,6 +75,13 @@ async def upgrade_cmd(
 
     await initialize_internal_schema()
     await update_core_schema(db=dbdriver, initialize=False)
+
+    # FIXME: will not do anything as graph version will be up to date
+    if not await migrate_database(db=dbdriver, initialize=False, check=check, with_rebase=True):
+        # A migration failed, stop the upgrade process
+        rprint("Upgrade cancelled due to migration failure.")
+        await dbdriver.close()
+        return
 
     # -------------------------------------------
     # Upgrade Internal Objects, generated and managed by Infrahub

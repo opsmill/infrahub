@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any, Sequence
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
@@ -230,3 +232,52 @@ class ArbitraryMigration(BaseModel):
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError()
+
+
+class MigrationWithRebase(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    name: str = Field(..., description="Name of the migration")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @classmethod
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
+
+    async def rebase_branch(self, branch: Branch) -> bool:
+        # Circular deps if import inside import block
+        from infrahub.core.branch.tasks import rebase_branch
+
+        await rebase_branch(
+            branch=branch.name,
+            context=InfrahubContext.init(
+                branch=branch,
+                # FIXME: or superuser account?
+                account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
+            ),
+        )
+        # FIXME: find out actual rebase result
+        return True
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()
+
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        raise NotImplementedError()
+
+    async def execute_against_branches(self, db: InfrahubDatabase, branches: Sequence[Branch]) -> MigrationResult:
+        result = MigrationResult()
+
+        for branch in branches:
+            if not await self.rebase_branch(branch=branch):
+                result.errors.append(f"Failed to rebase branch '{branch.name}' ({branch.id})")
+                return result
+
+            r = await self.execute_against_branch(db=db, branch=branch)
+            result.nbr_migrations_executed += 1
+            if r.errors:
+                result.errors.extend(r.errors)
+
+        return result
+
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry())
