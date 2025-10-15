@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 
-import { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
+import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 export const RESOLVE_CONFLICT = gql`

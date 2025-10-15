@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { resolveConflict } from "@/entities/diff/domain/resolve-conflict";
 
-import { ResolveConflictFromApiParams } from "../api/resolve-conflict-from-api";
+import type { ResolveConflictFromApiParams } from "../api/resolve-conflict-from-api";
 
 export function useResolveConflictMutation() {
   return useMutation({
