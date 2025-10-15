@@ -9,11 +9,12 @@ import {
   type SearchAnywhereParams,
   searchAnywhere,
 } from "@/entities/search-anywhere/domain/search-anywhere";
+import { searchAnywhereQueryKeys } from "@/entities/search-anywhere/domain/search-anywhere.query-keys";
 
-export function searchAnywhereQueryOptions({ branchName, search, atDate }: SearchAnywhereParams) {
+export function searchAnywhereQueryOptions(params: SearchAnywhereParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "search-objects", search],
-    queryFn: async () => searchAnywhere({ branchName, search, atDate }),
+    queryKey: searchAnywhereQueryKeys.objects(params),
+    queryFn: async () => searchAnywhere(params),
   });
 }
 
