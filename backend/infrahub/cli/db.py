@@ -337,26 +337,10 @@ async def index(
     await dbdriver.close()
 
 
-async def migrate_database(  # noqa: PLR0911
-    db: InfrahubDatabase,
-    initialize: bool = False,
-    check: bool = False,
-    migration_number: int | str | None = None,
-    with_rebase: bool = False,
-) -> bool:
-    """Apply the latest migrations to the database, this function will print the status directly in the console.
-
-    Returns a boolean indicating whether a migration failed or if all migrations succeeded.
-
-    Args:
-        db: The database object.
-        check: If True, the function will only check the status of the database and not apply the migrations. Defaults to False.
-        migration_number: If provided, the function will only apply the migration with the given number. Defaults to None.
-    """
+async def detect_migration_to_run(
+    db: InfrahubDatabase, check: bool = False, migration_number: int | str | None = None
+) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]:
     rprint("Checking current state of the Database")
-
-    if initialize:
-        await initialize_registry(db=db)
 
     root_node = await get_root_node(db=db)
     if migration_number:
@@ -369,27 +353,42 @@ async def migrate_database(  # noqa: PLR0911
                 rprint(
                     f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
                 )
-                return True
+                return []
             rprint(
                 f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
             )
-            return False
+            return migrations
     else:
         migrations = await get_graph_migrations(root=root_node)
         if not migrations:
             rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
-            return True
+            return []
 
         rprint(
             f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
         )
 
-    if check:
-        return True
+    return migrations
 
-    # Simply exit if we want to apply rebase migrations without having any of them
-    if not [m for m in migrations if isinstance(m, MigrationWithRebase)] and not with_rebase:
-        return True
+
+async def migrate_database(
+    db: InfrahubDatabase,
+    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase],
+    initialize: bool = False,
+    with_rebase: bool = False,
+) -> bool:
+    """Apply the latest migrations to the database, this function will print the status directly in the console.
+
+    Returns a boolean indicating whether a migration failed or if all migrations succeeded.
+
+    Args:
+        db: The database object.
+        migration_number: If provided, the function will only apply the migration with the given number. Defaults to None.
+    """
+    if initialize:
+        await initialize_registry(db=db)
+
+    root_node = await get_root_node(db=db)
 
     for migration in migrations:
         # NOTE: this could be a different function
@@ -418,6 +417,22 @@ async def migrate_database(  # noqa: PLR0911
             return False
 
     return True
+
+
+async def rebase_and_migrate_branches(
+    db: InfrahubDatabase,
+    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase],
+) -> None:
+    branches = [b for b in await Branch.get_list(db=db) if b.name != registry.default_branch]
+    rebase_migrations = [m for m in migrations if isinstance(m, MigrationWithRebase)]
+
+    for migration in rebase_migrations:
+        execution_result = await migration.execute_against_branches(db=db, branches=branches)
+
+        if execution_result.success:
+            validation_result = await migration.validate_migration(db=db)
+            if validation_result.success:
+                rprint(f"Migration: {migration.name} {SUCCESS_BADGE}")
 
 
 async def initialize_internal_schema() -> None:
