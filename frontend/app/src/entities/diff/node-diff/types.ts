@@ -1,4 +1,4 @@
-import { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
+import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
 
 export const DIFF_STATUS = {
   ADDED: "ADDED",

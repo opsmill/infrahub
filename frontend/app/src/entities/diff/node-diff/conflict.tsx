@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 
-import { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
+import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
