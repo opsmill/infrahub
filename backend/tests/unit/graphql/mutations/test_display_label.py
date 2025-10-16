@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from infrahub.core.account import ObjectPermission
+from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import PermissionAction, PermissionDecision
+from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
@@ -88,6 +88,12 @@ async def test_update_display_label_update(
     await define_permissions(
         account=first_account,
         db=db,
+        global_permissions=[
+            GlobalPermission(
+                action=GlobalPermissions.UPDATE_OBJECT_HFID_DISPLAY_LABEL.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            )
+        ],
         object_permissions=[
             ObjectPermission(
                 namespace=TSHIRT.namespace,
