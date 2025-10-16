@@ -148,3 +148,81 @@ class TestBranchQuery(TestInfrahubApp):
         assert id_response.data
         assert id_response.data["Branch"][0]["name"] == "branch3"
         assert len(id_response.data["Branch"]) == 1
+
+    async def test_paginated_branch_query(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema,
+        session_admin,
+        client,
+        service,
+    ):
+        for i in range(10):
+            create_branch_query = """
+            mutation {
+                BranchCreate(data: { name: "%s", description: "%s" }) {
+                    ok
+                    object {
+                        id
+                        name
+                    }
+                }
+            }
+            """ % (
+                f"sample-branch-{i}",
+                f"sample description {i}",
+            )
+
+            gql_params = await prepare_graphql_params(
+                db=db,
+                include_subscription=False,
+                branch=default_branch,
+                account_session=session_admin,
+                service=service,
+            )
+            branch_result = await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={},
+            )
+            assert branch_result.errors is None
+            assert branch_result.data
+
+        query = """
+        query {
+            InfrahubBranch(page: 2, limit: 5) {
+                branches {
+                    id
+                    name
+                    description
+                    origin_branch
+                    branched_from
+                    created_at
+                    is_default
+                    is_isolated
+                    has_schema_changes
+                    sync_with_git
+                }
+                current_page
+                count_per_page
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, service=service
+        )
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert all_branches.errors is None
+        assert all_branches.data
+        assert len(all_branches.data["InfrahubBranch"]["branches"]) == 5
+        assert all_branches.data["InfrahubBranch"]["current_page"] == 2
+        assert all_branches.data["InfrahubBranch"]["count_per_page"] == 5

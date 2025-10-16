@@ -38,28 +38,15 @@ async def infrahub_branch_resolver(
     page = kwargs.pop("page", 1)
     limit = kwargs.pop("limit", 100)
     offset = (page - 1) * limit
-    fields = {"id": None, "name": None}  # extract_graphql_fields(info)
+    fields = {name: str(field.type) for name, field in BranchType._meta.fields.items()}
 
     branches = await BranchType.get_list(
         fields=fields, graphql_context=info.context, limit=limit, offset=offset, **kwargs
     )
-    total_count = 100  # await BranchType.get_list_total_count(graphql_context=info.context, **kwargs)
-
-    total_pages = (total_count + limit - 1) // limit
-
-    # return InfrahubBranchType(
-    #     total_count=total_count,
-    #     total_pages=total_pages,
-    #     current_page=page,
-    #     per_page=limit,
-    #     branches=[BranchType(**branch) for branch in branches],
-    # )
 
     return {
-        "total_count": total_count,
-        "total_pages": total_pages,
         "current_page": page,
-        "per_page": limit,
+        "count_per_page": limit,
         "branches": branches,
     }
 

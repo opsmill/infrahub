@@ -47,8 +47,6 @@ class BranchType(InfrahubObjectType):
 
 
 class InfrahubBranchType(InfrahubObjectType):
-    total_count = Int()
-    total_pages = Int()
     current_page = Int()
-    per_page = Int()
+    count_per_page = Int()
     branches = List(of_type=NonNull(BranchType))
