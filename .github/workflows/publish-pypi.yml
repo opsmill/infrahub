@@ -44,6 +44,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: "Check out repository code"
+        uses: "actions/checkout@v5"
+        with:
+          submodules: true
+
       - name: "Setup Python environment"
         run: |
           pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
@@ -52,10 +57,6 @@ jobs:
         env:
           PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
 
-      - name: "Check out repository code"
-        uses: "actions/checkout@v5"
-        with:
-          submodules: true
       - name: "Install Dependencies"
         run: "poetry install"
         working-directory: ${{ matrix.package_dir }}
