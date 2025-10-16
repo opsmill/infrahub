@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
