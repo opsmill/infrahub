@@ -218,6 +218,14 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         return await registry.get_branch(db=db, branch=branch_name)
 
     @pytest.fixture(scope="class")
+    def schema_generic_with_new_fields(self, schema_generic_base: dict[str, Any]) -> dict[str, Any]:
+        schema_dict = schema_generic_base.copy()
+        schema_dict["attributes"] = [
+            {"name": "generic_attr_text_new", "kind": "Text", "optional": True},
+        ]
+        return schema_dict
+
+    @pytest.fixture(scope="class")
     def schema_specific_one_with_overrides(self, schema_specific_one_base: dict[str, Any]) -> dict[str, Any]:
         schema_dict = schema_specific_one_base.copy()
         schema_dict["attributes"] = [
@@ -284,7 +292,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_02(
         self,
-        schema_generic_base,
+        schema_generic_with_new_fields,
         schema_specific_one_with_overrides,
         schema_specific_two_with_new_fields,
         schema_specific_three_with_overrides,
@@ -292,7 +300,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
-            "generics": [schema_generic_base],
+            "generics": [schema_generic_with_new_fields],
             "nodes": [
                 schema_specific_one_with_overrides,
                 schema_specific_two_with_new_fields,
@@ -312,7 +320,6 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_03(
         self,
-        schema_generic_base,
         schema_specific_one_with_overrides,
         schema_specific_two_with_new_fields,
         schema_specific_three_with_deleted_override,
@@ -320,7 +327,6 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         return {
             "version": "1.0",
-            "generics": [schema_generic_base],
             "nodes": [
                 schema_specific_one_with_overrides,
                 schema_specific_two_with_new_fields,
@@ -331,9 +337,9 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_generic_with_weight_updates(
-        self, db: InfrahubDatabase, schema_generic_base: dict[str, Any]
+        self, db: InfrahubDatabase, schema_generic_with_new_fields: dict[str, Any]
     ) -> dict[str, Any]:
-        schema_dict = schema_generic_base.copy()
+        schema_dict = schema_generic_with_new_fields.copy()
         for attr in schema_dict["attributes"]:
             if "order_weight" in attr:
                 attr["order_weight"] += 1
@@ -481,11 +487,26 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             "diff": {
                 "added": {},
                 "changed": {
+                    GENERIC_KIND: {
+                        "added": {},
+                        "changed": {
+                            "attributes": {
+                                "added": {
+                                    "generic_attr_text_new": None,
+                                },
+                                "changed": {},
+                                "removed": {},
+                            },
+                        },
+                        "removed": {},
+                    },
                     SPECIFIC_ONE_KIND: {
                         "added": {},
                         "changed": {
                             "attributes": {
-                                "added": {},
+                                "added": {
+                                    "generic_attr_text_new": None,
+                                },
                                 "changed": {
                                     "generic_attr_text": {
                                         "added": {},
@@ -531,6 +552,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                             "attributes": {
                                 "added": {
                                     "specific_attr_text": None,
+                                    "generic_attr_text_new": None,
                                 },
                                 "changed": {},
                                 "removed": {},
@@ -551,6 +573,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                             "attributes": {
                                 "added": {
                                     "specific_attr_num": None,
+                                    "generic_attr_text_new": None,
                                 },
                                 "changed": {
                                     "generic_attr_text": {
@@ -1368,7 +1391,11 @@ class TestSchemaLifecycleGenericUpdates(SchemaLifecycleGenericBase):
     async def validate_database(
         self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
     ) -> list[str]:
-        return await self._validate_inherited_schema_fields(db=db, branch=branch, inheriting_schemas=inheriting_schemas)
+        errors = await self._validate_inherited_schema_fields(
+            db=db, branch=branch, inheriting_schemas=inheriting_schemas
+        )
+        errors.extend(await self._validate_no_duplicate_attributes(db=db, branch=branch))
+        return errors
 
     async def _validate_inherited_schema_fields(
         self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
@@ -1454,6 +1481,40 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                 errors.append(
                     f"Node schema '{node_kind}' is missing a relationship to local attribute '{missing_local_attr}'"
                 )
+        return errors
+
+    async def _validate_no_duplicate_attributes(self, db: InfrahubDatabase, branch: Branch) -> list[str]:
+        """
+        Validate that no Nodes have duplicated attribute or relationship names
+        """
+        branch_filter, branch_params = branch.get_query_filter_path()
+
+        query = """
+// -------------
+// get all the active Attributes this branch and count them up
+// -------------
+MATCH (n:Node)-[:HAS_ATTRIBUTE]->(field:Attribute)
+WITH DISTINCT n, field
+CALL (n, field) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]->(field)
+    WHERE %(branch_filter)s
+    RETURN r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, field, r
+WHERE r.status = "active" AND r.to IS NULL
+WITH n.uuid AS node_id, field.name AS field_name, count(*) AS num_fields
+WHERE num_fields > 1
+RETURN node_id, field_name, num_fields
+        """ % {"branch_filter": branch_filter}
+        results = await db.execute_query(query=query, params=branch_params)
+        errors = []
+        for result in results:
+            node_id = result.get("node_id")
+            field_name = result.get("field_name")
+            num_fields = result.get("num_fields")
+            errors.append(f"Node '{node_id}' has {num_fields} duplicated attributes with {field_name=}")
         return errors
 
 
