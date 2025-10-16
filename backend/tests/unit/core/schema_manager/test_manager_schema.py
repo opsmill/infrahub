@@ -661,9 +661,9 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
     template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
 
     assert template.get_attribute(name="template_name").order_weight == 1000
-    assert template.get_attribute(name="description").order_weight == 2000
-    assert template.get_attribute(name="os_version").order_weight == 3000
-    assert template.get_relationship(name="tags").order_weight == 4000
+    assert template.get_attribute(name="description").order_weight == 8000
+    assert template.get_attribute(name="os_version").order_weight == 5200
+    assert template.get_relationship(name="tags").order_weight == 3000
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one):

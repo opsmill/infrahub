@@ -1750,6 +1750,8 @@ class SchemaBranch:
         """Generate order_weight for all generic schemas."""
         for name in self.generic_names:
             node = self.get(name=name, duplicate=False)
+            if node.namespace == "Template":
+                continue
 
             items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
 
@@ -1834,9 +1836,7 @@ class SchemaBranch:
             for item in template.attributes + template.relationships:
                 if item.order_weight:
                     continue
-                item.order_weight = (
-                    generic_node_weights[item.name] + 10000 if item.name in generic_node_weights else None
-                )
+                item.order_weight = generic_node_weights[item.name] if item.name in generic_node_weights else None
 
             self.set(name=template.kind, schema=template)
 
