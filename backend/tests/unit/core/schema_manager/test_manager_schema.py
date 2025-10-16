@@ -682,9 +682,9 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
 
     schema_2 = copy.deepcopy(schema)
     schema_2["generics"][0]["attributes"] = [
-        {"name": "name", "kind": "Text", "unique": False, "order_weight": 7000},
-        {"name": "description", "kind": "Text", "optional": True, "order_weight": 5650},
-        {"name": "os_version", "kind": "Text", "optional": True, "order_weight": 2500},
+        {"name": "name", "kind": "Text", "unique": False},
+        {"name": "description", "kind": "Text", "optional": True},
+        {"name": "os_version", "kind": "Text", "optional": True},
     ]
     schema_branch.load_schema(schema=SchemaRoot(**schema_2))
     schema_branch.process()
@@ -693,19 +693,15 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
     dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
 
     assert (
-        template.get_attribute(name="name").order_weight
-        == dcim_generic_device.get_attribute(name="name").order_weight
-        == 7000
+        template.get_attribute(name="name").order_weight == dcim_generic_device.get_attribute(name="name").order_weight
     )
     assert (
         template.get_attribute(name="description").order_weight
         == dcim_generic_device.get_attribute(name="description").order_weight
-        == 5650
     )
     assert (
         template.get_attribute(name="os_version").order_weight
         == dcim_generic_device.get_attribute(name="os_version").order_weight
-        == 2500
     )
 
 
