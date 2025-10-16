@@ -1,6 +1,3 @@
-from collections import defaultdict
-from typing import Any
-
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -10,7 +7,6 @@ from infrahub_sdk.protocols import (
     CoreRepositoryValidator,
     CoreUserValidator,
 )
-from infrahub_sdk.types import Order
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow, task
 from prefect.cache_policies import NONE
@@ -57,72 +53,7 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
-
-
-def _collect_parameter_first_segments(params: Any) -> set[str]:
-    segments: set[str] = set()
-
-    def _walk(value: Any) -> None:
-        if isinstance(value, str):
-            segment = value.split("__", 1)[0]
-            if segment:
-                segments.add(segment)
-        elif isinstance(value, dict):
-            for nested in value.values():
-                _walk(nested)
-        elif isinstance(value, (list, tuple, set)):
-            for nested in value:
-                _walk(nested)
-
-    _walk(params)
-    return segments
-
-
-async def _prefetch_group_member_nodes(
-    *,
-    client: InfrahubClient,
-    members: Any,
-    branch: str,
-    required_fields: set[str],
-) -> None:
-    ids_per_kind: dict[str, list[str]] = defaultdict(list)
-    for related in getattr(members, "peers", []):
-        related_id = getattr(related, "id", None)
-        related_type = getattr(related, "typename", None)
-        if related_id and related_type:
-            ids_per_kind[related_type].append(related_id)
-
-    if not ids_per_kind:
-        return
-
-    batch = await client.create_batch()
-
-    for kind, ids in ids_per_kind.items():
-        schema = await client.schema.get(kind=kind, branch=branch)
-
-        keep_attributes = {field for field in required_fields if field in schema.attribute_names}
-        keep_relationships = {field for field in required_fields if field in schema.relationship_names}
-
-        exclude_attributes = [attr for attr in schema.attribute_names if attr not in keep_attributes]
-        exclude_relationships = [rel for rel in schema.relationship_names if rel not in keep_relationships]
-
-        unique_ids = list(dict.fromkeys(ids))
-        kwargs: dict[str, Any] = {
-            "kind": kind,
-            "ids": unique_ids,
-            "branch": branch,
-            "exclude": exclude_attributes + exclude_relationships,
-            "populate_store": True,
-            "order": Order(disable=True),
-        }
-
-        if keep_relationships:
-            kwargs["include"] = list(keep_relationships)
-
-        batch.add(task=client.filters, **kwargs)
-
-    async for _ in batch.execute():
-        pass
+from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets
 
 
 @flow(
@@ -393,20 +324,7 @@ async def generate_request_artifact_definition(
         kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
     )
 
-    group = await client.get(
-        kind=artifact_definition.targets.typename,
-        id=artifact_definition.targets.id,
-        branch=model.branch,
-        include=["members"],
-    )
-
-    parameter_fields = _collect_parameter_first_segments(artifact_definition.parameters.value)
-    await _prefetch_group_member_nodes(
-        client=client,
-        members=group.members,
-        branch=model.branch,
-        required_fields=parameter_fields,
-    )
+    group = await fetch_artifact_definition_targets(client=client, branch=model.branch, definition=artifact_definition)
 
     current_members = [member.id for member in group.members.peers]
 
@@ -659,9 +577,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
 
     if definition.targets.id:
         # Check against a group of targets
-        await definition.targets.fetch()
-        group = definition.targets.peer
-        await group.members.fetch()
+        group = await fetch_check_definition_targets(client=client, branch=model.branch_name, definition=definition)
         check_models = []
         for relationship in group.members.peers:
             member = relationship.peer
