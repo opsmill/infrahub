@@ -100,8 +100,11 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
+    # Import here to not require installing packaging when running invoke without installing dependencies.
+    from packaging.version import Version
+
     # Get the app version directly from pyproject.toml
-    app_version = get_version_from_pyproject()  # Returns a string like '1.1.0a1'
+    app_version = Version(get_version_from_pyproject())  # Returns a string like '1.1.0a1'
 
     for chart in ["infrahub", "infrahub-enterprise"]:
         # Initialize YAML and load the Chart.yaml file
@@ -112,7 +115,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
         if "appVersion" not in chart_yaml:
             raise ValueError(f"appVersion not found in {str(chart_path)}; no updates made.")
 
-        old_app_version = chart_yaml.get("appVersion", "")
+        old_app_version = Version(chart_yaml.get("appVersion", ""))
         if old_app_version == app_version:
             print(
                 f"{str(chart_path)} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
@@ -120,35 +123,37 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
             return
 
         # Handle Helm chart version increment
-        old_helm_version = chart_yaml.get("version", "")
+        old_helm_version = Version(chart_yaml.get("version", ""))
         if not old_helm_version:
             raise ValueError(f"Helm chart `version` not found in {str(chart_path)}; no updates made.")
 
-        # Split the Helm chart version into components for increment logic
-        major, minor, patch = map(int, old_helm_version.split("."))
-        new_helm_version = f"{major}.{minor}.{patch}"
+        new_helm_version = old_helm_version
 
         # Determine the appropriate increment
         try:
-            if app_version > old_app_version:
-                if int(app_version.split(".")[0]) > int(old_app_version.split(".")[0]):
-                    new_helm_version = f"{major + 1}.0.0"
-                elif int(app_version.split(".")[1]) > int(old_app_version.split(".")[1]):
-                    new_helm_version = f"{major}.{minor + 1}.0"
-                elif int(app_version.split(".")[2].split("a")[0]) > int(
-                    old_app_version.split(".")[2].split("a")[0]
-                ):  # For alpha, beta handling
-                    new_helm_version = f"{major}.{minor}.{patch + 1}"
+            if not app_version.is_prerelease and app_version > old_app_version:
+                if app_version.major > old_app_version.major:
+                    new_helm_version = Version(f"{new_helm_version.major + 1}.0.0")
+                elif app_version.minor > old_app_version.minor:
+                    new_helm_version = Version(f"{new_helm_version.major}.{new_helm_version.minor + 1}.0")
+                elif app_version.micro > old_app_version.micro:
+                    new_helm_version = Version(
+                        f"{new_helm_version.major}.{new_helm_version.minor}.{new_helm_version.micro + 1}"
+                    )
         except Exception:
             # Fallback in case app_version has non-standard format for Helm comparison
             print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
+
+        # Convert Version to str before passing to yaml
+        app_version = str(app_version)
+        new_helm_version = str(new_helm_version)
 
         # Update the YAML
         chart_yaml["appVersion"] = app_version
         chart_yaml["version"] = new_helm_version
 
         if chart == "infrahub":
-            dependency_version = new_helm_version
+            dependency_version = str(new_helm_version)
 
             yaml_values: YAML = init_yaml_obj()
             values_path = Path(chart_repo) / "charts" / Path(chart) / "values.yaml"
