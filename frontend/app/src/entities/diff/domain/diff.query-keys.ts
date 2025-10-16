@@ -5,3 +5,7 @@ export const treeQueryKeys = {
   allWithContext: ({ branchName, filters }: GetDiffTreeParams) =>
     [...treeQueryKeys.all, branchName, filters] as const,
 };
+
+export const updateDiffMutationKeys = {
+  all: ["update-diff"] as const,
+};

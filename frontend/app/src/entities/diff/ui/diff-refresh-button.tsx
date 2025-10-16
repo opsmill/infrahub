@@ -8,11 +8,8 @@ import { Button, ButtonProps } from "@/shared/components/buttons/button-primitiv
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
-import { treeQueryKeys } from "@/entities/diff/domain/diff.query-keys";
-import {
-  UPDATE_DIFF_KEY,
-  useUpdateDiffMutation,
-} from "@/entities/diff/domain/update-diff.mutation";
+import { treeQueryKeys, updateDiffMutationKeys } from "@/entities/diff/domain/diff.query-keys";
+import { useUpdateDiffMutation } from "@/entities/diff/domain/update-diff.mutation";
 
 export interface DiffRefreshButtonProps extends Omit<ButtonProps, "onClick"> {
   branchName: string;
@@ -21,7 +18,7 @@ export interface DiffRefreshButtonProps extends Omit<ButtonProps, "onClick"> {
 export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonProps) {
   const updateDiffMutation = useUpdateDiffMutation();
   const allUpdatingDiffs = useMutationState({
-    filters: { status: "pending", mutationKey: [UPDATE_DIFF_KEY] },
+    filters: { status: "pending", mutationKey: updateDiffMutationKeys.all },
     select: (mutation) => mutation.state.variables,
   });
 
