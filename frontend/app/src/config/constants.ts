@@ -118,6 +118,7 @@ export const CHECKS_LABEL = {
 export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
   CoreArtifactValidator: "ARTIFACT",
   CoreDataValidator: "DATA",
+  CoreGeneratorValidator: "GENERATOR",
   CoreRepositoryValidator: "REPOSITORY",
   CoreSchemaValidator: "SCHEMA",
   CoreUserValidator: "USER",
