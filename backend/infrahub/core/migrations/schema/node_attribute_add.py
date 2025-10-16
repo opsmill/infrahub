@@ -7,7 +7,7 @@ from infrahub.core.node import Node
 from infrahub.exceptions import PoolExhaustedError
 from infrahub.tasks.registry import update_branch_registry
 
-from ..query import AttributeMigrationQuery, MigrationBaseQuery
+from ..query import AttributeMigrationQuery
 from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationResult
 
@@ -47,11 +47,10 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         db: InfrahubDatabase,
         branch: Branch,
         at: Timestamp | str | None = None,
-        queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
         if self.new_attribute_schema.inherited is True:
             return MigrationResult()
-        return await super().execute(db=db, branch=branch, at=at, queries=queries)
+        return await super().execute(db=db, branch=branch, at=at)
 
     async def execute_post_queries(
         self,
