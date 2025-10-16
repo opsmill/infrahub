@@ -6,5 +6,5 @@ import {
 export const getValidators = async ({ proposedChangeId }: GetValidatorsFromApiParams) => {
   const { data } = await getValidatorsFromApi({ proposedChangeId });
 
-  return data.DiffTree;
+  return data?.CoreValidator?.edges?.map((edge: any) => edge.node) ?? [];
 };
