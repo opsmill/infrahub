@@ -24,6 +24,7 @@ from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
+from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
@@ -84,6 +85,9 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
         await initialization(db=db, add_database_indexes=True)
+
+    async with database.start_session() as dbs:
+        await validate_graph_version(db=dbs)
 
     # Initialize the workflow after the registry has been setup
     await service.initialize_workflow()
