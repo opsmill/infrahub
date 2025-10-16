@@ -5,7 +5,7 @@ neo4j:
   resources:
     cpu: "4"
     memory: "8Gi"
-  password: "admin"
+  passwordFromSecret: "neo4j-user"
   edition: "enterprise"
   acceptLicenseAgreement: "yes"
 config:

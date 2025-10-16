@@ -17,3 +17,5 @@ replicas:
   podAntiAffinityPreset: hard
 sentinel:
   enabled: true
+  image:
+    repository: bitnamilegacy/redis-sentinel
