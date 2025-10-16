@@ -659,11 +659,37 @@ def test_schema_branch_processes_generic_template_schema_weight(register_core_mo
     schema_branch.process()
 
     template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
+    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
 
     assert template.get_attribute(name="template_name").order_weight == 1000
-    assert template.get_attribute(name="description").order_weight == 8000
-    assert template.get_attribute(name="os_version").order_weight == 5200
-    assert template.get_relationship(name="tags").order_weight == 3000
+    assert (
+        template.get_attribute(name="description").order_weight
+        == dcim_generic_device.get_attribute(name="description").order_weight
+    )
+    assert (
+        template.get_attribute(name="os_version").order_weight
+        == dcim_generic_device.get_attribute(name="os_version").order_weight
+    )
+    assert (
+        template.get_relationship(name="tags").order_weight
+        == dcim_generic_device.get_relationship(name="tags").order_weight
+    )
+
+    schema_2 = copy.deepcopy(schema)
+    schema_2["generics"][0]["attributes"] = [
+        {"name": "name", "kind": "Text", "unique": False},
+        {"name": "description", "kind": "Text", "optional": True, "order_weight": 8000},
+        {"name": "os_version", "kind": "Text", "optional": True, "order_weight": 5200},
+    ]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_2))
+    schema_branch.process()
+
+    template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
+    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
+
+    assert (
+        template.get_attribute(name="name").order_weight == dcim_generic_device.get_attribute(name="name").order_weight
+    )
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one):
