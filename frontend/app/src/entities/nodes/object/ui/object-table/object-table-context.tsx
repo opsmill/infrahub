@@ -39,6 +39,10 @@ export const ObjectTableProvider = ({
 
   React.useEffect(() => {
     if (!kindInQsp) return;
+    if (window.location.pathname === "/schema") {
+      // nuqs updates faster than React router QSP. If navigating to another route using "kind" QSP, it'll update it here 1st.
+      return;
+    }
     if (!isGenericSchema(schema) || !schema.used_by?.find((kind) => kind === kindInQsp)) {
       setObjectTableQueryParams({ kind: null });
     }

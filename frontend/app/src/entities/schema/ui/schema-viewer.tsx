@@ -28,10 +28,7 @@ import { SchemaHelpMenu } from "./schema-help-menu";
 import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
-  const [selectedKind, setKinds] = useQueryState(
-    QSP.KIND,
-    parseAsNativeArrayOf(parseAsString).withDefault([])
-  );
+  const [selectedKind, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
