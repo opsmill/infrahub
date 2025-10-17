@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
+from rich.console import Console
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
@@ -243,18 +244,23 @@ class MigrationWithRebase(BaseModel):
     def init(cls, **kwargs: dict[str, Any]) -> Self:
         return cls(**kwargs)  # type: ignore[arg-type]
 
-    async def rebase_branch(self, branch: Branch) -> bool:
+    async def rebase_branch(self, db: InfrahubDatabase, branch: Branch) -> bool:
+        console = Console()
+        console.print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
         # Circular deps if import inside import block
-        from infrahub.core.branch.tasks import rebase_branch
+        # from infrahub.core.branch.tasks import rebase_branch
 
-        await rebase_branch(
-            branch=branch.name,
-            context=InfrahubContext.init(
-                branch=branch,
-                # FIXME: or superuser account?
-                account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
-            ),
-        )
+        # await rebase_branch(
+        #     branch=branch.name,
+        #     context=InfrahubContext.init(
+        #         branch=branch,
+        #         # FIXME: or superuser account?
+        #         account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
+        #     ),
+        # )
+        # NOTE: need service/bus component up and running to use prefect flow
+        await branch.rebase(db=db)
+        console.print("done")
         # FIXME: find out actual rebase result
         return True
 
@@ -268,8 +274,8 @@ class MigrationWithRebase(BaseModel):
         result = MigrationResult()
 
         for branch in branches:
-            if not await self.rebase_branch(branch=branch):
-                result.errors.append(f"Failed to rebase branch '{branch.name}' ({branch.id})")
+            if not await self.rebase_branch(db=db, branch=branch):
+                result.errors.append(f"Failed to rebase branch '{branch.name}' ({branch.uuid})")
                 return result
 
             r = await self.execute_against_branch(db=db, branch=branch)

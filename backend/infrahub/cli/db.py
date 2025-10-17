@@ -20,6 +20,7 @@ from rich.table import Table
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -271,36 +272,33 @@ async def index(
 
 
 async def detect_migration_to_run(
-    db: InfrahubDatabase, check: bool = False, migration_number: int | str | None = None
+    db: InfrahubDatabase, migration_number: int | str | None = None
 ) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]:
-    rprint("Checking current state of the Database")
+    """Return a sequence of migrations to apply to upgrade the database."""
+    rprint("Checking current state of the database")
+    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase] = []
 
     root_node = await get_root_node(db=db)
     if migration_number:
         migration = get_migration_by_number(migration_number)
-        migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase] = [
-            migration
-        ]
-        if check:
-            if root_node.graph_version > migration.minimum_version:
-                rprint(
-                    f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
-                )
-                return []
+        migrations.append(migration)
+        if root_node.graph_version > migration.minimum_version:
             rprint(
-                f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
+                f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
             )
-            return migrations
+            return []
+        rprint(
+            f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
+        )
     else:
-        migrations = await get_graph_migrations(root=root_node)
+        migrations.extend(await get_graph_migrations(root=root_node))
         if not migrations:
             rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
             return []
 
-        rprint(
-            f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
-        )
-
+    rprint(
+        f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
+    )
     return migrations
 
 
@@ -308,7 +306,6 @@ async def migrate_database(
     db: InfrahubDatabase,
     migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase],
     initialize: bool = False,
-    with_rebase: bool = False,
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
@@ -324,13 +321,7 @@ async def migrate_database(
     root_node = await get_root_node(db=db)
 
     for migration in migrations:
-        # NOTE: this could be a different function
-        if isinstance(migration, MigrationWithRebase) and with_rebase:
-            branches = [b for b in await Branch.get_list(db=db) if b.name != registry.default_branch]
-            execution_result = await migration.execute_against_branches(db=db, branches=branches)
-        else:
-            execution_result = await migration.execute(db=db)
-
+        execution_result = await migration.execute(db=db)
         validation_result = None
 
         if execution_result.success:
@@ -356,7 +347,8 @@ async def rebase_and_migrate_branches(
     db: InfrahubDatabase,
     migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase],
 ) -> None:
-    branches = [b for b in await Branch.get_list(db=db) if b.name != registry.default_branch]
+    """Only applies migrations that aim at rebasing branches."""
+    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
     rebase_migrations = [m for m in migrations if isinstance(m, MigrationWithRebase)]
 
     for migration in rebase_migrations:

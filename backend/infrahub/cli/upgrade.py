@@ -73,7 +73,7 @@ async def upgrade_cmd(
     # Upgrade Infrahub Database and Schema
     # -------------------------------------------
 
-    migrations = await detect_migration_to_run(db=dbdriver, check=check)
+    migrations = await detect_migration_to_run(db=dbdriver)
     if check or not migrations:
         return
 
