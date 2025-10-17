@@ -24,10 +24,7 @@ type SchemaSelectorProps = {
   className?: string;
 };
 export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
-  const [selectedKind, setKind] = useQueryState(
-    QSP.KIND,
-    parseAsNativeArrayOf(parseAsString).withDefault([])
-  );
+  const [selectedKind, setKind] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);

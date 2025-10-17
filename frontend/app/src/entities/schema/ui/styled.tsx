@@ -146,10 +146,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
 export const NullDisplay = () => <div className="text-gray-500 text-xs">null</div>;
 
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
-  const [selectedKinds, setKinds] = useQueryState(
-    QSP.KIND,
-    parseAsNativeArrayOf(parseAsString).withDefault([])
-  );
+  const [selectedKinds, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   if (!kinds) return null;
   if (kinds.length === 0) return <span>empty</span>;
 
