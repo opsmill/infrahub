@@ -416,6 +416,8 @@ async def rebase_and_migrate_branches(
 ) -> None:
     """Only applies migrations that aim at rebasing branches."""
     branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    rprint(f"Planning rebase and migrations for {len(branches)} branches: {', '.join([b.name for b in branches])}")
+
     rebase_migrations = [m for m in migrations if isinstance(m, MigrationWithRebase)]
 
     for migration in rebase_migrations:
