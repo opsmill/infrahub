@@ -13,26 +13,6 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ## [Infrahub - v1.4.11](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.11) - 2025-10-17
 
----
-title: Release 1.4.11
----
-<table>
-  <tbody>
-    <tr>
-      <th>Release Number</th>
-      <td>1.4.11</td>
-    </tr>
-    <tr>
-      <th>Release Date</th>
-      <td>October 17th, 2025</td>
-    </tr>
-    <tr>
-      <th>Tag</th>
-      <td>[infrahub-v1.4.11](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.4.11)</td>
-    </tr>
-  </tbody>
-</table>
-
 ### Added
 
 - The login form now automatically focuses on the first field.
