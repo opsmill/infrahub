@@ -1,1 +1,1 @@
-Add support for updating existing Profiles when the associated node schema is updated to add or remove an attribute
+Add support for updating existing Profiles when the associated node or generic schema is updated to change an attribute's optional or read-only value or when an attribute is added or removed
