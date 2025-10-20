@@ -175,7 +175,12 @@ async def migrate_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    await migrate_database(db=dbdriver, initialize=True, check=check, migration_number=migration_number)
+    migrations = await detect_migration_to_run(db=dbdriver, migration_number=migration_number)
+
+    if check or not migrations:
+        return
+
+    await migrate_database(db=dbdriver, migrations=migrations, initialize=True)
 
     await dbdriver.close()
 
@@ -343,7 +348,7 @@ async def detect_migration_to_run(
 ) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]:
     """Return a sequence of migrations to apply to upgrade the database."""
     rprint("Checking current state of the database")
-    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase] = []
+    migrations: list[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase] = []
 
     root_node = await get_root_node(db=db)
     if migration_number:
@@ -413,7 +418,7 @@ async def migrate_database(
 async def rebase_and_migrate_branches(
     db: InfrahubDatabase,
     migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase],
-) -> None:
+) -> bool:
     """Only applies migrations that aim at rebasing branches."""
     branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
     rprint(f"Planning rebase and migrations for {len(branches)} branches: {', '.join([b.name for b in branches])}")
@@ -427,6 +432,17 @@ async def rebase_and_migrate_branches(
             validation_result = await migration.validate_migration(db=db)
             if validation_result.success:
                 rprint(f"Migration: {migration.name} {SUCCESS_BADGE}")
+
+        if not execution_result.success or (validation_result and not validation_result.success):
+            rprint(f"Migration: {migration.name} {FAILED_BADGE}")
+            for error in execution_result.errors:
+                rprint(f"  {error}")
+            if validation_result and not validation_result.success:
+                for error in validation_result.errors:
+                    rprint(f"  {error}")
+            return False
+
+    return True
 
 
 async def initialize_internal_schema() -> None:
