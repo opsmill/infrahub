@@ -9,8 +9,7 @@ generics:
     icon: "subway:power"
     include_in_menu: true
     menu_placement: InfraDevice
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__name__value
       - name__value
@@ -77,8 +76,7 @@ generics:
     description: "Generic Choice"
     label: "Choice"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:
@@ -103,8 +101,7 @@ nodes:
     description: "Power Outlet"
     label: "Power Outlet"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -126,8 +123,7 @@ nodes:
     description: "Power Port"
     label: "Power Port"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -153,8 +149,7 @@ nodes:
     include_in_menu: true
     icon: "mdi:power-socket-de"
     menu_placement: PowerGeneric
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -172,8 +167,7 @@ nodes:
     include_in_menu: true
     icon: "mdi:power-plug"
     menu_placement: PowerGeneric
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     human_friendly_id: null

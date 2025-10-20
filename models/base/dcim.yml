@@ -639,8 +639,7 @@ nodes:
     label: "MLAG Interface L3"
     icon: "mdi:ethernet"
     include_in_menu: false
-    display_labels:
-      - mlag_id__value
+    display_label: "{{ mlag_id__value }}"
     inherit_from:
       - InfraMlagInterface
     relationships:
