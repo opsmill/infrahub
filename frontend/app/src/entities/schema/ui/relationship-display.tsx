@@ -4,13 +4,11 @@ import type { components } from "@/shared/api/rest/types.generated";
 import { Badge } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import { AccordionStyled, ListDisplay, ModelDisplay, PropertyRow } from "./styled";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
-export const RelationshipDisplay = ({
-  relationship,
-}: {
-  relationship: components["schemas"]["RelationshipSchema-Output"];
-}) => {
+import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";
+
+export const RelationshipDisplay = ({ relationship }: { relationship: RelationshipSchema }) => {
   const cardinalityLabel = relationship.cardinality
     ? getLabelForCardinality(relationship.cardinality)
     : null;
@@ -44,15 +42,13 @@ export const RelationshipDisplay = ({
       <div>
         <PropertyRow title="Peer" value={<ModelDisplay kinds={[relationship.peer]} />} />
         <PropertyRow title="Peer identifier" value={relationship.identifier} />
-        <PropertyRow
-          title="Common parent"
-          value={<ListDisplay items={relationship.common_parent} />}
-        />
+        <PropertyRow title="Common parent" value={relationship.common_parent} />
         <PropertyRow title="Cardinality" value={relationship.cardinality} />
         <PropertyRow title="Direction" value={relationship.direction} />
         <PropertyRow title="Kind" value={relationship.kind} />
         <PropertyRow title="Hierarchical" value={relationship.hierarchical} />
         <PropertyRow title="Inherited" value={relationship.inherited} />
+        <PropertyRow title="On delete" value={relationship.on_delete} />
       </div>
 
       <div>
