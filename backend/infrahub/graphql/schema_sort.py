@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from graphql.language.ast import (
     DocumentNode,
     EnumTypeDefinitionNode,
@@ -9,6 +13,9 @@ from graphql.language.ast import (
     NamedTypeNode,
     ObjectTypeDefinitionNode,
 )
+
+if TYPE_CHECKING:
+    from graphql import DefinitionNode
 
 
 def _sort_arguments(args: tuple[InputValueDefinitionNode, ...] | None) -> list[InputValueDefinitionNode] | None:
@@ -111,7 +118,11 @@ def sort_schema_ast(document: DocumentNode) -> DocumentNode:
     """
 
     sorted_definitions: list[
-        ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode | EnumTypeDefinitionNode | InputObjectTypeDefinitionNode
+        ObjectTypeDefinitionNode
+        | InterfaceTypeDefinitionNode
+        | EnumTypeDefinitionNode
+        | InputObjectTypeDefinitionNode
+        | DefinitionNode
     ] = []
 
     for definition in sorted(
@@ -153,5 +164,7 @@ def sort_schema_ast(document: DocumentNode) -> DocumentNode:
                     loc=definition.loc,
                 )
             )
+        else:
+            sorted_definitions.append(definition)
 
     return DocumentNode(definitions=sorted_definitions)

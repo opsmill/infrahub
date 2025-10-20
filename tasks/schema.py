@@ -1,8 +1,5 @@
-import asyncio
 import json
-import re
 from pathlib import Path
-from typing import Match
 
 from invoke.context import Context
 from invoke.tasks import task
@@ -33,7 +30,7 @@ def generate_jsonschema(context: Context) -> None:  # noqa: ARG001
 def validate_graphqlschema(context: Context) -> None:
     """Validate that the generated GraphQL schema is up to date."""
     generate_graphqlschema(context)
-    
+
     exec_cmd = "git diff --exit-code schema/schema.graphql"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -67,5 +64,3 @@ def generate_sdk_repository_config() -> None:
 def write(file_path: Path, content: str) -> None:
     file_path.write_text(content, encoding="utf-8")
     print(f"Wrote to {file_path}")
-
-

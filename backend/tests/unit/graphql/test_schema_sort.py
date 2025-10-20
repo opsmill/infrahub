@@ -325,19 +325,19 @@ def test_sort_schema_ast_preserves_metadata():
         name: String!
         age: Int
     }
-    
+
     type Post {
         title: String!
         content: String
         author: User!
     }
-    
+
     enum Status {
         ACTIVE
         INACTIVE
         PENDING
     }
-    
+
     input CreateUserInput {
         email: String!
         name: String!
@@ -410,7 +410,6 @@ def schema_with_unsorted_interfaces() -> DocumentNode:
         id: ID!
         name: String!
     }
-    
     type Post implements Node & Timestamped {
         id: ID!
         title: String!
@@ -447,11 +446,9 @@ def test_sort_schema_ast_sorts_all_interfaces_in_schema():
     type Article implements Publishable & Node & Timestamped {
         id: ID!
     }
-    
     type Comment implements Node & Auditable {
         id: ID!
     }
-    
     interface BaseInterface implements Node & Timestamped {
         id: ID!
     }
@@ -463,3 +460,63 @@ def test_sort_schema_ast_sorts_all_interfaces_in_schema():
         if hasattr(definition, "interfaces") and definition.interfaces:
             interface_names = [intf.name.value for intf in definition.interfaces]
             assert interface_names == sorted(interface_names), f"{definition.name.value} interfaces not sorted"
+
+
+def test_sort_schema_ast_preserves_other_definition_types():
+    """Test that other definition types (scalars, unions, directives) are preserved."""
+    schema_str = """
+    scalar DateTime
+
+    scalar JSON
+
+    union SearchResult = User | Post
+
+    directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ENUM_VALUE
+
+    type User {
+        id: ID!
+        name: String!
+    }
+
+    type Post {
+        id: ID!
+        title: String!
+    }
+    """
+    doc = parse(schema_str)
+    result = sort_schema_ast(doc)
+
+    # Check that all original definitions are preserved
+    assert len(result.definitions) == len(doc.definitions)
+
+    # Check that scalars are preserved
+    scalar_names = []
+    union_names = []
+    directive_names = []
+    type_names = []
+
+    for definition in result.definitions:
+        if hasattr(definition, "name") and definition.name:
+            if definition.__class__.__name__ == "ScalarTypeDefinitionNode":
+                scalar_names.append(definition.name.value)
+            elif definition.__class__.__name__ == "UnionTypeDefinitionNode":
+                union_names.append(definition.name.value)
+            elif definition.__class__.__name__ == "DirectiveDefinitionNode":
+                directive_names.append(definition.name.value)
+            elif definition.__class__.__name__ == "ObjectTypeDefinitionNode":
+                type_names.append(definition.name.value)
+
+    # Verify scalars are preserved
+    assert "DateTime" in scalar_names
+    assert "JSON" in scalar_names
+
+    # Verify unions are preserved
+    assert "SearchResult" in union_names
+
+    # Verify directives are preserved
+    assert len(directive_names) == 1  # @deprecated directive
+
+    # Verify types are preserved and sorted
+    assert "Post" in type_names
+    assert "User" in type_names
+    assert type_names == sorted(type_names)
