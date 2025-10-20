@@ -24,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0  # In order for Chromatic to correctly determine baseline commits, tot access the full Git history graph.
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'npm'
