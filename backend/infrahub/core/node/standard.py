@@ -227,3 +227,19 @@ class StandardNode(BaseModel):
         await query.execute(db=db)
 
         return [cls.from_db(result.get("n")) for result in query.get_results()]
+
+    @classmethod
+    async def get_list_and_count(
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> tuple[list[Self], int]:
+        query: Query = await StandardNodeGetListQuery.init(
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+        )
+        await query.execute(db=db)
+
+        return [cls.from_db(result.get("n")) for result in query.get_results()], await query.count(db=db)

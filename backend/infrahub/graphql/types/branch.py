@@ -46,7 +46,25 @@ class BranchType(InfrahubObjectType):
             return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
 
 
+class InfrahubBranchEdge(InfrahubObjectType):
+    node = Field(List(of_type=NonNull(BranchType), required=True), required=True)
+
+
 class InfrahubBranchType(InfrahubObjectType):
-    current_page = Int()
-    count_per_page = Int()
-    branches = List(of_type=NonNull(BranchType))
+    count = Field(Int, required=True)
+    edges = Field(InfrahubBranchEdge, required=True)
+
+    @classmethod
+    async def get_list_and_count(
+        cls,
+        fields: dict,
+        graphql_context: GraphqlContext,
+        **kwargs: Any,
+    ) -> tuple[list[dict[str, Any]], int]:
+        async with graphql_context.db.start_session(read_only=True) as db:
+            objs, count = await Branch.get_list_and_count(db=db, **kwargs)
+
+            if not objs:
+                return [], 0
+
+            return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME], count

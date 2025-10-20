@@ -150,6 +150,8 @@ class StandardNodeGetListQuery(Query):
         if self.node_name:
             filters.append("n.name = $name")
             self.params["name"] = self.node_name
+        if raw_filter := self.kwargs.get("raw_filter"):
+            filters.append(raw_filter)
 
         where = ""
         if filters:

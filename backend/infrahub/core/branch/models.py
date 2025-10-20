@@ -166,6 +166,18 @@ class Branch(StandardNode):
         return branches
 
     @classmethod
+    async def get_list_and_count(
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> tuple[list[Self], int]:
+        kwargs["raw_filter"] = f"n.status <> '{BranchStatus.DELETING.value}'"
+        return await super().get_list_and_count(db=db, limit=limit, ids=ids, name=name, **kwargs)
+
+    @classmethod
     def isinstance(cls, obj: Any) -> bool:
         return isinstance(obj, cls)
 

@@ -192,24 +192,17 @@ class TestBranchQuery(TestInfrahubApp):
             assert branch_result.data
 
         query = """
-        query {
-            InfrahubBranch(page: 2, limit: 5) {
-                branches {
-                    id
-                    name
-                    description
-                    origin_branch
-                    branched_from
-                    created_at
-                    is_default
-                    is_isolated
-                    has_schema_changes
-                    sync_with_git
+            query {
+                InfrahubBranch(offset: 2, limit: 5) {
+                    count
+                    edges {
+                        node {
+                            name
+                            description
+                        }
+                    }
                 }
-                current_page
-                count_per_page
             }
-        }
         """
         gql_params = await prepare_graphql_params(
             db=db, include_subscription=False, branch=default_branch, service=service
@@ -223,6 +216,25 @@ class TestBranchQuery(TestInfrahubApp):
         )
         assert all_branches.errors is None
         assert all_branches.data
-        assert len(all_branches.data["InfrahubBranch"]["branches"]) == 5
-        assert all_branches.data["InfrahubBranch"]["current_page"] == 2
-        assert all_branches.data["InfrahubBranch"]["count_per_page"] == 5
+        assert all_branches.data["InfrahubBranch"]["count"] == 13
+
+        expected_branches = [
+            {
+                "description": "Default Branch",
+                "name": "main",
+            },
+            {
+                "description": "my description",
+                "name": "branch3",
+            },
+            *[
+                {
+                    "description": f"sample description {i}",
+                    "name": f"sample-branch-{i}",
+                }
+                for i in range(10)
+            ],
+        ]
+        assert all_branches.data["InfrahubBranch"]["edges"]["node"].sort(
+            key=operator.itemgetter("name")
+        ) == expected_branches.sort(key=operator.itemgetter("name"))

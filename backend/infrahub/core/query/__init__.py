@@ -352,6 +352,7 @@ class Query(ABC):
         offset: int | None = None,
         order_by: list[str] | None = None,
         branch_agnostic: bool = False,
+        **kwargs: dict[str, Any],
     ):
         if branch:
             self.branch = branch
@@ -378,6 +379,7 @@ class Query(ABC):
         self.has_errors: bool = False
 
         self.stats: QueryStats = QueryStats()
+        self.kwargs = kwargs
 
     def update_return_labels(self, value: str | list[str]) -> None:
         if isinstance(value, str) and value not in self.return_labels:
