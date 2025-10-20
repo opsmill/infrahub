@@ -30,8 +30,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "{{ name__value }}"
     children: "LocationCountry"
     parent: ""
   - name: Country
@@ -44,8 +43,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "{{ name__value }}"
     children: "LocationSite"
     parent: "LocationContinent"
   - name: Site
@@ -57,8 +55,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "{{ name__value }}"
     children: "LocationRack"
     parent: "LocationCountry"
     attributes:
@@ -102,8 +99,7 @@ nodes:
     order_by:
       - "site__name__value"
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "{{ name__value }}"
     parent: "LocationSite"
     children: ""
     uniqueness_constraints:

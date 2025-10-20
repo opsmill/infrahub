@@ -11,9 +11,7 @@ nodes:
     default_filter: name__value
     human_friendly_id: ["name__value", "asn__value"]
     order_by: ["asn__value"]
-    display_labels:
-      - name__value
-      - asn__value
+    display_label: "{{ name__value }} {{ asn__value }}"
     attributes:
       - name: name
         kind: Text
@@ -42,8 +40,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
