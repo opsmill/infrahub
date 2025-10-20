@@ -493,6 +493,21 @@ files = [
 ]
 
 [[package]]
+name = "cachetools-async"
+version = "0.0.5"
+description = "Provides decorators that are inspired by and work closely with cachetools' for caching asyncio functions and methods."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "cachetools_async-0.0.5-py3-none-any.whl", hash = "sha256:8f690c8bc291718a652395832e90afa797195c838e98d6a9e530dc1de66fbc34"},
+    {file = "cachetools_async-0.0.5.tar.gz", hash = "sha256:e99ec8f3a78e82b4f524e78f01d15b8746531481d862ac4f2d8af2a686e1c571"},
+]
+
+[package.dependencies]
+cachetools = ">=5"
+
+[[package]]
 name = "certifi"
 version = "2025.8.3"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -5819,6 +5834,18 @@ shellingham = ">=1.3.0"
 typing-extensions = ">=3.7.4.3"
 
 [[package]]
+name = "types-cachetools"
+version = "6.2.0.20250827"
+description = "Typing stubs for cachetools"
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "types_cachetools-6.2.0.20250827-py3-none-any.whl", hash = "sha256:96ae5abcb5ea1e1f1faf811a2ff8b2ce7e6d820fc42c4fcb4b332b2da485de16"},
+    {file = "types_cachetools-6.2.0.20250827.tar.gz", hash = "sha256:f27febfd1b5e517e3cb1ca6daf38ad6ddb4eeb1e29bdbd81a082971ba30c0d8e"},
+]
+
+[[package]]
 name = "types-python-slugify"
 version = "8.0.2.20240310"
 description = "Typing stubs for python-slugify"
@@ -6660,4 +6687,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12, < 3.13"
-content-hash = "a749e4068109a89682e05007722445f4d2d3b850985b20c5f2e581f56a107589"
+content-hash = "2b40fd0037869db7cec59df744f792f357d6f1218f922405380f8aed0081f4fd"

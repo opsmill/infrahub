@@ -1371,7 +1371,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         message: CheckArtifactCreate | RequestArtifactGenerate,
     ) -> ArtifactGenerateResult:
         response = await self.sdk.query_gql_query(
-            name=message.query,
+            name=message.query_id,
             variables=message.variables,
             update_group=True,
             subscribers=[artifact.id],

@@ -53,6 +53,7 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets
 
 
 @flow(
@@ -323,9 +324,8 @@ async def generate_request_artifact_definition(
         kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
     )
 
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
+    group = await fetch_artifact_definition_targets(client=client, branch=model.branch, definition=artifact_definition)
+
     current_members = [member.id for member in group.members.peers]
 
     artifacts_by_member = {}
@@ -356,6 +356,7 @@ async def generate_request_artifact_definition(
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
         convert_query_response = transform.convert_query_response.value
 
+    batch = await client.create_batch()
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
@@ -376,6 +377,7 @@ async def generate_request_artifact_definition(
             repository_kind=repository.get_kind(),
             branch_name=model.branch,
             query=query.name.value,
+            query_id=query.id,
             variables=await member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
@@ -385,9 +387,15 @@ async def generate_request_artifact_definition(
             context=context,
         )
 
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_ARTIFACT_GENERATE, context=context, parameters={"model": request_artifact_generate_model}
+        batch.add(
+            task=get_workflow().submit_workflow,
+            workflow=REQUEST_ARTIFACT_GENERATE,
+            context=context,
+            parameters={"model": request_artifact_generate_model},
         )
+
+    async for _, _ in batch.execute():
+        pass
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
@@ -569,9 +577,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
 
     if definition.targets.id:
         # Check against a group of targets
-        await definition.targets.fetch()
-        group = definition.targets.peer
-        await group.members.fetch()
+        group = await fetch_check_definition_targets(client=client, branch=model.branch_name, definition=definition)
         check_models = []
         for relationship in group.members.peers:
             member = relationship.peer
