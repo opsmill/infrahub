@@ -328,14 +328,23 @@ class SchemaBranch:
         elif name in self.templates:
             key = self.templates[name]
 
-        if key and duplicate:
-            return self._cache[key].duplicate()
-        if key and not duplicate:
-            return self._cache[key]
+        if not key:
+            raise SchemaNotFoundError(
+                branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
+            )
 
-        raise SchemaNotFoundError(
-            branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
-        )
+        schema: MainSchemaTypes | None = None
+        try:
+            schema = self._cache[key]
+        except KeyError:
+            pass
+
+        if not schema:
+            raise ValueError(f"Schema {name!r} on branch {self.name} has incorrect hash: {key!r}")
+
+        if duplicate:
+            return schema.duplicate()
+        return schema
 
     def get_node(self, name: str, duplicate: bool = True) -> NodeSchema:
         """Access a specific NodeSchema, defined by its kind."""
