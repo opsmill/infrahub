@@ -9,3 +9,15 @@ export const treeQueryKeys = {
 export const updateDiffMutationKeys = {
   all: ["update-diff"] as const,
 };
+
+export const runCheckMutationKeys = {
+  all: ["run-check"] as const,
+};
+
+export const proposedChangeValidatorsKeys = {
+  all: ["proposed-change-validators"],
+  allWithinProposedChange: (proposedChangeId: string) => [
+    ...proposedChangeValidatorsKeys.all,
+    proposedChangeId,
+  ],
+};
