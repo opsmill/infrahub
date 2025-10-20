@@ -49,7 +49,6 @@ The new format now supports relationships. If applicable you can add relationshi
 **Before:**
 
 display_labels:
-  # TODO: Add provider name here when display label supports relationships
   - identifier__value
 
 **After:**
@@ -140,15 +139,18 @@ If you're using Git integration to manage your schemas:
 If you're managing schemas locally with `infrahubctl`:
 
 1. Validate your schema changes:
+
    ```shell
    infrahubctl schema check path/to/your/schema/files
    ```
 
 2. Load the updated schema:
+
    ```shell
    infrahubctl schema load path/to/your/schema/files
    ```
 
+:::success
 If the schema loads without errors and your objects display correctly, the migration is complete!
 :::
 
