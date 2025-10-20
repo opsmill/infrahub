@@ -30,12 +30,12 @@ export const PieChart = (props: tPieChart) => {
   };
 
   return (
-    <div className={"relative cursor-pointer"} onClick={handleClick}>
+    <div className={"relative"} onClick={handleClick}>
       <div className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 flex transform items-center justify-center">
         {children}
       </div>
 
-      <RPieChart width={100} height={60}>
+      <RPieChart width={100} height={60} className="">
         <Tooltip content={renderCustomizedTooltip} />
 
         <Pie
