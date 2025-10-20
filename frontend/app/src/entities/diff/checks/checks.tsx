@@ -14,7 +14,6 @@ export const Checks = () => {
     isPending,
     error,
     data: validators,
-    refetch,
   } = useGetValidatorsQuery({
     proposedChangeId: proposedChangeId!,
   });
@@ -29,7 +28,7 @@ export const Checks = () => {
 
   return (
     <div className="grow bg-stone-100 text-sm">
-      <ChecksSummary isLoading={isPending} validators={validators} refetch={refetch} />
+      <ChecksSummary isLoading={isPending} validators={validators} />
 
       <div className="space-y-2 p-4 pt-0">
         {validators?.map((item: any) => (
