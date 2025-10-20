@@ -152,6 +152,8 @@ class InfrahubDockerCompose(DockerCompose):
                     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "1",
                     "PREFECT_MESSAGING_BROKER": "prefect_redis.messaging",
                     "PREFECT_MESSAGING_CACHE": "prefect_redis.messaging",
+                    "PREFECT_SERVER_EVENTS_CAUSAL_ORDERING": "prefect_redis.ordering",
+                    "PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE": "prefect_redis.lease_storage",
                     "PREFECT__SERVER_WEBSERVER_ONLY": "true",
                     "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
                     "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
