@@ -1,25 +1,15 @@
-import { useQuery } from "@apollo/client";
 import type React from "react";
 import { Link } from "react-router";
-import { toast } from "react-toastify";
 
 import { QSP } from "@/config/qsp";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import { useGetDiffSummary } from "@/entities/diff/domain/get-diff-summary.query";
+import { DIFF_STATUS, type DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
-
-import { DIFF_STATUS, type DiffStatus } from "../../diff/node-diff/types";
-
-interface DiffTreeSummary {
-  num_added: number;
-  num_removed: number;
-  num_updated: number;
-  num_conflicts: number;
-}
 
 interface ProposedChangeDiffSummaryProps {
   branchName: string;
@@ -50,24 +40,9 @@ export const ProposedChangeDiffSummary: React.FC<ProposedChangeDiffSummaryProps>
   proposedChangeId,
   branchName,
 }) => {
-  const { error, data, loading } = useQuery<{ DiffTreeSummary: DiffTreeSummary }>(
-    getProposedChangesDiffSummary,
-    {
-      skip: !branchName,
-      variables: { branch: branchName },
-      context: {
-        processErrorMessage: (message: string) => {
-          if (!message.includes("not found")) {
-            toast(<Alert type={ALERT_TYPES.ERROR} message={message} />, {
-              toastId: "alert-error",
-            });
-          }
-        },
-      },
-    }
-  );
+  const { error, data, isPending } = useGetDiffSummary({ branchName });
 
-  if (loading) {
+  if (isPending) {
     return <DiffSummarySkeleton />;
   }
 
@@ -81,40 +56,42 @@ export const ProposedChangeDiffSummary: React.FC<ProposedChangeDiffSummaryProps>
     );
   }
 
-  const { DiffTreeSummary } = data || {};
+  if (!data) {
+    return null;
+  }
 
   return (
-    <div className="inline-flex gap-2">
+    <Row>
       <BadgeLink
         status={DIFF_STATUS.ADDED}
-        count={DiffTreeSummary?.num_added}
+        count={data.num_added}
         proposedChangeId={proposedChangeId}
       />
       <BadgeLink
         status={DIFF_STATUS.REMOVED}
-        count={DiffTreeSummary?.num_removed}
+        count={data.num_removed}
         proposedChangeId={proposedChangeId}
       />
       <BadgeLink
         status={DIFF_STATUS.UPDATED}
-        count={DiffTreeSummary?.num_updated}
+        count={data.num_updated}
         proposedChangeId={proposedChangeId}
       />
       <BadgeLink
         status={DIFF_STATUS.CONFLICT}
-        count={DiffTreeSummary?.num_conflicts}
+        count={data.num_conflicts}
         proposedChangeId={proposedChangeId}
       />
-    </div>
+    </Row>
   );
 };
 
 const DiffSummarySkeleton: React.FC = () => {
   return (
-    <div className="flex gap-2">
+    <Row>
       {[...Array(4)].map((_, index) => (
         <div key={index} className="h-6 w-9 animate-pulse rounded-full bg-gray-200" />
       ))}
-    </div>
+    </Row>
   );
 };
