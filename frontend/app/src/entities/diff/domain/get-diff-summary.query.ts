@@ -11,8 +11,8 @@ export function getDiffSummaryQueryOptions({ branchName }: GetDiffSummaryParams)
   });
 }
 
-export type useGetDiffSummaryConfig = QueryConfig<typeof getDiffSummaryQueryOptions>;
+export type UseGetDiffSummaryConfig = QueryConfig<typeof getDiffSummaryQueryOptions>;
 
-export function useGetDiffSummary(params: GetDiffSummaryParams, config?: useGetDiffSummaryConfig) {
+export function useGetDiffSummary(params: GetDiffSummaryParams, config?: UseGetDiffSummaryConfig) {
   return useQuery({ ...getDiffSummaryQueryOptions(params), ...config });
 }
