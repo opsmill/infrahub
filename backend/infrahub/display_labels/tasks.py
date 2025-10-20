@@ -152,7 +152,7 @@ async def display_labels_setup_jinja2(
 
 @flow(
     name="trigger-update-display-labels",
-    flow_run_name="Trigger updates for display labels for kind",
+    flow_run_name="Trigger updates for display labels for {kind}",
 )
 async def trigger_update_display_labels(
     branch_name: str,
