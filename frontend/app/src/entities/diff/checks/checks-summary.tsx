@@ -1,4 +1,3 @@
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router";
@@ -10,7 +9,7 @@ import {
   VALIDATIONS_ENUM_MAP,
 } from "@/config/constants";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
@@ -19,24 +18,26 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { runCheck } from "@/entities/diff/api/runCheck";
+import { useRunCheckMutation } from "@/entities/diff/domain/run-check.mutation";
 import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 
-type tChecksSummaryProps = {
+import { proposedChangeValidatorsKeys } from "../domain/diff.query-keys";
+
+type ChecksSummaryProps = {
   validators: any[];
   isLoading: boolean;
-  refetch: Function;
 };
 
-export const ChecksSummary = (props: tChecksSummaryProps) => {
-  const { isLoading, validators, refetch } = props;
+export const ChecksSummary = (props: ChecksSummaryProps) => {
+  const { isLoading, validators } = props;
 
   const { proposedChangeId } = useParams();
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const schemaList = useAtomValue(genericSchemasAtom);
   const { isAuthenticated } = useAuth();
+  const { mutate, isPending } = useRunCheckMutation();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
 
@@ -49,24 +50,20 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   }, {});
 
   const handleRetry = async (validator: string) => {
-    const runParams = {
-      id: proposedChangeId,
-      check_type: VALIDATIONS_ENUM_MAP[validator],
-    };
-
-    const mustationString = runCheck(runParams);
-
-    const mutation = gql`
-      ${mustationString}
-    `;
-
-    const result = await graphqlClient.mutate({ mutation });
-
-    refetch();
-
-    if (result?.data?.CoreProposedChangeRunCheck?.ok) {
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Checks are running" />);
-    }
+    mutate(
+      {
+        proposedChangeId: proposedChangeId!,
+        checkType: VALIDATIONS_ENUM_MAP[validator]!,
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: proposedChangeValidatorsKeys.allWithinProposedChange(proposedChangeId!),
+          });
+          toast(<Alert type={ALERT_TYPES.SUCCESS} message="Checks are running" />);
+        },
+      }
+    );
   };
 
   const canRetry = (stats: any) => {
@@ -105,9 +102,9 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
               <div className={"group relative flex flex-col items-center"}>
                 <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
                   {canRetry(data) && (
-                    <div className="invisible absolute cursor-pointer group-hover:visible">
+                    <div className="invisible absolute group-hover:visible">
                       <Retry
-                        isLoading={isLoading || !!data.inProgress}
+                        isLoading={isPending || isLoading || !!data.inProgress}
                         isDisabled={!canRetry(data)}
                       />
                     </div>
