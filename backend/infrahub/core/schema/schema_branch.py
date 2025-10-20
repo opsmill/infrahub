@@ -540,8 +540,8 @@ class SchemaBranch:
         self.validate_identifiers()
         self.sync_uniqueness_constraints_and_unique_attributes()
         self.validate_uniqueness_constraints()
-        self.validate_display_label()
         self.validate_display_labels()
+        self.validate_display_label()
         self.validate_order_by()
         self.validate_default_filters()
         self.validate_parent_component()
@@ -789,6 +789,7 @@ class SchemaBranch:
                     )
                 self.set(name=name, schema=update_candidate)
 
+            node_schema = self.get(name=name, duplicate=False)
             if not node_schema.display_label:
                 continue
 
