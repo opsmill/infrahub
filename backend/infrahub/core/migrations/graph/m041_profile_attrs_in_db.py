@@ -84,7 +84,7 @@ RETURN node_uuid, collect(branch) AS branches
         return nodes_by_branch
 
 
-class Migration040(ArbitraryMigration):
+class Migration041(ArbitraryMigration):
     """
     Save profile attribute values on each node using the profile in the database
     For any profile that has updates on a given branch (including default branch)
@@ -93,8 +93,8 @@ class Migration040(ArbitraryMigration):
     - run NodeProfilesApplier.apply_profiles on the node on that branch
     """
 
-    name: str = "040_profile_attrs_in_db"
-    minimum_version: int = 39
+    name: str = "041_profile_attrs_in_db"
+    minimum_version: int = 40
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

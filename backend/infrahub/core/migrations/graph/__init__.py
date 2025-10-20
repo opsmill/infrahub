@@ -41,9 +41,10 @@ from .m036_drop_attr_value_index import Migration036
 from .m037_index_attr_vals import Migration037
 from .m038_redo_0000_prefix_fix import Migration038
 from .m039_ipam_reconcile import Migration039
-from .m040_profile_attrs_in_db import Migration040
-from .m041_create_hfid_display_label_in_db import Migration041
-from .m042_backfill_hfid_display_label_in_db import Migration042
+from .m040_duplicated_attributes import Migration040
+from .m041_profile_attrs_in_db import Migration041
+from .m042_create_hfid_display_label_in_db import Migration042
+from .m043_backfill_hfid_display_label_in_db import Migration043
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -93,6 +94,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration040,
     Migration041,
     Migration042,
+    Migration043,
 ]
 
 

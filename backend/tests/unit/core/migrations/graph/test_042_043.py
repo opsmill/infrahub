@@ -5,8 +5,8 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m041_create_hfid_display_label_in_db import Migration041
-from infrahub.core.migrations.graph.m042_backfill_hfid_display_label_in_db import Migration042
+from infrahub.core.migrations.graph.m042_create_hfid_display_label_in_db import Migration042
+from infrahub.core.migrations.graph.m043_backfill_hfid_display_label_in_db import Migration043
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -27,7 +27,7 @@ RETURN n, v
 """
 
 
-class TestMigration041(TestInfrahubApp):
+class TestMigration042(TestInfrahubApp):
     @pytest.fixture
     async def initial_dataset(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
@@ -56,7 +56,7 @@ class TestMigration041(TestInfrahubApp):
 
         return nodes
 
-    async def test_migration_041_042(self, db: InfrahubDatabase, initial_dataset: dict[str, Node]) -> None:
+    async def test_migration_042_043(self, db: InfrahubDatabase, initial_dataset: dict[str, Node]) -> None:
         results = await db.execute_query(query=QUERY_HFID)
         assert not results
 
@@ -69,7 +69,7 @@ class TestMigration041(TestInfrahubApp):
         assert not results
 
         async with db.start_session() as dbs:
-            migration = Migration041(migrations=[])
+            migration = Migration042(migrations=[])
             execution_result = await migration.execute(db=dbs)
             assert not execution_result.errors
 
@@ -77,7 +77,7 @@ class TestMigration041(TestInfrahubApp):
             assert not validation_result.errors
 
         async with db.start_session() as dbs:
-            migration = Migration042()
+            migration = Migration043()
             execution_result = await migration.execute(db=dbs)
             assert not execution_result.errors
 

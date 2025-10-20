@@ -17,9 +17,9 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration041(InternalSchemaMigration):
-    name: str = "041_create_hfid_display_label_in_db"
-    minimum_version: int = 40
+class Migration042(InternalSchemaMigration):
+    name: str = "042_create_hfid_display_label_in_db"
+    minimum_version: int = 41
 
     @classmethod
     def init(cls, **kwargs: Any) -> Self:
