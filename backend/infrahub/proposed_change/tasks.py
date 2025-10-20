@@ -44,7 +44,7 @@ from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreDataCheck, CoreValidator
+from infrahub.core.protocols import CoreArtifactDefinition, CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import run_checks_and_update_validator
@@ -58,6 +58,7 @@ from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
+from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
@@ -612,7 +613,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     client = get_client()
 
     artifact_definition = await client.get(
-        kind=InfrahubKind.ARTIFACTDEFINITION,
+        kind=CoreArtifactDefinition,
         id=model.artifact_definition.definition_id,
         branch=model.source_branch,
     )
@@ -652,9 +653,9 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         branch=model.source_branch,
     )
 
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
+    group = await fetch_artifact_definition_targets(
+        client=client, branch=model.source_branch, definition=artifact_definition
+    )
 
     artifacts_by_member = {}
     for artifact in existing_artifacts:
@@ -691,6 +692,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 repository_kind=repository.kind,
                 branch_name=model.source_branch,
                 query=model.artifact_definition.query_name,
+                query_id=model.artifact_definition.query_id,
                 variables=await member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
                 target_kind=member.get_kind(),
@@ -917,14 +919,9 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
         branch=model.source_branch,
     )
 
-    group = await client.get(
-        kind=InfrahubKind.GENERICGROUP,
-        prefetch_relationships=True,
-        populate_store=True,
-        id=model.generator_definition.group_id,
-        branch=model.source_branch,
+    group = await fetch_proposed_change_generator_definition_targets(
+        client=client, branch=model.source_branch, definition=model.generator_definition
     )
-    await group.members.fetch()
 
     instance_by_member = {}
     for instance in existing_instances:
@@ -1245,6 +1242,7 @@ query GatherArtifactDefinitions {
             }
             query {
               node {
+                id
                 models {
                   value
                 }
@@ -1466,6 +1464,7 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
             content_type=definition["node"]["content_type"]["value"],
             timeout=definition["node"]["transformation"]["node"]["timeout"]["value"],
             query_name=definition["node"]["transformation"]["node"]["query"]["node"]["name"]["value"],
+            query_id=definition["node"]["transformation"]["node"]["query"]["node"]["id"],
             query_models=definition["node"]["transformation"]["node"]["query"]["node"]["models"]["value"] or [],
             repository_id=definition["node"]["transformation"]["node"]["repository"]["node"]["id"],
             transform_kind=definition["node"]["transformation"]["node"]["__typename"],
