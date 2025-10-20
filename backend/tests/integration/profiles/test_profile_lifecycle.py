@@ -107,7 +107,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             namespace="Pretend",
             attributes=[
                 # size will become optional later to test that it is added to profiles
-                AttributeSchema(name="size", kind="Text", optional=False),
+                AttributeSchema(name="size", kind="TextArea", optional=False),
                 # shape will become mandatory later to test that it is removed from profiles
                 AttributeSchema(name="shape", kind="Text", optional=True),
                 # is_alive will become read_only=False later to test that it is added to profiles
@@ -115,7 +115,7 @@ class TestProfileLifecycle(TestInfrahubApp):
                 # lifespan will become read_only=True later to test that it is removed from profiles
                 AttributeSchema(name="lifespan", kind="Number", optional=True),
                 # generic_nothing will be removed later to test that it is removed from profiles
-                AttributeSchema(name="generic_nothing", kind="Text", optional=True),
+                AttributeSchema(name="generic_nothing", kind="TextArea", optional=True),
             ],
         )
 
@@ -135,9 +135,9 @@ class TestProfileLifecycle(TestInfrahubApp):
                 # eye_color will become read_only=False later to test that it is added to profiles
                 AttributeSchema(name="eye_color", kind="Text", optional=True, read_only=True),
                 # description will become read_only=True later to test that it is removed from profiles
-                AttributeSchema(name="description", kind="Text", optional=True, default_value="placeholder"),
+                AttributeSchema(name="description", kind="TextArea", optional=True, default_value="placeholder"),
                 # nothing will be removed later to test that it is removed from profiles
-                AttributeSchema(name="nothing", kind="Text", optional=True),
+                AttributeSchema(name="nothing", kind="TextArea", optional=True),
             ],
         )
 
@@ -268,8 +268,6 @@ class TestProfileLifecycle(TestInfrahubApp):
         )
         await person_1.save(db=db)
         return person_1
-
-    # TODO: add profile based on generic to test
 
     @pytest.fixture(scope="class")
     async def person_profile_1(self, db: InfrahubDatabase, schema_root_01) -> Node:
