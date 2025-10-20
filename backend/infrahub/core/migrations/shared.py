@@ -3,11 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing_extensions import Self
 from rich.console import Console
+from typing_extensions import Self
 
-from infrahub.auth import AccountSession, AuthType
-from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
