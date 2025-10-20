@@ -352,7 +352,7 @@ class Query(ABC):
         offset: int | None = None,
         order_by: list[str] | None = None,
         branch_agnostic: bool = False,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ):
         if branch:
             self.branch = branch
