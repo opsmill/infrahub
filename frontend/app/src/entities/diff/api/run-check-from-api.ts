@@ -1,0 +1,31 @@
+import { gql } from "@apollo/client";
+
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+export const RUN_CHECK = gql`
+  mutation RUN_CHECK($proposedChangeId: String!, $checkType: CheckType) {
+  CoreProposedChangeRunCheck (
+    data: {
+      id: $proposedChangeId,
+      check_type: $checkType
+    }
+  ) {
+      ok
+  }
+}
+`;
+
+export type UpdateCheckFromApiParams = {
+  proposedChangeId: string;
+  checkType: string;
+};
+
+export const runCheckFromApi = ({ proposedChangeId, checkType }: UpdateCheckFromApiParams) => {
+  return graphqlClient.mutate({
+    mutation: RUN_CHECK,
+    variables: {
+      proposedChangeId,
+      checkType,
+    },
+  });
+};
