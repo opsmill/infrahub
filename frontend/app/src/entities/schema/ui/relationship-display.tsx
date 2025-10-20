@@ -48,6 +48,7 @@ export const RelationshipDisplay = ({ relationship }: { relationship: Relationsh
         <PropertyRow title="Kind" value={relationship.kind} />
         <PropertyRow title="Hierarchical" value={relationship.hierarchical} />
         <PropertyRow title="Inherited" value={relationship.inherited} />
+        <PropertyRow title="On delete" value={relationship.on_delete} />
       </div>
 
       <div>
@@ -55,10 +56,6 @@ export const RelationshipDisplay = ({ relationship }: { relationship: Relationsh
         <PropertyRow title="Max count" value={relationship.max_count} />
         <PropertyRow title="Min count" value={relationship.min_count} />
         <PropertyRow title="Order weight" value={relationship.order_weight} />
-      </div>
-
-      <div>
-        <PropertyRow title="On delete" value={relationship.on_delete} />
       </div>
     </AccordionStyled>
   );
