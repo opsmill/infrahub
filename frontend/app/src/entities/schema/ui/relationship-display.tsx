@@ -4,7 +4,7 @@ import { components } from "@/shared/api/rest/types.generated";
 import { Badge } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
 import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";
 
