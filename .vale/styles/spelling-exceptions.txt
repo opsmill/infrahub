@@ -52,6 +52,7 @@ dev
 devcontainer
 direnv
 display_labels
+display_label
 docker
 dockerfile
 docusaurus
