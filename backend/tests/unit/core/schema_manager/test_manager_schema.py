@@ -2,6 +2,8 @@ import copy
 import json
 import re
 import uuid
+from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from infrahub_sdk.utils import compare_lists
@@ -601,6 +603,106 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
     assert in_first == []
     assert sorted(in_both) == sorted(second_weights)
     assert len(in_second) == 1 and in_second[0].startswith(new_attr2_partial_id)
+
+
+def test_schema_branch_processes_generic_template_schema_weight(register_core_models_schema):
+    schema = {
+        "generics": [
+            {
+                "name": "GenericDevice",
+                "namespace": "Dcim",
+                "description": "Generic Device object.",
+                "label": "Device",
+                "icon": "mdi:server",
+                "human_friendly_id": ["name__value"],
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "generate_template": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True, "order_weight": 7000},
+                    {"name": "description", "kind": "Text", "optional": True, "order_weight": 8000},
+                    {"name": "os_version", "kind": "Text", "optional": True, "order_weight": 5200},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "optional": True,
+                        "cardinality": "many",
+                        "kind": "Attribute",
+                        "order_weight": 3000,
+                    },
+                ],
+            },
+            core_object_template,
+            core_object_component_template,
+        ],
+        "nodes": [
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema))
+    schema_branch.process()
+
+    template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
+    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
+
+    assert template.get_attribute(name="template_name").order_weight == 1000
+    assert (
+        template.get_attribute(name="description").order_weight
+        == dcim_generic_device.get_attribute(name="description").order_weight
+        == 8000
+    )
+    assert (
+        template.get_attribute(name="os_version").order_weight
+        == dcim_generic_device.get_attribute(name="os_version").order_weight
+        == 5200
+    )
+    assert (
+        template.get_relationship(name="tags").order_weight
+        == dcim_generic_device.get_relationship(name="tags").order_weight
+        == 3000
+    )
+
+    schema_2 = copy.deepcopy(schema)
+    schema_2["generics"][0]["attributes"] = [
+        {"name": "name", "kind": "Text", "unique": False},
+        {"name": "description", "kind": "Text", "optional": True},
+        {"name": "os_version", "kind": "Text", "optional": True},
+    ]
+    schema_branch.load_schema(schema=SchemaRoot(**schema_2))
+    schema_branch.process()
+
+    template = schema_branch.get(name="TemplateDcimGenericDevice", duplicate=False)
+    dcim_generic_device = schema_branch.get(name="DcimGenericDevice", duplicate=False)
+
+    assert (
+        template.get_attribute(name="name").order_weight == dcim_generic_device.get_attribute(name="name").order_weight
+    )
+    assert (
+        template.get_attribute(name="description").order_weight
+        == dcim_generic_device.get_attribute(name="description").order_weight
+    )
+    assert (
+        template.get_attribute(name="os_version").order_weight
+        == dcim_generic_device.get_attribute(name="os_version").order_weight
+    )
 
 
 async def test_schema_branch_add_profile_schema(schema_all_in_one):
@@ -3073,6 +3175,316 @@ def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
     assert "BuiltinTag" in exc.value.args[0]
     assert "BuiltinCriticality" in exc.value.args[0]
     assert "cannot both have required relationships" in exc.value.args[0]
+
+
+@dataclass
+class InheritedRelationshipsTestData:
+    name: str
+    schema: dict[str, Any]
+    error_message: str
+
+
+INHERITED_RELATIONSHIPS_TEST_CASES = [
+    *[
+        InheritedRelationshipsTestData(
+            name=f"inherit-from-2-generics-{test_data['property']}-fail",
+            schema={
+                "generics": [
+                    {
+                        "name": "GenericInterface",
+                        "namespace": "Network",
+                        "description": "Generic Network Interface",
+                        "label": "Interface",
+                        "include_in_menu": False,
+                        "display_labels": ["name__value"],
+                        "order_by": ["device__name__value", "name__value"],
+                        "uniqueness_constraints": [["device", "name__value"]],
+                        "human_friendly_id": ["device__name__value", "name__value"],
+                        "attributes": [
+                            {
+                                "name": "name",
+                                "kind": "Text",
+                                "description": "Name of the interface",
+                                "order_weight": 1000,
+                            }
+                        ],
+                        "relationships": [test_data["relationships"][0]],
+                    },
+                    {
+                        "name": "IndexedInterface",
+                        "namespace": "Logical",
+                        "description": "Generic for an interface that is part of a logical device and has an index",
+                        "include_in_menu": False,
+                        "human_friendly_id": ["device__name__value", "index__value"],
+                        "uniqueness_constraints": [["device", "index__value"]],
+                        "attributes": [
+                            {
+                                "name": "index",
+                                "kind": "Number",
+                                "description": "Index of the interface in the device",
+                            }
+                        ],
+                        "relationships": [test_data["relationships"][1]],
+                    },
+                    {
+                        "name": "Device",
+                        "namespace": "Logical",
+                        "description": "Generic for a logical device that could be part of a logical network",
+                        "include_in_menu": False,
+                        "attributes": [
+                            {
+                                "name": "index",
+                                "kind": "Number",
+                                "description": "Index of the device in the network",
+                            },
+                        ],
+                    },
+                ],
+                "nodes": [
+                    {
+                        "name": "Device",
+                        "namespace": "Network",
+                        "label": "Network device",
+                        "description": "Physical network port on a device",
+                        "attributes": [
+                            {
+                                "name": "name",
+                                "kind": "Text",
+                                "description": "Name of the interface",
+                                "unique": True,
+                                "optional": False,
+                                "order_weight": 1000,
+                            }
+                        ],
+                    },
+                    {
+                        "name": "Physical",
+                        "namespace": "Interface",
+                        "label": "Physical Interface",
+                        "description": "Physical network port on a device",
+                        "inherit_from": [
+                            "NetworkGenericInterface",
+                            "LogicalIndexedInterface",
+                        ],
+                    },
+                ],
+            },
+            error_message=(
+                "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalIndexedInterface'"
+                f" with different '{test_data['property']}' on the 'device' relationship"
+            ),
+        )
+        for test_data in [
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "many",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                ],
+                "property": "cardinality",
+            },
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "NetworkGenericDevice",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "cardinality": "one",
+                        "kind": "Parent",
+                        "order_weight": 1025,
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                    },
+                ],
+                "property": "peer",
+            },
+            {
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "on_delete": "cascade",
+                    },
+                    {
+                        "name": "device",
+                        "peer": "LogicalDevice",
+                        "cardinality": "one",
+                        "identifier": "device__interface",
+                        "optional": False,
+                        "on_delete": "no-action",
+                    },
+                ],
+                "property": "on_delete",
+            },
+        ]
+    ],
+    InheritedRelationshipsTestData(
+        name="inherit-from-3-generics-peer-fail",
+        schema={
+            "generics": [
+                {
+                    "name": "GenericInterface",
+                    "namespace": "Network",
+                    "description": "Generic Network Interface",
+                    "label": "Interface",
+                    "include_in_menu": False,
+                    "display_labels": ["name__value"],
+                    "order_by": ["device__name__value", "name__value"],
+                    "uniqueness_constraints": [["device", "name__value"]],
+                    "human_friendly_id": ["device__name__value", "name__value"],
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "Text",
+                            "description": "Name of the interface",
+                            "order_weight": 1000,
+                        }
+                    ],
+                    "relationships": [
+                        {
+                            "name": "device",
+                            "peer": "NetworkDevice",
+                            "identifier": "device__interface",
+                            "optional": False,
+                            "cardinality": "one",
+                            "kind": "Parent",
+                        }
+                    ],
+                },
+                {
+                    "name": "IndexedInterface",
+                    "namespace": "Logical",
+                    "description": "Generic for an interface that is part of a logical device and has an index",
+                    "include_in_menu": False,
+                    "human_friendly_id": ["device__name__value", "index__value"],
+                    "uniqueness_constraints": [["device", "index__value"]],
+                    "attributes": [
+                        {
+                            "name": "index",
+                            "kind": "Number",
+                            "description": "Index of the interface in the device",
+                        }
+                    ],
+                    "relationships": [
+                        {
+                            "name": "device",
+                            "peer": "NetworkDevice",
+                            "cardinality": "one",
+                            "identifier": "device__interface",
+                            "optional": False,
+                            "kind": "Parent",
+                        }
+                    ],
+                },
+                {
+                    "name": "Device",
+                    "namespace": "Logical",
+                    "description": "Generic for a logical device that could be part of a logical network",
+                    "include_in_menu": False,
+                    "attributes": [
+                        {
+                            "name": "index",
+                            "kind": "Number",
+                            "description": "Index of the device in the network",
+                        },
+                    ],
+                    "relationships": [
+                        {
+                            "name": "device",
+                            "peer": "NetworkThirdDevice",
+                            "cardinality": "one",
+                            "identifier": "device__interface",
+                            "optional": False,
+                        },
+                    ],
+                },
+            ],
+            "nodes": [
+                {
+                    "name": "Device",
+                    "namespace": "Network",
+                    "label": "Network device",
+                    "description": "Physical network port on a device",
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "Text",
+                            "description": "Name of the interface",
+                            "unique": True,
+                            "optional": False,
+                            "order_weight": 1000,
+                        }
+                    ],
+                },
+                {
+                    "name": "ThirdDevice",
+                    "namespace": "Network",
+                    "label": "Network device",
+                    "description": "Physical network port on a device",
+                    "attributes": [
+                        {
+                            "name": "name",
+                            "kind": "Text",
+                            "description": "Name of the interface",
+                            "unique": True,
+                            "optional": False,
+                            "order_weight": 1000,
+                        }
+                    ],
+                },
+                {
+                    "name": "Physical",
+                    "namespace": "Interface",
+                    "label": "Physical Interface",
+                    "description": "Physical network port on a device",
+                    "inherit_from": [
+                        "NetworkGenericInterface",
+                        "LogicalIndexedInterface",
+                        "LogicalDevice",
+                    ],
+                },
+            ],
+        },
+        error_message=(
+            "InterfacePhysical inherits from 'NetworkGenericInterface' & 'LogicalDevice'"
+            " with different 'peer' on the 'device' relationship"
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in INHERITED_RELATIONSHIPS_TEST_CASES],
+)
+def test_schema_branch_validates_inherited_relationships_fields(test_case: InheritedRelationshipsTestData):
+    schema = SchemaBranch(cache={}, name=test_case.name)
+    schema.load_schema(schema=SchemaRoot(**test_case.schema))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_inherited_relationships_fields()
+
+    assert exc.value.args[0] == test_case.error_message
 
 
 async def test_schema_branch_processes_relationships_state(

@@ -547,6 +547,7 @@ class SchemaBranch:
         self.validate_parent_component()
         self.validate_human_friendly_id()
         self.validate_required_relationships()
+        self.validate_inherited_relationships_fields()
 
     def process_post_validation(self) -> None:
         self.cleanup_inherited_elements()
@@ -1327,6 +1328,81 @@ class SchemaBranch:
                             f"{node.kind}: Relationship {rel.name!r} max_count must be 0 or greater than 1 when cardinality is MANY"
                         )
 
+    def validate_inherited_relationships_fields(self) -> None:
+        for name in self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+            if not node_schema.inherit_from:
+                continue
+
+            self.validate_node_inherited_relationship_fields(node_schema)
+
+    def validate_node_inherited_relationship_fields(self, node_schema: NodeSchema) -> None:
+        generics = [self.get(name=node_name, duplicate=False) for node_name in node_schema.inherit_from]
+        relationship_names = [node.relationship_names for node in generics]
+        related_relationship_names = set().union(
+            *[
+                set(relationship_name_a) & set(relationship_name_b)
+                for index, relationship_name_a in enumerate(relationship_names)
+                for relationship_name_b in relationship_names[index + 1 :]
+            ]
+        )
+        # Check that the relationship properties match
+        # for every generic node in generics list having related relationship names
+        for index, generic_a in enumerate(generics):
+            for generic_b in generics[index + 1 :]:
+                for relationship_name in related_relationship_names:
+                    try:
+                        relationship_a = generic_a.get_relationship(name=relationship_name)
+                        relationship_b = generic_b.get_relationship(name=relationship_name)
+                    except ValueError:
+                        continue
+
+                    matched, _property = self._check_relationship_properties_match(
+                        relationship_a=relationship_a, relationship_b=relationship_b
+                    )
+                    if not matched:
+                        raise ValueError(
+                            f"{node_schema.kind} inherits from '{generic_a.kind}' & '{generic_b.kind}'"
+                            f" with different '{_property}' on the '{relationship_name}' relationship"
+                        )
+
+    def _check_relationship_properties_match(
+        self, relationship_a: RelationshipSchema, relationship_b: RelationshipSchema
+    ) -> tuple[bool, str | None]:
+        compulsorily_matching_properties = (
+            "name",
+            "peer",
+            "kind",
+            "identifier",
+            "cardinality",
+            "min_count",
+            "max_count",
+            "common_parent",
+            "common_relatives",
+            "optional",
+            "branch",
+            "direction",
+            "on_delete",
+            "read_only",
+            "hierarchical",
+            "allow_override",
+        )
+        for _property in compulsorily_matching_properties:
+            if not hasattr(relationship_a, _property) or not hasattr(relationship_b, _property):
+                continue
+
+            equal_delete_actions = (None, RelationshipDeleteBehavior.NO_ACTION)
+            if (
+                _property == "on_delete"
+                and getattr(relationship_a, _property) in equal_delete_actions
+                and getattr(relationship_b, _property) in equal_delete_actions
+            ):
+                continue
+
+            if getattr(relationship_a, _property) != getattr(relationship_b, _property):
+                return False, _property
+        return True, None
+
     def process_dropdowns(self) -> None:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -1750,6 +1826,8 @@ class SchemaBranch:
         """Generate order_weight for all generic schemas."""
         for name in self.generic_names:
             node = self.get(name=name, duplicate=False)
+            if node.namespace == "Template":
+                continue
 
             items_to_update = [item for item in node.attributes + node.relationships if not item.order_weight]
 
@@ -1813,10 +1891,36 @@ class SchemaBranch:
 
             self.set(name=name, schema=template)
 
+    def _generate_generics_templates_weight(self) -> None:
+        """Generate order_weight for generic templates.
+
+        The order of the fields for the template must respect the order of the node.
+        """
+        for name in self.generic_names:
+            generic_node = self.get(name=name, duplicate=False)
+            try:
+                template = self.get(name=self._get_object_template_kind(node_kind=generic_node.kind), duplicate=True)
+            except SchemaNotFoundError:
+                continue
+
+            generic_node_weights = {
+                item.name: item.order_weight
+                for item in generic_node.attributes + generic_node.relationships
+                if item.order_weight is not None
+            }
+
+            for item in template.attributes + template.relationships:
+                if item.order_weight:
+                    continue
+                item.order_weight = generic_node_weights[item.name] if item.name in generic_node_weights else None
+
+            self.set(name=template.kind, schema=template)
+
     def generate_weight(self) -> None:
         self._generate_weight_generics()
         self._generate_weight_nodes_profiles()
         self._generate_weight_templates()
+        self._generate_generics_templates_weight()
 
     def cleanup_inherited_elements(self) -> None:
         for name in self.node_names:

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, InputObjectType, Mutation, String
 
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import PermissionAction, PermissionDecision
+from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
@@ -15,6 +15,7 @@ from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data
+from infrahub.permissions import define_global_permission_from_branch
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -52,15 +53,21 @@ class UpdateDisplayLabel(Mutation):
         if not node_schema.display_label:
             raise ValidationError(input_value=f"{node_schema.kind}.display_label has not been defined for this kind.")
 
-        graphql_context.active_permissions.raise_for_permission(
-            permission=ObjectPermission(
-                namespace=node_schema.namespace,
-                name=node_schema.name,
-                action=PermissionAction.UPDATE.value,
-                decision=PermissionDecision.ALLOW_DEFAULT.value
-                if graphql_context.branch.name == registry.default_branch
-                else PermissionDecision.ALLOW_OTHER.value,
-            )
+        graphql_context.active_permissions.raise_for_permissions(
+            permissions=[
+                define_global_permission_from_branch(
+                    permission=GlobalPermissions.UPDATE_OBJECT_HFID_DISPLAY_LABEL,
+                    branch_name=graphql_context.branch.name,
+                ),
+                ObjectPermission(
+                    namespace=node_schema.namespace,
+                    name=node_schema.name,
+                    action=PermissionAction.UPDATE.value,
+                    decision=PermissionDecision.ALLOW_DEFAULT.value
+                    if graphql_context.branch.name == registry.default_branch
+                    else PermissionDecision.ALLOW_OTHER.value,
+                ),
+            ]
         )
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 

@@ -119,7 +119,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
       );
     }
     default: {
-      return <BranchDetails />;
+      return <BranchDetails branchName={branchName} />;
     }
   }
 };

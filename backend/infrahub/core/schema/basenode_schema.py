@@ -9,7 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
-from pydantic import field_validator
+from pydantic import ConfigDict, field_validator
 
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
@@ -19,6 +19,7 @@ from .generated.base_node_schema import GeneratedBaseNodeSchema
 from .relationship_schema import RelationshipSchema
 
 if TYPE_CHECKING:
+    from pydantic.config import JsonDict
     from typing_extensions import Self
 
     from infrahub.core.schema import GenericSchema, NodeSchema
@@ -40,9 +41,37 @@ OPTIONAL_TEXT_FIELDS = [
 ]
 
 
+def _json_schema_extra(schema: JsonDict) -> None:
+    """
+    Mutate the generated JSON Schema in place to:
+      - allow `null` for `display_labels`
+      - mark the non-null branch as deprecated
+    """
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        return
+    dl = props.get("display_labels")
+    if not isinstance(dl, dict):
+        return
+
+    if "anyOf" in dl:
+        dl["anyOf"] = [
+            {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "deprecationMessage": "display_labels are deprecated use display_label instead",
+                },
+            },
+            {"type": "null"},
+        ]
+
+
 class BaseNodeSchema(GeneratedBaseNodeSchema):
     _exclude_from_hash: list[str] = ["attributes", "relationships"]
     _sort_by: list[str] = ["namespace", "name"]
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra=_json_schema_extra)
 
     @property
     def is_schema_node(self) -> bool:

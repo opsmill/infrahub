@@ -560,7 +560,7 @@ class RelationshipChangelogGetter:
 
         for peer in relationship.peers:
             if peer.peer_status == DiffAction.ADDED:
-                peer_schema = schema_branch.get(name=peer.peer_kind)
+                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
                     self._process_added_peers(
                         peer_id=peer.peer_id,
@@ -572,7 +572,7 @@ class RelationshipChangelogGetter:
                 )
 
             elif peer.peer_status == DiffAction.REMOVED:
-                peer_schema = schema_branch.get(name=peer.peer_kind)
+                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
                     self._process_removed_peers(
                         peer_id=peer.peer_id,

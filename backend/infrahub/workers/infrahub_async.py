@@ -18,6 +18,7 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.initialization import initialization
+from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
@@ -128,6 +129,9 @@ class InfrahubWorkerAsync(BaseWorker):
                 await initialization(db=db)
 
             await self.service.component.refresh_schema_hash()
+
+        async with self.service.database.start_session() as dbs:
+            await validate_graph_version(db=dbs)
 
         initialize_repositories_directory()
         build_component_registry()

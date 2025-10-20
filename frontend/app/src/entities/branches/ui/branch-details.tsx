@@ -1,14 +1,12 @@
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
+import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import { QSP } from "@/config/qsp";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";
@@ -25,7 +23,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
-import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
+import { useGetBranchDetails } from "@/entities/branches/domain/get-branch-details.query";
 import { branchesState } from "@/entities/branches/stores";
 
 import {
@@ -38,8 +36,10 @@ import { BranchMergeButton } from "./branch-merge-button";
 import { BranchRebaseButton } from "./branch-rebase-button";
 import { BranchValidateButton } from "./branch-validate-button";
 
-export const BranchDetails = () => {
-  const { "*": branchName } = useParams();
+interface BranchDetailsProps {
+  branchName: string;
+}
+export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   const date = useAtomValue(datetimeAtom);
   const { isAuthenticated } = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
@@ -48,6 +48,20 @@ export const BranchDetails = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  const { isPending, error, data: branch } = useGetBranchDetails({ branchName });
+
+  if (isPending) {
+    return <LoadingIndicator className="h-[239px]" />;
+  }
+
+  if (error) {
+    return <ErrorScreen message="Something went wrong when fetching the branch details." />;
+  }
+
+  if (!branch) {
+    return <NoDataFound message={`Branch ${branchName} does not exists.`} />;
+  }
 
   const branchAction = async ({ successMessage, errorMessage, mutation }: any) => {
     if (!branchName) return;
@@ -76,24 +90,6 @@ export const BranchDetails = () => {
       setIsLoading(false);
     }
   };
-
-  const { loading, error, data } = useQuery(getBranchDetailsQuery, { variables: { branchName } });
-
-  if (loading) {
-    return <LoadingIndicator className="h-[239px]" />;
-  }
-
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching the branch details." />;
-  }
-
-  const branchData = data?.Branch;
-
-  if (!branchData || branchData.length === 0) {
-    return <NoDataFound message={`Branch ${branchName} does not exists.`} />;
-  }
-
-  const branch = branchData[0];
 
   const columns = [
     {
@@ -156,7 +152,7 @@ export const BranchDetails = () => {
                 <BranchValidateButton branch={branch} />
 
                 <Button
-                  disabled={!isAuthenticated || branch.is_default}
+                  disabled={!isAuthenticated || !!branch.is_default}
                   onClick={() => setDisplayModal(true)}
                   variant={"danger"}
                 >
