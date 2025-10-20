@@ -1,4 +1,4 @@
-import { GetDiffTreeParams } from "@/entities/diff/domain/get-diff-tree";
+import type { GetDiffTreeParams } from "@/entities/diff/domain/get-diff-tree";
 
 export const treeQueryKeys = {
   all: ["diff-tree"] as const,
