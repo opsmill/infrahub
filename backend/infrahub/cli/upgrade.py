@@ -86,7 +86,6 @@ async def upgrade_cmd(
     await initialize_internal_schema()
     await update_core_schema(db=dbdriver, initialize=False)
 
-    # FIXME: will not do anything as graph version will be up to date
     if not await rebase_and_migrate_branches(db=dbdriver, migrations=migrations):
         # A migration failed, stop the upgrade process
         rprint("Upgrade cancelled due to branch rebase and migration failure.")

@@ -19,6 +19,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.timestamp import Timestamp
+from infrahub.lock import initialize_lock
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -245,11 +246,8 @@ class MigrationWithRebase(BaseModel):
         return cls(**kwargs)  # type: ignore[arg-type]
 
     async def rebase_branch(self, db: InfrahubDatabase, branch: Branch) -> bool:
-        console = Console()
-        console.print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
         # Circular deps if import inside import block
         # from infrahub.core.branch.tasks import rebase_branch
-
         # await rebase_branch(
         #     branch=branch.name,
         #     context=InfrahubContext.init(
@@ -259,9 +257,16 @@ class MigrationWithRebase(BaseModel):
         #     ),
         # )
         # NOTE: need service/bus component up and running to use prefect flow
-        await branch.rebase(db=db)
-        console.print("done")
-        # FIXME: find out actual rebase result
+        console = Console()
+        console.print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
+        try:
+            await branch.rebase(db=db)
+            console.print("done")
+        except Exception:
+            # NOTE: Narrow to more accurate exception
+            console.print("failed")
+            return False
+
         return True
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
@@ -271,6 +276,12 @@ class MigrationWithRebase(BaseModel):
         raise NotImplementedError()
 
     async def execute_against_branches(self, db: InfrahubDatabase, branches: Sequence[Branch]) -> MigrationResult:
+        # Circular import
+        from infrahub.core.initialization import initialization
+
+        initialize_lock()
+        await initialization(db=db)
+
         result = MigrationResult()
 
         for branch in branches:
