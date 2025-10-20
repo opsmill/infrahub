@@ -1,4 +1,9 @@
 ---
+global:
+  security:
+    allowInsecureImages: true
+image:
+  repository: bitnamilegacy/minio
 mode: distributed
 statefulset:
   replicaCount: 3
@@ -11,3 +16,6 @@ provisioning:
   buckets:
     - name: infrahub-data
 podAntiAffinityPreset: hard
+volumePermissions:
+  image:
+    repository: bitnamilegacy/os-shell

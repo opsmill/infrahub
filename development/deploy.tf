@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     config_path = "~/.kube/config"
   }
 }
@@ -23,7 +23,7 @@ provider "kubectl" {
 
 locals {
   target_namespace = "infrahub"
-  infrahub_version = "1.2.5"
+  infrahub_version = "1.4.10"
 }
 
 ### Infrahub
@@ -33,7 +33,7 @@ resource "helm_release" "infrahub_ha" {
 
   name    = "infrahub"
   chart   = "oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise"
-  version = "3.3.5"
+  version = "3.9.4"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -134,7 +134,7 @@ resource "helm_release" "database_ha_service" {
   name       = "database-service"
   chart      = "neo4j-headless-service"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "5.20.0"
+  version    = "2025.3.0"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -148,12 +148,14 @@ EOT
 }
 
 resource "helm_release" "database_ha" {
+  depends_on = [kubernetes_secret_v1.neo4j_secret]
+
   count = 3
 
   name       = "database-${count.index}"
   chart      = "neo4j"
   repository = "https://helm.neo4j.com/neo4j/"
-  version    = "5.20.0"
+  version    = "2025.3.0"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -166,7 +168,7 @@ neo4j:
   resources:
     cpu: "4"
     memory: "8Gi"
-  password: "admin"
+  passwordFromSecret: "neo4j-user"
   edition: "enterprise"
   acceptLicenseAgreement: "yes"
 config:
@@ -199,6 +201,8 @@ resource "helm_release" "messagequeue_ha" {
   values = [
     <<EOT
 replicaCount: 3
+image:
+  repository: bitnamilegacy/rabbitmq
 auth:
   username: infrahub
   password: infrahub
@@ -221,6 +225,11 @@ resource "helm_release" "objectstore_ha" {
 
   values = [
     <<EOT
+global:
+  security:
+    allowInsecureImages: true
+image:
+  repository: bitnamilegacy/minio
 mode: distributed
 statefulset:
   replicaCount: 3
@@ -233,21 +242,14 @@ provisioning:
   buckets:
     - name: infrahub-data
 podAntiAffinityPreset: hard
+volumePermissions:
+  image:
+    repository:	bitnamilegacy/os-shell
 EOT
   ]
 }
 
 #### Task manager
-
-# Workaround since Prefect Helm chart does not use StatefulSets and multiple pod initialization causes issue with concurrent DB init
-# StatefulSet would solve this issue because it creates pods sequentially
-# Workaround by installing the Helm chart with one replica, and then scale up to 3 replicas
-resource "null_resource" "scale_up_taskmanager" {
-  depends_on = [helm_release.infrahub_ha]
-  provisioner "local-exec" {
-    command = "kubectl scale -n ${local.target_namespace} deployment/prefect-server --replicas=3"
-  }
-}
 
 resource "helm_release" "taskmanager_ha" {
   depends_on = [helm_release.cache_ha, kubectl_manifest.taskmanagerdb_ha]
@@ -255,7 +257,7 @@ resource "helm_release" "taskmanager_ha" {
   name       = "taskmanager"
   chart      = "prefect-server"
   repository = "https://prefecthq.github.io/prefect-helm"
-  version    = "2025.2.21193831"
+  version    = "2025.7.31204438"
 
   create_namespace = true
   namespace        = local.target_namespace
@@ -268,30 +270,47 @@ global:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
       prefectTag: ${local.infrahub_version}
 server:
-  replicaCount: 1
+  replicaCount: 3
   command:
     - /usr/bin/tini
     - -g
     - --
   args:
-    - uvicorn
-    - --host
-    - "0.0.0.0"
-    - --port
-    - "4200"
-    - --factory
-    - infrahub.prefect_server.app:create_infrahub_prefect
+    - gunicorn
+    - -k
+    - uvicorn.workers.UvicornWorker
+    - -b
+    - 0.0.0.0:4200
+    - 'infrahub.prefect_server.app:create_infrahub_prefect()'
   env:
+    - name: INFRAHUB_CACHE_ADDRESS
+      value: redis-sentinel-proxy
     - name: PREFECT_UI_SERVE_BASE
       value: /
+    - name: PREFECT__SERVER_WEBSERVER_ONLY
+      value: "true"
     - name: PREFECT_MESSAGING_BROKER
       value: prefect_redis.messaging
     - name: PREFECT_MESSAGING_CACHE
       value: prefect_redis.messaging
+    - name: PREFECT_SERVER_EVENTS_CAUSAL_ORDERING
+      value: prefect_redis.ordering
+    - name: PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE
+      value: prefect_redis.lease_storage
     - name: PREFECT_REDIS_MESSAGING_HOST
       value: redis-sentinel-proxy
     - name: PREFECT_REDIS_MESSAGING_DB
       value: "1"
+    - name: PREFECT_API_DATABASE_MIGRATE_ON_START
+      value: "false"
+    - name: PREFECT_API_BLOCKS_REGISTER_ON_START
+      value: "false"
+  podSecurityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    runAsUser: 1000
+    readOnlyRootFilesystem: false
 secret:
   create: true
   name: ""
@@ -402,6 +421,8 @@ resource "helm_release" "cache_ha" {
   values = [
     <<EOT
 nameOverride: cache
+image:
+  repository: bitnamilegacy/redis
 architecture: replication
 auth:
   enabled: false
@@ -417,6 +438,8 @@ replicas:
   podAntiAffinityPreset: hard
 sentinel:
   enabled: true
+  image:
+    repository: bitnamilegacy/redis-sentinel
 EOT
   ]
 }
@@ -456,6 +479,16 @@ resource "kubernetes_secret_v1" "db_secret" {
   data = {
     username = "prefect"
     password = "prefect"
+  }
+}
+
+resource "kubernetes_secret_v1" "neo4j_secret" {
+  metadata {
+    name      = "neo4j-user"
+    namespace = local.target_namespace
+  }
+  data = {
+    NEO4J_AUTH = "neo4j/admin"
   }
 }
 
