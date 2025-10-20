@@ -61,6 +61,10 @@ export const RelationshipDisplay = ({
         <PropertyRow title="Min count" value={relationship.min_count} />
         <PropertyRow title="Order weight" value={relationship.order_weight} />
       </div>
+
+      <div>
+        <PropertyRow title="On delete" value={relationship.on_delete} />
+      </div>
     </AccordionStyled>
   );
 };
