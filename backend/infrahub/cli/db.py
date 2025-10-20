@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import logging
 import os
 from collections import defaultdict
@@ -16,7 +15,6 @@ from infrahub_sdk.async_typer import AsyncTyper
 from prefect.testing.utilities import prefect_test_harness
 from rich import print as rprint
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.table import Table
 
 from infrahub import config
@@ -33,9 +31,7 @@ from infrahub.core.graph.schema import (
     GraphRelationshipProperties,
 )
 from infrahub.core.initialization import (
-    first_time_initialization,
     get_root_node,
-    initialization,
     initialize_registry,
 )
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
@@ -44,13 +40,11 @@ from infrahub.core.migrations.schema.tasks import schema_apply_migrations
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
-from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
-from infrahub.log import get_logger
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -92,67 +86,6 @@ def callback() -> None:
     """
     Manage the graph in the database.
     """
-
-
-@app.command()
-async def init(
-    ctx: typer.Context,
-    config_file: str = typer.Option(
-        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    ),
-) -> None:
-    """Erase the content of the database and initialize it with the core schema."""
-
-    log = get_logger()
-
-    # --------------------------------------------------
-    # CLEANUP
-    #  - For now we delete everything in the database
-    #   TODO, if possible try to implement this in an idempotent way
-    # --------------------------------------------------
-
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-    config.load_and_exit(config_file_name=config_file)
-
-    context: CliContext = ctx.obj
-    dbdriver = await context.init_db(retry=1)
-    async with dbdriver.start_transaction() as db:
-        log.info("Delete All Nodes")
-        await delete_all_nodes(db=db)
-        await first_time_initialization(db=db)
-
-    await dbdriver.close()
-
-
-@app.command()
-async def load_test_data(
-    ctx: typer.Context,
-    config_file: str = typer.Option(
-        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    ),
-    dataset: str = "dataset01",
-) -> None:
-    """Load test data into the database from the `test_data` directory."""
-
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-    config.load_and_exit(config_file_name=config_file)
-
-    context: CliContext = ctx.obj
-    dbdriver = await context.init_db(retry=1)
-
-    async with dbdriver.start_session() as db:
-        await initialization(db=db)
-
-        log_level = "DEBUG"
-
-        FORMAT = "%(message)s"
-        logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-        logging.getLogger("infrahub")
-
-        dataset_module = importlib.import_module(f"infrahub.test_data.{dataset}")
-        await dataset_module.load_data(db=db)
-
-    await dbdriver.close()
 
 
 @app.command(name="migrate")
