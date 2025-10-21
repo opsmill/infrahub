@@ -1,3 +1,4 @@
+import { Icon } from "@iconify-icon/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { CircleMinusIcon, CirclePlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import {
@@ -9,7 +10,7 @@ import {
   type TagProps,
 } from "react-aria-components";
 
-import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { disabledStyle, focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 export interface DiffSummaryProps<T>
@@ -33,10 +34,11 @@ export function DiffSummaryTagGroup<T extends object>({
   );
 }
 
-const diffSummaryTagVariants = cva(
+const diffSummaryTagStyles = cva(
   [
+    disabledStyle,
     focusVisibleStyle,
-    "inline-flex cursor-pointer items-center gap-1 rounded-full border border-transparent p-1 text-xs",
+    "relative inline-flex cursor-pointer items-center gap-1 rounded-full border border-transparent p-1 text-xs",
   ],
   {
     variants: {
@@ -46,23 +48,36 @@ const diffSummaryTagVariants = cva(
         updated: "bg-blue-200 text-blue-800",
         conflicts: "bg-yellow-200 text-yellow-800",
       },
+      isMuted: {
+        true: "opacity-50",
+      },
     },
   }
 );
 
-export interface DiffSummaryTagProps extends VariantProps<typeof diffSummaryTagVariants>, TagProps {
+export interface DiffSummaryTagProps extends VariantProps<typeof diffSummaryTagStyles>, TagProps {
   count: number;
+  isClosable?: boolean;
 }
 
-export function DiffSummaryTag({ count, variant, ...props }: DiffSummaryTagProps) {
+export function DiffSummaryTag({
+  count,
+  variant,
+  className,
+  isClosable,
+  isMuted,
+  children,
+  ...props
+}: DiffSummaryTagProps) {
   return (
     <Tag
-      className={classNames(diffSummaryTagVariants({ variant }))}
+      className={classNames(diffSummaryTagStyles({ variant, isMuted }), className)}
       textValue={`diff ${variant} count`}
       {...props}
     >
       <DiffSummaryIcon variant={variant} />
       {count}
+      {isClosable && <DiffSummaryClose variant={variant} />}
     </Tag>
   );
 }
@@ -70,7 +85,7 @@ export function DiffSummaryTag({ count, variant, ...props }: DiffSummaryTagProps
 export function DiffSummaryIcon({
   variant,
   ...props
-}: Pick<VariantProps<typeof diffSummaryTagVariants>, "variant">) {
+}: Pick<VariantProps<typeof diffSummaryTagStyles>, "variant">) {
   const className = "size-3";
 
   switch (variant) {
@@ -85,4 +100,30 @@ export function DiffSummaryIcon({
     default:
       return null;
   }
+}
+
+const diffSummaryCloseStyles = cva(
+  "-top-2 -right-2 absolute flex items-center justify-center rounded-full border-2 border-white",
+  {
+    variants: {
+      variant: {
+        added: "bg-green-200 text-green-800",
+        removed: "bg-red-200 text-red-800",
+        updated: "bg-blue-200 text-blue-800",
+        conflicts: "bg-yellow-200 text-yellow-800",
+      },
+    },
+  }
+);
+
+export interface DiffSummaryCloseProps
+  extends React.HTMLProps<HTMLDivElement>,
+    VariantProps<typeof diffSummaryCloseStyles> {}
+
+export function DiffSummaryClose({ className, variant, ...props }: DiffSummaryCloseProps) {
+  return (
+    <div className={classNames(diffSummaryCloseStyles({ variant }), className)} {...props}>
+      <Icon icon="mdi:close" size={1} />
+    </div>
+  );
 }

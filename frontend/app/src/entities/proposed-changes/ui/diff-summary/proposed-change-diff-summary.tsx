@@ -20,7 +20,7 @@ export function ProposedChangeDiffSummary({
   proposedChangeId,
   branchName,
 }: ProposedChangeDiffSummaryProps) {
-  const { error, data, isPending } = useGetDiffSummary({ branchName });
+  const { error, data, isPending } = useGetDiffSummary({ branch: branchName });
 
   if (isPending) {
     return <DiffSummarySkeleton />;
