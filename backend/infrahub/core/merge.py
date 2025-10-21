@@ -6,7 +6,7 @@ from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateValidationResult
-from infrahub.core.protocols import CoreRepository
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import MergeFailedError, ValidationError
@@ -223,6 +223,29 @@ class BranchMerger:
         await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:
+        await self.merge_core_read_only_repositories()
+        await self.merge_core_repositories()
+
+    async def merge_core_read_only_repositories(self) -> None:
+        repos_in_main_list = await NodeManager.query(schema=CoreReadOnlyRepository, db=self.db)
+        repos_in_main = {repo.id: repo for repo in repos_in_main_list}
+
+        repos_in_branch_list = await NodeManager.query(
+            schema=CoreReadOnlyRepository, db=self.db, branch=self.source_branch
+        )
+        for repo in repos_in_branch_list:
+            if repo.id not in repos_in_main:
+                continue
+
+            model = GitRepositoryMerge(
+                repository_id=repo.id,
+                repository_name=repo.name.value,
+                source_branch=self.source_branch.name,
+                destination_branch=self.destination_branch.name,
+            )
+            await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+
+    async def merge_core_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema=CoreRepository, db=self.db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}

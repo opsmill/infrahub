@@ -502,6 +502,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
 async def merge_git_repository(model: GitRepositoryMerge) -> None:
+    log = get_run_logger()
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
     client = get_client()
@@ -511,6 +512,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
     )
 
     if model.internal_status == RepositoryInternalStatus.STAGING.value:
+        log.info(f"Merging {InfrahubKind.GENERICREPOSITORY}")
         repo_source = await client.get(
             kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch
         )
@@ -522,6 +524,26 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         repo_main.commit.value = commit
 
         await repo_main.save()
+        log.info(f"Finished merging {InfrahubKind.GENERICREPOSITORY}")
+
+    elif not model.default_branch:
+        log.info(f"Merging {InfrahubKind.READONLYREPOSITORY}")
+        repo_source = await client.get(
+            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.source_branch
+        )
+        repo_destination = await client.get(
+            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.destination_branch
+        )
+
+        if (
+            repo_destination.ref.value != repo_source.ref.value
+            or repo_destination.commit.value != repo_source.commit.value
+        ):
+            repo_destination.ref.value = repo_source.ref.value
+            repo_destination.commit.value = repo_source.commit.value
+            await repo_destination.save()
+            log.info(f"Finished merging {InfrahubKind.READONLYREPOSITORY}")
+
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
