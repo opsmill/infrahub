@@ -6880,6 +6880,16 @@ input InfrahubAccountUpdateSelfInput {
   password: String
 }
 
+type InfrahubBranchEdge {
+  node: [Branch!]!
+}
+
+type InfrahubBranchType {
+  """Total number of items"""
+  count: Int!
+  edges: InfrahubBranchEdge!
+}
+
 input InfrahubComputedAttributeRecomputeInput {
   """Name of the computed attribute that must be recomputed"""
   attribute: String!
@@ -10397,6 +10407,8 @@ type Query {
   """Retrieve fields mapping for converting object type"""
   FieldsMappingTypeConversion(source_kind: String, target_kind: String): FieldsMapping!
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
+  """Retrieve paginated information about active branches."""
+  InfrahubBranch(ids: [ID!], limit: Int, name: String, offset: Int): InfrahubBranchType!
   InfrahubEvent(
     """Filter the query to specific accounts"""
     account__ids: [String!]

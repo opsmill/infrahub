@@ -51,20 +51,10 @@ class InfrahubBranchEdge(InfrahubObjectType):
 
 
 class InfrahubBranchType(InfrahubObjectType):
-    count = Field(Int, required=True)
+    count = Field(Int, required=True, description="Total number of items")
     edges = Field(InfrahubBranchEdge, required=True)
 
     @classmethod
-    async def get_list_and_count(
-        cls,
-        fields: dict,
-        graphql_context: GraphqlContext,
-        **kwargs: Any,
-    ) -> tuple[list[dict[str, Any]], int]:
+    async def get_list_count(cls, graphql_context: GraphqlContext, **kwargs: Any) -> int:
         async with graphql_context.db.start_session(read_only=True) as db:
-            objs, count = await Branch.get_list_and_count(db=db, **kwargs)
-
-            if not objs:
-                return [], 0
-
-            return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME], count
+            return await Branch.get_list_count(db=db, **kwargs)

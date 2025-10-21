@@ -33,27 +33,23 @@ BranchQueryList = Field(
 async def infrahub_branch_resolver(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
-    **kwargs: Any,
+    limit: int | None = None,
+    offset: int | None = None,
 ) -> dict[str, Any]:
-    limit = kwargs.pop("limit", 100)
-    offset = kwargs.pop("offset", 0)
     fields = extract_graphql_fields(info)
-    branches, count = await InfrahubBranchType.get_list_and_count(
-        fields=fields.get("edges", {}).get("node", {}),
-        graphql_context=info.context,
-        limit=limit,
-        offset=offset,
-        **kwargs,
+    branches = await BranchType.get_list(
+        graphql_context=info.context, fields=fields.get("edges", {}).get("node", {}), limit=limit, offset=offset
     )
+    count = await InfrahubBranchType.get_list_count(graphql_context=info.context, limit=limit, offset=offset)
     return {"count": count, "edges": {"node": branches}}
 
 
 InfrahubBranchQueryList = Field(
     InfrahubBranchType,
-    ids=List(ID),
+    ids=List(of_type=NonNull(ID)),
     name=String(),
-    offset=Int(default_value=0),
-    limit=Int(default_value=100),
+    offset=Int(),
+    limit=Int(),
     description="Retrieve paginated information about active branches.",
     resolver=infrahub_branch_resolver,
     required=True,

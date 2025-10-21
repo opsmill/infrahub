@@ -31,7 +31,6 @@ class TestBranchQuery(TestInfrahubApp):
 
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -61,9 +60,7 @@ class TestBranchQuery(TestInfrahubApp):
             }
         }
         """
-        gql_params = await prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, service=service
-        )
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
         all_branches = await graphql(
             schema=gql_params.schema,
             source=query,
@@ -108,9 +105,7 @@ class TestBranchQuery(TestInfrahubApp):
             }
         }
         """ % branch3["name"]
-        gql_params = await prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, service=service
-        )
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
         name_response = await graphql(
             schema=gql_params.schema,
             source=name_query,
@@ -134,9 +129,7 @@ class TestBranchQuery(TestInfrahubApp):
         """ % [branch3["id"]]
         id_query = id_query.replace("'", '"')
 
-        gql_params = await prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, service=service
-        )
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
         id_response = await graphql(
             schema=gql_params.schema,
             source=id_query,
@@ -176,7 +169,6 @@ class TestBranchQuery(TestInfrahubApp):
 
             gql_params = await prepare_graphql_params(
                 db=db,
-                include_subscription=False,
                 branch=default_branch,
                 account_session=session_admin,
                 service=service,
@@ -204,9 +196,7 @@ class TestBranchQuery(TestInfrahubApp):
                 }
             }
         """
-        gql_params = await prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, service=service
-        )
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
         all_branches = await graphql(
             schema=gql_params.schema,
             source=query,

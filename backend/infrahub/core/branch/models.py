@@ -11,8 +11,9 @@ from infrahub.core.constants import (
 )
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.query import QueryType
+from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import (
+    BranchNodeGetListQuery,
     DeleteBranchRelationshipsQuery,
     GetAllBranchInternalRelationshipQuery,
     RebaseBranchDeleteRelationshipQuery,
@@ -160,22 +161,26 @@ class Branch(StandardNode):
         name: str | None = None,
         **kwargs: dict[str, Any],
     ) -> list[Self]:
-        branches = await super().get_list(db=db, limit=limit, ids=ids, name=name, **kwargs)
-        branches = [branch for branch in branches if branch.status != BranchStatus.DELETING]
+        query: Query = await BranchNodeGetListQuery.init(
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+        )
+        await query.execute(db=db)
 
-        return branches
+        return [cls.from_db(result.get("n")) for result in query.get_results()]
 
     @classmethod
-    async def get_list_and_count(
+    async def get_list_count(
         cls,
         db: InfrahubDatabase,
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
-        **kwargs: Any,
-    ) -> tuple[list[Self], int]:
-        kwargs["raw_filter"] = f"n.status <> '{BranchStatus.DELETING.value}'"
-        return await super().get_list_and_count(db=db, limit=limit, ids=ids, name=name, **kwargs)
+        **kwargs: dict[str, Any],
+    ) -> int:
+        query: Query = await BranchNodeGetListQuery.init(
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+        )
+        return await query.count(db=db)
 
     @classmethod
     def isinstance(cls, obj: Any) -> bool:
