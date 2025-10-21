@@ -16,7 +16,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.definitions.core.repository import core_repository
+from infrahub.core.schema.definitions.core.repository import core_read_only_repository, core_repository
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, get_db
@@ -49,6 +49,15 @@ class TestDiffCoordinatorLocks:
         dummy_repository = NodeSchema(
             name=core_repository.name,
             namespace=core_repository.namespace,
+        )
+        schema = SchemaRoot(nodes=[dummy_repository])
+        registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        default_branch.update_schema_hash()
+        await default_branch.save(db=db)
+
+        dummy_repository = NodeSchema(
+            name=core_read_only_repository.name,
+            namespace=core_read_only_repository.namespace,
         )
         schema = SchemaRoot(nodes=[dummy_repository])
         registry.schema.register_schema(schema=schema, branch=default_branch.name)
