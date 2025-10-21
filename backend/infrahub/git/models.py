@@ -91,7 +91,7 @@ class GitRepositoryMerge(BaseModel):
     internal_status: str | None = Field(default=None, description="Administrative status of the repository")
     source_branch: str = Field(..., description="The source branch")
     destination_branch: str = Field(..., description="The destination branch")
-    destination_branch_id: str | None = Field(default=None, description="The ID of the destination branch")
+    destination_branch_id: str = Field(..., description="The ID of the destination branch")
     default_branch: str | None = Field(default=None, description="The default branch in Git")
 
 

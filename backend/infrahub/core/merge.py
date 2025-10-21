@@ -242,6 +242,7 @@ class BranchMerger:
                 repository_name=repo.name.value,
                 source_branch=self.source_branch.name,
                 destination_branch=self.destination_branch.name,
+                destination_branch_id=str(self.destination_branch.get_uuid()),
             )
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 
