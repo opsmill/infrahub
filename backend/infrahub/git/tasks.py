@@ -527,7 +527,6 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         log.info(f"Finished merging {InfrahubKind.GENERICREPOSITORY}")
 
     elif not model.default_branch:
-        log.info(f"Merging {InfrahubKind.READONLYREPOSITORY}")
         repo_source = await client.get(
             kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.source_branch
         )
@@ -539,9 +538,12 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
             repo_destination.ref.value != repo_source.ref.value
             or repo_destination.commit.value != repo_source.commit.value
         ):
+            log.info(f"Merging {InfrahubKind.READONLYREPOSITORY}")
+
             repo_destination.ref.value = repo_source.ref.value
             repo_destination.commit.value = repo_source.commit.value
             await repo_destination.save()
+
             log.info(f"Finished merging {InfrahubKind.READONLYREPOSITORY}")
 
     else:
