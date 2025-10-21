@@ -17,7 +17,6 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.timestamp import Timestamp
-from infrahub.lock import initialize_lock
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -272,12 +271,6 @@ class MigrationWithRebase(BaseModel):
         raise NotImplementedError()
 
     async def execute_against_branches(self, db: InfrahubDatabase, branches: Sequence[Branch]) -> MigrationResult:
-        # Circular import
-        from infrahub.core.initialization import initialization
-
-        initialize_lock()
-        await initialization(db=db)
-
         result = MigrationResult()
 
         for branch in branches:
