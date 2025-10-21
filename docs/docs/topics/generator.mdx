@@ -30,6 +30,21 @@ The [GraphQL query](graphql) defines the data that will be collected when runnin
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [transforms](transformation) and [checks](check), the Generators are user defined.
 
+Generators can be executed in several ways, depending on your workflow and where you are in the lifecycle (local development vs. in Infrahub):
+
+1. During development with infrahubctl
+
+   Use the `infrahubctl generator` command to iterate locally while building and testing your generator.
+2. Manually from the UI
+
+   From the Infrahub UI, open the Generator Definition detail page (Actions > Generator Definitions) and click Run to trigger the generator on demand.
+3. Automatically via Proposed Changes
+
+   When you open a Proposed Change that affects the generator’s targets, the generator runs as part of Infrahub’s CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per generator in the repository configuration file.
+4. Automatically via Events and Actions
+
+   You can configure Infrahub Event rules and Actions to trigger generators automatically based on changes in your data. This enables fully automated execution aligned with your workflows.
+
 ## Video guides
 
 In this video series we’re diving into the concept of generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you’re a developer or just curious about automation in IT, this guide will provide you with a comprehensive understanding of generators and their applications.
