@@ -87,41 +87,6 @@ Implement regular database backups to prevent data loss in case of hardware fail
 Test your backup and restore process periodically to ensure it works as expected.
 :::
 
-## Step 5: Configure monitoring
-
-Set up monitoring to track the health and performance of your Infrahub deployment.
-
-### Using the built-in monitoring stack
-
-Infrahub provides a pre-configured monitoring stack with Prometheus and Grafana:
-
-1. Download the monitoring configuration:
-
-```shell
-curl -O https://raw.githubusercontent.com/opsmill/infrahub/stable/development/docker-compose-observability.yml
-```
-
-2. Start the monitoring services:
-
-```shell
-docker-compose -f docker-compose.yml -f docker-compose-observability.yml up -d
-```
-
-3. Access Grafana at `http://your-server-address:3000` with the default credentials (admin/admin)
-
-### Integrating with existing monitoring systems
-
-If you have an existing monitoring system, configure it to track:
-
-- API endpoints health (`/health` and `/readiness`)
-- Database metrics
-- Message broker metrics
-- Resource utilization (CPU, memory, disk)
-
-:::info
-Set up alerts for critical metrics like API availability, database connection issues, and high resource utilization.
-:::
-
 ## Operations and maintenance
 
 ### Upgrading Infrahub

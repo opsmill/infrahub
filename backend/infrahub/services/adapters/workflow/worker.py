@@ -6,7 +6,7 @@ from prefect.client.schemas.objects import StateType
 from prefect.deployments import run_deployment
 
 from infrahub.workers.utils import inject_context_parameter
-from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
@@ -20,9 +20,12 @@ if TYPE_CHECKING:
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
     @staticmethod
-    async def initialize(component_is_primary_server: bool) -> None:
+    async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
         if component_is_primary_server:
             await setup_task_manager()
+
+        if is_initial_setup:
+            await setup_task_manager_identifiers()
 
     @overload
     async def execute_workflow(

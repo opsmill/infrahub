@@ -112,7 +112,7 @@ class InfrahubServices:
 
         return service
 
-    async def initialize_workflow(self) -> None:
+    async def initialize_workflow(self, is_initial_setup: bool = False) -> None:
         if self.workflow is not None and isinstance(self.workflow, WorkflowWorkerExecution):
             assert self.component is not None
             # Ideally `WorkflowWorkerExecution.initialize` would be directly part of WorkflowWorkerExecution
@@ -120,7 +120,7 @@ class InfrahubServices:
             # after workflow instantiation.
             await self.component.refresh_heartbeat()
             is_primary = await self.component.is_primary_gunicorn_worker()
-            await self.workflow.initialize(component_is_primary_server=is_primary)
+            await self.workflow.initialize(component_is_primary_server=is_primary, is_initial_setup=is_initial_setup)
 
     @property
     def component(self) -> InfrahubComponent:

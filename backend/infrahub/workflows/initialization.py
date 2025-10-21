@@ -76,6 +76,11 @@ async def setup_task_manager() -> None:
         await setup_triggers(
             client=client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN, force_update=True
         )
+
+
+@flow(name="task-manager-identifiers", flow_run_name="Setup Task Manager Display Labels and HFID")
+async def setup_task_manager_identifiers() -> None:
+    async with get_client(sync_client=False) as client:
         display_label_triggers = await gather_trigger_display_labels_jinja2()
         await setup_triggers(
             client=client,
