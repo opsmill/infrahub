@@ -395,7 +395,7 @@ class Query(ABC):
         at: Timestamp | str | None = None,
         limit: int | None = None,
         offset: int | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> Self:
         query = cls(branch=branch, at=at, limit=limit, offset=offset, **kwargs)
 

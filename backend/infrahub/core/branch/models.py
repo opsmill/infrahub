@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, Self, Union
+from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 
+from neo4j.graph import Node as Neo4jNode
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
@@ -159,14 +160,14 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> list[Self]:
         query: Query = await BranchNodeGetListQuery.init(
             db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
         )
         await query.execute(db=db)
 
-        return [cls.from_db(result.get("n")) for result in query.get_results()]
+        return [cls.from_db(node=cast(Neo4jNode, result.get("n"))) for result in query.get_results()]
 
     @classmethod
     async def get_list_count(
@@ -175,7 +176,7 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> int:
         query: Query = await BranchNodeGetListQuery.init(
             db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
