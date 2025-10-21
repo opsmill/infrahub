@@ -574,6 +574,7 @@ class SchemaBranch:
         self.process_dropdowns()
         self.process_relationships()
         self.process_human_friendly_id()
+        self.register_human_friendly_id()
 
     def _generate_identifier_string(self, node_kind: str, peer_kind: str) -> str:
         return "__".join(sorted([node_kind, peer_kind])).lower()
@@ -909,7 +910,6 @@ class SchemaBranch:
         return False
 
     def validate_human_friendly_id(self) -> None:
-        self.hfids = HFIDs()
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -942,11 +942,6 @@ class SchemaBranch:
                     if rel_identifier not in rel_schemas_to_paths:
                         rel_schemas_to_paths[rel_identifier] = (schema_path.related_schema, [])
                     rel_schemas_to_paths[rel_identifier][1].append(schema_path.attribute_path_as_str)
-
-                if node_schema.is_node_schema and node_schema.namespace not in ["Schema", "Internal"]:
-                    self.hfids.register_hfid_schema_path(
-                        kind=node_schema.kind, schema_path=schema_path, hfid=node_schema.human_friendly_id
-                    )
 
             if config.SETTINGS.main.schema_strict_mode:
                 # For every relationship referred within hfid, check whether the combination of attributes is unique is the peer schema node
@@ -1548,6 +1543,34 @@ class SchemaBranch:
                 else:
                     node.uniqueness_constraints = [hfid_uniqueness_constraint]
                 self.set(name=node.kind, schema=node)
+
+    def register_human_friendly_id(self) -> None:
+        """Register HFID automations
+
+        Register the HFIDs after all processing and validation has been done.
+        """
+
+        self.hfids = HFIDs()
+        for name in self.generic_names_without_templates + self.node_names:
+            node_schema = self.get(name=name, duplicate=False)
+
+            if not node_schema.human_friendly_id:
+                continue
+
+            allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR
+
+            for hfid_path in node_schema.human_friendly_id:
+                schema_path = self.validate_schema_path(
+                    node_schema=node_schema,
+                    path=hfid_path,
+                    allowed_path_types=allowed_types,
+                    element_name="human_friendly_id",
+                )
+
+                if node_schema.is_node_schema and node_schema.namespace not in ["Schema", "Internal"]:
+                    self.hfids.register_hfid_schema_path(
+                        kind=node_schema.kind, schema_path=schema_path, hfid=node_schema.human_friendly_id
+                    )
 
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():

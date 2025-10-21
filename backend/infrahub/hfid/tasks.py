@@ -151,7 +151,7 @@ async def hfid_setup(context: InfrahubContext, branch_name: str | None = None, e
 
 @flow(
     name="trigger-update-hfid",
-    flow_run_name="Trigger updates for display labels for kind",
+    flow_run_name="Trigger updates for HFID for {kind}",
 )
 async def trigger_update_hfid(
     branch_name: str,
