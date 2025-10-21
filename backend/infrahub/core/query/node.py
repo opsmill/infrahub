@@ -233,11 +233,15 @@ class NodeCreateAllQuery(NodeQuery):
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 
         attrs_nonindexed_query = """
-        WITH distinct n
+        WITH DISTINCT n
         UNWIND $attrs AS attr
         // Try to find a matching vertex
-        OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
-        WHERE NOT existing_av:AttributeValueIndexed
+        CALL (attr) {
+            OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+            WHERE NOT existing_av:AttributeValueIndexed
+            RETURN existing_av
+            LIMIT 1
+        }
         CALL (attr, existing_av) {
             // If none found, create a new one
             WITH existing_av
