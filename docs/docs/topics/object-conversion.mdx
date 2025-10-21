@@ -17,11 +17,13 @@ In dynamic infrastructure environments, the need to change an object's type ofte
 Object conversion operates on the principle of field equivalence between source and destination schema types. The system automatically identifies compatible fields using specific criteria:
 
 **Attribute field equivalence:**
+
 - Fields must have identical names
 - Fields must have compatible value types
 - Data validation rules are preserved during conversion
 
 **Relationship field equivalence:**
+
 - Fields must have identical names
 - Fields must reference the same peer schema type
 - Cardinality constraints (one-to-one, one-to-many) must match
@@ -40,11 +42,13 @@ When initiating a conversion, Infrahub performs these steps:
 Not all fields between schema types will have direct equivalents. The conversion process handles these scenarios:
 
 **Missing source fields:**
+
 - Destination fields without source equivalents must be manually specified
 - Mandatory destination fields require explicit values or use of defaults
 - Optional fields can leverage schema-defined default values
 
 **Surplus source fields:**
+
 - Source fields without destination equivalents are gracefully ignored
 - Data from these fields is not transferred but doesn't impede conversion
 - Historical data remains accessible through version control
@@ -56,7 +60,9 @@ Not all fields between schema types will have direct equivalents. The conversion
 Object conversion integrates deeply with Infrahub's Git-like branching model, but this creates important constraints:
 
 **Branch-aware attributes:**
+
 Objects containing branch-aware attributes (fields that can have different values across branches) require special handling. These conversions:
+
 - Must occur on the default branch to maintain data consistency
 - Trigger automatic rebase requirements for other branches
 - May result in data loss on non-conversion branches
@@ -69,11 +75,13 @@ The conversion process maintains object history and commit lineage, ensuring aud
 Several mechanisms protect data integrity during conversion:
 
 **Validation enforcement:**
+
 - All destination schema constraints are validated before conversion
 - Referential integrity for relationships is maintained
 - Data type compatibility is strictly enforced
 
 **Atomic operations:**
+
 - Conversions execute as atomic transactions
 - Failures result in complete rollback with no partial state
 - Concurrent modifications are handled through Infrahub's conflict resolution
