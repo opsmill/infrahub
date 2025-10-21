@@ -40,7 +40,7 @@ async def infrahub_branch_resolver(
     branches = await BranchType.get_list(
         graphql_context=info.context, fields=fields.get("edges", {}).get("node", {}), limit=limit, offset=offset
     )
-    count = await InfrahubBranchType.get_list_count(graphql_context=info.context, limit=limit, offset=offset)
+    count = await InfrahubBranchType.get_list_count(graphql_context=info.context)
     return {"count": count, "edges": {"node": branches}}
 
 
