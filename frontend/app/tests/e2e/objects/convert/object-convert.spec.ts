@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../../constants";
-import { generateRandomBranchName } from "../../../utils";
+import { generateRandomBranchName, saveScreenshotForDocs } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
 test.describe("Object details - convert", () => {
@@ -22,6 +22,7 @@ test.describe("Object details - convert", () => {
       await page.goto(`/objects/InfraInterface?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "atl1-edge1, Ethernet1", exact: true }).click();
       await page.getByTestId("object-details-button").click();
+      await saveScreenshotForDocs(page, "object_convert_button");
       await page.getByRole("menuitem", { name: "Convert object type" }).click();
       await expect(page.getByText("SOURCE")).toBeVisible();
       await expect(page.getByText("NameEthernet1")).toBeVisible();
@@ -35,6 +36,7 @@ test.describe("Object details - convert", () => {
       await expect(
         page.getByRole("combobox").filter({ hasText: "atl1-edge1• Device" })
       ).toBeVisible();
+      await saveScreenshotForDocs(page, "object_convert_mapping");
       await page.getByRole("combobox").filter({ hasText: "atl1-edge1• Device" }).click();
 
       await expect(page.getByRole("option", { name: "atl1-edge1 Matched Device" })).toBeVisible();
