@@ -28,7 +28,7 @@ test.describe("Object details - convert", () => {
       await expect(page.getByText("NameEthernet1")).toBeVisible();
       await expect(page.getByText("Deviceatl1-edge1")).toBeVisible();
     });
-    
+
     await test.step("display the interface L3 form with default values from the source object", async () => {
       await page.getByText("Select target object type").click();
       await page.getByPlaceholder("Filter...").fill("l2");
