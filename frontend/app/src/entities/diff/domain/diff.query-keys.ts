@@ -10,6 +10,11 @@ export const updateDiffMutationKeys = {
   all: ["update-diff"] as const,
 };
 
+export const getCheckQueryKeys = {
+  all: ["checks"] as const,
+  details: (checkId: string) => [...getCheckQueryKeys.all, checkId],
+};
+
 export const runCheckMutationKeys = {
   all: ["run-check"] as const,
 };
