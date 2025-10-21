@@ -26,7 +26,7 @@ export const Tabs = (props: TabsProps) => {
 
   const [qspTab, setQspTab] = useQueryState(
     qsp ?? QSP.TAB,
-    parseAsString.withOptions({ history: "push" })
+    parseAsString.withOptions({ history: "push", shallow: false })
   );
 
   const handleClick = (tab: Tab, index: number) => {
