@@ -247,6 +247,7 @@ const sidebars: SidebarsConfig = {
                 'topics/metadata',
                 'topics/groups',
                 'topics/graphql',
+                'topics/object-conversion',
                 'topics/resource-manager',
                 'topics/object-template',
                 'topics/profiles',
