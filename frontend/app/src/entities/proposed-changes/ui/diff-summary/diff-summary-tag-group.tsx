@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { CircleMinusIcon, CirclePlusIcon, RefreshCcwIcon, TriangleAlertIcon } from "lucide-react";
+import { CircleMinusIcon, CirclePlusIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import {
   Tag,
   TagGroup,
@@ -79,7 +79,7 @@ export function DiffSummaryIcon({
     case "removed":
       return <CircleMinusIcon className={className} {...props} />;
     case "updated":
-      return <RefreshCcwIcon className={className} {...props} />;
+      return <RefreshCwIcon className={className} {...props} />;
     case "conflicts":
       return <TriangleAlertIcon className={className} {...props} />;
     default:
