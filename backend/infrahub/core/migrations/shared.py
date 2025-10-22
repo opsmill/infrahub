@@ -247,32 +247,24 @@ class MigrationWithRebase(BaseModel):
     def init(cls, **kwargs: dict[str, Any]) -> Self:
         return cls(**kwargs)  # type: ignore[arg-type]
 
-    async def rebase_branch(self, db: InfrahubDatabase, branch: Branch) -> bool:
+    async def rebase_branch(self, branch: Branch) -> bool:
         # Circular deps if imported inside import block
         from infrahub.core.branch.tasks import rebase_branch
 
-        # NOTE: need service/bus component up and running to use prefect flow
         console = Console()
         console.print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
         try:
-            # await branch.rebase(db=db)
             await rebase_branch(
                 branch=branch.name,
                 context=InfrahubContext.init(
-                    branch=branch,
-                    # FIXME: or superuser account?
-                    account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
+                    branch=branch, account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id="")
                 ),
                 send_events=False,
             )
             console.print("done")
-            branch.graph_version = self.minimum_version + 1
         except ValidationError:
             console.print("failed")
-            branch.status = BranchStatus.NEED_UPGRADE_REBASE
             return False
-        finally:
-            await branch.save(db=db)
 
         return True
 
@@ -288,14 +280,19 @@ class MigrationWithRebase(BaseModel):
         for branch in branches:
             await registry.schema.load_schema(db=db, branch=branch)
 
-            if not await self.rebase_branch(db=db, branch=branch):
+            if not await self.rebase_branch(branch=branch):
                 result.errors.append(f"Failed to rebase branch '{branch.name}' ({branch.uuid})")
+                branch.status = BranchStatus.NEED_UPGRADE_REBASE
+                await branch.save(db=db)
                 continue
 
             r = await self.execute_against_branch(db=db, branch=branch)
             result.nbr_migrations_executed += 1
             if r.errors:
                 result.errors.extend(r.errors)
+            if r.success:
+                branch.graph_version = self.minimum_version + 1
+                await branch.save(db=db)
 
         return result
 
