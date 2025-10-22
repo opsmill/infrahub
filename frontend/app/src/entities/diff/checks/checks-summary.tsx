@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
@@ -90,7 +89,7 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
             className="gap-1 hover:bg-neutral-200"
           >
             Retry all
-            <Icon icon="mdi:reload" className={classNames(isLoading && "animate-spin")} />
+            <Retry isLoading={isPending || isLoading} isDisabled={isPending || isLoading} />
           </Button>
         </div>
 
