@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 
+import { CheckType } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 export const RUN_CHECK = gql`
@@ -17,7 +18,7 @@ export const RUN_CHECK = gql`
 
 export type UpdateCheckFromApiParams = {
   proposedChangeId: string;
-  checkType: string;
+  checkType: CheckType;
 };
 
 export const runCheckFromApi = ({ proposedChangeId, checkType }: UpdateCheckFromApiParams) => {
