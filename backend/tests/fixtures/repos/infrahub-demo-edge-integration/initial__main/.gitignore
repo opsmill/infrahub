@@ -1,0 +1,10 @@
+.vscode/*
+*.pyc
+*.tar.gz
+**/.DS_Store
+playbooks/documentation
+playbooks/intended
+
+# Direnv files (https://direnv.net/)
+.direnv/
+.envrc

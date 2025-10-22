@@ -1,0 +1,9 @@
+---
+version: "1.0"
+infrahub_tests:
+  - resource: Check
+    resource_name: "backbone_link_redundancy"
+    tests:
+      - name: syntax_check
+        spec:
+          kind: check-smoke
