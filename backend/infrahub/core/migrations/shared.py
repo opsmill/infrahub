@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
 from typing_extensions import Self
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.path import SchemaPath  # noqa: TC001
@@ -18,6 +20,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import ValidationError
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -244,24 +247,26 @@ class MigrationWithRebase(BaseModel):
         return cls(**kwargs)  # type: ignore[arg-type]
 
     async def rebase_branch(self, db: InfrahubDatabase, branch: Branch) -> bool:
-        # Circular deps if import inside import block
-        # from infrahub.core.branch.tasks import rebase_branch
-        # await rebase_branch(
-        #     branch=branch.name,
-        #     context=InfrahubContext.init(
-        #         branch=branch,
-        #         # FIXME: or superuser account?
-        #         account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
-        #     ),
-        # )
+        # Circular deps if imported inside import block
+        from infrahub.core.branch.tasks import rebase_branch
+
         # NOTE: need service/bus component up and running to use prefect flow
         console = Console()
         console.print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
         try:
-            await branch.rebase(db=db)
+            # await branch.rebase(db=db)
+            await rebase_branch(
+                branch=branch.name,
+                context=InfrahubContext.init(
+                    branch=branch,
+                    # FIXME: or superuser account?
+                    account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
+                ),
+                send_events=False,
+            )
             console.print("done")
             branch.graph_version = self.minimum_version + 1
-            # NOTE: Narrow to more accurate exception
+        except ValidationError:
             console.print("failed")
             branch.status = BranchStatus.NEED_UPGRADE_REBASE
             return False
@@ -282,7 +287,7 @@ class MigrationWithRebase(BaseModel):
         for branch in branches:
             if not await self.rebase_branch(db=db, branch=branch):
                 result.errors.append(f"Failed to rebase branch '{branch.name}' ({branch.uuid})")
-                return result
+                continue
 
             r = await self.execute_against_branch(db=db, branch=branch)
             result.nbr_migrations_executed += 1
