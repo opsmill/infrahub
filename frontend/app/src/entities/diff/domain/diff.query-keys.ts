@@ -12,7 +12,7 @@ export const updateDiffMutationKeys = {
 
 export const getCheckQueryKeys = {
   all: ["checks"] as const,
-  details: (checkId: string) => [...getCheckQueryKeys.all, checkId],
+  details: (checkId: string) => [...getCheckQueryKeys.all, checkId] as const,
 };
 
 export const runCheckMutationKeys = {
@@ -21,8 +21,6 @@ export const runCheckMutationKeys = {
 
 export const proposedChangeValidatorsKeys = {
   all: ["proposed-change-validators"] as const,
-  allWithinProposedChange: (proposedChangeId: string) => [
-    ...proposedChangeValidatorsKeys.all,
-    proposedChangeId,
-  ],
+  allWithinProposedChange: (proposedChangeId: string) =>
+    [...proposedChangeValidatorsKeys.all, proposedChangeId] as const,
 };
