@@ -279,7 +279,6 @@ class MigrationWithRebase(BaseModel):
             await registry.schema.load_schema(db=db, branch=branch)
 
             if not await self.rebase_branch(branch=branch):
-                result.errors.append(f"Failed to rebase branch '{branch.name}' ({branch.uuid})")
                 branch.status = BranchStatus.NEED_UPGRADE_REBASE
                 await branch.save(db=db)
                 continue
