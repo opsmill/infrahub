@@ -108,7 +108,7 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
                       canRetry(data) && "absolute text-xs group-hover:invisible"
                     )}
                   >
-                    {schemaKindLabel[kind]?.replace("Validator", "").trim()}
+                    {(schemaKindLabel[kind] ?? kind)?.replace("Validator", "").trim()}
                   </span>
 
                   {canRetry(data) && (
