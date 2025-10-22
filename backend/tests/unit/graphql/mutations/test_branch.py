@@ -277,7 +277,7 @@ async def local_services(db: InfrahubDatabase, dependency_provider) -> InfrahubS
     workflow = WorkflowLocalExecution()
 
     with (
-        dependency_provider.scope(build_database, lambda: db),
+        dependency_provider.scope(build_database, lambda singleton: db),  # noqa: ARG005
         dependency_provider.scope(build_message_bus, lambda: message_bus),
         dependency_provider.scope(build_workflow, lambda: workflow),
     ):
