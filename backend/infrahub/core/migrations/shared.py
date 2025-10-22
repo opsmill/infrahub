@@ -7,6 +7,7 @@ from rich.console import Console
 from typing_extensions import Self
 
 from infrahub.core import registry
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import (
@@ -257,7 +258,7 @@ class MigrationWithRebase(BaseModel):
         try:
             await branch.rebase(db=db)
             console.print("done")
-        except Exception:
+            branch.graph_version = self.minimum_version + 1
             # NOTE: Narrow to more accurate exception
             console.print("failed")
             branch.status = BranchStatus.NEED_UPGRADE_REBASE
