@@ -21,9 +21,9 @@ def _get_node_kinds(schema: MainSchemaTypes) -> list[str]:
     if not isinstance(schema, (NodeSchema, GenericSchema)):
         return [schema.kind]
     schema_kinds = [f"Profile{schema.kind}"]
-    if isinstance(schema, NodeSchema) or not schema.used_by:
-        return schema_kinds
-    return [f"Profile{kind}" for kind in schema.used_by]
+    if isinstance(schema, GenericSchema) and schema.used_by:
+        schema_kinds += [f"Profile{kind}" for kind in schema.used_by]
+    return schema_kinds
 
 
 class ProfilesAttributeAddMigrationQuery(AttributeMigrationQuery, AttributeAddQuery):

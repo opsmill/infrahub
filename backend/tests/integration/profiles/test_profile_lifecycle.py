@@ -1150,9 +1150,9 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_15_schema_update_add_attributes(
         self,
         default_branch,
-        schema_root_02,
         person_profile_1: Node,
         lifeform_profile_1: Node,
+        schema_root_02,
         client: InfrahubClient,
     ):
         updated_person_profile_schema = await client.schema.get(
@@ -1216,15 +1216,21 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_16_update_profile_with_new_attribute(
         self,
         default_branch,
-        person_profile_1,
+        person_profile_1: Node,
+        lifeform_profile_1: Node,
         client: InfrahubClient,
     ):
-        person_profile_1 = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
-        person_profile_1.age.value = 25
-        person_profile_1.eye_color.value = "blurple"
-        person_profile_1.value.value = 42
-        person_profile_1.is_alive.value = True
-        await person_profile_1.save()
+        updated_person_profile_1 = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
+        updated_person_profile_1.age.value = 25
+        updated_person_profile_1.eye_color.value = "blurple"
+        updated_person_profile_1.value.value = 42
+        updated_person_profile_1.is_alive.value = True
+        await updated_person_profile_1.save()
+
+        updated_lifeform_profile_1 = await client.get(kind="ProfilePretendLifeform", id=lifeform_profile_1.id)
+        updated_lifeform_profile_1.size.value = "lifeform-profile-big"
+        updated_lifeform_profile_1.value.value = 84
+        await updated_lifeform_profile_1.save()
 
     async def test_step_17_use_generic_profile(
         self,
@@ -1348,9 +1354,9 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_2.generic_nothing.is_from_profile is True
         assert retrieved_person_2.generic_nothing.source.id == lifeform_profile_1.id
         assert retrieved_person_2.generic_nothing.is_default is False
-        assert retrieved_person_2.value.value == 42
+        assert retrieved_person_2.value.value == 84
         assert retrieved_person_2.value.is_from_profile is True
-        assert retrieved_person_2.value.source.id == person_profile_1.id
+        assert retrieved_person_2.value.source.id == lifeform_profile_1.id
         assert retrieved_person_2.value.is_default is False
 
     async def test_step_18_check_profile_for_removed_attribute(
@@ -1385,6 +1391,13 @@ class TestProfileLifecycle(TestInfrahubApp):
         }
 
         person_profile_1 = await client.get(kind="ProfilePretendPerson", id=person_profile_1.id)
+        assert person_profile_1.age.value == 25
+        assert person_profile_1.eye_color.value == "blurple"
+        assert person_profile_1.is_alive.value is True
+        assert person_profile_1.size.value is None
+        assert person_profile_1.value.value == 42
+        assert person_profile_1.weight.value is None
+
         with pytest.raises(AttributeError):
             _ = person_profile_1.height
         with pytest.raises(AttributeError):
@@ -1399,6 +1412,10 @@ class TestProfileLifecycle(TestInfrahubApp):
             _ = person_profile_1.generic_nothing
 
         lifeform_profile_1 = await client.get(kind="ProfilePretendLifeform", id=lifeform_profile_1.id)
+        assert lifeform_profile_1.size.value == "lifeform-profile-big"
+        assert lifeform_profile_1.is_alive.value is None
+        assert lifeform_profile_1.value.value == 84
+
         with pytest.raises(AttributeError):
             _ = lifeform_profile_1.shape
         with pytest.raises(AttributeError):
@@ -1512,9 +1529,9 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert retrieved_person_2.lifespan.is_from_profile is True
         assert retrieved_person_2.lifespan.source.id == person_profile_1.id
         assert retrieved_person_2.lifespan.is_default is False
-        assert retrieved_person_2.value.value == 42
+        assert retrieved_person_2.value.value == 84
         assert retrieved_person_2.value.is_from_profile is True
-        assert retrieved_person_2.value.source.id == person_profile_1.id
+        assert retrieved_person_2.value.source.id == lifeform_profile_1.id
         assert retrieved_person_2.value.is_default is False
         with pytest.raises(AttributeError):
             _ = retrieved_person_2.nothing
