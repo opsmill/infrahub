@@ -46,6 +46,7 @@ class Branch(StandardNode):
     is_isolated: bool = True
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
+    graph_version: int | None = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
