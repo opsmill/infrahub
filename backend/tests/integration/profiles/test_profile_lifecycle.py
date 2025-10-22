@@ -64,10 +64,10 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_02_one_person_add_profile(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         person_1,
         person_profile_1,
-    ):
+    ) -> None:
         mutation = """
             mutation {
                 TestingPersonUpdate(data: {id: "%(person_id)s", profiles: [{ id: "%(profile_id)s"}]}) {
@@ -92,7 +92,8 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id, "profile_id": person_profile_1.id}
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -134,9 +135,9 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_03_create_person_with_profile(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         person_profile_1,
-    ):
+    ) -> None:
         mutation = """
             mutation {
                 TestingPersonCreate(data: {name: {value: "Apollo"}, profiles: [{ id: "%(profile_id)s"}]}) {
@@ -161,7 +162,8 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"profile_id": person_profile_1.id}
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -198,10 +200,10 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_04_update_non_profile_attribute(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         person_1,
         person_profile_1,
-    ):
+    ) -> None:
         mutation = """
             mutation {
                 TestingPersonUpdate(data: {id: "%(person_id)s", name: {value: "Kara Thrace"}}) {
@@ -228,7 +230,8 @@ class TestProfileLifecycle(TestInfrahubApp):
             "person_id": person_1.id,
         }
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -301,9 +304,9 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_07_update_person_delete_profile(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         client,
-    ):
+    ) -> None:
         person_2 = await client.get(kind="TestingPerson", name__value="Apollo", property=True)
         mutation = """
             mutation {
@@ -329,7 +332,8 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_2.id}
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -396,10 +400,10 @@ class TestProfileLifecycle(TestInfrahubApp):
     async def test_step_10_update_person_override_profile(
         self,
         db: InfrahubDatabase,
-        default_branch,
+        default_branch: Branch,
         person_1,
         person_profile_1,
-    ):
+    ) -> None:
         mutation = """
             mutation {
                 TestingPersonUpdate(data: {id: "%(person_id)s", height: {value: 145}}) {
@@ -424,7 +428,8 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id}
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,

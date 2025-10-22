@@ -75,9 +75,8 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -87,6 +86,7 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["ProfileTestCriticality"]["edges"]) == 1
     assert result.data["ProfileTestCriticality"]["edges"][0]["node"]["display_label"] == obj1.profile_name.value
 
@@ -116,7 +116,8 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     # gql mutation needs function workflow
     gql_params.context.service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
     result = await graphql(
@@ -128,6 +129,7 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["ProfileTestCriticalityUpsert"]["ok"] is True
     gql_object = result.data["ProfileTestCriticalityUpsert"]["object"]
     assert gql_object["profile_name"]["value"] == "prof1"
@@ -182,9 +184,8 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -194,6 +195,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestCriticality"]["edges"]
     assert len(crits) == 2
     assert {
@@ -259,9 +261,8 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -271,6 +272,7 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestGenericCriticality"]["edges"]
     assert len(crits) == 2
     assert {
@@ -327,9 +329,8 @@ async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, defau
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=True, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     crit_schema.generate_profile = False
     result = await graphql(
@@ -424,9 +425,8 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -436,6 +436,7 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestCriticality"]["edges"]
     assert len(crits) == 3
     crits_by_id = {crit["node"]["id"]: crit["node"] for crit in crits}
@@ -530,9 +531,8 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -542,6 +542,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestCriticality"]["edges"]
     assert len(crits) == 3
     crits_by_id = {crit["node"]["id"]: crit["node"] for crit in crits}
