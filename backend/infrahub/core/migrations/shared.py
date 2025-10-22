@@ -21,6 +21,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
+from infrahub.lock import initialize_lock
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -283,6 +284,8 @@ class MigrationWithRebase(BaseModel):
         result = MigrationResult()
 
         for branch in branches:
+            await registry.schema.load_schema(db=db, branch=branch)
+
             if not await self.rebase_branch(db=db, branch=branch):
                 result.errors.append(f"Failed to rebase branch '{branch.name}' ({branch.uuid})")
                 continue
@@ -295,4 +298,9 @@ class MigrationWithRebase(BaseModel):
         return result
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        from infrahub.core.initialization import initialization
+
+        initialize_lock()
+        await initialization(db=db)
+
         return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry())
