@@ -50,7 +50,7 @@ from infrahub.workflows.utils import add_tags
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
-async def rebase_branch(branch: str, context: InfrahubContext) -> None:  # noqa: PLR0915
+async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:  # noqa: PLR0915
     database = await get_database()
     async with database.start_session() as db:
         log = get_run_logger()
@@ -166,30 +166,31 @@ async def rebase_branch(branch: str, context: InfrahubContext) -> None:  # noqa:
         workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name}
     )
 
-    # -------------------------------------------------------------
-    # Generate an event to indicate that a branch has been rebased
-    # -------------------------------------------------------------
-    rebase_event = BranchRebasedEvent(
-        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
-    )
-    events: list[InfrahubEvent] = [rebase_event]
-    changelog_collector = DiffChangelogCollector(
-        diff=default_branch_diff, branch=obj, db=db, migration_tracker=MigrationTracker(migrations=migrations)
-    )
-    for action, node_changelog in changelog_collector.collect_changelogs():
-        node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
-        mutate_event = node_event_class(
-            kind=node_changelog.node_kind,
-            node_id=node_changelog.node_id,
-            changelog=node_changelog,
-            fields=node_changelog.updated_fields,
-            meta=EventMeta.from_parent(parent=rebase_event, branch=obj),
+    if send_events:
+        # -------------------------------------------------------------
+        # Generate an event to indicate that a branch has been rebased
+        # -------------------------------------------------------------
+        rebase_event = BranchRebasedEvent(
+            branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
         )
-        events.append(mutate_event)
+        events: list[InfrahubEvent] = [rebase_event]
+        changelog_collector = DiffChangelogCollector(
+            diff=default_branch_diff, branch=obj, db=db, migration_tracker=MigrationTracker(migrations=migrations)
+        )
+        for action, node_changelog in changelog_collector.collect_changelogs():
+            node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+            mutate_event = node_event_class(
+                kind=node_changelog.node_kind,
+                node_id=node_changelog.node_id,
+                changelog=node_changelog,
+                fields=node_changelog.updated_fields,
+                meta=EventMeta.from_parent(parent=rebase_event, branch=obj),
+            )
+            events.append(mutate_event)
 
-    event_service = await get_event_service()
-    for event in events:
-        await event_service.send(event)
+        event_service = await get_event_service()
+        for event in events:
+            await event_service.send(event)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
