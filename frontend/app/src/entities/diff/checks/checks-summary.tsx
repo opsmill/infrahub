@@ -100,20 +100,28 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
           {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
             <div key={kind} className="flex items-center justify-center gap-2 p-2">
               <div className={"group relative flex flex-col items-center"}>
-                <PieChart data={data} onClick={() => canRetry(data) && handleRetry(kind)}>
+                <PieChart data={data} />
+
+                <div className="flex h-6 items-center justify-center">
+                  <span
+                    className={classNames(
+                      "text-xs",
+                      canRetry(data) && "absolute text-xs group-hover:invisible"
+                    )}
+                  >
+                    {schemaKindLabel[kind]?.replace("Validator", "").trim()}
+                  </span>
+
                   {canRetry(data) && (
                     <div className="invisible absolute group-hover:visible">
                       <Retry
                         isLoading={isPending || isLoading || !!data.inProgress}
                         isDisabled={!canRetry(data)}
+                        onClick={() => canRetry(data) && handleRetry(kind)}
                       />
                     </div>
                   )}
-                </PieChart>
-
-                <span className="text-xs">
-                  {schemaKindLabel[kind]?.replace("Validator", "").trim()}
-                </span>
+                </div>
               </div>
             </div>
           ))}

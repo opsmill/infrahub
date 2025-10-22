@@ -1,8 +1,7 @@
 import { Cell, Pie, PieChart as RPieChart, Tooltip } from "recharts";
 
-type tPieChart = {
+type PieChartProps = {
   data: any[];
-  children?: any;
   onClick?: Function;
 };
 
@@ -14,14 +13,14 @@ const renderCustomizedTooltip = (props: any) => {
   }
 
   return (
-    <span className="rounded-md bg-white p-2 text-xs">
+    <text className="z-50 rounded-md bg-white p-2 text-xs">
       {data.name}: {data.value}
-    </span>
+    </text>
   );
 };
 
-export const PieChart = (props: tPieChart) => {
-  const { data, children, onClick } = props;
+export const PieChart = (props: PieChartProps) => {
+  const { data, onClick } = props;
 
   const handleClick = () => {
     if (!onClick) return;
@@ -31,29 +30,21 @@ export const PieChart = (props: tPieChart) => {
 
   return (
     <div className={"relative"} onClick={handleClick}>
-      <div className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 flex transform items-center justify-center">
-        {children}
-      </div>
-
-      <RPieChart width={100} height={60} className="">
-        <Tooltip content={renderCustomizedTooltip} />
-
+      <RPieChart width={100} height={60}>
         <Pie
           data={data}
           dataKey="value"
-          cx="50%"
-          cy="50%"
           outerRadius={30}
           innerRadius={20}
           startAngle={90}
           endAngle={-270}
-          // label={renderCustomizedLabel}
-          labelLine={false}
         >
           {data.map((entry, index) => (
             <Cell key={index} className={entry.className ?? "fill-gray-200"} />
           ))}
         </Pie>
+
+        <Tooltip content={renderCustomizedTooltip} />
       </RPieChart>
     </div>
   );
