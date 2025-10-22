@@ -20,7 +20,7 @@ export const runCheckMutationKeys = {
 };
 
 export const proposedChangeValidatorsKeys = {
-  all: ["proposed-change-validators"],
+  all: ["proposed-change-validators"] as const,
   allWithinProposedChange: (proposedChangeId: string) => [
     ...proposedChangeValidatorsKeys.all,
     proposedChangeId,
