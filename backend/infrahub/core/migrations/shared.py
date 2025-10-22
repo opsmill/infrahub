@@ -262,7 +262,10 @@ class MigrationWithRebase(BaseModel):
         except Exception:
             # NOTE: Narrow to more accurate exception
             console.print("failed")
+            branch.status = BranchStatus.NEED_UPGRADE_REBASE
             return False
+        finally:
+            await branch.save(db=db)
 
         return True
 

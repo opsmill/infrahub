@@ -360,6 +360,7 @@ async def rebase_and_migrate_branches(
 
     for migration in rebase_migrations:
         execution_result = await migration.execute_against_branches(db=db, branches=branches)
+        validation_result = None
 
         if execution_result.success:
             validation_result = await migration.validate_migration(db=db)
