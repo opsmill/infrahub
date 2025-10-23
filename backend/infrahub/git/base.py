@@ -932,7 +932,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def _raise_enriched_error_static(
         error: GitCommandError, name: str, location: str, branch_name: str | None = None
     ) -> NoReturn:
-        if "Repository not found" in error.stderr or "does not appear to be a git" in error.stderr:
+        if any(
+            err in error.stderr
+            for err in ("Repository not found", "does not appear to be a git", "Failed to connect to github.com")
+        ):
             raise RepositoryConnectionError(identifier=name) from error
 
         if "error: pathspec" in error.stderr:
