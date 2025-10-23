@@ -12,11 +12,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
+import { DataIntegrityConflicts } from "@/entities/diff/checks/data-integrity-conflicts";
+import { SchemaIntegrityConflicts } from "@/entities/diff/checks/schema-integrity-conflicts";
+import { useGetCheckDetails } from "@/entities/diff/domain/get-check-details.query";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-
-import { useGetCheckDetailsQuery } from "../domain/get-check-details.query";
-import { DataIntegrityConflicts } from "./data-integrity-conflicts";
-import { SchemaIntegrityConflicts } from "./schema-integrity-conflicts";
 
 type tCheckProps = {
   id: string;
@@ -74,7 +73,7 @@ const getCheckBorderColor = (severity?: string) => {
 export const Check = ({ id }: tCheckProps) => {
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
-  const { isPending, error, data: check } = useGetCheckDetailsQuery({ checkId: id });
+  const { isPending, error, data: check } = useGetCheckDetails({ checkId: id });
 
   if (error) {
     return (
@@ -86,6 +85,10 @@ export const Check = ({ id }: tCheckProps) => {
 
   if (isPending) {
     return <LoadingIndicator />;
+  }
+
+  if (!check) {
+    return null;
   }
 
   const {

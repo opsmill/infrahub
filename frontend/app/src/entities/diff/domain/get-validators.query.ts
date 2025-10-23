@@ -1,10 +1,9 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { GetValidatorsFromApiParams } from "../api/get-validators-from-api";
-import { proposedChangeValidatorsKeys } from "./diff.query-keys";
-import { getValidators } from "./get-validators";
+import { proposedChangeValidatorsKeys } from "@/entities/diff/domain/diff.query-keys";
+import { GetValidatorsParams, getValidators } from "@/entities/diff/domain/get-validators";
 
-export const useGetValidatorsQuery = (params: GetValidatorsFromApiParams) => {
+export const useGetValidatorsQuery = (params: GetValidatorsParams) => {
   return useQuery(
     queryOptions({
       queryKey: proposedChangeValidatorsKeys.allWithinProposedChange(params.proposedChangeId),
