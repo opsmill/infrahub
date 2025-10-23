@@ -119,6 +119,13 @@ def git_repo_infrahub_demo_edge(git_sources_dir: Path) -> FileRepo:
 
 
 @pytest.fixture(scope="session")
+def git_repo_infrahub_demo_edge_integration(git_sources_dir: Path) -> FileRepo:
+    """Git Repository used as part of the  demo-edge tutorial."""
+
+    return FileRepo(name="infrahub-demo-edge-integration", sources_directory=git_sources_dir)
+
+
+@pytest.fixture(scope="session")
 def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
     """Simple Git Repository used for testing."""
 
