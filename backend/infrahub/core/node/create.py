@@ -57,14 +57,25 @@ async def extract_peer_data(
 
     for rel in template_peer.get_schema().relationship_names:
         rel_manager: RelationshipManager = getattr(template_peer, rel)
-        if (
-            rel_manager.schema.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
-            or rel_manager.schema.name not in obj_peer_schema.relationship_names
-        ):
+
+        if rel_manager.schema.name not in obj_peer_schema.relationship_names:
             continue
 
-        if list(await rel_manager.get_peers(db=db)) == [current_template.id]:
+        peers_map = await rel_manager.get_peers(db=db)
+        if rel_manager.schema.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT] and list(
+            peers_map.keys()
+        ) == [current_template.id]:
             obj_peer_data[rel] = {"id": parent_obj.id}
+            continue
+
+        rel_peer_ids = []
+        for peer_id, peer_object in peers_map.items():
+            # deeper templates are handled in the next level of recursion
+            if peer_object.get_schema().is_template_schema:
+                continue
+            rel_peer_ids.append({"id": peer_id})
+
+        obj_peer_data[rel] = rel_peer_ids
 
     return obj_peer_data
 
