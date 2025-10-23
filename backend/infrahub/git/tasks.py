@@ -204,7 +204,11 @@ async def sync_remote_repositories() -> None:
                     continue
 
             try:
-                await repo.sync(staging_branch=staging_branch)
+                await repo.sync(
+                    staging_branch=staging_branch,
+                    infrahub_branch=infrahub_branch,
+                    operational_status=repository_data.repository.operational_status.value,
+                )
                 # Tell workers to fetch to stay in sync
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),

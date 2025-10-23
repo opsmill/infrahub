@@ -7,14 +7,15 @@ from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
-from prefect import task
+from prefect import flow, task
 from prefect.cache_policies import NONE
 from pydantic import Field
 
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
+from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -61,7 +62,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return response
 
-    async def sync(self, staging_branch: str | None = None) -> None:
+    @flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
+    async def sync(
+        self,
+        staging_branch: str | None = None,
+        infrahub_branch: str | None = None,
+        operational_status: RepositoryOperationalStatus | None = None,
+    ) -> None:
         """Synchronize the repository with its remote origin and with the database.
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
@@ -69,7 +76,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         log.info("Starting the synchronization.", repository=self.name)
 
-        await self.fetch()
+        try:
+            await self.fetch()
+        except RepositoryError:
+            if operational_status and operational_status == RepositoryOperationalStatus.ONLINE.value:
+                await add_tags(branches=[infrahub_branch], nodes=[str(self.id)])
+            raise
 
         new_branches, updated_branches = await self.compare_local_remote()
 
