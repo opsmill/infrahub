@@ -80,7 +80,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             await self.fetch()
         except RepositoryError:
             if operational_status and operational_status == RepositoryOperationalStatus.ONLINE.value:
-                await add_tags(branches=[infrahub_branch], nodes=[str(self.id)])
+                params = {"branches": [infrahub_branch] if infrahub_branch else [], "nodes": [str(self.id)]}
+                await add_tags(**params)
             raise
 
         new_branches, updated_branches = await self.compare_local_remote()

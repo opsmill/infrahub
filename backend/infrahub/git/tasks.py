@@ -77,7 +77,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             infrahub_branch_name=model.infrahub_branch_name, git_branch_name=model.default_branch_name
         )
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
-            await repo.sync()
+            await repo.sync()  # type: ignore[call-overload]
 
             # Notify other workers they need to clone the repository
             notification = messages.RefreshGitFetch(
@@ -204,7 +204,7 @@ async def sync_remote_repositories() -> None:
                     continue
 
             try:
-                await repo.sync(
+                await repo.sync(  # type: ignore[call-overload]
                     staging_branch=staging_branch,
                     infrahub_branch=infrahub_branch,
                     operational_status=repository_data.repository.operational_status.value,
