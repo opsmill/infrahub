@@ -11,6 +11,7 @@ TSHIRT = NodeSchema(
     default_filter="name__value",
     display_labels=["name__value"],
     uniqueness_constraints=[["name__value"]],
+    generate_template=True,
     attributes=[
         AttributeSchema(name="name", kind="Text"),
         AttributeSchema(
