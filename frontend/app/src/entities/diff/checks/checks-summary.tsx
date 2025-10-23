@@ -17,12 +17,11 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { proposedChangeValidatorsKeys } from "@/entities/diff/domain/diff.query-keys";
 import { useRunCheckMutation } from "@/entities/diff/domain/run-check.mutation";
 import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
-
-import { proposedChangeValidatorsKeys } from "../domain/diff.query-keys";
 
 type ChecksSummaryProps = {
   validators: any[];

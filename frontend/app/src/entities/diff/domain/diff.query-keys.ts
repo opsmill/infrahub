@@ -15,10 +15,6 @@ export const getCheckQueryKeys = {
   details: (checkId: string) => [...getCheckQueryKeys.all, checkId] as const,
 };
 
-export const runCheckMutationKeys = {
-  all: ["run-check"] as const,
-};
-
 export const proposedChangeValidatorsKeys = {
   all: ["proposed-change-validators"] as const,
   allWithinProposedChange: (proposedChangeId: string) =>

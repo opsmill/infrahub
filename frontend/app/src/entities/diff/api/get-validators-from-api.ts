@@ -1,5 +1,9 @@
 import { gql } from "@apollo/client";
 
+import {
+  Get_Check_DetailsQueryVariables,
+  Get_Core_ValidatorsQuery,
+} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_VALIDATORS = gql`
@@ -40,15 +44,11 @@ const GET_VALIDATORS = gql`
   }
 `;
 
-export interface GetValidatorsFromApiParams {
-  proposedChangeId: string;
-}
+export interface GetValidatorsFromApiParams extends Get_Check_DetailsQueryVariables {}
 
-export const getValidatorsFromApi = async ({ proposedChangeId }: GetValidatorsFromApiParams) => {
-  return graphqlClient.query({
+export const getValidatorsFromApi = async (variables: GetValidatorsFromApiParams) => {
+  return graphqlClient.query<Get_Core_ValidatorsQuery, Get_Check_DetailsQueryVariables>({
     query: GET_VALIDATORS,
-    variables: {
-      id: proposedChangeId,
-    },
+    variables,
   });
 };

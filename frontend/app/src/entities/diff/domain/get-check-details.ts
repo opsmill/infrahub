@@ -1,12 +1,11 @@
-import {
-  GetCheckDetailsFromApiParams,
-  getCheckDetailsFromApi,
-} from "@/entities/diff/api/get-check-details-from-api";
+import { getCheckDetailsFromApi } from "@/entities/diff/api/get-check-details-from-api";
 
-export const getCheckDetails = async ({ checkId }: GetCheckDetailsFromApiParams) => {
-  const { data, error } = await getCheckDetailsFromApi({ checkId });
+export type GetCheckDetailsParams = { checkId: string };
+
+export const getCheckDetails = async ({ checkId }: GetCheckDetailsParams) => {
+  const { data, error } = await getCheckDetailsFromApi({ id: checkId });
 
   if (error) throw error;
 
-  return data?.CoreCheck?.edges?.[0]?.node ?? {};
+  return data?.CoreCheck?.edges?.[0]?.node ?? null;
 };

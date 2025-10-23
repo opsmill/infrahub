@@ -1,5 +1,9 @@
 import { gql } from "@apollo/client";
 
+import {
+  Get_Check_DetailsQuery,
+  Get_Check_DetailsQueryVariables,
+} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_CHECK_DETAILS = gql`
@@ -66,15 +70,11 @@ const GET_CHECK_DETAILS = gql`
   }
 `;
 
-export interface GetCheckDetailsFromApiParams {
-  checkId: string;
-}
+export interface GetCheckDetailsFromApiParams extends Get_Check_DetailsQueryVariables {}
 
-export const getCheckDetailsFromApi = async ({ checkId }: GetCheckDetailsFromApiParams) => {
-  return graphqlClient.query({
+export const getCheckDetailsFromApi = async (variables: GetCheckDetailsFromApiParams) => {
+  return graphqlClient.query<Get_Check_DetailsQuery, Get_Check_DetailsQueryVariables>({
     query: GET_CHECK_DETAILS,
-    variables: {
-      id: checkId,
-    },
+    variables,
   });
 };

@@ -1,10 +1,9 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { GetCheckDetailsFromApiParams } from "@/entities/diff/api/get-check-details-from-api";
 import { getCheckQueryKeys } from "@/entities/diff/domain/diff.query-keys";
-import { getCheckDetails } from "@/entities/diff/domain/get-check-details";
+import { GetCheckDetailsParams, getCheckDetails } from "@/entities/diff/domain/get-check-details";
 
-export const useGetCheckDetailsQuery = (params: GetCheckDetailsFromApiParams) => {
+export const useGetCheckDetails = (params: GetCheckDetailsParams) => {
   return useQuery(
     queryOptions({
       queryKey: getCheckQueryKeys.details(params.checkId),
