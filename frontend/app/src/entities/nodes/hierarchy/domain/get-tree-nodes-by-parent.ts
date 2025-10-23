@@ -1,27 +1,27 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
-import { getObjectHierarchyChildrenFromApi } from "@/entities/nodes/hierarchy/api/get-object-hierarchy-children-from-api";
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/hierarchy/domain/get-object-children.query";
+import { GetTreeNodesByParentFromApi } from "@/entities/nodes/hierarchy/api/get-tree-nodes-by-parent-from-api";
+import { OBJECTS_PER_PAGE } from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent.query";
 import type { NodeCoreWithChildrenCount } from "@/entities/nodes/types";
 
-export interface GetObjectChildrenParams extends PaginationParams, ContextParams {
+export interface GetTreeNodesByParentParams extends PaginationParams, ContextParams {
   objectKind: string;
   parentObjectId?: string | null;
 }
 
-export type GetObjectChildren = (
-  params: GetObjectChildrenParams
+export type GetTreeNodesByParent = (
+  params: GetTreeNodesByParentParams
 ) => Promise<Array<NodeCoreWithChildrenCount>>;
 
-export const getObjectChildren: GetObjectChildren = async ({
+export const getTreeNodesByParent: GetTreeNodesByParent = async ({
   objectKind,
   parentObjectId,
   limit = OBJECTS_PER_PAGE,
   offset,
   branchName,
   atDate,
-}: GetObjectChildrenParams) => {
-  const { data } = await getObjectHierarchyChildrenFromApi({
+}: GetTreeNodesByParentParams) => {
+  const { data } = await GetTreeNodesByParentFromApi({
     objectKind,
     parentObjectId,
     limit,

@@ -4,20 +4,20 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
-export interface GetObjectHierarchyChildrenQueryParams extends PaginationParams {
+export interface GetTreeNodesByParentQueryParams extends PaginationParams {
   objectKind: string;
   parentObjectId?: string | null;
 }
 
-export function getObjectHierarchyChildrenQuery({
+export function GetTreeNodesByParentQuery({
   objectKind,
   parentObjectId,
   limit,
   offset,
-}: GetObjectHierarchyChildrenQueryParams) {
+}: GetTreeNodesByParentQueryParams) {
   return jsonToGraphQLQuery({
     query: {
-      __name: `GetObjectChildren_${objectKind}`,
+      __name: `GetTreeNodesByParent_${objectKind}`,
       [objectKind]: {
         __args: {
           limit,
@@ -39,17 +39,17 @@ export function getObjectHierarchyChildrenQuery({
   });
 }
 
-export interface GetObjectHierarchyChildrenFromApiParams
-  extends GetObjectHierarchyChildrenQueryParams,
+export interface GetTreeNodesByParentFromApiParams
+  extends GetTreeNodesByParentQueryParams,
     ContextParams {}
 
-export function getObjectHierarchyChildrenFromApi({
+export function GetTreeNodesByParentFromApi({
   branchName,
   atDate,
   ...params
-}: GetObjectHierarchyChildrenFromApiParams) {
+}: GetTreeNodesByParentFromApiParams) {
   return graphqlClient.query({
-    query: gql(getObjectHierarchyChildrenQuery(params)),
+    query: gql(GetTreeNodesByParentQuery(params)),
     context: {
       branchName,
       atDate,

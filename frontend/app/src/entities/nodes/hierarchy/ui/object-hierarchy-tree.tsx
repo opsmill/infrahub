@@ -8,7 +8,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
 
-import { useGetObjectChildren } from "@/entities/nodes/hierarchy/domain/get-object-children.query";
+import { useGetTreeNodesByParent } from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCoreWithChildrenCount } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -23,7 +23,7 @@ export interface ObjectHierarchyTreeProps {
 
 export function ObjectHierarchyTree({ treeSchema, currentNodeId }: ObjectHierarchyTreeProps) {
   const { data, isPending, error, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useGetObjectChildren({
+    useGetTreeNodesByParent({
       objectKind: treeSchema.kind!,
       parentObjectId: null, // to query for top-level nodes
     });
@@ -77,13 +77,14 @@ export interface ObjectTreeItemProps {
   currentNodeId?: string;
 }
 export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTreeItemProps) {
-  const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } = useGetObjectChildren(
-    {
-      objectKind: treeObjectKind,
-      parentObjectId: node.id,
-    },
-    { enabled: false }
-  );
+  const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
+    useGetTreeNodesByParent(
+      {
+        objectKind: treeObjectKind,
+        parentObjectId: node.id,
+      },
+      { enabled: false }
+    );
 
   const { schema: nodeSchema } = useSchema(node.__typename);
   const nodeLabel = getNodeLabel(node);

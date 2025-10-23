@@ -1,11 +1,14 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { ContextParams, InfiniteQueryConfig } from "@/shared/api/types";
+import type { ContextParams, InfiniteQueryConfig, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getObjectChildren } from "@/entities/nodes/hierarchy/domain/get-object-children";
+import {
+  type GetTreeNodesByParentParams,
+  getTreeNodesByParent,
+} from "@/entities/nodes/hierarchy/domain/get-tree-nodes-by-parent";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -14,30 +17,19 @@ export const OBJECTS_PER_PAGE = 40;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export interface ObjectChildrenQueryParams extends ContextParams {
-  objectKind: string;
-  parentObjectId: string | null;
-}
+export type GetTreeNodesByParentQueryOptionsParams = Omit<
+  GetTreeNodesByParentParams,
+  keyof PaginationParams
+>;
 
-export function getObjectChildrenInfiniteQueryOptions({
-  branchName,
-  atDate,
-  objectKind,
-  parentObjectId,
-}: ObjectChildrenQueryParams) {
+export function getTreeNodesByParentInfiniteQueryOptions(
+  params: GetTreeNodesByParentQueryOptionsParams
+) {
   return infiniteQueryOptions({
-    queryKey: objectQueryKeys.tree({
-      branchName,
-      atDate,
-      objectKind,
-      objectId: parentObjectId,
-    }),
+    queryKey: objectQueryKeys.tree(params),
     queryFn: async ({ pageParam }) => {
-      return getObjectChildren({
-        objectKind,
-        parentObjectId,
-        branchName,
-        atDate,
+      return getTreeNodesByParent({
+        ...params,
         offset: pageParam,
       });
     },
@@ -51,19 +43,19 @@ export function getObjectChildrenInfiniteQueryOptions({
   });
 }
 
-export type UseGetObjectChildrenQueryConfig = InfiniteQueryConfig<
-  typeof getObjectChildrenInfiniteQueryOptions
+export type UseGetTreeNodesByParentConfig = InfiniteQueryConfig<
+  typeof getTreeNodesByParentInfiniteQueryOptions
 >;
 
-export function useGetObjectChildren(
-  params: Omit<ObjectChildrenQueryParams, keyof ContextParams>,
-  config?: UseGetObjectChildrenQueryConfig
+export function useGetTreeNodesByParent(
+  params: Omit<GetTreeNodesByParentQueryOptionsParams, keyof ContextParams>,
+  config?: UseGetTreeNodesByParentConfig
 ) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useInfiniteQuery({
-    ...getObjectChildrenInfiniteQueryOptions({
+    ...getTreeNodesByParentInfiniteQueryOptions({
       branchName: currentBranch.name,
       atDate: timeMachineDate,
       ...params,
