@@ -269,29 +269,21 @@ class MigrationWithRebase(BaseModel):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError()
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def process_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
         raise NotImplementedError()
 
-    async def execute_against_branches(self, db: InfrahubDatabase, branches: Sequence[Branch]) -> MigrationResult:
-        result = MigrationResult()
+    async def execute_against_branch(
+        self, db: InfrahubDatabase, branch: Branch, skip_rebase: bool = False
+    ) -> MigrationResult:
+        await registry.schema.load_schema(db=db, branch=branch)
 
-        for branch in branches:
-            await registry.schema.load_schema(db=db, branch=branch)
-
+        if not skip_rebase:
             if not await self.rebase_branch(branch=branch):
                 branch.status = BranchStatus.NEED_UPGRADE_REBASE
                 await branch.save(db=db)
-                continue
+                return MigrationResult()
 
-            r = await self.execute_against_branch(db=db, branch=branch)
-            result.nbr_migrations_executed += 1
-            if r.errors:
-                result.errors.extend(r.errors)
-            if r.success:
-                branch.graph_version = self.minimum_version + 1
-                await branch.save(db=db)
-
-        return result
+        return await self.process_branch(db=db, branch=branch)
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         from infrahub.core.initialization import initialization
@@ -299,4 +291,4 @@ class MigrationWithRebase(BaseModel):
         initialize_lock()
         await initialization(db=db)
 
-        return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry())
+        return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry(), skip_rebase=True)

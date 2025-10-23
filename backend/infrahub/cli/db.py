@@ -22,6 +22,7 @@ from rich.table import Table
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
@@ -175,7 +176,10 @@ async def migrate_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    migrations = await detect_migration_to_run(db=dbdriver, migration_number=migration_number)
+    root_node = await get_root_node(db=dbdriver)
+    migrations = await detect_migration_to_run(
+        current_graph_version=root_node.graph_version, migration_number=migration_number
+    )
 
     if check or not migrations:
         return
@@ -344,17 +348,16 @@ async def index(
 
 
 async def detect_migration_to_run(
-    db: InfrahubDatabase, migration_number: int | str | None = None
+    current_graph_version: int, migration_number: int | str | None = None
 ) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]:
     """Return a sequence of migrations to apply to upgrade the database."""
     rprint("Checking current state of the database")
     migrations: list[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase] = []
 
-    root_node = await get_root_node(db=db)
     if migration_number:
         migration = get_migration_by_number(migration_number)
         migrations.append(migration)
-        if root_node.graph_version > migration.minimum_version:
+        if current_graph_version > migration.minimum_version:
             rprint(
                 f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
             )
@@ -363,13 +366,13 @@ async def detect_migration_to_run(
             f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
         )
     else:
-        migrations.extend(await get_graph_migrations(root=root_node))
+        migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
         if not migrations:
-            rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
+            rprint(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
             return []
 
     rprint(
-        f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
+        f"Database needs to be updated (v{current_graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
     )
     return migrations
 
@@ -387,6 +390,9 @@ async def migrate_database(
         db: The database object.
         migration_number: If provided, the function will only apply the migration with the given number. Defaults to None.
     """
+    if not migrations:
+        return True
+
     if initialize:
         await initialize_registry(db=db)
 
@@ -415,33 +421,49 @@ async def migrate_database(
     return True
 
 
-async def rebase_and_migrate_branches(
-    db: InfrahubDatabase,
-    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase],
-) -> bool:
+async def rebase_and_migrate_branches(db: InfrahubDatabase, current_graph_version: int) -> bool:
     """Only applies migrations that aim at rebasing branches."""
-    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    branches = [
+        b
+        for b in await Branch.get_list(db=db)
+        if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]
+        and (not b.graph_version or b.graph_version < current_graph_version)
+    ]
+
+    if not branches:
+        return True
+
     rprint(f"Planning rebase and migrations for {len(branches)} branches: {', '.join([b.name for b in branches])}")
 
-    rebase_migrations = [m for m in migrations if isinstance(m, MigrationWithRebase)]
+    for branch in branches:
+        migrations = [
+            m
+            for m in await detect_migration_to_run(current_graph_version=branch.graph_version or current_graph_version)
+            if isinstance(m, MigrationWithRebase)
+        ]
+        rprint(
+            f"Detected {len(migrations)} migrations to run against '{branch.name}' (ID: {branch.uuid}): {', '.join([m.name for m in migrations])}"
+        )
 
-    for migration in rebase_migrations:
-        execution_result = await migration.execute_against_branches(db=db, branches=branches)
-        validation_result = None
+        for migration in migrations:
+            execution_result = await migration.execute_against_branch(db=db, branch=branch)
+            validation_result = None
 
-        if execution_result.success:
-            validation_result = await migration.validate_migration(db=db)
-            if validation_result.success:
-                rprint(f"Migration: {migration.name} {SUCCESS_BADGE}")
+            if execution_result.success:
+                validation_result = await migration.validate_migration(db=db)
+                if validation_result.success and branch.status != BranchStatus.NEED_UPGRADE_REBASE:
+                    branch.graph_version = migration.minimum_version + 1
+                    await branch.save(db=db)
+                    rprint(f"Migration: {migration.name} {SUCCESS_BADGE}")
 
-        if not execution_result.success or (validation_result and not validation_result.success):
-            rprint(f"Migration: {migration.name} {FAILED_BADGE}")
-            for error in execution_result.errors:
-                rprint(f"  {error}")
-            if validation_result and not validation_result.success:
-                for error in validation_result.errors:
+            if not execution_result.success or (validation_result and not validation_result.success):
+                rprint(f"Migration: {migration.name} {FAILED_BADGE}")
+                for error in execution_result.errors:
                     rprint(f"  {error}")
-            return False
+                if validation_result and not validation_result.success:
+                    for error in validation_result.errors:
+                        rprint(f"  {error}")
+                return False
 
     return True
 

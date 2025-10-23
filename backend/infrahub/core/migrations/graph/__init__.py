@@ -47,8 +47,6 @@ from .m042_create_hfid_display_label_in_db import Migration042
 from .m043_backfill_hfid_display_label_in_db import Migration043
 
 if TYPE_CHECKING:
-    from infrahub.core.root import Root
-
     from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration, MigrationWithRebase
 
 MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]] = [
@@ -99,12 +97,12 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
 
 
 async def get_graph_migrations(
-    root: Root,
+    current_graph_version: int,
 ) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
-        if root.graph_version > migration.minimum_version:
+        if current_graph_version > migration.minimum_version:
             continue
         applicable_migrations.append(migration)
 

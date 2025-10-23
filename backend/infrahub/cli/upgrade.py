@@ -11,7 +11,12 @@ from prefect.client.orchestration import get_client
 from rich import print as rprint
 
 from infrahub import config
-from infrahub.core.initialization import create_anonymous_role, create_default_account_groups, initialize_registry
+from infrahub.core.initialization import (
+    create_anonymous_role,
+    create_default_account_groups,
+    get_root_node,
+    initialize_registry,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.dependencies.registry import build_component_registry
@@ -63,6 +68,8 @@ async def upgrade_cmd(
 
     build_component_registry()
 
+    root_node = await get_root_node(db=dbdriver)
+
     # NOTE add step to validate if the database and the task manager are reachable
 
     # -------------------------------------------
@@ -73,8 +80,8 @@ async def upgrade_cmd(
     # Upgrade Infrahub Database and Schema
     # -------------------------------------------
 
-    migrations = await detect_migration_to_run(db=dbdriver)
-    if check or not migrations:
+    migrations = await detect_migration_to_run(current_graph_version=root_node.graph_version)
+    if check:
         return
 
     if not await migrate_database(db=dbdriver, initialize=False, migrations=migrations):
@@ -86,7 +93,7 @@ async def upgrade_cmd(
     await initialize_internal_schema()
     await update_core_schema(db=dbdriver, initialize=False)
 
-    if not await rebase_and_migrate_branches(db=dbdriver, migrations=migrations):
+    if not await rebase_and_migrate_branches(db=dbdriver, current_graph_version=root_node.graph_version):
         # A migration failed, stop the upgrade process
         rprint("Upgrade cancelled due to branch rebase and migration failure.")
         await dbdriver.close()
