@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from cachetools import TTLCache
 from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
-from prefect import flow, task
+from prefect import task
 from prefect.cache_policies import NONE
 from pydantic import Field
 
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
-from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
@@ -62,12 +61,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return response
 
-    @flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
     async def sync(
-        self,
-        staging_branch: str | None = None,
-        infrahub_branch: str | None = None,
-        operational_status: RepositoryOperationalStatus | None = None,
+        self, staging_branch: str | None = None, on_failure: Callable[[], Awaitable[None]] | None = None
     ) -> None:
         """Synchronize the repository with its remote origin and with the database.
 
@@ -79,9 +74,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         try:
             await self.fetch()
         except RepositoryError:
-            if operational_status and operational_status == RepositoryOperationalStatus.ONLINE.value:
-                params = {"branches": [infrahub_branch] if infrahub_branch else [], "nodes": [str(self.id)]}
-                await add_tags(**params)
+            if on_failure:
+                await on_failure()
             raise
 
         new_branches, updated_branches = await self.compare_local_remote()

@@ -934,7 +934,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     ) -> NoReturn:
         if any(
             err in error.stderr
-            for err in ("Repository not found", "does not appear to be a git", "Failed to connect to github.com")
+            for err in ("Repository not found", "does not appear to be a git", "Failed to connect to")
         ):
             raise RepositoryConnectionError(identifier=name) from error
 

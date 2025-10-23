@@ -14,7 +14,12 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    ValidatorConclusion,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
@@ -77,7 +82,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             infrahub_branch_name=model.infrahub_branch_name, git_branch_name=model.default_branch_name
         )
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
-            await repo.sync()  # type: ignore[call-overload]
+            await repo.sync()
 
             # Notify other workers they need to clone the repository
             notification = messages.RefreshGitFetch(
@@ -152,6 +157,35 @@ async def create_branch(branch: str, branch_id: str) -> None:
         pass
 
 
+@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
+async def sync_git_repo_with_origin_and_tag_on_failure(
+    client: InfrahubClient,
+    repository_id: str,
+    repository_name: str,
+    repository_location: str,
+    internal_status: str,
+    default_branch_name: str,
+    operational_status: str,
+    staging_branch: str | None = None,
+    infrahub_branch: str | None = None,
+) -> None:
+    repo = await InfrahubRepository.init(
+        id=repository_id,
+        name=repository_name,
+        location=repository_location,
+        client=client,
+        internal_status=internal_status,
+        default_branch_name=default_branch_name,
+    )
+
+    async def on_failure() -> None:
+        if operational_status == RepositoryOperationalStatus.ONLINE.value:
+            params = {"branches": [infrahub_branch] if infrahub_branch else [], "nodes": [str(repository_id)]}
+            await add_tags(**params)
+
+    await repo.sync(staging_branch=staging_branch, on_failure=on_failure)
+
+
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
 async def sync_remote_repositories() -> None:
     log = get_run_logger()
@@ -204,10 +238,16 @@ async def sync_remote_repositories() -> None:
                     continue
 
             try:
-                await repo.sync(  # type: ignore[call-overload]
+                await sync_git_repo_with_origin_and_tag_on_failure(
+                    client=client,
+                    repository_id=repository_data.repository.id,
+                    repository_name=repository_data.repository.name.value,
+                    repository_location=repository_data.repository.location.value,
+                    internal_status=active_internal_status,
+                    default_branch_name=repository_data.repository.default_branch.value,
+                    operational_status=repository_data.repository.operational_status.value,
                     staging_branch=staging_branch,
                     infrahub_branch=infrahub_branch,
-                    operational_status=repository_data.repository.operational_status.value,
                 )
                 # Tell workers to fetch to stay in sync
                 message = messages.RefreshGitFetch(

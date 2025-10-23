@@ -135,7 +135,7 @@ class TestProposedChange(TestInfrahubApp):
         )
 
         repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
-        await repo.sync()  # type: ignore[call-overload]
+        await repo.sync()
 
         result = await graphql_mutation(
             query=PROPOSED_CHANGE_CREATE,
