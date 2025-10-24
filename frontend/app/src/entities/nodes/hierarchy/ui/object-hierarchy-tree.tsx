@@ -98,7 +98,7 @@ export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTr
       href={getObjectDetailsUrl(node.__typename, node.id)}
       className={classNames(currentNodeId === node.id && "bg-neutral-100")}
     >
-      <TreeItemContent onToggleExpansion={() => setExpanded((expanded) => !expanded)}>
+      <TreeItemContent onExpandedChange={() => setExpanded((expanded) => !expanded)}>
         <Icon icon={getSchemaIcon(nodeSchema)} className="mr-2" />
         <span className="truncate">{nodeLabel}</span>
       </TreeItemContent>
