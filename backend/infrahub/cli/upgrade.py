@@ -51,6 +51,7 @@ async def upgrade_cmd(
     ctx: typer.Context,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     check: bool = typer.Option(False, help="Check the state of the system without upgrading."),
+    rebase_branches: bool = typer.Option(False, help="Rebase and apply migrations to branches if required."),
 ) -> None:
     """Upgrade Infrahub to the latest version."""
 
@@ -93,12 +94,6 @@ async def upgrade_cmd(
     await initialize_internal_schema()
     await update_core_schema(db=dbdriver, initialize=False)
 
-    if not await rebase_and_migrate_branches(db=dbdriver, current_graph_version=root_node.graph_version):
-        # A migration failed, stop the upgrade process
-        rprint("Upgrade cancelled due to branch rebase and migration failure.")
-        await dbdriver.close()
-        return
-
     # -------------------------------------------
     # Upgrade Internal Objects, generated and managed by Infrahub
     # -------------------------------------------
@@ -113,6 +108,17 @@ async def upgrade_cmd(
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
         await trigger_configure_all()
+
+    # -------------------------------------------
+    # Perform branch rebase and apply migrations to them
+    # -------------------------------------------
+    if rebase_branches and not await rebase_and_migrate_branches(
+        db=dbdriver, current_graph_version=root_node.graph_version
+    ):
+        # A migration failed, stop the upgrade process
+        rprint("Upgrade cancelled due to branch rebase and migration failure.")
+        await dbdriver.close()
+        return
 
     await dbdriver.close()
 

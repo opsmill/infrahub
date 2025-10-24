@@ -371,7 +371,7 @@ async def rebase_and_migrate_branches(db: InfrahubDatabase, current_graph_versio
     for branch in branches:
         migrations = [
             m
-            for m in await detect_migration_to_run(current_graph_version=branch.graph_version or current_graph_version)
+            for m in await detect_migration_to_run(current_graph_version=branch.graph_version or 0)
             if isinstance(m, MigrationWithRebase)
         ]
         rprint(

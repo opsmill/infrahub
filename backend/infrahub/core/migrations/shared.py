@@ -277,6 +277,7 @@ class MigrationWithRebase(BaseModel):
     async def execute_against_branch(
         self, db: InfrahubDatabase, branch: Branch, skip_rebase: bool = False
     ) -> MigrationResult:
+        initialize_lock()
         await registry.schema.load_schema(db=db, branch=branch)
 
         if not skip_rebase:
@@ -290,7 +291,6 @@ class MigrationWithRebase(BaseModel):
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         from infrahub.core.initialization import initialization
 
-        initialize_lock()
         await initialization(db=db)
 
         return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry(), skip_rebase=True)
