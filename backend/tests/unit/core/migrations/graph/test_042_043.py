@@ -34,6 +34,9 @@ class TestMigration042(TestInfrahubApp):
     ) -> dict[str, Node]:
         await load_schema(db=db, schema=SchemaRoot(nodes=[WIDGET]), branch_name=default_branch.name, update_db=True)
         widget_schema = registry.schema.get_node_schema(name=WIDGET.kind, branch=default_branch)
+        # just saving and loading this one schema speeds up the test
+        widget_only_schema_branch = SchemaBranch(cache={widget_schema.kind: widget_schema}, name=default_branch.name)
+        await registry.schema.load_schema_to_db(db=db, schema=widget_only_schema_branch)
 
         nodes: dict[str, Node] = {}
         for name in [
@@ -56,7 +59,9 @@ class TestMigration042(TestInfrahubApp):
 
         return nodes
 
-    async def test_migration_042_043(self, db: InfrahubDatabase, initial_dataset: dict[str, Node]) -> None:
+    async def test_migration_042_043(
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: dict[str, Node]
+    ) -> None:
         results = await db.execute_query(query=QUERY_HFID)
         assert not results
 
@@ -87,6 +92,8 @@ class TestMigration042(TestInfrahubApp):
         results = await db.execute_query(query=QUERY_HFID)
         assert results
 
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
         nodes: list[Node] = await NodeManager.query(db=db, schema=WIDGET.kind)
         assert len(nodes) == 10
         assert nodes[0].has_human_friendly_id()
