@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import (
-    GLOBAL_BRANCH_NAME,
-)
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import QueryType
@@ -261,6 +260,10 @@ class Branch(StandardNode):
             end[self.origin_branch] = end_time.to_string()
 
         return start, end
+
+    async def create(self, db: InfrahubDatabase) -> bool:
+        self.graph_version = GRAPH_VERSION
+        return await super().create(db=db)
 
     async def delete(self, db: InfrahubDatabase) -> None:
         if self.is_default:
