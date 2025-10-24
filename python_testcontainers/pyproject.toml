@@ -39,7 +39,7 @@ psutil = "*"
 pytest = "*"
 httpx = "^0.28.1"
 pydantic = "^2.10.6"
-prefect-client = "3.4.23"
+prefect-client = "3.4.25"
 
 [tool.poetry.group.dev.dependencies]
 rich = "^13.9.4"
