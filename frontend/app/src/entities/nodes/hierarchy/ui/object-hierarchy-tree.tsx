@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { ListTreeIcon } from "lucide-react";
+import React from "react";
 import { Collection } from "react-aria-components";
 
 import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@/shared/components/aria/tree";
@@ -77,13 +78,14 @@ export interface ObjectTreeItemProps {
   currentNodeId?: string;
 }
 export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTreeItemProps) {
+  const [isExpanded, setExpanded] = React.useState(false);
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
     useGetTreeNodesByParent(
       {
         objectKind: treeObjectKind,
         parentObjectId: node.id,
       },
-      { enabled: false }
+      { enabled: isExpanded }
     );
 
   const { schema: nodeSchema } = useSchema(node.__typename);
@@ -92,11 +94,11 @@ export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTr
 
   return (
     <TreeItem
-      textValue={node.display_label}
+      textValue={getNodeLabel(node)}
       href={getObjectDetailsUrl(node.__typename, node.id)}
       className={classNames(currentNodeId === node.id && "bg-neutral-100")}
     >
-      <TreeItemContent>
+      <TreeItemContent onToggleExpansion={() => setExpanded((expanded) => !expanded)}>
         <Icon icon={getSchemaIcon(nodeSchema)} className="mr-2" />
         <span className="truncate">{nodeLabel}</span>
       </TreeItemContent>

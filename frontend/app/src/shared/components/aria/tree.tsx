@@ -34,8 +34,14 @@ export const TreeItem = ({ className, ...props }: TreeItemProps) => {
 
 export interface TreeItemContentProps extends AriaTreeItemContentProps {
   className?: string;
+  onToggleExpansion?: () => void;
 }
-export const TreeItemContent = ({ children, className, ...props }: TreeItemContentProps) => {
+export const TreeItemContent = ({
+  onToggleExpansion,
+  children,
+  className,
+  ...props
+}: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent {...props}>
       {(contentProps) => {
@@ -45,6 +51,7 @@ export const TreeItemContent = ({ children, className, ...props }: TreeItemConte
             {hasChildItems ? (
               <Button
                 slot="chevron"
+                onPress={onToggleExpansion}
                 className={classNames(
                   "inline-flex size-8 shrink-0 items-center justify-center duration-200",
                   isExpanded && "rotate-90"

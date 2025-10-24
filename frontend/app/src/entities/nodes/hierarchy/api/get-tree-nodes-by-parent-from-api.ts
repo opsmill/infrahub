@@ -51,8 +51,8 @@ export function GetTreeNodesByParentFromApi({
   return graphqlClient.query({
     query: gql(GetTreeNodesByParentQuery(params)),
     context: {
-      branchName,
-      atDate,
+      branch: branchName,
+      date: atDate,
     },
   });
 }

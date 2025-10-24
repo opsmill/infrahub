@@ -4,10 +4,10 @@ import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { generateRandomBranchName } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
-test.describe("Object hierarchy", () => {
+test.describe("Object hierarchy- Navigation", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  const BRANCH_NAME = generateRandomBranchName("object-hierarchy");
+  const BRANCH_NAME = generateRandomBranchName("object-hierarchy-navigation");
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
