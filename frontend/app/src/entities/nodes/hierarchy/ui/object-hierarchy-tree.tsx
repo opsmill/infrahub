@@ -92,7 +92,7 @@ export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTr
 
   return (
     <TreeItem
-      textValue={node.id}
+      textValue={node.display_label}
       href={getObjectDetailsUrl(node.__typename, node.id)}
       className={classNames(currentNodeId === node.id && "bg-neutral-100")}
     >
