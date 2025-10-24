@@ -33,15 +33,9 @@ export const TreeItem = ({ className, ...props }: TreeItemProps) => {
 };
 
 export interface TreeItemContentProps extends AriaTreeItemContentProps {
-  className?: string;
   onExpandedChange?: () => void;
 }
-export const TreeItemContent = ({
-  onExpandedChange,
-  children,
-  className,
-  ...props
-}: TreeItemContentProps) => {
+export const TreeItemContent = ({ onExpandedChange, children, ...props }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent {...props}>
       {(contentProps) => {

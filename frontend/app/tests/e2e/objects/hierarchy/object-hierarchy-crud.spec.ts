@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../../constants";
 import { generateRandomBranchName } from "../../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
-test.describe("Object hierarchy - CRUD", () => {
+test.describe("Object hierarchy - Create, Read, Update, Delete operations", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   const BRANCH_NAME = generateRandomBranchName("object-hierarchy-crud");
@@ -17,16 +17,16 @@ test.describe("Object hierarchy - CRUD", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test("should display correctly", async ({ page }) => {
+  test("should perform CRUD operations on hierarchical objects", async ({ page }) => {
     const objectHierarchyTree = page.getByLabel("Hierarchy tree");
 
-    await test.step("view tree and list for a hierarchical model", async () => {
+    await test.step("should display both tree view and list view for a hierarchical model", async () => {
       await page.goto(`/objects/LocationGeneric?branch=${BRANCH_NAME}`);
       await expect(objectHierarchyTree).toBeVisible();
       await expect(page.getByTestId("object-items")).toBeVisible();
     });
 
-    await test.step("add a new top level nodes and refresh UI", async () => {
+    await test.step("should create a new top level Continent node and verify it appears in the UI", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByRole("combobox", { name: "Select an object type" }).click();
       await page.getByRole("option", { name: "Continent Location" }).click();
@@ -36,7 +36,7 @@ test.describe("Object hierarchy - CRUD", () => {
       await expect(page.getByLabel("Test Continent")).toBeVisible();
     });
 
-    await test.step("add a children to a collapsed nodes and refresh UI", async () => {
+    await test.step("should create a child Country node under a collapsed Continent node", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByRole("combobox", { name: "Select an object type" }).click();
       await page.getByRole("option", { name: "Country Location" }).click();
@@ -48,12 +48,12 @@ test.describe("Object hierarchy - CRUD", () => {
       await expect(page.getByRole("button", { name: "Expand Test Continent" })).toBeVisible();
     });
 
-    await test.step("expand nodes to newly created child", async () => {
+    await test.step("should expand parent node to reveal newly created child node", async () => {
       await page.getByRole("button", { name: "Expand Test Continent" }).click();
       await expect(objectHierarchyTree.getByText("Test Country")).toBeVisible();
     });
 
-    await test.step("update a nodes a refresh tree UI", async () => {
+    await test.step("should update a Country node's name and verify changes in the tree UI", async () => {
       await page.getByTestId("actions-cell-Test Country").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
       await page.getByRole("textbox", { name: "Name *" }).fill("Test Country updated");
@@ -62,7 +62,7 @@ test.describe("Object hierarchy - CRUD", () => {
       await expect(objectHierarchyTree.getByText("Test Country updated")).toBeVisible();
     });
 
-    await test.step("add a node to a sub tree", async () => {
+    await test.step("should create a second Country node under the same Continent parent", async () => {
       await page.getByTestId("create-object-button").click();
       await page.getByRole("combobox", { name: "Select an object type" }).click();
       await page.getByRole("option", { name: "Country Location" }).click();
@@ -74,7 +74,7 @@ test.describe("Object hierarchy - CRUD", () => {
       await expect(objectHierarchyTree.getByText("Test country 2")).toBeVisible();
     });
 
-    await test.step("delete a child tree item", async () => {
+    await test.step("should delete a Country node and verify its removal from the tree", async () => {
       await page.getByTestId("actions-cell-Test country 2").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();

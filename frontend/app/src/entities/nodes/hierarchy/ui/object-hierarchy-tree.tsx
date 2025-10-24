@@ -79,13 +79,14 @@ export interface ObjectTreeItemProps {
 }
 export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTreeItemProps) {
   const [isExpanded, setExpanded] = React.useState(false);
+  const hasChildren = node.children.count > 0;
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
     useGetTreeNodesByParent(
       {
         objectKind: treeObjectKind,
         parentObjectId: node.id,
       },
-      { enabled: isExpanded }
+      { enabled: isExpanded && hasChildren }
     );
 
   const { schema: nodeSchema } = useSchema(node.__typename);
@@ -94,7 +95,7 @@ export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTr
 
   return (
     <TreeItem
-      textValue={getNodeLabel(node)}
+      textValue={nodeLabel}
       href={getObjectDetailsUrl(node.__typename, node.id)}
       className={classNames(currentNodeId === node.id && "bg-neutral-100")}
     >
@@ -103,7 +104,7 @@ export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTr
         <span className="truncate">{nodeLabel}</span>
       </TreeItemContent>
 
-      {node.children.count > 0 && (
+      {hasChildren && (
         <>
           <Collection items={childrenNode} dependencies={[currentNodeId]}>
             {(childNode) => (
