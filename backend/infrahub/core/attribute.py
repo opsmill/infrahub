@@ -581,7 +581,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return value
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
+    async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update attr from GraphQL payload"""
 
         changed = False
@@ -595,7 +595,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 changed = True
         elif "from_pool" in data:
             self.from_pool = data["from_pool"]
-            await self.node.handle_pool(db=db, attribute=self, errors=[])
+            if process_pools:
+                await self.node.handle_pool(db=db, attribute=self, errors=[])
             changed = True
 
         if changed and self.is_from_profile:

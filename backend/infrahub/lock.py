@@ -5,6 +5,7 @@ import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
+from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
@@ -50,9 +51,12 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together"""
 
-    def __init__(self, lock_registry: InfrahubLockRegistry, locks: list[str] | None = None) -> None:
+    def __init__(
+        self, lock_registry: InfrahubLockRegistry, locks: list[str] | None = None, metrics: bool = True
+    ) -> None:
         self.registry = lock_registry
         self.locks = locks or []
+        self.metrics = metrics
 
     async def __aenter__(self):
         await self.acquire()
@@ -67,11 +71,11 @@ class InfrahubMultiLock:
 
     async def acquire(self) -> None:
         for lock in self.locks:
-            await self.registry.get(name=lock).acquire()
+            await self.registry.get(name=lock, metrics=self.metrics).acquire()
 
     async def release(self) -> None:
         for lock in reversed(self.locks):
-            await self.registry.get(name=lock).release()
+            await self.registry.get(name=lock, metrics=self.metrics).release()
 
 
 class NATSLock:
@@ -123,6 +127,7 @@ class InfrahubLock:
         connection: redis.Redis | InfrahubServices | None = None,
         local: bool | None = None,
         in_multi: bool = False,
+        metrics: bool = True,
     ) -> None:
         self.use_local: bool | None = local
         self.local: LocalLock = None
@@ -133,6 +138,8 @@ class InfrahubLock:
         self.lock_type: str = "multi" if self.in_multi else "individual"
         self._acquire_time: int | None = None
         self.event = asyncio.Event()
+        self._recursion_var: ContextVar[int | None] = ContextVar(f"infrahub_lock_recursion_{self.name}", default=None)
+        self.metrics = metrics
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -167,21 +174,47 @@ class InfrahubLock:
         await self.release()
 
     async def acquire(self) -> None:
-        with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
-            if not self.use_local:
-                await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
-            else:
-                await self.local.acquire()
+        depth = self._recursion_var.get()
+        if depth is not None:
+            self._recursion_var.set(depth + 1)
+            return
+
+        if self.metrics:
+            with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
+                if not self.use_local:
+                    await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+                else:
+                    await self.local.acquire()
+        elif not self.use_local:
+            await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+        else:
+            await self.local.acquire()
+
         self.acquire_time = time.time_ns()
         self.event.clear()
+        self._recursion_var.set(1)
 
     async def release(self) -> None:
-        duration_ns = time.time_ns() - self.acquire_time
-        LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
+        depth = self._recursion_var.get()
+        if depth is None:
+            raise RuntimeError("Lock release attempted without ownership context.")
+
+        if depth > 1:
+            self._recursion_var.set(depth - 1)
+            return
+
+        if self.acquire_time is not None:
+            duration_ns = time.time_ns() - self.acquire_time
+            if self.metrics:
+                LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
+            self.acquire_time = None
+
         if not self.use_local:
             await self.remote.release()
         else:
             self.local.release()
+
+        self._recursion_var.set(None)
         self.event.set()
 
     async def locked(self) -> bool:
@@ -272,11 +305,18 @@ class InfrahubLockRegistry:
         return self.locks[lock_name]
 
     def get(
-        self, name: str, namespace: str | None = None, local: bool | None = None, in_multi: bool = False
+        self,
+        name: str,
+        namespace: str | None = None,
+        local: bool | None = None,
+        in_multi: bool = False,
+        metrics: bool = True,
     ) -> InfrahubLock:
         lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
-            self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
+            self.locks[lock_name] = InfrahubLock(
+                name=lock_name, connection=self.connection, in_multi=in_multi, metrics=metrics
+            )
         return self.locks[lock_name]
 
     def local_schema_lock(self) -> LocalLock:
