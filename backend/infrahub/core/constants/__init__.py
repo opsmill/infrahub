@@ -37,6 +37,7 @@ RESERVED_ATTR_REL_NAMES = [
     "rels",
     "save",
     "hfid",
+    "process_pools",
 ]
 
 RESERVED_ATTR_GEN_NAMES = ["type"]

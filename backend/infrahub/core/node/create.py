@@ -7,7 +7,7 @@ from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.node import Node
-from infrahub.core.node.lock_utils import get_kind_lock_names_on_object_mutation
+from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
 from infrahub.core.protocols import CoreObjectTemplate
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
@@ -171,45 +171,6 @@ async def _do_create_node(
     return obj
 
 
-async def _do_create_node_with_lock(
-    node_class: type[Node],
-    node_constraint_runner: NodeConstraintRunner,
-    db: InfrahubDatabase,
-    schema: NonGenericSchemaTypes,
-    branch: Branch,
-    fields_to_validate: list[str],
-    data: dict[str, Any],
-    at: Timestamp | None = None,
-) -> Node:
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    lock_names = get_kind_lock_names_on_object_mutation(
-        kind=schema.kind, branch=branch, schema_branch=schema_branch, data=dict(data)
-    )
-
-    if lock_names:
-        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-            return await _do_create_node(
-                node_class=node_class,
-                node_constraint_runner=node_constraint_runner,
-                db=db,
-                schema=schema,
-                branch=branch,
-                fields_to_validate=fields_to_validate,
-                data=data,
-                at=at,
-            )
-    return await _do_create_node(
-        node_class=node_class,
-        node_constraint_runner=node_constraint_runner,
-        db=db,
-        schema=schema,
-        branch=branch,
-        fields_to_validate=fields_to_validate,
-        data=data,
-        at=at,
-    )
-
-
 async def create_node(
     data: dict[str, Any],
     db: InfrahubDatabase,
@@ -223,37 +184,48 @@ async def create_node(
         raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
 
     component_registry = get_component_registry()
-    node_constraint_runner = await component_registry.get_component(
-        NodeConstraintRunner, db=db.start_session() if not db.is_transaction else db, branch=branch
-    )
     node_class = Node
     if schema.kind in registry.node:
         node_class = registry.node[schema.kind]
 
     fields_to_validate = list(data)
-    if db.is_transaction:
-        obj = await _do_create_node_with_lock(
-            node_class=node_class,
-            node_constraint_runner=node_constraint_runner,
-            db=db,
-            schema=schema,
-            branch=branch,
-            fields_to_validate=fields_to_validate,
-            data=data,
-            at=at,
-        )
-    else:
-        async with db.start_transaction() as dbt:
-            obj = await _do_create_node_with_lock(
+
+    preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
+    await preview_obj.new(db=db, process_pools=False, **data)
+    schema_branch = db.schema.get_schema_branch(name=branch.name)
+    lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
+
+    obj: Node
+    async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
+        if db.is_transaction:
+            node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+
+            obj = await _do_create_node(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,
-                db=dbt,
+                db=db,
                 schema=schema,
                 branch=branch,
                 fields_to_validate=fields_to_validate,
                 data=data,
                 at=at,
             )
+        else:
+            async with db.start_transaction() as dbt:
+                node_constraint_runner = await component_registry.get_component(
+                    NodeConstraintRunner, db=dbt, branch=branch
+                )
+
+                obj = await _do_create_node(
+                    node_class=node_class,
+                    node_constraint_runner=node_constraint_runner,
+                    db=dbt,
+                    schema=schema,
+                    branch=branch,
+                    fields_to_validate=fields_to_validate,
+                    data=data,
+                    at=at,
+                )
 
     if await get_profile_ids(db=db, obj=obj):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
