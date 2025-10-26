@@ -132,6 +132,13 @@ type AvailableActions {
   edges: [ActionAvailabilityEdge!]!
 }
 
+"""
+The `BigInt` scalar type represents non-fractional whole numeric values.
+`BigInt` is not constrained to 32-bit like the `Int` type and thus is a less
+compatible type.
+"""
+scalar BigInt
+
 """Branch"""
 type Branch {
   branched_from: String
@@ -6292,6 +6299,13 @@ input CoreWeightedPoolResourceUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""
+The `DateTime` scalar type represents a DateTime
+value as specified by
+[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
+"""
+scalar DateTime
+
 input DeleteInput {
   hfid: [String]
   id: String
@@ -6990,6 +7004,13 @@ input GenericPoolInput {
   id: String!
   identifier: String
 }
+
+"""
+The `GenericScalar` scalar type represents a generic
+GraphQL scalar value that could be:
+String, Boolean, Int, Float, List or Object.
+"""
+scalar GenericScalar
 
 type GroupEvent implements EventNodeInterface {
   """The account ID that triggered the event."""
@@ -11093,3 +11114,9 @@ type ValidateRepositoryConnectivity {
 type ValueType {
   value: String!
 }
+
+"""Expands a field to include Node defaults"""
+directive @expand(
+  """Exclude specific fields"""
+  exclude: [String]
+) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT

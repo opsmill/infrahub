@@ -15,7 +15,7 @@ SCHEMA_DIRECTORY = REPO_BASE / "schema"
 def generate_graphqlschema(context: Context) -> None:
     """Generate GraphQL schema into ./schema"""
     with context.cd(ESCAPED_REPO_PATH):
-        context.run("poetry run infrahub schema export-graphql-schema --out schema/schema.graphql")
+        context.run("poetry run infrahub dev export-graphql-schema --out schema/schema.graphql")
 
 
 @task
