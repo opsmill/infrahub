@@ -47,12 +47,7 @@ async def export_graphql_schema(
     schema_branch.process()
 
     gqlm = GraphQLSchemaManager(schema=schema_branch)
-    gql_schema = gqlm.generate(
-        include_query=True,
-        include_mutation=True,
-        include_subscription=True,
-        include_types=True,
-    )
+    gql_schema = gqlm.generate()
 
     schema_str = print_schema(gql_schema)
     schema_ast = parse(schema_str)
