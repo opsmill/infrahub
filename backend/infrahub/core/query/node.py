@@ -988,6 +988,7 @@ class NodeListGetInfoQuery(Query):
         )
         self.params.update(branch_params)
         self.params["ids"] = self.ids
+        self.order_by = ["n.uuid"]
 
         query = """
         MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)
