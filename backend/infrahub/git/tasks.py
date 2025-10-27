@@ -180,15 +180,16 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         default_branch_name=default_branch_name,
     )
 
-    async def on_failure() -> None:
+    try:
+        await repo.sync(staging_branch=staging_branch)
+    except RepositoryError:
         if operational_status == RepositoryOperationalStatus.ONLINE.value:
             params: dict[str, Any] = {
                 "branches": [infrahub_branch] if infrahub_branch else [],
                 "nodes": [str(repository_id)],
             }
             await add_tags(**params)
-
-    await repo.sync(staging_branch=staging_branch, on_failure=on_failure)
+        raise
 
 
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")

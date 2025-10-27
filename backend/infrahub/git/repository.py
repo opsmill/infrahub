@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache
 from cachetools.keys import hashkey
@@ -61,9 +61,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return response
 
-    async def sync(
-        self, staging_branch: str | None = None, on_failure: Callable[[], Awaitable[None]] | None = None
-    ) -> None:
+    async def sync(self, staging_branch: str | None = None) -> None:
         """Synchronize the repository with its remote origin and with the database.
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
@@ -71,12 +69,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         log.info("Starting the synchronization.", repository=self.name)
 
-        try:
-            await self.fetch()
-        except RepositoryError:
-            if on_failure:
-                await on_failure()
-            raise
+        await self.fetch()
 
         new_branches, updated_branches = await self.compare_local_remote()
 
