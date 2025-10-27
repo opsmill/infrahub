@@ -33,6 +33,7 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^6.0.0", extras = ["hiredis"] }
 typer = "0.12.5"
+click = "8.2.1"
 prefect = "3.4.23"
 prefect-redis = "0.2.5"
 ujson = "^5"
@@ -73,7 +74,6 @@ whenever = "0.7.3"
 netutils = "1.12.0"
 copier = "^9.8.0"
 ariadne-codegen = "0.15.3"
-click = "8.2.1"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
