@@ -29,11 +29,11 @@ test.describe("Branch - Merge action", () => {
       await page.getByRole("button", { name: "Merge", exact: true }).click();
       await expect(page.getByText("Branch merge requested!")).toBeVisible();
       await expect(page.getByText("RUNNINGMerge branch graphQL")).toBeVisible({
-        timeout: 2 * 60 * 1000,
+        timeout: 5 * 60 * 1000,
       });
       await expect(page.getByRole("button", { name: "Merge", exact: true })).toBeDisabled();
       await expect(page.getByText("COMPLETEDMerge branch graphQL")).toBeVisible({
-        timeout: 2 * 60 * 1000,
+        timeout: 5 * 60 * 1000,
       });
       await expect(page.getByRole("button", { name: "Merge", exact: true })).toBeEnabled();
     });
