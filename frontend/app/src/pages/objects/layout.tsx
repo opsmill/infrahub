@@ -10,12 +10,10 @@ import {
 } from "@/shared/components/ui/resizable";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
-import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
 import { ObjectHierarchyTree } from "@/entities/nodes/hierarchy/ui/object-hierarchy-tree";
 import ObjectHeader from "@/entities/nodes/object-header";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
@@ -52,15 +50,7 @@ const ObjectPageLayout = () => {
             <>
               <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
                 <ScrollArea scrollX className="h-full p-1">
-                  {isOfKind("CoreGroup", treeSchema) ? (
-                    <HierarchicalTree
-                      schema={treeSchema}
-                      currentNodeId={objectid}
-                      className="min-w-full p-2"
-                    />
-                  ) : (
-                    <ObjectHierarchyTree treeSchema={treeSchema} currentNodeId={objectid} />
-                  )}
+                  <ObjectHierarchyTree treeSchema={treeSchema} currentNodeId={objectid} />
                 </ScrollArea>
               </ResizablePanel>
               <ResizableHandle withHandle />
