@@ -3,7 +3,7 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.constants import InfrahubKind, RelationshipKind, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
@@ -17,7 +17,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import DEVICE_SCHEMA
+from tests.helpers.schema import CAR_SCHEMA, DEVICE_SCHEMA
 
 
 async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -1460,6 +1460,100 @@ async def test_create_with_object_template(
         assert sfp.part_number.value is None
         assert sfp.part_number.is_default is True
         assert sfp.part_number.source_id is None
+
+
+async def test_create_with_object_template_and_real_object(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
+):
+    """
+    Test that relationships on sub-templates will correctly link the created sub-object to an existing object on non-component relationships
+    """
+    updated_car_schema = CAR_SCHEMA.duplicate()
+    manufacturer_schema = updated_car_schema.get(name=TestKind.MANUFACTURER)
+    manufacturer_schema.generate_template = True
+    cars_rel = manufacturer_schema.get_relationship(name="cars")
+    cars_rel.kind = RelationshipKind.COMPONENT
+    person_schema = updated_car_schema.get(name=TestKind.PERSON)
+    person_schema.generate_template = True
+    car_schema = updated_car_schema.get(name=TestKind.CAR)
+    car_schema.generate_template = True
+    manufacturer_rel = car_schema.get_relationship(name="manufacturer")
+    manufacturer_rel.kind = RelationshipKind.PARENT
+    registry.schema.register_schema(schema=updated_car_schema, branch=branch.name)
+
+    manufacturer_object = await Node.init(schema=TestKind.MANUFACTURER, db=db, branch=branch)
+    await manufacturer_object.new(db=db, name="Hark Motors")
+    await manufacturer_object.save(db=db)
+
+    person_object = await Node.init(schema=TestKind.PERSON, db=db, branch=branch)
+    await person_object.new(db=db, name="John", height=180)
+    await person_object.save(db=db)
+
+    car_object = await Node.init(schema=TestKind.CAR, db=db, branch=branch)
+    await car_object.new(db=db, name="Accord", manufacturer=manufacturer_object, owner=person_object, color="blurple")
+    await car_object.save(db=db)
+
+    manufacturer_template: Node = await Node.init(schema=f"Template{TestKind.MANUFACTURER}", db=db, branch=branch)
+    await manufacturer_template.new(db=db, template_name="m_template", customers=[person_object])
+    await manufacturer_template.save(db=db)
+
+    car_template_with_person_object = await Node.init(schema=f"Template{TestKind.CAR}", db=db, branch=branch)
+    await car_template_with_person_object.new(
+        db=db,
+        template_name="c_template",
+        name="Civic",
+        color="blurple",
+        manufacturer=manufacturer_template,
+        owner=person_object,
+    )
+    await car_template_with_person_object.save(db=db)
+
+    create_manufacturer_with_template_query = """
+    mutation CreateManufacturerWithTemplate($manufacturer_name: String!, $template_id: String!) {
+      TestingManufacturerCreate(data: {
+        name: {value: $manufacturer_name}
+        object_template: {id: $template_id}
+      }) {
+        ok
+        object {
+          id
+        }
+      }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=create_manufacturer_with_template_query,
+        context_value=gql_params.context,
+        variable_values={"manufacturer_name": "Fresh Motors", "template_id": manufacturer_template.id},
+    )
+    assert not result.errors
+    new_manufacturer = await NodeManager.get_one(
+        db=db,
+        kind=TestKind.MANUFACTURER,
+        branch=branch,
+        id=result.data[f"{TestKind.MANUFACTURER}Create"]["object"]["id"],
+    )
+    assert new_manufacturer
+    assert new_manufacturer.name.value == "Fresh Motors"
+    customers_peers = await new_manufacturer.customers.get_peers(db=db)
+    assert len(customers_peers) == 1
+    customers_by_name = {person.name.value: person for person in customers_peers.values()}
+    # check non-template person
+    non_template_person = customers_by_name["John"]
+    assert non_template_person.id == person_object.id
+
+    cars_peers = await new_manufacturer.cars.get_peers(db=db)
+    assert len(cars_peers) == 1
+    cars_by_name = {car.name.value: car for car in cars_peers.values()}
+    # check car template with person object
+    car_template_with_person_object = cars_by_name["Civic"]
+    assert car_template_with_person_object.color.value == "blurple"
+    car_manufacturer = await car_template_with_person_object.manufacturer.get_peer(db=db)
+    assert car_manufacturer.id == new_manufacturer.id
+    car_owner = await car_template_with_person_object.owner.get_peer(db=db)
+    assert car_owner.id == person_object.id
 
 
 async def test_create_without_object_template(
