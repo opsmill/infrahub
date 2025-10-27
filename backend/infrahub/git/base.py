@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -21,6 +20,7 @@ from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
 from infrahub.core.registry import registry
+from infrahub.core.utils import branch_name_in_sync_branches
 from infrahub.exceptions import (
     CommitNotFoundError,
     FileOutOfRepositoryError,
@@ -503,9 +503,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             if short_name == "HEAD":
                 continue
 
-            if config.SETTINGS.git.sync_branch_names and not self.branch_name_in_sync_branches(
-                branch_short_name=short_name
-            ):
+            if config.SETTINGS.git.sync_branch_names and not branch_name_in_sync_branches(branch_short_name=short_name):
                 skipped_branch_names.append(short_name)
                 continue
 
@@ -518,13 +516,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             )
 
         return branches
-
-    @staticmethod
-    def branch_name_in_sync_branches(branch_short_name: str) -> bool:
-        for compiled_branch_name in config.SETTINGS.git._compiled_branch_names:
-            if re.fullmatch(compiled_branch_name, branch_short_name) or compiled_branch_name == branch_short_name:
-                return True
-        return False
 
     def get_branches_from_local(self, include_worktree: bool = True) -> dict[str, BranchInLocal]:
         """Return a dict with all the branches present locally."""

@@ -3,8 +3,9 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
+from infrahub import config
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
@@ -20,6 +21,7 @@ from infrahub.core.query.branch import (
 )
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.utils import branch_name_in_sync_branches
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
@@ -79,6 +81,18 @@ class Branch(StandardNode):
             raise ValidationError(f"Branch name contains invalid patterns or characters: {error_text}")
 
         return value
+
+    @model_validator(mode="after")
+    def validate_name(self) -> Self:
+        if (
+            not self.sync_with_git
+            and config.SETTINGS.git.sync_branch_names
+            and not branch_name_in_sync_branches(branch_short_name=self.name)
+        ):
+            raise ValidationError(
+                f"Branch name '{self.name}' does not match sync branch names {config.SETTINGS.git.sync_branch_names}"
+            )
+        return self
 
     @field_validator("branched_from", mode="before")
     @classmethod

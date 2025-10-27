@@ -289,6 +289,9 @@ async def test_get_branches_from_remote_in_sync_branch_names(git_repo_01: Infrah
     assert isinstance(remote_branches, dict)
     assert sorted(remote_branches.keys()) == ["branch01", "branch02", "main"]
 
+    config.SETTINGS.git.sync_branch_names = []
+    config.SETTINGS.git._compiled_branch_names = []
+
 
 async def test_get_branches_from_graph(
     git_repo_01_w_client: InfrahubRepository,
