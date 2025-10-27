@@ -51,6 +51,9 @@ def build_images(
         if nocache:
             exec_cmd += " --no-cache"
 
+        if os.getenv("CI") is not None:
+            exec_cmd += " --progress=plain"
+
         if service:
             exec_cmd += f" {service}"
 
