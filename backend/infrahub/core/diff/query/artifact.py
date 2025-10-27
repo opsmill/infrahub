@@ -201,4 +201,5 @@ CALL (target_node, definition_node){
             "target_checksum",
             "target_storage_id",
         ]
+        self.order_by = ["source_artifact.uuid", "target_node.uuid", "definition_node.uuid"]
         self.add_to_query(query=query)
