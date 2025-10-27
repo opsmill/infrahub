@@ -913,27 +913,27 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1" || true
 
       - name: Display task worker 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1" || true
 
       - name: Display task worker 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2" || true
 
       - name: Display task manager logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1" || true
 
       - name: Display database logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1" || true
 
       - name: Display message-queue logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1" || true
 
       - name: Display server status
         if: always()
