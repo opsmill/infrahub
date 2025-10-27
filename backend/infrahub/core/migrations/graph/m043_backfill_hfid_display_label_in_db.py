@@ -447,7 +447,7 @@ class Migration043(MigrationWithRebase):
 
         print("done")
 
-    async def process_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         root_node = await get_root_node(db=db, initialize=False)
         default_branch = root_node.default_branch
         schema_manager = SchemaManager()
@@ -487,4 +487,8 @@ class Migration043(MigrationWithRebase):
                     )
         except Exception as exc:
             return MigrationResult(errors=[str(exc)])
+        return MigrationResult()
+
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        # TODO
         return MigrationResult()
