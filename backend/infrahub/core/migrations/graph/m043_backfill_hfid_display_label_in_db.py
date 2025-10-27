@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import ujson
@@ -13,6 +14,7 @@ from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot, internal_schema
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.exceptions import InitializationError
 from infrahub.types import is_large_attribute_type
 
 from ..shared import ArbitraryMigration
@@ -129,21 +131,21 @@ class GetUpdatedPathDetailsBranchQuery(GetResultMapQuery):
             raise ValueError("This query can only be used on non-default branches")
         self.schema_kind = schema_kind
         self.attribute_names = []
-        self.bidir_rel_attr_map = {}
-        self.outbound_rel_attr_map = {}
-        self.inbound_rel_attr_map = {}
+        self.bidir_rel_attr_map: dict[str, list[str]] = defaultdict(list)
+        self.outbound_rel_attr_map: dict[str, list[str]] = defaultdict(list)
+        self.inbound_rel_attr_map: dict[str, list[str]] = defaultdict(list)
         for schema_path in schema_paths:
             if schema_path.is_type_attribute and schema_path.attribute_schema:
                 self.attribute_names.append(schema_path.attribute_schema.name)
             elif schema_path.is_type_relationship and schema_path.relationship_schema and schema_path.attribute_schema:
-                key = schema_path.relationship_schema.identifier
+                key = schema_path.relationship_schema.get_identifier()
                 value = schema_path.attribute_schema.name
                 if schema_path.relationship_schema.direction is RelationshipDirection.BIDIR:
-                    self.bidir_rel_attr_map[key] = value
+                    self.bidir_rel_attr_map[key].append(value)
                 elif schema_path.relationship_schema.direction is RelationshipDirection.OUTBOUND:
-                    self.outbound_rel_attr_map[key] = value
+                    self.outbound_rel_attr_map[key].append(value)
                 elif schema_path.relationship_schema.direction is RelationshipDirection.INBOUND:
-                    self.inbound_rel_attr_map[key] = value
+                    self.inbound_rel_attr_map[key].append(value)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
@@ -171,9 +173,9 @@ WHERE %(branch_filter)s
 AND r.to IS NULL
 AND r.status = "active"
 AND NOT exists((n)-[:IS_PART_OF {branch: $branch_name, status: "deleted"}]->(:Root))
-
-// any changes on the branch we care about
-
+// ------------
+// filter to any nodes that might have changes on the branch we care about
+// ------------
 OPTIONAL MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(attr_val:AttributeValue)
 WHERE attr.name in $attribute_names
 AND r2.branch = $branch_name
@@ -183,9 +185,9 @@ WITH n, attr_val IS NOT NULL AS has_attr_update
 OPTIONAL MATCH (n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer:Node)-[r3:HAS_ATTRIBUTE]-(attr:Attribute)-[r4:HAS_VALUE]->(attr_val)
 WHERE rel.name IN $bidirectional_rel_ids + $outbound_rel_ids + $inbound_rel_ids
 AND (
-    $outbound_rel_attr_map[rel.name] = attr.name
-    OR $inbound_rel_attr_map[rel.name] = attr.name
-    OR $bidirectional_rel_attr_map[rel.name] = attr.name
+    attr.name IN $outbound_rel_attr_map[rel.name]
+    OR attr.name IN $inbound_rel_attr_map[rel.name]
+    OR attr.name IN $bidirectional_rel_attr_map[rel.name]
 )
 AND $branch_name IN [r1.branch, r2.branch, r3.branch, r4.branch]
 WITH n, has_attr_update, attr_val IS NOT NULL AS has_rel_update
@@ -198,9 +200,10 @@ WHERE has_update = TRUE
 ORDER BY elementId(n)
 SKIP toInteger($offset)
 LIMIT toInteger($limit)
-
-
-// get latest attribute with correct branch filtering
+// ------------
+// for every possibly updated node
+// get all the attribute values on this branch
+// ------------
 OPTIONAL MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute)
 WHERE attr.name IN $attribute_names
 WITH DISTINCT n, attr
@@ -214,9 +217,10 @@ CALL (n, attr) {
 WITH n, attr, attr_value
 WHERE is_active = TRUE
 WITH n, collect([attr.name, attr_value]) AS attr_vals_list
-
-
-// Get the values for the relationship schema paths of the Nodes, if any
+// ------------
+// for every possibly updated node
+// get all the relationships on this branch
+// ------------
 OPTIONAL MATCH (n)-[:IS_RELATED]-(rel:Relationship)
 WHERE rel.name IN $bidirectional_rel_ids + $outbound_rel_ids + $inbound_rel_ids
 WITH DISTINCT n, attr_vals_list, rel
@@ -239,11 +243,11 @@ CALL (n, rel) {
     ORDER BY r2.branch_level DESC, r2.from DESC, r2.status ASC, r1.branch_level DESC, r1.from DESC, r1.status ASC
     LIMIT 1
 }
-
+// ------------
+// get the attribute values that we care about for each relationship
+// ------------
 WITH n, attr_vals_list, rel.name AS rel_name, direction, peer
 WHERE is_active = TRUE
-
-
 CALL (rel_name, direction, peer){
     MATCH (peer)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(attr_val)
     WHERE (
@@ -282,21 +286,21 @@ class GetPathDetailsDefaultBranch(GetResultMapQuery):
         self.branch_names = [registry.default_branch, GLOBAL_BRANCH_NAME]
         self.schema_kind = schema_kind
         self.attribute_names = []
-        self.bidir_rel_attr_map = {}
-        self.outbound_rel_attr_map = {}
-        self.inbound_rel_attr_map = {}
+        self.bidir_rel_attr_map: dict[str, list[str]] = defaultdict(list)
+        self.outbound_rel_attr_map: dict[str, list[str]] = defaultdict(list)
+        self.inbound_rel_attr_map: dict[str, list[str]] = defaultdict(list)
         for schema_path in schema_paths:
             if schema_path.is_type_attribute and schema_path.attribute_schema:
                 self.attribute_names.append(schema_path.attribute_schema.name)
             elif schema_path.is_type_relationship and schema_path.relationship_schema and schema_path.attribute_schema:
-                key = schema_path.relationship_schema.identifier
+                key = schema_path.relationship_schema.get_identifier()
                 value = schema_path.attribute_schema.name
                 if schema_path.relationship_schema.direction is RelationshipDirection.BIDIR:
-                    self.bidir_rel_attr_map[key] = value
+                    self.bidir_rel_attr_map[key].append(value)
                 elif schema_path.relationship_schema.direction is RelationshipDirection.OUTBOUND:
-                    self.outbound_rel_attr_map[key] = value
+                    self.outbound_rel_attr_map[key].append(value)
                 elif schema_path.relationship_schema.direction is RelationshipDirection.INBOUND:
-                    self.inbound_rel_attr_map[key] = value
+                    self.inbound_rel_attr_map[key].append(value)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params = {
@@ -463,6 +467,7 @@ AND e.to IS NULL
 AND e.status = "active"
 // ------------
 // If the attribute has an existing value on the branch, then set the to time on it
+// but only if the value is different from the new value
 // ------------
 WITH DISTINCT n, attr, value_id_pairs
 CALL (attr) {
@@ -470,7 +475,12 @@ CALL (attr) {
     WHERE e.branch IN [$default_branch, $global_branch]
     AND e.to IS NULL
     AND e.status = "active"
-    SET e.to = $at
+    RETURN existing_av, e AS existing_has_value
+}
+CALL (existing_has_value) {
+    WITH existing_has_value
+    WHERE existing_has_value IS NOT NULL
+    SET existing_has_value.to = $at
 }
             """
         else:
@@ -501,6 +511,7 @@ WITH DISTINCT n, attr, value_id_pairs, is_active
 WHERE is_active = TRUE
 // ------------
 // If the attribute has an existing value on the branch, then set the to time on it
+// but only if the value is different from the new value
 // ------------
 CALL (attr) {
     OPTIONAL MATCH (attr)-[r:HAS_VALUE]->(existing_av)
@@ -509,8 +520,14 @@ CALL (attr) {
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
     WITH r
-    WHERE r.status = "active"
+    WHERE existing_av.value <> $values_by_id[n.uuid]
+    AND r.status = "active"
     AND r.branch = $branch
+    RETURN existing_av, r AS existing_has_value
+}
+CALL (existing_has_value) {
+    WITH existing_has_value
+    WHERE existing_has_value IS NOT NULL
     SET r.to = $at
 }
             """ % {"branch_filter": branch_filter}
@@ -520,7 +537,12 @@ CALL (attr) {
             # use the index we created at the start to get the database ID of the AttributeValue vertex
             # and then link the Attribute to the AttributeValue
             set_value_query = """
-WITH attr, value_id_pairs, $values_by_id[n.uuid] AS required_value
+// ------------
+// only make updates if the existing value is not the same as the new value
+// ------------
+WITH attr, existing_av, value_id_pairs, $values_by_id[n.uuid] AS required_value
+WHERE existing_av.value <> required_value
+OR existing_av IS NULL
 WITH attr, value_id_pairs, required_value,
     reduce(av_vertex_id = NULL, pair IN value_id_pairs |
         CASE
@@ -537,6 +559,12 @@ CREATE (attr)-[r:HAS_VALUE { branch: $branch, branch_level: $branch_level, statu
             # if not a large-type attribute, then we can just use the regular MERGE clause
             # that makes use of the index on AttributeValueIndexed
             set_value_query = """
+// ------------
+// only make updates if the existing value is not the same as the new value
+// ------------
+WITH n, attr, existing_av, value_id_pairs, $values_by_id[n.uuid] AS required_value
+WHERE existing_av.value <> required_value
+OR existing_av IS NULL
 CALL (n, attr) {
     MERGE (av:AttributeValue&AttributeValueIndexed {is_default: false, value: $values_by_id[n.uuid]} )
     WITH av, attr
@@ -567,6 +595,18 @@ class Migration043(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
+    async def _get_or_load_schema_branch(self, db: InfrahubDatabase, branch: Branch) -> SchemaBranch:
+        try:
+            if registry.schema.has_schema_branch(branch.name):
+                return registry.schema.get_schema_branch(branch.name)
+        except InitializationError:
+            pass
+        schema_manager = SchemaManager()
+        internal_schema_root = SchemaRoot(**internal_schema)
+        schema_manager.register_schema(schema=internal_schema_root)
+        registry.schema = schema_manager
+        return await schema_manager.load_schema_from_db(db=db, branch=branch)
+
     async def _do_one_schema_batch_default_branch(
         self,
         db: InfrahubDatabase,
@@ -578,7 +618,7 @@ class Migration043(ArbitraryMigration):
         progress: Progress,
         update_task: TaskID,
     ) -> None:
-        if not schema.display_labels and not schema.human_friendly_id:
+        if not schema.display_label and not schema.human_friendly_id:
             return
 
         print(f"Processing {schema.kind}...", end="")
@@ -645,14 +685,20 @@ class Migration043(ArbitraryMigration):
         print("done")
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        # branches = await Branch.get_list(db=db)
+        # for branch in branches:
+        #     if branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
+        #         continue
+        #     await self.execute_against_branch(db=db, branch=branch)
+
+        # return MigrationResult(errors=["pretend error"])
+
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
-        schema_manager = SchemaManager()
-        internal_schema_root = SchemaRoot(**internal_schema)
-        schema_manager.register_schema(schema=internal_schema_root)
-        registry.schema = schema_manager
-        main_schema_branch = await schema_manager.load_schema_from_db(db=db, branch=default_branch)
+
+        main_schema_branch = await self._get_or_load_schema_branch(db=db, branch=default_branch)
+
         total_nodes_query = await DefaultBranchNodeCount.init(db=db, kinds_to_skip=self.kinds_to_skip)
         await total_nodes_query.execute(db=db)
         total_nodes_count = total_nodes_query.get_num_nodes()
@@ -661,30 +707,30 @@ class Migration043(ArbitraryMigration):
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
         hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
 
-        try:
-            with Progress() as progress:
-                update_task = progress.add_task(
-                    f"Set display_label and human_friendly_id for {total_nodes_count} nodes on default branch",
-                    total=total_nodes_count,
+        # try:
+        with Progress() as progress:
+            update_task = progress.add_task(
+                f"Set display_label and human_friendly_id for {total_nodes_count} nodes on default branch",
+                total=total_nodes_count,
+            )
+            for node_schema_name in main_schema_branch.node_names:
+                if node_schema_name in self.kinds_to_skip:
+                    continue
+
+                node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+                await self._do_one_schema_batch_default_branch(
+                    db=db,
+                    default_branch=default_branch,
+                    schema=node_schema,
+                    schema_branch=main_schema_branch,
+                    display_label_attribute_schema=display_label_attribute_schema,
+                    hfid_attribute_schema=hfid_attribute_schema,
+                    progress=progress,
+                    update_task=update_task,
                 )
-                for node_schema_name in main_schema_branch.node_names:
-                    if node_schema_name in self.kinds_to_skip:
-                        continue
 
-                    node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
-                    await self._do_one_schema_batch_default_branch(
-                        db=db,
-                        default_branch=default_branch,
-                        schema=node_schema,
-                        schema_branch=main_schema_branch,
-                        display_label_attribute_schema=display_label_attribute_schema,
-                        hfid_attribute_schema=hfid_attribute_schema,
-                        progress=progress,
-                        update_task=update_task,
-                    )
-
-        except Exception as exc:
-            return MigrationResult(errors=[str(exc)])
+        # except Exception as exc:
+        # return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
     async def _do_one_schema_batch_branch(
@@ -738,12 +784,8 @@ class Migration043(ArbitraryMigration):
 
             offset += self.update_batch_size
 
-    async def execute_on_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
-        schema_manager = SchemaManager()
-        internal_schema_root = SchemaRoot(**internal_schema)
-        schema_manager.register_schema(schema=internal_schema_root)
-        registry.schema = schema_manager
-        schema_branch = await schema_manager.load_schema_from_db(db=db, branch=branch)
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        schema_branch = await self._get_or_load_schema_branch(db=db, branch=branch)
 
         base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
