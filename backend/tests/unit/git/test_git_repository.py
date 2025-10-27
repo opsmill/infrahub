@@ -12,6 +12,7 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx._httpx_mock import HTTPXMock
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
@@ -277,6 +278,16 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
     remote_branches = repo.get_branches_from_remote()
     assert isinstance(remote_branches, dict)
     assert sorted(remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
+
+
+async def test_get_branches_from_remote_in_sync_branch_names(git_repo_01: InfrahubRepository):
+    config.SETTINGS.git.sync_branch_names = ["/branch.*/", "main"]
+    config.SETTINGS.git._compiled_branch_names = ["branch.*", "main"]
+    repo = git_repo_01
+
+    remote_branches = repo.get_branches_from_remote()
+    assert isinstance(remote_branches, dict)
+    assert sorted(remote_branches.keys()) == ["branch01", "branch02", "main"]
 
 
 async def test_get_branches_from_graph(

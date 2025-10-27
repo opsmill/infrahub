@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -16,6 +17,7 @@ from prefect.logging import get_run_logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
 from infrahub.core.registry import registry
@@ -490,6 +492,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         git_repo = self.get_git_repo_main()
 
         branches = {}
+        skipped_branch_names = []
 
         for remote_branch in git_repo.remotes.origin.refs:
             if not isinstance(remote_branch, RemoteReference):
@@ -500,9 +503,28 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             if short_name == "HEAD":
                 continue
 
+            if config.SETTINGS.git.sync_branch_names and not self.branch_name_in_sync_branches(
+                branch_short_name=short_name
+            ):
+                skipped_branch_names.append(short_name)
+                continue
+
             branches[short_name] = BranchInRemote(name=short_name, commit=str(remote_branch.commit))
 
+        if skipped_branch_names:
+            log.debug(
+                f"Skipped the following branches {skipped_branch_names} "
+                f"because no match was found in sync branch names {config.SETTINGS.git.sync_branch_names}"
+            )
+
         return branches
+
+    @staticmethod
+    def branch_name_in_sync_branches(branch_short_name: str) -> bool:
+        for compiled_branch_name in config.SETTINGS.git._compiled_branch_names:
+            if re.fullmatch(compiled_branch_name, branch_short_name) or compiled_branch_name == branch_short_name:
+                return True
+        return False
 
     def get_branches_from_local(self, include_worktree: bool = True) -> dict[str, BranchInLocal]:
         """Return a dict with all the branches present locally."""
