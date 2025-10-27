@@ -117,7 +117,10 @@ export function ObjectTreeItem({ node, treeObjectKind, currentNodeId }: ObjectTr
           </Collection>
 
           {(isPending || hasNextPage) && (
-            <TreeItemLoader isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
+            <TreeItemLoader
+              isLoading={isPending || isFetchingNextPage}
+              onLoadMore={fetchNextPage}
+            />
           )}
         </>
       )}
