@@ -447,7 +447,7 @@ class GitSettings(BaseSettings):
     )
     sync_branch_names: list[str] = Field(
         default_factory=list,
-        description="Names or regex of branches to sync with git",
+        description="Names or regex of branches to sync with git e.g. 'main', '/infrahub/.*/', '/release/.*/' ",
     )
     _compiled_branch_names: list[str] = PrivateAttr(default_factory=list)
 
