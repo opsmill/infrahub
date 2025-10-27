@@ -34,7 +34,7 @@ async def export_graphql_schema(
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     out: Path = typer.Option("schema.graphql"),  # noqa: B008
 ) -> None:
-    """Export the GraphQL schema to a file."""
+    """Export the Core GraphQL schema to a file."""
 
     config.load_and_exit(config_file_name=config_file)
 
