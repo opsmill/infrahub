@@ -17,10 +17,8 @@ test.describe("Branch - Merge action", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test("disable merge button while merge is in progress and re-enable it when complete", async ({
-    page,
-  }) => {
-    await test.step("access a the branch details page", async () => {
+  test("disable merge button during merge and re-enable when complete", async ({ page }) => {
+    await test.step("access the branch details page", async () => {
       await page.goto(`/branches/${BRANCH_NAME}`);
       await page.getByText("Tasks").click();
     });
