@@ -3,8 +3,6 @@ import copy
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub import config
-from infrahub.constants.database import Neo4jRuntime
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
@@ -286,6 +284,8 @@ async def test_get_many_with_pagination(
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
+    query_limit_of_one: None,
+    neo4j_runtime_parallel: None,
 ):
     new_node_ids: list[str] = []
     for index in range(10):
@@ -294,22 +294,12 @@ async def test_get_many_with_pagination(
         await bulk_node.save(db=db)
         new_node_ids.append(bulk_node.id)
 
-    original_query_size_limit = config.SETTINGS.database.query_size_limit
-    config.SETTINGS.database.query_size_limit = 1
-    original_neo4j_runtime = db.default_neo4j_runtime
-    db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
+    target_ids = [criticality_low.id, criticality_medium.id, criticality_high.id, *new_node_ids]
+    nodes = await NodeManager.get_many(db=db, ids=target_ids)
 
-    try:
-        target_ids = [criticality_low.id, criticality_medium.id, criticality_high.id, *new_node_ids]
-        nodes = await NodeManager.get_many(db=db, ids=target_ids)
-    finally:
-        config.SETTINGS.database.query_size_limit = original_query_size_limit
-        db.default_neo4j_runtime = original_neo4j_runtime
-
-    expected_ids = set(target_ids)
-    assert set(nodes) == expected_ids
-    assert len(nodes) == len(expected_ids)
-    assert all(isinstance(nodes[node_id], Node) for node_id in expected_ids)
+    assert set(nodes) == set(target_ids)
+    assert len(nodes) == len(target_ids)
+    assert all(isinstance(nodes[node_id], Node) for node_id in target_ids)
 
 
 async def test_get_many_prefetch(
