@@ -1,4 +1,6 @@
-from infrahub.config import UserInfoMethod, load
+import pytest
+
+from infrahub.config import GitSettings, UserInfoMethod, load
 from tests.conftest import TestHelper
 
 
@@ -19,3 +21,15 @@ def test_load_sso_config(helper: TestHelper) -> None:
     assert oauth_provider2.userinfo_method == UserInfoMethod.GET
     assert oidc_provider1.userinfo_method == UserInfoMethod.POST
     assert oidc_provider2.userinfo_method == UserInfoMethod.GET
+
+
+def test_valid_git_settings__sync_branch_names():
+    sync_branch_names = ["main", "/infrahub/.*/", "/release/.*/"]
+    git_settings = GitSettings(sync_branch_names=sync_branch_names)
+    assert git_settings.sync_branch_names == sync_branch_names
+    assert git_settings._compiled_branch_names == ["main", "infrahub/.*", "release/.*"]
+
+
+def test_invalid_git_settings__sync_branch_names():
+    with pytest.raises(ValueError):
+        GitSettings(sync_branch_names=["main", "/infrahub/.*/", "/release/.*/", "/a[b/"])

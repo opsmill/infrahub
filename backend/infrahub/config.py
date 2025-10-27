@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import ssl
 import sys
 from dataclasses import dataclass
@@ -444,6 +445,28 @@ class GitSettings(BaseSettings):
         default_factory=default_append_git_suffix_domains,
         description="Automatically append '.git' to HTTP URLs if for these domains.",
     )
+    sync_branch_names: list[str] = Field(
+        default_factory=list,
+        description="Names or regex of branches to sync with git",
+    )
+    _compiled_branch_names: list[str] = PrivateAttr(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_sync_branch_names(self) -> Self:
+        compiled_branch_names = []
+        for branch_name in self.sync_branch_names:
+            if not branch_name.startswith("/") and not branch_name.endswith("/"):
+                compiled_branch_names.append(branch_name)
+                continue
+
+            pattern = branch_name.strip("/")
+            try:
+                re.compile(pattern)
+                compiled_branch_names.append(pattern)
+            except re.error as exc:
+                raise ValueError(f"Invalid regex pattern for sync_branch_names: '{branch_name}' — {exc}") from exc
+        self._compiled_branch_names = compiled_branch_names
+        return self
 
 
 class HTTPSettings(BaseSettings):
