@@ -26,7 +26,7 @@ export default defineConfig({
     toHaveScreenshot: { maxDiffPixels: 5000 },
   },
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 4 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ["list"],
