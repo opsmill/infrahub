@@ -52,7 +52,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
 
       <Row className="ml-auto gap-6">
         <BranchMetadata
-          label="last rebase on"
+          label="last rebase"
           value={branch.branched_from ? formatFullDate(branch.branched_from) : "-"}
         />
         <BranchMetadata
