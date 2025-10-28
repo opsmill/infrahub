@@ -150,6 +150,7 @@ type Branch {
   is_isolated: Boolean @deprecated(reason: "non isolated mode is not supported anymore")
   name: String!
   origin_branch: String
+  status: BranchStatus!
   sync_with_git: Boolean
 }
 
@@ -316,6 +317,13 @@ enum BranchRelativePermissionDecision {
   ALLOW_DEFAULT
   ALLOW_OTHER
   DENY
+}
+
+"""An enumeration."""
+enum BranchStatus {
+  DELETING
+  NEED_REBASE
+  OPEN
 }
 
 type BranchUpdate {
