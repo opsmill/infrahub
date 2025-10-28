@@ -33,7 +33,13 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
+from infrahub.events.branch_action import (
+    BranchCreatedEvent,
+    BranchDeletedEvent,
+    BranchMergedEvent,
+    BranchMigratedEvent,
+    BranchRebasedEvent,
+)
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, ValidationError
@@ -235,6 +241,14 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         obj.status = BranchStatus.OPEN
     obj.graph_version = GRAPH_VERSION
     await obj.save(db=db)
+
+    if send_events:
+        event_service = await get_event_service()
+        await event_service.send(
+            BranchMigratedEvent(
+                branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+            )
+        )
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")

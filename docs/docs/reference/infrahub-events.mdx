@@ -164,6 +164,32 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **proposed_change_id** | The ID of the proposed change that merged this branch if applicable |
 <!-- vale on -->
 <!-- vale off -->
+### Branch Migrated Event
+<!-- vale on -->
+
+**Type**: infrahub.branch.migrated
+**Description**: Event generated when a branch has been migrated
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_id** | The ID of the branch |
+| **branch_name** | The name of the branch |
+<!-- vale on -->
+<!-- vale off -->
 ### Branch Rebased Event
 <!-- vale on -->
 
@@ -186,7 +212,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
-| **branch_id** | The ID of the mutated node |
+| **branch_id** | The ID of the branch |
 | **branch_name** | The name of the branch |
 <!-- vale on -->
 ## Group events
