@@ -169,7 +169,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             )
 
     await workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name})
-    await workflow.submit_workflow(workflow=BRANCH_MIGRATE, context=context, parameters={"branch_name": obj.name})
+    await workflow.submit_workflow(
+        workflow=BRANCH_MIGRATE, context=context, parameters={"branch": obj.name, "send_events": send_events}
+    )
 
     if not send_events:
         return
@@ -201,36 +203,38 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
 
 @flow(name="migrate_branch", flow_run_name="Apply migrations to branch {branch}")
-async def migrate_branch(branch_name: str, context: InfrahubContext) -> None:  # noqa: ARG001
+async def migrate_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:
+    await add_tags(branches=[branch])
+
     db = await get_database()
     log = get_run_logger()
 
-    branch = await registry.get_branch(db=db, branch=branch_name)
+    obj = await Branch.get_by_name(db=db, name=branch)
 
-    if branch.graph_version == GRAPH_VERSION:
-        log.info(f"Branch '{branch.name}' is up-to-date")
+    if obj.graph_version == GRAPH_VERSION:
+        log.info(f"Branch '{obj.name}' is up-to-date")
         return
 
-    migration_runner = MigrationRunner(branch=branch)
+    migration_runner = MigrationRunner(branch=obj)
     if not migration_runner.has_migrations():
-        log.info(f"No migrations detected for branch '{branch.name}'")
+        log.info(f"No migrations detected for branch '{obj.name}'")
         return
 
     # Branch status will remain as so if the migration process fails
     # This will help user to know that a branch is in an invalid state to be used properly and that actions need to be taken
-    branch.status = BranchStatus.NEED_UPGRADE_REBASE
-    await branch.save(db=db)
+    obj.status = BranchStatus.NEED_UPGRADE_REBASE
+    await obj.save(db=db)
 
     try:
         await migration_runner.run(db=db)
     except MigrationFailureError as exc:
-        log.error(f"Failed to migrate branch '{branch.name}': {exc.errors}")
+        log.error(f"Failed to migrate branch '{obj.name}': {exc.errors}")
         return
 
-    if branch.status == BranchStatus.NEED_UPGRADE_REBASE:
-        branch.status = BranchStatus.OPEN
-    branch.graph_version = GRAPH_VERSION
-    await branch.save(db=db)
+    if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
+        obj.status = BranchStatus.OPEN
+    obj.graph_version = GRAPH_VERSION
+    await obj.save(db=db)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
