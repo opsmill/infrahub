@@ -1582,6 +1582,7 @@ async def test_create_with_object_template_and_real_object(
       }
     }
     """
+    branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
