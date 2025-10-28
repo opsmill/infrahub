@@ -718,7 +718,7 @@ class Migration043(MigrationWithRebase):
 
         print("done")
 
-    async def process_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)

@@ -3,25 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
-from rich.console import Console
 from typing_extensions import Self
 
-from infrahub.auth import AccountSession, AuthType
-from infrahub.context import InfrahubContext
 from infrahub.core import registry
-from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
-from infrahub.core.schema import (
-    AttributeSchema,
-    MainSchemaTypes,
-    RelationshipSchema,
-    SchemaRoot,
-    internal_schema,
-)
+from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema, SchemaRoot, internal_schema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
-from infrahub.lock import initialize_lock
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -247,50 +235,11 @@ class MigrationWithRebase(BaseModel):
     def init(cls, **kwargs: dict[str, Any]) -> Self:
         return cls(**kwargs)  # type: ignore[arg-type]
 
-    async def rebase_branch(self, branch: Branch) -> bool:
-        # Circular deps if imported inside import block
-        from infrahub.core.branch.tasks import rebase_branch
-
-        console = Console()
-        console.print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
-        try:
-            await rebase_branch(
-                branch=branch.name,
-                context=InfrahubContext.init(
-                    branch=branch, account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id="")
-                ),
-                send_events=False,
-            )
-            console.print("done")
-        except ValidationError:
-            console.print("failed")
-            return False
-
-        return True
-
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError()
 
-    async def process_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
         raise NotImplementedError()
 
-    async def execute_against_branch(
-        self, db: InfrahubDatabase, branch: Branch, skip_rebase: bool = False
-    ) -> MigrationResult:
-        initialize_lock()
-        await registry.schema.load_schema(db=db, branch=branch)
-
-        if not skip_rebase:
-            if not await self.rebase_branch(branch=branch):
-                branch.status = BranchStatus.NEED_UPGRADE_REBASE
-                await branch.save(db=db)
-                return MigrationResult()
-
-        return await self.process_branch(db=db, branch=branch)
-
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        from infrahub.core.initialization import initialization
-
-        await initialization(db=db)
-
-        return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry(), skip_rebase=True)
+        return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry())

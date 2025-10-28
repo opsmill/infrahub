@@ -35,7 +35,7 @@ from .db import (
     detect_migration_to_run,
     initialize_internal_schema,
     migrate_database,
-    rebase_and_migrate_branches,
+    trigger_rebase_branches,
     update_core_schema,
 )
 
@@ -112,13 +112,8 @@ async def upgrade_cmd(
     # -------------------------------------------
     # Perform branch rebase and apply migrations to them
     # -------------------------------------------
-    if rebase_branches and not await rebase_and_migrate_branches(
-        db=dbdriver, current_graph_version=root_node.graph_version
-    ):
-        # A migration failed, stop the upgrade process
-        rprint("Upgrade cancelled due to branch rebase and migration failure.")
-        await dbdriver.close()
-        return
+    if rebase_branches:
+        await trigger_rebase_branches(db=dbdriver)
 
     await dbdriver.close()
 

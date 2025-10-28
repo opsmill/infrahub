@@ -18,9 +18,11 @@ from rich.console import Console
 from rich.table import Table
 
 from infrahub import config
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
@@ -40,7 +42,6 @@ from infrahub.core.initialization import (
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
-from infrahub.core.migrations.shared import MigrationWithRebase
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
@@ -49,6 +50,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
+from infrahub.exceptions import ValidationError
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -63,7 +65,12 @@ def get_timestamp_string() -> str:
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
-    from infrahub.core.migrations.shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
+    from infrahub.core.migrations.shared import (
+        ArbitraryMigration,
+        GraphMigration,
+        InternalSchemaMigration,
+        MigrationWithRebase,
+    )
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
 
@@ -354,51 +361,30 @@ async def migrate_database(
     return True
 
 
-async def rebase_and_migrate_branches(db: InfrahubDatabase, current_graph_version: int) -> bool:
-    """Only applies migrations that aim at rebasing branches."""
-    branches = [
-        b
-        for b in await Branch.get_list(db=db)
-        if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]
-        and (not b.graph_version or b.graph_version < current_graph_version)
-    ]
-
+async def trigger_rebase_branches(db: InfrahubDatabase) -> None:
+    """Trigger rebase of non-default branches, also triggering migrations in the process."""
+    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
     if not branches:
-        return True
+        return
 
     rprint(f"Planning rebase and migrations for {len(branches)} branches: {', '.join([b.name for b in branches])}")
 
     for branch in branches:
-        migrations = [
-            m
-            for m in await detect_migration_to_run(current_graph_version=branch.graph_version or 0)
-            if isinstance(m, MigrationWithRebase)
-        ]
-        rprint(
-            f"Detected {len(migrations)} migrations to run against '{branch.name}' (ID: {branch.uuid}): {', '.join([m.name for m in migrations])}"
-        )
+        if branch.graph_version == GRAPH_VERSION:
+            continue
 
-        for migration in migrations:
-            execution_result = await migration.execute_against_branch(db=db, branch=branch)
-            validation_result = None
-
-            if execution_result.success:
-                validation_result = await migration.validate_migration(db=db)
-                if validation_result.success and branch.status != BranchStatus.NEED_UPGRADE_REBASE:
-                    branch.graph_version = migration.minimum_version + 1
-                    await branch.save(db=db)
-                    rprint(f"Migration: {migration.name} {SUCCESS_BADGE}")
-
-            if not execution_result.success or (validation_result and not validation_result.success):
-                rprint(f"Migration: {migration.name} {FAILED_BADGE}")
-                for error in execution_result.errors:
-                    rprint(f"  {error}")
-                if validation_result and not validation_result.success:
-                    for error in validation_result.errors:
-                        rprint(f"  {error}")
-                return False
-
-    return True
+        rprint(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
+        try:
+            await rebase_branch(
+                branch=branch.name,
+                context=InfrahubContext.init(
+                    branch=branch, account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id="")
+                ),
+                send_events=False,
+            )
+            rprint("done")
+        except ValidationError:
+            rprint("failed")
 
 
 async def initialize_internal_schema() -> None:

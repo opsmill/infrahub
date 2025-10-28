@@ -12,6 +12,7 @@ from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -21,7 +22,10 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge import BranchMerger
+from infrahub.core.migrations.exceptions import MigrationFailureError
+from infrahub.core.migrations.runner import MigrationRunner
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
 from infrahub.core.timestamp import Timestamp
@@ -39,6 +43,7 @@ from infrahub.workers.dependencies import get_component, get_database, get_event
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_MERGE_POST_PROCESS,
+    BRANCH_MIGRATE,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
@@ -51,6 +56,7 @@ from infrahub.workflows.utils import add_tags
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
 async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:  # noqa: PLR0915
+    workflow = get_workflow()
     database = await get_database()
     async with database.start_session() as db:
         log = get_run_logger()
@@ -69,7 +75,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             diff_repository=diff_repository,
             source_branch=obj,
             diff_locker=DiffLocker(),
-            workflow=get_workflow(),
+            workflow=workflow,
         )
 
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
@@ -156,41 +162,75 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             target_branch_name=registry.default_branch,
         )
         if ipam_node_details:
-            await get_workflow().submit_workflow(
+            await workflow.submit_workflow(
                 workflow=IPAM_RECONCILIATION,
                 context=context,
                 parameters={"branch": obj.name, "ipam_node_details": ipam_node_details},
             )
 
-    await get_workflow().submit_workflow(
-        workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name}
+    await workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name})
+    await workflow.submit_workflow(workflow=BRANCH_MIGRATE, context=context, parameters={"branch_name": obj.name})
+
+    if not send_events:
+        return
+
+    # -------------------------------------------------------------
+    # Generate an event to indicate that a branch has been rebased
+    # -------------------------------------------------------------
+    rebase_event = BranchRebasedEvent(
+        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
     )
-
-    if send_events:
-        # -------------------------------------------------------------
-        # Generate an event to indicate that a branch has been rebased
-        # -------------------------------------------------------------
-        rebase_event = BranchRebasedEvent(
-            branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+    events: list[InfrahubEvent] = [rebase_event]
+    changelog_collector = DiffChangelogCollector(
+        diff=default_branch_diff, branch=obj, db=db, migration_tracker=MigrationTracker(migrations=migrations)
+    )
+    for action, node_changelog in changelog_collector.collect_changelogs():
+        node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+        mutate_event = node_event_class(
+            kind=node_changelog.node_kind,
+            node_id=node_changelog.node_id,
+            changelog=node_changelog,
+            fields=node_changelog.updated_fields,
+            meta=EventMeta.from_parent(parent=rebase_event, branch=obj),
         )
-        events: list[InfrahubEvent] = [rebase_event]
-        changelog_collector = DiffChangelogCollector(
-            diff=default_branch_diff, branch=obj, db=db, migration_tracker=MigrationTracker(migrations=migrations)
-        )
-        for action, node_changelog in changelog_collector.collect_changelogs():
-            node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
-            mutate_event = node_event_class(
-                kind=node_changelog.node_kind,
-                node_id=node_changelog.node_id,
-                changelog=node_changelog,
-                fields=node_changelog.updated_fields,
-                meta=EventMeta.from_parent(parent=rebase_event, branch=obj),
-            )
-            events.append(mutate_event)
+        events.append(mutate_event)
 
-        event_service = await get_event_service()
-        for event in events:
-            await event_service.send(event)
+    event_service = await get_event_service()
+    for event in events:
+        await event_service.send(event)
+
+
+@flow(name="migrate_branch", flow_run_name="Apply migrations to branch {branch}")
+async def migrate_branch(branch_name: str, context: InfrahubContext) -> None:  # noqa: ARG001
+    db = await get_database()
+    log = get_run_logger()
+
+    branch = await registry.get_branch(db=db, branch=branch_name)
+
+    if branch.graph_version == GRAPH_VERSION:
+        log.info(f"Branch '{branch.name}' is up-to-date")
+        return
+
+    migration_runner = MigrationRunner(branch=branch)
+    if not migration_runner.has_migrations():
+        log.info(f"No migrations detected for branch '{branch.name}'")
+        return
+
+    # Branch status will remain as so if the migration process fails
+    # This will help user to know that a branch is in an invalid state to be used properly and that actions need to be taken
+    branch.status = BranchStatus.NEED_UPGRADE_REBASE
+    await branch.save(db=db)
+
+    try:
+        await migration_runner.run(db=db)
+    except MigrationFailureError as exc:
+        log.error(f"Failed to migrate branch '{branch.name}': {exc.errors}")
+        return
+
+    if branch.status == BranchStatus.NEED_UPGRADE_REBASE:
+        branch.status = BranchStatus.OPEN
+    branch.graph_version = GRAPH_VERSION
+    await branch.save(db=db)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
