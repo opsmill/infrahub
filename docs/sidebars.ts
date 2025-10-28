@@ -343,8 +343,9 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'reference/infrahub-cli/infrahub-db',
-            'reference/infrahub-cli/infrahub-git-agent',
-            'reference/infrahub-cli/infrahub-server'
+            'reference/infrahub-cli/infrahub-server',
+            'reference/infrahub-cli/infrahub-dev',
+            'reference/infrahub-cli/infrahub-upgrade',
           ],
         },
         'reference/infrahub-events',
