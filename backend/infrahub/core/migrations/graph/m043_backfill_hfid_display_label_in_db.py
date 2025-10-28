@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from itertools import chain
 from typing import TYPE_CHECKING, Any
 
 import ujson
@@ -119,17 +120,20 @@ class GetResultMapQuery(Query):
         return result_map
 
 
-class GetUpdatedPathDetailsBranchQuery(GetResultMapQuery):
-    name = "get_updated_path_details_branch"
-    type = QueryType.WRITE
+class GetPathDetailsBranchQuery(GetResultMapQuery):
+    name = "get_path_details_branch"
+    type = QueryType.READ
     insert_limit = False
 
-    def __init__(self, schema_kind: str, schema_paths: list[SchemaAttributePath], **kwargs: Any) -> None:
+    def __init__(
+        self, schema_kind: str, schema_paths: list[SchemaAttributePath], updates_only: bool = True, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
 
         if self.branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
             raise ValueError("This query can only be used on non-default branches")
         self.schema_kind = schema_kind
+        self.updates_only = updates_only
         self.attribute_names = []
         self.bidir_rel_attr_map: dict[str, list[str]] = defaultdict(list)
         self.outbound_rel_attr_map: dict[str, list[str]] = defaultdict(list)
@@ -164,15 +168,27 @@ class GetUpdatedPathDetailsBranchQuery(GetResultMapQuery):
                 "limit": self.limit,
             }
         )
-        get_updated_nodes_by_id_query = """
+        get_active_nodes_query = """
 // ------------
 // Get the active nodes of the given kind on the branches
 // ------------
 MATCH (n:%(schema_kind)s)-[r:IS_PART_OF]->(:Root)
 WHERE %(branch_filter)s
-AND r.to IS NULL
-AND r.status = "active"
-AND NOT exists((n)-[:IS_PART_OF {branch: $branch_name, status: "deleted"}]->(:Root))
+WITH DISTINCT n
+CALL (n) {
+    MATCH (n)-[r:IS_PART_OF]->(:Root)
+    WHERE %(branch_filter)s
+    RETURN r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, is_active
+WHERE is_active = TRUE
+        """ % {"schema_kind": self.schema_kind, "branch_filter": branch_filter}
+        self.add_to_query(get_active_nodes_query)
+
+        if self.updates_only:
+            updated_nodes_filter_query = """
 // ------------
 // filter to any nodes that might have changes on the branch we care about
 // ------------
@@ -194,6 +210,10 @@ WITH n, has_attr_update, attr_val IS NOT NULL AS has_rel_update
 WITH n, any(x IN collect(has_attr_update OR has_rel_update) WHERE x = TRUE) AS has_update
 WITH n, has_update
 WHERE has_update = TRUE
+            """
+            self.add_to_query(updated_nodes_filter_query)
+
+        get_node_details_query = """
 // ------------
 // Order and limit the Nodes
 // ------------
@@ -265,8 +285,8 @@ CALL (rel_name, direction, peer){
 // ------------
 WITH DISTINCT n, attr_vals_list, rel_name, peer, direction, peer_attr_name, peer_attr_value
 WITH n, attr_vals_list, collect([rel_name, direction, peer_attr_name, peer_attr_value]) AS peer_attr_vals_list
-        """ % {"schema_kind": self.schema_kind, "branch_filter": branch_filter}
-        self.add_to_query(get_updated_nodes_by_id_query)
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(get_node_details_query)
         self.return_labels = ["n.uuid AS n_uuid", "attr_vals_list", "peer_attr_vals_list"]
 
 
@@ -607,77 +627,84 @@ class Migration043(ArbitraryMigration):
         registry.schema = schema_manager
         return await schema_manager.load_schema_from_db(db=db, branch=branch)
 
-    async def _do_one_schema_batch_default_branch(
+    async def _do_one_schema_all(
         self,
         db: InfrahubDatabase,
-        default_branch: Branch,
+        branch: Branch,
         schema: NodeSchema,
         schema_branch: SchemaBranch,
-        display_label_attribute_schema: AttributeSchema,
-        hfid_attribute_schema: AttributeSchema,
-        progress: Progress,
-        update_task: TaskID,
+        attribute_schema_map: dict[AttributeSchema, AttributeSchema],
+        progress: Progress | None = None,
+        update_task: TaskID | None = None,
     ) -> None:
-        if not schema.display_label and not schema.human_friendly_id:
-            return
-
         print(f"Processing {schema.kind}...", end="")
 
-        display_labels_schema_paths = [
-            schema.parse_schema_path(path=display_label, schema=schema_branch)
-            for display_label in schema.display_labels or []
-        ]
-        human_friendly_id_schema_paths = [
-            schema.parse_schema_path(path=human_friendly_id, schema=schema_branch)
-            for human_friendly_id in schema.human_friendly_id or []
-        ]
+        schema_paths_by_name: dict[str, list[SchemaAttributePath]] = {}
+        for source_attribute_schema in attribute_schema_map.keys():
+            node_schema_property = getattr(schema, source_attribute_schema.name)
+            if not node_schema_property:
+                continue
+            if isinstance(node_schema_property, list):
+                schema_paths_by_name[source_attribute_schema.name] = [
+                    schema.parse_schema_path(path=str(path), schema=schema_branch) for path in node_schema_property
+                ]
+            else:
+                schema_paths_by_name[source_attribute_schema.name] = [
+                    schema.parse_schema_path(path=str(node_schema_property), schema=schema_branch)
+                ]
+        all_schema_paths = list(chain(*schema_paths_by_name.values()))
         offset = 0
 
+        # loop until we get no results from the get_details_query
         while True:
-            # loop until we get no results from the get_details_query
-            get_details_query = await GetPathDetailsDefaultBranch.init(
-                db=db,
-                schema_kind=schema.kind,
-                schema_paths=display_labels_schema_paths + human_friendly_id_schema_paths,
-                offset=offset,
-                limit=self.update_batch_size,
-            )
+            if branch.is_default:
+                get_details_query: GetResultMapQuery = await GetPathDetailsDefaultBranch.init(
+                    db=db,
+                    schema_kind=schema.kind,
+                    schema_paths=all_schema_paths,
+                    offset=offset,
+                    limit=self.update_batch_size,
+                )
+            else:
+                get_details_query = await GetPathDetailsBranchQuery.init(
+                    db=db,
+                    branch=branch,
+                    schema_kind=schema.kind,
+                    schema_paths=all_schema_paths,
+                    offset=offset,
+                    limit=self.update_batch_size,
+                )
             await get_details_query.execute(db=db)
 
-            display_label_schema_path_values_map = get_details_query.get_result_map(display_labels_schema_paths)
-            num_updates = len(display_label_schema_path_values_map)
-            if display_label_schema_path_values_map:
+            num_updates = 0
+            for source_attribute_schema, destination_attribute_schema in attribute_schema_map.items():
+                schema_paths = schema_paths_by_name[source_attribute_schema.name]
+                schema_path_values_map = get_details_query.get_result_map(schema_paths)
+                num_updates = max(num_updates, len(schema_path_values_map))
                 formatted_display_label_schema_path_values_map = {}
-                for k, v in display_label_schema_path_values_map.items():
-                    if v:
+                for k, v in schema_path_values_map.items():
+                    if not v:
+                        continue
+                    if destination_attribute_schema.kind == "List":
+                        formatted_display_label_schema_path_values_map[k] = ujson.dumps(v)
+                    else:
                         formatted_display_label_schema_path_values_map[k] = " ".join(v)
+
+                if not formatted_display_label_schema_path_values_map:
+                    continue
 
                 update_display_label_query = await UpdateAttributeValuesQuery.init(
                     db=db,
-                    branch=default_branch,
-                    attribute_schema=display_label_attribute_schema,
+                    branch=branch,
+                    attribute_schema=destination_attribute_schema,
                     values_by_id_map=formatted_display_label_schema_path_values_map,
                 )
                 await update_display_label_query.execute(db=db)
 
-            human_friendly_id_schema_path_values_map = get_details_query.get_result_map(human_friendly_id_schema_paths)
+            if progress and update_task:
+                progress.update(update_task, advance=num_updates)
 
-            if human_friendly_id_schema_path_values_map:
-                formatted_human_friendly_id_schema_path_values_map = {}
-                for k, v in human_friendly_id_schema_path_values_map.items():
-                    if v:
-                        formatted_human_friendly_id_schema_path_values_map[k] = ujson.dumps(v)
-
-                update_human_friendly_id_query = await UpdateAttributeValuesQuery.init(
-                    db=db,
-                    branch=default_branch,
-                    attribute_schema=hfid_attribute_schema,
-                    values_by_id_map=formatted_human_friendly_id_schema_path_values_map,
-                )
-                await update_human_friendly_id_query.execute(db=db)
-            progress.update(update_task, advance=num_updates)
-
-            if not num_updates:
+            if num_updates == 0:
                 break
 
             offset += self.update_batch_size
@@ -685,14 +712,6 @@ class Migration043(ArbitraryMigration):
         print("done")
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        # branches = await Branch.get_list(db=db)
-        # for branch in branches:
-        #     if branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
-        #         continue
-        #     await self.execute_against_branch(db=db, branch=branch)
-
-        # return MigrationResult(errors=["pretend error"])
-
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
@@ -705,53 +724,66 @@ class Migration043(ArbitraryMigration):
 
         base_node_schema = main_schema_branch.get("SchemaNode", duplicate=False)
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
+        display_labels_attribute_schema = base_node_schema.get_attribute("display_labels")
         hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
 
-        # try:
-        with Progress() as progress:
-            update_task = progress.add_task(
-                f"Set display_label and human_friendly_id for {total_nodes_count} nodes on default branch",
-                total=total_nodes_count,
-            )
-            for node_schema_name in main_schema_branch.node_names:
-                if node_schema_name in self.kinds_to_skip:
-                    continue
-
-                node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
-                await self._do_one_schema_batch_default_branch(
-                    db=db,
-                    default_branch=default_branch,
-                    schema=node_schema,
-                    schema_branch=main_schema_branch,
-                    display_label_attribute_schema=display_label_attribute_schema,
-                    hfid_attribute_schema=hfid_attribute_schema,
-                    progress=progress,
-                    update_task=update_task,
+        try:
+            with Progress() as progress:
+                update_task = progress.add_task(
+                    f"Set display_label and human_friendly_id for {total_nodes_count} nodes on default branch",
+                    total=total_nodes_count,
                 )
+                for node_schema_name in main_schema_branch.node_names:
+                    if node_schema_name in self.kinds_to_skip:
+                        continue
 
-        # except Exception as exc:
-        # return MigrationResult(errors=[str(exc)])
+                    node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+                    attribute_schema_map = {}
+                    if node_schema.display_labels:
+                        attribute_schema_map[display_labels_attribute_schema] = display_label_attribute_schema
+                    if node_schema.human_friendly_id:
+                        attribute_schema_map[hfid_attribute_schema] = hfid_attribute_schema
+                    if not attribute_schema_map:
+                        continue
+
+                    await self._do_one_schema_all(
+                        db=db,
+                        branch=default_branch,
+                        schema=node_schema,
+                        schema_branch=main_schema_branch,
+                        attribute_schema_map=attribute_schema_map,
+                        progress=progress,
+                        update_task=update_task,
+                    )
+
+        except Exception as exc:
+            return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
-    async def _do_one_schema_batch_branch(
+    async def _do_one_schema_branch(
         self,
         db: InfrahubDatabase,
         branch: Branch,
         schema: NodeSchema,
         schema_branch: SchemaBranch,
-        attribute_schema: AttributeSchema,
-        schema_path_strs: list[str],
+        source_attribute_schema: AttributeSchema,
+        destination_attribute_schema: AttributeSchema,
     ) -> None:
-        print(f"Processing {schema.kind}.{attribute_schema.name} for {branch.name}...", end="")
+        print(f"Processing {schema.kind}.{destination_attribute_schema.name} for {branch.name}...", end="")
 
-        schema_paths = [
-            schema.parse_schema_path(path=path_part, schema=schema_branch) for path_part in schema_path_strs
-        ]
+        schema_property = getattr(schema, source_attribute_schema.name)
+        if isinstance(schema_property, list):
+            schema_paths = [
+                schema.parse_schema_path(path=str(path_part), schema=schema_branch) for path_part in schema_property
+            ]
+        else:
+            schema_paths = [schema.parse_schema_path(path=str(schema_property), schema=schema_branch)]
+
         offset = 0
 
         while True:
             # loop until we get no results from the get_details_query
-            get_details_query = await GetUpdatedPathDetailsBranchQuery.init(
+            get_details_query = await GetPathDetailsBranchQuery.init(
                 db=db,
                 branch=branch,
                 schema_kind=schema.kind,
@@ -769,15 +801,15 @@ class Migration043(ArbitraryMigration):
             for k, v in schema_path_values_map.items():
                 if not v:
                     continue
-                formatted_v = ujson.dumps(v) if attribute_schema.kind == "List" else " ".join(v)
+                formatted_v = ujson.dumps(v) if destination_attribute_schema.kind == "List" else " ".join(v)
                 formatted_schema_path_values_map[k] = formatted_v
 
-                print(schema.kind, schema_path_strs, k, v)
+                print(schema.kind, schema_property, k, v)
 
             update_attr_values_query = await UpdateAttributeValuesQuery.init(
                 db=db,
                 branch=branch,
-                attribute_schema=attribute_schema,
+                attribute_schema=destination_attribute_schema,
                 values_by_id_map=formatted_schema_path_values_map,
             )
             await update_attr_values_query.execute(db=db)
@@ -785,10 +817,13 @@ class Migration043(ArbitraryMigration):
             offset += self.update_batch_size
 
     async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        default_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
+        main_schema_branch = await self._get_or_load_schema_branch(db=db, branch=default_branch)
         schema_branch = await self._get_or_load_schema_branch(db=db, branch=branch)
 
         base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
+        display_labels_attribute_schema = base_node_schema.get_attribute("display_labels")
         hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
 
         try:
@@ -797,28 +832,41 @@ class Migration043(ArbitraryMigration):
                     continue
 
                 node_schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
-                if node_schema.display_labels:
-                    await self._do_one_schema_batch_branch(
+                default_node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+                schemas_for_universal_update_map = {}
+                schemas_for_targeted_update_map = {}
+                if default_node_schema.display_label != node_schema.display_label:
+                    schemas_for_universal_update_map[display_labels_attribute_schema] = display_label_attribute_schema
+                elif node_schema.display_labels:
+                    schemas_for_targeted_update_map[display_labels_attribute_schema] = display_label_attribute_schema
+
+                if default_node_schema.human_friendly_id != node_schema.human_friendly_id:
+                    schemas_for_universal_update_map[hfid_attribute_schema] = hfid_attribute_schema
+                elif node_schema.human_friendly_id:
+                    schemas_for_targeted_update_map[hfid_attribute_schema] = hfid_attribute_schema
+
+                if schemas_for_universal_update_map:
+                    await self._do_one_schema_all(
                         db=db,
                         branch=branch,
                         schema=node_schema,
                         schema_branch=schema_branch,
-                        attribute_schema=display_label_attribute_schema,
-                        schema_path_strs=node_schema.display_labels,
+                        attribute_schema_map=schemas_for_universal_update_map,
                     )
-                if node_schema.human_friendly_id:
-                    await self._do_one_schema_batch_branch(
+
+                if not schemas_for_targeted_update_map:
+                    return MigrationResult()
+
+                for source_attribute_schema, destination_attribute_schema in schemas_for_targeted_update_map.items():
+                    await self._do_one_schema_branch(
                         db=db,
                         branch=branch,
                         schema=node_schema,
                         schema_branch=schema_branch,
-                        attribute_schema=hfid_attribute_schema,
-                        schema_path_strs=node_schema.human_friendly_id,
+                        source_attribute_schema=source_attribute_schema,
+                        destination_attribute_schema=destination_attribute_schema,
                     )
 
         except Exception as exc:
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
-
-
-# TODO: handle update for all nodes of a given type if display_label or human_friendly_id is updated on the schema on the branch
