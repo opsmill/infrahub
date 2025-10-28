@@ -242,4 +242,4 @@ class MigrationWithRebase(BaseModel):
         raise NotImplementedError()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        return await self.execute_against_branch(db=db, branch=registry.get_branch_from_registry())
+        raise NotImplementedError()
