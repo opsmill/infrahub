@@ -84,10 +84,15 @@ class Branch(StandardNode):
 
     @model_validator(mode="after")
     def validate_name(self) -> Self:
-        if self.name == GLOBAL_BRANCH_NAME or self.is_default or self.sync_with_git:
+        if (
+            not config.SETTINGS.git.sync_branch_names
+            or self.name in {GLOBAL_BRANCH_NAME, registry.default_branch}
+            or self.is_default
+            or self.sync_with_git
+        ):
             return self
 
-        if config.SETTINGS.git.sync_branch_names and not branch_name_in_sync_branches(branch_short_name=self.name):
+        if not branch_name_in_sync_branches(branch_short_name=self.name):
             raise ValidationError(
                 f"Branch name '{self.name}' does not match sync branch names {config.SETTINGS.git.sync_branch_names}"
             )
