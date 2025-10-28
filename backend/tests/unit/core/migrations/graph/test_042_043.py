@@ -24,7 +24,7 @@ class TestMigration042(TestInfrahubApp):
             name="Thing",
             namespace="Primary",
             display_labels=["name__value", "color__value"],
-            human_friendly_id=["name__value", "secondary__color__value", "secondary__size__value"],
+            human_friendly_id=["name__value", "secondary__name__value", "secondary__size__value"],
             uniqueness_constraints=[["name__value"]],
             attributes=[
                 AttributeSchema(name="name", kind="Text"),
@@ -46,6 +46,8 @@ class TestMigration042(TestInfrahubApp):
         return NodeSchema(
             name="Thing",
             namespace="Secondary",
+            display_labels=["name__value", "size__value"],
+            human_friendly_id=["name__value", "color__value"],
             attributes=[
                 AttributeSchema(name="name", kind="Text"),
                 AttributeSchema(name="color", kind="Text"),
@@ -54,14 +56,13 @@ class TestMigration042(TestInfrahubApp):
         )
 
     @pytest.fixture
-    async def initial_dataset(
+    async def load_schemas(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_core_models_schema: SchemaBranch,
         primary_thing_schema: NodeSchema,
         secondary_thing_schema: NodeSchema,
-    ) -> dict[str, Node]:
+    ) -> SchemaBranch:
         await load_schema(
             db=db,
             schema=SchemaRoot(nodes=[primary_thing_schema, secondary_thing_schema]),
@@ -79,20 +80,51 @@ class TestMigration042(TestInfrahubApp):
             name=default_branch.name,
         )
         await registry.schema.load_schema_to_db(db=db, schema=small_schema_branch)
+        return registry.schema.get_schema_branch(name=default_branch.name)
 
-        # create secondary things
-        secondary_thing = await Node.init(db=db, schema=secondary_thing_schema)
+    @pytest.fixture
+    async def secondary_thing_one(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch
+    ) -> tuple[Node, str, list[str]]:
+        secondary_thing = await Node.init(db=db, schema="SecondaryThing")
         await secondary_thing.new(db=db, name="secondary_thing_1", color="not red", size=-1)
         await secondary_thing.save(db=db)
+        return (
+            secondary_thing,
+            f"{secondary_thing.name.value} {secondary_thing.size.value}",
+            [str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+        )
 
-        # create_primary_things
-        primary_thing = await Node.init(db=db, schema=primary_thing_schema)
-        await primary_thing.new(db=db, name="primary_thing_1", color="red", size=1, secondary=secondary_thing)
+    @pytest.fixture
+    async def primary_thing_one(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_one: tuple[Node, str, list[str]]
+    ) -> tuple[Node, str, list[str]]:
+        secondary_thing_node = secondary_thing_one[0]
+        primary_thing = await Node.init(db=db, schema="PrimaryThing")
+        await primary_thing.new(db=db, name="primary_thing_1", color="red", size=1, secondary=secondary_thing_node.id)
         await primary_thing.save(db=db)
+        return (
+            primary_thing,
+            f"{primary_thing.name.value} {primary_thing.color.value}",
+            [
+                str(v)
+                for v in (primary_thing.name.value, secondary_thing_node.name.value, secondary_thing_node.size.value)
+            ],
+        )
 
+    @pytest.fixture
+    async def initial_dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        load_schemas: SchemaBranch,
+        primary_thing_one: tuple[Node, str, list[str]],
+        secondary_thing_one: tuple[Node, str, list[str]],
+    ) -> dict[str, tuple[Node, str, list[str]]]:
         return {
-            "secondary_thing": secondary_thing,
-            "primary_thing": primary_thing,
+            "secondary_thing": secondary_thing_one,
+            "primary_thing": primary_thing_one,
         }
 
     async def erase_hfid_and_display_label(self, db: InfrahubDatabase) -> Node:
@@ -122,7 +154,7 @@ DETACH DELETE attr
         return result_map
 
     async def test_migration_042_043(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: dict[str, Node]
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: dict[str, tuple[Node, str, list[str]]]
     ) -> None:
         await self.erase_hfid_and_display_label(db=db)
 
@@ -148,14 +180,11 @@ DETACH DELETE attr
             db=db,
             branch=default_branch,
             attribute_names=["human_friendly_id", "display_label"],
-            node_ids=[initial_dataset["primary_thing"].id, initial_dataset["secondary_thing"].id],
+            node_ids=[node[0].id for node in initial_dataset.values()],
         )
-        assert attribute_values_map[initial_dataset["primary_thing"].id]["display_label"] == "primary_thing_1 red"
-        assert json.loads(attribute_values_map[initial_dataset["primary_thing"].id]["human_friendly_id"]) == [
-            "primary_thing_1",
-            "not red",
-            "-1",
-        ]
+        for node, display_label, human_friendly_id in initial_dataset.values():
+            assert attribute_values_map[node.id]["display_label"] == display_label
+            assert json.loads(attribute_values_map[node.id]["human_friendly_id"]) == human_friendly_id
 
 
 # TODO: test added/updated/removed nodes on default branch
