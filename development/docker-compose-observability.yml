@@ -39,7 +39,7 @@ services:
 
   init:
     profiles: [trace]
-    image: grafana/tempo:latest
+    image: busybox:latest
     user: root
     entrypoint:
       - "chown"
