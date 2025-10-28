@@ -24,7 +24,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
       href={constructPath(`/branches/${branch.name}`)}
       className={classNames(
         focusVisibleStyle,
-        "flex flex-wrap items-center gap-6 p-5",
+        "flex flex-wrap items-center gap-6 p-4",
         "border border-transparent not-last:border-b-gray-200",
         "first:rounded-t-lg last:rounded-b-lg",
         "hover:bg-neutral-100",
