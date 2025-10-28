@@ -10,6 +10,7 @@ const GET_BRANCHES = gql`
       description
       origin_branch
       branched_from
+      status
       created_at
       sync_with_git
       is_default
