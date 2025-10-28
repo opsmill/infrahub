@@ -5,5 +5,4 @@ class BranchStatus(InfrahubStringEnum):
     OPEN = "OPEN"
     NEED_REBASE = "NEED_REBASE"
     NEED_UPGRADE_REBASE = "NEED_UPGRADE_REBASE"
-    CLOSED = "CLOSED"
     DELETING = "DELETING"

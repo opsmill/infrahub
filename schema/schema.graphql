@@ -323,6 +323,7 @@ enum BranchRelativePermissionDecision {
 enum BranchStatus {
   DELETING
   NEED_REBASE
+  NEED_UPGRADE_REBASE
   OPEN
 }
 
