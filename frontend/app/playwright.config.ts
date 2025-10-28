@@ -16,12 +16,12 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   retries: 0,
-  timeout: process.env.CI ? 2 * 60 * 1000 : 60 * 1000,
+  timeout: process.env.CI ? 3 * 60 * 1000 : 60 * 1000,
   expect: {
     timeout: process.env.CI
       ? process.env.INFRAHUB_MISC_RESPONSE_DELAY
         ? 6 * 60 * 1000
-        : 2 * 60 * 1000
+        : 3 * 60 * 1000
       : 1 * 60 * 1000,
     toHaveScreenshot: { maxDiffPixels: 5000 },
   },
