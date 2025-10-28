@@ -1,4 +1,7 @@
+import type { CheckType } from "@/shared/api/graphql/generated/graphql";
+
 import type { RelationshipKind } from "@/entities/nodes/types";
+
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 
 export const DEFAULT_BRANCH_NAME = "main";
@@ -115,9 +118,10 @@ export const CHECKS_LABEL = {
   IN_PROGRESS: "In progress",
 };
 
-export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
+export const VALIDATIONS_ENUM_MAP: { [key: string]: CheckType } = {
   CoreArtifactValidator: "ARTIFACT",
   CoreDataValidator: "DATA",
+  CoreGeneratorValidator: "GENERATOR",
   CoreRepositoryValidator: "REPOSITORY",
   CoreSchemaValidator: "SCHEMA",
   CoreUserValidator: "USER",
