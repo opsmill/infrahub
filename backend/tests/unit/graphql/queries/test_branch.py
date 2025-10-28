@@ -206,7 +206,7 @@ class TestBranchQuery(TestInfrahubApp):
         )
         assert all_branches.errors is None
         assert all_branches.data
-        assert all_branches.data["InfrahubBranch"]["count"] == 13
+        assert all_branches.data["InfrahubBranch"]["count"] == 12  # 10 created here + 1 created above + main branch
 
         expected_branches = [
             {
@@ -225,6 +225,7 @@ class TestBranchQuery(TestInfrahubApp):
                 for i in range(10)
             ],
         ]
-        assert all_branches.data["InfrahubBranch"]["edges"]["node"].sort(
+        all_branches_data_only = [branch.get("node") for branch in all_branches.data["InfrahubBranch"]["edges"]]
+        assert all_branches_data_only.sort(key=operator.itemgetter("name")) == expected_branches.sort(
             key=operator.itemgetter("name")
-        ) == expected_branches.sort(key=operator.itemgetter("name"))
+        )

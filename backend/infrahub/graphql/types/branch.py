@@ -7,6 +7,7 @@ from graphene import Boolean, Field, Int, List, NonNull, String
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
+from ...exceptions import BranchNotFoundError
 from .standard_node import InfrahubObjectType
 
 if TYPE_CHECKING:
@@ -47,14 +48,19 @@ class BranchType(InfrahubObjectType):
 
 
 class InfrahubBranchEdge(InfrahubObjectType):
-    node = Field(List(of_type=NonNull(BranchType), required=True), required=True)
+    node = Field(BranchType, required=True)
 
 
 class InfrahubBranchType(InfrahubObjectType):
-    count = Field(Int, required=True, description="Total number of items")
-    edges = Field(InfrahubBranchEdge, required=True)
+    count = Field(Int, description="Total number of items")
+    edges = Field(List(of_type=NonNull(InfrahubBranchEdge)))
 
     @classmethod
     async def get_list_count(cls, graphql_context: GraphqlContext, **kwargs: Any) -> int:
         async with graphql_context.db.start_session(read_only=True) as db:
-            return await Branch.get_list_count(db=db, **kwargs)
+            count = await Branch.get_list_count(db=db, **kwargs)
+            try:
+                await Branch.get_by_name(name=GLOBAL_BRANCH_NAME, db=db)
+                return count - 1
+            except BranchNotFoundError:
+                return count

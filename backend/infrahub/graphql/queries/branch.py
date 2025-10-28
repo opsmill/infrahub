@@ -37,11 +37,17 @@ async def infrahub_branch_resolver(
     offset: int | None = None,
 ) -> dict[str, Any]:
     fields = extract_graphql_fields(info)
-    branches = await BranchType.get_list(
-        graphql_context=info.context, fields=fields.get("edges", {}).get("node", {}), limit=limit, offset=offset
-    )
-    count = await InfrahubBranchType.get_list_count(graphql_context=info.context)
-    return {"count": count, "edges": {"node": branches}}
+    result = {}
+    if "edges" in fields:
+        result["edges"] = [
+            {"node": branch}
+            for branch in await BranchType.get_list(
+                graphql_context=info.context, fields=fields.get("edges", {}).get("node", {}), limit=limit, offset=offset
+            )
+        ]
+    if "count" in fields:
+        result["count"] = await InfrahubBranchType.get_list_count(graphql_context=info.context)
+    return result
 
 
 InfrahubBranchQueryList = Field(
