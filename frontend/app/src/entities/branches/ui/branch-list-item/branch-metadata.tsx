@@ -7,7 +7,7 @@ interface BranchMetadataProps {
 
 export function BranchMetadata({ label, value }: BranchMetadataProps) {
   return (
-    <Col className="shrink-0 gap-0 text-sm">
+    <Col className="shrink-0 gap-0 text-xs">
       <span className="font-medium">{label}</span>
       <span>{value ?? "-"}</span>
     </Col>
