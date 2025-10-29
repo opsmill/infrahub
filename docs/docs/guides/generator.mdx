@@ -6,7 +6,7 @@ import TabItem from '@theme/TabItem';
 
 # How to create a generator in Infrahub
 
-Generators in Infrahub allow you to automatically create or modify data based on existing information in your database. They are defined in [external repositories](../topics/repository) and can be developed and tested locally using [infrahubctl generator]($(base_url)infrahubctl/infrahubctl-generator).
+Generators in Infrahub allow you to automatically create or modify data based on existing information in your database. They are defined in [external repositories](../topics/repository.mdx) and can be developed and tested locally using [infrahubctl generator]($(base_url)infrahubctl/infrahubctl-generator).
 
 In this guide, you'll learn how to develop a generator and integrate it into Infrahub.
 
@@ -33,9 +33,9 @@ You'll build a basic generator that:
 Before you begin, you'll need:
 
 - Basic knowledge of Infrahub, Python, GraphQL, YAML, and Git
-- Familiarity with Generators and how they work in Infrahub (see [Generators topic](../topics/generator))
+- Familiarity with Generators and how they work in Infrahub (see [Generators topic](../topics/generator.mdx))
 - An Infrahub instance running locally or remotely
-- A Git repository connected to Infrahub (see [Adding an External Repository guide](./repository))
+- A Git repository connected to Infrahub (see [Adding an External Repository guide](./repository.mdx))
 - [infrahubctl]($(base_url)infrahubctl/infrahubctl) installed and configured locally
 - The repository cloned locally where you'll develop the generator
 
@@ -338,7 +338,7 @@ class WidgetGenerator(InfrahubGenerator):
 
 ## Step 4: Tie everything together in the .infrahub.yml file
 
-Now that you have your GraphQL query and Python generator, edit your [.infrahub.yml](../topics/infrahub-yml) file to tie everything together.
+Now that you have your GraphQL query and Python generator, edit your [.infrahub.yml](../topics/infrahub-yml.mdx) file to tie everything together.
 
 1. Add the following configuration to the file `.infrahub.yml`:
 
@@ -359,7 +359,7 @@ queries:
     file_path: "queries/widget_query.gql"
 ```
 
-For a complete explanation of the `.infrahub.yml` file format, see the [infrahub.yml topic](../topics/infrahub-yml).
+For a complete explanation of the `.infrahub.yml` file format, see the [infrahub.yml topic](../topics/infrahub-yml.mdx).
 
 2. Verify the configuration
 
