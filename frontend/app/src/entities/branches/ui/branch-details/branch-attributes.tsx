@@ -26,10 +26,14 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
       </BranchAttributeLabel>
       <BranchAttributeValue>{branch.name}</BranchAttributeValue>
 
-      <BranchAttributeLabel>
-        <CircleIcon className="size-3.5" /> Status
-      </BranchAttributeLabel>
-      <BranchAttributeValue>{branch.status}</BranchAttributeValue>
+      {branch.status !== "OPEN" && (
+        <>
+          <BranchAttributeLabel>
+            <CircleIcon className="size-3.5" /> Status
+          </BranchAttributeLabel>
+          <BranchAttributeValue>{branch.status}</BranchAttributeValue>
+        </>
+      )}
 
       <BranchAttributeLabel>
         <RefreshCwIcon className="size-3.5" /> Sync with Git

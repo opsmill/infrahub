@@ -13,11 +13,7 @@ interface BranchStatusBadgeProps extends BadgeProps {
 export function BranchStatusBadge({ status, className, ...props }: BranchStatusBadgeProps) {
   switch (status) {
     case "OPEN": {
-      return (
-        <Badge className={classNames(pillStyle, className)} variant="green" {...props}>
-          open
-        </Badge>
-      );
+      return null;
     }
     case "NEED_REBASE": {
       return (
