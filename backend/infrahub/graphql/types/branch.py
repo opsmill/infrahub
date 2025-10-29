@@ -96,7 +96,7 @@ class InfrahubBranch(BranchType):
         for obj in objs:
             if obj.name == GLOBAL_BRANCH_NAME:
                 continue
-            data = {}
+            data: dict[str, Any] = {}
             for field in field_keys:
                 value = getattr(obj, field, None)
                 if isinstance(fields.get(field), dict):
