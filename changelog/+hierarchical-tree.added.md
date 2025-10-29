@@ -1,5 +1,6 @@
 New hierarchy tree navigation:
 
+- It is now displayed in a dedicated and resizable sidebar on the left
 - Added pagination on each level with infinite scroll
 - Highlight current item in view
 - Improved keyboard navigation and accessibility
