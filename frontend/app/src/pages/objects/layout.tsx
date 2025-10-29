@@ -42,26 +42,34 @@ const ObjectPageLayout = () => {
     const treeSchema = getTreeSchema();
 
     return (
-      <Content.Card className="flex flex-col">
-        <ObjectHeader schema={schema} objectId={objectid} />
-
-        <ResizablePanelGroup direction="horizontal">
-          {treeSchema && (
-            <>
-              <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
+      <ResizablePanelGroup direction="horizontal" className="items-stretch">
+        {treeSchema && (
+          <>
+            <ResizablePanel
+              defaultSize={20}
+              minSize={10}
+              maxSize={50}
+              className="flex grow flex-col"
+            >
+              <Content.Card className="flex grow flex-col">
                 <ScrollArea scrollX className="h-full p-1">
                   <ObjectHierarchyTree treeSchema={treeSchema} currentNodeId={objectid} />
                 </ScrollArea>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-            </>
-          )}
+              </Content.Card>
+            </ResizablePanel>
 
-          <ResizablePanel className="flex h-full flex-col">
+            <ResizableHandle withHandle className="w-0.5 bg-transparent" />
+          </>
+        )}
+
+        <ResizablePanel className="flex grow flex-col">
+          <Content.Card className="flex grow flex-col">
+            <ObjectHeader schema={schema} objectId={objectid} />
+
             <Outlet />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </Content.Card>
+          </Content.Card>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     );
   }
 
