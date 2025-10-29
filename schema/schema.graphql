@@ -6881,13 +6881,13 @@ input InfrahubAccountUpdateSelfInput {
 }
 
 type InfrahubBranchEdge {
-  node: [Branch!]!
+  node: Branch!
 }
 
 type InfrahubBranchType {
   """Total number of items"""
-  count: Int!
-  edges: InfrahubBranchEdge!
+  count: Int
+  edges: [InfrahubBranchEdge!]!
 }
 
 input InfrahubComputedAttributeRecomputeInput {

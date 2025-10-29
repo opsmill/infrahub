@@ -53,7 +53,7 @@ class InfrahubBranchEdge(InfrahubObjectType):
 
 class InfrahubBranchType(InfrahubObjectType):
     count = Field(Int, description="Total number of items")
-    edges = Field(List(of_type=NonNull(InfrahubBranchEdge)))
+    edges = Field(NonNull(List(of_type=NonNull(InfrahubBranchEdge))))
 
     @classmethod
     async def get_list_count(cls, graphql_context: GraphqlContext, **kwargs: Any) -> int:

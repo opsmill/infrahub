@@ -37,7 +37,7 @@ async def infrahub_branch_resolver(
     offset: int | None = None,
 ) -> dict[str, Any]:
     fields = extract_graphql_fields(info)
-    result = {}
+    result: dict[str, Any] = {}
     if "edges" in fields:
         result["edges"] = [
             {"node": branch}
