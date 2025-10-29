@@ -65,7 +65,7 @@ WITH count(*) AS num_nodes
 
 
 class GetResultMapQuery(Query):
-    def get_result_map(self, schema_paths: list[SchemaAttributePath]) -> dict[str, list[str]]:
+    def get_result_map(self, schema_paths: list[SchemaAttributePath]) -> dict[str, list[str | None]]:
         """
         Get the values for the given schema paths for all the Nodes captured by this query
         """
@@ -83,7 +83,7 @@ class GetResultMapQuery(Query):
                 )
             schema_path_keys.append(path_key)
 
-        result_map: dict[str, list[str]] = {}
+        result_map: dict[str, list[str | None]] = {}
         for result in self.get_results():
             node_uuid = result.get_as_type(label="n_uuid", return_type=str)
 
@@ -112,10 +112,10 @@ class GetResultMapQuery(Query):
                 peer_val = rel_value_tuple[3]
                 schema_path_value_map[rel_name, direction, peer_attr_name] = peer_val
 
-            schema_path_values: list[str] = []
+            schema_path_values: list[str | None] = []
             for schema_path_key in schema_path_keys:
                 value = schema_path_value_map.get(schema_path_key)
-                schema_path_values.append(str(value))
+                schema_path_values.append(str(value) if value is not None else None)
             result_map[node_uuid] = schema_path_values
         return result_map
 
@@ -245,7 +245,7 @@ OPTIONAL MATCH (n)-[:IS_RELATED]-(rel:Relationship)
 WHERE rel.name IN $bidirectional_rel_ids + $outbound_rel_ids + $inbound_rel_ids
 WITH DISTINCT n, attr_vals_list, rel
 CALL (n, rel) {
-    MATCH (n)-[r1:IS_RELATED]-(rel)-[r2:IS_RELATED]-(peer:Node)
+    OPTIONAL MATCH (n)-[r1:IS_RELATED]-(rel)-[r2:IS_RELATED]-(peer:Node)
     WHERE all(r in [r1, r2] WHERE %(branch_filter)s)
     AND (
         (startNode(r1) = n AND startNode(r2) = rel AND rel.name IN $outbound_rel_ids)
@@ -267,16 +267,18 @@ CALL (n, rel) {
 // get the attribute values that we care about for each relationship
 // ------------
 WITH n, attr_vals_list, rel.name AS rel_name, direction, peer
-WHERE is_active = TRUE
-CALL (rel_name, direction, peer){
-    MATCH (peer)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(attr_val)
-    WHERE (
-        (direction = "outbound" AND attr.name IN $outbound_rel_attr_map[rel_name])
-        OR (direction = "inbound" AND attr.name IN $inbound_rel_attr_map[rel_name])
-        OR (direction = "bidir" AND attr.name IN $bidirectional_rel_attr_map[rel_name])
-    )
+WHERE is_active = TRUE OR rel_name IS NULL
+WITH *, CASE
+    WHEN direction = "outbound" THEN $outbound_rel_attr_map[rel_name]
+    WHEN direction = "inbound" THEN $inbound_rel_attr_map[rel_name]
+    ELSE $bidirectional_rel_attr_map[rel_name]
+END AS peer_attr_names
+UNWIND COALESCE(peer_attr_names, [NULL]) AS peer_attr_name
+CALL (rel_name, direction, peer, peer_attr_name){
+    OPTIONAL MATCH (peer)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(attr_val)
+    WHERE attr.name = peer_attr_name
     AND all(r in [r1, r2] WHERE %(branch_filter)s)
-    RETURN attr.name AS peer_attr_name, attr_val.value AS peer_attr_value, r1.status = "active" AND r2.status = "active" AS is_active
+    RETURN attr_val.value AS peer_attr_value, r1.status = "active" AND r2.status = "active" AS is_active
     ORDER BY r2.branch_level DESC, r2.from DESC, r2.status ASC, r1.branch_level DESC, r1.from DESC, r1.status ASC
     LIMIT 1
 }
@@ -533,13 +535,13 @@ WHERE is_active = TRUE
 // If the attribute has an existing value on the branch, then set the to time on it
 // but only if the value is different from the new value
 // ------------
-CALL (attr) {
+CALL (n, attr) {
     OPTIONAL MATCH (attr)-[r:HAS_VALUE]->(existing_av)
     WHERE %(branch_filter)s
-    WITH r
+    WITH r, existing_av
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
-    WITH r
+    WITH r, existing_av
     WHERE existing_av.value <> $values_by_id[n.uuid]
     AND r.status = "active"
     AND r.branch = $branch
@@ -548,7 +550,7 @@ CALL (attr) {
 CALL (existing_has_value) {
     WITH existing_has_value
     WHERE existing_has_value IS NOT NULL
-    SET r.to = $at
+    SET existing_has_value.to = $at
 }
             """ % {"branch_filter": branch_filter}
         self.add_to_query(update_value_query)
@@ -681,23 +683,23 @@ class Migration043(ArbitraryMigration):
                 schema_paths = schema_paths_by_name[source_attribute_schema.name]
                 schema_path_values_map = get_details_query.get_result_map(schema_paths)
                 num_updates = max(num_updates, len(schema_path_values_map))
-                formatted_display_label_schema_path_values_map = {}
+                formatted_schema_path_values_map = {}
                 for k, v in schema_path_values_map.items():
                     if not v:
                         continue
                     if destination_attribute_schema.kind == "List":
-                        formatted_display_label_schema_path_values_map[k] = ujson.dumps(v)
+                        formatted_schema_path_values_map[k] = ujson.dumps(v)
                     else:
-                        formatted_display_label_schema_path_values_map[k] = " ".join(v)
+                        formatted_schema_path_values_map[k] = " ".join(item for item in v if item is not None)
 
-                if not formatted_display_label_schema_path_values_map:
+                if not formatted_schema_path_values_map:
                     continue
 
                 update_display_label_query = await UpdateAttributeValuesQuery.init(
                     db=db,
                     branch=branch,
                     attribute_schema=destination_attribute_schema,
-                    values_by_id_map=formatted_display_label_schema_path_values_map,
+                    values_by_id_map=formatted_schema_path_values_map,
                 )
                 await update_display_label_query.execute(db=db)
 
@@ -801,7 +803,10 @@ class Migration043(ArbitraryMigration):
             for k, v in schema_path_values_map.items():
                 if not v:
                     continue
-                formatted_v = ujson.dumps(v) if destination_attribute_schema.kind == "List" else " ".join(v)
+                if destination_attribute_schema.kind == "List":
+                    formatted_v = ujson.dumps(v)
+                else:
+                    formatted_v = " ".join(item for item in v if item is not None)
                 formatted_schema_path_values_map[k] = formatted_v
 
                 print(schema.kind, schema_property, k, v)
@@ -855,7 +860,7 @@ class Migration043(ArbitraryMigration):
                     )
 
                 if not schemas_for_targeted_update_map:
-                    return MigrationResult()
+                    continue
 
                 for source_attribute_schema, destination_attribute_schema in schemas_for_targeted_update_map.items():
                     await self._do_one_schema_branch(
