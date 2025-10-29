@@ -31,6 +31,10 @@ class BranchType(InfrahubObjectType):
         name = "Branch"
         model = Branch
 
+    @staticmethod
+    async def _map_fields_to_graphql(objs: list[Branch], fields: dict) -> list[dict[str, Any]]:
+        return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
+
     @classmethod
     async def get_list(
         cls,
@@ -44,11 +48,60 @@ class BranchType(InfrahubObjectType):
             if not objs:
                 return []
 
-            return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
+            return await cls._map_fields_to_graphql(objs=objs, fields=fields)
+
+
+class RequiredStringValueField(InfrahubObjectType):
+    value = String(required=True)
+
+
+class NonRequiredStringValueField(InfrahubObjectType):
+    value = String(required=False)
+
+
+class NonRequiredBooleanValueField(InfrahubObjectType):
+    value = Boolean(required=False)
+
+
+class InfrahubBranch(BranchType):
+    id = String(required=True)
+    created_at = String(required=False)
+
+    name = Field(RequiredStringValueField, required=True)
+    description = Field(NonRequiredStringValueField, required=False)
+    origin_branch = Field(NonRequiredStringValueField, required=False)
+    branched_from = Field(NonRequiredStringValueField, required=False)
+    sync_with_git = Field(NonRequiredBooleanValueField, required=False)
+    is_default = Field(NonRequiredBooleanValueField, required=False)
+    is_isolated = Field(
+        NonRequiredBooleanValueField, required=False, deprecation_reason="non isolated mode is not supported anymore"
+    )
+    has_schema_changes = Field(NonRequiredBooleanValueField, required=False)
+
+    class Meta:
+        description = "InfrahubBranch"
+        name = "InfrahubBranch"
+
+    @staticmethod
+    async def _map_fields_to_graphql(objs: list[Branch], fields: dict) -> list[dict[str, Any]]:
+        field_keys = fields.keys()
+        result: list[dict[str, Any]] = []
+        for obj in objs:
+            if obj.name == GLOBAL_BRANCH_NAME:
+                continue
+            data = {}
+            for field in field_keys:
+                value = getattr(obj, field, None)
+                if isinstance(fields.get(field), dict):
+                    data[field] = {"value": value}
+                else:
+                    data[field] = value
+            result.append(data)
+        return result
 
 
 class InfrahubBranchEdge(InfrahubObjectType):
-    node = Field(BranchType, required=True)
+    node = Field(InfrahubBranch, required=True)
 
 
 class InfrahubBranchType(InfrahubObjectType):

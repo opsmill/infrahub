@@ -189,8 +189,12 @@ class TestBranchQuery(TestInfrahubApp):
                     count
                     edges {
                         node {
-                            name
-                            description
+                            name {
+                                value
+                            }
+                            description {
+                                value
+                            }
                         }
                     }
                 }
@@ -210,22 +214,22 @@ class TestBranchQuery(TestInfrahubApp):
 
         expected_branches = [
             {
-                "description": "Default Branch",
-                "name": "main",
+                "description": {"value": "Default Branch"},
+                "name": {"value": "main"},
             },
             {
-                "description": "my description",
-                "name": "branch3",
+                "description": {"value": "my description"},
+                "name": {"value": "branch3"},
             },
             *[
                 {
-                    "description": f"sample description {i}",
-                    "name": f"sample-branch-{i}",
+                    "description": {"value": f"sample description {i}"},
+                    "name": {"value": f"sample-branch-{i}"},
                 }
                 for i in range(10)
             ],
         ]
         all_branches_data_only = [branch.get("node") for branch in all_branches.data["InfrahubBranch"]["edges"]]
-        assert all_branches_data_only.sort(key=operator.itemgetter("name")) == expected_branches.sort(
-            key=operator.itemgetter("name")
+        assert all_branches_data_only.sort(key=lambda x: x["name"]["value"]) == expected_branches.sort(
+            key=lambda x: x["name"]["value"]
         )

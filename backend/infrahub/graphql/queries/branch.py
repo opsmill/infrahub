@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import ID, Field, Int, List, NonNull, String
 
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.types import BranchType, InfrahubBranchType
+from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -39,12 +39,10 @@ async def infrahub_branch_resolver(
     fields = extract_graphql_fields(info)
     result: dict[str, Any] = {}
     if "edges" in fields:
-        result["edges"] = [
-            {"node": branch}
-            for branch in await BranchType.get_list(
-                graphql_context=info.context, fields=fields.get("edges", {}).get("node", {}), limit=limit, offset=offset
-            )
-        ]
+        branches = await InfrahubBranch.get_list(
+            graphql_context=info.context, fields=fields.get("edges", {}).get("node", {}), limit=limit, offset=offset
+        )
+        result["edges"] = [{"node": branch} for branch in branches]
     if "count" in fields:
         result["count"] = await InfrahubBranchType.get_list_count(graphql_context=info.context)
     return result
