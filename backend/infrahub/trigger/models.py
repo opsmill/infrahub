@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from prefect.events.actions import RunDeployment
@@ -30,7 +30,7 @@ class TriggerSetupReport(BaseModel):
         return len(self.created + self.updated + self.unchanged)
 
 
-class TriggerType(str, Enum):
+class TriggerType(StrEnum):
     ACTION_TRIGGER_RULE = "action_trigger_rule"
     BUILTIN = "builtin"
     WEBHOOK = "webhook"

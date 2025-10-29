@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class ContextUnit(str, Enum):
+class ContextUnit(StrEnum):
     COUNT = "count"
     TIME = "msec"  # time in milliseconds
     MEMORY = "memory"  # memory in bytes

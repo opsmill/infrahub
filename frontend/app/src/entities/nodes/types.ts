@@ -28,3 +28,9 @@ export type NodeRelationship = NodeRelationshipOne | NodeRelationshipMany;
 export type NodeObject = NodeCore & {
   [key: string]: NodeAttribute | NodeRelationship;
 };
+
+export interface NodeCoreWithChildrenCount extends NodeCore {
+  children: {
+    count: number;
+  };
+}

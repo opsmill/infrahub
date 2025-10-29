@@ -18,6 +18,10 @@ export interface ObjectConvertFieldsMappingKeysParams extends ContextParams {
   targetKind: string;
 }
 
+export interface ObjectTreeKeysParams extends ObjectKeysBaseParams {
+  parentObjectId?: string | null;
+}
+
 export const objectQueryKeys = {
   all: ["objects"] as const,
   allWithContext: ({ branchName, atDate }: ContextParams) =>
@@ -37,4 +41,6 @@ export const objectQueryKeys = {
     [...objectQueryKeys.lists(params), params.objectId] as const,
   ancestors: (params: ObjectDetailKeysParams) =>
     [...objectQueryKeys.detail(params), "ancestors"] as const,
+  tree: ({ parentObjectId, ...params }: ObjectTreeKeysParams) =>
+    [...objectQueryKeys.lists(params), "tree", parentObjectId] as const,
 };
