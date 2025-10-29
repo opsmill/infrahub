@@ -282,7 +282,7 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
 
 
 def branch_name_in_sync_branches(branch_short_name: str) -> bool:
-    for compiled_branch_name in config.SETTINGS.git._compiled_branch_names:
-        if re.fullmatch(compiled_branch_name, branch_short_name) or compiled_branch_name == branch_short_name:
+    for sync_branch_name in config.SETTINGS.git.sync_branch_names:
+        if re.fullmatch(sync_branch_name, branch_short_name) or sync_branch_name == branch_short_name:
             return True
     return False

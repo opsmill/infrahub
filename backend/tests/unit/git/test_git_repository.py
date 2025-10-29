@@ -281,8 +281,7 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
 
 
 async def test_get_branches_from_remote_in_sync_branch_names(git_repo_01: InfrahubRepository):
-    config.SETTINGS.git.sync_branch_names = ["/branch.*/", "main"]
-    config.SETTINGS.git._compiled_branch_names = ["branch.*", "main"]
+    config.SETTINGS.git.sync_branch_names = ["branch.*", "main"]
     repo = git_repo_01
 
     remote_branches = repo.get_branches_from_remote()
@@ -290,7 +289,6 @@ async def test_get_branches_from_remote_in_sync_branch_names(git_repo_01: Infrah
     assert sorted(remote_branches.keys()) == ["branch01", "branch02", "main"]
 
     config.SETTINGS.git.sync_branch_names = []
-    config.SETTINGS.git._compiled_branch_names = []
 
 
 async def test_get_branches_from_graph(
