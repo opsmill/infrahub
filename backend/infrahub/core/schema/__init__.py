@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from enum import Enum
 from typing import Any
 
 from infrahub_sdk.utils import deep_merge_dict
@@ -44,6 +45,21 @@ class SchemaExtension(HashableModel):
     nodes: list[NodeExtensionSchema] = Field(default_factory=list)
 
 
+class SchemaWarningType(Enum):
+    DEPRECATION = "deprecation"
+
+
+class SchemaWarningKind(BaseModel):
+    kind: str = Field(..., description="The kind impacted by the warning")
+    field: str | None = Field(default=None, description="The attribute or relationship impacted by the warning")
+
+
+class SchemaWarning(BaseModel):
+    type: SchemaWarningType = Field(..., description="The type of warning")
+    kinds: list[SchemaWarningKind] = Field(default_factory=list, description="The kinds impacted by the warning")
+    message: str = Field(..., description="The message that describes the warning")
+
+
 class SchemaRoot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -79,6 +95,46 @@ class SchemaRoot(BaseModel):
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
 
         return errors
+
+    def gather_warnings(self) -> list[SchemaWarning]:
+        models = self.nodes + self.generics
+        warnings: list[SchemaWarning] = []
+        for model in models:
+            if model.display_labels is not None:
+                warnings.append(
+                    SchemaWarning(
+                        type=SchemaWarningType.DEPRECATION,
+                        kinds=[SchemaWarningKind(kind=model.kind)],
+                        message="display_labels are deprecated, use display_label instead",
+                    )
+                )
+            if model.default_filter is not None:
+                warnings.append(
+                    SchemaWarning(
+                        type=SchemaWarningType.DEPRECATION,
+                        kinds=[SchemaWarningKind(kind=model.kind)],
+                        message="default_filter is deprecated",
+                    )
+                )
+            for attribute in model.attributes:
+                if attribute.max_length is not None:
+                    warnings.append(
+                        SchemaWarning(
+                            type=SchemaWarningType.DEPRECATION,
+                            kinds=[SchemaWarningKind(kind=model.kind, field=attribute.name)],
+                            message="Use of 'max_length' on attributes is deprecated, use parameters instead",
+                        )
+                    )
+                if attribute.min_length is not None:
+                    warnings.append(
+                        SchemaWarning(
+                            type=SchemaWarningType.DEPRECATION,
+                            kinds=[SchemaWarningKind(kind=model.kind, field=attribute.name)],
+                            message="Use of 'min_length' on attributes is deprecated, use parameters instead",
+                        )
+                    )
+
+        return warnings
 
     def generate_uuid(self) -> None:
         """Generate UUID for all nodes, attributes & relationships

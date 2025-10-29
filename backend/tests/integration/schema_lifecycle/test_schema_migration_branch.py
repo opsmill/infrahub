@@ -195,6 +195,13 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
 
     async def test_step02_load_attr_add_rename(
@@ -283,6 +290,13 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 
@@ -357,7 +371,16 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
 
         success, response = await client.schema.check(schemas=[schema_step04], branch=self.branch1.name)
 
-        assert response == {"diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}}}
+        assert response == {
+            "diff": {"added": {}, "changed": {}, "removed": {"TestingTag": None}},
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
+        }
         assert success
 
     async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
@@ -416,7 +439,14 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
                         "removed": {},
                     },
                 },
-            }
+            },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 

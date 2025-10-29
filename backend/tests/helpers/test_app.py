@@ -25,6 +25,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -210,6 +211,7 @@ class TestInfrahubApp(TestInfrahub):
         await create_default_account_groups(db=db, admin_accounts=[admin_account], accounts=[unprivileged_account])
 
         # This call emits a warning related to the fact database index manager has not been initialized.
+        graphql_registry.clear_cache()
         await initialization(db=db)
 
     async def assert_event(self, prefect_client: PrefectClient, event_name: str) -> None:

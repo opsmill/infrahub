@@ -4,7 +4,7 @@ import subprocess  # noqa: S404
 import sys
 from itertools import islice
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
@@ -64,6 +64,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_workflow
 from tests.helpers.file_repo import FileRepo
@@ -151,6 +152,14 @@ def git_repos_dir(tmp_path: Path) -> Path:
     config.SETTINGS.git.repositories_directory = str(repos_dir)
 
     return repos_dir
+
+
+@pytest.fixture
+def reset_graphql_schema_between_tests() -> Generator:
+    """This fixture can be used when testing with GraphQL enums as the schema looks completely different."""
+    graphql_registry.clear_cache()
+    yield
+    graphql_registry.clear_cache()
 
 
 @pytest.fixture

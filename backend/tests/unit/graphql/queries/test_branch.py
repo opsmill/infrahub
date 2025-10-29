@@ -28,7 +28,7 @@ class TestBranchQuery(TestInfrahubApp):
             }
         }
         """
-
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
             branch=default_branch,

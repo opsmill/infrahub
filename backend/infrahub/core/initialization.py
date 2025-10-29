@@ -50,7 +50,7 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
     roots = await Root.get_list(db=db)
     if len(roots) == 0 and not initialize:
         raise DatabaseError(
-            "The Database hasn't been initialized for Infrahub, please run 'infrahub db init' or 'infrahub server start' to initialize the database."
+            "The Database hasn't been initialized for Infrahub, please 'infrahub server start' to initialize the database."
         )
 
     if len(roots) == 0:

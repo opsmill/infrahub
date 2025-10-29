@@ -1,12 +1,12 @@
 #!/bin/bash
 
 export WEB_CONCURRENCY=2
-invoke demo.start
+poetry run invoke demo.start
 sleep 120
 docker logs infrahub-server-1
-invoke demo.load-infra-schema
+poetry run invoke demo.load-infra-schema
 docker logs infrahub-server-1
 sleep 90
 docker logs infrahub-server-1
-invoke demo.load-infra-data
-invoke demo.stop
+poetry run invoke demo.load-infra-data
+poetry run invoke demo.stop

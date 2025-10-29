@@ -1,0 +1,35 @@
+query oc_interfaces ($device: String!) {
+  InfraDevice(name__value: $device) {
+    edges {
+      node {
+        id
+        interfaces {
+          edges {
+            node {
+              name {
+                value
+              }
+              description {
+                value
+              }
+              enabled {
+                value
+              }
+              ... on InfraInterfaceL3 {
+                ip_addresses {
+                  edges {
+                    node {
+                      address {
+                        value
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

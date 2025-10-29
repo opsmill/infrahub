@@ -277,6 +277,31 @@ async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticalit
     assert len(nodes) == 2
 
 
+async def test_get_many_with_pagination(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
+    criticality_high: Node,
+    query_limit_of_one: None,
+    neo4j_runtime_parallel: None,
+):
+    new_node_ids: list[str] = []
+    for index in range(10):
+        bulk_node = await Node.init(db=db, schema=criticality_schema, branch=default_branch)
+        await bulk_node.new(db=db, name=f"bulk-{index}", level=index)
+        await bulk_node.save(db=db)
+        new_node_ids.append(bulk_node.id)
+
+    target_ids = [criticality_low.id, criticality_medium.id, criticality_high.id, *new_node_ids]
+    nodes = await NodeManager.get_many(db=db, ids=target_ids)
+
+    assert set(nodes) == set(target_ids)
+    assert len(nodes) == len(target_ids)
+    assert all(isinstance(nodes[node_id], Node) for node_id in target_ids)
+
+
 async def test_get_many_prefetch(
     db: InfrahubDatabase, person_jack_tags_main, tag_blue_main, tag_red_main, branch: Branch
 ):
