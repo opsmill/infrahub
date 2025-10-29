@@ -124,7 +124,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db,
-            kind=cls._meta.schema.kind,
+            kind=CoreProposedChange,
             id=data.get("id"),
             branch=branch,
             include_owner=True,
@@ -163,14 +163,15 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         )
 
         if updated_state == ProposedChangeState.MERGED:
-            await graphql_context.service.workflow.execute_workflow(
-                workflow=PROPOSED_CHANGE_MERGE,
-                context=graphql_context.get_context(),
-                parameters={
-                    "proposed_change_id": proposed_change.id,
-                    "proposed_change_name": proposed_change.name.value,
-                },
-            )
+            async with lock.registry.get(name="merge", namespace="branch_operations"):
+                await graphql_context.active_service.workflow.execute_workflow(
+                    workflow=PROPOSED_CHANGE_MERGE,
+                    context=graphql_context.get_context(),
+                    parameters={
+                        "proposed_change_id": proposed_change.id,
+                        "proposed_change_name": proposed_change.name.value,
+                    },
+                )
             # When the PROPOSED_CHANGE_MERGE succeeds it will have correctly changed the state
             # from the overridden "merging" value, so here we change it back to reflect the
             # correct value for the event that will be generated.
