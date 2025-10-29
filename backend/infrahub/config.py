@@ -447,25 +447,16 @@ class GitSettings(BaseSettings):
     )
     sync_branch_names: list[str] = Field(
         default_factory=list,
-        description="Names or regex of branches to sync with git e.g. 'main', '/infrahub/.*/', '/release/.*/' ",
+        description="Names or regex of branches to sync with git e.g. 'main', 'infrahub/.*', 'release/.*', '^branch-'",
     )
-    _compiled_branch_names: list[str] = PrivateAttr(default_factory=list)
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
-        compiled_branch_names = []
         for branch_name in self.sync_branch_names:
-            if not branch_name.startswith("/") and not branch_name.endswith("/"):
-                compiled_branch_names.append(branch_name)
-                continue
-
-            pattern = branch_name.strip("/")
             try:
-                re.compile(pattern)
-                compiled_branch_names.append(pattern)
+                re.compile(branch_name)
             except re.error as exc:
                 raise ValueError(f"Invalid regex pattern for sync_branch_names: '{branch_name}' — {exc}") from exc
-        self._compiled_branch_names = compiled_branch_names
         return self
 
 
