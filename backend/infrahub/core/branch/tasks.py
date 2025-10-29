@@ -174,10 +174,10 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 parameters={"branch": obj.name, "ipam_node_details": ipam_node_details},
             )
 
-    await workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name})
     await workflow.submit_workflow(
         workflow=BRANCH_MIGRATE, context=context, parameters={"branch": obj.name, "send_events": send_events}
     )
+    await workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name})
 
     if not send_events:
         return
@@ -235,7 +235,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         log.info(f"Running migrations for branch '{obj.name}'")
         await migration_runner.run(db=db)
     except MigrationFailureError as exc:
-        log.error(f"Failed to migrate branch '{obj.name}': {exc.errors}")
+        log.error(f"Failed to run migrations for branch '{obj.name}': {exc.errors}")
         return
 
     if obj.status == BranchStatus.NEED_UPGRADE_REBASE:

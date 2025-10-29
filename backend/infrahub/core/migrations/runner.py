@@ -40,10 +40,6 @@ class MigrationRunner:
 
             if execution_result.success:
                 validation_result = await migration.validate_migration(db=db)
-                # FIXME: graph_version should be changed elsewhere?
-                # if validation_result.success and self.branch.status != BranchStatus.NEED_UPGRADE_REBASE:
-                #     self.branch.graph_version = migration.minimum_version + 1
-                #     await self.branch.save(db=db)
 
             if not execution_result.success or (validation_result and not validation_result.success):
                 if execution_result.errors:
