@@ -34,3 +34,7 @@ export interface NodeCoreWithChildrenCount extends NodeCore {
     count: number;
   };
 }
+
+export interface NodeCoreWithParent extends NodeCore {
+  parent: NodeRelationshipOne;
+}

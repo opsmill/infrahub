@@ -10,7 +10,7 @@ import {
 } from "@/shared/components/ui/resizable";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
-import { ObjectHierarchyTree } from "@/entities/nodes/hierarchy/ui/object-hierarchy-tree";
+import { ObjectHierarchyTreeWrapper } from "@/entities/nodes/hierarchy/ui/object-hierarchy-tree-wrapper";
 import ObjectHeader from "@/entities/nodes/object-header";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -53,7 +53,7 @@ const ObjectPageLayout = () => {
             >
               <Content.Card className="flex grow flex-col">
                 <ScrollArea scrollX className="h-full p-1">
-                  <ObjectHierarchyTree treeSchema={treeSchema} currentNodeId={objectid} />
+                  <ObjectHierarchyTreeWrapper treeSchema={treeSchema} currentNodeId={objectid} />
                 </ScrollArea>
               </Content.Card>
             </ResizablePanel>
