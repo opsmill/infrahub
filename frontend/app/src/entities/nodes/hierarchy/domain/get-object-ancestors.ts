@@ -36,6 +36,6 @@ export const getObjectAncestors: GetObjectAncestors = async ({
   }
 
   const { ancestors, ...currentObject } = result;
-
-  return [...ancestors.edges.map((edge) => edge.node), currentObject] as Array<NodeCoreWithParent>;
+  const ancestorNodes = ancestors?.edges?.map((edge) => edge.node).filter((n) => !!n) ?? [];
+  return [...ancestorNodes, currentObject] as Array<NodeCoreWithParent>;
 };

@@ -100,7 +100,7 @@ interface IpPrefixHierarchyBreadcrumbProps {
 }
 
 function IpPrefixHierarchyBreadcrumb({ objectKind, objectId }: IpPrefixHierarchyBreadcrumbProps) {
-  const { data: ancestors, isPending, error } = useGetObjectAncestors({ objectKind, objectId });
+  const { data, isPending, error } = useGetObjectAncestors({ objectKind, objectId });
 
   if (isPending) {
     return <IpamBreadcrumbLoading />;
@@ -110,11 +110,11 @@ function IpPrefixHierarchyBreadcrumb({ objectKind, objectId }: IpPrefixHierarchy
     return <BreadcrumbError error={error} />;
   }
 
-  if (!ancestors || ancestors.length === 0) {
+  if (!data || data.length === 0) {
     return null;
   }
 
-  return <RecursiveAncestorBreadcrumb ancestors={ancestors} currentObjectId={objectId} />;
+  return <RecursiveAncestorBreadcrumb ancestors={data} currentObjectId={objectId} />;
 }
 
 interface RecursiveAncestorBreadcrumbProps {

@@ -18,11 +18,11 @@ export function getObjectAncestorsQueryOptions(params: GetObjectAncestorsParams)
   });
 }
 
-export type UseGetObjectChildrenQueryConfig = QueryConfig<typeof getObjectAncestorsQueryOptions>;
+export type UseGetObjectAncestorsQueryConfig = QueryConfig<typeof getObjectAncestorsQueryOptions>;
 
 export function useGetObjectAncestors(
   params: Omit<GetObjectAncestorsParams, keyof ContextParams>,
-  config?: UseGetObjectChildrenQueryConfig
+  config?: UseGetObjectAncestorsQueryConfig
 ) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
