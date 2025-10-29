@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import ModuleImportError
+from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifactValidator,
@@ -529,7 +529,11 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
     log = get_run_logger()
     client = get_client()
 
-    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    try:
+        proposed_change = await client.get(kind=CoreProposedChange, id=model.proposed_change)
+    except NodeNotFoundError:
+        log.warning(f"Proposed change ({model.proposed_change}) not found, skipping user tests execution")
+        return
 
     def _execute(
         directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode

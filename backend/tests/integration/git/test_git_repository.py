@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pytest
 import yaml
@@ -71,11 +70,10 @@ class TestInfrahubClient:
         return InfrahubTestClient(app=app)
 
     @pytest.fixture
-    async def client(self, test_client: InfrahubTestClient, integration_helper) -> AsyncGenerator[InfrahubClient, None]:
+    async def client(self, test_client: InfrahubTestClient, integration_helper) -> InfrahubClient:
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
-        sdk_client = InfrahubClient(config=config)
-        return sdk_client
+        return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")
     async def query_99(self, db: InfrahubDatabase, test_client):
@@ -90,13 +88,18 @@ class TestInfrahubClient:
 
     @pytest.fixture
     async def repo(
-        self, test_client, client, db: InfrahubDatabase, git_repo_infrahub_demo_edge: FileRepo, git_repos_dir
+        self,
+        test_client,
+        client,
+        db: InfrahubDatabase,
+        git_repo_infrahub_demo_edge_integration: FileRepo,
+        git_repos_dir,
     ):
         # Create the repository in the Graph
         obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
         await obj.new(
             db=db,
-            name=git_repo_infrahub_demo_edge.name,
+            name=git_repo_infrahub_demo_edge_integration.name,
             description="test repository",
             location="git@github.com:mock/test.git",
         )
@@ -104,7 +107,10 @@ class TestInfrahubClient:
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id, name=git_repo_infrahub_demo_edge.name, location=git_repo_infrahub_demo_edge.path, client=client
+            id=obj.id,
+            name=git_repo_infrahub_demo_edge_integration.name,
+            location=git_repo_infrahub_demo_edge_integration.path,
+            client=client,
         )
 
         return repo

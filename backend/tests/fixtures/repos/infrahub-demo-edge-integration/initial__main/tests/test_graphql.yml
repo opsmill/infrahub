@@ -1,0 +1,34 @@
+---
+version: "1.0"
+infrahub_tests:
+  # --------------------  GraphQLQuery  --------------------
+  - resource: GraphQLQuery
+    resource_name: check_backbone_link_redundancy
+    tests:
+      - name: syntax_check
+        spec:
+          path: checks/check_backbone_link_redundancy.gql
+          kind: graphql-query-smoke
+
+  - resource: GraphQLQuery
+    resource_name: device_startup_info
+    tests:
+      - name: syntax_check
+        spec:
+          path: templates/device_startup_info.gql
+          kind: graphql-query-smoke
+
+  - resource: GraphQLQuery
+    resource_name: oc_interfaces
+    tests:
+      - name: syntax_check
+        spec:
+          path: transforms/oc_interfaces.gql
+          kind: graphql-query-smoke
+  - resource: GraphQLQuery
+    resource_name: oc_bgp_neighbors
+    tests:
+      - name: syntax_check
+        spec:
+          path: transforms/oc_bgp_neighbors.gql
+          kind: graphql-query-smoke

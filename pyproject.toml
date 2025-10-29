@@ -33,6 +33,7 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^6.0.0", extras = ["hiredis"] }
 typer = "0.12.5"
+click = "8.1.7"
 prefect = "3.4.23"
 prefect-redis = "0.2.5"
 ujson = "^5"
@@ -756,6 +757,9 @@ allow-dunder-method-names = [
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
 ]
 
+"backend/tests/unit/graphql/test_schema_sort.py" = [
+    "W293", # Blank line contains whitespace
+]
 
 "models/infrastructure_edge.py" = [
     "S106", # Hardcoded password

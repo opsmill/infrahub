@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Any, Sequence
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
 
-from ..shared import MigrationQuery, SchemaMigration
+from ..query import MigrationQuery
+from ..shared import SchemaMigration
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo

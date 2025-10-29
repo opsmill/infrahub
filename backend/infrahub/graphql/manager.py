@@ -780,10 +780,7 @@ class GraphQLSchemaManager:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_update()
 
-            # A Field is not required if explicitly indicated or if a default value has been provided
-            required = not attr.optional if not attr.default_value else False
-
-            attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
+            attrs[attr.name] = graphene.InputField(attr_type, description=attr.description)
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -791,14 +788,12 @@ class GraphQLSchemaManager:
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            required = not rel.optional
             if rel.cardinality == RelationshipCardinality.ONE:
-                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
+                attrs[rel.name] = graphene.InputField(input_type, description=rel.description)
 
             elif rel.cardinality == RelationshipCardinality.MANY:
-                attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), required=required, description=rel.description
-                )
+                attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
+
         input_name = f"{schema.kind}UpsertInput"
         md5hash = hashlib.md5(usedforsecurity=False)
         md5hash.update(f"{input_name}{schema.get_hash()}".encode())

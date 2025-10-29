@@ -1,0 +1,41 @@
+query upstream_interfaces($id: ID!) {
+  InfraInterfaceL3(ids: [$id]) {
+    edges {
+      node @expand {
+        device {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+          }
+        }
+        status { value}
+        connected_endpoint {
+          node {
+            __typename
+            id
+            ... on InfraCircuitEndpoint {
+              __typename
+              circuit {
+                node {
+                  vendor_id {
+                    value
+                  }
+                  provider {
+                    node {
+                      __typename
+                      id
+                      name {value}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

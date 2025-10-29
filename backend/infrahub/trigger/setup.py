@@ -6,6 +6,7 @@ from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 from prefect.events.schemas.automations import Automation
+from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub import lock
 from infrahub.database import InfrahubDatabase
@@ -133,8 +134,14 @@ async def setup_triggers(
             continue
 
         report.deleted.append(existing_automation)
-        await client.delete_automation(automation_id=existing_automation.id)
-        log.info(f"{item_to_delete} Deleted")
+        try:
+            await client.delete_automation(automation_id=existing_automation.id)
+            log.info(f"{item_to_delete} Deleted")
+        except PrefectHTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                log.info(f"{item_to_delete} was already deleted")
+            else:
+                raise
 
     if trigger_type:
         log.info(

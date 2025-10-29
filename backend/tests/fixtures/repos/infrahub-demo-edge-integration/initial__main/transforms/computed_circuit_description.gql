@@ -1,0 +1,44 @@
+query CircuitDescriptionQuery($id: ID!) {
+  InfraCircuit(ids: [$id]) {
+    edges {
+      node {
+        circuit_id {
+          value
+        }
+        role {
+          value
+        }
+
+        provider {
+          node {
+            name {
+              value
+            }
+          }
+        }
+        endpoints {
+          edges {
+            node {
+              connected_endpoint {
+                node {
+                  ... on InfraInterfaceL3 {
+                    name {
+                      value
+                    }
+                    device {
+                      node {
+                        name {
+                          value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -241,6 +241,13 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 
@@ -297,6 +304,13 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 

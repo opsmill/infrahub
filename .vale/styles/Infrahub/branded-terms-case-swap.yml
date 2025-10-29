@@ -13,10 +13,9 @@ swap:
   (?<![\.|/|#])[Gg]itlab[\.!]?\s: GitLab
   (?:gitpod): GitPod
   (?:grafana): Grafana
-  (?:[^/][Gg]raphql): GraphQL
+  (?:[^/.][Gg]raphql): GraphQL
   (?:[Ii]nflux[Dd]b): InfluxDB
   (?<![\.|/|#])infrahub[\.!]?\s: Infrahub
-  (?<![\.|/|#])InfraHub[\.!]?\s: Infrahub
   (?:jinja2): Jinja2
   (?:k3s): K3s
   (?<![\.|/|#])k8s[\.!]?\s: K8s

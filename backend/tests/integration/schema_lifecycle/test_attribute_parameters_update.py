@@ -297,7 +297,29 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                     },
                 },
                 "removed": {},
-            }
+            },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThingLegacy", "field": "value"}],
+                    "message": "Use of 'max_length' on attributes is deprecated, use parameters instead",
+                },
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThingLegacy", "field": "value"}],
+                    "message": "Use of 'min_length' on attributes is deprecated, use parameters instead",
+                },
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThing", "field": "value"}],
+                    "message": "Use of 'max_length' on attributes is deprecated, use parameters instead",
+                },
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThing", "field": "value"}],
+                    "message": "Use of 'min_length' on attributes is deprecated, use parameters instead",
+                },
+            ],
         }
 
     async def test_step02_load_schema_with_overrides(

@@ -1,0 +1,33 @@
+query backbone_service($name: String!) {
+  InfraBackBoneService(name__value: $name) {
+    edges {
+      node {
+        id
+	name {
+	  value
+	}
+        circuit_id {
+          value
+        }
+        internal_circuit_id {
+          value
+        }
+        site_a {
+          node {
+            id
+          }
+        }
+        site_b {
+          node {
+            id
+          }
+        }
+        provider {
+          node {
+            id
+          }
+        }
+      }
+    }
+  }
+}
