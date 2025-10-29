@@ -9,6 +9,7 @@ from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m042_create_hfid_display_label_in_db import Migration042
 from infrahub.core.migrations.graph.m043_backfill_hfid_display_label_in_db import Migration043
 from infrahub.core.node import Node
@@ -16,6 +17,7 @@ from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -221,6 +223,45 @@ class TestMigration042(TestInfrahubApp):
         )
 
     @pytest.fixture
+    async def primary_thing_two_deleted_on_branch_details(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch, primary_thing_two_details: NodeDetails, branch: Branch
+    ) -> NodeDetails:
+        primary_thing = await NodeManager.get_one(db=db, branch=branch, id=primary_thing_two_details.node.id)
+        await primary_thing.delete(db=db)
+        return NodeDetails(
+            node=primary_thing,
+            on_default_branch=False,
+            display_label=None,
+            human_friendly_id=None,
+            status=NodeStatus.DELETED,
+        )
+
+    @pytest.fixture
+    async def primary_thing_one_updated_on_branch_details(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch, primary_thing_one_details: NodeDetails, branch: Branch
+    ) -> NodeDetails:
+        primary_thing = await NodeManager.get_one(db=db, branch=branch, id=primary_thing_one_details.node.id)
+        # Update some attributes on the branch
+        primary_thing.color.value = "purple"
+        primary_thing.size.value = 999
+        await primary_thing.save(db=db)
+        secondary_thing = await primary_thing.secondary.get_peer(db=db)
+        return NodeDetails(
+            node=primary_thing,
+            on_default_branch=False,
+            display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
+            human_friendly_id=[
+                str(v)
+                for v in (
+                    primary_thing.name.value,
+                    secondary_thing.name.value,
+                    secondary_thing.size.value,
+                )
+            ],
+            status=NodeStatus.ACTIVE,
+        )
+
+    @pytest.fixture
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
@@ -231,17 +272,21 @@ class TestMigration042(TestInfrahubApp):
         secondary_thing_one_details: NodeDetails,
         primary_thing_two_details: NodeDetails,
         secondary_thing_two_details: NodeDetails,
+        primary_thing_two_deleted_on_branch_details: NodeDetails,
         primary_thing_three_deleted_details: NodeDetails,
         branch: Branch,
         primary_thing_one_branch_details: NodeDetails,
+        primary_thing_one_updated_on_branch_details: NodeDetails,
     ) -> dict[str, NodeDetails]:
         return {
             "secondary_thing": secondary_thing_one_details,
             "primary_thing": primary_thing_one_details,
             "secondary_thing_two": secondary_thing_two_details,
             "primary_thing_two": primary_thing_two_details,
+            "primary_thing_two_deleted_on_branch": primary_thing_two_deleted_on_branch_details,
             "primary_thing_three_deleted": primary_thing_three_deleted_details,
             "primary_thing_one_branch": primary_thing_one_branch_details,
+            "primary_thing_one_updated_on_branch": primary_thing_one_updated_on_branch_details,
         }
 
     async def erase_hfid_and_display_label(self, db: InfrahubDatabase) -> Node:
@@ -362,6 +407,10 @@ DETACH DELETE attr
             for node_details in initial_dataset.values()
             if node_details.is_active and not node_details.on_default_branch
         }
+
+        # bug in rebase allows attributes added on main to persist on a node that is deleted on a branch
+        expected_ids.add(initial_dataset["primary_thing_two_deleted_on_branch"].node.id)
+
         assert set(attribute_values_map_branch.keys()) == expected_ids
         for node_details in initial_dataset.values():
             if not node_details.is_active or node_details.on_default_branch:
@@ -372,9 +421,12 @@ DETACH DELETE attr
                 == node_details.human_friendly_id
             )
 
+        await verify_no_edges_added_after_node_delete(db=db)
+        await verify_no_duplicate_relationships(db=db)
 
-# TODO: test added/updated/removed nodes on branch
+
 # TODO: test updating relationships and values of peers
 # TODO: test relationships with same name going different directions
 # TODO: test branch-agnostic attributes and relationships
 # TODO: test display labels and HFIDs updated on a branch with the same value on main
+# TODO: test HFID/display labels update on branch

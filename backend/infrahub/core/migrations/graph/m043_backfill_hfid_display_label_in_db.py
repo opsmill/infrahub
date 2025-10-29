@@ -541,11 +541,14 @@ CALL (n, attr) {
     WITH r, existing_av
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
-    WITH r, existing_av
-    WHERE existing_av.value <> $values_by_id[n.uuid]
-    AND r.status = "active"
-    AND r.branch = $branch
-    RETURN existing_av, r AS existing_has_value
+    WITH CASE
+        WHEN existing_av.value <> $values_by_id[n.uuid]
+        AND r.status = "active"
+        AND r.branch = $branch
+        THEN [r, existing_av]
+        ELSE [NULL, NULL]
+    END AS existing_details
+    RETURN existing_details[0] AS existing_has_value, existing_details[1] AS existing_av
 }
 CALL (existing_has_value) {
     WITH existing_has_value
