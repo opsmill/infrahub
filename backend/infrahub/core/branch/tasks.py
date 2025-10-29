@@ -208,7 +208,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         await event_service.send(event)
 
 
-@flow(name="migrate_branch", flow_run_name="Apply migrations to branch {branch}")
+@flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
 async def migrate_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:
     await add_tags(branches=[branch])
 
