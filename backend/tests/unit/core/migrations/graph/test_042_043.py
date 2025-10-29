@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m042_create_hfid_display_label_in_db import Migration042
@@ -46,18 +46,20 @@ class TestMigration042(TestInfrahubApp):
         return NodeSchema(
             name="Thing",
             namespace="Primary",
-            display_labels=["name__value", "color__value"],
+            display_labels=["name__value", "color__value", "agnostic_smell__value"],
             human_friendly_id=[
                 "name__value",
+                "agnostic_smell__value",
                 "secondary_in__name__value",
-                "secondary_out__name__value",
-                "secondary_in__size__value",
+                "secondary_out__size__value",
+                "agnostic_secondary__agnostic_smell__value",
             ],
             uniqueness_constraints=[["name__value"]],
             attributes=[
                 AttributeSchema(name="name", kind="Text"),
                 AttributeSchema(name="color", kind="Text"),
                 AttributeSchema(name="size", kind="Number"),
+                AttributeSchema(name="agnostic_smell", kind="Text", branch=BranchSupportType.AGNOSTIC),
             ],
             relationships=[
                 RelationshipSchema(
@@ -76,6 +78,13 @@ class TestMigration042(TestInfrahubApp):
                     direction=RelationshipDirection.OUTBOUND,
                     identifier="secondary__oneway",
                 ),
+                RelationshipSchema(
+                    name="agnostic_secondary",
+                    optional=False,
+                    peer="SecondaryThing",
+                    cardinality=RelationshipCardinality.ONE,
+                    branch=BranchSupportType.AGNOSTIC,
+                ),
             ],
         )
 
@@ -85,11 +94,12 @@ class TestMigration042(TestInfrahubApp):
             name="Thing",
             namespace="Secondary",
             display_labels=["name__value", "size__value"],
-            human_friendly_id=["name__value", "color__value"],
+            human_friendly_id=["name__value", "color__value", "agnostic_smell__value"],
             attributes=[
                 AttributeSchema(name="name", kind="Text"),
                 AttributeSchema(name="color", kind="Text"),
                 AttributeSchema(name="size", kind="Number"),
+                AttributeSchema(name="agnostic_smell", kind="Text", branch=BranchSupportType.AGNOSTIC),
             ],
         )
 
@@ -127,45 +137,71 @@ class TestMigration042(TestInfrahubApp):
     @pytest.fixture
     async def secondary_thing_one_details(self, db: InfrahubDatabase, load_schemas: SchemaBranch) -> NodeDetails:
         secondary_thing = await Node.init(db=db, schema="SecondaryThing")
-        await secondary_thing.new(db=db, name="secondary_thing_1", color="not red", size=-1)
+        await secondary_thing.new(db=db, name="secondary_thing_1", color="not red", size=-1, agnostic_smell="okay")
         await secondary_thing.save(db=db)
         return NodeDetails(
             node=secondary_thing,
             on_default_branch=True,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
-            human_friendly_id=[str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+            human_friendly_id=[
+                str(v)
+                for v in (secondary_thing.name.value, secondary_thing.color.value, secondary_thing.agnostic_smell.value)
+            ],
             status=NodeStatus.ACTIVE,
         )
 
     @pytest.fixture
     async def secondary_thing_two_details(self, db: InfrahubDatabase, load_schemas: SchemaBranch) -> NodeDetails:
         secondary_thing = await Node.init(db=db, schema="SecondaryThing")
-        await secondary_thing.new(db=db, name="secondary_thing_2", color="orange", size=42)
+        await secondary_thing.new(
+            db=db, name="secondary_thing_2", color="orange", size=42, agnostic_smell="pretty good"
+        )
         await secondary_thing.save(db=db)
         return NodeDetails(
             node=secondary_thing,
             on_default_branch=True,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
-            human_friendly_id=[str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+            human_friendly_id=[
+                str(v)
+                for v in (secondary_thing.name.value, secondary_thing.color.value, secondary_thing.agnostic_smell.value)
+            ],
             status=NodeStatus.ACTIVE,
         )
 
     @pytest.fixture
-    async def secondary_thing_three_details(self, db: InfrahubDatabase, load_schemas: SchemaBranch) -> NodeDetails:
+    async def secondary_thing_three_agnostic_value_update(self) -> str:
+        return "more okay"
+
+    @pytest.fixture
+    async def secondary_thing_three_details(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_three_agnostic_value_update: str
+    ) -> NodeDetails:
         secondary_thing = await Node.init(db=db, schema="SecondaryThing")
-        await secondary_thing.new(db=db, name="secondary_thing_3", color="inidigo", size=53)
+        await secondary_thing.new(db=db, name="secondary_thing_3", color="inidigo", size=53, agnostic_smell="quite bad")
         await secondary_thing.save(db=db)
         secondary_thing.color.value = "indigogo"
         secondary_thing.size.value = 54
+        secondary_thing.agnostic_smell.value = "really quite bad"
         await secondary_thing.save(db=db)
 
         return NodeDetails(
             node=secondary_thing,
             on_default_branch=True,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
-            human_friendly_id=[str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+            human_friendly_id=[
+                str(v)
+                for v in (
+                    secondary_thing.name.value,
+                    secondary_thing.color.value,
+                    secondary_thing_three_agnostic_value_update,
+                )
+            ],
             status=NodeStatus.ACTIVE,
         )
+
+    @pytest.fixture
+    async def primary_thing_one_agnostic_value_update(self) -> str:
+        return "very lilac"
 
     @pytest.fixture
     async def primary_thing_one_details(
@@ -174,30 +210,37 @@ class TestMigration042(TestInfrahubApp):
         load_schemas: SchemaBranch,
         secondary_thing_one_details: NodeDetails,
         secondary_thing_two_details: NodeDetails,
+        secondary_thing_three_details: NodeDetails,
+        secondary_thing_three_agnostic_value_update: str,
+        primary_thing_one_agnostic_value_update: str,
     ) -> NodeDetails:
         secondary_one_node = secondary_thing_one_details.node
         secondary_two_node = secondary_thing_two_details.node
+        secondary_three_node = secondary_thing_three_details.node
         primary_thing = await Node.init(db=db, schema="PrimaryThing")
         await primary_thing.new(
             db=db,
             name="primary_thing_1",
             color="red",
             size=1,
+            agnostic_smell="lilac",
             secondary_in=secondary_one_node,
             secondary_out=secondary_two_node,
+            agnostic_secondary=secondary_three_node,
         )
         await primary_thing.save(db=db)
         return NodeDetails(
             node=primary_thing,
             on_default_branch=True,
-            display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
+            display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing_one_agnostic_value_update}",
             human_friendly_id=[
                 str(v)
                 for v in (
                     primary_thing.name.value,
+                    primary_thing_one_agnostic_value_update,
                     secondary_one_node.name.value,
-                    secondary_two_node.name.value,
-                    secondary_one_node.size.value,
+                    secondary_two_node.size.value,
+                    secondary_thing_three_agnostic_value_update,
                 )
             ],
             status=NodeStatus.ACTIVE,
@@ -208,6 +251,7 @@ class TestMigration042(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         load_schemas: SchemaBranch,
+        secondary_thing_one_details: NodeDetails,
         secondary_thing_two_details: NodeDetails,
         secondary_thing_three_details: NodeDetails,
     ) -> NodeDetails:
@@ -217,30 +261,38 @@ class TestMigration042(TestInfrahubApp):
             name="primary_thing_2",
             color="yellow",
             size=2,
+            agnostic_smell="violet",
             secondary_in=secondary_thing_two_details.node,
             secondary_out=secondary_thing_three_details.node,
+            agnostic_secondary=secondary_thing_one_details.node,
         )
         await primary_thing.save(db=db)
 
         new_secondary_in_node = secondary_thing_three_details.node
-        new_secondary_out_node = secondary_thing_two_details.node
+        new_secondary_out_node = secondary_thing_one_details.node
+        new_agnostic_secondary_node = secondary_thing_two_details.node
         primary_thing.color.value = "double yellow"
+        primary_thing.agnostic_smell.value = "ultra violet"
         await primary_thing.secondary_in.update(db=db, data=new_secondary_in_node)
         await primary_thing.secondary_out.update(db=db, data=new_secondary_out_node)
+        await primary_thing.agnostic_secondary.update(db=db, data=new_agnostic_secondary_node)
         await primary_thing.save(db=db)
 
         return NodeDetails(
             node=primary_thing,
             on_default_branch=True,
+            # a bug in deleting branch-aware nodes with branch-agnostic relationships prevents this from working correctly
+            # https://github.com/opsmill/infrahub/issues/7513
+            # display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing.agnostic_smell.value}",
             display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
             human_friendly_id=[
-                str(v)
-                for v in (
-                    primary_thing.name.value,
-                    new_secondary_in_node.name.value,
-                    new_secondary_out_node.name.value,
-                    new_secondary_in_node.size.value,
-                )
+                str(primary_thing.name.value),
+                # https://github.com/opsmill/infrahub/issues/7513 here too
+                # primary_thing.agnostic_smell.value,
+                None,
+                str(new_secondary_in_node.name.value),
+                str(new_secondary_out_node.size.value),
+                str(new_agnostic_secondary_node.agnostic_smell.value),
             ],
             status=NodeStatus.ACTIVE,
         )
@@ -258,9 +310,11 @@ class TestMigration042(TestInfrahubApp):
             db=db,
             name="primary_thing_3",
             color="green",
+            agnostic_smell="emerald",
             size=3,
             secondary_in=secondary_thing_two_details.node,
             secondary_out=secondary_thing_three_details.node,
+            agnostic_secondary=secondary_thing_two_details.node,
         )
         await primary_thing.save(db=db)
         await primary_thing.delete(db=db)
@@ -283,17 +337,26 @@ class TestMigration042(TestInfrahubApp):
         load_schemas: SchemaBranch,
         branch: Branch,
         secondary_thing_three_details: NodeDetails,
+        secondary_thing_three_agnostic_value_update: str,
     ) -> NodeDetails:
         secondary_thing = await NodeManager.get_one(db=db, branch=branch, id=secondary_thing_three_details.node.id)
         secondary_thing.color.value = "indigogogo-branch"
         secondary_thing.size.value = 55
+        secondary_thing.agnostic_smell.value = secondary_thing_three_agnostic_value_update
         await secondary_thing.save(db=db)
 
         return NodeDetails(
             node=secondary_thing,
             on_default_branch=False,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
-            human_friendly_id=[str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+            human_friendly_id=[
+                str(v)
+                for v in (
+                    secondary_thing.name.value,
+                    secondary_thing.color.value,
+                    secondary_thing_three_agnostic_value_update,
+                )
+            ],
             status=NodeStatus.ACTIVE,
         )
 
@@ -311,22 +374,25 @@ class TestMigration042(TestInfrahubApp):
             db=db,
             name="primary_thing_1_branch",
             color="blue",
+            agnostic_smell="blueberry",
             size=1,
             secondary_in=secondary_thing_one_details.node,
             secondary_out=secondary_thing_two_details.node,
+            agnostic_secondary=secondary_thing_two_details.node,
         )
         await primary_thing.save(db=db)
         return NodeDetails(
             node=primary_thing,
             on_default_branch=False,
-            display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
+            display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing.agnostic_smell.value}",
             human_friendly_id=[
                 str(v)
                 for v in (
                     primary_thing.name.value,
+                    primary_thing.agnostic_smell.value,
                     secondary_thing_one_details.node.name.value,
-                    secondary_thing_two_details.node.name.value,
-                    secondary_thing_one_details.node.size.value,
+                    secondary_thing_two_details.node.size.value,
+                    secondary_thing_two_details.node.agnostic_smell.value,
                 )
             ],
             status=NodeStatus.ACTIVE,
@@ -360,11 +426,14 @@ class TestMigration042(TestInfrahubApp):
         primary_thing_one_details: NodeDetails,
         branch: Branch,
         secondary_thing_three_branch_update_details: NodeDetails,
+        primary_thing_one_agnostic_value_update: str,
+        secondary_thing_three_agnostic_value_update: str,
     ) -> NodeDetails:
         primary_thing = await NodeManager.get_one(db=db, branch=branch, id=primary_thing_one_details.node.id)
         # Update some attributes on the branch
         primary_thing.color.value = "purple"
         primary_thing.size.value = 999
+        primary_thing.agnostic_smell.value = primary_thing_one_agnostic_value_update
         # update secondary relationship on branch
         new_secondary_in_node = secondary_thing_three_branch_update_details.node
         current_secondary_out_node = await primary_thing.secondary_out.get_peer(db=db)
@@ -373,14 +442,15 @@ class TestMigration042(TestInfrahubApp):
         return NodeDetails(
             node=primary_thing,
             on_default_branch=False,
-            display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
+            display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing_one_agnostic_value_update}",
             human_friendly_id=[
                 str(v)
                 for v in (
                     primary_thing.name.value,
+                    primary_thing_one_agnostic_value_update,
                     new_secondary_in_node.name.value,
-                    current_secondary_out_node.name.value,
-                    new_secondary_in_node.size.value,
+                    current_secondary_out_node.size.value,
+                    secondary_thing_three_agnostic_value_update,
                 )
             ],
             status=NodeStatus.ACTIVE,
@@ -554,6 +624,5 @@ DETACH DELETE attr
         await verify_no_duplicate_relationships(db=db)
 
 
-# TODO: test branch-agnostic attributes and relationships
 # TODO: test display labels and HFIDs updated on a branch with the same value on main
 # TODO: test HFID/display labels update on branch
