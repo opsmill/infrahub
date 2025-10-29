@@ -156,6 +156,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                     },
                 },
             },
+            "warnings": [],
         }
 
     async def test_load_schema_02(

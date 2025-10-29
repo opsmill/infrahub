@@ -1036,6 +1036,7 @@ class RelationshipCountPerNodeQuery(Query):
         """ % {"branch_filter": branch_filter, "path": path}
 
         self.add_to_query(query)
+        self.order_by = ["peer_node.uuid"]
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
 
     async def get_count_per_peer(self) -> dict[str, int]:

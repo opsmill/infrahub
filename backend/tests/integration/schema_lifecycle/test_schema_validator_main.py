@@ -300,6 +300,13 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                     },
                 },
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
 
     async def test_step_03_check_relationship_cardinality_change_failure(

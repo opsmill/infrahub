@@ -68,6 +68,10 @@ class AttributeSchema(GeneratedAttributeSchema):
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
 
+    @property
+    def support_profiles(self) -> bool:
+        return self.read_only is False and self.optional is True
+
     def get_id(self) -> str:
         if self.id is None:
             raise InitializationError("The attribute schema has not been saved yet and doesn't have an id")

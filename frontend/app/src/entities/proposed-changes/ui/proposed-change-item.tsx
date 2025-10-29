@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
-import { ARTIFACT_OBJECT, CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
+import { CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -12,7 +12,7 @@ import { classNames } from "@/shared/utils/common";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
-import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
+import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -131,7 +131,6 @@ const ProposedChangesData = ({
         <div className="flex items-center justify-end gap-4">
           <ProposedChangesChecks validations={validations} />
           <ProposedChangesTasks id={id} />
-          <ProposedChangesArtifacts id={id} />
           <ProposedChangesComments comments={comments} />
         </div>
       </div>
@@ -156,22 +155,6 @@ const ProposedChangesChecks = ({ validations }: { validations: number }) => {
     <Tooltip enabled content="Checks">
       <span className="flex items-center">
         <Icon icon={schema?.icon ?? "mdi:check-circle-outline"} /> {validations}
-      </span>
-    </Tooltip>
-  );
-};
-
-const ProposedChangesArtifacts = ({ id }: { id: string }) => {
-  const { schema } = useSchema(ARTIFACT_OBJECT);
-  const { data } = useObjectsCount({
-    objectKind: ARTIFACT_OBJECT,
-    filters: [{ name: "object__ids", value: [id] }],
-  });
-
-  return (
-    <Tooltip enabled content="Artifacts">
-      <span className="flex items-center gap-1">
-        <Icon icon={schema?.icon ?? "mdi:file-outline"} /> {data ?? 0}
       </span>
     </Tooltip>
   );

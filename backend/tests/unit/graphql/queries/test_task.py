@@ -230,7 +230,8 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, tag_red, accou
 
 
 async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any]) -> ExecutionResult:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     return await graphql(
         schema=gql_params.schema,
         source=query,

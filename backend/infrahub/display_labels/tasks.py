@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.template import Jinja2Template
 from prefect import flow
 from prefect.logging import get_run_logger
@@ -53,12 +54,17 @@ async def display_label_jinja2_update_value(
         log.debug(f"Ignoring to update {obj} with existing value on display_label={value}")
         return
 
-    await client.execute_graphql(
-        query=UPDATE_DISPLAY_LABEL,
-        variables={"id": obj.node_id, "kind": node_kind, "value": value},
-        branch_name=branch_name,
-    )
-    log.info(f"Updating {node_kind}.display_label='{value}' ({obj.node_id})")
+    try:
+        await client.execute_graphql(
+            query=UPDATE_DISPLAY_LABEL,
+            variables={"id": obj.node_id, "kind": node_kind, "value": value},
+            branch_name=branch_name,
+        )
+        log.info(f"Updating {node_kind}.display_label='{value}' ({obj.node_id})")
+    except URLNotFoundError:
+        log.warning(
+            f"Updating {node_kind}.display_label='{value}' ({obj.node_id}) failed for branch {branch_name} (branch not found)"
+        )
 
 
 @flow(
@@ -152,7 +158,7 @@ async def display_labels_setup_jinja2(
 
 @flow(
     name="trigger-update-display-labels",
-    flow_run_name="Trigger updates for display labels for kind",
+    flow_run_name="Trigger updates for display labels for {kind}",
 )
 async def trigger_update_display_labels(
     branch_name: str,

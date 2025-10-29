@@ -159,6 +159,7 @@ services:
       - POSTGRES_DB=prefect
     volumes:
       - workflow_db:/var/lib/postgresql/data
+      - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
