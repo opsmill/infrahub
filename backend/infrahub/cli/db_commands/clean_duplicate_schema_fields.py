@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from rich import print as rprint
@@ -11,7 +11,7 @@ from infrahub.core.query import Query, QueryType
 from infrahub.database import InfrahubDatabase
 
 
-class SchemaFieldType(str, Enum):
+class SchemaFieldType(StrEnum):
     ATTRIBUTE = "attribute"
     RELATIONSHIP = "relationship"
 

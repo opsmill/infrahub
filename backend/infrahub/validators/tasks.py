@@ -12,7 +12,7 @@ from .events import send_start_validator
 ValidatorType = TypeVar("ValidatorType", bound=CoreValidator)
 
 
-async def start_validator(
+async def start_validator[ValidatorType: CoreValidator](
     client: InfrahubClient,
     validator: CoreValidator | None,
     validator_type: type[ValidatorType],

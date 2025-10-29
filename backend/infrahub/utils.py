@@ -76,7 +76,7 @@ def get_nested_dict(nested_dict: dict[str, Any], keys: list[str]) -> dict[str, A
     return current_level if isinstance(current_level, dict) else {}
 
 
-def get_all_subclasses(cls: AnyClass) -> list[AnyClass]:
+def get_all_subclasses[AnyClass: type](cls: AnyClass) -> list[AnyClass]:
     """Recursively get all subclasses of the given class."""
     subclasses: list[AnyClass] = []
     for subclass in cls.__subclasses__():
