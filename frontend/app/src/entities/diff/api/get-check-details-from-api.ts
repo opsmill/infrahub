@@ -1,8 +1,14 @@
 import { gql } from "@apollo/client";
 
-export const GET_CHECKS = gql`
-  query GET_CORE_CHECKS($ids: [ID]!) {
-    CoreCheck(ids: $ids) {
+import type {
+  Get_Check_DetailsQuery,
+  Get_Check_DetailsQueryVariables,
+} from "@/shared/api/graphql/generated/graphql";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+const GET_CHECK_DETAILS = gql`
+  query GET_CHECK_DETAILS($id: ID!) {
+    CoreCheck(ids: [$id]) {
       edges {
         node {
           id
@@ -63,3 +69,12 @@ export const GET_CHECKS = gql`
     }
   }
 `;
+
+export interface GetCheckDetailsFromApiParams extends Get_Check_DetailsQueryVariables {}
+
+export const getCheckDetailsFromApi = async (variables: GetCheckDetailsFromApiParams) => {
+  return graphqlClient.query<Get_Check_DetailsQuery, Get_Check_DetailsQueryVariables>({
+    query: GET_CHECK_DETAILS,
+    variables,
+  });
+};

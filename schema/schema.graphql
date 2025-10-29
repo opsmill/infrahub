@@ -533,7 +533,7 @@ input BuiltinTagUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   profiles: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -744,7 +744,7 @@ input CoreAccountGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   roles: [RelatedNodeInput]
   subscribers: [RelatedNodeInput]
@@ -813,7 +813,7 @@ input CoreAccountRoleUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   permissions: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -850,8 +850,8 @@ input CoreAccountUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  password: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  password: TextAttributeUpdate
   status: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -1021,17 +1021,17 @@ input CoreArtifactCheckUpsertInput {
   created_at: TextAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   line_number: NumberAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   storage_id: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 type CoreArtifactCreate {
@@ -1124,17 +1124,17 @@ type CoreArtifactDefinitionUpsert {
 }
 
 input CoreArtifactDefinitionUpsertInput {
-  artifact_name: TextAttributeUpdate!
-  content_type: TextAttributeUpdate!
+  artifact_name: TextAttributeUpdate
+  content_type: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  parameters: JSONAttributeUpdate!
+  name: TextAttributeUpdate
+  parameters: JSONAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  targets: RelatedNodeInput!
-  transformation: RelatedNodeInput!
+  targets: RelatedNodeInput
+  transformation: RelatedNodeInput
 }
 
 type CoreArtifactDelete {
@@ -1247,7 +1247,7 @@ type CoreArtifactThreadUpsert {
 
 input CoreArtifactThreadUpsertInput {
   artifact_id: TextAttributeUpdate
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
@@ -1289,15 +1289,15 @@ type CoreArtifactUpsert {
 
 input CoreArtifactUpsertInput {
   checksum: TextAttributeUpdate
-  content_type: TextAttributeUpdate!
-  definition: RelatedNodeInput!
+  content_type: TextAttributeUpdate
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  object: RelatedNodeInput!
+  name: TextAttributeUpdate
+  object: RelatedNodeInput
   parameters: JSONAttributeUpdate
-  status: TextAttributeUpdate!
+  status: TextAttributeUpdate
   """ID of the file in the object store"""
   storage_id: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -1379,12 +1379,12 @@ input CoreArtifactValidatorUpsertInput {
   checks: [RelatedNodeInput]
   completed_at: TextAttributeUpdate
   conclusion: TextAttributeUpdate
-  definition: RelatedNodeInput!
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -1480,14 +1480,14 @@ type CoreChangeCommentUpsert {
 }
 
 input CoreChangeCommentUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
-  text: TextAttributeUpdate!
+  text: TextAttributeUpdate
 }
 
 """A thread on proposed change"""
@@ -1557,7 +1557,7 @@ type CoreChangeThreadUpsert {
 }
 
 input CoreChangeThreadUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
@@ -1668,16 +1668,16 @@ type CoreCheckDefinitionUpsert {
 }
 
 input CoreCheckDefinitionUpsertInput {
-  class_name: TextAttributeUpdate!
+  class_name: TextAttributeUpdate
   description: TextAttributeUpdate
-  file_path: TextAttributeUpdate!
+  file_path: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parameters: JSONAttributeUpdate
   query: RelatedNodeInput
-  repository: RelatedNodeInput!
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
   targets: RelatedNodeInput
@@ -1855,13 +1855,13 @@ input CoreCustomWebhookUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """Only send node mutation events for nodes of this kind"""
   node_kind: TextAttributeUpdate
   shared_key: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   transformation: RelatedNodeInput
-  url: TextAttributeUpdate!
+  url: TextAttributeUpdate
   validate_certificates: CheckboxAttributeUpdate
 }
 
@@ -1954,21 +1954,21 @@ type CoreDataCheckUpsert {
 
 input CoreDataCheckUpsertInput {
   conclusion: TextAttributeUpdate
-  conflicts: JSONAttributeUpdate!
+  conflicts: JSONAttributeUpdate
   created_at: TextAttributeUpdate
   enriched_conflict_id: TextAttributeUpdate
   hfid: [String]
   id: String
   keep_branch: TextAttributeUpdate
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """A check to validate the data integrity between two branches"""
@@ -2048,7 +2048,7 @@ input CoreDataValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -2144,15 +2144,15 @@ input CoreFileCheckUpsertInput {
   files: ListAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """A thread related to a file on a proposed change"""
@@ -2237,7 +2237,7 @@ type CoreFileThreadUpsert {
 }
 
 input CoreFileThreadUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   commit: TextAttributeUpdate
   created_at: TextAttributeUpdate
@@ -2248,7 +2248,7 @@ input CoreFileThreadUpsertInput {
   label: TextAttributeUpdate
   line_number: NumberAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  repository: RelatedNodeInput!
+  repository: RelatedNodeInput
   resolved: CheckboxAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -2331,12 +2331,12 @@ input CoreGeneratorActionUpsertInput {
   """A detailed description of the action"""
   description: TextAttributeUpdate
   """The generator definition to execute once this action gets triggered"""
-  generator: RelatedNodeInput!
+  generator: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   """Short descriptive name"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """
   The triggers that would execute this action once the triggering condition is met
@@ -2420,7 +2420,7 @@ input CoreGeneratorAwareGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
@@ -2509,16 +2509,16 @@ input CoreGeneratorCheckUpsertInput {
   created_at: TextAttributeUpdate
   hfid: [String]
   id: String
-  instance: TextAttributeUpdate!
-  kind: TextAttributeUpdate!
+  instance: TextAttributeUpdate
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 type CoreGeneratorDefinition implements CoreNode & CoreTaskTarget {
@@ -2606,21 +2606,21 @@ type CoreGeneratorDefinitionUpsert {
 }
 
 input CoreGeneratorDefinitionUpsertInput {
-  class_name: TextAttributeUpdate!
+  class_name: TextAttributeUpdate
   convert_query_response: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   execute_after_merge: CheckboxAttributeUpdate
   execute_in_proposed_change: CheckboxAttributeUpdate
-  file_path: TextAttributeUpdate!
+  file_path: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  parameters: JSONAttributeUpdate!
-  query: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  name: TextAttributeUpdate
+  parameters: JSONAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
-  targets: RelatedNodeInput!
+  targets: RelatedNodeInput
 }
 
 """Group of nodes that are created by a generator. (local)"""
@@ -2699,7 +2699,7 @@ input CoreGeneratorGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
@@ -2762,13 +2762,13 @@ type CoreGeneratorInstanceUpsert {
 }
 
 input CoreGeneratorInstanceUpsertInput {
-  definition: RelatedNodeInput!
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  object: RelatedNodeInput!
-  status: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  object: RelatedNodeInput
+  status: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -2848,12 +2848,12 @@ input CoreGeneratorValidatorUpsertInput {
   checks: [RelatedNodeInput]
   completed_at: TextAttributeUpdate
   conclusion: TextAttributeUpdate
-  definition: RelatedNodeInput!
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -3011,7 +3011,7 @@ type CoreGlobalPermissionUpsert {
 }
 
 input CoreGlobalPermissionUpsertInput {
-  action: TextAttributeUpdate!
+  action: TextAttributeUpdate
   """Decide to deny or allow the action at a global level"""
   decision: NumberAttributeUpdate
   description: TextAttributeUpdate
@@ -3159,10 +3159,10 @@ input CoreGraphQLQueryGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parameters: JSONAttributeUpdate
   parent: RelatedNodeInput
-  query: RelatedNodeInput!
+  query: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
 
@@ -3195,8 +3195,8 @@ input CoreGraphQLQueryUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  query: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  query: TextAttributeUpdate
   repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
@@ -3321,7 +3321,7 @@ input CoreGroupActionUpsertInput {
   """A detailed description of the action"""
   description: TextAttributeUpdate
   """The target group of this action"""
-  group: RelatedNodeInput!
+  group: RelatedNodeInput
   hfid: [String]
   id: String
   """
@@ -3330,7 +3330,7 @@ input CoreGroupActionUpsertInput {
   member_action: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   """Short descriptive name"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """
   The triggers that would execute this action once the triggering condition is met
@@ -3450,7 +3450,7 @@ type CoreGroupTriggerRuleUpsert {
 
 input CoreGroupTriggerRuleUpsertInput {
   """The action to execute once the trigger conditions has been met"""
-  action: RelatedNodeInput!
+  action: RelatedNodeInput
   """
   Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
   """
@@ -3462,14 +3462,14 @@ input CoreGroupTriggerRuleUpsertInput {
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeUpdate
   """The group to match against"""
-  group: RelatedNodeInput!
+  group: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   """Indicate if the match should be for when members are added or removed"""
   member_update: TextAttributeUpdate
   """The name of the trigger rule"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -3574,7 +3574,7 @@ type CoreIPAddressPoolUpsert {
 
 input CoreIPAddressPoolUpsertInput {
   """The object type to create when reserving a resource in the pool"""
-  default_address_type: TextAttributeUpdate!
+  default_address_type: TextAttributeUpdate
   """
   The default prefix length as an integer for addresses allocated from this pool.
   """
@@ -3582,10 +3582,10 @@ input CoreIPAddressPoolUpsertInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
-  ip_namespace: RelatedNodeInput!
+  ip_namespace: RelatedNodeInput
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  resources: [RelatedIPPrefixNodeInput]!
+  name: TextAttributeUpdate
+  resources: [RelatedIPPrefixNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -3679,10 +3679,10 @@ input CoreIPPrefixPoolUpsertInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
-  ip_namespace: RelatedNodeInput!
+  ip_namespace: RelatedNodeInput
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  resources: [RelatedIPPrefixNodeInput]!
+  name: TextAttributeUpdate
+  resources: [RelatedIPPrefixNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -3808,8 +3808,8 @@ input CoreMenuItemUpsertInput {
   kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  namespace: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  namespace: TextAttributeUpdate
   order_weight: NumberAttributeUpdate
   parent: RelatedNodeInput
   path: TextAttributeUpdate
@@ -3939,13 +3939,13 @@ type CoreNodeTriggerAttributeMatchUpsert {
 
 input CoreNodeTriggerAttributeMatchUpsertInput {
   """The attribue to match against"""
-  attribute_name: TextAttributeUpdate!
+  attribute_name: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
   """The node trigger that this match is connected to"""
-  trigger: RelatedNodeInput!
+  trigger: RelatedNodeInput
   """The value the attribute is updated to"""
   value: TextAttributeUpdate
   """
@@ -4075,10 +4075,10 @@ input CoreNodeTriggerRelationshipMatchUpsertInput {
   """The node_id of the relationship peer to match against"""
   peer: TextAttributeUpdate
   """The name of the relationship to match against"""
-  relationship_name: TextAttributeUpdate!
+  relationship_name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """The node trigger that this match is connected to"""
-  trigger: RelatedNodeInput!
+  trigger: RelatedNodeInput
 }
 
 """
@@ -4203,7 +4203,7 @@ type CoreNodeTriggerRuleUpsert {
 
 input CoreNodeTriggerRuleUpsertInput {
   """The action to execute once the trigger conditions has been met"""
-  action: RelatedNodeInput!
+  action: RelatedNodeInput
   """
   Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
   """
@@ -4222,11 +4222,11 @@ input CoreNodeTriggerRuleUpsertInput {
   matches: [RelatedNodeInput]
   member_of_groups: [RelatedNodeInput]
   """The type of modification to match against"""
-  mutation_action: TextAttributeUpdate!
+  mutation_action: TextAttributeUpdate
   """The name of the trigger rule"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """The kind of node to match against"""
-  node_kind: TextAttributeUpdate!
+  node_kind: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -4328,17 +4328,17 @@ type CoreNumberPoolUpsert {
 input CoreNumberPoolUpsertInput {
   description: TextAttributeUpdate
   """The end range for the pool"""
-  end_range: NumberAttributeUpdate!
+  end_range: NumberAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """The model of the object that requires integers to be allocated"""
-  node: TextAttributeUpdate!
+  node: TextAttributeUpdate
   """The attribute of the selected model"""
-  node_attribute: TextAttributeUpdate!
+  node_attribute: TextAttributeUpdate
   """The start range for the pool"""
-  start_range: NumberAttributeUpdate!
+  start_range: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -4457,8 +4457,8 @@ input CoreObjectPermissionUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  namespace: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  namespace: TextAttributeUpdate
   roles: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -4560,7 +4560,7 @@ type CoreObjectThreadUpsert {
 }
 
 input CoreObjectThreadUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
@@ -4568,7 +4568,7 @@ input CoreObjectThreadUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  object_path: TextAttributeUpdate!
+  object_path: TextAttributeUpdate
   resolved: CheckboxAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -4644,7 +4644,7 @@ input CorePasswordCredentialUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   password: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   username: TextAttributeUpdate
@@ -4770,14 +4770,14 @@ type CoreProposedChangeUpsert {
 input CoreProposedChangeUpsertInput {
   comments: [RelatedNodeInput]
   description: TextAttributeUpdate
-  destination_branch: TextAttributeUpdate!
+  destination_branch: TextAttributeUpdate
   hfid: [String]
   id: String
   is_draft: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   reviewers: [RelatedNodeInput]
-  source_branch: TextAttributeUpdate!
+  source_branch: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   threads: [RelatedNodeInput]
@@ -4899,9 +4899,9 @@ input CoreReadOnlyRepositoryUpsertInput {
   hfid: [String]
   id: String
   internal_status: TextAttributeUpdate
-  location: TextAttributeUpdate!
+  location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
   ref: TextAttributeUpdate
@@ -5052,16 +5052,16 @@ type CoreRepositoryGroupUpsert {
 input CoreRepositoryGroupUpsertInput {
   children: [RelatedNodeInput]
   """Type of data to load, can be either `object` or `menu`"""
-  content: TextAttributeUpdate!
+  content: TextAttributeUpdate
   description: TextAttributeUpdate
   group_type: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
-  repository: RelatedNodeInput!
+  repository: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
 
@@ -5110,9 +5110,9 @@ input CoreRepositoryUpsertInput {
   hfid: [String]
   id: String
   internal_status: TextAttributeUpdate
-  location: TextAttributeUpdate!
+  location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -5201,8 +5201,8 @@ input CoreRepositoryValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
+  repository: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -5325,20 +5325,20 @@ type CoreSchemaCheckUpsert {
 
 input CoreSchemaCheckUpsertInput {
   conclusion: TextAttributeUpdate
-  conflicts: JSONAttributeUpdate!
+  conflicts: JSONAttributeUpdate
   created_at: TextAttributeUpdate
   enriched_conflict_id: TextAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """A validator related to the schema"""
@@ -5418,7 +5418,7 @@ input CoreSchemaValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -5504,15 +5504,15 @@ input CoreStandardCheckUpsertInput {
   created_at: TextAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """Group of nodes of any kind."""
@@ -5591,7 +5591,7 @@ input CoreStandardGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
@@ -5683,12 +5683,12 @@ input CoreStandardWebhookUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """Only send node mutation events for nodes of this kind"""
   node_kind: TextAttributeUpdate
-  shared_key: TextAttributeUpdate!
+  shared_key: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  url: TextAttributeUpdate!
+  url: TextAttributeUpdate
   validate_certificates: CheckboxAttributeUpdate
 }
 
@@ -5800,8 +5800,8 @@ input CoreThreadCommentUpsertInput {
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
-  text: TextAttributeUpdate!
-  thread: RelatedNodeInput!
+  text: TextAttributeUpdate
+  thread: RelatedNodeInput
 }
 
 """A thread on a Proposed Change"""
@@ -5902,12 +5902,12 @@ input CoreTransformJinja2UpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  query: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  name: TextAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
-  template_path: TextAttributeUpdate!
+  template_path: TextAttributeUpdate
   timeout: NumberAttributeUpdate
 }
 
@@ -5993,17 +5993,17 @@ type CoreTransformPythonUpsert {
 }
 
 input CoreTransformPythonUpsertInput {
-  class_name: TextAttributeUpdate!
+  class_name: TextAttributeUpdate
   convert_query_response: CheckboxAttributeUpdate
   description: TextAttributeUpdate
-  file_path: TextAttributeUpdate!
+  file_path: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  query: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  name: TextAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
   timeout: NumberAttributeUpdate
@@ -6178,7 +6178,7 @@ type CoreUserValidatorUpsert {
 }
 
 input CoreUserValidatorUpsertInput {
-  check_definition: RelatedNodeInput!
+  check_definition: RelatedNodeInput
   checks: [RelatedNodeInput]
   completed_at: TextAttributeUpdate
   conclusion: TextAttributeUpdate
@@ -6186,8 +6186,8 @@ input CoreUserValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
+  repository: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -7444,7 +7444,7 @@ input IpamNamespaceUpsertInput {
   ip_addresses: [RelatedIPAddressNodeInput]
   ip_prefixes: [RelatedIPPrefixNodeInput]
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   profiles: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -10196,7 +10196,7 @@ input ProfileBuiltinIPAddressUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPAddressNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -10283,7 +10283,7 @@ input ProfileBuiltinIPPrefixUpsertInput {
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeUpdate
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPPrefixNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -10357,7 +10357,7 @@ input ProfileBuiltinTagUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -10431,7 +10431,7 @@ input ProfileIpamNamespaceUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
