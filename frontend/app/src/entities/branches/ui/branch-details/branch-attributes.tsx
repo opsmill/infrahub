@@ -3,16 +3,13 @@ import {
   CalendarIcon,
   CheckIcon,
   CircleIcon,
-  GitBranchIcon,
   GitCommitIcon,
   IdCardIcon,
   RefreshCwIcon,
   XIcon,
 } from "lucide-react";
-import { Link } from "react-router";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
@@ -35,17 +32,6 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
       <BranchAttributeValue>{branch.status}</BranchAttributeValue>
 
       <BranchAttributeLabel>
-        <BoxIcon className="size-3.5" /> Has schema changes
-      </BranchAttributeLabel>
-      <BranchAttributeValue>
-        {branch.has_schema_changes ? (
-          <CheckIcon className="size-4" />
-        ) : (
-          <XIcon className="size-4" />
-        )}
-      </BranchAttributeValue>
-
-      <BranchAttributeLabel>
         <RefreshCwIcon className="size-3.5" /> Sync with Git
       </BranchAttributeLabel>
       <BranchAttributeValue>
@@ -55,11 +41,15 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
       {!branch.is_default && (
         <>
           <BranchAttributeLabel>
-            <GitBranchIcon className="size-3.5" /> origin branch
+            <BoxIcon className="size-3.5" /> Has schema changes
           </BranchAttributeLabel>
-          <Link to={constructPath(`/branches/${branch.name}`)} className="text-sm hover:underline">
-            <BranchAttributeValue>{branch.origin_branch}</BranchAttributeValue>
-          </Link>
+          <BranchAttributeValue>
+            {branch.has_schema_changes ? (
+              <CheckIcon className="size-4" />
+            ) : (
+              <XIcon className="size-4" />
+            )}
+          </BranchAttributeValue>
 
           <BranchAttributeLabel>
             <GitCommitIcon className="size-3.5" /> Last rebase
