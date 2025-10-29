@@ -24,12 +24,11 @@ def test_load_sso_config(helper: TestHelper) -> None:
 
 
 def test_valid_git_settings__sync_branch_names():
-    sync_branch_names = ["main", "/infrahub/.*/", "/release/.*/"]
+    sync_branch_names = ["main", "infrahub/.*", "release/.*"]
     git_settings = GitSettings(sync_branch_names=sync_branch_names)
     assert git_settings.sync_branch_names == sync_branch_names
-    assert git_settings._compiled_branch_names == ["main", "infrahub/.*", "release/.*"]
 
 
 def test_invalid_git_settings__sync_branch_names():
     with pytest.raises(ValueError):
-        GitSettings(sync_branch_names=["main", "/infrahub/.*/", "/release/.*/", "/a[b/"])
+        GitSettings(sync_branch_names=["main", "infrahub/.*", "release/.*", "a[b"])
