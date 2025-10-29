@@ -249,7 +249,7 @@ CALL (n, rel) {
     WHERE all(r in [r1, r2] WHERE %(branch_filter)s)
     AND (
         (startNode(r1) = n AND startNode(r2) = rel AND rel.name IN $outbound_rel_ids)
-        OR (startNode(r1) = rel AND startNode(r2) = n AND rel.name IN $inbound_rel_ids)
+        OR (startNode(r1) = rel AND startNode(r2) = peer AND rel.name IN $inbound_rel_ids)
         OR (startNode(r1) = n AND startNode(r2) = peer AND rel.name IN $bidirectional_rel_ids)
     )
     RETURN
@@ -257,7 +257,7 @@ CALL (n, rel) {
         r1.status = "active" AND r2.status = "active" AS is_active,
         CASE
             WHEN startNode(r1) = n AND startNode(r2) = rel AND rel.name IN $outbound_rel_ids THEN "outbound"
-            WHEN startNode(r1) = rel AND startNode(r2) = n AND rel.name IN $inbound_rel_ids THEN "inbound"
+            WHEN startNode(r1) = rel AND startNode(r2) = peer AND rel.name IN $inbound_rel_ids THEN "inbound"
             ELSE "bidir"
         END AS direction
     ORDER BY r2.branch_level DESC, r2.from DESC, r2.status ASC, r1.branch_level DESC, r1.from DESC, r1.status ASC
@@ -379,12 +379,12 @@ AND e2.to IS NULL
 AND e2.status = "active"
 AND (
     (startNode(e1) = n AND startNode(e2) = rel AND rel.name IN $outbound_rel_ids)
-    OR (startNode(e1) = rel AND startNode(e2) = n AND rel.name IN $inbound_rel_ids)
+    OR (startNode(e1) = rel AND startNode(e2) = peer AND rel.name IN $inbound_rel_ids)
     OR (startNode(e1) = n AND startNode(e2) = peer AND rel.name IN $bidirectional_rel_ids)
 )
 WITH DISTINCT n, attr_vals_list, rel.name AS rel_name, peer,  CASE
     WHEN startNode(e1) = n AND startNode(e2) = rel AND rel.name IN $outbound_rel_ids THEN "outbound"
-    WHEN startNode(e1) = rel AND startNode(e2) = n AND rel.name IN $inbound_rel_ids THEN "inbound"
+    WHEN startNode(e1) = rel AND startNode(e2) = peer AND rel.name IN $inbound_rel_ids THEN "inbound"
     ELSE "bidir"
 END AS direction
 OPTIONAL MATCH (peer)-[e1:HAS_ATTRIBUTE]->(attr:Attribute)-[e2:HAS_VALUE]->(peer_attr_val:AttributeValue)

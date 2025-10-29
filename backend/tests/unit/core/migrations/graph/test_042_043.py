@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m042_create_hfid_display_label_in_db import Migration042
@@ -47,7 +47,12 @@ class TestMigration042(TestInfrahubApp):
             name="Thing",
             namespace="Primary",
             display_labels=["name__value", "color__value"],
-            human_friendly_id=["name__value", "secondary__name__value", "secondary__size__value"],
+            human_friendly_id=[
+                "name__value",
+                "secondary_in__name__value",
+                "secondary_out__name__value",
+                "secondary_in__size__value",
+            ],
             uniqueness_constraints=[["name__value"]],
             attributes=[
                 AttributeSchema(name="name", kind="Text"),
@@ -56,11 +61,21 @@ class TestMigration042(TestInfrahubApp):
             ],
             relationships=[
                 RelationshipSchema(
-                    name="secondary",
+                    name="secondary_in",
                     optional=False,
                     peer="SecondaryThing",
                     cardinality=RelationshipCardinality.ONE,
-                )
+                    direction=RelationshipDirection.INBOUND,
+                    identifier="secondary__oneway",
+                ),
+                RelationshipSchema(
+                    name="secondary_out",
+                    optional=False,
+                    peer="SecondaryThing",
+                    cardinality=RelationshipCardinality.ONE,
+                    direction=RelationshipDirection.OUTBOUND,
+                    identifier="secondary__oneway",
+                ),
             ],
         )
 
@@ -154,11 +169,23 @@ class TestMigration042(TestInfrahubApp):
 
     @pytest.fixture
     async def primary_thing_one_details(
-        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_one_details: NodeDetails
+        self,
+        db: InfrahubDatabase,
+        load_schemas: SchemaBranch,
+        secondary_thing_one_details: NodeDetails,
+        secondary_thing_two_details: NodeDetails,
     ) -> NodeDetails:
-        secondary_thing_node = secondary_thing_one_details.node
+        secondary_one_node = secondary_thing_one_details.node
+        secondary_two_node = secondary_thing_two_details.node
         primary_thing = await Node.init(db=db, schema="PrimaryThing")
-        await primary_thing.new(db=db, name="primary_thing_1", color="red", size=1, secondary=secondary_thing_node.id)
+        await primary_thing.new(
+            db=db,
+            name="primary_thing_1",
+            color="red",
+            size=1,
+            secondary_in=secondary_one_node,
+            secondary_out=secondary_two_node,
+        )
         await primary_thing.save(db=db)
         return NodeDetails(
             node=primary_thing,
@@ -166,7 +193,12 @@ class TestMigration042(TestInfrahubApp):
             display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
             human_friendly_id=[
                 str(v)
-                for v in (primary_thing.name.value, secondary_thing_node.name.value, secondary_thing_node.size.value)
+                for v in (
+                    primary_thing.name.value,
+                    secondary_one_node.name.value,
+                    secondary_two_node.name.value,
+                    secondary_one_node.size.value,
+                )
             ],
             status=NodeStatus.ACTIVE,
         )
@@ -179,14 +211,22 @@ class TestMigration042(TestInfrahubApp):
         secondary_thing_two_details: NodeDetails,
         secondary_thing_three_details: NodeDetails,
     ) -> NodeDetails:
-        secondary_node = secondary_thing_two_details.node
         primary_thing = await Node.init(db=db, schema="PrimaryThing")
-        await primary_thing.new(db=db, name="primary_thing_2", color="yellow", size=2, secondary=secondary_node.id)
+        await primary_thing.new(
+            db=db,
+            name="primary_thing_2",
+            color="yellow",
+            size=2,
+            secondary_in=secondary_thing_two_details.node,
+            secondary_out=secondary_thing_three_details.node,
+        )
         await primary_thing.save(db=db)
 
-        new_secondary_node = secondary_thing_three_details.node
+        new_secondary_in_node = secondary_thing_three_details.node
+        new_secondary_out_node = secondary_thing_two_details.node
         primary_thing.color.value = "double yellow"
-        await primary_thing.secondary.update(db=db, data=new_secondary_node)
+        await primary_thing.secondary_in.update(db=db, data=new_secondary_in_node)
+        await primary_thing.secondary_out.update(db=db, data=new_secondary_out_node)
         await primary_thing.save(db=db)
 
         return NodeDetails(
@@ -194,18 +234,34 @@ class TestMigration042(TestInfrahubApp):
             on_default_branch=True,
             display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
             human_friendly_id=[
-                str(v) for v in (primary_thing.name.value, new_secondary_node.name.value, new_secondary_node.size.value)
+                str(v)
+                for v in (
+                    primary_thing.name.value,
+                    new_secondary_in_node.name.value,
+                    new_secondary_out_node.name.value,
+                    new_secondary_in_node.size.value,
+                )
             ],
             status=NodeStatus.ACTIVE,
         )
 
     @pytest.fixture
     async def primary_thing_three_deleted_details(
-        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_two_details: NodeDetails
+        self,
+        db: InfrahubDatabase,
+        load_schemas: SchemaBranch,
+        secondary_thing_two_details: NodeDetails,
+        secondary_thing_three_details: NodeDetails,
     ) -> NodeDetails:
-        secondary_thing_node = secondary_thing_two_details.node
         primary_thing = await Node.init(db=db, schema="PrimaryThing")
-        await primary_thing.new(db=db, name="primary_thing_3", color="green", size=3, secondary=secondary_thing_node.id)
+        await primary_thing.new(
+            db=db,
+            name="primary_thing_3",
+            color="green",
+            size=3,
+            secondary_in=secondary_thing_two_details.node,
+            secondary_out=secondary_thing_three_details.node,
+        )
         await primary_thing.save(db=db)
         await primary_thing.delete(db=db)
         return NodeDetails(
@@ -247,11 +303,17 @@ class TestMigration042(TestInfrahubApp):
         db: InfrahubDatabase,
         load_schemas: SchemaBranch,
         secondary_thing_one_details: NodeDetails,
+        secondary_thing_two_details: NodeDetails,
         branch: Branch,
     ) -> NodeDetails:
         primary_thing = await Node.init(db=db, schema="PrimaryThing", branch=branch)
         await primary_thing.new(
-            db=db, name="primary_thing_1_branch", color="blue", size=1, secondary=secondary_thing_one_details.node.id
+            db=db,
+            name="primary_thing_1_branch",
+            color="blue",
+            size=1,
+            secondary_in=secondary_thing_one_details.node,
+            secondary_out=secondary_thing_two_details.node,
         )
         await primary_thing.save(db=db)
         return NodeDetails(
@@ -263,6 +325,7 @@ class TestMigration042(TestInfrahubApp):
                 for v in (
                     primary_thing.name.value,
                     secondary_thing_one_details.node.name.value,
+                    secondary_thing_two_details.node.name.value,
                     secondary_thing_one_details.node.size.value,
                 )
             ],
@@ -303,7 +366,9 @@ class TestMigration042(TestInfrahubApp):
         primary_thing.color.value = "purple"
         primary_thing.size.value = 999
         # update secondary relationship on branch
-        await primary_thing.secondary.update(db=db, data=secondary_thing_three_branch_update_details.node)
+        new_secondary_in_node = secondary_thing_three_branch_update_details.node
+        current_secondary_out_node = await primary_thing.secondary_out.get_peer(db=db)
+        await primary_thing.secondary_in.update(db=db, data=new_secondary_in_node)
         await primary_thing.save(db=db)
         return NodeDetails(
             node=primary_thing,
@@ -313,8 +378,9 @@ class TestMigration042(TestInfrahubApp):
                 str(v)
                 for v in (
                     primary_thing.name.value,
-                    secondary_thing_three_branch_update_details.node.name.value,
-                    secondary_thing_three_branch_update_details.node.size.value,
+                    new_secondary_in_node.name.value,
+                    current_secondary_out_node.name.value,
+                    new_secondary_in_node.size.value,
                 )
             ],
             status=NodeStatus.ACTIVE,
@@ -488,7 +554,6 @@ DETACH DELETE attr
         await verify_no_duplicate_relationships(db=db)
 
 
-# TODO: test relationships with same name going different directions
 # TODO: test branch-agnostic attributes and relationships
 # TODO: test display labels and HFIDs updated on a branch with the same value on main
 # TODO: test HFID/display labels update on branch
