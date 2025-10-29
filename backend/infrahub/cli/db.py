@@ -35,10 +35,7 @@ from infrahub.core.graph.schema import (
     GraphRelationshipIsPartOf,
     GraphRelationshipProperties,
 )
-from infrahub.core.initialization import (
-    get_root_node,
-    initialize_registry,
-)
+from infrahub.core.initialization import get_root_node, initialize_registry
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
@@ -69,7 +66,7 @@ if TYPE_CHECKING:
         ArbitraryMigration,
         GraphMigration,
         InternalSchemaMigration,
-        MigrationWithRebase,
+        MigrationRequiringRebase,
     )
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
@@ -289,10 +286,10 @@ async def index(
 
 async def detect_migration_to_run(
     current_graph_version: int, migration_number: int | str | None = None
-) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase]:
+) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase]:
     """Return a sequence of migrations to apply to upgrade the database."""
     rprint("Checking current state of the database")
-    migrations: list[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase] = []
+    migrations: list[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase] = []
 
     if migration_number:
         migration = get_migration_by_number(migration_number)
@@ -319,7 +316,7 @@ async def detect_migration_to_run(
 
 async def migrate_database(
     db: InfrahubDatabase,
-    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationWithRebase],
+    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase],
     initialize: bool = False,
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.

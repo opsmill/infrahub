@@ -226,7 +226,7 @@ class ArbitraryMigration(BaseModel):
         raise NotImplementedError()
 
 
-class MigrationWithRebase(BaseModel):
+class MigrationRequiringRebase(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")

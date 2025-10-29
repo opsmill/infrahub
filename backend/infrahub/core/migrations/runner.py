@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Sequence
 from infrahub.core.migrations.graph import MIGRATIONS
 
 from .exceptions import MigrationFailureError
-from .shared import MigrationWithRebase
+from .shared import MigrationRequiringRebase
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -17,9 +17,9 @@ class MigrationRunner:
         self.branch = branch
         self.applicable_migrations = self._get_applicable_migrations()
 
-    def _get_applicable_migrations(self) -> Sequence[MigrationWithRebase]:
+    def _get_applicable_migrations(self) -> Sequence[MigrationRequiringRebase]:
         applicable_migrations = []
-        for migration_class in [m for m in MIGRATIONS if issubclass(m, MigrationWithRebase)]:
+        for migration_class in [m for m in MIGRATIONS if issubclass(m, MigrationRequiringRebase)]:
             migration = migration_class.init()
             if self.branch.graph_version and self.branch.graph_version > migration.minimum_version:
                 continue
