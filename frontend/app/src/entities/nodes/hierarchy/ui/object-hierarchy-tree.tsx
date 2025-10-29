@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { ListTreeIcon } from "lucide-react";
 import React from "react";
 import { Collection } from "react-aria-components";
+import { Link } from "react-router";
 
 import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@/shared/components/aria/tree";
 import { Col, Row } from "@/shared/components/container";
@@ -52,23 +53,34 @@ export function ObjectHierarchyTree({ treeSchema, currentNodeId }: ObjectHierarc
   }
 
   return (
-    <Tree
-      aria-label="Hierarchy tree"
-      selectedKeys={currentNodeId ? [currentNodeId] : undefined}
-      renderEmptyState={() => <Row className="justify-center py-2 text-gray-600">No item</Row>}
-    >
-      <Collection items={items} dependencies={[currentNodeId]}>
-        {(node) => (
-          <ObjectTreeItem
-            node={node}
-            treeObjectKind={treeSchema.kind!}
-            currentNodeId={currentNodeId}
-          />
-        )}
-      </Collection>
+    <>
+      <Link
+        to={getObjectDetailsUrl(treeSchema.kind!)}
+        className="block p-2 text-gray-500 text-sm hover:underline"
+      >
+        {treeSchema.label}
+      </Link>
 
-      {hasNextPage && <TreeItemLoader isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />}
-    </Tree>
+      <Tree
+        aria-label="Hierarchy tree"
+        selectedKeys={currentNodeId ? [currentNodeId] : undefined}
+        renderEmptyState={() => <Row className="justify-center py-2 text-gray-600">No item</Row>}
+      >
+        <Collection items={items} dependencies={[currentNodeId]}>
+          {(node) => (
+            <ObjectTreeItem
+              node={node}
+              treeObjectKind={treeSchema.kind!}
+              currentNodeId={currentNodeId}
+            />
+          )}
+        </Collection>
+
+        {hasNextPage && (
+          <TreeItemLoader isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
+        )}
+      </Tree>
+    </>
   );
 }
 
