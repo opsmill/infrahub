@@ -38,9 +38,9 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
 
           {branch.is_default ? (
             <BranchDefaultBadge />
-          ) : branch.status !== "OPEN" ? (
+          ) : (
             <BranchStatusBadge status={branch.status} />
-          ) : null}
+          )}
 
           {branch.has_schema_changes && <BranchSchemaChangesBadge />}
         </Row>
