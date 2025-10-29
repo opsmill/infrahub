@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.logging import get_run_logger
 
@@ -56,12 +57,17 @@ async def hfid_update_value(
         log.debug(f"Ignoring to update {obj} with existing value on human_friendly_id={obj.hfid_value}")
         return
 
-    await client.execute_graphql(
-        query=UPDATE_HFID,
-        variables={"id": obj.node_id, "kind": node_kind, "value": rendered_hfid},
-        branch_name=branch_name,
-    )
-    log.info(f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id})")
+    try:
+        await client.execute_graphql(
+            query=UPDATE_HFID,
+            variables={"id": obj.node_id, "kind": node_kind, "value": rendered_hfid},
+            branch_name=branch_name,
+        )
+        log.info(f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id})")
+    except URLNotFoundError:
+        log.warning(
+            f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id}) failed for branch {branch_name} (branch not found)"
+        )
 
 
 @flow(
