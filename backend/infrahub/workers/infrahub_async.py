@@ -142,7 +142,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         flow_run: FlowRun,
         configuration: BaseJobConfiguration,
-        task_status: TaskStatus | None = None,
+        task_status: TaskStatus[int] | None = None,
     ) -> BaseWorkerResult:
         flow_run_logger = self.get_flow_run_logger(flow_run)
 
