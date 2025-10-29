@@ -5,6 +5,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.registry import registry as graphql_registry
@@ -26,7 +27,12 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
     assert sorted(result.reference._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
 
 
-async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_object(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    reset_graphql_schema_between_tests: None,
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
