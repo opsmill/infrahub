@@ -178,12 +178,17 @@ async def computed_attribute_jinja2_update_value(
         log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
         return
 
-    await client.execute_graphql(
-        query=UPDATE_ATTRIBUTE,
-        variables={"id": obj.node_id, "kind": node_kind, "attribute": attribute_name, "value": value},
-        branch_name=branch_name,
-    )
-    log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
+    try:
+        await client.execute_graphql(
+            query=UPDATE_ATTRIBUTE,
+            variables={"id": obj.node_id, "kind": node_kind, "attribute": attribute_name, "value": value},
+            branch_name=branch_name,
+        )
+        log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
+    except URLNotFoundError:
+        log.warning(
+            f"Update of computed attribute {node_kind}.{attribute_name} failed for branch {branch_name} (not found)"
+        )
 
 
 @flow(
