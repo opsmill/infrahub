@@ -6,11 +6,11 @@ import TabItem from '@theme/TabItem';
 
 # Creating a Python transform
 
-Within Infrahub a [Transform](../topics/transformation) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the Transform using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
+Within Infrahub a [Transform](../topics/transformation.mdx) is defined in an [external repository](../topics/repository.mdx). However, during development and troubleshooting it is easiest to start from your local computer and run the Transform using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
 
 The goal of this guide is to develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
 
-1. Identify the relevant data you want to extract from the database using a [GraphQL query](../topics/graphql), that can take an input parameter to filter the data
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](../topics/graphql.mdx), that can take an input parameter to filter the data
 2. Write a Python script that use the GraphQL query to read information from the system and transforms the data into a new format
 3. Create an entry for the Transform within an .infrahub.yml file.
 4. Create a Git repository
@@ -328,7 +328,7 @@ async def transform(self, data):
   </TabItem>
 </Tabs>
 
-When running the transform, the `data` input variable will consist of the response to the query we created or the webhook payload if using the transform with a [Custom Webhook](../topics/webhooks).
+When running the transform, the `data` input variable will consist of the response to the query we created or the webhook payload if using the transform with a [Custom Webhook](../topics/webhooks.mdx).
 
 In this case, the transform returns a JSON object consisting of two keys `device_hostname` and `device_description` where we have modified the data in some way. Here you would return data in the format you need.
 
@@ -348,7 +348,7 @@ If you are unsure of the format of the data you can set a debug marker when test
 
 ## 4. Create an .infrahub.yml file
 
-The [.infrahub.yml](../topics/infrahub-yml) file allows you to define both the transform and query.
+The [.infrahub.yml](../topics/infrahub-yml.mdx) file allows you to define both the transform and query.
 
 :::info Convert query to Infrahub SDK objects
 We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
@@ -358,7 +358,7 @@ This allows you to manage the returned data with helper methods on the SDK objec
 Read more on the [Infrahub Python SDK]($(base_url)python-sdk/introduction).
 :::
 
-See [this topic](../topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
+See [this topic](../topics/infrahub-yml.mdx) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
 <Tabs groupId="convertResponse">
   <TabItem value="Non-converted query response">
@@ -404,7 +404,7 @@ queries:
   </TabItem>
 </Tabs>
 
-See [this topic](../topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
+See [this topic](../topics/infrahub-yml.mdx) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
 ## 5. Test the Transform using infrahubctl
 
@@ -455,7 +455,7 @@ git commit -m "First commit"
 
 ## 7. Adding the repository to Infrahub
 
-In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository) in order to sync the repository you created and make it available within Infrahub.
+In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository.mdx) in order to sync the repository you created and make it available within Infrahub.
 
 ## 8. Accessing the transform from the API
 

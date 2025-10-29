@@ -13,7 +13,7 @@ This guide explains how to connect repositories, pull changes, and troubleshoot 
 
 :::info Repository vs. Read-only Repository
 
-If you want to know more about the differences between these two types, refer to the topic on [Repositories](../topics/repository).
+If you want to know more about the differences between these two types, refer to the topic on [Repositories](../topics/repository.mdx).
 
 **TL;DR:**
 
@@ -30,7 +30,7 @@ Before you begin, you'll need:
 
 - An Infrahub instance up and running
 - Access to a Git repository containing valid Infrahub resources (see [Repository Init]($(base_url)infrahubctl/infrahubctl-repository))
-  - A [`.infrahub.yml`](../topics/repository#infrahub-yaml) configuration file in your Git repository
+  - A [`.infrahub.yml`](../topics/repository.mdx#infrahub-yaml) configuration file in your Git repository
 - For private repositories and or Read-Write repositories: appropriate credentials or access tokens
 - Depending on the method you choose, you may need to install the [Infrahub SDK]($(base_url)python-sdk/introduction) or [infrahubctl]($(base_url)infrahubctl/infrahubctl)
 
@@ -233,7 +233,7 @@ After creation, your new repository should appear under **Integrations > Git Rep
 
 Unlike fully integrated repositories which sync automatically, read-only repositories must be manually updated by changing the `ref` value when you want to pull in new changes.
 
-For more details on how each repository type tracks changes, refer to the [Repository Topic](../topics/repository#read-only-vs-core).
+For more details on how each repository type tracks changes, refer to the [Repository Topic](../topics/repository.mdx#read-only-vs-core).
 
 <Tabs>
 <TabItem value="Via the Web Interface" default>
@@ -293,7 +293,7 @@ If you encounter issues with your repository connections, you can use the follow
    - **Operational status**: Shows connectivity between Infrahub and the repository
    - **Sync status**: Tracks synchronization operations
 
-   For detailed information about what each status means, refer to the [Repository Status documentation](../topics/repository#repository-statuses).
+   For detailed information about what each status means, refer to the [Repository Status documentation](../topics/repository.mdx#repository-statuses).
 
 2. View detailed operation logs:
    - Log in to the Infrahub UI
@@ -540,5 +540,5 @@ You can verify your repository integration is working by checking that:
 
 ## Related resources
 
-- [Repository concept explanation](../topics/repository)
-- [Infrahub configuration file documentation](../topics/infrahub-yml)
+- [Repository concept explanation](../topics/repository.mdx)
+- [Infrahub configuration file documentation](../topics/infrahub-yml.mdx)
