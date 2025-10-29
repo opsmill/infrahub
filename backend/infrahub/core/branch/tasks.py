@@ -232,6 +232,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
     await obj.save(db=db)
 
     try:
+        log.info(f"Running migrations for branch '{obj.name}'")
         await migration_runner.run(db=db)
     except MigrationFailureError as exc:
         log.error(f"Failed to migrate branch '{obj.name}': {exc.errors}")

@@ -239,7 +239,9 @@ class MigrationWithRebase(BaseModel):
         raise NotImplementedError()
 
     async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        """Method that will be run against non-default branches, it assumes that the branches have been rebased."""
         raise NotImplementedError()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        """Method that will be run against the default branch."""
         raise NotImplementedError()

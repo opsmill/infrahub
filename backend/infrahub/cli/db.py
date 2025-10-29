@@ -371,10 +371,14 @@ async def trigger_rebase_branches(db: InfrahubDatabase) -> None:
 
     for branch in branches:
         if branch.graph_version == GRAPH_VERSION:
+            rprint(
+                f"Ignoring branch rebase and migrations for '{branch.name}' (ID: {branch.uuid}), it is already up-to-date"
+            )
             continue
 
         rprint(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
         try:
+            await registry.schema.load_schema(db=db, branch=branch)
             await rebase_branch(
                 branch=branch.name,
                 context=InfrahubContext.init(
@@ -382,9 +386,9 @@ async def trigger_rebase_branches(db: InfrahubDatabase) -> None:
                 ),
                 send_events=False,
             )
-            rprint("done")
+            rprint(SUCCESS_BADGE)
         except ValidationError:
-            rprint("failed")
+            rprint(FAILED_BADGE)
 
 
 async def initialize_internal_schema() -> None:
