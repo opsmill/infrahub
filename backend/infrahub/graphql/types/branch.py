@@ -65,6 +65,10 @@ class NonRequiredBooleanValueField(InfrahubObjectType):
     value = Boolean(required=False)
 
 
+class StatusField(InfrahubObjectType):
+    value = InfrahubBranchStatus(required=True)
+
+
 class InfrahubBranch(BranchType):
     id = String(required=True)
     created_at = String(required=False)
@@ -73,6 +77,7 @@ class InfrahubBranch(BranchType):
     description = Field(NonRequiredStringValueField, required=False)
     origin_branch = Field(NonRequiredStringValueField, required=False)
     branched_from = Field(NonRequiredStringValueField, required=False)
+    status = Field(StatusField, required=True)
     sync_with_git = Field(NonRequiredBooleanValueField, required=False)
     is_default = Field(NonRequiredBooleanValueField, required=False)
     is_isolated = Field(

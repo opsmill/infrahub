@@ -7240,8 +7240,23 @@ input InfrahubAccountUpdateSelfInput {
   password: String
 }
 
+"""InfrahubBranch"""
+type InfrahubBranch {
+  branched_from: NonRequiredStringValueField
+  created_at: String
+  description: NonRequiredStringValueField
+  has_schema_changes: NonRequiredBooleanValueField
+  id: String!
+  is_default: NonRequiredBooleanValueField
+  is_isolated: NonRequiredBooleanValueField @deprecated(reason: "non isolated mode is not supported anymore")
+  name: RequiredStringValueField!
+  origin_branch: NonRequiredStringValueField
+  status: StatusField!
+  sync_with_git: NonRequiredBooleanValueField
+}
+
 type InfrahubBranchEdge {
-  node: Branch!
+  node: InfrahubBranch!
 }
 
 type InfrahubBranchType {
@@ -9388,6 +9403,14 @@ type NodeMutatedEvent implements EventNodeInterface {
   relationships: [InfrahubMutatedRelationship!]!
 }
 
+type NonRequiredBooleanValueField {
+  value: Boolean
+}
+
+type NonRequiredStringValueField {
+  value: String
+}
+
 """Attribute of type Number"""
 type NumberAttribute implements AttributeInterface {
   id: String
@@ -10912,6 +10935,10 @@ type Relationships {
   edges: [RelationshipNode!]!
 }
 
+type RequiredStringValueField {
+  value: String!
+}
+
 type ResolveDiffConflict {
   ok: Boolean
 }
@@ -11003,6 +11030,10 @@ enum StateType {
 type Status {
   summary: StatusSummary!
   workers: StatusWorkerEdges!
+}
+
+type StatusField {
+  value: BranchStatus!
 }
 
 type StatusSummary {
