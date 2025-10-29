@@ -1,4 +1,6 @@
 import json
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 import pytest
@@ -15,6 +17,23 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
+
+
+class NodeStatus(StrEnum):
+    ACTIVE = "active"
+    DELETED = "deleted"
+
+
+@dataclass
+class NodeDetails:
+    node: Node
+    display_label: str | None
+    human_friendly_id: list[str] | None
+    status: NodeStatus
+
+    @property
+    def is_active(self) -> bool:
+        return self.status is NodeStatus.ACTIVE
 
 
 class TestMigration042(TestInfrahubApp):
@@ -83,33 +102,83 @@ class TestMigration042(TestInfrahubApp):
         return registry.schema.get_schema_branch(name=default_branch.name)
 
     @pytest.fixture
-    async def secondary_thing_one(
-        self, db: InfrahubDatabase, load_schemas: SchemaBranch
-    ) -> tuple[Node, str, list[str]]:
+    async def secondary_thing_one_with_details(self, db: InfrahubDatabase, load_schemas: SchemaBranch) -> NodeDetails:
         secondary_thing = await Node.init(db=db, schema="SecondaryThing")
         await secondary_thing.new(db=db, name="secondary_thing_1", color="not red", size=-1)
         await secondary_thing.save(db=db)
-        return (
-            secondary_thing,
-            f"{secondary_thing.name.value} {secondary_thing.size.value}",
-            [str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+        return NodeDetails(
+            node=secondary_thing,
+            display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
+            human_friendly_id=[str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+            status=NodeStatus.ACTIVE,
         )
 
     @pytest.fixture
-    async def primary_thing_one(
-        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_one: tuple[Node, str, list[str]]
-    ) -> tuple[Node, str, list[str]]:
-        secondary_thing_node = secondary_thing_one[0]
+    async def secondary_thing_two_with_details(self, db: InfrahubDatabase, load_schemas: SchemaBranch) -> NodeDetails:
+        secondary_thing = await Node.init(db=db, schema="SecondaryThing")
+        await secondary_thing.new(db=db, name="secondary_thing_2", color="orange", size=42)
+        await secondary_thing.save(db=db)
+        return NodeDetails(
+            node=secondary_thing,
+            display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
+            human_friendly_id=[str(v) for v in (secondary_thing.name.value, secondary_thing.color.value)],
+            status=NodeStatus.ACTIVE,
+        )
+
+    @pytest.fixture
+    async def primary_thing_one_with_details(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_one_with_details: NodeDetails
+    ) -> NodeDetails:
+        secondary_thing_node = secondary_thing_one_with_details.node
         primary_thing = await Node.init(db=db, schema="PrimaryThing")
         await primary_thing.new(db=db, name="primary_thing_1", color="red", size=1, secondary=secondary_thing_node.id)
         await primary_thing.save(db=db)
-        return (
-            primary_thing,
-            f"{primary_thing.name.value} {primary_thing.color.value}",
-            [
+        return NodeDetails(
+            node=primary_thing,
+            display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
+            human_friendly_id=[
                 str(v)
                 for v in (primary_thing.name.value, secondary_thing_node.name.value, secondary_thing_node.size.value)
             ],
+            status=NodeStatus.ACTIVE,
+        )
+
+    @pytest.fixture
+    async def primary_thing_two_with_details(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_two_with_details: NodeDetails
+    ) -> NodeDetails:
+        secondary_thing_node = secondary_thing_two_with_details.node
+        primary_thing = await Node.init(db=db, schema="PrimaryThing")
+        await primary_thing.new(
+            db=db, name="primary_thing_2", color="yellow", size=2, secondary=secondary_thing_node.id
+        )
+        await primary_thing.save(db=db)
+        primary_thing.color.value = "double yellow"
+        await primary_thing.save(db=db)
+        return NodeDetails(
+            node=primary_thing,
+            display_label=f"{primary_thing.name.value} {primary_thing.color.value}",
+            human_friendly_id=[
+                str(v)
+                for v in (primary_thing.name.value, secondary_thing_node.name.value, secondary_thing_node.size.value)
+            ],
+            status=NodeStatus.ACTIVE,
+        )
+
+    @pytest.fixture
+    async def primary_thing_three_deleted_with_details(
+        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_two_with_details: NodeDetails
+    ) -> NodeDetails:
+        secondary_thing_node = secondary_thing_two_with_details.node
+        primary_thing = await Node.init(db=db, schema="PrimaryThing")
+        await primary_thing.new(db=db, name="primary_thing_3", color="green", size=3, secondary=secondary_thing_node.id)
+        await primary_thing.save(db=db)
+        await primary_thing.delete(db=db)
+        return NodeDetails(
+            node=primary_thing,
+            display_label=None,
+            human_friendly_id=None,
+            status=NodeStatus.DELETED,
         )
 
     @pytest.fixture
@@ -119,12 +188,18 @@ class TestMigration042(TestInfrahubApp):
         default_branch: Branch,
         register_core_models_schema: SchemaBranch,
         load_schemas: SchemaBranch,
-        primary_thing_one: tuple[Node, str, list[str]],
-        secondary_thing_one: tuple[Node, str, list[str]],
-    ) -> dict[str, tuple[Node, str, list[str]]]:
+        primary_thing_one_with_details: NodeDetails,
+        secondary_thing_one_with_details: NodeDetails,
+        primary_thing_two_with_details: NodeDetails,
+        secondary_thing_two_with_details: NodeDetails,
+        primary_thing_three_deleted_with_details: NodeDetails,
+    ) -> dict[str, NodeDetails]:
         return {
-            "secondary_thing": secondary_thing_one,
-            "primary_thing": primary_thing_one,
+            "secondary_thing": secondary_thing_one_with_details,
+            "primary_thing": primary_thing_one_with_details,
+            "secondary_thing_two": secondary_thing_two_with_details,
+            "primary_thing_two": primary_thing_two_with_details,
+            "primary_thing_three_deleted": primary_thing_three_deleted_with_details,
         }
 
     async def erase_hfid_and_display_label(self, db: InfrahubDatabase) -> Node:
@@ -148,13 +223,15 @@ DETACH DELETE attr
         node_attributes_map = query.get_attributes_group_by_node()
         result_map = {}
         for node_id in node_ids:
+            if node_id not in node_attributes_map:
+                continue
             result_map[node_id] = {}
             for attr_name in attribute_names:
                 result_map[node_id][attr_name] = node_attributes_map[node_id].attrs[attr_name].value
         return result_map
 
     async def test_migration_042_043(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: dict[str, tuple[Node, str, list[str]]]
+        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: dict[str, NodeDetails]
     ) -> None:
         await self.erase_hfid_and_display_label(db=db)
 
@@ -180,14 +257,21 @@ DETACH DELETE attr
             db=db,
             branch=default_branch,
             attribute_names=["human_friendly_id", "display_label"],
-            node_ids=[node[0].id for node in initial_dataset.values()],
+            node_ids=[node_details.node.id for node_details in initial_dataset.values()],
         )
-        for node, display_label, human_friendly_id in initial_dataset.values():
-            assert attribute_values_map[node.id]["display_label"] == display_label
-            assert json.loads(attribute_values_map[node.id]["human_friendly_id"]) == human_friendly_id
+
+        expected_ids = {node_details.node.id for node_details in initial_dataset.values() if node_details.is_active}
+        assert set(attribute_values_map.keys()) == expected_ids
+        for node_details in initial_dataset.values():
+            if not node_details.is_active:
+                continue
+            assert attribute_values_map[node_details.node.id]["display_label"] == node_details.display_label
+            assert (
+                json.loads(attribute_values_map[node_details.node.id]["human_friendly_id"])
+                == node_details.human_friendly_id
+            )
 
 
-# TODO: test added/updated/removed nodes on default branch
 # TODO: test added/updated/removed nodes on branch
 # TODO: test updating relationships and values of peers
 # TODO: test relationships with same name going different directions
