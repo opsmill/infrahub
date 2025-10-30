@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 import typer
 from graphql import parse, print_ast, print_schema
-from httpx import AsyncClient
 from infrahub_sdk.async_typer import AsyncTyper
 from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 from rich.logging import RichHandler
@@ -75,10 +74,8 @@ async def export_json_schema(
 ) -> None:
     """Export the Core GraphQL schema to a file."""
     config.load_and_exit(config_file_name=config_file)
-    async with AsyncClient(app=server_app, base_url=config.SETTINGS.main.internal_address) as client:
-        response = await client.get("/api/openapi.json")
-        content = json.dumps(response.json(), indent=4)
-        out.write_text(content)
+    content = json.dumps(server_app.openapi(), indent=4)
+    out.write_text(content)
 
 
 @app.command(name="export-repository-config")
