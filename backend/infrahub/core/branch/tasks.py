@@ -60,6 +60,50 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags
 
 
+@flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
+async def migrate_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:
+    await add_tags(branches=[branch])
+
+    db = await get_database()
+    log = get_run_logger()
+
+    obj = await Branch.get_by_name(db=db, name=branch)
+
+    if obj.graph_version == GRAPH_VERSION:
+        log.info(f"Branch '{obj.name}' is up-to-date")
+        return
+
+    migration_runner = MigrationRunner(branch=obj)
+    if not migration_runner.has_migrations():
+        log.info(f"No migrations detected for branch '{obj.name}'")
+        return
+
+    # Branch status will remain as so if the migration process fails
+    # This will help user to know that a branch is in an invalid state to be used properly and that actions need to be taken
+    obj.status = BranchStatus.NEED_UPGRADE_REBASE
+    await obj.save(db=db)
+
+    try:
+        log.info(f"Running migrations for branch '{obj.name}'")
+        await migration_runner.run(db=db)
+    except MigrationFailureError as exc:
+        log.error(f"Failed to run migrations for branch '{obj.name}': {exc.errors}")
+        return
+
+    if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
+        obj.status = BranchStatus.OPEN
+    obj.graph_version = GRAPH_VERSION
+    await obj.save(db=db)
+
+    if send_events:
+        event_service = await get_event_service()
+        await event_service.send(
+            BranchMigratedEvent(
+                branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+            )
+        )
+
+
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
 async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:  # noqa: PLR0915
     workflow = get_workflow()
@@ -174,9 +218,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 parameters={"branch": obj.name, "ipam_node_details": ipam_node_details},
             )
 
-    await workflow.submit_workflow(
-        workflow=BRANCH_MIGRATE, context=context, parameters={"branch": obj.name, "send_events": send_events}
-    )
+    await migrate_branch(branch=branch, context=context, send_events=send_events)
     await workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name})
 
     if not send_events:
@@ -206,50 +248,6 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     event_service = await get_event_service()
     for event in events:
         await event_service.send(event)
-
-
-@flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
-async def migrate_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:
-    await add_tags(branches=[branch])
-
-    db = await get_database()
-    log = get_run_logger()
-
-    obj = await Branch.get_by_name(db=db, name=branch)
-
-    if obj.graph_version == GRAPH_VERSION:
-        log.info(f"Branch '{obj.name}' is up-to-date")
-        return
-
-    migration_runner = MigrationRunner(branch=obj)
-    if not migration_runner.has_migrations():
-        log.info(f"No migrations detected for branch '{obj.name}'")
-        return
-
-    # Branch status will remain as so if the migration process fails
-    # This will help user to know that a branch is in an invalid state to be used properly and that actions need to be taken
-    obj.status = BranchStatus.NEED_UPGRADE_REBASE
-    await obj.save(db=db)
-
-    try:
-        log.info(f"Running migrations for branch '{obj.name}'")
-        await migration_runner.run(db=db)
-    except MigrationFailureError as exc:
-        log.error(f"Failed to run migrations for branch '{obj.name}': {exc.errors}")
-        return
-
-    if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
-        obj.status = BranchStatus.OPEN
-    obj.graph_version = GRAPH_VERSION
-    await obj.save(db=db)
-
-    if send_events:
-        event_service = await get_event_service()
-        await event_service.send(
-            BranchMigratedEvent(
-                branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
-            )
-        )
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
