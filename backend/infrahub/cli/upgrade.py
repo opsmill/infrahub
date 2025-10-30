@@ -83,6 +83,7 @@ async def upgrade_cmd(
 
     migrations = await detect_migration_to_run(current_graph_version=root_node.graph_version)
     if check:
+        await dbdriver.close()
         return
 
     if not await migrate_database(db=dbdriver, initialize=False, migrations=migrations):
