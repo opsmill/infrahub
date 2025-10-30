@@ -76,6 +76,8 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         migration_runner = MigrationRunner(branch=obj)
         if not migration_runner.has_migrations():
             log.info(f"No migrations detected for branch '{obj.name}'")
+            obj.graph_version = GRAPH_VERSION
+            await obj.save(db=db)
             return
 
         # Branch status will remain as so if the migration process fails
