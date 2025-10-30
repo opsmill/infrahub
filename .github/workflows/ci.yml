@@ -597,7 +597,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: [ "prepare-environment", "files-changed", "yaml-lint", "python-lint" ]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     runs-on:
       group: huge-runners
     steps:
@@ -629,7 +629,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: [ "prepare-environment", "files-changed", "yaml-lint", "python-lint" ]
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     runs-on:
       group: huge-runners
     steps:

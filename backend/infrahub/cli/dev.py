@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import typer
@@ -24,13 +24,12 @@ from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.schema_sort import sort_schema_ast
 from infrahub.log import get_logger
 from infrahub.server import app as server_app
-from tasks.utils import REPO_BASE
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
 
 
-SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
+SDK_DIRECTORY = Path("infrahub").resolve().parent.parent / "generated" / "python-sdk"
 REPOSITORY_CONFIG_DIRECTORY = SDK_DIRECTORY / "repository-config"
 REPOSITORY_CONFIG_PATH = REPOSITORY_CONFIG_DIRECTORY / "develop.json"
 

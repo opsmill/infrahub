@@ -16,6 +16,8 @@ $ infrahub dev [OPTIONS] COMMAND [ARGS]...
 
 * `db-init`: Erase the content of the database and...
 * `export-graphql-schema`: Export the Core GraphQL schema to a file.
+* `export-json-schema`: Export the Core GraphQL schema to a file.
+* `export-repository-config`: Export the Core GraphQL schema to a file.
 * `load-test-data`: Load test data into the database from the...
 
 ## `infrahub dev db-init`
@@ -47,6 +49,38 @@ $ infrahub dev export-graphql-schema [OPTIONS]
 
 * `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--out PATH`: [default: schema.graphql]
+* `--help`: Show this message and exit.
+
+## `infrahub dev export-json-schema`
+
+Export the Core GraphQL schema to a file.
+
+**Usage**:
+
+```console
+$ infrahub dev export-json-schema [OPTIONS]
+```
+
+**Options**:
+
+* `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+* `--out PATH`: [default: openapi.json]
+* `--help`: Show this message and exit.
+
+## `infrahub dev export-repository-config`
+
+Export the Core GraphQL schema to a file.
+
+**Usage**:
+
+```console
+$ infrahub dev export-repository-config [OPTIONS]
+```
+
+**Options**:
+
+* `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+* `--out PATH`: [default: /Users/solababs/opsmill/generated/python-sdk/repository-config/develop.json]
 * `--help`: Show this message and exit.
 
 ## `infrahub dev load-test-data`
