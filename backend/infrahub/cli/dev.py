@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 SDK_DIRECTORY = Path("infrahub").resolve().parent.parent / "generated" / "python-sdk"
 REPOSITORY_CONFIG_DIRECTORY = SDK_DIRECTORY / "repository-config"
-REPOSITORY_CONFIG_PATH = REPOSITORY_CONFIG_DIRECTORY / "develop.json"
 
 app = AsyncTyper()
 
@@ -81,9 +80,9 @@ async def export_json_schema(
 async def export_repository_config(
     ctx: typer.Context,  # noqa: ARG001
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-    out: Path = typer.Option(REPOSITORY_CONFIG_PATH),  # noqa: B008
+    out: Path = typer.Option("develop.json"),  # noqa: B008
 ) -> None:
-    """Export the repository config to a file."""
+    """Export the repository configuration to a file."""
     config.load_and_exit(config_file_name=config_file)
     REPOSITORY_CONFIG_DIRECTORY.mkdir(parents=True, exist_ok=True)
     schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
