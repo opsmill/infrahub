@@ -98,6 +98,9 @@ class InfrahubBranch(BranchType):
                 continue
             data: dict[str, Any] = {}
             for field in field_keys:
+                if field == "id":
+                    data["id"] = obj.uuid
+                    continue
                 value = getattr(obj, field, None)
                 if isinstance(fields.get(field), dict):
                     data[field] = {"value": value}
