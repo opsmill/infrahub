@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import typer
@@ -27,10 +27,6 @@ from infrahub.server import app as server_app
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
-
-
-SDK_DIRECTORY = Path("infrahub").resolve().parent.parent / "generated" / "python-sdk"
-REPOSITORY_CONFIG_DIRECTORY = SDK_DIRECTORY / "repository-config"
 
 app = AsyncTyper()
 
@@ -84,8 +80,8 @@ async def export_repository_config(
 ) -> None:
     """Export the repository configuration to a file."""
     config.load_and_exit(config_file_name=config_file)
-    REPOSITORY_CONFIG_DIRECTORY.mkdir(parents=True, exist_ok=True)
     schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(schema)
 
 
