@@ -36,6 +36,7 @@ from infrahub.core.graph.schema import (
     GraphRelationshipProperties,
 )
 from infrahub.core.initialization import get_root_node, initialize_registry
+from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
@@ -384,7 +385,7 @@ async def trigger_rebase_branches(db: InfrahubDatabase) -> None:
                 send_events=False,
             )
             rprint(SUCCESS_BADGE)
-        except ValidationError:
+        except (ValidationError, MigrationFailureError):
             rprint(FAILED_BADGE)
 
 

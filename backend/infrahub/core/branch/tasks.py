@@ -89,7 +89,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
             await migration_runner.run(db=db)
         except MigrationFailureError as exc:
             log.error(f"Failed to run migrations for branch '{obj.name}': {exc.errors}")
-            return
+            raise
 
         if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
             obj.status = BranchStatus.OPEN
