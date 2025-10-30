@@ -15,13 +15,17 @@ def generate_graphqlschema(context: Context) -> None:
     """Generate GraphQL schema into ./schema"""
     with context.cd(ESCAPED_REPO_PATH):
         context.run(f"poetry run infrahub dev export-graphql-schema --out {SCHEMA_PATH}")
+        print(f"Wrote to {SCHEMA_PATH}")
 
 
 @task
 def generate_jsonschema(context: Context) -> None:
-    """Generate JSON schemas into ./schema"""
+    """Generate JSON schemas into ./schema and also run `generate_repositoryconfig`"""
     with context.cd(ESCAPED_REPO_PATH):
         context.run(f"poetry run infrahub dev export-json-schema --out {OPENAPI_PATH}")
+        print(f"Wrote to {OPENAPI_PATH}")
+
+    generate_repositoryconfig(context)
 
 
 @task
@@ -29,6 +33,7 @@ def generate_repositoryconfig(context: Context) -> None:
     """Generate repository config into generated/python-sdk/repository-config/develop.json"""
     with context.cd(ESCAPED_REPO_PATH):
         context.run(f"poetry run infrahub dev export-repository-config --out {REPOSITORY_CONFIG_PATH}")
+        print(f"Wrote to {REPOSITORY_CONFIG_PATH}")
 
 
 @task

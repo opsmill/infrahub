@@ -63,12 +63,12 @@ async def export_graphql_schema(
 @app.command(name="export-json-schema")
 async def export_json_schema(
     ctx: typer.Context,  # noqa: ARG001
-    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     out: Path = typer.Option("openapi.json"),  # noqa: B008
 ) -> None:
-    """Export the JSON schema to a file."""
-    config.load_and_exit(config_file_name=config_file)
-    content = json.dumps(server_app.openapi(), indent=4)
+    """Export the REST API OpenAPI schema to a file."""
+    openapi_dict = server_app.openapi()
+    openapi_dict["info"]["version"] = "latest"
+    content = json.dumps(openapi_dict, indent=4)
     out.write_text(content)
 
 

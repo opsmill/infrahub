@@ -16,7 +16,7 @@ $ infrahub dev [OPTIONS] COMMAND [ARGS]...
 
 * `db-init`: Erase the content of the database and...
 * `export-graphql-schema`: Export the Core GraphQL schema to a file.
-* `export-json-schema`: Export the JSON schema to a file.
+* `export-json-schema`: Export the REST API OpenAPI schema to a file.
 * `export-repository-config`: Export the repository configuration to a...
 * `load-test-data`: Load test data into the database from the...
 
@@ -53,7 +53,7 @@ $ infrahub dev export-graphql-schema [OPTIONS]
 
 ## `infrahub dev export-json-schema`
 
-Export the JSON schema to a file.
+Export the REST API OpenAPI schema to a file.
 
 **Usage**:
 
@@ -63,7 +63,6 @@ $ infrahub dev export-json-schema [OPTIONS]
 
 **Options**:
 
-* `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--out PATH`: [default: openapi.json]
 * `--help`: Show this message and exit.
 
