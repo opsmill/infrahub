@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
+from infrahub.core import registry
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph import MIGRATIONS
 
 from .exceptions import MigrationFailureError
@@ -14,6 +16,9 @@ if TYPE_CHECKING:
 
 class MigrationRunner:
     def __init__(self, branch: Branch) -> None:
+        if branch.name in (registry.default_branch, GLOBAL_BRANCH_NAME):
+            raise ValueError("MigrationRunner cannot be used to apply migration on default branches")
+
         self.branch = branch
         self.applicable_migrations = self._get_applicable_migrations()
 

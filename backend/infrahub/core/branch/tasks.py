@@ -49,7 +49,6 @@ from infrahub.workers.dependencies import get_component, get_database, get_event
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_MERGE_POST_PROCESS,
-    BRANCH_MIGRATE,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
