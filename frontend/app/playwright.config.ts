@@ -53,7 +53,7 @@ export default defineConfig({
       testMatch: /.*\.setup\.ts/,
     },
     {
-      name: "chromium",
+      name: "e2e",
       use: { ...devices["Desktop Chrome"], channel: "chromium" },
       dependencies: ["setup"],
       testIgnore: "**/docs-regression-check/**",
