@@ -1,6 +1,14 @@
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-export function buildGetAncestorsQuery(objectKind: string, objectId: string): string {
+export type GetObjectAncestorsQueryParams = {
+  objectKind: string;
+  objectId: string;
+};
+
+export function getObjectAncestorsQuery({
+  objectKind,
+  objectId,
+}: GetObjectAncestorsQueryParams): string {
   return jsonToGraphQLQuery({
     query: {
       __name: `Get${objectKind}Ancestors`,
@@ -30,7 +38,12 @@ export function buildGetAncestorsQuery(objectKind: string, objectId: string): st
                   display_label: true,
                   __typename: true,
                   parent: {
-                    node: { id: true },
+                    node: {
+                      id: true,
+                      hfid: true,
+                      display_label: true,
+                      __typename: true,
+                    },
                   },
                 },
               },
