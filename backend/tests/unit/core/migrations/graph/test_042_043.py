@@ -30,7 +30,6 @@ class NodeStatus(StrEnum):
 @dataclass
 class NodeDetails:
     node: Node
-    on_default_branch: bool
     display_label: str | None
     human_friendly_id: list[str] | None
     status: NodeStatus
@@ -103,45 +102,38 @@ class TestMigration042(TestInfrahubApp):
             ],
         )
 
+    async def _do_load_schemas(self, db: InfrahubDatabase, branch: Branch, schemas: list[NodeSchema]) -> SchemaBranch:
+        await load_schema(
+            db=db,
+            schema=SchemaRoot(nodes=schemas),
+            branch_name=branch.name,
+            update_db=True,
+        )
+        return registry.schema.get_schema_branch(name=branch.name)
+
     @pytest.fixture
-    async def load_schemas(
+    async def load_schemas_main(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         primary_thing_schema: NodeSchema,
         secondary_thing_schema: NodeSchema,
     ) -> SchemaBranch:
-        await load_schema(
-            db=db,
-            schema=SchemaRoot(nodes=[primary_thing_schema, secondary_thing_schema]),
-            branch_name=default_branch.name,
-            update_db=True,
+        return await self._do_load_schemas(
+            db=db, branch=default_branch, schemas=[primary_thing_schema, secondary_thing_schema]
         )
-        primary_thing_schema = registry.schema.get_node_schema(name="PrimaryThing", branch=default_branch)
-        secondary_thing_schema = registry.schema.get_node_schema(name="SecondaryThing", branch=default_branch)
-        # just saving and loading these two schemas speeds up the test
-        small_schema_branch = SchemaBranch(
-            cache={
-                primary_thing_schema.kind: primary_thing_schema,
-                secondary_thing_schema.kind: secondary_thing_schema,
-            },
-            name=default_branch.name,
-        )
-        await registry.schema.load_schema_to_db(db=db, schema=small_schema_branch)
-        return registry.schema.get_schema_branch(name=default_branch.name)
 
     @pytest.fixture
     async def branch(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
         return await create_branch(db=db, branch_name="migration-test-branch")
 
     @pytest.fixture
-    async def secondary_thing_one_details(self, db: InfrahubDatabase, load_schemas: SchemaBranch) -> NodeDetails:
+    async def secondary_thing_one_details(self, db: InfrahubDatabase, load_schemas_main: SchemaBranch) -> NodeDetails:
         secondary_thing = await Node.init(db=db, schema="SecondaryThing")
         await secondary_thing.new(db=db, name="secondary_thing_1", color="not red", size=-1, agnostic_smell="okay")
         await secondary_thing.save(db=db)
         return NodeDetails(
             node=secondary_thing,
-            on_default_branch=True,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
             human_friendly_id=[
                 str(v)
@@ -151,7 +143,7 @@ class TestMigration042(TestInfrahubApp):
         )
 
     @pytest.fixture
-    async def secondary_thing_two_details(self, db: InfrahubDatabase, load_schemas: SchemaBranch) -> NodeDetails:
+    async def secondary_thing_two_details(self, db: InfrahubDatabase, load_schemas_main: SchemaBranch) -> NodeDetails:
         secondary_thing = await Node.init(db=db, schema="SecondaryThing")
         await secondary_thing.new(
             db=db, name="secondary_thing_2", color="orange", size=42, agnostic_smell="pretty good"
@@ -159,7 +151,6 @@ class TestMigration042(TestInfrahubApp):
         await secondary_thing.save(db=db)
         return NodeDetails(
             node=secondary_thing,
-            on_default_branch=True,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
             human_friendly_id=[
                 str(v)
@@ -174,7 +165,7 @@ class TestMigration042(TestInfrahubApp):
 
     @pytest.fixture
     async def secondary_thing_three_details(
-        self, db: InfrahubDatabase, load_schemas: SchemaBranch, secondary_thing_three_agnostic_value_update: str
+        self, db: InfrahubDatabase, load_schemas_main: SchemaBranch, secondary_thing_three_agnostic_value_update: str
     ) -> NodeDetails:
         secondary_thing = await Node.init(db=db, schema="SecondaryThing")
         await secondary_thing.new(db=db, name="secondary_thing_3", color="inidigo", size=53, agnostic_smell="quite bad")
@@ -186,7 +177,6 @@ class TestMigration042(TestInfrahubApp):
 
         return NodeDetails(
             node=secondary_thing,
-            on_default_branch=True,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
             human_friendly_id=[
                 str(v)
@@ -207,7 +197,7 @@ class TestMigration042(TestInfrahubApp):
     async def primary_thing_one_details(
         self,
         db: InfrahubDatabase,
-        load_schemas: SchemaBranch,
+        load_schemas_main: SchemaBranch,
         secondary_thing_one_details: NodeDetails,
         secondary_thing_two_details: NodeDetails,
         secondary_thing_three_details: NodeDetails,
@@ -231,7 +221,6 @@ class TestMigration042(TestInfrahubApp):
         await primary_thing.save(db=db)
         return NodeDetails(
             node=primary_thing,
-            on_default_branch=True,
             display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing_one_agnostic_value_update}",
             human_friendly_id=[
                 str(v)
@@ -250,7 +239,8 @@ class TestMigration042(TestInfrahubApp):
     async def primary_thing_two_main_update_details(
         self,
         db: InfrahubDatabase,
-        load_schemas: SchemaBranch,
+        default_branch: Branch,
+        load_schemas_main: SchemaBranch,
         secondary_thing_one_details: NodeDetails,
         secondary_thing_two_details: NodeDetails,
         secondary_thing_three_details: NodeDetails,
@@ -268,6 +258,7 @@ class TestMigration042(TestInfrahubApp):
         )
         await primary_thing.save(db=db)
 
+        primary_thing = await NodeManager.get_one(db=db, branch=default_branch, id=primary_thing.id)
         new_secondary_in_node = secondary_thing_three_details.node
         new_secondary_out_node = secondary_thing_one_details.node
         new_agnostic_secondary_node = secondary_thing_two_details.node
@@ -280,7 +271,6 @@ class TestMigration042(TestInfrahubApp):
 
         return NodeDetails(
             node=primary_thing,
-            on_default_branch=True,
             # a bug in deleting branch-aware nodes with branch-agnostic relationships prevents this from working correctly
             # https://github.com/opsmill/infrahub/issues/7513
             # display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing.agnostic_smell.value}",
@@ -301,7 +291,7 @@ class TestMigration042(TestInfrahubApp):
     async def primary_thing_three_deleted_details(
         self,
         db: InfrahubDatabase,
-        load_schemas: SchemaBranch,
+        load_schemas_main: SchemaBranch,
         secondary_thing_two_details: NodeDetails,
         secondary_thing_three_details: NodeDetails,
     ) -> NodeDetails:
@@ -320,7 +310,6 @@ class TestMigration042(TestInfrahubApp):
         await primary_thing.delete(db=db)
         return NodeDetails(
             node=primary_thing,
-            on_default_branch=True,
             display_label=None,
             human_friendly_id=None,
             status=NodeStatus.DELETED,
@@ -334,7 +323,7 @@ class TestMigration042(TestInfrahubApp):
     async def secondary_thing_three_branch_update_details(
         self,
         db: InfrahubDatabase,
-        load_schemas: SchemaBranch,
+        load_schemas_main: SchemaBranch,
         branch: Branch,
         secondary_thing_three_details: NodeDetails,
         secondary_thing_three_agnostic_value_update: str,
@@ -347,7 +336,6 @@ class TestMigration042(TestInfrahubApp):
 
         return NodeDetails(
             node=secondary_thing,
-            on_default_branch=False,
             display_label=f"{secondary_thing.name.value} {secondary_thing.size.value}",
             human_friendly_id=[
                 str(v)
@@ -364,7 +352,7 @@ class TestMigration042(TestInfrahubApp):
     async def primary_thing_one_branch_details(
         self,
         db: InfrahubDatabase,
-        load_schemas: SchemaBranch,
+        load_schemas_main: SchemaBranch,
         secondary_thing_one_details: NodeDetails,
         secondary_thing_two_details: NodeDetails,
         branch: Branch,
@@ -383,7 +371,6 @@ class TestMigration042(TestInfrahubApp):
         await primary_thing.save(db=db)
         return NodeDetails(
             node=primary_thing,
-            on_default_branch=False,
             display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing.agnostic_smell.value}",
             human_friendly_id=[
                 str(v)
@@ -402,7 +389,7 @@ class TestMigration042(TestInfrahubApp):
     async def primary_thing_two_deleted_on_branch_details(
         self,
         db: InfrahubDatabase,
-        load_schemas: SchemaBranch,
+        load_schemas_main: SchemaBranch,
         primary_thing_two_main_update_details: NodeDetails,
         branch: Branch,
     ) -> NodeDetails:
@@ -412,7 +399,6 @@ class TestMigration042(TestInfrahubApp):
         await primary_thing.delete(db=db)
         return NodeDetails(
             node=primary_thing,
-            on_default_branch=False,
             display_label=None,
             human_friendly_id=None,
             status=NodeStatus.DELETED,
@@ -422,7 +408,7 @@ class TestMigration042(TestInfrahubApp):
     async def primary_thing_one_branch_update_details(
         self,
         db: InfrahubDatabase,
-        load_schemas: SchemaBranch,
+        load_schemas_main: SchemaBranch,
         primary_thing_one_details: NodeDetails,
         branch: Branch,
         secondary_thing_three_branch_update_details: NodeDetails,
@@ -441,7 +427,6 @@ class TestMigration042(TestInfrahubApp):
         await primary_thing.save(db=db)
         return NodeDetails(
             node=primary_thing,
-            on_default_branch=False,
             display_label=f"{primary_thing.name.value} {primary_thing.color.value} {primary_thing_one_agnostic_value_update}",
             human_friendly_id=[
                 str(v)
@@ -456,24 +441,97 @@ class TestMigration042(TestInfrahubApp):
             status=NodeStatus.ACTIVE,
         )
 
+    # --------------------------------
+    # branch with schema updates
+    # --------------------------------
+
     @pytest.fixture
-    async def initial_dataset(
+    async def schema_update_branch(self, db: InfrahubDatabase, default_branch: Branch) -> Branch:
+        return await create_branch(db=db, branch_name="migration-schema-update-branch")
+
+    @pytest.fixture
+    def primary_thing_schema_update(self, primary_thing_schema: NodeSchema, schema_update_branch: Branch) -> NodeSchema:
+        updated_schema = primary_thing_schema.duplicate()
+        updated_schema.display_labels = ["color__value", "name__value"]
+        updated_schema.human_friendly_id = [
+            "name__value",
+            "secondary_in__color__value",
+            "secondary_out__agnostic_smell__value",
+        ]
+        return updated_schema
+
+    @pytest.fixture
+    async def load_schemas_branch_update(
+        self,
+        db: InfrahubDatabase,
+        load_schemas_main: SchemaBranch,
+        schema_update_branch: Branch,
+        primary_thing_schema_update: NodeSchema,
+        secondary_thing_schema: NodeSchema,
+    ) -> SchemaBranch:
+        return await self._do_load_schemas(
+            db=db, branch=schema_update_branch, schemas=[primary_thing_schema_update, secondary_thing_schema]
+        )
+
+    @pytest.fixture
+    def primary_thing_one_schema_update_details(
+        self,
+        primary_thing_one_details: NodeDetails,
+        secondary_thing_one_details: NodeDetails,
+        secondary_thing_two_details: NodeDetails,
+    ) -> NodeDetails:
+        return NodeDetails(
+            node=primary_thing_one_details.node,
+            display_label=f"{primary_thing_one_details.node.color.value} {primary_thing_one_details.node.name.value}",
+            human_friendly_id=[
+                str(v)
+                for v in (
+                    primary_thing_one_details.node.name.value,
+                    secondary_thing_one_details.node.color.value,
+                    secondary_thing_two_details.node.agnostic_smell.value,
+                )
+            ],
+            status=NodeStatus.ACTIVE,
+        )
+
+    @pytest.fixture
+    def primary_thing_two_schema_update_details(
+        self,
+        primary_thing_two_main_update_details: NodeDetails,
+        secondary_thing_one_details: NodeDetails,
+        secondary_thing_three_details: NodeDetails,
+    ) -> NodeDetails:
+        return NodeDetails(
+            node=primary_thing_two_main_update_details.node,
+            display_label=f"{primary_thing_two_main_update_details.node.color.value} {primary_thing_two_main_update_details.node.name.value}",
+            human_friendly_id=[
+                str(v)
+                for v in (
+                    primary_thing_two_main_update_details.node.name.value,
+                    secondary_thing_three_details.node.color.value,
+                    secondary_thing_one_details.node.agnostic_smell.value,
+                )
+            ],
+            status=NodeStatus.ACTIVE,
+        )
+
+    # --------------------------------
+    # datasets for branches
+    # --------------------------------
+
+    @pytest.fixture
+    async def dataset_main(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         register_core_models_schema: SchemaBranch,
-        load_schemas: SchemaBranch,
+        load_schemas_main: SchemaBranch,
         secondary_thing_one_details: NodeDetails,
         secondary_thing_two_details: NodeDetails,
         secondary_thing_three_details: NodeDetails,
         primary_thing_one_details: NodeDetails,
         primary_thing_two_main_update_details: NodeDetails,
-        primary_thing_two_deleted_on_branch_details: NodeDetails,
         primary_thing_three_deleted_details: NodeDetails,
-        branch: Branch,
-        secondary_thing_three_branch_update_details: NodeDetails,
-        primary_thing_one_branch_details: NodeDetails,
-        primary_thing_one_branch_update_details: NodeDetails,
     ) -> dict[str, NodeDetails]:
         return {
             "secondary_thing_one": secondary_thing_one_details,
@@ -481,12 +539,47 @@ class TestMigration042(TestInfrahubApp):
             "secondary_thing_three": secondary_thing_three_details,
             "primary_thing_one": primary_thing_one_details,
             "primary_thing_two": primary_thing_two_main_update_details,
-            "primary_thing_two_deleted_on_branch": primary_thing_two_deleted_on_branch_details,
             "primary_thing_three_deleted": primary_thing_three_deleted_details,
-            "secondary_thing_three_branch_update": secondary_thing_three_branch_update_details,
-            "primary_thing_one_branch": primary_thing_one_branch_details,
-            "primary_thing_one_updated_on_branch": primary_thing_one_branch_update_details,
         }
+
+    @pytest.fixture
+    async def dataset_data_update_on_branch(
+        self,
+        dataset_main: dict[str, NodeDetails],
+        branch: Branch,
+        secondary_thing_three_branch_update_details: NodeDetails,
+        primary_thing_two_deleted_on_branch_details: NodeDetails,
+        primary_thing_one_branch_details: NodeDetails,
+        primary_thing_one_branch_update_details: NodeDetails,
+    ) -> dict[str, NodeDetails]:
+        updated_dataset = dataset_main.copy()
+        updated_dataset.update(
+            {
+                "secondary_thing_three": secondary_thing_three_branch_update_details,
+                "primary_thing_two": primary_thing_two_deleted_on_branch_details,
+                "primary_thing_one_branch": primary_thing_one_branch_details,
+                "primary_thing_one": primary_thing_one_branch_update_details,
+            }
+        )
+        return updated_dataset
+
+    @pytest.fixture
+    async def dataset_schema_update_on_branch(
+        self,
+        dataset_main: dict[str, NodeDetails],
+        schema_update_branch: Branch,
+        load_schemas_branch_update: SchemaBranch,
+        primary_thing_one_schema_update_details: NodeDetails,
+        primary_thing_two_schema_update_details: NodeDetails,
+    ) -> dict[str, NodeDetails]:
+        updated_dataset = dataset_main.copy()
+        updated_dataset.update(
+            {
+                "primary_thing_one": primary_thing_one_schema_update_details,
+                "primary_thing_two": primary_thing_two_schema_update_details,
+            }
+        )
+        return updated_dataset
 
     async def erase_hfid_and_display_label(self, db: InfrahubDatabase) -> Node:
         query = """
@@ -516,14 +609,68 @@ DETACH DELETE attr
                 result_map[node_id][attr_name] = node_attributes_map[node_id].attrs[attr_name].value
         return result_map
 
+    async def _rebase_and_migrate_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, branch: Branch, schemas: list[NodeSchema]
+    ) -> None:
+        await branch.rebase(db=db)
+        async with db.start_session() as dbs:
+            migration = Migration042(migrations=[])
+            execution_result = await migration.execute_against_branch(db=dbs, branch=branch)
+            assert not execution_result.errors
+
+        branch_schema_branch = SchemaBranch(
+            cache={},
+            name=branch.name,
+        )
+        for node_schema in schemas:
+            branch_schema_branch.set(name=node_schema.kind, schema=node_schema)
+        for internal_schema_kind in ["SchemaNode", "SchemaAttribute", "SchemaRelationship", "SchemaGeneric"]:
+            branch_schema_branch.set(
+                name=internal_schema_kind,
+                schema=registry.schema.get(name=internal_schema_kind, branch=default_branch, duplicate=False),
+            )
+        branch_schema_branch.process()
+        registry.schema.set_schema_branch(name=branch.name, schema=branch_schema_branch)
+
+        async with db.start_session() as dbs:
+            migration = Migration043()
+            execution_result = await migration.execute_against_branch(db=dbs, branch=branch)
+            assert not execution_result.errors
+
+    async def _validate_branch_updates(
+        self, db: InfrahubDatabase, branch: Branch, node_details_list: list[NodeDetails]
+    ) -> None:
+        attribute_values_map = await self.get_attribute_values_from_db(
+            db=db,
+            branch=branch,
+            attribute_names=["human_friendly_id", "display_label"],
+            node_ids=[node_details.node.id for node_details in node_details_list],
+        )
+        expected_ids = {node_details.node.id for node_details in node_details_list if node_details.is_active}
+        assert set(attribute_values_map.keys()) == expected_ids
+        for node_details in node_details_list:
+            if not node_details.is_active:
+                continue
+            if node_details.display_label is not None:
+                assert attribute_values_map[node_details.node.id]["display_label"] == node_details.display_label
+            if node_details.human_friendly_id is not None:
+                assert (
+                    json.loads(attribute_values_map[node_details.node.id]["human_friendly_id"])
+                    == node_details.human_friendly_id
+                )
+
     async def test_migration_042_043(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        initial_dataset: dict[str, NodeDetails],
-        branch: Branch,
         primary_thing_schema: NodeSchema,
         secondary_thing_schema: NodeSchema,
+        dataset_main: dict[str, NodeDetails],
+        branch: Branch,
+        dataset_data_update_on_branch: dict[str, NodeDetails],
+        schema_update_branch: Branch,
+        dataset_schema_update_on_branch: dict[str, NodeDetails],
+        primary_thing_schema_update: NodeSchema,
     ) -> None:
         await self.erase_hfid_and_display_label(db=db)
 
@@ -544,85 +691,29 @@ DETACH DELETE attr
 
             validation_result = await migration.validate_migration(db=dbs)
             assert not validation_result.errors
-
         # validate updates on default branch
-        attribute_values_map_main = await self.get_attribute_values_from_db(
-            db=db,
-            branch=default_branch,
-            attribute_names=["human_friendly_id", "display_label"],
-            node_ids=[node_details.node.id for node_details in initial_dataset.values()],
-        )
-        expected_ids = {
-            node_details.node.id
-            for node_details in initial_dataset.values()
-            if node_details.is_active and node_details.on_default_branch
-        }
-        assert set(attribute_values_map_main.keys()) == expected_ids
-        for node_details in initial_dataset.values():
-            if not node_details.is_active or not node_details.on_default_branch:
-                continue
-            assert attribute_values_map_main[node_details.node.id]["display_label"] == node_details.display_label
-            assert (
-                json.loads(attribute_values_map_main[node_details.node.id]["human_friendly_id"])
-                == node_details.human_friendly_id
-            )
+        await self._validate_branch_updates(db=db, branch=default_branch, node_details_list=list(dataset_main.values()))
 
         # rebase and migrate branch
-        await branch.rebase(db=db)
-        async with db.start_session() as dbs:
-            migration = Migration042(migrations=[])
-            execution_result = await migration.execute_against_branch(db=dbs, branch=branch)
-            assert not execution_result.errors
-
-        branch_schema_branch = SchemaBranch(
-            cache={},
-            name=branch.name,
+        await self._rebase_and_migrate_branch(
+            db=db, default_branch=default_branch, branch=branch, schemas=[primary_thing_schema, secondary_thing_schema]
         )
-        branch_schema_branch.set(name="PrimaryThing", schema=primary_thing_schema)
-        branch_schema_branch.set(name="SecondaryThing", schema=secondary_thing_schema)
-        for internal_schema_kind in ["SchemaNode", "SchemaAttribute", "SchemaRelationship", "SchemaGeneric"]:
-            branch_schema_branch.set(
-                name=internal_schema_kind,
-                schema=registry.schema.get(name=internal_schema_kind, branch=default_branch, duplicate=False),
-            )
-        branch_schema_branch.process()
-        registry.schema.set_schema_branch(name=branch.name, schema=branch_schema_branch)
-
-        async with db.start_session() as dbs:
-            migration = Migration043()
-            execution_result = await migration.execute_against_branch(db=dbs, branch=branch)
-            assert not execution_result.errors
-
-        attribute_values_map_branch = await self.get_attribute_values_from_db(
-            db=db,
-            branch=branch,
-            attribute_names=["human_friendly_id", "display_label"],
-            node_ids=[
-                node_details.node.id for node_details in initial_dataset.values() if not node_details.on_default_branch
-            ],
-        )
-        expected_ids = {
-            node_details.node.id
-            for node_details in initial_dataset.values()
-            if node_details.is_active and not node_details.on_default_branch
-        }
-
         # bug in rebase allows attributes added on main to persist on a node that is deleted on a branch
-        expected_ids.add(initial_dataset["primary_thing_two_deleted_on_branch"].node.id)
+        dataset_data_update_on_branch["primary_thing_two"].status = NodeStatus.ACTIVE
+        await self._validate_branch_updates(
+            db=db, branch=branch, node_details_list=list(dataset_data_update_on_branch.values())
+        )
 
-        assert set(attribute_values_map_branch.keys()) == expected_ids
-        for node_details in initial_dataset.values():
-            if not node_details.is_active or node_details.on_default_branch:
-                continue
-            assert attribute_values_map_branch[node_details.node.id]["display_label"] == node_details.display_label
-            assert (
-                json.loads(attribute_values_map_branch[node_details.node.id]["human_friendly_id"])
-                == node_details.human_friendly_id
-            )
+        # check updates on schema update branch
+        await self._rebase_and_migrate_branch(
+            db=db,
+            default_branch=default_branch,
+            branch=schema_update_branch,
+            schemas=[primary_thing_schema_update, secondary_thing_schema],
+        )
+        await self._validate_branch_updates(
+            db=db, branch=schema_update_branch, node_details_list=list(dataset_schema_update_on_branch.values())
+        )
 
         await verify_no_edges_added_after_node_delete(db=db)
         await verify_no_duplicate_relationships(db=db)
-
-
-# TODO: test display labels and HFIDs updated on a branch with the same value on main
-# TODO: test HFID/display labels update on branch

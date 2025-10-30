@@ -676,6 +676,7 @@ class Migration043(ArbitraryMigration):
                     branch=branch,
                     schema_kind=schema.kind,
                     schema_paths=all_schema_paths,
+                    updates_only=False,
                     offset=offset,
                     limit=self.update_batch_size,
                 )
