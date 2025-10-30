@@ -49,13 +49,3 @@ def validate_jsonschema(context: Context) -> None:
     exec_cmd = f"git diff --exit-code {OPENAPI_PATH}"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
-
-
-@task
-def validate_repositoryconfig(context: Context) -> None:
-    """Validate that the generated repository config is up to date."""
-    generate_repositoryconfig(context)
-
-    exec_cmd = f"git diff --exit-code {REPOSITORY_CONFIG_PATH}"
-    with context.cd(ESCAPED_REPO_PATH):
-        context.run(exec_cmd)
