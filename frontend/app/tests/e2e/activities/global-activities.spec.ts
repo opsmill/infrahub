@@ -31,7 +31,9 @@ test.describe("Global Activities - List view and filter usage", () => {
     });
   });
 
-  test("should filter activities by has children and view event details with children", async ({ page }) => {
+  test("should filter activities by has children and view event details with children", async ({
+    page,
+  }) => {
     await test.step("Navigate to activity log page", async () => {
       await page.goto("/activities");
       await expect(page.getByRole("heading", { name: "Activities" })).toBeVisible();
