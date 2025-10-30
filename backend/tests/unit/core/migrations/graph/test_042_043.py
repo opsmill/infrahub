@@ -95,10 +95,10 @@ class TestMigration042(TestInfrahubApp):
             display_labels=["name__value", "size__value"],
             human_friendly_id=["name__value", "color__value", "agnostic_smell__value"],
             attributes=[
-                AttributeSchema(name="name", kind="Text"),
+                AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="color", kind="Text"),
                 AttributeSchema(name="size", kind="Number"),
-                AttributeSchema(name="agnostic_smell", kind="Text", branch=BranchSupportType.AGNOSTIC),
+                AttributeSchema(name="agnostic_smell", kind="Text", branch=BranchSupportType.AGNOSTIC, unique=True),
             ],
         )
 
