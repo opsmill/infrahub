@@ -117,6 +117,8 @@ class SchemaMigration(BaseModel):
 
 
 class AttributeSchemaMigration(SchemaMigration):
+    uuids: list[str] | None = None
+
     @property
     def new_attribute_schema(self) -> AttributeSchema:
         if not self.schema_path.field_name:
