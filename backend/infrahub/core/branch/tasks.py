@@ -63,36 +63,38 @@ from infrahub.workflows.utils import add_tags
 async def migrate_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:
     await add_tags(branches=[branch])
 
-    db = await get_database()
-    log = get_run_logger()
+    database = await get_database()
+    async with database.start_session() as db:
+        log = get_run_logger()
 
-    obj = await Branch.get_by_name(db=db, name=branch)
+        obj = await Branch.get_by_name(db=db, name=branch)
 
-    if obj.graph_version == GRAPH_VERSION:
-        log.info(f"Branch '{obj.name}' is up-to-date")
-        return
+        if obj.graph_version == GRAPH_VERSION:
+            log.info(f"Branch '{obj.name}' has graph version {obj.graph_version}, no migrations to apply")
+            return
 
-    migration_runner = MigrationRunner(branch=obj)
-    if not migration_runner.has_migrations():
-        log.info(f"No migrations detected for branch '{obj.name}'")
-        return
+        migration_runner = MigrationRunner(branch=obj)
+        if not migration_runner.has_migrations():
+            log.info(f"No migrations detected for branch '{obj.name}'")
+            return
 
-    # Branch status will remain as so if the migration process fails
-    # This will help user to know that a branch is in an invalid state to be used properly and that actions need to be taken
-    obj.status = BranchStatus.NEED_UPGRADE_REBASE
-    await obj.save(db=db)
+        # Branch status will remain as so if the migration process fails
+        # This will help user to know that a branch is in an invalid state to be used properly and that actions need to be taken
+        if obj.status != BranchStatus.NEED_UPGRADE_REBASE:
+            obj.status = BranchStatus.NEED_UPGRADE_REBASE
+            await obj.save(db=db)
 
-    try:
-        log.info(f"Running migrations for branch '{obj.name}'")
-        await migration_runner.run(db=db)
-    except MigrationFailureError as exc:
-        log.error(f"Failed to run migrations for branch '{obj.name}': {exc.errors}")
-        return
+        try:
+            log.info(f"Running migrations for branch '{obj.name}'")
+            await migration_runner.run(db=db)
+        except MigrationFailureError as exc:
+            log.error(f"Failed to run migrations for branch '{obj.name}': {exc.errors}")
+            return
 
-    if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
-        obj.status = BranchStatus.OPEN
-    obj.graph_version = GRAPH_VERSION
-    await obj.save(db=db)
+        if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
+            obj.status = BranchStatus.OPEN
+        obj.graph_version = GRAPH_VERSION
+        await obj.save(db=db)
 
     if send_events:
         event_service = await get_event_service()
