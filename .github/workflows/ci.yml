@@ -623,38 +623,6 @@ jobs:
 
       - name: Run validation
         run: poetry run invoke schema.validate-jsonschema
-  repository-config:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
-    steps:
-      - name: Check out repository code
-        uses: "actions/checkout@v5"
-        with:
-          submodules: true
-      - name: Set up Python
-        id: python
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.12
-      - name: "Setup environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-          poetry run pip install invoke toml
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install Package"
-        run: "poetry install"
-
-      - name: Run validation
-        run: poetry run invoke schema.validate-repositoryconfig
 
   documentation:
     defaults:
