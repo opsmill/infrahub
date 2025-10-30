@@ -21,7 +21,6 @@ from infrahub.types import is_large_attribute_type
 from ..shared import MigrationRequiringRebase
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
