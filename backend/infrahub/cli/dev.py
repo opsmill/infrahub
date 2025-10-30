@@ -10,6 +10,7 @@ import typer
 from graphql import parse, print_ast, print_schema
 from httpx import AsyncClient
 from infrahub_sdk.async_typer import AsyncTyper
+from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 from rich.logging import RichHandler
 
 from infrahub import config
@@ -24,9 +25,15 @@ from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.schema_sort import sort_schema_ast
 from infrahub.log import get_logger
 from infrahub.server import app as server_app
+from tasks.utils import REPO_BASE
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
+
+
+SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
+REPOSITORY_CONFIG_DIRECTORY = SDK_DIRECTORY / "repository-config"
+REPOSITORY_CONFIG_PATH = REPOSITORY_CONFIG_DIRECTORY / "develop.json"
 
 app = AsyncTyper()
 
@@ -64,7 +71,7 @@ async def export_graphql_schema(
 async def export_json_schema(
     ctx: typer.Context,  # noqa: ARG001
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-    out: Path = typer.Option("schema.json"),  # noqa: B008
+    out: Path = typer.Option("openapi.json"),  # noqa: B008
 ) -> None:
     """Export the Core GraphQL schema to a file."""
     config.load_and_exit(config_file_name=config_file)
@@ -72,6 +79,19 @@ async def export_json_schema(
         response = await client.get("/api/openapi.json")
         content = json.dumps(response.json(), indent=4)
         out.write_text(content)
+
+
+@app.command(name="export-repository-config")
+async def export_repository_config(
+    ctx: typer.Context,  # noqa: ARG001
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    out: Path = typer.Option(REPOSITORY_CONFIG_PATH),  # noqa: B008
+) -> None:
+    """Export the Core GraphQL schema to a file."""
+    config.load_and_exit(config_file_name=config_file)
+    REPOSITORY_CONFIG_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
+    out.write_text(schema)
 
 
 @app.command(name="db-init")
