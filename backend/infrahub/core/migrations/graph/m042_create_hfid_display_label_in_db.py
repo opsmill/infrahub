@@ -13,12 +13,10 @@ from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddM
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationResult
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import SchemaRoot, internal_schema
-from infrahub.core.schema.manager import SchemaManager
-from infrahub.exceptions import InitializationError
+
+from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -76,25 +74,13 @@ class Migration042(InternalSchemaMigration):
         ]
         return cls(migrations=cls.migrations, **kwargs)  # type: ignore[arg-type]
 
-    async def _get_or_load_schema_branch(self, db: InfrahubDatabase, branch: Branch) -> SchemaBranch:
-        try:
-            if registry.schema.has_schema_branch(branch.name):
-                return registry.schema.get_schema_branch(branch.name)
-        except InitializationError:
-            pass
-        schema_manager = SchemaManager()
-        internal_schema_root = SchemaRoot(**internal_schema)
-        schema_manager.register_schema(schema=internal_schema_root)
-        registry.schema = schema_manager
-        return await schema_manager.load_schema_from_db(db=db, branch=branch)
-
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
 
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
-        schema_branch = await self._get_or_load_schema_branch(db=db, branch=default_branch)
+        schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
 
         migrations = list(self.migrations)
 
