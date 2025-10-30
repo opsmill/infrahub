@@ -9,6 +9,7 @@ export function searchDocsQueryOptions({ query, limit = 3 }: SearchDocsParams) {
   return queryOptions({
     queryKey: searchAnywhereQueryKeys.docs({ query, limit }),
     queryFn: () => searchDocs({ query, limit }),
+    enabled: !!query, // prevent sending query with empty string
   });
 }
 
