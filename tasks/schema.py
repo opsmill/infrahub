@@ -7,8 +7,6 @@ from invoke.tasks import task
 from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
-INFRAHUB_DIRECTORY = REPO_BASE / "generated" / "infrahub"
-SCHEMA_DIRECTORY = REPO_BASE / "schema"
 
 
 @task
@@ -19,11 +17,10 @@ def generate_graphqlschema(context: Context) -> None:
 
 
 @task
-def generate_jsonschema(context: Context) -> None:  # noqa: ARG001
-    """Generate JSON schemas into ./generated"""
-
-    generate_sdk_repository_config()
-    generate_infrahub_node_schema()
+def generate_jsonschema(context: Context) -> None:
+    """Generate JSON schemas into ./schema"""
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run("poetry run infrahub dev export-json-schema --out schema/openapi.json")
 
 
 @task
@@ -36,19 +33,14 @@ def validate_graphqlschema(context: Context) -> None:
         context.run(exec_cmd)
 
 
-def generate_infrahub_node_schema() -> None:
-    from infrahub.api.schema import SchemaLoadAPI
+@task
+def validate_jsonschema(context: Context) -> None:
+    """Validate that the generated JSON schema is up to date."""
+    generate_jsonschema(context)
 
-    schema_dir = INFRAHUB_DIRECTORY / "schema"
-    schema_dir.mkdir(parents=True, exist_ok=True)
-
-    schema = SchemaLoadAPI.model_json_schema()
-
-    schema["title"] = "InfrahubSchema"
-
-    content = json.dumps(schema, indent=4)
-
-    write(file_path=schema_dir / "develop.json", content=content)
+    exec_cmd = "git diff --exit-code schema/openapi.json"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
 
 
 def generate_sdk_repository_config() -> None:

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import typer
 from graphql import parse, print_ast, print_schema
+from httpx import AsyncClient
 from infrahub_sdk.async_typer import AsyncTyper
 from rich.logging import RichHandler
 
@@ -21,6 +23,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.schema_sort import sort_schema_ast
 from infrahub.log import get_logger
+from infrahub.server import app as server_app
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -55,6 +58,20 @@ async def export_graphql_schema(
     sorted_schema_str = print_ast(sorted_schema_ast)
 
     out.write_text(sorted_schema_str)
+
+
+@app.command(name="export-json-schema")
+async def export_json_schema(
+    ctx: typer.Context,  # noqa: ARG001
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    out: Path = typer.Option("schema.json"),  # noqa: B008
+) -> None:
+    """Export the Core GraphQL schema to a file."""
+    config.load_and_exit(config_file_name=config_file)
+    async with AsyncClient(app=server_app, base_url=config.SETTINGS.main.internal_address) as client:
+        response = await client.get("/api/openapi.json")
+        content = json.dumps(response.json(), indent=4)
+        out.write_text(content)
 
 
 @app.command(name="db-init")
