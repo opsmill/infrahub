@@ -47,9 +47,10 @@ from .m042_create_hfid_display_label_in_db import Migration042
 from .m043_backfill_hfid_display_label_in_db import Migration043
 
 if TYPE_CHECKING:
-    from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration, MigrationRequiringRebase
+    from ..shared import MigrationTypes
 
-MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase]] = [
+
+MIGRATIONS: list[type[MigrationTypes]] = [
     Migration001,
     Migration002,
     Migration003,
@@ -96,9 +97,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
 ]
 
 
-async def get_graph_migrations(
-    current_graph_version: int,
-) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase]:
+async def get_graph_migrations(current_graph_version: int) -> Sequence[MigrationTypes]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
@@ -109,9 +108,7 @@ async def get_graph_migrations(
     return applicable_migrations
 
 
-def get_migration_by_number(
-    migration_number: int | str,
-) -> GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase:
+def get_migration_by_number(migration_number: int | str) -> MigrationTypes:
     # Convert to string and pad with zeros if needed
     try:
         num = int(migration_number)

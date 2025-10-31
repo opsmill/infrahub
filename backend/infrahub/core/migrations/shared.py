@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
@@ -245,3 +245,6 @@ class MigrationRequiringRebase(BaseModel):
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         """Method that will be run against the default branch."""
         raise NotImplementedError()
+
+
+MigrationTypes: TypeAlias = GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase

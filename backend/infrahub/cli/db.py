@@ -63,12 +63,7 @@ def get_timestamp_string() -> str:
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
-    from infrahub.core.migrations.shared import (
-        ArbitraryMigration,
-        GraphMigration,
-        InternalSchemaMigration,
-        MigrationRequiringRebase,
-    )
+    from infrahub.core.migrations.shared import MigrationTypes
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
 
@@ -287,10 +282,10 @@ async def index(
 
 async def detect_migration_to_run(
     current_graph_version: int, migration_number: int | str | None = None
-) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase]:
+) -> Sequence[MigrationTypes]:
     """Return a sequence of migrations to apply to upgrade the database."""
     rprint("Checking current state of the database")
-    migrations: list[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase] = []
+    migrations: list[MigrationTypes] = []
 
     if migration_number:
         migration = get_migration_by_number(migration_number)
@@ -316,9 +311,7 @@ async def detect_migration_to_run(
 
 
 async def migrate_database(
-    db: InfrahubDatabase,
-    migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase],
-    initialize: bool = False,
+    db: InfrahubDatabase, migrations: Sequence[MigrationTypes], initialize: bool = False
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
