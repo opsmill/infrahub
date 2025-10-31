@@ -16,4 +16,4 @@ async def get_or_load_schema_branch(db: InfrahubDatabase, branch: Branch) -> Sch
         registry.schema = schema_manager
         internal_schema_root = SchemaRoot(**internal_schema)
         registry.schema.register_schema(schema=internal_schema_root)
-    return await schema_manager.load_schema_from_db(db=db, branch=branch)
+    return await registry.schema.load_schema_from_db(db=db, branch=branch)
