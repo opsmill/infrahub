@@ -16,11 +16,11 @@ Out of the box, Infrahub doesn't have a schema for most things and it's up to us
 
 Unlike traditional databases that can only have one schema at a time, in Infrahub it is possible to have a different schema per branch. This is possible because the schema itself is stored in the database like any other object.
 
-There are several ways to [load a new schema](../guides/import-schema).
+There are several ways to [load a new schema](../guides/import-schema.mdx).
 
 :::info Editor validation
 
-To help with the development process of a schema definition file, you can leverage the schemas we publish for validation within your [editor](../reference/schema-validation)
+To help with the development process of a schema definition file, you can leverage the schemas we publish for validation within your [editor](../reference/schema-validation.mdx)
 
 :::
 
@@ -77,8 +77,8 @@ A `Generic` cannot exist independently; it must be instantiated by at least one 
 
 Two limitations could have an impact on your choice of node vs generic :
 
-- computed attributes can only be used on Nodes, see [computed attribute topic](./computed-attributes) for more information.
-- Generic's properties are propagated to Nodes only during the first import see the section [Inherited properties](./schema#inherited-properties) below.
+- computed attributes can only be used on Nodes, see [computed attribute topic](./computed-attributes.mdx) for more information.
+- Generic's properties are propagated to Nodes only during the first import see the section [Inherited properties](./schema.mdx#inherited-properties) below.
 
 :::
 
@@ -267,7 +267,7 @@ These are automatically handled by the system for managing memberships and confi
 
 :::info Object Template
 
-Relationships of kind `Component` will automatically be covered by the template when enabling template generation on a given schema node. See the [object-template topic](../topics/object-template) for more information.
+Relationships of kind `Component` will automatically be covered by the template when enabling template generation on a given schema node. See the [object-template topic](../topics/object-template.mdx) for more information.
 
 :::
 
@@ -361,7 +361,7 @@ The **direction** attribute defines the flow of the relationship:
 
 Even if a relationship is `bidirectional`, you still have to create it on both nodes to allow you to easily traverse them in both directions.
 
-For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship#direction)
+For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship.mdx#direction)
 
 ##### Identifier
 
@@ -371,7 +371,7 @@ If no identifier is provided, one will be generated automatically. It is encoura
 If no identifier is specified, one will be automatically generated in the format `<node_kind_a>__<node_kind_z>`.
 Example: `infraautonomoussystem__organizationgeneric`
 
-For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship#identifier)
+For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship.mdx#identifier)
 
 ##### Examples
 
@@ -1026,7 +1026,7 @@ At the node (or generic) level, 3 attributes are available to control where a gi
 
 `menu_placement` makes it possible to create a nested structure within the menu to display a given model under another one.
 
-You can read this [guide](../guides/menu) for a more detailed explanation of how to operate the menu.
+You can read this [guide](../guides/menu.mdx) for a more detailed explanation of how to operate the menu.
 
 #### Icon
 
@@ -1095,7 +1095,7 @@ The `infrahubctl schema load` command can be used to both upload a new schema an
 
 ### Git integration
 
-You can defined a schema in an [external repository](../topics/repository).
+You can defined a schema in an [external repository](../topics/repository.mdx).
 The schemas that should be loaded must be declared in the ``.infrahub.yml`` file, under schemas.
 
 Individual files and directory are both supported.
@@ -1207,7 +1207,7 @@ Most changes to an existing schema are supported but there are a few properties 
 - Properties that can't be updated on an Relationship: `branch`, `direction`, `hierarchical`
 - Properties that can't be updated on an Attribute inherited from a Generic: `optional`
 
-[A reference guide for validators and migrations is available](../reference/schema/validator-migration)
+[A reference guide for validators and migrations is available](../reference/schema/validator-migration.mdx)
 
 ### Known limitations
 

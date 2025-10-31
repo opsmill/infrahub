@@ -22,6 +22,7 @@ class AttributeAddQuery(Query):
         attribute_kind: str,
         branch_support: str,
         default_value: Any | None = None,
+        uuids: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self.node_kinds = node_kinds
@@ -29,7 +30,7 @@ class AttributeAddQuery(Query):
         self.attribute_kind = attribute_kind
         self.branch_support = branch_support
         self.default_value = default_value
-
+        self.uuids = uuids
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002

@@ -21,7 +21,7 @@ Computed attributes have some inherent restrictions due to system constraints an
 
 Users can input a concise Jinja2 template directly within the schema definition. Any change to any field used to compute the value will automatically update it.
 
-See the [guide](../guides/computed-attributes) for instructions on creating Jinja2 computed attribute in Infrahub.
+See the [guide](../guides/computed-attributes.mdx) for instructions on creating Jinja2 computed attribute in Infrahub.
 
 ### Restrictions
 
@@ -39,7 +39,7 @@ Python computed attributes leverage Infrahub's [Python transform](./transformati
 
 Python scripts do not have the limitations of Jinja2 computed attributes and can include more complex logic, including relationships with cardinality `many` and nested relationships.
 
-See the [guide](../guides/computed-attributes) for instructions on creating Python computed attribute in Infrahub.
+See the [guide](../guides/computed-attributes.mdx) for instructions on creating Python computed attribute in Infrahub.
 
 ### Restrictions
 
@@ -57,4 +57,4 @@ See the [guide](../guides/computed-attributes) for instructions on creating Pyth
 | **Jinja2**              | ✅ Supported                | Cannot use `many` cardinality; only direct relationships | Best for straightforward operations   |
 | **Python**              | ❌ Not supported            | No restrictions                                          | Suitable for complex logic            |
 
-See the [guide](../guides/computed-attributes) for instructions on creating computed attribute in Infrahub.
+See the [guide](../guides/computed-attributes.mdx) for instructions on creating computed attribute in Infrahub.

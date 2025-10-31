@@ -6,15 +6,45 @@ from rich.progress import Progress
 from typing_extensions import Self
 
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
-from infrahub.core.initialization import initialization
+from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationResult
 from infrahub.core.path import SchemaPath
-from infrahub.lock import initialize_lock
+from infrahub.core.query import Query, QueryType
+from infrahub.core.schema import SchemaRoot, internal_schema
+from infrahub.core.schema.manager import SchemaManager
+from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+
+class GetAddedNodesByKindForBranchQuery(Query):
+    name = "get_added_nodes_by_kind_for_branch_query"
+    type = QueryType.READ
+    insert_return = True
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params["branch"] = self.branch.name
+        query = """
+MATCH (n:Node)-[e:IS_PART_OF {branch: $branch, status: "active"}]->(:Root)
+WHERE e.to IS NULL
+AND NOT exists((n)-[:IS_PART_OF {branch: $branch, status: "deleted"}]->(:Root))
+WITH n.kind AS kind, collect(n.uuid) AS node_ids
+        """
+        self.return_labels = ["kind", "node_ids"]
+        self.add_to_query(query)
+
+    def get_node_ids_by_kind(self) -> dict[str, list[str]]:
+        node_ids_by_kind: dict[str, list[str]] = {}
+        for result in self.get_results():
+            kind = result.get_as_type(label="kind", return_type=str)
+            node_ids: list[str] = result.get_as_type(label="node_ids", return_type=list)
+            node_ids_by_kind[kind] = node_ids
+        return node_ids_by_kind
 
 
 class Migration042(InternalSchemaMigration):
@@ -46,15 +76,25 @@ class Migration042(InternalSchemaMigration):
         ]
         return cls(migrations=cls.migrations, **kwargs)  # type: ignore[arg-type]
 
+    async def _get_or_load_schema_branch(self, db: InfrahubDatabase, branch: Branch) -> SchemaBranch:
+        try:
+            if registry.schema.has_schema_branch(branch.name):
+                return registry.schema.get_schema_branch(branch.name)
+        except InitializationError:
+            pass
+        schema_manager = SchemaManager()
+        internal_schema_root = SchemaRoot(**internal_schema)
+        schema_manager.register_schema(schema=internal_schema_root)
+        registry.schema = schema_manager
+        return await schema_manager.load_schema_from_db(db=db, branch=branch)
+
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
 
-        # load schemas from database into registry
-        initialize_lock()
-        await initialization(db=db)
-
-        default_branch = registry.get_branch_from_registry()
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        root_node = await get_root_node(db=db, initialize=False)
+        default_branch_name = root_node.default_branch
+        default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
+        schema_branch = await self._get_or_load_schema_branch(db=db, branch=default_branch)
 
         migrations = list(self.migrations)
 
@@ -85,6 +125,55 @@ class Migration042(InternalSchemaMigration):
             for migration in migrations:
                 try:
                     execution_result = await migration.execute(db=db, branch=default_branch)
+                    result.errors.extend(execution_result.errors)
+                    progress.update(update_task, advance=1)
+                except Exception as exc:
+                    result.errors.append(str(exc))
+                    return result
+
+        return result
+
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        result = MigrationResult()
+
+        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
+
+        migrations = []
+        get_added_nodes_by_kind_for_branch_query = await GetAddedNodesByKindForBranchQuery.init(db=db, branch=branch)
+        await get_added_nodes_by_kind_for_branch_query.execute(db=db)
+        node_ids_by_kind = get_added_nodes_by_kind_for_branch_query.get_node_ids_by_kind()
+
+        for node_kind, node_ids in node_ids_by_kind.items():
+            schema = schema_branch.get(name=node_kind, duplicate=False)
+            migrations.extend(
+                [
+                    NodeAttributeAddMigration(
+                        uuids=node_ids,
+                        new_node_schema=schema,
+                        previous_node_schema=schema,
+                        schema_path=SchemaPath(
+                            schema_kind=schema.kind, path_type=SchemaPathType.ATTRIBUTE, field_name="human_friendly_id"
+                        ),
+                    ),
+                    NodeAttributeAddMigration(
+                        uuids=node_ids,
+                        new_node_schema=schema,
+                        previous_node_schema=schema,
+                        schema_path=SchemaPath(
+                            schema_kind=schema.kind, path_type=SchemaPathType.ATTRIBUTE, field_name="display_label"
+                        ),
+                    ),
+                ]
+            )
+
+        with Progress() as progress:
+            update_task = progress.add_task(
+                f"Adding HFID and display label to nodes on branch {branch.name}", total=len(migrations)
+            )
+
+            for migration in migrations:
+                try:
+                    execution_result = await migration.execute(db=db, branch=branch)
                     result.errors.extend(execution_result.errors)
                     progress.update(update_task, advance=1)
                 except Exception as exc:
