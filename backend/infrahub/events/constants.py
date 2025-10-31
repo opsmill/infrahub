@@ -1,8 +1,8 @@
-from enum import Enum
+from enum import StrEnum
 
 EVENT_NAMESPACE = "infrahub"
 
 
-class EventSortOrder(str, Enum):
+class EventSortOrder(StrEnum):
     ASC = "asc"
     DESC = "desc"

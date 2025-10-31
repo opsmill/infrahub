@@ -59,7 +59,7 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("link", { name: "View all branches" }).click();
       await expect(page).toHaveURL(/.*\/branches/);
 
-      await page.getByTestId("branches-items").getByText(BRANCH_NAME_1).click();
+      await page.getByLabel("Branches list").getByText(BRANCH_NAME_1).click();
       await expect(page.getByText(`Name${BRANCH_NAME_1}`)).toBeVisible();
       expect(page.url()).toContain(`/branches/${BRANCH_NAME_1}`);
     });

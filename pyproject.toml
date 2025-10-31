@@ -33,6 +33,7 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^6.0.0", extras = ["hiredis"] }
 typer = "0.12.5"
+click = "8.1.7"
 prefect = "3.4.23"
 prefect-redis = "0.2.5"
 ujson = "^5"
@@ -459,7 +460,7 @@ disable_error_code = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 exclude = [
     ".git",
@@ -731,21 +732,22 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN001",  # Missing type annotation for function argument
-    "ANN002",  # Missing type annotation for `*args`
-    "ANN003",  # Missing type annotation for `**kwargs`
-    "ANN201",  # Missing return type annotation for public function
-    "ANN202",  # Missing return type annotation for private function
-    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
-    "PLR0915", # Too many statements
-    "PT003",   # `scope='function'` is implied in `@pytest.fixture()`
-    "PT007",   # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
-    "PT006",   # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
-    "PT011",   # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
-    "PT012",   # `pytest.raises()` block should contain a single simple statement
-    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
-    "PT018",   # Assertion should be broken down into multiple parts
-    "PT021",   # Use `yield` instead of `request.addfinalizer`
+    "ANN001",   # Missing type annotation for function argument
+    "ANN002",   # Missing type annotation for `*args`
+    "ANN003",   # Missing type annotation for `**kwargs`
+    "ANN201",   # Missing return type annotation for public function
+    "ANN202",   # Missing return type annotation for private function
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ASYNC109", # Async function definition with a `timeout` parameter
+    "PLR0915",  # Too many statements
+    "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
+    "PT018",    # Assertion should be broken down into multiple parts
+    "PT021",    # Use `yield` instead of `request.addfinalizer`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -755,6 +757,9 @@ allow-dunder-method-names = [
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
 ]
 
+"backend/tests/unit/graphql/test_schema_sort.py" = [
+    "W293", # Blank line contains whitespace
+]
 
 "models/infrastructure_edge.py" = [
     "S106", # Hardcoded password

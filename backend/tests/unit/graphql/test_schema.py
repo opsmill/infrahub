@@ -1,11 +1,15 @@
 from graphql.type.definition import GraphQLList, GraphQLNonNull, GraphQLObjectType
 
+from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 
 
-async def test_schema_is_nonnull(db: InfrahubDatabase, default_branch, car_person_schema):
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+async def test_schema_is_nonnull(db: InfrahubDatabase, default_branch: Branch, car_person_schema: None) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    assert gql_params.schema.query_type
 
     for name, field in gql_params.schema.query_type.fields.items():
         # ------------------------------------------------------------

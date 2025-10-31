@@ -19,7 +19,7 @@ export const SearchActions = () => {
   const generics = useAtomValue(genericSchemasAtom);
   const models: ModelSchema[] = [...nodes, ...generics];
 
-  const { data: menuData, isPending, isError } = useMenu();
+  const { data: menuData, isPending, isError } = useMenu({ enabled: false }); // prevent fetching menu, data should be already cached
 
   const menuItems = useMemo(() => {
     if (!menuData) return [];

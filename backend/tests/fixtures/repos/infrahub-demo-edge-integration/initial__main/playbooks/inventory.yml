@@ -1,0 +1,34 @@
+---
+plugin: opsmill.infrahub.inventory
+api_endpoint: "http://localhost:8000"
+token: 06438eb2-8019-4776-878c-0941b1f1d1ec
+validate_certs: false
+
+# strict: True
+
+branch: "main"
+
+nodes:
+  InfraDevice:
+    include:
+      - name
+      - platform.ansible_network_os
+      - primary_address.address
+      - site.name
+      - role
+      - asn.asn
+
+compose:
+  hostname: name
+  platform: platform.ansible_network_os
+  ansible_host: primary_address.address | ansible.utils.ipaddr('address')
+  site: site.name
+  asn: asn.asn
+
+keyed_groups:
+  - prefix: site
+    key: site
+  - prefix: role
+    key: role.name
+  - prefix: platform
+    key: platform

@@ -6,9 +6,9 @@ title: Resources testing framework
 
 ## Summary
 
-Infrahub allows users to define tests to ensure that [transformations](../topics/transformation) and [checks](../topics/check) are working as intended. This can be an important step while writing Infrahub related resources as it makes sure that they keep returning the same expected values over time and version bumps.
+Infrahub allows users to define tests to ensure that [transformations](../topics/transformation.mdx) and [checks](../topics/check.mdx) are working as intended. This can be an important step while writing Infrahub related resources as it makes sure that they keep returning the same expected values over time and version bumps.
 
-These tests are based on [pytest](https://docs.pytest.org/) but do not require users to write any Python code. Tests can be run via a command line and the `pytest` executable but they are also integrated within the CI pipelines of [proposed changes](../topics/proposed-change).
+These tests are based on [pytest](https://docs.pytest.org/) but do not require users to write any Python code. Tests can be run via a command line and the `pytest` executable but they are also integrated within the CI pipelines of [proposed changes](../topics/proposed-change.mdx).
 
 ## Types of test
 
@@ -31,7 +31,7 @@ infrahub_tests:
 
 The `version: "1.0"` line defines the version of the test declaration file. The syntax of this file is subject to changes in the future as the testing framework gets improved.
 
-All Jinja2 transforms, Python transforms, checks and GraphQL queries declared in a repository [configuration file](../reference/dotinfrahub) can be tested.
+All Jinja2 transforms, Python transforms, checks and GraphQL queries declared in a repository [configuration file](../reference/dotinfrahub.mdx) can be tested.
 
 Tests are declared using a two level hierarchy, they are grouped by resources like:
 
@@ -45,7 +45,7 @@ infrahub_tests:
           kind: TypeOfTest
 ```
 
-All available keys and their values are listed in the tests configuration file [reference](../reference/infrahub-tests).
+All available keys and their values are listed in the tests configuration file [reference](../reference/infrahub-tests.mdx).
 
 ## Real life example
 

@@ -5,7 +5,7 @@ ARG PYTHON_VER=3.12
 ARG POETRY_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
 
 ENV PATH="${PATH}:/root/.local/bin" \
     PROMETHEUS_MULTIPROC_DIR="/prom_shared" \

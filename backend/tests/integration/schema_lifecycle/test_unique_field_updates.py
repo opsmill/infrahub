@@ -268,6 +268,13 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingPerson", "field": None}],
+                    "message": "display_labels are deprecated, use display_label instead",
+                }
+            ],
         }
 
     async def test_step02_load_more_fields(
@@ -347,6 +354,13 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingPerson", "field": None}],
+                    "message": "display_labels are deprecated, use display_label instead",
+                }
+            ],
         }
 
     async def test_step03_load_unique_fields(
@@ -428,6 +442,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step04_load_renamed_fields(
@@ -502,6 +517,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step05_load_remove_original_unique(
@@ -569,6 +585,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step06_load_remove_unique_attr_from_generic(

@@ -230,3 +230,16 @@ async def test_download_schema_anonymous_account(
     with client:
         response = client.get("/schema.graphql")
         assert response.status_code == 200 if allow_anonymous_access else 401
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_download_graphql_schema_sorted(
+    db: InfrahubDatabase, client, client_headers, allow_anonymous_access: bool
+):
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.get("/schema.graphql?sorted=true")
+        assert response.text
+        assert response.status_code == 200 if allow_anonymous_access else 401
