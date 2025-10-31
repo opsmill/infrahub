@@ -39,7 +39,7 @@ GraphQL is the primary API to interact with data, and allows access to everythin
 
 - By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/graphql`
 - The Frontend utilizes the GraphQL API for most tasks
-- More information can be found in the [GraphQL topic](../topics/graphql)
+- More information can be found in the [GraphQL topic](../topics/graphql.mdx)
 
 ### REST API
 
@@ -73,7 +73,7 @@ One of the three pillars Infrahub is built on is the idea of having unified stor
 
 When integrating a Git repository with Infrahub, the Task worker will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
 
-More information can be found in the [external repositories guide](../guides/repository)
+More information can be found in the [external repositories guide](../guides/repository.mdx)
 
 ## Data input and sync
 
@@ -82,7 +82,7 @@ More information can be found in the [external repositories guide](../guides/rep
 When a schema has been loaded into Infrahub, data can be populated or synced through multiple methods:
 
 - Via the WebUI: users can add, modify, and delete objects
-- Via [infrahub-sync](https://docs.infrahub.app/sync)
+- Via [infrahub-sync]($(base_url)sync)
 - Via the [Infrahub SDK]($(base_url)python-sdk/introduction), which simplifies working with the GraphQL API:
   - One-time imports can be done similar to this [Python example](https://github.com/opsmill/infrahub-demo-dc-fabric/blob/main/generators/create_basic.py)
   - Integration with other systems
@@ -98,11 +98,11 @@ These integrations transform Infrahub into a centralized source of truth for inf
 
 ### Ansible integration
 
-This integration is provided through the [`opsmill.infrahub` Ansible Collection](https://docs.infrahub.app/ansible/). It allows Infrahub to be used as a dynamic inventory source for Ansible, enabling management of infrastructure based on data stored in Infrahub.
+This integration is provided through the [`opsmill.infrahub` Ansible Collection]($(base_url)ansible/). It allows Infrahub to be used as a dynamic inventory source for Ansible, enabling management of infrastructure based on data stored in Infrahub.
 
 ### Nornir integration
 
-Nornir is a Python-based automation framework primarily used for network automation. The [Infrahub plugin for Nornir](https://docs.infrahub.app/nornir/) enables Infrahub to serve as an inventory source, providing a streamlined solution for managing network devices and configurations.
+Nornir is a Python-based automation framework primarily used for network automation. The [Infrahub plugin for Nornir]($(base_url)nornir/) enables Infrahub to serve as an inventory source, providing a streamlined solution for managing network devices and configurations.
 
 ### Webhooks
 

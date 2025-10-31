@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from enum import Enum
+from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
 from typing import cast
 
@@ -444,7 +444,7 @@ PLATFORMS = (
 )
 
 
-class DevicePatternName(str, Enum):
+class DevicePatternName(StrEnum):
     LEAF = "LEAF"
     CORE = "CORE"
     EDGE = "EDGE"

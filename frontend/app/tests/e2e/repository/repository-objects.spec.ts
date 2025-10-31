@@ -20,16 +20,9 @@ test.describe("Repository - Creation and objects view", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("Create repository and access objects view", async ({ page }) => {
     await page.goto("/objects/CoreGenericRepository");
+    await expect(page.getByRole("link", { name: "demo-edge" })).toBeVisible();
     await page.getByTestId("create-object-button").click();
     await page.getByRole("combobox", { name: "Select an object type" }).click();
     await page.getByRole("option", { name: "Read-Only Repository Core" }).click();

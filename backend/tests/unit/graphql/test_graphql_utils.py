@@ -27,9 +27,12 @@ def generate_graphql_schema(
     )
 
 
-async def test_schema_models(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str):
+async def test_schema_models(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: None, query_01: str
+) -> None:
     document = parse(query_01)
-    schema = generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    schema = generate_graphql_schema(db=db, branch=default_branch)
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {
@@ -49,7 +52,8 @@ async def test_schema_models_generics(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_02: str
 ):
     document = parse(query_02)
-    schema = generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    schema = generate_graphql_schema(db=db, branch=default_branch)
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {

@@ -4,7 +4,7 @@ import os
 import platform
 import re
 import sys
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,12 +17,12 @@ if TYPE_CHECKING:
     from ruamel.yaml.main import YAML
 
 
-class DatabaseType(str, Enum):
+class DatabaseType(StrEnum):
     NEO4J = "neo4j"
     MEMGRAPH = "memgraph"
 
 
-class Namespace(str, Enum):
+class Namespace(StrEnum):
     DEFAULT = "default"  # aka demo
     DEV = "dev"
     TEST = "test"

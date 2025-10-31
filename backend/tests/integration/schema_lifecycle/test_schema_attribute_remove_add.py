@@ -152,6 +152,13 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
 
     async def test_step02_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02):
@@ -185,6 +192,13 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
         assert success
 

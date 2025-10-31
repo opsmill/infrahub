@@ -62,6 +62,7 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         }
         """
         self.add_to_query(query=query)
+        self.order_by = ["kind"]
         self.return_labels = ["kind", "attr_names", "rel_names"]
 
     async def get_field_summaries(self) -> list[NodeDiffFieldSummary]:

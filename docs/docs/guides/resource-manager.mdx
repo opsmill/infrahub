@@ -30,7 +30,7 @@ In this guide, you'll learn how to implement three common resource manager use c
 
 - A running Infrahub instance
 - Basic understanding of GraphQL
-- Understanding of the [Resource Manager concepts](../topics/resource-manager)
+- Understanding of the [Resource Manager concepts](../topics/resource-manager.mdx)
 - `infrahubctl` CLI installed (for schema loading)
 
 ## Load the schema
@@ -240,7 +240,7 @@ We can use the resource manager to allocate resources out of a pool in 2 differe
 1. Directly allocate a resource out of a pool. This is typically used when you need to allocate a resource that has no relation to other nodes. For example, allocating an IP address out of a pool that will be assigned to something that is not stored in Infrahub.
 2. Allocate a resource out of a pool to a relationship of a node. For example, create a device and allocate an IP address out of a pool and assign it to the device
 
-Please refer to the [Resource Manager Topic](../topics/resource-manager) for further details.
+Please refer to the [Resource Manager Topic](../topics/resource-manager.mdx) for further details.
 
 #### Direct allocation of an IP address
 
@@ -276,7 +276,7 @@ In the mutation we passed additional data to the allocated resource, in this cas
 
 :::success Idempotent allocation of an IP address
 
-You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator).
+You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator.mdx).
 
 Execute this mutation twice, note the identifier. The resulting IP address should be the same, as well as the id. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
@@ -727,7 +727,7 @@ We can use the resource manager to allocate resources out of a pool in 2 differe
 1. Directly allocate a resource out of a pool. This is typically used when you need to allocate a resource that has no relation to other nodes. For example, allocating an IP address out of a pool that will be assigned to something that is not stored in Infrahub.
 2. Allocate a resource out of a pool to a relationship of a node. For example, create a device and allocate an IP address out of a pool and assign it to the device
 
-Please refer to the [Resource Manager Topic](../topics/resource-manager) for further details.
+Please refer to the [Resource Manager Topic](../topics/resource-manager.mdx) for further details.
 
 #### Direct allocation of an IP prefix
 
@@ -805,7 +805,7 @@ This feature is not yet available directly via the Web Interface.
 
 :::success
 
-You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator).
+You can allocate resources in an idempotent way by specifying an identifier in the GraphQL mutation. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../topics/generator.mdx).
 
 Execute this mutation twice, note the identifier. The resulting IP prefix should be the same, as well as the id. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
@@ -1148,8 +1148,6 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 - [Resource Manager topic](../topics/resource-manager.mdx) - Deep dive into resource manager concepts and architecture
 - [Resource Manager blog post](https://opsmill.com/blog/infrahub-resource-manager-automate-allocation/) - Alternative learning resource with additional examples
-- [Generators topic](../topics/generator) - Learn how to automate resource allocation workflows
-- [IPAM topic](../topics/ipam) - Additional information about IP address management
-- [Schema topic](./import-schema) - Learn more about creating and managing schemas in Infrahub
-- [IPAM topic](../topics/ipam) - Additional information about IP address management
-- [Schema topic](./import-schema) - Learn more about creating and managing schemas in Infrahub
+- [Generators topic](../topics/generator.mdx) - Learn how to automate resource allocation workflows
+- [IPAM topic](../topics/ipam.mdx) - Additional information about IP address management
+- [Schema topic](./import-schema.mdx) - Learn more about creating and managing schemas in Infrahub

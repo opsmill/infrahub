@@ -100,7 +100,9 @@ type ArtifactEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -148,6 +150,7 @@ type Branch {
   is_isolated: Boolean @deprecated(reason: "non isolated mode is not supported anymore")
   name: String!
   origin_branch: String
+  status: BranchStatus!
   sync_with_git: Boolean
 }
 
@@ -155,6 +158,16 @@ type BranchCreate {
   object: Branch
   ok: Boolean
   task: TaskInfo
+}
+
+input BranchCreateInput {
+  branched_from: String
+  description: String
+  id: String
+  is_isolated: Boolean @deprecated(reason: "Non isolated mode is not supported anymore")
+  name: String!
+  origin_branch: String
+  sync_with_git: Boolean
 }
 
 type BranchCreatedEvent implements EventNodeInterface {
@@ -170,7 +183,9 @@ type BranchCreatedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -181,16 +196,6 @@ type BranchCreatedEvent implements EventNodeInterface {
   primary_node: RelatedNode
   """Related Infrahub nodes this event is associated with."""
   related_nodes: [RelatedNode!]!
-}
-
-input BranchCreateInput {
-  branched_from: String
-  description: String
-  id: String
-  is_isolated: Boolean @deprecated(reason: "Non isolated mode is not supported anymore")
-  name: String!
-  origin_branch: String
-  sync_with_git: Boolean
 }
 
 type BranchDelete {
@@ -211,7 +216,9 @@ type BranchDeletedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -246,7 +253,9 @@ type BranchMergedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -281,7 +290,9 @@ type BranchRebasedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -290,18 +301,29 @@ type BranchRebasedEvent implements EventNodeInterface {
   payload: GenericScalar!
   """The primary Infrahub node this event is associated with."""
   primary_node: RelatedNode
-  """The name of the branch that was rebased and aligned with the default branch"""
+  """
+  The name of the branch that was rebased and aligned with the default branch
+  """
   rebased_branch: String!
   """Related Infrahub nodes this event is associated with."""
   related_nodes: [RelatedNode!]!
 }
 
-"""This enum is only used to communicate a permission decision relative to a branch."""
+"""
+This enum is only used to communicate a permission decision relative to a branch.
+"""
 enum BranchRelativePermissionDecision {
   ALLOW
   ALLOW_DEFAULT
   ALLOW_OTHER
   DENY
+}
+
+"""An enumeration."""
+enum BranchStatus {
+  DELETING
+  NEED_REBASE
+  OPEN
 }
 
 type BranchUpdate {
@@ -437,7 +459,9 @@ input BuiltinIPPrefixUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type BuiltinTag implements CoreNode {
   _updated_at: DateTime
   """None"""
@@ -454,7 +478,9 @@ type BuiltinTag implements CoreNode {
   subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type BuiltinTagCreate {
   object: BuiltinTag
   ok: Boolean
@@ -469,12 +495,16 @@ input BuiltinTagCreateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type BuiltinTagDelete {
   ok: Boolean
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type BuiltinTagUpdate {
   object: BuiltinTag
   ok: Boolean
@@ -490,7 +520,9 @@ input BuiltinTagUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type BuiltinTagUpsert {
   object: BuiltinTag
   ok: Boolean
@@ -501,9 +533,21 @@ input BuiltinTagUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   profiles: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
+}
+
+"""An enumeration."""
+enum CheckType {
+  ALL
+  ARTIFACT
+  DATA
+  GENERATOR
+  REPOSITORY
+  SCHEMA
+  TEST
+  USER
 }
 
 """Attribute of type Checkbox"""
@@ -538,18 +582,6 @@ input CheckboxAttributeUpdate {
   value: Boolean
 }
 
-"""An enumeration."""
-enum CheckType {
-  ALL
-  ARTIFACT
-  DATA
-  GENERATOR
-  REPOSITORY
-  SCHEMA
-  TEST
-  USER
-}
-
 type ConflictDetails {
   base_branch_action: DiffAction!
   base_branch_changed_at: DateTime!
@@ -575,7 +607,9 @@ input ContextAccountInput {
 }
 
 input ContextInput {
-  """The account context can be used to override the account information that will be associated with the mutation"""
+  """
+  The account context can be used to override the account information that will be associated with the mutation
+  """
   account: ContextAccountInput
 }
 
@@ -710,7 +744,7 @@ input CoreAccountGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   roles: [RelatedNodeInput]
   subscribers: [RelatedNodeInput]
@@ -779,7 +813,7 @@ input CoreAccountRoleUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   permissions: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -816,8 +850,8 @@ input CoreAccountUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  password: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  password: TextAttributeUpdate
   status: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -853,7 +887,9 @@ input CoreActionUpdateInput {
   """Short descriptive name"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """The triggers that would execute this action once the triggering condition is met"""
+  """
+  The triggers that would execute this action once the triggering condition is met
+  """
   triggers: [RelatedNodeInput]
 }
 
@@ -985,17 +1021,17 @@ input CoreArtifactCheckUpsertInput {
   created_at: TextAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   line_number: NumberAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   storage_id: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 type CoreArtifactCreate {
@@ -1088,17 +1124,17 @@ type CoreArtifactDefinitionUpsert {
 }
 
 input CoreArtifactDefinitionUpsertInput {
-  artifact_name: TextAttributeUpdate!
-  content_type: TextAttributeUpdate!
+  artifact_name: TextAttributeUpdate
+  content_type: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  parameters: JSONAttributeUpdate!
+  name: TextAttributeUpdate
+  parameters: JSONAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  targets: RelatedNodeInput!
-  transformation: RelatedNodeInput!
+  targets: RelatedNodeInput
+  transformation: RelatedNodeInput
 }
 
 type CoreArtifactDelete {
@@ -1211,7 +1247,7 @@ type CoreArtifactThreadUpsert {
 
 input CoreArtifactThreadUpsertInput {
   artifact_id: TextAttributeUpdate
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
@@ -1253,15 +1289,15 @@ type CoreArtifactUpsert {
 
 input CoreArtifactUpsertInput {
   checksum: TextAttributeUpdate
-  content_type: TextAttributeUpdate!
-  definition: RelatedNodeInput!
+  content_type: TextAttributeUpdate
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  object: RelatedNodeInput!
+  name: TextAttributeUpdate
+  object: RelatedNodeInput
   parameters: JSONAttributeUpdate
-  status: TextAttributeUpdate!
+  status: TextAttributeUpdate
   """ID of the file in the object store"""
   storage_id: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -1343,12 +1379,12 @@ input CoreArtifactValidatorUpsertInput {
   checks: [RelatedNodeInput]
   completed_at: TextAttributeUpdate
   conclusion: TextAttributeUpdate
-  definition: RelatedNodeInput!
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -1444,14 +1480,14 @@ type CoreChangeCommentUpsert {
 }
 
 input CoreChangeCommentUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
-  text: TextAttributeUpdate!
+  text: TextAttributeUpdate
 }
 
 """A thread on proposed change"""
@@ -1521,7 +1557,7 @@ type CoreChangeThreadUpsert {
 }
 
 input CoreChangeThreadUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
@@ -1632,16 +1668,16 @@ type CoreCheckDefinitionUpsert {
 }
 
 input CoreCheckDefinitionUpsertInput {
-  class_name: TextAttributeUpdate!
+  class_name: TextAttributeUpdate
   description: TextAttributeUpdate
-  file_path: TextAttributeUpdate!
+  file_path: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parameters: JSONAttributeUpdate
   query: RelatedNodeInput
-  repository: RelatedNodeInput!
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
   targets: RelatedNodeInput
@@ -1819,13 +1855,13 @@ input CoreCustomWebhookUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """Only send node mutation events for nodes of this kind"""
   node_kind: TextAttributeUpdate
   shared_key: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   transformation: RelatedNodeInput
-  url: TextAttributeUpdate!
+  url: TextAttributeUpdate
   validate_certificates: CheckboxAttributeUpdate
 }
 
@@ -1918,21 +1954,21 @@ type CoreDataCheckUpsert {
 
 input CoreDataCheckUpsertInput {
   conclusion: TextAttributeUpdate
-  conflicts: JSONAttributeUpdate!
+  conflicts: JSONAttributeUpdate
   created_at: TextAttributeUpdate
   enriched_conflict_id: TextAttributeUpdate
   hfid: [String]
   id: String
   keep_branch: TextAttributeUpdate
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """A check to validate the data integrity between two branches"""
@@ -2012,7 +2048,7 @@ input CoreDataValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -2108,15 +2144,15 @@ input CoreFileCheckUpsertInput {
   files: ListAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """A thread related to a file on a proposed change"""
@@ -2201,7 +2237,7 @@ type CoreFileThreadUpsert {
 }
 
 input CoreFileThreadUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   commit: TextAttributeUpdate
   created_at: TextAttributeUpdate
@@ -2212,7 +2248,7 @@ input CoreFileThreadUpsertInput {
   label: TextAttributeUpdate
   line_number: NumberAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  repository: RelatedNodeInput!
+  repository: RelatedNodeInput
   resolved: CheckboxAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -2251,7 +2287,9 @@ input CoreGeneratorActionCreateInput {
   """Short descriptive name"""
   name: TextAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
-  """The triggers that would execute this action once the triggering condition is met"""
+  """
+  The triggers that would execute this action once the triggering condition is met
+  """
   triggers: [RelatedNodeInput]
 }
 
@@ -2277,7 +2315,9 @@ input CoreGeneratorActionUpdateInput {
   """Short descriptive name"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """The triggers that would execute this action once the triggering condition is met"""
+  """
+  The triggers that would execute this action once the triggering condition is met
+  """
   triggers: [RelatedNodeInput]
 }
 
@@ -2291,14 +2331,16 @@ input CoreGeneratorActionUpsertInput {
   """A detailed description of the action"""
   description: TextAttributeUpdate
   """The generator definition to execute once this action gets triggered"""
-  generator: RelatedNodeInput!
+  generator: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   """Short descriptive name"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """The triggers that would execute this action once the triggering condition is met"""
+  """
+  The triggers that would execute this action once the triggering condition is met
+  """
   triggers: [RelatedNodeInput]
 }
 
@@ -2378,7 +2420,7 @@ input CoreGeneratorAwareGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
@@ -2467,16 +2509,16 @@ input CoreGeneratorCheckUpsertInput {
   created_at: TextAttributeUpdate
   hfid: [String]
   id: String
-  instance: TextAttributeUpdate!
-  kind: TextAttributeUpdate!
+  instance: TextAttributeUpdate
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 type CoreGeneratorDefinition implements CoreNode & CoreTaskTarget {
@@ -2564,21 +2606,21 @@ type CoreGeneratorDefinitionUpsert {
 }
 
 input CoreGeneratorDefinitionUpsertInput {
-  class_name: TextAttributeUpdate!
+  class_name: TextAttributeUpdate
   convert_query_response: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   execute_after_merge: CheckboxAttributeUpdate
   execute_in_proposed_change: CheckboxAttributeUpdate
-  file_path: TextAttributeUpdate!
+  file_path: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  parameters: JSONAttributeUpdate!
-  query: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  name: TextAttributeUpdate
+  parameters: JSONAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
-  targets: RelatedNodeInput!
+  targets: RelatedNodeInput
 }
 
 """Group of nodes that are created by a generator. (local)"""
@@ -2657,7 +2699,7 @@ input CoreGeneratorGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
@@ -2720,13 +2762,13 @@ type CoreGeneratorInstanceUpsert {
 }
 
 input CoreGeneratorInstanceUpsertInput {
-  definition: RelatedNodeInput!
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  object: RelatedNodeInput!
-  status: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  object: RelatedNodeInput
+  status: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -2806,12 +2848,12 @@ input CoreGeneratorValidatorUpsertInput {
   checks: [RelatedNodeInput]
   completed_at: TextAttributeUpdate
   conclusion: TextAttributeUpdate
-  definition: RelatedNodeInput!
+  definition: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -2969,7 +3011,7 @@ type CoreGlobalPermissionUpsert {
 }
 
 input CoreGlobalPermissionUpsertInput {
-  action: TextAttributeUpdate!
+  action: TextAttributeUpdate
   """Decide to deny or allow the action at a global level"""
   decision: NumberAttributeUpdate
   description: TextAttributeUpdate
@@ -2999,7 +3041,9 @@ type CoreGraphQLQuery implements CoreNode {
   models: ListAttribute
   """None (required)"""
   name: TextAttribute
-  """Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'"""
+  """
+  Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'
+  """
   operations: ListAttribute
   """None (required)"""
   query: TextAttribute
@@ -3115,10 +3159,10 @@ input CoreGraphQLQueryGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parameters: JSONAttributeUpdate
   parent: RelatedNodeInput
-  query: RelatedNodeInput!
+  query: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
 
@@ -3151,8 +3195,8 @@ input CoreGraphQLQueryUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  query: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  query: TextAttributeUpdate
   repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
@@ -3177,7 +3221,9 @@ interface CoreGroup {
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type CoreGroupAction implements CoreAction & CoreNode {
   _updated_at: DateTime
   """A detailed description of the action"""
@@ -3188,7 +3234,9 @@ type CoreGroupAction implements CoreAction & CoreNode {
   hfid: [String!]
   """Unique identifier"""
   id: String!
-  """Defines if the action should add or remove members from a group when triggered"""
+  """
+  Defines if the action should add or remove members from a group when triggered
+  """
   member_action: Dropdown
   member_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Short descriptive name"""
@@ -3197,7 +3245,9 @@ type CoreGroupAction implements CoreAction & CoreNode {
   triggers(active__is_protected: Boolean, active__is_visible: Boolean, active__owner__id: ID, active__source__id: ID, active__value: Boolean, active__values: [Boolean], branch_scope__is_protected: Boolean, branch_scope__is_visible: Boolean, branch_scope__owner__id: ID, branch_scope__source__id: ID, branch_scope__value: String, branch_scope__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreTriggerRule!
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type CoreGroupActionCreate {
   object: CoreGroupAction
   ok: Boolean
@@ -3209,22 +3259,30 @@ input CoreGroupActionCreateInput {
   """The target group of this action"""
   group: RelatedNodeInput
   id: String
-  """Defines if the action should add or remove members from a group when triggered"""
+  """
+  Defines if the action should add or remove members from a group when triggered
+  """
   member_action: TextAttributeCreate
   member_of_groups: [RelatedNodeInput]
   """Short descriptive name"""
   name: TextAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
-  """The triggers that would execute this action once the triggering condition is met"""
+  """
+  The triggers that would execute this action once the triggering condition is met
+  """
   triggers: [RelatedNodeInput]
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type CoreGroupActionDelete {
   ok: Boolean
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type CoreGroupActionUpdate {
   object: CoreGroupAction
   ok: Boolean
@@ -3237,17 +3295,23 @@ input CoreGroupActionUpdateInput {
   group: RelatedNodeInput
   hfid: [String]
   id: String
-  """Defines if the action should add or remove members from a group when triggered"""
+  """
+  Defines if the action should add or remove members from a group when triggered
+  """
   member_action: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   """Short descriptive name"""
   name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """The triggers that would execute this action once the triggering condition is met"""
+  """
+  The triggers that would execute this action once the triggering condition is met
+  """
   triggers: [RelatedNodeInput]
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type CoreGroupActionUpsert {
   object: CoreGroupAction
   ok: Boolean
@@ -3257,26 +3321,36 @@ input CoreGroupActionUpsertInput {
   """A detailed description of the action"""
   description: TextAttributeUpdate
   """The target group of this action"""
-  group: RelatedNodeInput!
+  group: RelatedNodeInput
   hfid: [String]
   id: String
-  """Defines if the action should add or remove members from a group when triggered"""
+  """
+  Defines if the action should add or remove members from a group when triggered
+  """
   member_action: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   """Short descriptive name"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  """The triggers that would execute this action once the triggering condition is met"""
+  """
+  The triggers that would execute this action once the triggering condition is met
+  """
   triggers: [RelatedNodeInput]
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type CoreGroupTriggerRule implements CoreNode & CoreTriggerRule {
   _updated_at: DateTime
   action: NestedEdgedCoreAction!
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttribute
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: Dropdown
   """A longer description to define the purpose of this trigger"""
   description: TextAttribute
@@ -3294,7 +3368,9 @@ type CoreGroupTriggerRule implements CoreNode & CoreTriggerRule {
   subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type CoreGroupTriggerRuleCreate {
   object: CoreGroupTriggerRule
   ok: Boolean
@@ -3303,9 +3379,13 @@ type CoreGroupTriggerRuleCreate {
 input CoreGroupTriggerRuleCreateInput {
   """The action to execute once the trigger conditions has been met"""
   action: RelatedNodeInput
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttributeCreate
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: TextAttributeCreate
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeCreate
@@ -3320,12 +3400,16 @@ input CoreGroupTriggerRuleCreateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type CoreGroupTriggerRuleDelete {
   ok: Boolean
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type CoreGroupTriggerRuleUpdate {
   object: CoreGroupTriggerRule
   ok: Boolean
@@ -3334,9 +3418,13 @@ type CoreGroupTriggerRuleUpdate {
 input CoreGroupTriggerRuleUpdateInput {
   """The action to execute once the trigger conditions has been met"""
   action: RelatedNodeInput
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttributeUpdate
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: TextAttributeUpdate
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeUpdate
@@ -3352,7 +3440,9 @@ input CoreGroupTriggerRuleUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type CoreGroupTriggerRuleUpsert {
   object: CoreGroupTriggerRule
   ok: Boolean
@@ -3360,22 +3450,26 @@ type CoreGroupTriggerRuleUpsert {
 
 input CoreGroupTriggerRuleUpsertInput {
   """The action to execute once the trigger conditions has been met"""
-  action: RelatedNodeInput!
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  action: RelatedNodeInput
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttributeUpdate
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: TextAttributeUpdate
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeUpdate
   """The group to match against"""
-  group: RelatedNodeInput!
+  group: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   """Indicate if the match should be for when members are added or removed"""
   member_update: TextAttributeUpdate
   """The name of the trigger rule"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -3401,9 +3495,13 @@ input CoreGroupUpdateInput {
 """A pool of IP address resources"""
 type CoreIPAddressPool implements CoreNode & CoreResourcePool & LineageSource {
   _updated_at: DateTime
-  """The object type to create when reserving a resource in the pool (required)"""
+  """
+  The object type to create when reserving a resource in the pool (required)
+  """
   default_address_type: TextAttribute
-  """The default prefix length as an integer for addresses allocated from this pool."""
+  """
+  The default prefix length as an integer for addresses allocated from this pool.
+  """
   default_prefix_length: NumberAttribute
   description: TextAttribute
   display_label: String
@@ -3427,7 +3525,9 @@ type CoreIPAddressPoolCreate {
 input CoreIPAddressPoolCreateInput {
   """The object type to create when reserving a resource in the pool"""
   default_address_type: TextAttributeCreate
-  """The default prefix length as an integer for addresses allocated from this pool."""
+  """
+  The default prefix length as an integer for addresses allocated from this pool.
+  """
   default_prefix_length: NumberAttributeCreate
   description: TextAttributeCreate
   id: String
@@ -3452,7 +3552,9 @@ type CoreIPAddressPoolUpdate {
 input CoreIPAddressPoolUpdateInput {
   """The object type to create when reserving a resource in the pool"""
   default_address_type: TextAttributeUpdate
-  """The default prefix length as an integer for addresses allocated from this pool."""
+  """
+  The default prefix length as an integer for addresses allocated from this pool.
+  """
   default_prefix_length: NumberAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
@@ -3472,16 +3574,18 @@ type CoreIPAddressPoolUpsert {
 
 input CoreIPAddressPoolUpsertInput {
   """The object type to create when reserving a resource in the pool"""
-  default_address_type: TextAttributeUpdate!
-  """The default prefix length as an integer for addresses allocated from this pool."""
+  default_address_type: TextAttributeUpdate
+  """
+  The default prefix length as an integer for addresses allocated from this pool.
+  """
   default_prefix_length: NumberAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
-  ip_namespace: RelatedNodeInput!
+  ip_namespace: RelatedNodeInput
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  resources: [RelatedIPPrefixNodeInput]!
+  name: TextAttributeUpdate
+  resources: [RelatedIPPrefixNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -3490,7 +3594,9 @@ type CoreIPPrefixPool implements CoreNode & CoreResourcePool & LineageSource {
   _updated_at: DateTime
   """None"""
   default_member_type: TextAttribute
-  """The default prefix length as an integer for prefixes allocated from this pool."""
+  """
+  The default prefix length as an integer for prefixes allocated from this pool.
+  """
   default_prefix_length: NumberAttribute
   """None"""
   default_prefix_type: TextAttribute
@@ -3515,7 +3621,9 @@ type CoreIPPrefixPoolCreate {
 
 input CoreIPPrefixPoolCreateInput {
   default_member_type: TextAttributeCreate
-  """The default prefix length as an integer for prefixes allocated from this pool."""
+  """
+  The default prefix length as an integer for prefixes allocated from this pool.
+  """
   default_prefix_length: NumberAttributeCreate
   default_prefix_type: TextAttributeCreate
   description: TextAttributeCreate
@@ -3540,7 +3648,9 @@ type CoreIPPrefixPoolUpdate {
 
 input CoreIPPrefixPoolUpdateInput {
   default_member_type: TextAttributeUpdate
-  """The default prefix length as an integer for prefixes allocated from this pool."""
+  """
+  The default prefix length as an integer for prefixes allocated from this pool.
+  """
   default_prefix_length: NumberAttributeUpdate
   default_prefix_type: TextAttributeUpdate
   description: TextAttributeUpdate
@@ -3561,16 +3671,18 @@ type CoreIPPrefixPoolUpsert {
 
 input CoreIPPrefixPoolUpsertInput {
   default_member_type: TextAttributeUpdate
-  """The default prefix length as an integer for prefixes allocated from this pool."""
+  """
+  The default prefix length as an integer for prefixes allocated from this pool.
+  """
   default_prefix_length: NumberAttributeUpdate
   default_prefix_type: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
-  ip_namespace: RelatedNodeInput!
+  ip_namespace: RelatedNodeInput
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  resources: [RelatedIPPrefixNodeInput]!
+  name: TextAttributeUpdate
+  resources: [RelatedIPPrefixNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -3696,8 +3808,8 @@ input CoreMenuItemUpsertInput {
   kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  namespace: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  namespace: TextAttributeUpdate
   order_weight: NumberAttributeUpdate
   parent: RelatedNodeInput
   path: TextAttributeUpdate
@@ -3757,7 +3869,9 @@ type CoreNodeTriggerAttributeMatch implements CoreNode & CoreNodeTriggerMatch {
   trigger: NestedEdgedCoreNodeTriggerRule!
   """The value the attribute is updated to"""
   value: TextAttribute
-  """The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both"""
+  """
+  The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both
+  """
   value_match: Dropdown
   """The previous value of the targeted attribute"""
   value_previous: TextAttribute
@@ -3779,7 +3893,9 @@ input CoreNodeTriggerAttributeMatchCreateInput {
   trigger: RelatedNodeInput
   """The value the attribute is updated to"""
   value: TextAttributeCreate
-  """The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both"""
+  """
+  The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both
+  """
   value_match: TextAttributeCreate
   """The previous value of the targeted attribute"""
   value_previous: TextAttributeCreate
@@ -3807,7 +3923,9 @@ input CoreNodeTriggerAttributeMatchUpdateInput {
   trigger: RelatedNodeInput
   """The value the attribute is updated to"""
   value: TextAttributeUpdate
-  """The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both"""
+  """
+  The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both
+  """
   value_match: TextAttributeUpdate
   """The previous value of the targeted attribute"""
   value_previous: TextAttributeUpdate
@@ -3821,22 +3939,26 @@ type CoreNodeTriggerAttributeMatchUpsert {
 
 input CoreNodeTriggerAttributeMatchUpsertInput {
   """The attribue to match against"""
-  attribute_name: TextAttributeUpdate!
+  attribute_name: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
   """The node trigger that this match is connected to"""
-  trigger: RelatedNodeInput!
+  trigger: RelatedNodeInput
   """The value the attribute is updated to"""
   value: TextAttributeUpdate
-  """The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both"""
+  """
+  The value_match defines how the update will be evaluated, if it has to match the new value, the previous value or both
+  """
   value_match: TextAttributeUpdate
   """The previous value of the targeted attribute"""
   value_previous: TextAttributeUpdate
 }
 
-"""A trigger match condition related to changes to nodes within the Infrahub database"""
+"""
+A trigger match condition related to changes to nodes within the Infrahub database
+"""
 interface CoreNodeTriggerMatch {
   display_label: String
   """Human friendly identifier"""
@@ -3848,7 +3970,9 @@ interface CoreNodeTriggerMatch {
   trigger: NestedEdgedCoreNodeTriggerRule!
 }
 
-"""A trigger match condition related to changes to nodes within the Infrahub database"""
+"""
+A trigger match condition related to changes to nodes within the Infrahub database
+"""
 type CoreNodeTriggerMatchUpdate {
   object: CoreNodeTriggerMatch
   ok: Boolean
@@ -3872,7 +3996,9 @@ type CoreNodeTriggerRelationshipMatch implements CoreNode & CoreNodeTriggerMatch
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  """Indicates if the relationship was added or removed or just updated in any way"""
+  """
+  Indicates if the relationship was added or removed or just updated in any way
+  """
   modification_type: Dropdown
   """The node_id of the relationship peer to match against"""
   peer: TextAttribute
@@ -3891,7 +4017,9 @@ type CoreNodeTriggerRelationshipMatchCreate {
 input CoreNodeTriggerRelationshipMatchCreateInput {
   id: String
   member_of_groups: [RelatedNodeInput]
-  """Indicates if the relationship was added or removed or just updated in any way"""
+  """
+  Indicates if the relationship was added or removed or just updated in any way
+  """
   modification_type: TextAttributeCreate
   """The node_id of the relationship peer to match against"""
   peer: TextAttributeCreate
@@ -3917,7 +4045,9 @@ input CoreNodeTriggerRelationshipMatchUpdateInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  """Indicates if the relationship was added or removed or just updated in any way"""
+  """
+  Indicates if the relationship was added or removed or just updated in any way
+  """
   modification_type: TextAttributeUpdate
   """The node_id of the relationship peer to match against"""
   peer: TextAttributeUpdate
@@ -3938,24 +4068,32 @@ input CoreNodeTriggerRelationshipMatchUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  """Indicates if the relationship was added or removed or just updated in any way"""
+  """
+  Indicates if the relationship was added or removed or just updated in any way
+  """
   modification_type: TextAttributeUpdate
   """The node_id of the relationship peer to match against"""
   peer: TextAttributeUpdate
   """The name of the relationship to match against"""
-  relationship_name: TextAttributeUpdate!
+  relationship_name: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   """The node trigger that this match is connected to"""
-  trigger: RelatedNodeInput!
+  trigger: RelatedNodeInput
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type CoreNodeTriggerRule implements CoreNode & CoreTriggerRule {
   _updated_at: DateTime
   action: NestedEdgedCoreAction!
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttribute
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: Dropdown
   """A longer description to define the purpose of this trigger"""
   description: TextAttribute
@@ -3975,7 +4113,9 @@ type CoreNodeTriggerRule implements CoreNode & CoreTriggerRule {
   subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type CoreNodeTriggerRuleCreate {
   object: CoreNodeTriggerRule
   ok: Boolean
@@ -3984,14 +4124,20 @@ type CoreNodeTriggerRuleCreate {
 input CoreNodeTriggerRuleCreateInput {
   """The action to execute once the trigger conditions has been met"""
   action: RelatedNodeInput
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttributeCreate
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: TextAttributeCreate
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeCreate
   id: String
-  """Use matches to configure the match condition for the selected node kind"""
+  """
+  Use matches to configure the match condition for the selected node kind
+  """
   matches: [RelatedNodeInput]
   member_of_groups: [RelatedNodeInput]
   """The type of modification to match against"""
@@ -4003,12 +4149,16 @@ input CoreNodeTriggerRuleCreateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type CoreNodeTriggerRuleDelete {
   ok: Boolean
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type CoreNodeTriggerRuleUpdate {
   object: CoreNodeTriggerRule
   ok: Boolean
@@ -4017,15 +4167,21 @@ type CoreNodeTriggerRuleUpdate {
 input CoreNodeTriggerRuleUpdateInput {
   """The action to execute once the trigger conditions has been met"""
   action: RelatedNodeInput
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttributeUpdate
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: TextAttributeUpdate
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeUpdate
   hfid: [String]
   id: String
-  """Use matches to configure the match condition for the selected node kind"""
+  """
+  Use matches to configure the match condition for the selected node kind
+  """
   matches: [RelatedNodeInput]
   member_of_groups: [RelatedNodeInput]
   """The type of modification to match against"""
@@ -4037,7 +4193,9 @@ input CoreNodeTriggerRuleUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type CoreNodeTriggerRuleUpsert {
   object: CoreNodeTriggerRule
   ok: Boolean
@@ -4045,24 +4203,30 @@ type CoreNodeTriggerRuleUpsert {
 
 input CoreNodeTriggerRuleUpsertInput {
   """The action to execute once the trigger conditions has been met"""
-  action: RelatedNodeInput!
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  action: RelatedNodeInput
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttributeUpdate
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: TextAttributeUpdate
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeUpdate
   hfid: [String]
   id: String
-  """Use matches to configure the match condition for the selected node kind"""
+  """
+  Use matches to configure the match condition for the selected node kind
+  """
   matches: [RelatedNodeInput]
   member_of_groups: [RelatedNodeInput]
   """The type of modification to match against"""
-  mutation_action: TextAttributeUpdate!
+  mutation_action: TextAttributeUpdate
   """The name of the trigger rule"""
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """The kind of node to match against"""
-  node_kind: TextAttributeUpdate!
+  node_kind: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -4092,7 +4256,9 @@ type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   id: String!
   member_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
-  """The model of the object that requires integers to be allocated (required)"""
+  """
+  The model of the object that requires integers to be allocated (required)
+  """
   node: TextAttribute
   """The attribute of the selected model (required)"""
   node_attribute: TextAttribute
@@ -4162,17 +4328,17 @@ type CoreNumberPoolUpsert {
 input CoreNumberPoolUpsertInput {
   description: TextAttributeUpdate
   """The end range for the pool"""
-  end_range: NumberAttributeUpdate!
+  end_range: NumberAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """The model of the object that requires integers to be allocated"""
-  node: TextAttributeUpdate!
+  node: TextAttributeUpdate
   """The attribute of the selected model"""
-  node_attribute: TextAttributeUpdate!
+  node_attribute: TextAttributeUpdate
   """The start range for the pool"""
-  start_range: NumberAttributeUpdate!
+  start_range: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
@@ -4207,7 +4373,9 @@ type CoreObjectPermission implements CoreBasePermission & CoreNode {
   _updated_at: DateTime
   """None"""
   action: TextAttribute
-  """Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches"""
+  """
+  Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches
+  """
   decision: NumberAttribute
   description: TextAttribute
   display_label: String
@@ -4233,7 +4401,9 @@ type CoreObjectPermissionCreate {
 
 input CoreObjectPermissionCreateInput {
   action: TextAttributeCreate
-  """Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches"""
+  """
+  Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches
+  """
   decision: NumberAttributeCreate
   description: TextAttributeCreate
   id: String
@@ -4257,7 +4427,9 @@ type CoreObjectPermissionUpdate {
 
 input CoreObjectPermissionUpdateInput {
   action: TextAttributeUpdate
-  """Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches"""
+  """
+  Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches
+  """
   decision: NumberAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
@@ -4277,14 +4449,16 @@ type CoreObjectPermissionUpsert {
 
 input CoreObjectPermissionUpsertInput {
   action: TextAttributeUpdate
-  """Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches"""
+  """
+  Decide to deny or allow the action.If allowed, it can be configured for the default branch, any other branches or all branches
+  """
   decision: NumberAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  namespace: TextAttributeUpdate!
+  name: TextAttributeUpdate
+  namespace: TextAttributeUpdate
   roles: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -4386,7 +4560,7 @@ type CoreObjectThreadUpsert {
 }
 
 input CoreObjectThreadUpsertInput {
-  change: RelatedNodeInput!
+  change: RelatedNodeInput
   comments: [RelatedNodeInput]
   created_at: TextAttributeUpdate
   created_by: RelatedNodeInput
@@ -4394,7 +4568,7 @@ input CoreObjectThreadUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  object_path: TextAttributeUpdate!
+  object_path: TextAttributeUpdate
   resolved: CheckboxAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
@@ -4470,7 +4644,7 @@ input CorePasswordCredentialUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   password: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   username: TextAttributeUpdate
@@ -4596,21 +4770,23 @@ type CoreProposedChangeUpsert {
 input CoreProposedChangeUpsertInput {
   comments: [RelatedNodeInput]
   description: TextAttributeUpdate
-  destination_branch: TextAttributeUpdate!
+  destination_branch: TextAttributeUpdate
   hfid: [String]
   id: String
   is_draft: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   reviewers: [RelatedNodeInput]
-  source_branch: TextAttributeUpdate!
+  source_branch: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
   threads: [RelatedNodeInput]
   validations: [RelatedNodeInput]
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget & LineageOwner & LineageSource {
   _updated_at: DateTime
   checks(class_name__is_protected: Boolean, class_name__is_visible: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], file_path__is_protected: Boolean, file_path__is_visible: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__is_visible: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreCheckDefinition!
@@ -4639,7 +4815,9 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   transformations(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type CoreReadOnlyRepositoryCreate {
   object: CoreReadOnlyRepository
   ok: Boolean
@@ -4666,12 +4844,16 @@ input CoreReadOnlyRepositoryCreateInput {
   transformations: [RelatedNodeInput]
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type CoreReadOnlyRepositoryDelete {
   ok: Boolean
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type CoreReadOnlyRepositoryUpdate {
   object: CoreReadOnlyRepository
   ok: Boolean
@@ -4699,7 +4881,9 @@ input CoreReadOnlyRepositoryUpdateInput {
   transformations: [RelatedNodeInput]
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type CoreReadOnlyRepositoryUpsert {
   object: CoreReadOnlyRepository
   ok: Boolean
@@ -4715,9 +4899,9 @@ input CoreReadOnlyRepositoryUpsertInput {
   hfid: [String]
   id: String
   internal_status: TextAttributeUpdate
-  location: TextAttributeUpdate!
+  location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
   ref: TextAttributeUpdate
@@ -4868,16 +5052,16 @@ type CoreRepositoryGroupUpsert {
 input CoreRepositoryGroupUpsertInput {
   children: [RelatedNodeInput]
   """Type of data to load, can be either `object` or `menu`"""
-  content: TextAttributeUpdate!
+  content: TextAttributeUpdate
   description: TextAttributeUpdate
   group_type: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
-  repository: RelatedNodeInput!
+  repository: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
 
@@ -4926,9 +5110,9 @@ input CoreRepositoryUpsertInput {
   hfid: [String]
   id: String
   internal_status: TextAttributeUpdate
-  location: TextAttributeUpdate!
+  location: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -5017,14 +5201,16 @@ input CoreRepositoryValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
+  repository: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
 }
 
-"""The resource manager contains pools of resources to allow for automatic assignments."""
+"""
+The resource manager contains pools of resources to allow for automatic assignments.
+"""
 interface CoreResourcePool {
   description: TextAttribute
   display_label: String
@@ -5037,7 +5223,9 @@ interface CoreResourcePool {
   subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
-"""The resource manager contains pools of resources to allow for automatic assignments."""
+"""
+The resource manager contains pools of resources to allow for automatic assignments.
+"""
 type CoreResourcePoolUpdate {
   object: CoreResourcePool
   ok: Boolean
@@ -5137,20 +5325,20 @@ type CoreSchemaCheckUpsert {
 
 input CoreSchemaCheckUpsertInput {
   conclusion: TextAttributeUpdate
-  conflicts: JSONAttributeUpdate!
+  conflicts: JSONAttributeUpdate
   created_at: TextAttributeUpdate
   enriched_conflict_id: TextAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """A validator related to the schema"""
@@ -5230,7 +5418,7 @@ input CoreSchemaValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -5316,15 +5504,15 @@ input CoreStandardCheckUpsertInput {
   created_at: TextAttributeUpdate
   hfid: [String]
   id: String
-  kind: TextAttributeUpdate!
+  kind: TextAttributeUpdate
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   message: TextAttributeUpdate
   name: TextAttributeUpdate
-  origin: TextAttributeUpdate!
+  origin: TextAttributeUpdate
   severity: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  validator: RelatedNodeInput!
+  validator: RelatedNodeInput
 }
 
 """Group of nodes of any kind."""
@@ -5403,7 +5591,7 @@ input CoreStandardGroupUpsertInput {
   id: String
   label: TextAttributeUpdate
   members: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   parent: RelatedNodeInput
   subscribers: [RelatedNodeInput]
 }
@@ -5495,12 +5683,12 @@ input CoreStandardWebhookUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   """Only send node mutation events for nodes of this kind"""
   node_kind: TextAttributeUpdate
-  shared_key: TextAttributeUpdate!
+  shared_key: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-  url: TextAttributeUpdate!
+  url: TextAttributeUpdate
   validate_certificates: CheckboxAttributeUpdate
 }
 
@@ -5612,8 +5800,8 @@ input CoreThreadCommentUpsertInput {
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
-  text: TextAttributeUpdate!
-  thread: RelatedNodeInput!
+  text: TextAttributeUpdate
+  thread: RelatedNodeInput
 }
 
 """A thread on a Proposed Change"""
@@ -5633,44 +5821,6 @@ input CoreThreadUpdateInput {
   member_of_groups: [RelatedNodeInput]
   resolved: CheckboxAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
-}
-
-"""Generic Transformation Object."""
-interface CoreTransformation {
-  description: TextAttribute
-  display_label: String
-  """Human friendly identifier"""
-  hfid: [String!]
-  """Unique identifier"""
-  id: String
-  label: TextAttribute
-  member_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  name: TextAttribute
-  query: NestedEdgedCoreGraphQLQuery!
-  repository: NestedEdgedCoreGenericRepository!
-  subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  tags(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  timeout: NumberAttribute
-}
-
-"""Generic Transformation Object."""
-type CoreTransformationUpdate {
-  object: CoreTransformation
-  ok: Boolean
-}
-
-input CoreTransformationUpdateInput {
-  description: TextAttributeUpdate
-  hfid: [String]
-  id: String
-  label: TextAttributeUpdate
-  member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate
-  query: RelatedNodeInput
-  repository: RelatedNodeInput
-  subscriber_of_groups: [RelatedNodeInput]
-  tags: [RelatedNodeInput]
-  timeout: NumberAttributeUpdate
 }
 
 """A file rendered from a Jinja2 template"""
@@ -5752,12 +5902,12 @@ input CoreTransformJinja2UpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  query: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  name: TextAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
-  template_path: TextAttributeUpdate!
+  template_path: TextAttributeUpdate
   timeout: NumberAttributeUpdate
 }
 
@@ -5843,28 +5993,72 @@ type CoreTransformPythonUpsert {
 }
 
 input CoreTransformPythonUpsertInput {
-  class_name: TextAttributeUpdate!
+  class_name: TextAttributeUpdate
   convert_query_response: CheckboxAttributeUpdate
   description: TextAttributeUpdate
-  file_path: TextAttributeUpdate!
+  file_path: TextAttributeUpdate
   hfid: [String]
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
-  query: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  name: TextAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
   subscriber_of_groups: [RelatedNodeInput]
   tags: [RelatedNodeInput]
   timeout: NumberAttributeUpdate
 }
 
-"""A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met."""
+"""Generic Transformation Object."""
+interface CoreTransformation {
+  description: TextAttribute
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String
+  label: TextAttribute
+  member_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  name: TextAttribute
+  query: NestedEdgedCoreGraphQLQuery!
+  repository: NestedEdgedCoreGenericRepository!
+  subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  tags(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
+  timeout: NumberAttribute
+}
+
+"""Generic Transformation Object."""
+type CoreTransformationUpdate {
+  object: CoreTransformation
+  ok: Boolean
+}
+
+input CoreTransformationUpdateInput {
+  description: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  label: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  name: TextAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
+  subscriber_of_groups: [RelatedNodeInput]
+  tags: [RelatedNodeInput]
+  timeout: NumberAttributeUpdate
+}
+
+"""
+A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met.
+"""
 interface CoreTriggerRule {
   action: NestedEdgedCoreAction!
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttribute
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: Dropdown
   """A longer description to define the purpose of this trigger"""
   description: TextAttribute
@@ -5879,7 +6073,9 @@ interface CoreTriggerRule {
   subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
-"""A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met."""
+"""
+A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met.
+"""
 type CoreTriggerRuleUpdate {
   object: CoreTriggerRule
   ok: Boolean
@@ -5888,9 +6084,13 @@ type CoreTriggerRuleUpdate {
 input CoreTriggerRuleUpdateInput {
   """The action to execute once the trigger conditions has been met"""
   action: RelatedNodeInput
-  """Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger"""
+  """
+  Indicates if this trigger is enabled or if it's just prepared, could be useful as you are setting up a trigger
+  """
   active: CheckboxAttributeUpdate
-  """Limits the scope with regards to what kind of branches to match against"""
+  """
+  Limits the scope with regards to what kind of branches to match against
+  """
   branch_scope: TextAttributeUpdate
   """A longer description to define the purpose of this trigger"""
   description: TextAttributeUpdate
@@ -5978,7 +6178,7 @@ type CoreUserValidatorUpsert {
 }
 
 input CoreUserValidatorUpsertInput {
-  check_definition: RelatedNodeInput!
+  check_definition: RelatedNodeInput
   checks: [RelatedNodeInput]
   completed_at: TextAttributeUpdate
   conclusion: TextAttributeUpdate
@@ -5986,8 +6186,8 @@ input CoreUserValidatorUpsertInput {
   id: String
   label: TextAttributeUpdate
   member_of_groups: [RelatedNodeInput]
-  proposed_change: RelatedNodeInput!
-  repository: RelatedNodeInput!
+  proposed_change: RelatedNodeInput
+  repository: RelatedNodeInput
   started_at: TextAttributeUpdate
   state: TextAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -6071,9 +6271,13 @@ input CoreWebhookUpdateInput {
   validate_certificates: CheckboxAttributeUpdate
 }
 
-"""Resource to be used in a pool, its weight is used to determine its priority on allocation."""
+"""
+Resource to be used in a pool, its weight is used to determine its priority on allocation.
+"""
 interface CoreWeightedPoolResource {
-  """Weight determines allocation priority, resources with higher values are selected first."""
+  """
+  Weight determines allocation priority, resources with higher values are selected first.
+  """
   allocation_weight: NumberAttribute
   display_label: String
   """Human friendly identifier"""
@@ -6084,14 +6288,18 @@ interface CoreWeightedPoolResource {
   subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
-"""Resource to be used in a pool, its weight is used to determine its priority on allocation."""
+"""
+Resource to be used in a pool, its weight is used to determine its priority on allocation.
+"""
 type CoreWeightedPoolResourceUpdate {
   object: CoreWeightedPoolResource
   ok: Boolean
 }
 
 input CoreWeightedPoolResourceUpdateInput {
-  """Weight determines allocation priority, resources with higher values are selected first."""
+  """
+  Weight determines allocation priority, resources with higher values are selected first.
+  """
   allocation_weight: NumberAttributeUpdate
   hfid: [String]
   id: String
@@ -6288,7 +6496,9 @@ type EdgedBuiltinIPPrefix {
   node: BuiltinIPPrefix
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type EdgedBuiltinTag {
   node: BuiltinTag
 }
@@ -6462,12 +6672,16 @@ type EdgedCoreGroup {
   node: CoreGroup
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type EdgedCoreGroupAction {
   node: CoreGroupAction
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type EdgedCoreGroupTriggerRule {
   node: CoreGroupTriggerRule
 }
@@ -6502,7 +6716,9 @@ type EdgedCoreNodeTriggerAttributeMatch {
   node: CoreNodeTriggerAttributeMatch
 }
 
-"""A trigger match condition related to changes to nodes within the Infrahub database"""
+"""
+A trigger match condition related to changes to nodes within the Infrahub database
+"""
 type EdgedCoreNodeTriggerMatch {
   node: CoreNodeTriggerMatch
 }
@@ -6512,7 +6728,9 @@ type EdgedCoreNodeTriggerRelationshipMatch {
   node: CoreNodeTriggerRelationshipMatch
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type EdgedCoreNodeTriggerRule {
   node: CoreNodeTriggerRule
 }
@@ -6557,7 +6775,9 @@ type EdgedCoreProposedChange {
   node: CoreProposedChange
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type EdgedCoreReadOnlyRepository {
   node: CoreReadOnlyRepository
 }
@@ -6577,7 +6797,9 @@ type EdgedCoreRepositoryValidator {
   node: CoreRepositoryValidator
 }
 
-"""The resource manager contains pools of resources to allow for automatic assignments."""
+"""
+The resource manager contains pools of resources to allow for automatic assignments.
+"""
 type EdgedCoreResourcePool {
   node: CoreResourcePool
 }
@@ -6622,11 +6844,6 @@ type EdgedCoreThreadComment {
   node: CoreThreadComment
 }
 
-"""Generic Transformation Object."""
-type EdgedCoreTransformation {
-  node: CoreTransformation
-}
-
 """A file rendered from a Jinja2 template"""
 type EdgedCoreTransformJinja2 {
   node: CoreTransformJinja2
@@ -6637,7 +6854,14 @@ type EdgedCoreTransformPython {
   node: CoreTransformPython
 }
 
-"""A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met."""
+"""Generic Transformation Object."""
+type EdgedCoreTransformation {
+  node: CoreTransformation
+}
+
+"""
+A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met.
+"""
 type EdgedCoreTriggerRule {
   node: CoreTriggerRule
 }
@@ -6656,7 +6880,9 @@ type EdgedCoreWebhook {
   node: CoreWebhook
 }
 
-"""Resource to be used in a pool, its weight is used to determine its priority on allocation."""
+"""
+Resource to be used in a pool, its weight is used to determine its priority on allocation.
+"""
 type EdgedCoreWeightedPoolResource {
   node: CoreWeightedPoolResource
 }
@@ -6666,7 +6892,9 @@ type EdgedInternalAccountToken {
   node: InternalAccountToken
 }
 
-"""IPv4 or IPv6 prefix also referred as network which has not been allocated yet"""
+"""
+IPv4 or IPv6 prefix also referred as network which has not been allocated yet
+"""
 type EdgedInternalIPPrefixAvailable {
   node: InternalIPPrefixAvailable
 }
@@ -6727,7 +6955,9 @@ interface EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -6743,11 +6973,6 @@ type EventNodes {
   node: EventNodeInterface
 }
 
-type Events {
-  count: Int!
-  edges: [EventNodes!]!
-}
-
 """An enumeration."""
 enum EventSortOrder {
   ASC
@@ -6761,11 +6986,10 @@ input EventTypeFilter {
   branch_rebased: BranchEventTypeFilter = null
 }
 
-"""Expands a field to include Node defaults"""
-directive @expand(
-  """Exclude specific fields"""
-  exclude: [String]
-) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+type Events {
+  count: Int!
+  edges: [EventNodes!]!
+}
 
 type FieldsMapping {
   mapping: GenericScalar!
@@ -6809,7 +7033,9 @@ type GroupEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """Group members modified in this event"""
   members: [RelatedNode!]!
@@ -6821,6 +7047,140 @@ type GroupEvent implements EventNodeInterface {
   primary_node: RelatedNode
   """Related Infrahub nodes this event is associated with."""
   related_nodes: [RelatedNode!]!
+}
+
+type IPAddressGetNextAvailable {
+  address: String!
+}
+
+type IPAddressPoolGetResource {
+  node: PoolAllocatedNode
+  ok: Boolean
+}
+
+input IPAddressPoolGetResourceInput {
+  """Kind of IP address to allocate"""
+  address_type: String
+  """Additional data to pass to the newly created IP address"""
+  data: GenericScalar
+  """HFID of the pool to allocate from"""
+  hfid: [String]
+  """ID of the pool to allocate from"""
+  id: String
+  """Identifier for the allocated resource"""
+  identifier: String
+  """Size of the prefix mask to allocate on the new IP address"""
+  prefix_length: Int
+}
+
+input IPAddressPoolInput {
+  data: GenericScalar
+  id: String!
+  identifier: String
+  prefixlen: Int
+}
+
+"""Attribute of type IPHost"""
+type IPHost implements AttributeInterface {
+  hostmask: String
+  id: String
+  ip: String
+  is_default: Boolean
+  is_from_profile: Boolean
+  is_inherited: Boolean
+  is_protected: Boolean
+  is_visible: Boolean
+  netmask: String
+  owner: LineageOwner
+  permissions: PermissionType
+  prefixlen: Int
+  source: LineageSource
+  updated_at: DateTime
+  value: String
+  version: Int
+  with_hostmask: String
+  with_netmask: String
+}
+
+"""Attribute of type IPNetwork"""
+type IPNetwork implements AttributeInterface {
+  broadcast_address: String
+  hostmask: String
+  id: String
+  is_default: Boolean
+  is_from_profile: Boolean
+  is_inherited: Boolean
+  is_protected: Boolean
+  is_visible: Boolean
+  netmask: String
+  num_addresses: Int
+  owner: LineageOwner
+  permissions: PermissionType
+  prefixlen: Int
+  source: LineageSource
+  updated_at: DateTime
+  value: String
+  version: Int
+  with_hostmask: String
+  with_netmask: String
+}
+
+type IPPoolUtilizationResource {
+  """The common name of the resource"""
+  display_label: String!
+  """The ID of the current resource"""
+  id: String!
+  """The resource kind"""
+  kind: String!
+  """The overall utilization of the resource."""
+  utilization: Float!
+  """The utilization of the resource on all non default branches."""
+  utilization_branches: Float!
+  """
+  The overall utilization of the resource isolated to the default branch.
+  """
+  utilization_default_branch: Float!
+  """The relative weight of this resource."""
+  weight: BigInt!
+}
+
+type IPPrefixGetNextAvailable {
+  prefix: String!
+}
+
+type IPPrefixPoolGetResource {
+  node: PoolAllocatedNode
+  ok: Boolean
+}
+
+input IPPrefixPoolGetResourceInput {
+  """Additional data to pass to the newly created prefix"""
+  data: GenericScalar
+  """HFID of the pool to allocate from"""
+  hfid: [String]
+  """ID of the pool to allocate from"""
+  id: String
+  """Identifier for the allocated resource"""
+  identifier: String
+  """Type of members for the newly created prefix"""
+  member_type: String
+  """Size of the prefix to allocate"""
+  prefix_length: Int
+  """Kind of prefix to allocate"""
+  prefix_type: String
+}
+
+input IPPrefixPoolInput {
+  data: GenericScalar
+  id: String!
+  identifier: String
+  member_type: String
+  prefix_type: String
+  size: Int
+}
+
+type IPPrefixUtilizationEdge {
+  node: IPPoolUtilizationResource!
 }
 
 input IdentifierInput {
@@ -6945,7 +7305,9 @@ type InternalAccountToken implements CoreNode {
   token: TextAttribute
 }
 
-"""IPv4 or IPv6 prefix also referred as network which has not been allocated yet"""
+"""
+IPv4 or IPv6 prefix also referred as network which has not been allocated yet
+"""
 type InternalIPPrefixAvailable implements BuiltinIPPrefix & CoreNode {
   _updated_at: DateTime
   ancestors(broadcast_address__is_protected: Boolean, broadcast_address__is_visible: Boolean, broadcast_address__owner__id: ID, broadcast_address__source__id: ID, broadcast_address__value: String, broadcast_address__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hostmask__is_protected: Boolean, hostmask__is_visible: Boolean, hostmask__owner__id: ID, hostmask__source__id: ID, hostmask__value: String, hostmask__values: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__is_visible: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], is_top_level__is_protected: Boolean, is_top_level__is_visible: Boolean, is_top_level__owner__id: ID, is_top_level__source__id: ID, is_top_level__value: Boolean, is_top_level__values: [Boolean], isnull: Boolean, limit: Int, member_type__is_protected: Boolean, member_type__is_visible: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], netmask__is_protected: Boolean, netmask__is_visible: Boolean, netmask__owner__id: ID, netmask__source__id: ID, netmask__value: String, netmask__values: [String], network_address__is_protected: Boolean, network_address__is_visible: Boolean, network_address__owner__id: ID, network_address__source__id: ID, network_address__value: String, network_address__values: [String], offset: Int, order: OrderInput, prefix__is_protected: Boolean, prefix__is_visible: Boolean, prefix__owner__id: ID, prefix__source__id: ID, prefix__value: String, prefix__values: [String], utilization__is_protected: Boolean, utilization__is_visible: Boolean, utilization__owner__id: ID, utilization__source__id: ID, utilization__value: BigInt, utilization__values: [BigInt]): NestedPaginatedBuiltinIPPrefix!
@@ -7008,37 +7370,6 @@ type InternalRefreshToken implements CoreNode {
   id: String!
   member_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   subscriber_of_groups(description__is_protected: Boolean, description__is_visible: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__is_visible: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__is_visible: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__is_visible: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-}
-
-type IPAddressGetNextAvailable {
-  address: String!
-}
-
-type IPAddressPoolGetResource {
-  node: PoolAllocatedNode
-  ok: Boolean
-}
-
-input IPAddressPoolGetResourceInput {
-  """Kind of IP address to allocate"""
-  address_type: String
-  """Additional data to pass to the newly created IP address"""
-  data: GenericScalar
-  """HFID of the pool to allocate from"""
-  hfid: [String]
-  """ID of the pool to allocate from"""
-  id: String
-  """Identifier for the allocated resource"""
-  identifier: String
-  """Size of the prefix mask to allocate on the new IP address"""
-  prefix_length: Int
-}
-
-input IPAddressPoolInput {
-  data: GenericScalar
-  id: String!
-  identifier: String
-  prefixlen: Int
 }
 
 """A namespace that segments IPAM"""
@@ -7113,110 +7444,9 @@ input IpamNamespaceUpsertInput {
   ip_addresses: [RelatedIPAddressNodeInput]
   ip_prefixes: [RelatedIPPrefixNodeInput]
   member_of_groups: [RelatedNodeInput]
-  name: TextAttributeUpdate!
+  name: TextAttributeUpdate
   profiles: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
-}
-
-"""Attribute of type IPHost"""
-type IPHost implements AttributeInterface {
-  hostmask: String
-  id: String
-  ip: String
-  is_default: Boolean
-  is_from_profile: Boolean
-  is_inherited: Boolean
-  is_protected: Boolean
-  is_visible: Boolean
-  netmask: String
-  owner: LineageOwner
-  permissions: PermissionType
-  prefixlen: Int
-  source: LineageSource
-  updated_at: DateTime
-  value: String
-  version: Int
-  with_hostmask: String
-  with_netmask: String
-}
-
-"""Attribute of type IPNetwork"""
-type IPNetwork implements AttributeInterface {
-  broadcast_address: String
-  hostmask: String
-  id: String
-  is_default: Boolean
-  is_from_profile: Boolean
-  is_inherited: Boolean
-  is_protected: Boolean
-  is_visible: Boolean
-  netmask: String
-  num_addresses: Int
-  owner: LineageOwner
-  permissions: PermissionType
-  prefixlen: Int
-  source: LineageSource
-  updated_at: DateTime
-  value: String
-  version: Int
-  with_hostmask: String
-  with_netmask: String
-}
-
-type IPPoolUtilizationResource {
-  """The common name of the resource"""
-  display_label: String!
-  """The ID of the current resource"""
-  id: String!
-  """The resource kind"""
-  kind: String!
-  """The overall utilization of the resource."""
-  utilization: Float!
-  """The utilization of the resource on all non default branches."""
-  utilization_branches: Float!
-  """The overall utilization of the resource isolated to the default branch."""
-  utilization_default_branch: Float!
-  """The relative weight of this resource."""
-  weight: BigInt!
-}
-
-type IPPrefixGetNextAvailable {
-  prefix: String!
-}
-
-type IPPrefixPoolGetResource {
-  node: PoolAllocatedNode
-  ok: Boolean
-}
-
-input IPPrefixPoolGetResourceInput {
-  """Additional data to pass to the newly created prefix"""
-  data: GenericScalar
-  """HFID of the pool to allocate from"""
-  hfid: [String]
-  """ID of the pool to allocate from"""
-  id: String
-  """Identifier for the allocated resource"""
-  identifier: String
-  """Type of members for the newly created prefix"""
-  member_type: String
-  """Size of the prefix to allocate"""
-  prefix_length: Int
-  """Kind of prefix to allocate"""
-  prefix_type: String
-}
-
-input IPPrefixPoolInput {
-  data: GenericScalar
-  id: String!
-  identifier: String
-  member_type: String
-  prefix_type: String
-  size: Int
-}
-
-type IPPrefixUtilizationEdge {
-  node: IPPoolUtilizationResource!
 }
 
 """Attribute of type JSON"""
@@ -7343,13 +7573,21 @@ type Mutation {
   BuiltinIPNamespaceUpdate(context: ContextInput, data: BuiltinIPNamespaceUpdateInput!): BuiltinIPNamespaceUpdate
   """IPv4 or IPv6 prefix also referred as network"""
   BuiltinIPPrefixUpdate(context: ContextInput, data: BuiltinIPPrefixUpdateInput!): BuiltinIPPrefixUpdate
-  """Standard Tag object to attach to other objects to provide some context."""
+  """
+  Standard Tag object to attach to other objects to provide some context.
+  """
   BuiltinTagCreate(context: ContextInput, data: BuiltinTagCreateInput!): BuiltinTagCreate
-  """Standard Tag object to attach to other objects to provide some context."""
+  """
+  Standard Tag object to attach to other objects to provide some context.
+  """
   BuiltinTagDelete(context: ContextInput, data: DeleteInput!): BuiltinTagDelete
-  """Standard Tag object to attach to other objects to provide some context."""
+  """
+  Standard Tag object to attach to other objects to provide some context.
+  """
   BuiltinTagUpdate(context: ContextInput, data: BuiltinTagUpdateInput!): BuiltinTagUpdate
-  """Standard Tag object to attach to other objects to provide some context."""
+  """
+  Standard Tag object to attach to other objects to provide some context.
+  """
   BuiltinTagUpsert(context: ContextInput, data: BuiltinTagUpsertInput!): BuiltinTagUpsert
   ConvertObjectType(data: ConvertObjectTypeInput!): ConvertObjectType
   """User Account for Infrahub"""
@@ -7556,21 +7794,37 @@ type Mutation {
   CoreGraphQLQueryUpdate(context: ContextInput, data: CoreGraphQLQueryUpdateInput!): CoreGraphQLQueryUpdate
   """A pre-defined GraphQL Query"""
   CoreGraphQLQueryUpsert(context: ContextInput, data: CoreGraphQLQueryUpsertInput!): CoreGraphQLQueryUpsert
-  """A group action that adds or removes members from a group once triggered"""
+  """
+  A group action that adds or removes members from a group once triggered
+  """
   CoreGroupActionCreate(context: ContextInput, data: CoreGroupActionCreateInput!): CoreGroupActionCreate
-  """A group action that adds or removes members from a group once triggered"""
+  """
+  A group action that adds or removes members from a group once triggered
+  """
   CoreGroupActionDelete(context: ContextInput, data: DeleteInput!): CoreGroupActionDelete
-  """A group action that adds or removes members from a group once triggered"""
+  """
+  A group action that adds or removes members from a group once triggered
+  """
   CoreGroupActionUpdate(context: ContextInput, data: CoreGroupActionUpdateInput!): CoreGroupActionUpdate
-  """A group action that adds or removes members from a group once triggered"""
+  """
+  A group action that adds or removes members from a group once triggered
+  """
   CoreGroupActionUpsert(context: ContextInput, data: CoreGroupActionUpsertInput!): CoreGroupActionUpsert
-  """A trigger rule that matches against updates to memberships within groups"""
+  """
+  A trigger rule that matches against updates to memberships within groups
+  """
   CoreGroupTriggerRuleCreate(context: ContextInput, data: CoreGroupTriggerRuleCreateInput!): CoreGroupTriggerRuleCreate
-  """A trigger rule that matches against updates to memberships within groups"""
+  """
+  A trigger rule that matches against updates to memberships within groups
+  """
   CoreGroupTriggerRuleDelete(context: ContextInput, data: DeleteInput!): CoreGroupTriggerRuleDelete
-  """A trigger rule that matches against updates to memberships within groups"""
+  """
+  A trigger rule that matches against updates to memberships within groups
+  """
   CoreGroupTriggerRuleUpdate(context: ContextInput, data: CoreGroupTriggerRuleUpdateInput!): CoreGroupTriggerRuleUpdate
-  """A trigger rule that matches against updates to memberships within groups"""
+  """
+  A trigger rule that matches against updates to memberships within groups
+  """
   CoreGroupTriggerRuleUpsert(context: ContextInput, data: CoreGroupTriggerRuleUpsertInput!): CoreGroupTriggerRuleUpsert
   """Generic Group Object."""
   CoreGroupUpdate(context: ContextInput, data: CoreGroupUpdateInput!): CoreGroupUpdate
@@ -7608,7 +7862,9 @@ type Mutation {
   CoreNodeTriggerAttributeMatchUpdate(context: ContextInput, data: CoreNodeTriggerAttributeMatchUpdateInput!): CoreNodeTriggerAttributeMatchUpdate
   """A trigger match that matches against attribute changes on a node"""
   CoreNodeTriggerAttributeMatchUpsert(context: ContextInput, data: CoreNodeTriggerAttributeMatchUpsertInput!): CoreNodeTriggerAttributeMatchUpsert
-  """A trigger match condition related to changes to nodes within the Infrahub database"""
+  """
+  A trigger match condition related to changes to nodes within the Infrahub database
+  """
   CoreNodeTriggerMatchUpdate(context: ContextInput, data: CoreNodeTriggerMatchUpdateInput!): CoreNodeTriggerMatchUpdate
   """A trigger match that matches against relationship changes on a node"""
   CoreNodeTriggerRelationshipMatchCreate(context: ContextInput, data: CoreNodeTriggerRelationshipMatchCreateInput!): CoreNodeTriggerRelationshipMatchCreate
@@ -7618,13 +7874,21 @@ type Mutation {
   CoreNodeTriggerRelationshipMatchUpdate(context: ContextInput, data: CoreNodeTriggerRelationshipMatchUpdateInput!): CoreNodeTriggerRelationshipMatchUpdate
   """A trigger match that matches against relationship changes on a node"""
   CoreNodeTriggerRelationshipMatchUpsert(context: ContextInput, data: CoreNodeTriggerRelationshipMatchUpsertInput!): CoreNodeTriggerRelationshipMatchUpsert
-  """A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+  """
+  A trigger rule that evaluates modifications to nodes within the Infrahub database
+  """
   CoreNodeTriggerRuleCreate(context: ContextInput, data: CoreNodeTriggerRuleCreateInput!): CoreNodeTriggerRuleCreate
-  """A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+  """
+  A trigger rule that evaluates modifications to nodes within the Infrahub database
+  """
   CoreNodeTriggerRuleDelete(context: ContextInput, data: DeleteInput!): CoreNodeTriggerRuleDelete
-  """A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+  """
+  A trigger rule that evaluates modifications to nodes within the Infrahub database
+  """
   CoreNodeTriggerRuleUpdate(context: ContextInput, data: CoreNodeTriggerRuleUpdateInput!): CoreNodeTriggerRuleUpdate
-  """A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+  """
+  A trigger rule that evaluates modifications to nodes within the Infrahub database
+  """
   CoreNodeTriggerRuleUpsert(context: ContextInput, data: CoreNodeTriggerRuleUpsertInput!): CoreNodeTriggerRuleUpsert
   """Base Node in Infrahub."""
   CoreNodeUpdate(context: ContextInput, data: CoreNodeUpdateInput!): CoreNodeUpdate
@@ -7678,13 +7942,21 @@ type Mutation {
   CoreProposedChangeUpdate(context: ContextInput, data: CoreProposedChangeUpdateInput!): CoreProposedChangeUpdate
   """Metadata related to a proposed change"""
   CoreProposedChangeUpsert(context: ContextInput, data: CoreProposedChangeUpsertInput!): CoreProposedChangeUpsert
-  """A Git Repository integrated with Infrahub, Git-side will not be updated"""
+  """
+  A Git Repository integrated with Infrahub, Git-side will not be updated
+  """
   CoreReadOnlyRepositoryCreate(context: ContextInput, data: CoreReadOnlyRepositoryCreateInput!): CoreReadOnlyRepositoryCreate
-  """A Git Repository integrated with Infrahub, Git-side will not be updated"""
+  """
+  A Git Repository integrated with Infrahub, Git-side will not be updated
+  """
   CoreReadOnlyRepositoryDelete(context: ContextInput, data: DeleteInput!): CoreReadOnlyRepositoryDelete
-  """A Git Repository integrated with Infrahub, Git-side will not be updated"""
+  """
+  A Git Repository integrated with Infrahub, Git-side will not be updated
+  """
   CoreReadOnlyRepositoryUpdate(context: ContextInput, data: CoreReadOnlyRepositoryUpdateInput!): CoreReadOnlyRepositoryUpdate
-  """A Git Repository integrated with Infrahub, Git-side will not be updated"""
+  """
+  A Git Repository integrated with Infrahub, Git-side will not be updated
+  """
   CoreReadOnlyRepositoryUpsert(context: ContextInput, data: CoreReadOnlyRepositoryUpsertInput!): CoreReadOnlyRepositoryUpsert
   """A Git Repository integrated with Infrahub"""
   CoreRepositoryCreate(context: ContextInput, data: CoreRepositoryCreateInput!): CoreRepositoryCreate
@@ -7710,7 +7982,9 @@ type Mutation {
   CoreRepositoryValidatorUpdate(context: ContextInput, data: CoreRepositoryValidatorUpdateInput!): CoreRepositoryValidatorUpdate
   """A Validator related to a specific repository"""
   CoreRepositoryValidatorUpsert(context: ContextInput, data: CoreRepositoryValidatorUpsertInput!): CoreRepositoryValidatorUpsert
-  """The resource manager contains pools of resources to allow for automatic assignments."""
+  """
+  The resource manager contains pools of resources to allow for automatic assignments.
+  """
   CoreResourcePoolUpdate(context: ContextInput, data: CoreResourcePoolUpdateInput!): CoreResourcePoolUpdate
   """A check related to the schema"""
   CoreSchemaCheckCreate(context: ContextInput, data: CoreSchemaCheckCreateInput!): CoreSchemaCheckCreate
@@ -7764,8 +8038,6 @@ type Mutation {
   CoreThreadCommentUpsert(context: ContextInput, data: CoreThreadCommentUpsertInput!): CoreThreadCommentUpsert
   """A thread on a Proposed Change"""
   CoreThreadUpdate(context: ContextInput, data: CoreThreadUpdateInput!): CoreThreadUpdate
-  """Generic Transformation Object."""
-  CoreTransformationUpdate(context: ContextInput, data: CoreTransformationUpdateInput!): CoreTransformationUpdate
   """A file rendered from a Jinja2 template"""
   CoreTransformJinja2Create(context: ContextInput, data: CoreTransformJinja2CreateInput!): CoreTransformJinja2Create
   """A file rendered from a Jinja2 template"""
@@ -7782,7 +8054,11 @@ type Mutation {
   CoreTransformPythonUpdate(context: ContextInput, data: CoreTransformPythonUpdateInput!): CoreTransformPythonUpdate
   """A transform function written in Python"""
   CoreTransformPythonUpsert(context: ContextInput, data: CoreTransformPythonUpsertInput!): CoreTransformPythonUpsert
-  """A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met."""
+  """Generic Transformation Object."""
+  CoreTransformationUpdate(context: ContextInput, data: CoreTransformationUpdateInput!): CoreTransformationUpdate
+  """
+  A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met.
+  """
   CoreTriggerRuleUpdate(context: ContextInput, data: CoreTriggerRuleUpdateInput!): CoreTriggerRuleUpdate
   """A Validator related to a user defined checks in a repository"""
   CoreUserValidatorCreate(context: ContextInput, data: CoreUserValidatorCreateInput!): CoreUserValidatorCreate
@@ -7795,9 +8071,13 @@ type Mutation {
   CoreValidatorUpdate(context: ContextInput, data: CoreValidatorUpdateInput!): CoreValidatorUpdate
   """A webhook that connects to an external integration"""
   CoreWebhookUpdate(context: ContextInput, data: CoreWebhookUpdateInput!): CoreWebhookUpdate
-  """Resource to be used in a pool, its weight is used to determine its priority on allocation."""
+  """
+  Resource to be used in a pool, its weight is used to determine its priority on allocation.
+  """
   CoreWeightedPoolResourceUpdate(context: ContextInput, data: CoreWeightedPoolResourceUpdateInput!): CoreWeightedPoolResourceUpdate
   DiffUpdate(context: ContextInput, data: DiffUpdateInput!, wait_until_completion: Boolean): DiffUpdateMutation
+  IPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource @deprecated(reason: "This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub.")
+  IPPrefixPoolGetResource(data: IPPrefixPoolGetResourceInput!): IPPrefixPoolGetResource @deprecated(reason: "This mutation has been renamed to 'InfrahubIPPrefixPoolGetResource'. It will be removed in the next version of Infrahub.")
   InfrahubAccountSelfUpdate(data: InfrahubAccountUpdateSelfInput!): InfrahubAccountSelfUpdate
   InfrahubAccountTokenCreate(data: InfrahubAccountTokenCreateInput!): InfrahubAccountTokenCreate
   InfrahubAccountTokenDelete(data: InfrahubAccountTokenDeleteInput!): InfrahubAccountTokenDelete
@@ -7810,7 +8090,6 @@ type Mutation {
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute
   InfrahubUpdateDisplayLabel(context: ContextInput, data: InfrahubDisplayLabelUpdateInput!): UpdateDisplayLabel
   InfrahubUpdateHFID(context: ContextInput, data: InfrahubHFIDUpdateInput!): UpdateHFID
-  IPAddressPoolGetResource(data: IPAddressPoolGetResourceInput!): IPAddressPoolGetResource @deprecated(reason: "This mutation has been renamed to 'InfrahubIPAddressPoolGetResource'. It will be removed in the next version of Infrahub.")
   """A namespace that segments IPAM"""
   IpamNamespaceCreate(context: ContextInput, data: IpamNamespaceCreateInput!): IpamNamespaceCreate
   """A namespace that segments IPAM"""
@@ -7819,7 +8098,6 @@ type Mutation {
   IpamNamespaceUpdate(context: ContextInput, data: IpamNamespaceUpdateInput!): IpamNamespaceUpdate
   """A namespace that segments IPAM"""
   IpamNamespaceUpsert(context: ContextInput, data: IpamNamespaceUpsertInput!): IpamNamespaceUpsert
-  IPPrefixPoolGetResource(data: IPPrefixPoolGetResourceInput!): IPPrefixPoolGetResource @deprecated(reason: "This mutation has been renamed to 'InfrahubIPPrefixPoolGetResource'. It will be removed in the next version of Infrahub.")
   """Profile for BuiltinIPAddress"""
   ProfileBuiltinIPAddressCreate(context: ContextInput, data: ProfileBuiltinIPAddressCreateInput!): ProfileBuiltinIPAddressCreate
   """Profile for BuiltinIPAddress"""
@@ -7882,7 +8160,9 @@ type NestedEdgedBuiltinIPPrefix {
   properties: RelationshipProperty
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type NestedEdgedBuiltinTag {
   node: BuiltinTag
   properties: RelationshipProperty
@@ -8101,13 +8381,17 @@ type NestedEdgedCoreGroup {
   properties: RelationshipProperty
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type NestedEdgedCoreGroupAction {
   node: CoreGroupAction
   properties: RelationshipProperty
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type NestedEdgedCoreGroupTriggerRule {
   node: CoreGroupTriggerRule
   properties: RelationshipProperty
@@ -8151,7 +8435,9 @@ type NestedEdgedCoreNodeTriggerAttributeMatch {
   properties: RelationshipProperty
 }
 
-"""A trigger match condition related to changes to nodes within the Infrahub database"""
+"""
+A trigger match condition related to changes to nodes within the Infrahub database
+"""
 type NestedEdgedCoreNodeTriggerMatch {
   _updated_at: DateTime
   node: CoreNodeTriggerMatch
@@ -8164,7 +8450,9 @@ type NestedEdgedCoreNodeTriggerRelationshipMatch {
   properties: RelationshipProperty
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type NestedEdgedCoreNodeTriggerRule {
   node: CoreNodeTriggerRule
   properties: RelationshipProperty
@@ -8221,7 +8509,9 @@ type NestedEdgedCoreProposedChange {
   properties: RelationshipProperty
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type NestedEdgedCoreReadOnlyRepository {
   node: CoreReadOnlyRepository
   properties: RelationshipProperty
@@ -8245,7 +8535,9 @@ type NestedEdgedCoreRepositoryValidator {
   properties: RelationshipProperty
 }
 
-"""The resource manager contains pools of resources to allow for automatic assignments."""
+"""
+The resource manager contains pools of resources to allow for automatic assignments.
+"""
 type NestedEdgedCoreResourcePool {
   _updated_at: DateTime
   node: CoreResourcePool
@@ -8302,13 +8594,6 @@ type NestedEdgedCoreThreadComment {
   properties: RelationshipProperty
 }
 
-"""Generic Transformation Object."""
-type NestedEdgedCoreTransformation {
-  _updated_at: DateTime
-  node: CoreTransformation
-  properties: RelationshipProperty
-}
-
 """A file rendered from a Jinja2 template"""
 type NestedEdgedCoreTransformJinja2 {
   node: CoreTransformJinja2
@@ -8321,7 +8606,16 @@ type NestedEdgedCoreTransformPython {
   properties: RelationshipProperty
 }
 
-"""A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met."""
+"""Generic Transformation Object."""
+type NestedEdgedCoreTransformation {
+  _updated_at: DateTime
+  node: CoreTransformation
+  properties: RelationshipProperty
+}
+
+"""
+A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met.
+"""
 type NestedEdgedCoreTriggerRule {
   _updated_at: DateTime
   node: CoreTriggerRule
@@ -8347,7 +8641,9 @@ type NestedEdgedCoreWebhook {
   properties: RelationshipProperty
 }
 
-"""Resource to be used in a pool, its weight is used to determine its priority on allocation."""
+"""
+Resource to be used in a pool, its weight is used to determine its priority on allocation.
+"""
 type NestedEdgedCoreWeightedPoolResource {
   _updated_at: DateTime
   node: CoreWeightedPoolResource
@@ -8360,7 +8656,9 @@ type NestedEdgedInternalAccountToken {
   properties: RelationshipProperty
 }
 
-"""IPv4 or IPv6 prefix also referred as network which has not been allocated yet"""
+"""
+IPv4 or IPv6 prefix also referred as network which has not been allocated yet
+"""
 type NestedEdgedInternalIPPrefixAvailable {
   node: InternalIPPrefixAvailable
   properties: RelationshipProperty
@@ -8440,7 +8738,9 @@ type NestedPaginatedBuiltinIPPrefix {
   edges: [NestedEdgedBuiltinIPPrefix!]
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type NestedPaginatedBuiltinTag {
   count: Int!
   edges: [NestedEdgedBuiltinTag!]!
@@ -8677,14 +8977,18 @@ type NestedPaginatedCoreGroup {
   edges: [NestedEdgedCoreGroup!]
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type NestedPaginatedCoreGroupAction {
   count: Int!
   edges: [NestedEdgedCoreGroupAction!]!
   permissions: PaginatedObjectPermission!
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type NestedPaginatedCoreGroupTriggerRule {
   count: Int!
   edges: [NestedEdgedCoreGroupTriggerRule!]!
@@ -8731,7 +9035,9 @@ type NestedPaginatedCoreNodeTriggerAttributeMatch {
   permissions: PaginatedObjectPermission!
 }
 
-"""A trigger match condition related to changes to nodes within the Infrahub database"""
+"""
+A trigger match condition related to changes to nodes within the Infrahub database
+"""
 type NestedPaginatedCoreNodeTriggerMatch {
   count: Int!
   edges: [NestedEdgedCoreNodeTriggerMatch!]
@@ -8744,7 +9050,9 @@ type NestedPaginatedCoreNodeTriggerRelationshipMatch {
   permissions: PaginatedObjectPermission!
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type NestedPaginatedCoreNodeTriggerRule {
   count: Int!
   edges: [NestedEdgedCoreNodeTriggerRule!]!
@@ -8804,7 +9112,9 @@ type NestedPaginatedCoreProposedChange {
   permissions: PaginatedObjectPermission!
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type NestedPaginatedCoreReadOnlyRepository {
   count: Int!
   edges: [NestedEdgedCoreReadOnlyRepository!]!
@@ -8832,7 +9142,9 @@ type NestedPaginatedCoreRepositoryValidator {
   permissions: PaginatedObjectPermission!
 }
 
-"""The resource manager contains pools of resources to allow for automatic assignments."""
+"""
+The resource manager contains pools of resources to allow for automatic assignments.
+"""
 type NestedPaginatedCoreResourcePool {
   count: Int!
   edges: [NestedEdgedCoreResourcePool!]
@@ -8892,12 +9204,6 @@ type NestedPaginatedCoreThreadComment {
   permissions: PaginatedObjectPermission!
 }
 
-"""Generic Transformation Object."""
-type NestedPaginatedCoreTransformation {
-  count: Int!
-  edges: [NestedEdgedCoreTransformation!]
-}
-
 """A file rendered from a Jinja2 template"""
 type NestedPaginatedCoreTransformJinja2 {
   count: Int!
@@ -8912,7 +9218,15 @@ type NestedPaginatedCoreTransformPython {
   permissions: PaginatedObjectPermission!
 }
 
-"""A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met."""
+"""Generic Transformation Object."""
+type NestedPaginatedCoreTransformation {
+  count: Int!
+  edges: [NestedEdgedCoreTransformation!]
+}
+
+"""
+A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met.
+"""
 type NestedPaginatedCoreTriggerRule {
   count: Int!
   edges: [NestedEdgedCoreTriggerRule!]
@@ -8936,7 +9250,9 @@ type NestedPaginatedCoreWebhook {
   edges: [NestedEdgedCoreWebhook!]
 }
 
-"""Resource to be used in a pool, its weight is used to determine its priority on allocation."""
+"""
+Resource to be used in a pool, its weight is used to determine its priority on allocation.
+"""
 type NestedPaginatedCoreWeightedPoolResource {
   count: Int!
   edges: [NestedEdgedCoreWeightedPoolResource!]
@@ -8949,7 +9265,9 @@ type NestedPaginatedInternalAccountToken {
   permissions: PaginatedObjectPermission!
 }
 
-"""IPv4 or IPv6 prefix also referred as network which has not been allocated yet"""
+"""
+IPv4 or IPv6 prefix also referred as network which has not been allocated yet
+"""
 type NestedPaginatedInternalIPPrefixAvailable {
   count: Int!
   edges: [NestedEdgedInternalIPPrefixAvailable!]!
@@ -9044,7 +9362,9 @@ type NodeMutatedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -9134,7 +9454,9 @@ type PaginatedBuiltinIPPrefix {
   permissions: PaginatedObjectPermission!
 }
 
-"""Standard Tag object to attach to other objects to provide some context."""
+"""
+Standard Tag object to attach to other objects to provide some context.
+"""
 type PaginatedBuiltinTag {
   count: Int!
   edges: [EdgedBuiltinTag!]!
@@ -9380,14 +9702,18 @@ type PaginatedCoreGroup {
   permissions: PaginatedObjectPermission!
 }
 
-"""A group action that adds or removes members from a group once triggered"""
+"""
+A group action that adds or removes members from a group once triggered
+"""
 type PaginatedCoreGroupAction {
   count: Int!
   edges: [EdgedCoreGroupAction!]!
   permissions: PaginatedObjectPermission!
 }
 
-"""A trigger rule that matches against updates to memberships within groups"""
+"""
+A trigger rule that matches against updates to memberships within groups
+"""
 type PaginatedCoreGroupTriggerRule {
   count: Int!
   edges: [EdgedCoreGroupTriggerRule!]!
@@ -9436,7 +9762,9 @@ type PaginatedCoreNodeTriggerAttributeMatch {
   permissions: PaginatedObjectPermission!
 }
 
-"""A trigger match condition related to changes to nodes within the Infrahub database"""
+"""
+A trigger match condition related to changes to nodes within the Infrahub database
+"""
 type PaginatedCoreNodeTriggerMatch {
   count: Int!
   edges: [EdgedCoreNodeTriggerMatch!]!
@@ -9450,7 +9778,9 @@ type PaginatedCoreNodeTriggerRelationshipMatch {
   permissions: PaginatedObjectPermission!
 }
 
-"""A trigger rule that evaluates modifications to nodes within the Infrahub database"""
+"""
+A trigger rule that evaluates modifications to nodes within the Infrahub database
+"""
 type PaginatedCoreNodeTriggerRule {
   count: Int!
   edges: [EdgedCoreNodeTriggerRule!]!
@@ -9513,7 +9843,9 @@ type PaginatedCoreProposedChange {
   permissions: PaginatedObjectPermission!
 }
 
-"""A Git Repository integrated with Infrahub, Git-side will not be updated"""
+"""
+A Git Repository integrated with Infrahub, Git-side will not be updated
+"""
 type PaginatedCoreReadOnlyRepository {
   count: Int!
   edges: [EdgedCoreReadOnlyRepository!]!
@@ -9541,7 +9873,9 @@ type PaginatedCoreRepositoryValidator {
   permissions: PaginatedObjectPermission!
 }
 
-"""The resource manager contains pools of resources to allow for automatic assignments."""
+"""
+The resource manager contains pools of resources to allow for automatic assignments.
+"""
 type PaginatedCoreResourcePool {
   count: Int!
   edges: [EdgedCoreResourcePool!]!
@@ -9604,13 +9938,6 @@ type PaginatedCoreThreadComment {
   permissions: PaginatedObjectPermission!
 }
 
-"""Generic Transformation Object."""
-type PaginatedCoreTransformation {
-  count: Int!
-  edges: [EdgedCoreTransformation!]!
-  permissions: PaginatedObjectPermission!
-}
-
 """A file rendered from a Jinja2 template"""
 type PaginatedCoreTransformJinja2 {
   count: Int!
@@ -9625,7 +9952,16 @@ type PaginatedCoreTransformPython {
   permissions: PaginatedObjectPermission!
 }
 
-"""A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met."""
+"""Generic Transformation Object."""
+type PaginatedCoreTransformation {
+  count: Int!
+  edges: [EdgedCoreTransformation!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""
+A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met.
+"""
 type PaginatedCoreTriggerRule {
   count: Int!
   edges: [EdgedCoreTriggerRule!]!
@@ -9652,7 +9988,9 @@ type PaginatedCoreWebhook {
   permissions: PaginatedObjectPermission!
 }
 
-"""Resource to be used in a pool, its weight is used to determine its priority on allocation."""
+"""
+Resource to be used in a pool, its weight is used to determine its priority on allocation.
+"""
 type PaginatedCoreWeightedPoolResource {
   count: Int!
   edges: [EdgedCoreWeightedPoolResource!]!
@@ -9666,7 +10004,9 @@ type PaginatedInternalAccountToken {
   permissions: PaginatedObjectPermission!
 }
 
-"""IPv4 or IPv6 prefix also referred as network which has not been allocated yet"""
+"""
+IPv4 or IPv6 prefix also referred as network which has not been allocated yet
+"""
 type PaginatedInternalIPPrefixAvailable {
   count: Int!
   edges: [EdgedInternalIPPrefixAvailable!]!
@@ -9709,7 +10049,9 @@ type PaginatedLineageSource {
 }
 
 type PaginatedObjectPermission {
-  """The number of permissions applicable, will be 1 for normal nodes or possibly more for generics"""
+  """
+  The number of permissions applicable, will be 1 for normal nodes or possibly more for generics
+  """
   count: Int!
   edges: [ObjectPermissionNode!]!
 }
@@ -9854,7 +10196,7 @@ input ProfileBuiltinIPAddressUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPAddressNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -9941,7 +10283,7 @@ input ProfileBuiltinIPPrefixUpsertInput {
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeUpdate
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPPrefixNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -10015,7 +10357,7 @@ input ProfileBuiltinTagUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -10089,7 +10431,7 @@ input ProfileIpamNamespaceUpsertInput {
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
-  profile_name: TextAttributeUpdate!
+  profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -10118,7 +10460,9 @@ type ProposedChangeApprovalsRevokedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -10144,6 +10488,10 @@ type ProposedChangeMerge {
   task: TaskInfo
 }
 
+input ProposedChangeMergeInput {
+  id: String!
+}
+
 type ProposedChangeMergedEvent implements EventNodeInterface {
   """The account ID that triggered the event."""
   account_id: String
@@ -10155,7 +10503,9 @@ type ProposedChangeMergedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The ID of the user who merged the proposed change"""
   merged_by_account_id: String!
@@ -10170,10 +10520,6 @@ type ProposedChangeMergedEvent implements EventNodeInterface {
   primary_node: RelatedNode
   """Related Infrahub nodes this event is associated with."""
   related_nodes: [RelatedNode!]!
-}
-
-input ProposedChangeMergeInput {
-  id: String!
 }
 
 type ProposedChangeRequestRunCheck {
@@ -10200,7 +10546,9 @@ type ProposedChangeReviewEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -10237,7 +10585,9 @@ type ProposedChangeReviewRequestedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -10265,7 +10615,9 @@ type ProposedChangeReviewRevokedEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -10295,7 +10647,9 @@ type ProposedChangeThreadEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -10384,9 +10738,9 @@ type Query {
   CoreTaskTarget(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], ids: [ID], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedCoreTaskTarget!
   CoreThread(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], change__description__is_protected: Boolean, change__description__is_visible: Boolean, change__description__owner__id: ID, change__description__source__id: ID, change__description__value: String, change__description__values: [String], change__destination_branch__is_protected: Boolean, change__destination_branch__is_visible: Boolean, change__destination_branch__owner__id: ID, change__destination_branch__source__id: ID, change__destination_branch__value: String, change__destination_branch__values: [String], change__ids: [ID], change__is_draft__is_protected: Boolean, change__is_draft__is_visible: Boolean, change__is_draft__owner__id: ID, change__is_draft__source__id: ID, change__is_draft__value: Boolean, change__is_draft__values: [Boolean], change__isnull: Boolean, change__name__is_protected: Boolean, change__name__is_visible: Boolean, change__name__owner__id: ID, change__name__source__id: ID, change__name__value: String, change__name__values: [String], change__source_branch__is_protected: Boolean, change__source_branch__is_visible: Boolean, change__source_branch__owner__id: ID, change__source_branch__source__id: ID, change__source_branch__value: String, change__source_branch__values: [String], change__state__is_protected: Boolean, change__state__is_visible: Boolean, change__state__owner__id: ID, change__state__source__id: ID, change__state__value: String, change__state__values: [String], change__total_comments__is_protected: Boolean, change__total_comments__is_visible: Boolean, change__total_comments__owner__id: ID, change__total_comments__source__id: ID, change__total_comments__value: BigInt, change__total_comments__values: [BigInt], comments__created_at__is_protected: Boolean, comments__created_at__is_visible: Boolean, comments__created_at__owner__id: ID, comments__created_at__source__id: ID, comments__created_at__value: DateTime, comments__created_at__values: [DateTime], comments__ids: [ID], comments__isnull: Boolean, comments__text__is_protected: Boolean, comments__text__is_visible: Boolean, comments__text__owner__id: ID, comments__text__source__id: ID, comments__text__value: String, comments__text__values: [String], created_at__is_protected: Boolean, created_at__is_visible: Boolean, created_at__isnull: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], created_by__account_type__is_protected: Boolean, created_by__account_type__is_visible: Boolean, created_by__account_type__owner__id: ID, created_by__account_type__source__id: ID, created_by__account_type__value: String, created_by__account_type__values: [String], created_by__description__is_protected: Boolean, created_by__description__is_visible: Boolean, created_by__description__owner__id: ID, created_by__description__source__id: ID, created_by__description__value: String, created_by__description__values: [String], created_by__ids: [ID], created_by__isnull: Boolean, created_by__label__is_protected: Boolean, created_by__label__is_visible: Boolean, created_by__label__owner__id: ID, created_by__label__source__id: ID, created_by__label__value: String, created_by__label__values: [String], created_by__name__is_protected: Boolean, created_by__name__is_visible: Boolean, created_by__name__owner__id: ID, created_by__name__source__id: ID, created_by__name__value: String, created_by__name__values: [String], created_by__password__is_protected: Boolean, created_by__password__is_visible: Boolean, created_by__password__owner__id: ID, created_by__password__source__id: ID, created_by__password__value: String, created_by__password__values: [String], created_by__status__is_protected: Boolean, created_by__status__is_visible: Boolean, created_by__status__owner__id: ID, created_by__status__source__id: ID, created_by__status__value: String, created_by__status__values: [String], ids: [ID], label__is_protected: Boolean, label__is_visible: Boolean, label__isnull: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, resolved__is_protected: Boolean, resolved__is_visible: Boolean, resolved__isnull: Boolean, resolved__owner__id: ID, resolved__source__id: ID, resolved__value: Boolean, resolved__values: [Boolean], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedCoreThread!
   CoreThreadComment(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], created_at__is_protected: Boolean, created_at__is_visible: Boolean, created_at__isnull: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], created_by__account_type__is_protected: Boolean, created_by__account_type__is_visible: Boolean, created_by__account_type__owner__id: ID, created_by__account_type__source__id: ID, created_by__account_type__value: String, created_by__account_type__values: [String], created_by__description__is_protected: Boolean, created_by__description__is_visible: Boolean, created_by__description__owner__id: ID, created_by__description__source__id: ID, created_by__description__value: String, created_by__description__values: [String], created_by__ids: [ID], created_by__isnull: Boolean, created_by__label__is_protected: Boolean, created_by__label__is_visible: Boolean, created_by__label__owner__id: ID, created_by__label__source__id: ID, created_by__label__value: String, created_by__label__values: [String], created_by__name__is_protected: Boolean, created_by__name__is_visible: Boolean, created_by__name__owner__id: ID, created_by__name__source__id: ID, created_by__name__value: String, created_by__name__values: [String], created_by__password__is_protected: Boolean, created_by__password__is_visible: Boolean, created_by__password__owner__id: ID, created_by__password__source__id: ID, created_by__password__value: String, created_by__password__values: [String], created_by__status__is_protected: Boolean, created_by__status__is_visible: Boolean, created_by__status__owner__id: ID, created_by__status__source__id: ID, created_by__status__value: String, created_by__status__values: [String], ids: [ID], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String], text__is_protected: Boolean, text__is_visible: Boolean, text__isnull: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String], thread__created_at__is_protected: Boolean, thread__created_at__is_visible: Boolean, thread__created_at__owner__id: ID, thread__created_at__source__id: ID, thread__created_at__value: DateTime, thread__created_at__values: [DateTime], thread__ids: [ID], thread__isnull: Boolean, thread__label__is_protected: Boolean, thread__label__is_visible: Boolean, thread__label__owner__id: ID, thread__label__source__id: ID, thread__label__value: String, thread__label__values: [String], thread__resolved__is_protected: Boolean, thread__resolved__is_visible: Boolean, thread__resolved__owner__id: ID, thread__resolved__source__id: ID, thread__resolved__value: Boolean, thread__resolved__values: [Boolean]): PaginatedCoreThreadComment!
-  CoreTransformation(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], label__is_protected: Boolean, label__is_visible: Boolean, label__isnull: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], name__is_protected: Boolean, name__is_visible: Boolean, name__isnull: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, query__depth__is_protected: Boolean, query__depth__is_visible: Boolean, query__depth__owner__id: ID, query__depth__source__id: ID, query__depth__value: BigInt, query__depth__values: [BigInt], query__description__is_protected: Boolean, query__description__is_visible: Boolean, query__description__owner__id: ID, query__description__source__id: ID, query__description__value: String, query__description__values: [String], query__height__is_protected: Boolean, query__height__is_visible: Boolean, query__height__owner__id: ID, query__height__source__id: ID, query__height__value: BigInt, query__height__values: [BigInt], query__ids: [ID], query__isnull: Boolean, query__models__is_protected: Boolean, query__models__is_visible: Boolean, query__models__owner__id: ID, query__models__source__id: ID, query__models__value: GenericScalar, query__models__values: [GenericScalar], query__name__is_protected: Boolean, query__name__is_visible: Boolean, query__name__owner__id: ID, query__name__source__id: ID, query__name__value: String, query__name__values: [String], query__operations__is_protected: Boolean, query__operations__is_visible: Boolean, query__operations__owner__id: ID, query__operations__source__id: ID, query__operations__value: GenericScalar, query__operations__values: [GenericScalar], query__query__is_protected: Boolean, query__query__is_visible: Boolean, query__query__owner__id: ID, query__query__source__id: ID, query__query__value: String, query__query__values: [String], query__variables__is_protected: Boolean, query__variables__is_visible: Boolean, query__variables__owner__id: ID, query__variables__source__id: ID, query__variables__value: GenericScalar, query__variables__values: [GenericScalar], repository__description__is_protected: Boolean, repository__description__is_visible: Boolean, repository__description__owner__id: ID, repository__description__source__id: ID, repository__description__value: String, repository__description__values: [String], repository__ids: [ID], repository__internal_status__is_protected: Boolean, repository__internal_status__is_visible: Boolean, repository__internal_status__owner__id: ID, repository__internal_status__source__id: ID, repository__internal_status__value: String, repository__internal_status__values: [String], repository__isnull: Boolean, repository__location__is_protected: Boolean, repository__location__is_visible: Boolean, repository__location__owner__id: ID, repository__location__source__id: ID, repository__location__value: String, repository__location__values: [String], repository__name__is_protected: Boolean, repository__name__is_visible: Boolean, repository__name__owner__id: ID, repository__name__source__id: ID, repository__name__value: String, repository__name__values: [String], repository__operational_status__is_protected: Boolean, repository__operational_status__is_visible: Boolean, repository__operational_status__owner__id: ID, repository__operational_status__source__id: ID, repository__operational_status__value: String, repository__operational_status__values: [String], repository__sync_status__is_protected: Boolean, repository__sync_status__is_visible: Boolean, repository__sync_status__owner__id: ID, repository__sync_status__source__id: ID, repository__sync_status__value: String, repository__sync_status__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String], tags__description__is_protected: Boolean, tags__description__is_visible: Boolean, tags__description__owner__id: ID, tags__description__source__id: ID, tags__description__value: String, tags__description__values: [String], tags__ids: [ID], tags__isnull: Boolean, tags__name__is_protected: Boolean, tags__name__is_visible: Boolean, tags__name__owner__id: ID, tags__name__source__id: ID, tags__name__value: String, tags__name__values: [String], timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__isnull: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): PaginatedCoreTransformation!
   CoreTransformJinja2(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], label__is_protected: Boolean, label__is_visible: Boolean, label__isnull: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], name__is_protected: Boolean, name__is_visible: Boolean, name__isnull: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, query__depth__is_protected: Boolean, query__depth__is_visible: Boolean, query__depth__owner__id: ID, query__depth__source__id: ID, query__depth__value: BigInt, query__depth__values: [BigInt], query__description__is_protected: Boolean, query__description__is_visible: Boolean, query__description__owner__id: ID, query__description__source__id: ID, query__description__value: String, query__description__values: [String], query__height__is_protected: Boolean, query__height__is_visible: Boolean, query__height__owner__id: ID, query__height__source__id: ID, query__height__value: BigInt, query__height__values: [BigInt], query__ids: [ID], query__isnull: Boolean, query__models__is_protected: Boolean, query__models__is_visible: Boolean, query__models__owner__id: ID, query__models__source__id: ID, query__models__value: GenericScalar, query__models__values: [GenericScalar], query__name__is_protected: Boolean, query__name__is_visible: Boolean, query__name__owner__id: ID, query__name__source__id: ID, query__name__value: String, query__name__values: [String], query__operations__is_protected: Boolean, query__operations__is_visible: Boolean, query__operations__owner__id: ID, query__operations__source__id: ID, query__operations__value: GenericScalar, query__operations__values: [GenericScalar], query__query__is_protected: Boolean, query__query__is_visible: Boolean, query__query__owner__id: ID, query__query__source__id: ID, query__query__value: String, query__query__values: [String], query__variables__is_protected: Boolean, query__variables__is_visible: Boolean, query__variables__owner__id: ID, query__variables__source__id: ID, query__variables__value: GenericScalar, query__variables__values: [GenericScalar], repository__description__is_protected: Boolean, repository__description__is_visible: Boolean, repository__description__owner__id: ID, repository__description__source__id: ID, repository__description__value: String, repository__description__values: [String], repository__ids: [ID], repository__internal_status__is_protected: Boolean, repository__internal_status__is_visible: Boolean, repository__internal_status__owner__id: ID, repository__internal_status__source__id: ID, repository__internal_status__value: String, repository__internal_status__values: [String], repository__isnull: Boolean, repository__location__is_protected: Boolean, repository__location__is_visible: Boolean, repository__location__owner__id: ID, repository__location__source__id: ID, repository__location__value: String, repository__location__values: [String], repository__name__is_protected: Boolean, repository__name__is_visible: Boolean, repository__name__owner__id: ID, repository__name__source__id: ID, repository__name__value: String, repository__name__values: [String], repository__operational_status__is_protected: Boolean, repository__operational_status__is_visible: Boolean, repository__operational_status__owner__id: ID, repository__operational_status__source__id: ID, repository__operational_status__value: String, repository__operational_status__values: [String], repository__sync_status__is_protected: Boolean, repository__sync_status__is_visible: Boolean, repository__sync_status__owner__id: ID, repository__sync_status__source__id: ID, repository__sync_status__value: String, repository__sync_status__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String], tags__description__is_protected: Boolean, tags__description__is_visible: Boolean, tags__description__owner__id: ID, tags__description__source__id: ID, tags__description__value: String, tags__description__values: [String], tags__ids: [ID], tags__isnull: Boolean, tags__name__is_protected: Boolean, tags__name__is_visible: Boolean, tags__name__owner__id: ID, tags__name__source__id: ID, tags__name__value: String, tags__name__values: [String], template_path__is_protected: Boolean, template_path__is_visible: Boolean, template_path__isnull: Boolean, template_path__owner__id: ID, template_path__source__id: ID, template_path__value: String, template_path__values: [String], timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__isnull: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): PaginatedCoreTransformJinja2!
   CoreTransformPython(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], class_name__is_protected: Boolean, class_name__is_visible: Boolean, class_name__isnull: Boolean, class_name__owner__id: ID, class_name__source__id: ID, class_name__value: String, class_name__values: [String], convert_query_response__is_protected: Boolean, convert_query_response__is_visible: Boolean, convert_query_response__isnull: Boolean, convert_query_response__owner__id: ID, convert_query_response__source__id: ID, convert_query_response__value: Boolean, convert_query_response__values: [Boolean], description__is_protected: Boolean, description__is_visible: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], file_path__is_protected: Boolean, file_path__is_visible: Boolean, file_path__isnull: Boolean, file_path__owner__id: ID, file_path__source__id: ID, file_path__value: String, file_path__values: [String], hfid: [String], ids: [ID], label__is_protected: Boolean, label__is_visible: Boolean, label__isnull: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], name__is_protected: Boolean, name__is_visible: Boolean, name__isnull: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, query__depth__is_protected: Boolean, query__depth__is_visible: Boolean, query__depth__owner__id: ID, query__depth__source__id: ID, query__depth__value: BigInt, query__depth__values: [BigInt], query__description__is_protected: Boolean, query__description__is_visible: Boolean, query__description__owner__id: ID, query__description__source__id: ID, query__description__value: String, query__description__values: [String], query__height__is_protected: Boolean, query__height__is_visible: Boolean, query__height__owner__id: ID, query__height__source__id: ID, query__height__value: BigInt, query__height__values: [BigInt], query__ids: [ID], query__isnull: Boolean, query__models__is_protected: Boolean, query__models__is_visible: Boolean, query__models__owner__id: ID, query__models__source__id: ID, query__models__value: GenericScalar, query__models__values: [GenericScalar], query__name__is_protected: Boolean, query__name__is_visible: Boolean, query__name__owner__id: ID, query__name__source__id: ID, query__name__value: String, query__name__values: [String], query__operations__is_protected: Boolean, query__operations__is_visible: Boolean, query__operations__owner__id: ID, query__operations__source__id: ID, query__operations__value: GenericScalar, query__operations__values: [GenericScalar], query__query__is_protected: Boolean, query__query__is_visible: Boolean, query__query__owner__id: ID, query__query__source__id: ID, query__query__value: String, query__query__values: [String], query__variables__is_protected: Boolean, query__variables__is_visible: Boolean, query__variables__owner__id: ID, query__variables__source__id: ID, query__variables__value: GenericScalar, query__variables__values: [GenericScalar], repository__description__is_protected: Boolean, repository__description__is_visible: Boolean, repository__description__owner__id: ID, repository__description__source__id: ID, repository__description__value: String, repository__description__values: [String], repository__ids: [ID], repository__internal_status__is_protected: Boolean, repository__internal_status__is_visible: Boolean, repository__internal_status__owner__id: ID, repository__internal_status__source__id: ID, repository__internal_status__value: String, repository__internal_status__values: [String], repository__isnull: Boolean, repository__location__is_protected: Boolean, repository__location__is_visible: Boolean, repository__location__owner__id: ID, repository__location__source__id: ID, repository__location__value: String, repository__location__values: [String], repository__name__is_protected: Boolean, repository__name__is_visible: Boolean, repository__name__owner__id: ID, repository__name__source__id: ID, repository__name__value: String, repository__name__values: [String], repository__operational_status__is_protected: Boolean, repository__operational_status__is_visible: Boolean, repository__operational_status__owner__id: ID, repository__operational_status__source__id: ID, repository__operational_status__value: String, repository__operational_status__values: [String], repository__sync_status__is_protected: Boolean, repository__sync_status__is_visible: Boolean, repository__sync_status__owner__id: ID, repository__sync_status__source__id: ID, repository__sync_status__value: String, repository__sync_status__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String], tags__description__is_protected: Boolean, tags__description__is_visible: Boolean, tags__description__owner__id: ID, tags__description__source__id: ID, tags__description__value: String, tags__description__values: [String], tags__ids: [ID], tags__isnull: Boolean, tags__name__is_protected: Boolean, tags__name__is_visible: Boolean, tags__name__owner__id: ID, tags__name__source__id: ID, tags__name__value: String, tags__name__values: [String], timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__isnull: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): PaginatedCoreTransformPython!
+  CoreTransformation(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], label__is_protected: Boolean, label__is_visible: Boolean, label__isnull: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], name__is_protected: Boolean, name__is_visible: Boolean, name__isnull: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, query__depth__is_protected: Boolean, query__depth__is_visible: Boolean, query__depth__owner__id: ID, query__depth__source__id: ID, query__depth__value: BigInt, query__depth__values: [BigInt], query__description__is_protected: Boolean, query__description__is_visible: Boolean, query__description__owner__id: ID, query__description__source__id: ID, query__description__value: String, query__description__values: [String], query__height__is_protected: Boolean, query__height__is_visible: Boolean, query__height__owner__id: ID, query__height__source__id: ID, query__height__value: BigInt, query__height__values: [BigInt], query__ids: [ID], query__isnull: Boolean, query__models__is_protected: Boolean, query__models__is_visible: Boolean, query__models__owner__id: ID, query__models__source__id: ID, query__models__value: GenericScalar, query__models__values: [GenericScalar], query__name__is_protected: Boolean, query__name__is_visible: Boolean, query__name__owner__id: ID, query__name__source__id: ID, query__name__value: String, query__name__values: [String], query__operations__is_protected: Boolean, query__operations__is_visible: Boolean, query__operations__owner__id: ID, query__operations__source__id: ID, query__operations__value: GenericScalar, query__operations__values: [GenericScalar], query__query__is_protected: Boolean, query__query__is_visible: Boolean, query__query__owner__id: ID, query__query__source__id: ID, query__query__value: String, query__query__values: [String], query__variables__is_protected: Boolean, query__variables__is_visible: Boolean, query__variables__owner__id: ID, query__variables__source__id: ID, query__variables__value: GenericScalar, query__variables__values: [GenericScalar], repository__description__is_protected: Boolean, repository__description__is_visible: Boolean, repository__description__owner__id: ID, repository__description__source__id: ID, repository__description__value: String, repository__description__values: [String], repository__ids: [ID], repository__internal_status__is_protected: Boolean, repository__internal_status__is_visible: Boolean, repository__internal_status__owner__id: ID, repository__internal_status__source__id: ID, repository__internal_status__value: String, repository__internal_status__values: [String], repository__isnull: Boolean, repository__location__is_protected: Boolean, repository__location__is_visible: Boolean, repository__location__owner__id: ID, repository__location__source__id: ID, repository__location__value: String, repository__location__values: [String], repository__name__is_protected: Boolean, repository__name__is_visible: Boolean, repository__name__owner__id: ID, repository__name__source__id: ID, repository__name__value: String, repository__name__values: [String], repository__operational_status__is_protected: Boolean, repository__operational_status__is_visible: Boolean, repository__operational_status__owner__id: ID, repository__operational_status__source__id: ID, repository__operational_status__value: String, repository__operational_status__values: [String], repository__sync_status__is_protected: Boolean, repository__sync_status__is_visible: Boolean, repository__sync_status__owner__id: ID, repository__sync_status__source__id: ID, repository__sync_status__value: String, repository__sync_status__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String], tags__description__is_protected: Boolean, tags__description__is_visible: Boolean, tags__description__owner__id: ID, tags__description__source__id: ID, tags__description__value: String, tags__description__values: [String], tags__ids: [ID], tags__isnull: Boolean, tags__name__is_protected: Boolean, tags__name__is_visible: Boolean, tags__name__owner__id: ID, tags__name__source__id: ID, tags__name__value: String, tags__name__values: [String], timeout__is_protected: Boolean, timeout__is_visible: Boolean, timeout__isnull: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): PaginatedCoreTransformation!
   CoreTriggerRule(action__description__is_protected: Boolean, action__description__is_visible: Boolean, action__description__owner__id: ID, action__description__source__id: ID, action__description__value: String, action__description__values: [String], action__ids: [ID], action__isnull: Boolean, action__name__is_protected: Boolean, action__name__is_visible: Boolean, action__name__owner__id: ID, action__name__source__id: ID, action__name__value: String, action__name__values: [String], active__is_protected: Boolean, active__is_visible: Boolean, active__isnull: Boolean, active__owner__id: ID, active__source__id: ID, active__value: Boolean, active__values: [Boolean], any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], branch_scope__is_protected: Boolean, branch_scope__is_visible: Boolean, branch_scope__isnull: Boolean, branch_scope__owner__id: ID, branch_scope__source__id: ID, branch_scope__value: String, branch_scope__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], name__is_protected: Boolean, name__is_visible: Boolean, name__isnull: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedCoreTriggerRule!
   CoreUserValidator(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], check_definition__class_name__is_protected: Boolean, check_definition__class_name__is_visible: Boolean, check_definition__class_name__owner__id: ID, check_definition__class_name__source__id: ID, check_definition__class_name__value: String, check_definition__class_name__values: [String], check_definition__description__is_protected: Boolean, check_definition__description__is_visible: Boolean, check_definition__description__owner__id: ID, check_definition__description__source__id: ID, check_definition__description__value: String, check_definition__description__values: [String], check_definition__file_path__is_protected: Boolean, check_definition__file_path__is_visible: Boolean, check_definition__file_path__owner__id: ID, check_definition__file_path__source__id: ID, check_definition__file_path__value: String, check_definition__file_path__values: [String], check_definition__ids: [ID], check_definition__isnull: Boolean, check_definition__name__is_protected: Boolean, check_definition__name__is_visible: Boolean, check_definition__name__owner__id: ID, check_definition__name__source__id: ID, check_definition__name__value: String, check_definition__name__values: [String], check_definition__parameters__is_protected: Boolean, check_definition__parameters__is_visible: Boolean, check_definition__parameters__owner__id: ID, check_definition__parameters__source__id: ID, check_definition__parameters__value: GenericScalar, check_definition__parameters__values: [GenericScalar], check_definition__timeout__is_protected: Boolean, check_definition__timeout__is_visible: Boolean, check_definition__timeout__owner__id: ID, check_definition__timeout__source__id: ID, check_definition__timeout__value: BigInt, check_definition__timeout__values: [BigInt], checks__conclusion__is_protected: Boolean, checks__conclusion__is_visible: Boolean, checks__conclusion__owner__id: ID, checks__conclusion__source__id: ID, checks__conclusion__value: String, checks__conclusion__values: [String], checks__created_at__is_protected: Boolean, checks__created_at__is_visible: Boolean, checks__created_at__owner__id: ID, checks__created_at__source__id: ID, checks__created_at__value: DateTime, checks__created_at__values: [DateTime], checks__ids: [ID], checks__isnull: Boolean, checks__kind__is_protected: Boolean, checks__kind__is_visible: Boolean, checks__kind__owner__id: ID, checks__kind__source__id: ID, checks__kind__value: String, checks__kind__values: [String], checks__label__is_protected: Boolean, checks__label__is_visible: Boolean, checks__label__owner__id: ID, checks__label__source__id: ID, checks__label__value: String, checks__label__values: [String], checks__message__is_protected: Boolean, checks__message__is_visible: Boolean, checks__message__owner__id: ID, checks__message__source__id: ID, checks__message__value: String, checks__message__values: [String], checks__name__is_protected: Boolean, checks__name__is_visible: Boolean, checks__name__owner__id: ID, checks__name__source__id: ID, checks__name__value: String, checks__name__values: [String], checks__origin__is_protected: Boolean, checks__origin__is_visible: Boolean, checks__origin__owner__id: ID, checks__origin__source__id: ID, checks__origin__value: String, checks__origin__values: [String], checks__severity__is_protected: Boolean, checks__severity__is_visible: Boolean, checks__severity__owner__id: ID, checks__severity__source__id: ID, checks__severity__value: String, checks__severity__values: [String], completed_at__is_protected: Boolean, completed_at__is_visible: Boolean, completed_at__isnull: Boolean, completed_at__owner__id: ID, completed_at__source__id: ID, completed_at__value: DateTime, completed_at__values: [DateTime], conclusion__is_protected: Boolean, conclusion__is_visible: Boolean, conclusion__isnull: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], ids: [ID], label__is_protected: Boolean, label__is_visible: Boolean, label__isnull: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, proposed_change__description__is_protected: Boolean, proposed_change__description__is_visible: Boolean, proposed_change__description__owner__id: ID, proposed_change__description__source__id: ID, proposed_change__description__value: String, proposed_change__description__values: [String], proposed_change__destination_branch__is_protected: Boolean, proposed_change__destination_branch__is_visible: Boolean, proposed_change__destination_branch__owner__id: ID, proposed_change__destination_branch__source__id: ID, proposed_change__destination_branch__value: String, proposed_change__destination_branch__values: [String], proposed_change__ids: [ID], proposed_change__is_draft__is_protected: Boolean, proposed_change__is_draft__is_visible: Boolean, proposed_change__is_draft__owner__id: ID, proposed_change__is_draft__source__id: ID, proposed_change__is_draft__value: Boolean, proposed_change__is_draft__values: [Boolean], proposed_change__isnull: Boolean, proposed_change__name__is_protected: Boolean, proposed_change__name__is_visible: Boolean, proposed_change__name__owner__id: ID, proposed_change__name__source__id: ID, proposed_change__name__value: String, proposed_change__name__values: [String], proposed_change__source_branch__is_protected: Boolean, proposed_change__source_branch__is_visible: Boolean, proposed_change__source_branch__owner__id: ID, proposed_change__source_branch__source__id: ID, proposed_change__source_branch__value: String, proposed_change__source_branch__values: [String], proposed_change__state__is_protected: Boolean, proposed_change__state__is_visible: Boolean, proposed_change__state__owner__id: ID, proposed_change__state__source__id: ID, proposed_change__state__value: String, proposed_change__state__values: [String], proposed_change__total_comments__is_protected: Boolean, proposed_change__total_comments__is_visible: Boolean, proposed_change__total_comments__owner__id: ID, proposed_change__total_comments__source__id: ID, proposed_change__total_comments__value: BigInt, proposed_change__total_comments__values: [BigInt], repository__description__is_protected: Boolean, repository__description__is_visible: Boolean, repository__description__owner__id: ID, repository__description__source__id: ID, repository__description__value: String, repository__description__values: [String], repository__ids: [ID], repository__internal_status__is_protected: Boolean, repository__internal_status__is_visible: Boolean, repository__internal_status__owner__id: ID, repository__internal_status__source__id: ID, repository__internal_status__value: String, repository__internal_status__values: [String], repository__isnull: Boolean, repository__location__is_protected: Boolean, repository__location__is_visible: Boolean, repository__location__owner__id: ID, repository__location__source__id: ID, repository__location__value: String, repository__location__values: [String], repository__name__is_protected: Boolean, repository__name__is_visible: Boolean, repository__name__owner__id: ID, repository__name__source__id: ID, repository__name__value: String, repository__name__values: [String], repository__operational_status__is_protected: Boolean, repository__operational_status__is_visible: Boolean, repository__operational_status__owner__id: ID, repository__operational_status__source__id: ID, repository__operational_status__value: String, repository__operational_status__values: [String], repository__sync_status__is_protected: Boolean, repository__sync_status__is_visible: Boolean, repository__sync_status__owner__id: ID, repository__sync_status__source__id: ID, repository__sync_status__value: String, repository__sync_status__values: [String], started_at__is_protected: Boolean, started_at__is_visible: Boolean, started_at__isnull: Boolean, started_at__owner__id: ID, started_at__source__id: ID, started_at__value: DateTime, started_at__values: [DateTime], state__is_protected: Boolean, state__is_visible: Boolean, state__isnull: Boolean, state__owner__id: ID, state__source__id: ID, state__value: String, state__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedCoreUserValidator!
   CoreValidator(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], checks__conclusion__is_protected: Boolean, checks__conclusion__is_visible: Boolean, checks__conclusion__owner__id: ID, checks__conclusion__source__id: ID, checks__conclusion__value: String, checks__conclusion__values: [String], checks__created_at__is_protected: Boolean, checks__created_at__is_visible: Boolean, checks__created_at__owner__id: ID, checks__created_at__source__id: ID, checks__created_at__value: DateTime, checks__created_at__values: [DateTime], checks__ids: [ID], checks__isnull: Boolean, checks__kind__is_protected: Boolean, checks__kind__is_visible: Boolean, checks__kind__owner__id: ID, checks__kind__source__id: ID, checks__kind__value: String, checks__kind__values: [String], checks__label__is_protected: Boolean, checks__label__is_visible: Boolean, checks__label__owner__id: ID, checks__label__source__id: ID, checks__label__value: String, checks__label__values: [String], checks__message__is_protected: Boolean, checks__message__is_visible: Boolean, checks__message__owner__id: ID, checks__message__source__id: ID, checks__message__value: String, checks__message__values: [String], checks__name__is_protected: Boolean, checks__name__is_visible: Boolean, checks__name__owner__id: ID, checks__name__source__id: ID, checks__name__value: String, checks__name__values: [String], checks__origin__is_protected: Boolean, checks__origin__is_visible: Boolean, checks__origin__owner__id: ID, checks__origin__source__id: ID, checks__origin__value: String, checks__origin__values: [String], checks__severity__is_protected: Boolean, checks__severity__is_visible: Boolean, checks__severity__owner__id: ID, checks__severity__source__id: ID, checks__severity__value: String, checks__severity__values: [String], completed_at__is_protected: Boolean, completed_at__is_visible: Boolean, completed_at__isnull: Boolean, completed_at__owner__id: ID, completed_at__source__id: ID, completed_at__value: DateTime, completed_at__values: [DateTime], conclusion__is_protected: Boolean, conclusion__is_visible: Boolean, conclusion__isnull: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], ids: [ID], label__is_protected: Boolean, label__is_visible: Boolean, label__isnull: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, proposed_change__description__is_protected: Boolean, proposed_change__description__is_visible: Boolean, proposed_change__description__owner__id: ID, proposed_change__description__source__id: ID, proposed_change__description__value: String, proposed_change__description__values: [String], proposed_change__destination_branch__is_protected: Boolean, proposed_change__destination_branch__is_visible: Boolean, proposed_change__destination_branch__owner__id: ID, proposed_change__destination_branch__source__id: ID, proposed_change__destination_branch__value: String, proposed_change__destination_branch__values: [String], proposed_change__ids: [ID], proposed_change__is_draft__is_protected: Boolean, proposed_change__is_draft__is_visible: Boolean, proposed_change__is_draft__owner__id: ID, proposed_change__is_draft__source__id: ID, proposed_change__is_draft__value: Boolean, proposed_change__is_draft__values: [Boolean], proposed_change__isnull: Boolean, proposed_change__name__is_protected: Boolean, proposed_change__name__is_visible: Boolean, proposed_change__name__owner__id: ID, proposed_change__name__source__id: ID, proposed_change__name__value: String, proposed_change__name__values: [String], proposed_change__source_branch__is_protected: Boolean, proposed_change__source_branch__is_visible: Boolean, proposed_change__source_branch__owner__id: ID, proposed_change__source_branch__source__id: ID, proposed_change__source_branch__value: String, proposed_change__source_branch__values: [String], proposed_change__state__is_protected: Boolean, proposed_change__state__is_visible: Boolean, proposed_change__state__owner__id: ID, proposed_change__state__source__id: ID, proposed_change__state__value: String, proposed_change__state__values: [String], proposed_change__total_comments__is_protected: Boolean, proposed_change__total_comments__is_visible: Boolean, proposed_change__total_comments__owner__id: ID, proposed_change__total_comments__source__id: ID, proposed_change__total_comments__value: BigInt, proposed_change__total_comments__values: [BigInt], started_at__is_protected: Boolean, started_at__is_visible: Boolean, started_at__isnull: Boolean, started_at__owner__id: ID, started_at__source__id: ID, started_at__value: DateTime, started_at__values: [DateTime], state__is_protected: Boolean, state__is_visible: Boolean, state__isnull: Boolean, state__owner__id: ID, state__source__id: ID, state__value: String, state__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedCoreValidator!
@@ -10396,6 +10750,8 @@ type Query {
   DiffTreeSummary(branch: String, filters: DiffTreeQueryFilters, from_time: DateTime, name: String, to_time: DateTime): DiffTreeSummary
   """Retrieve fields mapping for converting object type"""
   FieldsMappingTypeConversion(source_kind: String, target_kind: String): FieldsMapping!
+  IPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPAddressGetNextAvailable'. It will be removed in the next version of Infrahub.")
+  IPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.")
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
   InfrahubEvent(
     """Filter the query to specific accounts"""
@@ -10414,7 +10770,9 @@ type Query {
     offset: Int
     """Sort order of the events, defaults to descending order"""
     order: EventSortOrder = DESC
-    """Search events that has any of the indicated event ids listed as parents"""
+    """
+    Search events that has any of the indicated event ids listed as parents
+    """
     parent__ids: [String!]
     """Filter events where the primary node id is within indicated node ids"""
     primary_node__ids: [String!]
@@ -10425,9 +10783,9 @@ type Query {
     """Search events until this timestamp, defaults the current time"""
     until: DateTime
   ): Events!
-  InfrahubInfo: Info!
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
+  InfrahubInfo: Info!
   InfrahubPermissions: AccountPermissionsEdges!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
@@ -10435,11 +10793,11 @@ type Query {
   """Retrieve the status of all infrahub workers."""
   InfrahubStatus: Status!
   InfrahubTask(branch: String, ids: [String], limit: Int, log_limit: Int, log_offset: Int, offset: Int, q: String, related_node__ids: [String], state: [StateType], workflow: [String]): Tasks!
-  """Return the list of all pending or running tasks that can modify the data, for a given branch"""
+  """
+  Return the list of all pending or running tasks that can modify the data, for a given branch
+  """
   InfrahubTaskBranchStatus(branch: String): Tasks!
-  IPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPAddressGetNextAvailable'. It will be removed in the next version of Infrahub.")
   IpamNamespace(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], default__is_protected: Boolean, default__is_visible: Boolean, default__isnull: Boolean, default__owner__id: ID, default__source__id: ID, default__value: Boolean, default__values: [Boolean], description__is_protected: Boolean, description__is_visible: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], ip_addresses__address__is_protected: Boolean, ip_addresses__address__is_visible: Boolean, ip_addresses__address__owner__id: ID, ip_addresses__address__source__id: ID, ip_addresses__address__value: String, ip_addresses__address__values: [String], ip_addresses__description__is_protected: Boolean, ip_addresses__description__is_visible: Boolean, ip_addresses__description__owner__id: ID, ip_addresses__description__source__id: ID, ip_addresses__description__value: String, ip_addresses__description__values: [String], ip_addresses__ids: [ID], ip_addresses__isnull: Boolean, ip_prefixes__broadcast_address__is_protected: Boolean, ip_prefixes__broadcast_address__is_visible: Boolean, ip_prefixes__broadcast_address__owner__id: ID, ip_prefixes__broadcast_address__source__id: ID, ip_prefixes__broadcast_address__value: String, ip_prefixes__broadcast_address__values: [String], ip_prefixes__description__is_protected: Boolean, ip_prefixes__description__is_visible: Boolean, ip_prefixes__description__owner__id: ID, ip_prefixes__description__source__id: ID, ip_prefixes__description__value: String, ip_prefixes__description__values: [String], ip_prefixes__hostmask__is_protected: Boolean, ip_prefixes__hostmask__is_visible: Boolean, ip_prefixes__hostmask__owner__id: ID, ip_prefixes__hostmask__source__id: ID, ip_prefixes__hostmask__value: String, ip_prefixes__hostmask__values: [String], ip_prefixes__ids: [ID], ip_prefixes__is_pool__is_protected: Boolean, ip_prefixes__is_pool__is_visible: Boolean, ip_prefixes__is_pool__owner__id: ID, ip_prefixes__is_pool__source__id: ID, ip_prefixes__is_pool__value: Boolean, ip_prefixes__is_pool__values: [Boolean], ip_prefixes__is_top_level__is_protected: Boolean, ip_prefixes__is_top_level__is_visible: Boolean, ip_prefixes__is_top_level__owner__id: ID, ip_prefixes__is_top_level__source__id: ID, ip_prefixes__is_top_level__value: Boolean, ip_prefixes__is_top_level__values: [Boolean], ip_prefixes__isnull: Boolean, ip_prefixes__member_type__is_protected: Boolean, ip_prefixes__member_type__is_visible: Boolean, ip_prefixes__member_type__owner__id: ID, ip_prefixes__member_type__source__id: ID, ip_prefixes__member_type__value: String, ip_prefixes__member_type__values: [String], ip_prefixes__netmask__is_protected: Boolean, ip_prefixes__netmask__is_visible: Boolean, ip_prefixes__netmask__owner__id: ID, ip_prefixes__netmask__source__id: ID, ip_prefixes__netmask__value: String, ip_prefixes__netmask__values: [String], ip_prefixes__network_address__is_protected: Boolean, ip_prefixes__network_address__is_visible: Boolean, ip_prefixes__network_address__owner__id: ID, ip_prefixes__network_address__source__id: ID, ip_prefixes__network_address__value: String, ip_prefixes__network_address__values: [String], ip_prefixes__prefix__is_protected: Boolean, ip_prefixes__prefix__is_visible: Boolean, ip_prefixes__prefix__owner__id: ID, ip_prefixes__prefix__source__id: ID, ip_prefixes__prefix__value: String, ip_prefixes__prefix__values: [String], ip_prefixes__utilization__is_protected: Boolean, ip_prefixes__utilization__is_visible: Boolean, ip_prefixes__utilization__owner__id: ID, ip_prefixes__utilization__source__id: ID, ip_prefixes__utilization__value: BigInt, ip_prefixes__utilization__values: [BigInt], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], name__is_protected: Boolean, name__is_visible: Boolean, name__isnull: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profiles__ids: [ID], profiles__isnull: Boolean, profiles__profile_name__is_protected: Boolean, profiles__profile_name__is_visible: Boolean, profiles__profile_name__owner__id: ID, profiles__profile_name__source__id: ID, profiles__profile_name__value: String, profiles__profile_name__values: [String], profiles__profile_priority__is_protected: Boolean, profiles__profile_priority__is_visible: Boolean, profiles__profile_priority__owner__id: ID, profiles__profile_priority__source__id: ID, profiles__profile_priority__value: BigInt, profiles__profile_priority__values: [BigInt], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedIpamNamespace!
-  IPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.")
   LineageOwner(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], ids: [ID], limit: Int, offset: Int, order: OrderInput, partial_match: Boolean): PaginatedLineageOwner!
   LineageSource(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], ids: [ID], limit: Int, offset: Int, order: OrderInput, partial_match: Boolean): PaginatedLineageSource!
   ProfileBuiltinIPAddress(any__is_protected: Boolean, any__is_visible: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__is_visible: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__is_visible: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__is_visible: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__address__is_protected: Boolean, related_nodes__address__is_visible: Boolean, related_nodes__address__owner__id: ID, related_nodes__address__source__id: ID, related_nodes__address__value: String, related_nodes__address__values: [String], related_nodes__description__is_protected: Boolean, related_nodes__description__is_visible: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__ids: [ID], related_nodes__isnull: Boolean, subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileBuiltinIPAddress!
@@ -10602,7 +10960,9 @@ type StandardEvent implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The level of the event 0 is a root level event, the child events will have 1 and grand children 2."""
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
   level: Int!
   """The timestamp when the event occurred."""
   occurred_at: DateTime!
@@ -10762,3 +11122,9 @@ type ValidateRepositoryConnectivity {
 type ValueType {
   value: String!
 }
+
+"""Expands a field to include Node defaults"""
+directive @expand(
+  """Exclude specific fields"""
+  exclude: [String]
+) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
