@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, String
+from graphene import Boolean, Field, Int, String
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -21,6 +21,7 @@ class BranchType(InfrahubObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     status = InfrahubBranchStatus(required=True)
+    graph_version = Int(required=False)
     created_at = String(required=False)
     sync_with_git = Boolean(required=False)
     is_default = Boolean(required=False)

@@ -18,7 +18,12 @@ from rich.console import Console
 from rich.table import Table
 
 from infrahub import config
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
+from infrahub.core.branch import Branch
+from infrahub.core.branch.tasks import rebase_branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -30,10 +35,8 @@ from infrahub.core.graph.schema import (
     GraphRelationshipIsPartOf,
     GraphRelationshipProperties,
 )
-from infrahub.core.initialization import (
-    get_root_node,
-    initialize_registry,
-)
+from infrahub.core.initialization import get_root_node, initialize_registry
+from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
@@ -45,6 +48,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
+from infrahub.exceptions import ValidationError
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -59,7 +63,7 @@ def get_timestamp_string() -> str:
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
-    from infrahub.core.migrations.shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
+    from infrahub.core.migrations.shared import MigrationTypes
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
 
@@ -105,7 +109,15 @@ async def migrate_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    await migrate_database(db=dbdriver, initialize=True, check=check, migration_number=migration_number)
+    root_node = await get_root_node(db=dbdriver)
+    migrations = await detect_migration_to_run(
+        current_graph_version=root_node.graph_version, migration_number=migration_number
+    )
+
+    if check or not migrations:
+        return
+
+    await migrate_database(db=dbdriver, migrations=migrations, initialize=True)
 
     await dbdriver.close()
 
@@ -268,8 +280,38 @@ async def index(
     await dbdriver.close()
 
 
+async def detect_migration_to_run(
+    current_graph_version: int, migration_number: int | str | None = None
+) -> Sequence[MigrationTypes]:
+    """Return a sequence of migrations to apply to upgrade the database."""
+    rprint("Checking current state of the database")
+    migrations: list[MigrationTypes] = []
+
+    if migration_number:
+        migration = get_migration_by_number(migration_number)
+        migrations.append(migration)
+        if current_graph_version > migration.minimum_version:
+            rprint(
+                f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
+            )
+            return []
+        rprint(
+            f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
+        )
+    else:
+        migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
+        if not migrations:
+            rprint(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
+            return []
+
+    rprint(
+        f"Database needs to be updated (v{current_graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
+    )
+    return migrations
+
+
 async def migrate_database(
-    db: InfrahubDatabase, initialize: bool = False, check: bool = False, migration_number: int | str | None = None
+    db: InfrahubDatabase, migrations: Sequence[MigrationTypes], initialize: bool = False
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
@@ -277,40 +319,16 @@ async def migrate_database(
 
     Args:
         db: The database object.
-        check: If True, the function will only check the status of the database and not apply the migrations. Defaults to False.
-        migration_number: If provided, the function will only apply the migration with the given number. Defaults to None.
+        migrations: Sequence of migrations to apply.
+        initialize: Whether to initialize the registry before running migrations.
     """
-    rprint("Checking current state of the Database")
+    if not migrations:
+        return True
 
     if initialize:
         await initialize_registry(db=db)
 
     root_node = await get_root_node(db=db)
-    if migration_number:
-        migration = get_migration_by_number(migration_number)
-        migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration] = [migration]
-        if check:
-            if root_node.graph_version > migration.minimum_version:
-                rprint(
-                    f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
-                )
-                return True
-            rprint(
-                f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
-            )
-            return False
-    else:
-        migrations = await get_graph_migrations(root=root_node)
-        if not migrations:
-            rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
-            return True
-
-        rprint(
-            f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
-        )
-
-    if check:
-        return True
 
     for migration in migrations:
         execution_result = await migration.execute(db=db)
@@ -333,6 +351,36 @@ async def migrate_database(
             return False
 
     return True
+
+
+async def trigger_rebase_branches(db: InfrahubDatabase) -> None:
+    """Trigger rebase of non-default branches, also triggering migrations in the process."""
+    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    if not branches:
+        return
+
+    rprint(f"Planning rebase and migrations for {len(branches)} branches: {', '.join([b.name for b in branches])}")
+
+    for branch in branches:
+        if branch.graph_version == GRAPH_VERSION:
+            rprint(
+                f"Ignoring branch rebase and migrations for '{branch.name}' (ID: {branch.uuid}), it is already up-to-date"
+            )
+            continue
+
+        rprint(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
+        try:
+            await registry.schema.load_schema(db=db, branch=branch)
+            await rebase_branch(
+                branch=branch.name,
+                context=InfrahubContext.init(
+                    branch=branch, account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id="")
+                ),
+                send_events=False,
+            )
+            rprint(SUCCESS_BADGE)
+        except (ValidationError, MigrationFailureError):
+            rprint(FAILED_BADGE)
 
 
 async def initialize_internal_schema() -> None:
