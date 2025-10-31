@@ -50,8 +50,6 @@ async def infrahub_branch_resolver(
 
 InfrahubBranchQueryList = Field(
     InfrahubBranchType,
-    ids=List(of_type=NonNull(ID)),
-    name=String(),
     offset=Int(),
     limit=Int(),
     description="Retrieve paginated information about active branches.",
