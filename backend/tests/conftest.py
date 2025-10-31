@@ -22,6 +22,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config
 from infrahub.config import load_and_exit
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
@@ -164,6 +165,22 @@ async def do_default_branch(db: InfrahubDatabase) -> Branch:
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
     return branch
+
+
+@pytest.fixture
+def query_limit_of_one() -> Generator[None, None, None]:
+    original_query_size_limit = config.SETTINGS.database.query_size_limit
+    config.SETTINGS.database.query_size_limit = 1
+    yield
+    config.SETTINGS.database.query_size_limit = original_query_size_limit
+
+
+@pytest.fixture
+def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
+    original_neo4j_runtime = db.default_neo4j_runtime
+    db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
+    yield
+    db.default_neo4j_runtime = original_neo4j_runtime
 
 
 @pytest.fixture

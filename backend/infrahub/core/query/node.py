@@ -878,6 +878,7 @@ class NodeListGetRelationshipsQuery(Query):
         RETURN DISTINCT n_uuid, rel_name, peer_uuid, direction
         """ % {"filters": rels_filter}
         self.add_to_query(query)
+        self.order_by = ["n_uuid", "rel_name", "peer_uuid", "direction"]
         self.return_labels = ["n_uuid", "rel_name", "peer_uuid", "direction"]
 
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
