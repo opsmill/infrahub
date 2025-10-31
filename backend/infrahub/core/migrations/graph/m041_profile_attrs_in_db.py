@@ -14,7 +14,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
-from ..shared import ArbitraryMigration
+from ..shared import MigrationRequiringRebase
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
@@ -69,7 +69,7 @@ WITH DISTINCT node.uuid AS node_uuid
         return [result.get_as_type("node_uuid", str) for result in self.get_results()]
 
 
-class Migration041(ArbitraryMigration):
+class Migration041(MigrationRequiringRebase):
     """
     Save profile attribute values on each node using the profile in the database
     For any profile that has updates on a given branch (including default branch)
