@@ -11,6 +11,7 @@ export const branchesToSelectOptions = (branches: Branch[]) =>
     .map((branch) => ({
       id: branch.name,
       name: branch.name,
+      status: branch.status,
       sync_with_git: branch.sync_with_git,
       is_default: branch.is_default,
       has_schema_changes: branch.has_schema_changes,
