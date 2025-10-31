@@ -27,16 +27,19 @@ class AttributeProfileDetails:
 
 
 class WrappedMigration041(Migration041):
-    async def _get_profile_applier(self, db: InfrahubDatabase, branch_name: str) -> NodeProfilesApplier:
-        profile_applier = await super()._get_profile_applier(db=db, branch_name=branch_name)
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._appliers_by_branch: dict[str, NodeProfilesApplier] = {}
+
+    def _get_profile_applier(self, db: InfrahubDatabase, branch: Branch) -> NodeProfilesApplier:
+        profile_applier = super()._get_profile_applier(db=db, branch=branch)
         if isinstance(profile_applier, AsyncMock):
             return profile_applier
         wrapped_profile_applier = AsyncMock(wraps=profile_applier)
-        self._appliers_by_branch[branch_name] = wrapped_profile_applier
+        self._appliers_by_branch[branch.name] = wrapped_profile_applier
         return wrapped_profile_applier
 
 
-@pytest.mark.skip(reason="Is flaky. And waiting on updates to the migration")
 class TestMigration041(TestInfrahubApp):
     @pytest.fixture
     async def profile_1(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> Node:
@@ -99,8 +102,8 @@ class TestMigration041(TestInfrahubApp):
 
     @pytest.fixture
     async def criticality_low_deleted(self, db: InfrahubDatabase, deleted_node_branch: Branch, criticality_low: Node):
-        profile = await NodeManager.get_one(db=db, branch=deleted_node_branch, id=criticality_low.id)
-        await profile.delete(db=db)
+        crit_low = await NodeManager.get_one(db=db, branch=deleted_node_branch, id=criticality_low.id)
+        await crit_low.delete(db=db)
 
     @pytest.fixture
     async def load_data(
@@ -180,49 +183,52 @@ class TestMigration041(TestInfrahubApp):
         validation_result = await migration.validate_migration(db=db)
         assert not validation_result.errors
 
+        for branch in [value_branch, priority_branch, deleted_profile_branch, deleted_node_branch]:
+            await branch.rebase(db=db)
+            execution_result = await migration.execute_against_branch(db=db, branch=branch)
+            assert not execution_result.errors
+
+        default_crit_low_profile_attrs = [
+            AttributeProfileDetails(
+                attribute_name="color",
+                value="profile1",
+                is_default=False,
+                source_id=profile_1.id,
+            ),
+            AttributeProfileDetails(
+                attribute_name="is_true",
+                value=True,
+                is_default=False,
+                source_id=profile_1.id,
+            ),
+        ]
+        default_crit_medium_profile_attrs = [
+            AttributeProfileDetails(attribute_name="is_true", value=True, is_default=False, source_id=profile_1.id),
+            AttributeProfileDetails(attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id),
+        ]
+        default_crit_high_profile_attrs = [
+            AttributeProfileDetails(attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id),
+            AttributeProfileDetails(attribute_name="is_true", value=False, is_default=False, source_id=profile_2.id),
+        ]
+
         # validate node-level changes on main
         updated_criticality_low = await NodeManager.get_one(db=db, id=criticality_low.id, include_source=True)
         self.validate_node(
             original_node=criticality_low,
             updated_node=updated_criticality_low,
-            expected_profile_attrs=[
-                AttributeProfileDetails(
-                    attribute_name="color",
-                    value="profile1",
-                    is_default=False,
-                    source_id=profile_1.id,
-                ),
-                AttributeProfileDetails(
-                    attribute_name="is_true",
-                    value=True,
-                    is_default=False,
-                    source_id=profile_1.id,
-                ),
-            ],
+            expected_profile_attrs=default_crit_low_profile_attrs,
         )
         updated_criticality_medium = await NodeManager.get_one(db=db, id=criticality_medium.id, include_source=True)
         self.validate_node(
             original_node=criticality_medium,
             updated_node=updated_criticality_medium,
-            expected_profile_attrs=[
-                AttributeProfileDetails(attribute_name="is_true", value=True, is_default=False, source_id=profile_1.id),
-                AttributeProfileDetails(
-                    attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id
-                ),
-            ],
+            expected_profile_attrs=default_crit_medium_profile_attrs,
         )
         updated_criticality_high = await NodeManager.get_one(db=db, id=criticality_high.id, include_source=True)
         self.validate_node(
             original_node=criticality_high,
             updated_node=updated_criticality_high,
-            expected_profile_attrs=[
-                AttributeProfileDetails(
-                    attribute_name="is_false", value=False, is_default=False, source_id=profile_2.id
-                ),
-                AttributeProfileDetails(
-                    attribute_name="is_true", value=False, is_default=False, source_id=profile_2.id
-                ),
-            ],
+            expected_profile_attrs=default_crit_high_profile_attrs,
         )
 
         # validate node-level changes on value branch
@@ -274,7 +280,7 @@ class TestMigration041(TestInfrahubApp):
         self.validate_node(
             original_node=criticality_high,
             updated_node=updated_criticality_high,
-            expected_profile_attrs=[],
+            expected_profile_attrs=default_crit_high_profile_attrs,
         )
 
         # validate node-level changes on priority branch
@@ -284,7 +290,7 @@ class TestMigration041(TestInfrahubApp):
         self.validate_node(
             original_node=criticality_low,
             updated_node=updated_criticality_low,
-            expected_profile_attrs=[],
+            expected_profile_attrs=default_crit_low_profile_attrs,
         )
         updated_criticality_medium = await NodeManager.get_one(
             db=db, branch=priority_branch, id=criticality_medium.id, include_source=True
@@ -324,8 +330,7 @@ class TestMigration041(TestInfrahubApp):
         self.validate_node(
             original_node=criticality_low,
             updated_node=updated_criticality_low,
-            # branch would need to be rebased to get profile updates applied on main
-            expected_profile_attrs=[],
+            expected_profile_attrs=default_crit_low_profile_attrs,
         )
         updated_criticality_medium = await NodeManager.get_one(
             db=db, branch=deleted_profile_branch, id=criticality_medium.id, include_source=True
@@ -347,14 +352,17 @@ class TestMigration041(TestInfrahubApp):
         )
 
         # validate node-level changes on deleted node branch
+        updated_criticality_low = await NodeManager.get_one(
+            db=db, branch=deleted_node_branch, id=criticality_low.id, include_source=True
+        )
+        assert updated_criticality_low is None
         updated_criticality_medium = await NodeManager.get_one(
             db=db, branch=deleted_node_branch, id=criticality_medium.id, include_source=True
         )
         self.validate_node(
             original_node=criticality_medium,
             updated_node=updated_criticality_medium,
-            # branch would need to be rebased to get profile updates applied on main
-            expected_profile_attrs=[],
+            expected_profile_attrs=default_crit_medium_profile_attrs,
         )
         updated_criticality_high = await NodeManager.get_one(
             db=db, branch=deleted_node_branch, id=criticality_high.id, include_source=True
@@ -362,7 +370,7 @@ class TestMigration041(TestInfrahubApp):
         self.validate_node(
             original_node=criticality_high,
             updated_node=updated_criticality_high,
-            expected_profile_attrs=[],
+            expected_profile_attrs=default_crit_high_profile_attrs,
         )
 
         # validate apply_profiles is only called on the required nodes

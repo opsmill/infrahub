@@ -50,10 +50,10 @@ async def test_applicable_migrations(default_branch: Branch, db: InfrahubDatabas
     runner = MigrationRunner(branch=branch)
     await branch.save(db=db)
     assert runner.applicable_migrations
-    assert [m.name for m in runner.applicable_migrations][0] == "043_backfill_hfid_display_label_in_db"
+    assert [m.name for m in runner.applicable_migrations][0] == "041_profile_attrs_in_db"
 
     branch.graph_version = 40
     runner = MigrationRunner(branch=branch)
     await branch.save(db=db)
     assert runner.applicable_migrations
-    assert [m.name for m in runner.applicable_migrations][0] == "043_backfill_hfid_display_label_in_db"
+    assert [m.name for m in runner.applicable_migrations][0] == "041_profile_attrs_in_db"
