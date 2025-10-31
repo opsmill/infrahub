@@ -141,6 +141,13 @@ class InfrahubEventFilter(EventFilter):
             if branches:
                 self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
 
+        if branch_migrated := event_type_filter.get("branch_migrated"):
+            branches = branch_migrated.get("branches") or []
+            if "infrahub.branch.created" not in event_type:
+                event_type.append("infrahub.branch.migrated")
+            if branches:
+                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+
         if branch_rebased := event_type_filter.get("branch_rebased"):
             branches = branch_rebased.get("branches") or []
             if "infrahub.branch.created" not in event_type:

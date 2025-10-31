@@ -144,6 +144,7 @@ type Branch {
   branched_from: String
   created_at: String
   description: String
+  graph_version: Int
   has_schema_changes: Boolean
   id: String!
   is_default: Boolean
@@ -323,6 +324,7 @@ enum BranchRelativePermissionDecision {
 enum BranchStatus {
   DELETING
   NEED_REBASE
+  NEED_UPGRADE_REBASE
   OPEN
 }
 

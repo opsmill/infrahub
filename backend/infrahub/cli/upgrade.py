@@ -11,7 +11,12 @@ from prefect.client.orchestration import get_client
 from rich import print as rprint
 
 from infrahub import config
-from infrahub.core.initialization import create_anonymous_role, create_default_account_groups, initialize_registry
+from infrahub.core.initialization import (
+    create_anonymous_role,
+    create_default_account_groups,
+    get_root_node,
+    initialize_registry,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.dependencies.registry import build_component_registry
@@ -26,7 +31,13 @@ from infrahub.workflows.initialization import (
     setup_worker_pools,
 )
 
-from .db import initialize_internal_schema, migrate_database, update_core_schema
+from .db import (
+    detect_migration_to_run,
+    initialize_internal_schema,
+    migrate_database,
+    trigger_rebase_branches,
+    update_core_schema,
+)
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -40,6 +51,7 @@ async def upgrade_cmd(
     ctx: typer.Context,
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     check: bool = typer.Option(False, help="Check the state of the system without upgrading."),
+    rebase_branches: bool = typer.Option(False, help="Rebase and apply migrations to branches if required."),
 ) -> None:
     """Upgrade Infrahub to the latest version."""
 
@@ -57,6 +69,8 @@ async def upgrade_cmd(
 
     build_component_registry()
 
+    root_node = await get_root_node(db=dbdriver)
+
     # NOTE add step to validate if the database and the task manager are reachable
 
     # -------------------------------------------
@@ -67,7 +81,12 @@ async def upgrade_cmd(
     # Upgrade Infrahub Database and Schema
     # -------------------------------------------
 
-    if not await migrate_database(db=dbdriver, initialize=False, check=check):
+    migrations = await detect_migration_to_run(current_graph_version=root_node.graph_version)
+    if check:
+        await dbdriver.close()
+        return
+
+    if not await migrate_database(db=dbdriver, initialize=False, migrations=migrations):
         # A migration failed, stop the upgrade process
         rprint("Upgrade cancelled due to migration failure.")
         await dbdriver.close()
@@ -90,6 +109,12 @@ async def upgrade_cmd(
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
         await trigger_configure_all()
+
+    # -------------------------------------------
+    # Perform branch rebase and apply migrations to them
+    # -------------------------------------------
+    if rebase_branches:
+        await trigger_rebase_branches(db=dbdriver)
 
     await dbdriver.close()
 

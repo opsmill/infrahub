@@ -230,6 +230,13 @@ BRANCH_REBASE = WorkflowDefinition(
     function="rebase_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
+BRANCH_MIGRATE = WorkflowDefinition(
+    name="branch-migrate",
+    type=WorkflowType.CORE,
+    module="infrahub.core.branch.tasks",
+    function="migrate_branch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
 
 BRANCH_CREATE = WorkflowDefinition(
     name="create-branch",
@@ -641,6 +648,7 @@ WORKFLOWS = [
     BRANCH_MERGED,
     BRANCH_MERGE_MUTATION,
     BRANCH_MERGE_POST_PROCESS,
+    BRANCH_MIGRATE,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
