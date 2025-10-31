@@ -59,7 +59,7 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
     return Node
 
 
-def get_schema(
+def get_schema[SchemaProtocol](
     db: InfrahubDatabase,
     branch: Branch,
     node_schema: type[SchemaProtocol] | MainSchemaTypes | str,

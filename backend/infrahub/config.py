@@ -3,12 +3,12 @@ from __future__ import annotations
 import os
 import ssl
 import sys
+import tomllib
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import tomllib
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
@@ -48,28 +48,28 @@ def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
 
 
-class EnterpriseFeatures(str, Enum):
+class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
 
 
-class UserInfoMethod(str, Enum):
+class UserInfoMethod(StrEnum):
     POST = "post"
     GET = "get"
 
 
-class SSOProtocol(str, Enum):
+class SSOProtocol(StrEnum):
     OAUTH2 = "oauth2"
     OIDC = "oidc"
 
 
-class Oauth2Provider(str, Enum):
+class Oauth2Provider(StrEnum):
     GOOGLE = "google"
     PROVIDER1 = "provider1"
     PROVIDER2 = "provider2"
 
 
-class OIDCProvider(str, Enum):
+class OIDCProvider(StrEnum):
     GOOGLE = "google"
     PROVIDER1 = "provider1"
     PROVIDER2 = "provider2"
@@ -98,25 +98,25 @@ class SSOProviderInfo(BaseModel):
         return f"/api/{self.protocol.value}/{self.name}/token"
 
 
-class StorageDriver(str, Enum):
+class StorageDriver(StrEnum):
     FileSystemStorage = "local"
     InfrahubS3ObjectStorage = "s3"
 
 
-class TraceExporterType(str, Enum):
+class TraceExporterType(StrEnum):
     CONSOLE = "console"
     OTLP = "otlp"
     # JAEGER = "jaeger"
     # ZIPKIN = "zipkin"
 
 
-class TraceTransportProtocol(str, Enum):
+class TraceTransportProtocol(StrEnum):
     GRPC = "grpc"
     HTTP_PROTOBUF = "http/protobuf"
     # HTTP_JSON = "http/json"
 
 
-class BrokerDriver(str, Enum):
+class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
     NATS = "nats"
 
@@ -137,7 +137,7 @@ class BrokerDriver(str, Enum):
                 return "RabbitMQMessageBus"
 
 
-class CacheDriver(str, Enum):
+class CacheDriver(StrEnum):
     Redis = "redis"
     NATS = "nats"
 
@@ -158,12 +158,12 @@ class CacheDriver(str, Enum):
                 return "RedisCache"
 
 
-class WorkflowDriver(str, Enum):
+class WorkflowDriver(StrEnum):
     LOCAL = "local"
     WORKER = "worker"
 
 
-class ExtraLogLevel(str, Enum):
+class ExtraLogLevel(StrEnum):
     CRITICAL = "CRITICAL"
     ERROR = "ERROR"
     WARNING = "WARNING"

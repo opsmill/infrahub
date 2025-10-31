@@ -1,114 +1,187 @@
 ---
-title: Database backup and restore
+title: Understanding database backup and restore
 ---
 
-# Database backup and restore command line interface
+# Understanding database backup and restore
 
-Infrahub provides a command-line interface tool to help backup and restore a full Neo4j database. It is designed to be run from almost any host machine and has a much smaller set of requirements than running the full Infrahub application. We use Docker containers to run commands against the Neo4j database to make this tool easier to install.
+This topic explains how Infrahub's database backup and restore system works, the architectural decisions behind it, and the various approaches available for protecting your data. Understanding these concepts helps you make informed decisions about your backup strategy and troubleshoot issues when they arise.
 
-Please see [this guide](../guides/database-backup.mdx) for concrete examples of running backup and restore commands.
+## Overview
 
-## Requirements {#backup-requirements}
+Infrahub's backup system is designed around three core principles:
 
-### Machine running the CLI command
+1. **Completeness**: Capturing all data necessary for full system recovery
+2. **Consistency**: Ensuring data integrity across distributed components
+3. **Flexibility**: Supporting various deployment scenarios and recovery needs
 
-- [Docker](https://www.docker.com/) installed
-- [Python](https://www.python.org/) 3.8 or later
-- [Python Docker SDK](https://docker-py.readthedocs.io/en/stable/index.html)
+The backup process involves more than just the Neo4j graph database—it encompasses the entire data ecosystem that Infrahub relies on to function correctly.
 
-#### Backup only
+## Backup architecture
 
-- Can connect to Infrahub database container (over port 6362 by default)
+### Components requiring backup
 
-#### Restore only
+Infrahub's data is distributed across multiple systems, each serving a specific purpose:
 
-- Can connect to the Docker daemon running the Infrahub database container.
-- Database credentials specified in the `NEO4J_AUTH` environment variable in the format (username/password)
+**Neo4j graph database**
+The core of Infrahub's data model, storing all infrastructure relationships, schemas, and configuration data. This uses Neo4j's transactional graph database engine, which maintains ACID compliance and supports point-in-time recovery through transaction logs.
 
-### Infrahub database container
+**Artifact storage**
+Transforms, queries, and other generated artifacts are stored separately from the graph database. This can be either an S3-compatible object store or local filesystem, depending on your deployment configuration. The separation allows for efficient storage of large files without impacting database performance.
 
-- Must be running a Neo4j Enterprise image
-- Must have the following environment variables set
+**Task management database**
+Prefect's PostgreSQL database contains task execution history, logs, and workflow state. While not critical for data recovery, this information is valuable for auditing and troubleshooting past operations. The infrahubops tool backs this up using `pg_dump` with the custom format (`-Fc`) for efficient compression and restoration.
+
+### Why multiple components?
+
+This distributed architecture might seem complex, but it serves important purposes:
+
+- **Performance optimization**: Artifacts don't belong in a graph database
+- **Scalability**: Each component can be scaled independently
+- **Flexibility**: Different storage backends for different data types
+- **Cost efficiency**: Use appropriate storage tiers for different data
+
+## Backup strategies
+
+### Full vs incremental backups
+
+Neo4j supports both full and incremental backups, each with distinct characteristics:
+
+**Full backups** create a complete copy of the database at a specific point in time. They're self-contained and straightforward to restore but require more storage space and time to complete.
+
+**Incremental backups** only capture changes since the last backup. Neo4j tracks transaction IDs to ensure no data loss even during active database use. The backup tool automatically determines whether to perform a full or incremental backup based on existing backup files in the target directory.
+
+### Online vs offline backups
+
+**Online backups** (the default approach) allow the database to remain operational during the backup process. Neo4j uses a checkpoint mechanism to ensure consistency:
+
+1. A checkpoint is triggered to flush pending transactions
+2. Data files are copied while tracking new transactions
+3. Transaction logs ensure no data loss between checkpoint and completion
+
+**Offline backups** require stopping the database but guarantee a perfectly consistent snapshot. These are typically only necessary for major migrations or when changing database versions.
+
+## The backup process explained
+
+### How Neo4j ensures consistency
+
+Neo4j's backup mechanism uses several techniques to maintain consistency:
+
+1. **Transaction logs**: Every change is written to a transaction log before being applied to the data files
+2. **Checkpoints**: Periodic checkpoints ensure transaction logs are applied to data files
+3. **Backup coordination**: The backup process coordinates with the checkpoint mechanism to capture a consistent view
+
+When you initiate a backup with infrahubops:
 
 ```text
-- "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
-- "NEO4J_server_backup_enabled=true"
-# Can use a port other than 6362, but this is the default
-- "NEO4J_server_backup_listen__address=0.0.0.0:6362"
+Check Running Tasks → Create Temp Directory → Backup Neo4j → Backup PostgreSQL → Calculate Checksums → Create Tarball → Cleanup
 ```
 
-## Command-line tool
+The tool ensures no tasks are running before starting (unless `--force` is used), preventing potential data inconsistencies.
 
-The command-line tool lives [here](https://github.com/opsmill/infrahub/tree/stable/utilities/db_backup/__main__.py). To use the tool locally, you can either clone the [Infrahub repository](https://github.com/opsmill/infrahub) or copy the content of the linked file into a local `.py` file. If you choose the clone the repository, you can run the tool with either of the following commands
+### Helper container approach
+
+The infrahubops tool uses Docker Compose commands to execute operations directly on running containers, providing several benefits:
+
+- **No additional containers**: Unlike the old utility, infrahubops doesn't create helper containers
+- **Direct execution**: Uses `docker compose exec` to run commands in existing containers
+- **Simplified networking**: No need to manage separate Docker networks
+- **Project awareness**: Automatically detects and targets the correct Docker Compose project
+- **Integrity verification**: Calculates and validates SHA256 checksums for all backed-up files
+
+## Restore considerations
+
+### Data consistency during restore
+
+Restoring a database is more disruptive than backing it up because it requires:
+
+1. **Stopping the target database** to prevent concurrent modifications
+2. **Clearing existing data** to avoid conflicts
+3. **Restoring data files** from the backup
+4. **Replaying transaction logs** to reach the backup point
+5. **Recreating metadata** including users, roles, and permissions
+
+### The system database challenge
+
+Neo4j maintains a special `system` database containing:
+
+- User accounts and authentication data
+- Role definitions and permissions
+- Database metadata and configuration
+
+While the backup tool captures the system database, restoring it requires special consideration:
+
+- In standalone deployments, the system database is typically not restored to preserve existing configurations
+- In cluster deployments, system database restoration requires cluster-wide coordination
+- For disaster recovery scenarios, system database restoration may be necessary but requires additional steps
+
+### Cluster restore complexity
+
+Restoring a Neo4j cluster involves additional challenges:
+
+**Cluster topology preservation**
+The backup contains data but not cluster roles (leader/follower relationships). After restoration, you must:
+
+1. Identify a seed instance with the restored data
+2. Use `CREATE DATABASE ... OPTIONS { existingData: 'use' }` to register the data
+3. Allow the cluster to replicate data to other nodes
+
+**Consistency across nodes**
+All nodes must be synchronized to prevent split-brain scenarios. The restoration process typically involves:
+
+- Dropping the database cluster-wide
+- Restoring to a single node
+- Recreating the database from that seed node
+- Monitoring replication to ensure all nodes synchronize
+
+## Alternative approaches
+
+### Direct filesystem copies
+
+While possible, directly copying Neo4j data files has significant limitations:
+
+- Requires complete database shutdown
+- No transaction log coordination
+- Risk of incomplete or corrupted copies
+- No automatic metadata handling
+
+### Logical exports
+
+Using Cypher queries to export and import data:
+
+- **Advantages**: Human-readable, version-independent, selective export
+- **Disadvantages**: Slower, no transaction consistency, requires custom scripting
+
+### Continuous replication
+
+Setting up read replicas for backup purposes:
+
+- **Advantages**: Near-zero RPO (Recovery Point Objective), instant failover capability
+- **Disadvantages**: Requires additional infrastructure, ongoing synchronization overhead
+
+## Implementation details
+
+### Backup file structure
+
+The infrahubops tool creates a tarball with the following structure:
 
 ```text
-python -m utilities.db_backup neo4j [backup|restore] ...
-python utilities/db_backup/__main__.py [backup|restore] ...
+infrahub_backup_YYYYMMDD_HHMMSS.tar.gz
+├── backup/
+│   ├── backup_information.json    # Metadata and checksums
+│   ├── database/                   # Neo4j backup files
+│   │   └── neo4j-*.backup
+│   └── prefect.dump               # PostgreSQL dump
 ```
 
-If you copied the content of the file locally, only the second method will work.
+### Task safety mechanism
 
-## Backups
+Before creating a backup, the tool checks for running tasks using an embedded Python script that queries the Infrahub API. This prevents backing up data in an inconsistent state. The `--force` flag bypasses this check but should be used with caution.
 
-As long as your Infrahub database container meets the following requirements, you can run a backup at any time.
+### Checksum validation
 
-- Uses a `neo4j<version>-enterprise` image
-- Exposes port 6362 (or another port specified in the `NEO4J_server_backup_listen__address` environment variable)
+Every file in the backup is protected by SHA256 checksums stored in `backup_information.json`. During restoration, these checksums are verified to ensure data integrity. Any mismatch will abort the restoration process.
 
-You do not need to schedule downtime. The machine on which you are running this backup command must either be able to connect to the backup listening port of the Infrahub database container or the Docker daemon of the machine running the Infrahub database container. The `--database-url` argument can be used to specify the host name or IP address of the machine hosting the Infrahub database container. If `--database-url` is not set, this utility will attempt to connect to a Docker container with the label `infrahub_role=database` using a Docker network.
+## Further reading
 
-If you choose to use a port other than `6362` for your database backup, you must specify the port both in the `NEO4J_server_backup_listen__address` environment variable of the Infrahub database container and in the `--database-backup-port` argument of this backup command.
-
-### Incremental backups
-
-The [Neo4j backup command](https://neo4j.com/docs/operations-manual/current/backup-restore/online-backup/), which is what this tool uses, can take an incremental backup and will track the ID of the latest transaction so that no data will be lost even if changes are being made during the backup process.
-
-You must specify a directory to store the backups as an argument to the `db_backup neo4j backup` command. This directory can contain previous `.backup` files for your Infrahub Neo4j database. In fact, using the same directory for multiple backups over time allows the Neo4j `backup` command to run more quickly because it will only take an incremental backup that covers the transactions from the end of the latest `.backup` files to the latest transaction on the database for each Neo4j database.
-
-By default, our backup command aggregates incremental backups into a single file each time it runs. If you prefer to keep separate timestamped backup files, you can disable the aggregation using the `--no-aggregate` flag.
-
-## Backup in detail
-
-This is extra detail on precisely how our backup utility runs for those who are interested. You do not need to read this to use the tool.
-
-We pretty closely follow the [guidance from Neo4j](https://neo4j.com/docs/operations-manual/current/docker/backup-restore/#docker-neo4j-backup-admin) on how to run their backup tool through Docker.
-
-1. Start a helper Docker container based on the `neo4j-admin` image. This container uses a volume that links a directory within the container to the `backup_directory` specified in the command.
-2. If the utility finds a running Docker container with a label of `infrahub_role=database`, then we assume that this is the Infrahub database container and connect the helper container to any networks that the database container is using.
-3. The helper container runs the `neo4j-admin database backup` command with connection details specifying the address of the Infrahub database container.
-4. By default, the helper container then runs the `neo4j-admin database aggregate-backup` command on the `backup_directory` to consolidate all backups present into a single backup per Neo4j database. This can be turned off using the `--no-aggregate` flag on the command line.
-5. The helper container is stopped and removed. This can be turned off using the `--keep-helper-container` option on the command line.
-
-## Restore
-
-The `db_backup neo4j restore` command is disruptive. It will stop and start all Neo4j databases (except for `system`) on your Infrahub database container.
-
-Unlike the `backup` command, the `restore` command requires a connection to the Docker daemon running the Infrahub database container because it needs to execute commands directly on that container. This means that you either need to execute the `restore` command
-
-1. on the same machine that is running your Infrahub database container
-2. on a machine that can connect to the Docker daemon running the Infrahub database container
-
-The first option is probably easier. The second option can be achieved by ensuring the `dockerd` process on the remote machine is running on a TCP port that your local machine can access and that your local machine has the `DOCKER_HOST` environment variable set to point at the Docker daemon port on the remote machine.
-
-### Backup files
-
-You must specify the directory containing the backup files you wish to restore on the Infrahub database in the `backup_directory` argument to the `db_backup neo4j restore` command. This directory should contain `.backup` files produced by the `db_backup neo4j backup` command. The files must be of the format `<database_name>-2024-02-07T22-12-16.backup`. Given the default database configuration, a backup will produce two `.backup` files: one for the `neo4j` database and one for the `system` database.
-
-The `backup` utility produces a `.backup` file for the `system` database, but the `restore` utility will not attempt to restore a `system` database backup. This should not cause any problems for you unless your Infrahub database has suffered a catastrophic failure. Neo4j provides documentation on this process [here](https://neo4j.com/docs/operations-manual/5/clustering/disaster-recovery/#make-the-system-database-write-available), but it is beyond the scope of what this utility is intended to do.
-
-### Downtime
-
-Restoring a database requires stopping the database, running the restore, starting the database, and then loading the metadata (user, roles, etc.) associated with the database. For a small database (less than 20,000 nodes), this whole process can take less than 30 seconds, but it could be much longer for a larger database. The Infrahub web server won't be able to handle any requests while the database is being restored and it could cause the restore to fail, so we recommend shutting down the Infrahub web application while restoring a database.
-
-### Restore in detail
-
-This is a more detailed look at precisely how the `restore` command works. It makes use of Neo4j's [database restore command](https://neo4j.com/docs/operations-manual/current/backup-restore/restore-backup/) and uses a helper Docker container to manage connecting to the Infrahub database container.
-
-1. Start a helper Docker container based on the `neo4j-admin` image. This container needs to connect to the Docker volume that the Infrahub database container uses to store its data. It also needs to be able to connect to the Infrahub database container's cypher port (`7687` by default).
-2. For each `.backup` file in the `backup_directory` path specified in the command line arguments (excluding any `system` backups) do the following:
-    1. Stop the database about to be restored using the `STOP DATABASE` cypher command.
-    2. Run the `neo4j-admin database restore` command.
-    3. Create the Neo4j database if it does not exist using the `CREATE DATABASE` cypher command.
-    4. Restart the database using the `START DATABASE` cypher command.
-    5. The `neo4j-admin database restore` command generates a `restore_metadata.cypher` file that is used to restore various metadata about the restored database, such as users and roles. We attempt to execute this file automatically so that you do not need to deal with it manually.
-3. Stop and remove the helper container.
+- [How to backup and restore Infrahub](../guides/database-backup.mdx) - Practical step-by-step instructions
+- [infrahub-ops-cli source code](https://github.com/opsmill/infrahub-ops-cli) - Implementation details and latest features
