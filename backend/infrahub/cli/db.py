@@ -319,7 +319,8 @@ async def migrate_database(
 
     Args:
         db: The database object.
-        migration_number: If provided, the function will only apply the migration with the given number. Defaults to None.
+        migrations: Sequence of migrations to apply.
+        initialize: Whether to initialize the registry before running migrations.
     """
     if not migrations:
         return True
