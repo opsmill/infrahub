@@ -3,14 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from rich.progress import Progress
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
-from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationResult
+from infrahub.core.migrations.shared import MigrationRequiringRebase, MigrationResult
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
 
@@ -45,17 +44,21 @@ WITH n.kind AS kind, collect(n.uuid) AS node_ids
         return node_ids_by_kind
 
 
-class Migration042(InternalSchemaMigration):
+class Migration042(MigrationRequiringRebase):
     name: str = "042_create_hfid_display_label_in_db"
     minimum_version: int = 41
 
-    @classmethod
-    def init(cls, **kwargs: Any) -> Self:
-        internal_schema = cls.get_internal_schema()
-        schema_node = internal_schema.get_node(name="SchemaNode")
-        schema_generic = internal_schema.get_node(name="SchemaGeneric")
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        result = MigrationResult()
 
-        cls.migrations = [
+        root_node = await get_root_node(db=db, initialize=False)
+        default_branch_name = root_node.default_branch
+        default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
+        main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
+        schema_node = main_schema_branch.get_node(name="SchemaNode")
+        schema_generic = main_schema_branch.get_node(name="SchemaGeneric")
+
+        migrations = [
             # HFID is not needed, it was introduced at graph v8
             NodeAttributeAddMigration(
                 new_node_schema=schema_node,
@@ -72,20 +75,9 @@ class Migration042(InternalSchemaMigration):
                 ),
             ),
         ]
-        return cls(migrations=cls.migrations, **kwargs)  # type: ignore[arg-type]
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        result = MigrationResult()
-
-        root_node = await get_root_node(db=db, initialize=False)
-        default_branch_name = root_node.default_branch
-        default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
-        schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
-
-        migrations = list(self.migrations)
-
-        for node_schema_kind in schema_branch.node_names:
-            schema = schema_branch.get(name=node_schema_kind, duplicate=False)
+        for node_schema_kind in main_schema_branch.node_names:
+            schema = main_schema_branch.get(name=node_schema_kind, duplicate=False)
             migrations.extend(
                 [
                     NodeAttributeAddMigration(

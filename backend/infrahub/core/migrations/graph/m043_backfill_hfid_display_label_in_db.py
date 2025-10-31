@@ -800,8 +800,6 @@ class Migration043(MigrationRequiringRebase):
                     formatted_v = " ".join(item for item in v if item is not None)
                 formatted_schema_path_values_map[k] = formatted_v
 
-                print(schema.kind, schema_property, k, v)
-
             update_attr_values_query = await UpdateAttributeValuesQuery.init(
                 db=db,
                 branch=branch,
