@@ -35,7 +35,7 @@ export interface FilterConditionSelectProps extends SelectProps {
 export function FilterConditionSelect({ filterType, ...props }: FilterConditionSelectProps) {
   return (
     <Select
-      defaultSelectedKey="is any of"
+      defaultValue="is any of"
       placeholder="Filter by"
       aria-label="select a condition"
       isRequired
