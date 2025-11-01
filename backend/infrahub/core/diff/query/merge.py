@@ -49,13 +49,21 @@ WITH node_diff_map, is_node_kind_migration, CASE
     WHEN is_node_kind_migration THEN $migrated_kinds_id_map[node_diff_map.uuid]
     ELSE NULL
 END AS node_db_id
+
+// ------------------------------
+// find the correct Node if the Node had its kind/inheritance migrated
+// and there are multiple Nodes with the same UUID
+// ------------------------------
 CALL (node_diff_map, node_db_id) {
-    MATCH (n:Node {uuid: node_diff_map.uuid})
-    WHERE node_db_id IS NULL
-    OR %(id_func)s(n) = node_db_id
-    RETURN n
+    MATCH (n:Node {uuid: node_diff_map.uuid})-[n_is_part_of:IS_PART_OF]->(:Root)
+    WHERE node_db_id IS NULL OR %(id_func)s(n) = node_db_id
+    AND n_is_part_of.branch IN [$source_branch, $target_branch]
+    RETURN n, n_is_part_of.status = "active" AS n_is_active
+    ORDER BY n_is_part_of.branch_level DESC, n_is_part_of.from DESC, n_is_part_of.status ASC
+    LIMIT 1
 }
 WITH n, node_diff_map, is_node_kind_migration
+WHERE n_is_active = TRUE
 CALL (n, node_diff_map, is_node_kind_migration) {
     WITH CASE
         WHEN node_diff_map.action = "ADDED" THEN "active"
@@ -223,17 +231,31 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                     WHEN relationship_diff_map.peer_id IN $migrated_kinds_uuids THEN $migrated_kinds_id_map[relationship_diff_map.peer_id]
                     ELSE NULL
                 END AS rel_peer_db_id
+
+            // ------------------------------
+            // find the correct relationship peer if the peer had its kind/inheritance migrated
+            // and there are multiple Nodes with the same UUID
+            // ------------------------------
+            CALL (rel_peer_id, rel_peer_db_id) {
+                MATCH (rel_peer:Node {uuid: rel_peer_id})-[target_is_part_of:IS_PART_OF]->(:Root)
+                WHERE (rel_peer_db_id IS NULL OR %(id_func)s(rel_peer) = rel_peer_db_id)
+                AND target_is_part_of.branch IN [$source_branch, $target_branch]
+                RETURN rel_peer, target_is_part_of.status = "active" AS rel_peer_is_active
+                ORDER BY target_is_part_of.branch_level DESC, target_is_part_of.from DESC, target_is_part_of.status ASC
+                LIMIT 1
+            }
+            WITH rel_name, related_rel_status, rel_peer
+            WHERE rel_peer_is_active = TRUE
             // ------------------------------
             // determine the directions of each IS_RELATED
             // ------------------------------
-            CALL (n, rel_name, rel_peer_id, rel_peer_db_id, related_rel_status) {
+            CALL (n, rel_name, rel_peer, related_rel_status) {
                 MATCH (n)
                     -[source_r_rel_1:IS_RELATED]
                     -(r:Relationship {name: rel_name})
                     -[source_r_rel_2:IS_RELATED]
-                    -(rel_peer:Node {uuid: rel_peer_id})
-                WHERE (rel_peer_db_id IS NULL OR %(id_func)s(rel_peer) = rel_peer_db_id)
-                AND source_r_rel_1.branch IN [$source_branch, $target_branch]
+                    -(rel_peer)
+                WHERE source_r_rel_1.branch IN [$source_branch, $target_branch]
                 AND source_r_rel_2.branch IN [$source_branch, $target_branch]
                 AND source_r_rel_1.from <= $at AND source_r_rel_1.to IS NULL
                 AND source_r_rel_2.from <= $at AND source_r_rel_2.to IS NULL
@@ -251,37 +273,34 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                 source_r_rel_1.hierarchy AS r1_hierarchy,
                 source_r_rel_2.hierarchy AS r2_hierarchy
             }
-            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, rel_peer_db_id, related_rel_status
-            CALL (n, rel_name, rel_peer_id, rel_peer_db_id, related_rel_status) {
+            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer, related_rel_status
+            CALL (n, rel_name, rel_peer, related_rel_status) {
                 OPTIONAL MATCH (n)
                     -[target_r_rel_1:IS_RELATED {branch: $target_branch, status: "active"}]
                     -(:Relationship {name: rel_name})
                     -[target_r_rel_2:IS_RELATED {branch: $target_branch, status: "active"}]
-                    -(rel_peer:Node {uuid: rel_peer_id})
+                    -(rel_peer)
                 WHERE related_rel_status = "deleted"
-                AND (rel_peer_db_id IS NULL OR %(id_func)s(rel_peer) = rel_peer_db_id)
                 AND target_r_rel_1.from <= $at AND target_r_rel_1.to IS NULL
                 AND target_r_rel_2.from <= $at AND target_r_rel_2.to IS NULL
                 SET target_r_rel_1.to = $at
                 SET target_r_rel_2.to = $at
             }
-            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, rel_peer_db_id, related_rel_status
+            WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer, related_rel_status
             // ------------------------------
             // conditionally create new IS_RELATED relationships on target_branch, if necessary
             // ------------------------------
-            CALL (n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer_id, rel_peer_db_id, related_rel_status) {
-                MATCH (p:Node {uuid: rel_peer_id})
-                WHERE rel_peer_db_id IS NULL OR %(id_func)s(p) = rel_peer_db_id
+            CALL (n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, rel_name, rel_peer, related_rel_status) {
                 OPTIONAL MATCH (n)
                     -[r_rel_1:IS_RELATED {branch: $target_branch, status: related_rel_status}]
                     -(:Relationship {name: rel_name})
                     -[r_rel_2:IS_RELATED {branch: $target_branch, status: related_rel_status}]
-                    -(p)
+                    -(rel_peer)
                 WHERE r_rel_1.from <= $at
                 AND (r_rel_1.to >= $at OR r_rel_1.to IS NULL)
                 AND r_rel_2.from <= $at
                 AND (r_rel_2.to >= $at OR r_rel_2.to IS NULL)
-                WITH p, r_rel_1, r_rel_2
+                WITH rel_peer, r_rel_1, r_rel_2
                 WHERE r_rel_1 IS NULL
                 AND r_rel_2 IS NULL
                 // ------------------------------
@@ -301,19 +320,19 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                         <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r1_hierarchy}]
                         -(r)
                 }
-                CALL (r, p, r2_dir, r2_hierarchy, related_rel_status) {
-                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
+                CALL (r, rel_peer, r2_dir, r2_hierarchy, related_rel_status) {
+                    WITH r, rel_peer, r2_dir, r2_hierarchy, related_rel_status
                     WHERE r2_dir = "r"
                     CREATE (r)
                         -[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r2_hierarchy}]
-                        ->(p)
+                        ->(rel_peer)
                 }
-                CALL (r, p, r2_dir, r2_hierarchy, related_rel_status) {
-                    WITH r, p, r2_dir, r2_hierarchy, related_rel_status
+                CALL (r, rel_peer, r2_dir, r2_hierarchy, related_rel_status) {
+                    WITH r, rel_peer, r2_dir, r2_hierarchy, related_rel_status
                     WHERE r2_dir = "l"
                     CREATE (r)
                         <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r2_hierarchy}]
-                        -(p)
+                        -(rel_peer)
                 }
             }
         }
