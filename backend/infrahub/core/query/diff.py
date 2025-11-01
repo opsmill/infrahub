@@ -641,8 +641,28 @@ AND (
         )
         // skip paths where nodes/attrs/rels are updated after $from_time, those are handled in other queries
         AND (
-            r_root.from <= $from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $from_time)
-            AND r_node.from <= $from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $from_time)
+            (
+                r_root.branch = diff_rel.branch
+                AND r_root.from <= $from_time
+                AND (r_root.to IS NULL OR r_root.to >= $to_time)
+            )
+            OR (
+                r_root.branch <> diff_rel.branch
+                AND r_root.from <= $from_time
+                AND (r_root.to IS NULL OR r_root.to >= $branch_from_time)
+            )
+        )
+        AND (
+            (
+                r_node.branch = diff_rel.branch
+                AND r_node.from <= $from_time
+                AND (r_node.to IS NULL OR r_node.to >= $to_time)
+            )
+            OR (
+                r_node.branch <> diff_rel.branch
+                AND r_node.from <= $from_time
+                AND (r_node.to IS NULL OR r_node.to >= $branch_from_time)
+            )
         )
     )
     // time-based filters for new nodes
@@ -657,6 +677,9 @@ AND (
             OR ($branch_from_time <= diff_rel.to < $to_time)
         )
         // skip paths where nodes/attrs/rels are updated after $branch_from_time, those are handled in other queries
+        // ----------------------------------
+        // TODO: make same update here
+        // ----------------------------------
         AND (
             r_root.from <= $branch_from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $branch_from_time)
             AND r_node.from <= $branch_from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $branch_from_time)
