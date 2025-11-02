@@ -12,7 +12,7 @@ import {
 } from "react-aria-components";
 
 import { Popover, type PopoverProps } from "@/shared/components/aria/popover";
-import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { disabledStyle, focusVisibleStyle } from "@/shared/components/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -54,31 +54,28 @@ export const SelectList = <T extends object>({ className, ...props }: AriaListBo
 );
 
 export const SelectItem = <T extends object>({
-  className,
   children,
+  className,
+  textValue,
   ...props
 }: AriaListBoxItemProps<T>) => {
   return (
     <AriaListBoxItem
-      textValue={props.textValue || (typeof children === "string" ? children : undefined)}
+      textValue={textValue || (typeof children === "string" ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         classNames(
-          "relative flex w-full cursor-default select-none items-center rounded-lg px-2 py-1.5 text-sm outline-hidden",
-          "data-disabled:pointer-events-none data-disabled:opacity-50",
-          "data-focused:bg-gray-100",
+          disabledStyle,
+          "relative flex w-full select-none items-center rounded-lg px-2 py-1.5 text-sm outline-hidden",
+          "data-focused:bg-stone-100",
           "data-selection-mode:pl-8",
           className
         )
       )}
       {...props}
     >
-      {composeRenderProps(children, (children, renderProps) => (
+      {composeRenderProps(children, (children, { isSelected }) => (
         <>
-          {renderProps.isSelected && (
-            <span className="absolute left-2 flex size-4 items-center justify-center">
-              <CheckIcon className="size-3.5" />
-            </span>
-          )}
+          {isSelected && <CheckIcon className="absolute left-2 size-4" />}
           {children}
         </>
       ))}
