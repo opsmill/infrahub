@@ -75,7 +75,7 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
           <div
             className={classNames(
               "flex w-full min-w-40 items-center gap-2 rounded-lg bg-white px-2 py-1",
-              "border border-white shadow-sm will-change-transform",
+              "border border-white shadow-xs will-change-transform",
               isFocused && "border-stone-200 shadow-none",
               isPressed && "translate-y-0.75 duration-100"
             )}
