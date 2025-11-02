@@ -51,7 +51,7 @@ export interface MenuItemProps extends AriaMenuItemProps {}
 export const MenuItem = ({ children, className, textValue, ...props }: MenuItemProps) => {
   return (
     <AriaMenuItem
-      textValue={textValue || (typeof children === "string" ? children : undefined)}
+      textValue={textValue ?? (typeof children === "string" ? children : undefined)}
       className={classNames(
         disabledStyle,
         "relative flex cursor-pointer select-none outline-hidden"

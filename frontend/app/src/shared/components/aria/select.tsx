@@ -61,7 +61,7 @@ export const SelectItem = <T extends object>({
 }: AriaListBoxItemProps<T>) => {
   return (
     <AriaListBoxItem
-      textValue={textValue || (typeof children === "string" ? children : undefined)}
+      textValue={textValue ?? (typeof children === "string" ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         classNames(
           disabledStyle,
