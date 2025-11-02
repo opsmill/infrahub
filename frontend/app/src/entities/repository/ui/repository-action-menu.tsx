@@ -6,7 +6,13 @@ import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
-import { Menu, MenuItem, MenuPopover, MenuTrigger } from "@/shared/components/aria/menu";
+import {
+  Menu,
+  MenuItem,
+  MenuPopover,
+  MenuSection,
+  MenuTrigger,
+} from "@/shared/components/aria/menu";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
@@ -36,12 +42,14 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
 
         <MenuPopover placement="bottom end">
           <Menu>
-            <MenuItem onAction={() => setIsOpen(true)}>
-              <Icon icon="mdi:access-point" className="text-lg" />
-              Check connectivity
-            </MenuItem>
+            <MenuSection title="Repository">
+              <MenuItem onAction={() => setIsOpen(true)}>
+                <Icon icon="mdi:access-point" className="text-lg" />
+                Check connectivity
+              </MenuItem>
 
-            <ReimportLastCommitAction repositoryId={repositoryId} />
+              <ReimportLastCommitAction repositoryId={repositoryId} />
+            </MenuSection>
           </Menu>
         </MenuPopover>
       </MenuTrigger>
