@@ -25,7 +25,7 @@ export const MenuPopover = ({ className, ...props }: MenuPopoverProps) => {
   return (
     <Popover
       className={composeRenderProps(className, (className) => {
-        return classNames("rounded-lg border-stone-200 bg-stone-100 p-1", className);
+        return classNames("border-stone-200 bg-stone-100", className);
       })}
       {...props}
     />
@@ -37,7 +37,7 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
   return (
     <AriaMenu
       className={classNames(
-        "max-h-[inherit] overflow-auto rounded-md outline-hidden",
+        "max-h-[inherit] overflow-auto rounded-md p-1 outline-hidden",
         "space-y-0.5 *:[[role='group']:not(:last-child)]:mb-2",
         className
       )}
@@ -54,7 +54,7 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
       className={composeRenderProps(className, (className) =>
         classNames(
           disabledStyle,
-          "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 outline-hidden transition-colors",
+          "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
           "data-focused:border-stone-300",
           className
         )
