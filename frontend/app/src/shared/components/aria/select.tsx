@@ -1,5 +1,4 @@
-import { Icon } from "@iconify-icon/react";
-import { ChevronDownIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
@@ -12,11 +11,10 @@ import {
   composeRenderProps,
 } from "react-aria-components";
 
+import { Popover, type PopoverProps } from "@/shared/components/aria/popover";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-
-import { Popover, type PopoverProps } from "./popover";
 
 export const Select = AriaSelect;
 
@@ -78,7 +76,7 @@ export const SelectItem = <T extends object>({
         <>
           {renderProps.isSelected && (
             <span className="absolute left-2 flex size-4 items-center justify-center">
-              <Icon icon="mdi:check" />
+              <CheckIcon className="size-3.5" />
             </span>
           )}
           {children}
