@@ -54,7 +54,7 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
       textValue={props.textValue || (typeof children === "string" ? children : undefined)}
       className={classNames(
         disabledStyle,
-        "relative flex cursor-pointer select-none text-sm text-stone-600 outline-hidden"
+        "relative flex cursor-pointer select-none outline-hidden"
       )}
       {...props}
     >
@@ -71,8 +71,7 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
 
           <div
             className={classNames(
-              "flex w-full min-w-40 items-center gap-2 rounded-lg bg-white px-2 py-1",
-              "border border-white shadow-xs transition-transform duration-100 will-change-transform",
+              "flex w-full min-w-40 items-center gap-2 rounded-lg border border-white bg-white px-2 py-1 text-sm text-stone-600 shadow-xs transition-transform duration-100 will-change-transform",
               isFocused && "border-stone-300 shadow-none",
               isPressed && "translate-y-0.75",
               className
