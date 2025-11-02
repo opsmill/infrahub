@@ -37,7 +37,7 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
   return (
     <AriaMenu
       className={classNames(
-        "max-h-[inherit] overflow-auto rounded-md p-1 pb-1.5 outline-hidden",
+        "no-scrollbar max-h-[inherit] overflow-auto p-1 pb-1.5 outline-hidden",
         "space-y-0.5 *:[[role='group']:not(:last-child)]:mb-2",
         className
       )}
@@ -47,16 +47,14 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
 };
 
 export interface MenuItemProps extends AriaMenuItemProps {}
+
 export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
   return (
     <AriaMenuItem
       textValue={props.textValue || (typeof children === "string" ? children : undefined)}
-      className={composeRenderProps(className, (className) =>
-        classNames(
-          disabledStyle,
-          "relative flex cursor-pointer select-none text-sm text-stone-600 outline-hidden",
-          className
-        )
+      className={classNames(
+        disabledStyle,
+        "relative flex cursor-pointer select-none text-sm text-stone-600 outline-hidden"
       )}
       {...props}
     >
@@ -76,7 +74,8 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
               "flex w-full min-w-40 items-center gap-2 rounded-lg bg-white px-2 py-1",
               "border border-white shadow-xs transition-transform duration-100 will-change-transform",
               isFocused && "border-stone-300 shadow-none",
-              isPressed && "translate-y-0.75"
+              isPressed && "translate-y-0.75",
+              className
             )}
           >
             {children}
