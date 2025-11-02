@@ -65,7 +65,7 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
           {isFocused && (
             <span
               className={classNames(
-                "absolute inset-0 translate-y-0.75 rounded-lg border-stone-300 border-b bg-button-edge-gradient shadow-xs",
+                "absolute inset-0 translate-y-0.75 rounded-lg border-stone-400 border-b bg-button-edge-gradient shadow-xs",
                 isPressed && "shadow-none"
               )}
             />
@@ -74,9 +74,9 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
           <div
             className={classNames(
               "flex w-full min-w-40 items-center gap-2 rounded-lg bg-white px-2 py-1",
-              "border border-white shadow-xs will-change-transform",
-              isFocused && "border-stone-200 shadow-none",
-              isPressed && "translate-y-0.75 duration-100"
+              "border border-white shadow-xs transition-transform duration-100 will-change-transform",
+              isFocused && "border-stone-300 shadow-none",
+              isPressed && "translate-y-0.75"
             )}
           >
             {children}
