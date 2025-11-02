@@ -1,7 +1,6 @@
 import { CopyIcon } from "lucide-react";
 import {
   Header as AriaHeader,
-  type HeadingProps as AriaHeadingProps,
   Menu as AriaMenu,
   MenuItem as AriaMenuItem,
   type MenuItemProps as AriaMenuItemProps,
@@ -10,6 +9,7 @@ import {
   type MenuSectionProps as AriaMenuSectionProps,
   MenuTrigger as AriaMenuTrigger,
   type PopoverProps as AriaPopoverProps,
+  Collection,
   composeRenderProps,
 } from "react-aria-components";
 
@@ -38,7 +38,7 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
     <AriaMenu
       className={classNames(
         "max-h-[inherit] overflow-auto rounded-md outline-hidden",
-        "*:[[role='group']:not(:last-child)]:mb-2",
+        "space-y-0.5 *:[[role='group']:not(:last-child)]:mb-2",
         className
       )}
       {...props}
@@ -66,14 +66,21 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
   );
 };
 
-export interface MenuSectionProps<T> extends AriaMenuSectionProps<T> {}
-export const MenuSection = <T extends object>({ className, ...props }: MenuSectionProps<T>) => {
-  return <AriaMenuSection className={classNames("flex flex-col gap-0.5", className)} {...props} />;
-};
-
-export interface MenuHeaderProps extends AriaHeadingProps {}
-export const MenuHeader = ({ className, ...props }: MenuHeaderProps) => {
-  return <AriaHeader className={classNames("px-1 text-stone-500 text-xs", className)} {...props} />;
+export interface MenuSectionProps<T> extends AriaMenuSectionProps<T> {
+  title?: React.ReactNode;
+}
+export const MenuSection = <T extends object>({
+  className,
+  title,
+  children,
+  ...props
+}: MenuSectionProps<T>) => {
+  return (
+    <AriaMenuSection className={classNames("flex flex-col gap-0.5", className)} {...props}>
+      {title && <AriaHeader className="px-1 text-stone-500 text-xs">{title}</AriaHeader>}
+      <Collection items={props.items}>{children}</Collection>
+    </AriaMenuSection>
+  );
 };
 
 export interface CopyToClipboardMenuItemProps extends Omit<MenuItemProps, "onAction" | "children"> {
