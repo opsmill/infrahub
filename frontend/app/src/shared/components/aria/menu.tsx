@@ -37,7 +37,7 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
   return (
     <AriaMenu
       className={classNames(
-        "max-h-[inherit] overflow-auto rounded-md p-1 outline-hidden",
+        "max-h-[inherit] overflow-auto rounded-md p-1 pb-1.5 outline-hidden",
         "space-y-0.5 *:[[role='group']:not(:last-child)]:mb-2",
         className
       )}
@@ -54,14 +54,36 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
       className={composeRenderProps(className, (className) =>
         classNames(
           disabledStyle,
-          "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
-          "data-focused:border-stone-300",
+          "relative flex cursor-pointer select-none text-sm text-stone-600 outline-hidden",
           className
         )
       )}
       {...props}
     >
-      {children}
+      {composeRenderProps(children, (children, { isFocused, isPressed }) => (
+        <>
+          {isFocused && (
+            <span
+              className={classNames(
+                "absolute inset-0 translate-y-0.75 rounded-lg border-stone-300 border-b bg-button-edge-gradient",
+                isFocused && "shadow-xs",
+                isPressed && "shadow-none"
+              )}
+            />
+          )}
+
+          <div
+            className={classNames(
+              "flex w-full min-w-40 items-center gap-2 rounded-lg bg-white px-2 py-1",
+              "border border-white shadow-sm will-change-transform",
+              isFocused && "border-stone-200 shadow-none",
+              isPressed && "translate-y-0.75 duration-100"
+            )}
+          >
+            {children}
+          </div>
+        </>
+      ))}
     </AriaMenuItem>
   );
 };
