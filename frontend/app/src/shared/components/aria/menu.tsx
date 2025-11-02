@@ -65,8 +65,7 @@ export const MenuItem = ({ children, className, ...props }: MenuItemProps) => {
           {isFocused && (
             <span
               className={classNames(
-                "absolute inset-0 translate-y-0.75 rounded-lg border-stone-300 border-b bg-button-edge-gradient",
-                isFocused && "shadow-xs",
+                "absolute inset-0 translate-y-0.75 rounded-lg border-stone-300 border-b bg-button-edge-gradient shadow-xs",
                 isPressed && "shadow-none"
               )}
             />
