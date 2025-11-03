@@ -816,6 +816,128 @@ async def test_node_create_with_object_template(
         == template.id
     )
 
+async def test_node_create_with_object_template_with_profile(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+):
+    DUMMY = NodeSchema(
+        name="Dummy",
+        namespace="Testing",
+        generate_template=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+        ],
+    )
+
+    SIMPLE_DEVICE = NodeSchema(
+        name="Device",
+        namespace="Testing",
+        generate_template=True,
+        generate_profile=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, order_weight=500),
+            AttributeSchema(name="manufacturer", kind="Text", order_weight=500),
+            AttributeSchema(name="height", kind="Number", order_weight=300),
+            AttributeSchema(name="weight", kind="Number", order_weight=1000),
+            AttributeSchema(
+                name="airflow",
+                kind="Text",
+                enum=["Front to rear", "Rear to front"],
+                optional=True,
+            ),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="dummy",
+                peer="TestingDummy",
+                cardinality=RelationshipCardinality.ONE,
+                order_weight=5000,
+                optional=True,
+            )
+        ],
+    )
+    registry.schema.set(name=DUMMY.kind, schema=DUMMY, branch=default_branch.name)
+    registry.schema.set(name=SIMPLE_DEVICE.kind, schema=SIMPLE_DEVICE, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    template_schema = registry.schema.get(name=f"Template{SIMPLE_DEVICE.kind}", branch=default_branch.name)
+    node_schema = registry.schema.get(name=SIMPLE_DEVICE.kind, branch=default_branch.name)
+
+    # Validate that the attributes respect the order_weight defined on the original schema
+    template_weights = {
+        attr.name: attr.order_weight for attr in template_schema.attributes + template_schema.relationships
+    }
+
+    assert "name" not in template_weights
+    assert template_weights["manufacturer"] == 10500
+    assert template_weights["dummy"] == 15000
+
+    profile_schema = registry.schema.get(name=f"Profile{SIMPLE_DEVICE.kind}", branch=default_branch.name)
+
+    profile = await Node.init(db=db, branch=default_branch.name, schema=profile_schema)
+    await profile.new(
+        db=db,
+        profile_name="Airflow Rear to Front",
+        airflow="Rear to front",
+
+    )
+    await profile.save(db=db)
+
+    template = await Node.init(db=db, schema=template_schema)
+    await template.new(
+        db=db,
+        template_name="Juniper MX204",
+        manufacturer="Juniper",
+        height=1,
+        weight=8,
+    )
+    await template.save(db=db)
+    # TODO: Fix profile assignment
+    await template.profiles.update(db=db, data=[profile])
+    template_profiles = await template.profiles.get_peers(db=db)
+    assert len(template_profiles) == 1
+
+    from infrahub.profiles.node_applier import NodeProfilesApplier
+
+    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    test = await node_applier.apply_profiles(node=template)
+    await template.save(db=db)
+    assert template.airflow.value == "Rear to front"
+    assert template.airflow.source_id == profile.id
+
+    device: Node = await Node.init(db=db, schema=node_schema)
+    await device.new(db=db, name="par-th2-br01", object_template={"id": template.id})
+    await device.save(db=db)
+
+    assert device.id
+    assert device.db_id
+    assert device.name.value == device.node_changelog.attributes["name"].value == "par-th2-br01"
+    assert device.node_changelog.attributes["name"].value_update_status == DiffAction.ADDED
+    assert "source" not in device.node_changelog.attributes["name"].properties
+    assert device.manufacturer.value == device.node_changelog.attributes["manufacturer"].value == "Juniper"
+    assert device.node_changelog.attributes["manufacturer"].value_update_status == DiffAction.ADDED
+    assert (
+        device.manufacturer.source_id
+        == device.node_changelog.attributes["manufacturer"].properties["source"].value
+        == template.id
+    )
+    assert device.height.value == device.node_changelog.attributes["height"].value == 1
+    assert device.node_changelog.attributes["height"].value_update_status == DiffAction.ADDED
+    assert (
+        device.height.source_id == device.node_changelog.attributes["height"].properties["source"].value == template.id
+    )
+    assert device.weight.value == device.node_changelog.attributes["weight"].value == 8
+    assert device.node_changelog.attributes["weight"].value_update_status == DiffAction.ADDED
+    assert (
+        device.weight.source_id == device.node_changelog.attributes["weight"].properties["source"].value == template.id
+    )
+    assert device.airflow.value.value == device.node_changelog.attributes["airflow"].value.value == "Rear to front"
+    assert device.node_changelog.attributes["airflow"].value_update_status == DiffAction.ADDED
+    assert (
+        device.airflow.source_id
+        == device.node_changelog.attributes["airflow"].properties["source"].value
+        == profile.id
+    )
+
 
 # --------------------------------------------------------------------------
 # Update
