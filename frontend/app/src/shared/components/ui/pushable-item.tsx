@@ -12,7 +12,7 @@ export function PushableItemEdge({ isPressed }: PushableItemEdgeProps) {
   return (
     <span
       className={classNames(
-        "absolute inset-0 translate-y-0.75 rounded-lg border-stone-400 border-b bg-button-edge-gradient shadow-xs",
+        "absolute inset-0 translate-y-0.75 rounded-lg border-stone-400 border-b bg-pushable-edge-gradient shadow-xs",
         isPressed && "shadow-none"
       )}
     />
