@@ -21,6 +21,7 @@ from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
@@ -353,14 +354,31 @@ async def migrate_database(
     return True
 
 
-async def trigger_rebase_branches(db: InfrahubDatabase) -> None:
-    """Trigger rebase of non-default branches, also triggering migrations in the process."""
+async def detect_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
     branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    if not branches:
+        return []
+
+    branches_needing_rebase: list[Branch] = []
+    for branch in branches:
+        if branch.graph_version == GRAPH_VERSION:
+            continue
+
+        branch.status = BranchStatus.NEED_UPGRADE_REBASE
+        await branch.save(db=db)
+        branches_needing_rebase.append(branch)
+
+    return branches_needing_rebase
+
+
+async def trigger_rebase_branches(db: InfrahubDatabase, branches: Sequence[Branch]) -> None:
+    """Trigger rebase of non-default branches, also triggering migrations in the process."""
     if not branches:
         return
 
     get_migration_console().log(
-        f"Planning rebase and migrations for {len(branches)} branches: {', '.join([b.name for b in branches])}"
+        f"Planning rebase and migrations for {len(branches)} {'branches' if len(branches) != 1 else 'branch'}: "
+        f"{', '.join([b.name for b in branches])}"
     )
 
     for branch in branches:

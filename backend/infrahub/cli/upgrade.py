@@ -33,6 +33,7 @@ from infrahub.workflows.initialization import (
 )
 
 from .db import (
+    detect_branches_needing_rebase,
     detect_migration_to_run,
     initialize_internal_schema,
     migrate_database,
@@ -42,6 +43,7 @@ from .db import (
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
+    from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
 
 app = AsyncTyper()
@@ -54,6 +56,9 @@ async def upgrade_cmd(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     check: bool = typer.Option(False, help="Check the state of the system without upgrading."),
     rebase_branches: bool = typer.Option(False, help="Rebase and apply migrations to branches if required."),
+    interactive: bool = typer.Option(
+        False, help="Use interactive prompt to accept or deny rebase of individual branches."
+    ),
 ) -> None:
     """Upgrade Infrahub to the latest version."""
 
@@ -116,8 +121,22 @@ async def upgrade_cmd(
     # -------------------------------------------
     # Perform branch rebase and apply migrations to them
     # -------------------------------------------
+    branches = await detect_branches_needing_rebase(db=dbdriver)
+    plural = len(branches) != 1
+    rprint(
+        f"Found {len(branches)} {'branches' if plural else 'branch'} that {'need' if plural else 'needs'} to be rebased"
+    )
+
     if rebase_branches:
-        await trigger_rebase_branches(db=dbdriver)
+        branches_to_rebase: list[Branch] = []
+        if not interactive:
+            branches_to_rebase = branches
+        else:
+            for branch in branches:
+                if typer.confirm(f"Rebase branch {branch.name}?"):
+                    branches_to_rebase.append(branch)
+
+        await trigger_rebase_branches(db=dbdriver, branches=branches_to_rebase)
 
     await dbdriver.close()
 
