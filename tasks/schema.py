@@ -1,6 +1,5 @@
 import json
 
-from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 from invoke.context import Context
 from invoke.tasks import task
 
@@ -41,6 +40,8 @@ def generate_jsonschema(context: Context) -> None:
 @task
 def generate_repositoryconfig(context: Context) -> None:
     """Generate repository config into generated/python-sdk/repository-config/develop.json"""
+    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
+
     with context.cd(ESCAPED_REPO_PATH):
         schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
         REPOSITORY_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
