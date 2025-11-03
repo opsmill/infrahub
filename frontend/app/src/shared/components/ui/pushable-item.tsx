@@ -28,7 +28,7 @@ const pushableItemStyles = cva(
         ghost: "border-transparent bg-transparent text-stone-800",
       },
       isFocused: {
-        true: "-translate-y-0.75 border-stone-300 shadow-none duration-150 ease-in-out",
+        true: "-translate-y-0.75 border-stone-200 shadow-none duration-150 ease-in-out",
       },
       isPressed: {
         true: "translate-y-0 duration-80 ease-out",
