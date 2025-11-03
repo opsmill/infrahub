@@ -365,6 +365,41 @@ async def test_query_NodeListGetRelationshipsQuery_hierarchical(
     assert parent_peer_ids == {europe_id}
 
 
+async def test_query_NodeListGetRelationshipsQuery_pagination_and_parallel_runtime(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema, query_limit_of_one, neo4j_runtime_parallel
+):
+    """
+    Test all expected results are returned with pagination and parallel runtime
+    """
+    tags = []
+    for i in range(10):
+        tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
+        await tag.new(db=db, name=f"Tag{i}", description=f"The Tag{i} tag")
+        await tag.save(db=db)
+        tags.append(tag)
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, firstname="Test", lastname="Person", tags=tags)
+    await person.save(db=db)
+
+    query = await NodeListGetRelationshipsQuery.init(
+        db=db,
+        ids=[person.id],
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+
+    # Verify all relationships are returned
+    grouped_peer_nodes = query.get_peers_group_by_node()
+    assert grouped_peer_nodes.has_node(person.id)
+    peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=person.id, rel_name="builtintag__testperson", direction=RelationshipDirection.INBOUND
+    )
+    # Verify all 10 tags are returned
+    expected_tag_ids = {tag.id for tag in tags}
+    assert peer_ids == expected_tag_ids
+    assert len(peer_ids) == 10
+
+
 async def test_query_NodeDeleteQuery(
     db: InfrahubDatabase,
     default_branch: Branch,
