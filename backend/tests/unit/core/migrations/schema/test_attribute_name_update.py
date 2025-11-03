@@ -17,7 +17,7 @@ from infrahub.database import InfrahubDatabase
 
 async def test_query_default_branch(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
@@ -56,7 +56,7 @@ async def test_query_default_branch(
 
 async def test_query_branch1(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
-):
+) -> None:
     branch1 = await create_branch(db=db, branch_name="branch1", isolated=True)
 
     schema = registry.schema.get_schema_branch(name=branch1.name)
@@ -97,7 +97,7 @@ async def test_query_branch1(
 
 async def test_migration(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")

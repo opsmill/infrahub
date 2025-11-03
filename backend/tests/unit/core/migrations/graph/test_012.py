@@ -135,7 +135,7 @@ ATTRIBUTE_SCHEMA = NodeSchema(
 @pytest.fixture
 async def migration_012_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
-):
+) -> None:
     user1 = await Node.init(db=db, schema=ACCOUNT_SCHEMA)
     await user1.new(db=db, name="User1", type="User")
     await user1.save(db=db)
@@ -160,7 +160,7 @@ async def migration_012_data(
 @pytest.fixture
 async def migration_012_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
-):
+) -> None:
     node1 = await Node.init(db=db, schema=NODE_SCHEMA)
     await node1.new(
         db=db, name="Account", namespace="Core", inherit_from=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE]
@@ -186,7 +186,7 @@ async def migration_012_schema(
 
 async def test_migration_012_add_label_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
-):
+) -> None:
     nbr_nodes_before = await count_nodes(db=db, label="CoreAccount")
 
     query = await Migration012AddLabelData.init(db=db)
@@ -203,7 +203,7 @@ async def test_migration_012_add_label_data(
 
 async def test_migration_012_rename_type_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
-):
+) -> None:
     nbr_attrs_before = await count_nodes(db=db, label="Attribute")
 
     query = await Migration012RenameTypeAttributeData.init(db=db)
@@ -220,7 +220,7 @@ async def test_migration_012_rename_type_data(
 
 async def test_migration_012_rename_type_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_schema
-):
+) -> None:
     nbr_attrs_value_before = await count_nodes(db=db, label="AttributeValue")
 
     query = await Migration012RenameTypeAttributeSchema.init(db=db)
@@ -235,7 +235,7 @@ async def test_migration_012_rename_type_schema(
 
 async def test_migration_012_rename_relationship_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
-):
+) -> None:
     nbr_rels_before = await count_nodes(db=db, label="Relationship")
     nbr_rels_related_before = await count_relationships(db=db, label="IS_RELATED")
 
@@ -256,7 +256,7 @@ async def test_migration_012_rename_relationship_data(
 
 async def test_migration_012_delete_old_attribute_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_schema
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
     # nbr_rels_related_before = await count_relationships(db=db, label="IS_RELATED")
 
@@ -273,7 +273,7 @@ async def test_migration_012_delete_old_attribute_schema(
 
 async def test_migration_012(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_012_data
-):
+) -> None:
     nbr_nodes_before = await count_nodes(db=db, label="CoreAccount")
     nbr_attrs_before = await count_nodes(db=db, label="Attribute")
 

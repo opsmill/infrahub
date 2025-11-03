@@ -8,7 +8,9 @@ from tests.helpers.test_app import TestInfrahubApp
 
 
 class TestMigration034(TestInfrahubApp):
-    async def test_migration_034(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics):
+    async def test_migration_034(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics
+    ) -> None:
         main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.load_schema_to_db(db=db, branch=default_branch, schema=main_schema_branch)
         main_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)

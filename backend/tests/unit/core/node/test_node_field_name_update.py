@@ -23,7 +23,7 @@ class TestNodeUpdate:
             name="Shname",
         )
 
-    def test_no_fields_update(self, original_node_schema: BaseNodeSchema, new_node_schema: BaseNodeSchema):
+    def test_no_fields_update(self, original_node_schema: BaseNodeSchema, new_node_schema: BaseNodeSchema) -> None:
         original_node_schema.update(other=new_node_schema)
 
         assert original_node_schema.uniqueness_constraints is None
@@ -31,7 +31,7 @@ class TestNodeUpdate:
         assert original_node_schema.display_labels is None
         assert original_node_schema.order_by is None
 
-    def test_new_fields_update(self, original_node_schema: BaseNodeSchema, new_node_schema: BaseNodeSchema):
+    def test_new_fields_update(self, original_node_schema: BaseNodeSchema, new_node_schema: BaseNodeSchema) -> None:
         new_node_schema.uniqueness_constraints = [["abc__value"]]
         new_node_schema.human_friendly_id = ["abc__value"]
         new_node_schema.display_labels = ["abc__value"]
@@ -44,7 +44,7 @@ class TestNodeUpdate:
         assert original_node_schema.display_labels == new_node_schema.display_labels
         assert original_node_schema.order_by == new_node_schema.order_by
 
-    def test_old_fields_no_update(self, original_node_schema: BaseNodeSchema, new_node_schema: BaseNodeSchema):
+    def test_old_fields_no_update(self, original_node_schema: BaseNodeSchema, new_node_schema: BaseNodeSchema) -> None:
         original_node_schema.attributes = [AttributeSchema(name="abc", kind="Text")]
         uniqueness_constraints = [["abc__value"]]
         human_friendly_id = ["abc__value"]
@@ -74,7 +74,7 @@ class TestNodeUpdate:
         human_friendly_id,
         display_labels,
         order_by,
-    ):
+    ) -> None:
         original_node_schema.attributes = [AttributeSchema(name="abc", kind="Text")]
         original_node_schema.relationships = [RelationshipSchema(name="xyz", peer="TestingXyz")]
         original_node_schema.uniqueness_constraints = [["abc__value"]]
@@ -101,7 +101,7 @@ class TestNodeUpdate:
         self,
         original_node_schema: BaseNodeSchema,
         new_node_schema: BaseNodeSchema,
-    ):
+    ) -> None:
         attribute_id = str(uuid4())
         relationship_id = str(uuid4())
         original_node_schema.attributes = [AttributeSchema(id=attribute_id, name="abc", kind="Text")]
@@ -128,7 +128,7 @@ class TestNodeUpdate:
         self,
         original_node_schema: BaseNodeSchema,
         new_node_schema: BaseNodeSchema,
-    ):
+    ) -> None:
         attribute_id = str(uuid4())
         relationship_id = str(uuid4())
         original_node_schema.attributes = [AttributeSchema(id=attribute_id, name="abc", kind="Text")]

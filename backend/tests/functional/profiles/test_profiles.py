@@ -150,7 +150,7 @@ class TestProfiles(TestInfrahubApp):
         original_node: InfrahubNode,
         updated_node: InfrahubNode,
         expected_profile_attrs: list[AttributeProfileDetails],
-    ):
+    ) -> None:
         expected_profile_attrs_by_name = {attr.attribute_name: attr for attr in expected_profile_attrs}
         for attribute_name in updated_node._attributes:
             current_attribute = getattr(updated_node, attribute_name)
@@ -177,7 +177,7 @@ class TestProfiles(TestInfrahubApp):
         device_template: InfrahubNode,
         device_profile_1: InfrahubNode,
         branch: BranchData,
-    ):
+    ) -> None:
         pass
 
     async def test_profile_values_do_not_override_non_default_values(
@@ -186,7 +186,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_1: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         device_profile_1 = await client.get(
             branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_1.id, property=True
         )
@@ -207,7 +207,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_2_with_empty_node: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         fresh_device_2 = await client.get(branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id)
         fresh_device_2.manufacturer.is_default = True
         await fresh_device_2.save()
@@ -255,7 +255,7 @@ class TestProfiles(TestInfrahubApp):
         device_2_empty_attribute: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         updated_device_2 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id, property=True
         )
@@ -323,7 +323,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_3_with_all_nodes: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         updated_device_1 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_1_full_attributes.id, property=True
         )
@@ -383,7 +383,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_3_with_all_nodes: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         # make profile 3 the highest priority
         device_profile_3 = await client.get(
             branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_3_with_all_nodes.id
@@ -439,7 +439,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_3_with_all_nodes: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         # delete profile 3
         device_profile_3 = await client.get(
             branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_3_with_all_nodes.id
@@ -522,7 +522,7 @@ class TestProfiles(TestInfrahubApp):
         device_4_with_template: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         updated_device_4 = await client.get(
             branch=branch.name, kind=f"{TestKind.DEVICE}", id=device_4_with_template.id, property=True
         )

@@ -44,7 +44,7 @@ async def test_get_many_with_profile(
     criticality_low: Node,
     criticality_medium: Node,
     branch: Branch,
-):
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     crit_profile_1 = await Node.init(db=db, branch=branch, schema=profile_schema)
     await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
@@ -102,7 +102,7 @@ async def test_get_many_with_profile_generic(
     criticality_low: Node,
     criticality_medium: Node,
     branch: Branch,
-):
+) -> None:
     generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=branch)
     generic_profile = await Node.init(db=db, branch=branch, schema=generic_profile_schema)
     await generic_profile.new(
@@ -167,7 +167,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
     criticality_low: Node,
     criticality_medium: Node,
     branch: Branch,
-):
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     crit_profiles = []
     for i in range(1, 10):

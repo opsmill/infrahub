@@ -89,7 +89,7 @@ class TestMigration041(TestInfrahubApp):
         return await create_branch(db=db, branch_name="deleted_profile_branch")
 
     @pytest.fixture
-    async def profile_2_deleted(self, db: InfrahubDatabase, deleted_profile_branch: Branch, profile_2: Node):
+    async def profile_2_deleted(self, db: InfrahubDatabase, deleted_profile_branch: Branch, profile_2: Node) -> None:
         profile = await NodeManager.get_one(db=db, branch=deleted_profile_branch, id=profile_2.id)
         await profile.delete(db=db)
 
@@ -98,7 +98,9 @@ class TestMigration041(TestInfrahubApp):
         return await create_branch(db=db, branch_name="deleted_node_branch")
 
     @pytest.fixture
-    async def criticality_low_deleted(self, db: InfrahubDatabase, deleted_node_branch: Branch, criticality_low: Node):
+    async def criticality_low_deleted(
+        self, db: InfrahubDatabase, deleted_node_branch: Branch, criticality_low: Node
+    ) -> None:
         profile = await NodeManager.get_one(db=db, branch=deleted_node_branch, id=criticality_low.id)
         await profile.delete(db=db)
 
@@ -112,7 +114,7 @@ class TestMigration041(TestInfrahubApp):
         criticality_high: Node,
         profile_1: Node,
         profile_2: Node,
-    ):
+    ) -> None:
         crit_low = await NodeManager.get_one(db=db, id=criticality_low.id)
         await crit_low.profiles.update(db=db, data=[profile_1])
         await crit_low.save(db=db)
@@ -134,7 +136,7 @@ class TestMigration041(TestInfrahubApp):
         profile_2_deleted: Node,
         deleted_node_branch: Branch,
         criticality_low_deleted: Node,
-    ):
+    ) -> None:
         pass
 
     def validate_node(
@@ -142,7 +144,7 @@ class TestMigration041(TestInfrahubApp):
         original_node: Node,
         updated_node: Node,
         expected_profile_attrs: list[AttributeProfileDetails],
-    ):
+    ) -> None:
         expected_profile_attrs_by_name = {attr.attribute_name: attr for attr in expected_profile_attrs}
         for attribute_name in updated_node._attributes:
             current_attribute = getattr(updated_node, attribute_name)
@@ -173,7 +175,7 @@ class TestMigration041(TestInfrahubApp):
         priority_branch: Branch,
         deleted_profile_branch: Branch,
         deleted_node_branch: Branch,
-    ):
+    ) -> None:
         migration = WrappedMigration041()
         execution_result = await migration.execute(db=db)
         assert not execution_result.errors

@@ -60,7 +60,7 @@ async def test_search_anywhere_by_string(
     car_prius_main: Node,
     car_yaris_main: Node,
     branch: Branch,
-):
+) -> None:
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
 
@@ -147,7 +147,7 @@ async def test_search_ipv6_network_extended_format(
     db: InfrahubDatabase,
     ip_dataset_01,
     branch: Branch,
-):
+) -> None:
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
 
@@ -287,7 +287,7 @@ async def test_search_ipv4(
         ("2001:0db8:0001:0000:0002:0000:0003", "2001:db8:1:0:2:0:3"),
     ],
 )
-def test_collapse_ipv6_address_or_network(query, expected):
+def test_collapse_ipv6_address_or_network(query, expected) -> None:
     assert _collapse_ipv6(query) == expected
 
 
@@ -295,7 +295,7 @@ def test_collapse_ipv6_address_or_network(query, expected):
     "query",
     ["invalid", "invalid:case", "2001:invalid", "2001:0db81:0000", "10.0.0.0", "2001:db8:1"],
 )
-def test_collapse_ipv6_address_or_network_invalid_cases(query):
+def test_collapse_ipv6_address_or_network_invalid_cases(query) -> None:
     with pytest.raises(ValueError):
         _collapse_ipv6(query)
 

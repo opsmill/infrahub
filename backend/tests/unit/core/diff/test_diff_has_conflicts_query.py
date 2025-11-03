@@ -44,7 +44,7 @@ class TestDiffHasConflictsCheck:
             base_branch_diff=base_diff_root,
         )
 
-    async def test_query_initialization_failure(self, diff_repository: DiffRepository):
+    async def test_query_initialization_failure(self, diff_repository: DiffRepository) -> None:
         with pytest.raises(ValueError, match=r"requires one and only one of `tracking_id` or `diff_id`"):
             await diff_repository.diff_has_conflicts(diff_branch_name="a")
 
@@ -53,7 +53,7 @@ class TestDiffHasConflictsCheck:
                 diff_branch_name="a", tracking_id=BranchTrackingId(name="abc"), diff_id="123"
             )
 
-    async def test_has_conflicts_false(self, diff_repository: DiffRepository):
+    async def test_has_conflicts_false(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         await diff_repository.save(enriched_diffs=enriched_diffs)
 
@@ -63,7 +63,7 @@ class TestDiffHasConflictsCheck:
         )
         assert has_conflicts is False
 
-    async def test_has_conflicts_true_node(self, diff_repository: DiffRepository):
+    async def test_has_conflicts_true_node(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         node.conflict = EnrichedConflictFactory.build()
@@ -81,7 +81,7 @@ class TestDiffHasConflictsCheck:
         )
         assert has_conflicts is True
 
-    async def test_has_conflicts_true_attribute_property(self, diff_repository: DiffRepository):
+    async def test_has_conflicts_true_attribute_property(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         node.attributes.add(
@@ -103,7 +103,7 @@ class TestDiffHasConflictsCheck:
         )
         assert has_conflicts is True
 
-    async def test_has_conflicts_true_relationship(self, diff_repository: DiffRepository):
+    async def test_has_conflicts_true_relationship(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         node.relationships.add(
@@ -125,7 +125,7 @@ class TestDiffHasConflictsCheck:
         )
         assert has_conflicts is True
 
-    async def test_has_conflicts_true_relationship_property(self, diff_repository: DiffRepository):
+    async def test_has_conflicts_true_relationship_property(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         node.relationships.add(

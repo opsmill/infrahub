@@ -20,7 +20,7 @@ from .factories import (
 
 
 class TestDiffCardinalityOneEnricher:
-    async def test_no_cardinality_one_relationships(self, db: InfrahubDatabase, car_person_schema):
+    async def test_no_cardinality_one_relationships(self, db: InfrahubDatabase, car_person_schema) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         diff_relationship = EnrichedRelationshipGroupFactory.build(
@@ -37,7 +37,7 @@ class TestDiffCardinalityOneEnricher:
 
         assert diff_root == diff_root_copy
 
-    async def test_cardinality_one_relationship_update(self, db: InfrahubDatabase, car_person_schema):
+    async def test_cardinality_one_relationship_update(self, db: InfrahubDatabase, car_person_schema) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         peer_id_1 = str(uuid4())
@@ -113,7 +113,9 @@ class TestDiffCardinalityOneEnricher:
             in diff_properties
         )
 
-    async def test_cardinality_one_relationship_simulataneous_update(self, db: InfrahubDatabase, car_person_schema):
+    async def test_cardinality_one_relationship_simulataneous_update(
+        self, db: InfrahubDatabase, car_person_schema
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         peer_id_1 = str(uuid4())
@@ -213,7 +215,7 @@ class TestDiffCardinalityOneEnricher:
             in diff_properties
         )
 
-    async def test_cardinality_one_relationship_reverted_update(self, db: InfrahubDatabase, car_person_schema):
+    async def test_cardinality_one_relationship_reverted_update(self, db: InfrahubDatabase, car_person_schema) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         peer_id = str(uuid4())

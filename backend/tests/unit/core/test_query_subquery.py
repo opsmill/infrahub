@@ -7,7 +7,7 @@ from infrahub.database import InfrahubDatabase
 
 async def test_build_subquery_filter_attribute_text(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-):
+) -> None:
     attr_schema = all_attribute_types_schema.get_attribute(name="mystring")
 
     query, params, result_name = await build_subquery_filter(
@@ -44,7 +44,7 @@ async def test_build_subquery_filter_attribute_text(
 
 async def test_build_subquery_filter_attribute_text_area(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-):
+) -> None:
     attr_schema = all_attribute_types_schema.get_attribute(name="mytextarea")
 
     query, params, result_name = await build_subquery_filter(
@@ -81,7 +81,7 @@ async def test_build_subquery_filter_attribute_text_area(
 
 async def test_build_subquery_filter_attribute_list(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-):
+) -> None:
     attr_schema = all_attribute_types_schema.get_attribute(name="mylist")
 
     query, params, result_name = await build_subquery_filter(
@@ -118,7 +118,7 @@ async def test_build_subquery_filter_attribute_list(
 
 async def test_build_subquery_filter_attribute_int(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-):
+) -> None:
     attr_schema = all_attribute_types_schema.get_attribute(name="myint")
 
     query, params, result_name = await build_subquery_filter(
@@ -153,7 +153,9 @@ async def test_build_subquery_filter_attribute_int(
     assert result_name == "filter2"
 
 
-async def test_build_subquery_filter_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_build_subquery_filter_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
@@ -194,7 +196,9 @@ async def test_build_subquery_filter_relationship(db: InfrahubDatabase, default_
     assert result_name == "filter1"
 
 
-async def test_build_subquery_filter_relationship_ids(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_build_subquery_filter_relationship_ids(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
@@ -231,7 +235,9 @@ async def test_build_subquery_filter_relationship_ids(db: InfrahubDatabase, defa
     assert result_name == "filter1"
 
 
-async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_build_subquery_order_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
@@ -262,7 +268,7 @@ async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_b
 
 async def test_build_subquery_filter_attribute_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-):
+) -> None:
     attr_schema = all_attribute_types_schema.get_attribute(name="mystring")
 
     query, params, result_name = await build_subquery_filter(
@@ -299,7 +305,7 @@ async def test_build_subquery_filter_attribute_multiple_values(
 
 async def test_build_subquery_filter_relationship_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 

@@ -16,7 +16,7 @@ async def test_get_next(
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
@@ -49,7 +49,7 @@ async def test_get_next_weighted(
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
@@ -87,7 +87,7 @@ async def test_get_one(
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]
@@ -133,7 +133,7 @@ async def test_get_all_resources(
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
     net141 = ip_dataset_prefix_v4["net141"]

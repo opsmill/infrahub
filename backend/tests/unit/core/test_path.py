@@ -4,7 +4,7 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.path import DataPath, SchemaPath
 
 
-def test_data_path():
+def test_data_path() -> None:
     path1 = DataPath(
         branch="branch",
         path_type=PathType.ATTRIBUTE,
@@ -26,7 +26,7 @@ def test_data_path():
         (SchemaPathType.NODE, "TestPerson", "height", "height", "schema/TestPerson/height"),
     ],
 )
-def test_schema_path(path_type, kind, field_name, prop_name, expected):
+def test_schema_path(path_type, kind, field_name, prop_name, expected) -> None:
     path = SchemaPath(
         path_type=path_type,
         schema_kind=kind,

@@ -33,7 +33,7 @@ class TestMergeBranchPermission:
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -65,7 +65,7 @@ class TestMergeBranchPermission:
     )
     async def test_supports_merge_branch_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = MergeBranchPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -82,7 +82,7 @@ class TestMergeBranchPermission:
         db: InfrahubDatabase,
         default_permission_backend: None,
         permissions_helper: PermissionsHelper,
-    ):
+    ) -> None:
         checker = MergeBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -119,7 +119,7 @@ class TestMergeBranchPermission:
         checker_resolution: CheckerResolution | None,
         db: InfrahubDatabase,
         permissions_helper: PermissionsHelper,
-    ):
+    ) -> None:
         checker = MergeBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT

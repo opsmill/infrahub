@@ -12,7 +12,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
+async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -59,7 +59,7 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
     assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == "Low"
 
 
-async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
+async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -114,7 +114,7 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
     ]
 
 
-async def test_display_label_default_value(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
+async def test_display_label_default_value(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -162,7 +162,9 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
     assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == f"TestCriticality(ID: {obj1.id})"
 
 
-async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch):
+async def test_display_label_generic(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
     cat_schema = animal_person_schema.get(name="TestCat")
@@ -209,7 +211,7 @@ async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branc
 
 async def test_display_label_nested_query(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -304,7 +306,7 @@ async def test_display_label_nested_query(
     assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
 
 
-async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch: Branch, data_schema: None):
+async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
     object_a_schema = NodeSchema(
         name="ObjectA",
         namespace="Test",

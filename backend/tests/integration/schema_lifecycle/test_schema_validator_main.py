@@ -247,7 +247,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             ],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
         tags = await registry.manager.query(db=db, schema=TAG_KIND)
@@ -257,7 +257,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_01_check_attr_regex_add_failure(
         self, client: InfrahubClient, initial_dataset, schema_01_attr_regex_failure
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_01_attr_regex_failure])
 
         assert success is False
@@ -270,7 +270,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_02_check_attr_regex_add_success(
         self, client: InfrahubClient, initial_dataset, schema_02_attr_regex
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_02_attr_regex])
         assert success
         assert response == {
@@ -311,7 +311,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_03_check_relationship_cardinality_change_failure(
         self, client: InfrahubClient, initial_dataset, schema_03_relationship_cardinality_failure
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_03_relationship_cardinality_failure])
         assert success is False
         assert "errors" in response
@@ -322,7 +322,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_04_check_relationship_cardinality_change_success(
         self, client: InfrahubClient, initial_dataset, schema_04_relationship_cardinality
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_04_relationship_cardinality])
 
         assert success
@@ -352,7 +352,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_05_check_attribute_unique_change_failure(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_05_attribute_unique
-    ):
+    ) -> None:
         pinto = await Node.init(schema=CAR_KIND, db=db)
         await pinto.new(
             db=db,
@@ -375,7 +375,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_06_check_attribute_unique_change_success(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_05_attribute_unique
-    ):
+    ) -> None:
         pinto = await NodeManager.get_one_by_default_filter(db=db, id="pinto", kind="TestingCar", raise_on_error=True)
         await pinto.delete(db=db)
 
@@ -428,7 +428,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_08_check_generate_profile_failure(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_07_generate_profile_false
-    ):
+    ) -> None:
         car_profile_schema = registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
         car_profile_nodes = await NodeManager.query(
             db=db,
@@ -454,7 +454,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_09_add_generic_and_profile(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_09_add_generic
-    ):
+    ) -> None:
         await load_schema(db=db, schema=schema_09_add_generic)
         schema_09_add_generic["generics"][0]["generate_profile"] = False
 
@@ -488,6 +488,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "cool unicycle" in err_msg
         assert "Node-level 'generate_profile' constraint violation" in err_msg
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

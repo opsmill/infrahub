@@ -189,7 +189,7 @@ class TestConflict:
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
         expected_value: Literal["John-main", "John-branch"],
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.value = "John-main"
@@ -246,7 +246,7 @@ class TestConflict:
         person_alfred_main: Node,
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.source = person_alfred_main

@@ -50,7 +50,7 @@ async def test_schema_models(
 
 async def test_schema_models_generics(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_02: str
-):
+) -> None:
     document = parse(query_02)
     default_branch.update_schema_hash()
     schema = generate_graphql_schema(db=db, branch=default_branch)
