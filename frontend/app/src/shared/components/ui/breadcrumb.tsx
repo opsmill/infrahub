@@ -1,6 +1,9 @@
 import { Icon } from "@iconify-icon/react";
-import React from "react";
+import { cva } from "class-variance-authority";
+import type React from "react";
+import { Button, type ButtonProps, Link, type LinkProps } from "react-aria-components";
 
+import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 export function Breadcrumb({ className, ...props }: React.OlHTMLAttributes<HTMLOListElement>) {
@@ -23,13 +26,39 @@ export function BreadcrumbSeparator({
     </li>
   );
 }
+const breadcrumbItemStyle = cva(
+  [
+    focusVisibleStyle,
+    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-1 text-neutral-800",
+  ],
+  {
+    variants: {
+      isPressed: {
+        true: "bg-stone-100",
+      },
+      isHovered: {
+        true: "bg-stone-100",
+      },
+    },
+  }
+);
 
-export const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWithoutRef<"li">>(
-  ({ className, ...props }, ref) => (
-    <li
-      ref={ref}
-      className={classNames("inline-flex items-center gap-1.5", className)}
+type BreadcrumbItemProps = ButtonProps | (LinkProps & { href: LinkProps["href"] });
+
+export function BreadcrumbItem({ className, ...props }: BreadcrumbItemProps) {
+  if ("href" in props) {
+    return (
+      <Link
+        className={(stylingProps) => classNames(breadcrumbItemStyle(stylingProps), className)}
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <Button
+      className={(stylingProps) => classNames(breadcrumbItemStyle(stylingProps), className)}
       {...props}
     />
-  )
-);
+  );
+}
