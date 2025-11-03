@@ -12,7 +12,7 @@ export function PushableItemEdge({ isPressed }: PushableItemEdgeProps) {
   return (
     <span
       className={classNames(
-        "absolute inset-0 translate-y-0.75 rounded-lg border-stone-400 border-b bg-pushable-edge-gradient shadow-xs",
+        "absolute inset-0 rounded-lg border-stone-400 border-b bg-pushable-edge-gradient shadow-xs",
         isPressed && "shadow-none"
       )}
     />
@@ -20,7 +20,7 @@ export function PushableItemEdge({ isPressed }: PushableItemEdgeProps) {
 }
 
 const pushableItemStyles = cva(
-  "flex w-full min-w-40 items-center gap-2 rounded-lg border px-2 py-1 text-sm text-stone-600 transition-transform duration-100 will-change-transform",
+  "flex w-full min-w-40 items-center gap-2 rounded-lg border px-2 py-1 text-sm text-stone-600 transition-transform will-change-transform",
   {
     variants: {
       variant: {
@@ -28,10 +28,10 @@ const pushableItemStyles = cva(
         ghost: "border-transparent bg-transparent text-stone-800",
       },
       isFocused: {
-        true: "border-stone-300 shadow-none",
+        true: "-translate-y-0.75 border-stone-300 shadow-none duration-150 ease-in-out",
       },
       isPressed: {
-        true: "translate-y-0.75",
+        true: "translate-y-0 duration-80 ease-out",
       },
     },
     compoundVariants: [{ variant: "ghost", isFocused: true, class: "bg-white" }],

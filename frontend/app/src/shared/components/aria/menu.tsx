@@ -38,7 +38,7 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
   return (
     <AriaMenu
       className={classNames(
-        "no-scrollbar max-h-[inherit] overflow-auto p-1 pb-1.5 outline-hidden",
+        "no-scrollbar max-h-[inherit] overflow-auto p-1 outline-hidden",
         "space-y-0.75 *:[[role='group']:not(:last-child)]:mb-2",
         className
       )}

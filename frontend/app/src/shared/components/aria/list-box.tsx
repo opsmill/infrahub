@@ -19,7 +19,7 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
   return (
     <AriaListBox
       shouldFocusOnHover
-      className={classNames("no-scrollbar max-h-[inherit] overflow-auto p-1 pb-1.5", className)}
+      className={classNames("no-scrollbar max-h-[inherit] overflow-auto p-1", className)}
       renderEmptyState={
         emptyMessage
           ? () => <div className="px-2 py-1.5 text-neutral-600 text-sm">{emptyMessage}</div>
