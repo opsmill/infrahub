@@ -12,7 +12,6 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx._httpx_mock import HTTPXMock
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
