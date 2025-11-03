@@ -890,6 +890,7 @@ async def test_node_create_with_object_template(
         == template.id
     )
 
+
 async def test_node_create_with_object_template_with_profile(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ):
@@ -952,7 +953,6 @@ async def test_node_create_with_object_template_with_profile(
         db=db,
         profile_name="Airflow Rear to Front",
         airflow="Rear to front",
-
     )
     await profile.save(db=db)
 
@@ -973,7 +973,7 @@ async def test_node_create_with_object_template_with_profile(
     from infrahub.profiles.node_applier import NodeProfilesApplier
 
     node_applier = NodeProfilesApplier(db=db, branch=default_branch)
-    test = await node_applier.apply_profiles(node=template)
+    await node_applier.apply_profiles(node=template)
     await template.save(db=db)
     assert template.airflow.value == "Rear to front"
     assert template.airflow.source_id == profile.id
@@ -1007,9 +1007,7 @@ async def test_node_create_with_object_template_with_profile(
     assert device.airflow.value.value == device.node_changelog.attributes["airflow"].value.value == "Rear to front"
     assert device.node_changelog.attributes["airflow"].value_update_status == DiffAction.ADDED
     assert (
-        device.airflow.source_id
-        == device.node_changelog.attributes["airflow"].properties["source"].value
-        == profile.id
+        device.airflow.source_id == device.node_changelog.attributes["airflow"].properties["source"].value == profile.id
     )
 
 
