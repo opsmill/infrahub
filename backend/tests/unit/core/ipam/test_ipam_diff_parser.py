@@ -10,7 +10,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 
 
-async def test_ipam_diff_parser_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipam_diff_parser_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     branch_2 = await create_branch(db=db, branch_name="branch_2")
 
     # updated prefix value
@@ -53,7 +53,7 @@ async def test_ipam_diff_parser_update(db: InfrahubDatabase, default_branch: Bra
     )
 
 
-async def test_ipam_diff_parser_create(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipam_diff_parser_create(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     branch_2 = await create_branch(db=db, branch_name="branch_22")
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
@@ -98,7 +98,7 @@ async def test_ipam_diff_parser_create(db: InfrahubDatabase, default_branch: Bra
     )
 
 
-async def test_ipam_diff_parser_delete(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+async def test_ipam_diff_parser_delete(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
     branch_2 = await create_branch(db=db, branch_name="branch_222")
     net_140 = ip_dataset_01["net140"]
     net_143 = ip_dataset_01["net143"]

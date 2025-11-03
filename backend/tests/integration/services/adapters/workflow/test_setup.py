@@ -10,7 +10,7 @@ from tests.helpers.test_worker import TestWorkerInfrahubAsync
 
 
 class TestTaskManagerSetup(TestWorkerInfrahubAsync):
-    async def test_setup_task_manager(self, prefect_client: PrefectClient):
+    async def test_setup_task_manager(self, prefect_client: PrefectClient) -> None:
         await setup_task_manager()
 
         response = await prefect_client.read_work_pool(INFRAHUB_WORKER_POOL.name)

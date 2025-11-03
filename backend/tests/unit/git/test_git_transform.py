@@ -17,7 +17,7 @@ async def init_service():
 
 async def test_git_transform_jinja2_success(
     git_repo_jinja: InfrahubRepository, init_service, prefect_test_fixture, helper
-):
+) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
     message = TransformJinjaTemplateData(
         repository_id=str(git_repo_jinja.id),
@@ -41,7 +41,7 @@ magnum
 
 async def test_git_transform_jinja2_missing(
     git_repo_jinja: InfrahubRepository, init_service, prefect_test_fixture, helper
-):
+) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = TransformJinjaTemplateData(
@@ -67,7 +67,7 @@ async def test_git_transform_jinja2_invalid(
     helper,
     caplog,
     init_service,
-):
+) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = TransformJinjaTemplateData(
@@ -89,7 +89,7 @@ async def test_git_transform_jinja2_invalid(
 
 async def test_transform_python_success(
     git_fixture_repo: InfrahubRepository, init_service, prefect_test_fixture, helper
-):
+) -> None:
     commit = git_fixture_repo.get_commit_value(branch_name="main")
 
     message = TransformPythonData(

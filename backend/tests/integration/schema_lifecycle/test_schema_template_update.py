@@ -67,6 +67,6 @@ class TestSchemaLifecycleTemplateUpdate(TestSchemaLifecycleBase):
         assert len(physical_interface_template.uniqueness_constraints) == 1
         assert physical_interface_template.uniqueness_constraints[0] == ["template_name__value", "device"]
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

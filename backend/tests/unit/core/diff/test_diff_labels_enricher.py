@@ -18,7 +18,7 @@ from .factories import (
 
 async def test_labels_added(
     db: InfrahubDatabase, default_branch, car_yaris_main, person_jane_main, person_alfred_main, person_john_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     yaris_label_main = await car_yaris_main.get_display_label(db=db)
     yaris_branch = await NodeManager.get_one(db=db, branch=branch, id=car_yaris_main.get_id())
@@ -147,7 +147,7 @@ async def test_labels_added(
     assert deleted_node.label == await person_alfred_main.get_display_label(db=db)
 
 
-async def test_labels_skipped(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_labels_skipped(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     diff_rel_element = EnrichedRelationshipElementFactory.build(peer_id="not-a-real-one", peer_label=None)
     diff_rel = EnrichedRelationshipGroupFactory.build(

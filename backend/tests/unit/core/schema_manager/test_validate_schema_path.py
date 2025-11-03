@@ -63,7 +63,7 @@ class TestValidateSchemaPath:
         schema_branch.load_schema(schema=schema)
         return schema_branch
 
-    def test_attr_only(self, schema: SchemaBranch):
+    def test_attr_only(self, schema: SchemaBranch) -> None:
         criticality_schema = schema.get(name="TestCriticality")
 
         allowed_types = SchemaElementPathType.ATTR
@@ -96,14 +96,14 @@ class TestValidateSchemaPath:
             ("primary_tag", SchemaElementPathType.REL_ONE_NO_ATTR | SchemaElementPathType.REL_MANY_NO_ATTR),
         ],
     )
-    def test_rel_one_valid(self, schema: SchemaBranch, path, allowed_types):
+    def test_rel_one_valid(self, schema: SchemaBranch, path, allowed_types) -> None:
         criticality_schema = schema.get(name="TestCriticality")
         schema_path = schema.validate_schema_path(
             node_schema=criticality_schema, path=path, allowed_path_types=allowed_types
         )
         assert schema_path.is_type_relationship
 
-    def test_rel_one_fail(self, schema: SchemaBranch):
+    def test_rel_one_fail(self, schema: SchemaBranch) -> None:
         criticality_schema = schema.get(name="TestCriticality")
 
         with pytest.raises(ValueError) as exc:
@@ -147,14 +147,14 @@ class TestValidateSchemaPath:
             ("tags", SchemaElementPathType.REL_MANY_NO_ATTR | SchemaElementPathType.REL_ONE_NO_ATTR),
         ],
     )
-    def test_rel_many_valid(self, schema: SchemaBranch, path, allowed_types):
+    def test_rel_many_valid(self, schema: SchemaBranch, path, allowed_types) -> None:
         criticality_schema = schema.get(name="TestCriticality")
         schema_path = schema.validate_schema_path(
             node_schema=criticality_schema, path=path, allowed_path_types=allowed_types
         )
         assert schema_path.is_type_relationship
 
-    def test_rel_many_fail(self, schema: SchemaBranch):
+    def test_rel_many_fail(self, schema: SchemaBranch) -> None:
         criticality_schema = schema.get(name="TestCriticality")
 
         with pytest.raises(ValueError) as exc:

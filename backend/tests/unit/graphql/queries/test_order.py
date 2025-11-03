@@ -8,7 +8,7 @@ from tests.helpers.test_app import TestInfrahubApp
 class TestQueryOrder(TestInfrahubApp):
     async def test_query_default_order(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin, client
-    ):
+    ) -> None:
         for i in range(5, 0, -1):
             node = await Node.init(db=db, schema="BuiltinTag")
             await node.new(db=db, name=f"tag-{i}")

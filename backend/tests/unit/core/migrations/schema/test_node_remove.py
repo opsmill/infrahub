@@ -15,7 +15,9 @@ from tests.helpers.schema import load_schema
 from tests.unit.core.migrations.schema.test_node_kind_update import validate_node_relationships
 
 
-async def test_query_out_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query_out_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
@@ -47,7 +49,9 @@ async def test_query_out_default_branch(db: InfrahubDatabase, default_branch: Br
     assert await count_nodes(db=db, label="TestCar") == 2
 
 
-async def test_query_in_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query_in_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+) -> None:
     """This test is a bit silly for now because there is nothing to migrate but it least we validate that the generated query is valid"""
 
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -80,7 +84,7 @@ async def test_query_in_default_branch(db: InfrahubDatabase, default_branch: Bra
     assert await count_nodes(db=db, label="TestCar") == 2
 
 
-async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
@@ -107,7 +111,7 @@ async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car
 
 async def test_migration_agnostic_relationship(
     db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
-):
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
 
     person_john = await Node.init(db=db, schema="TestPerson")

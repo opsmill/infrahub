@@ -38,7 +38,7 @@ def low_query_size_limit():
 
 async def test_diff_attribute_branch_update(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
@@ -125,7 +125,7 @@ async def test_diff_attribute_branch_update(
 
 async def test_attribute_property_main_update(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     from_time = Timestamp()
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
     alfred_main.name.is_visible = False
@@ -173,7 +173,7 @@ async def test_attribute_property_main_update(
     assert before_change < property_diff.changed_at < after_change
 
 
-async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: Branch, car_accord_main):
+async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: Branch, car_accord_main) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -214,7 +214,9 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     assert before_change < property_diff.changed_at < after_change
 
 
-async def test_attribute_branch_update_from_null(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node):
+async def test_attribute_branch_update_from_null(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+) -> None:
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await car.new(db=db, name="accord", is_electric=False, owner=person_john_main.id)
     await car.save(db=db)
@@ -259,7 +261,9 @@ async def test_attribute_branch_update_from_null(db: InfrahubDatabase, default_b
 
 
 @pytest.mark.parametrize("use_branch", [True, False])
-async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main, use_branch):
+async def test_node_delete(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main, use_branch
+) -> None:
     if use_branch:
         branch = await create_branch(db=db, branch_name="branch")
     else:
@@ -339,7 +343,7 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
 
 async def test_node_base_delete_branch_update(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
@@ -388,7 +392,7 @@ async def test_node_base_delete_branch_update(
     assert diff_property.new_value == 10
 
 
-async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main):
+async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     new_person = await Node.init(db=db, schema="TestPerson", branch=branch)
@@ -431,7 +435,7 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
 
 async def test_attribute_property_multiple_branch_updates(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.id)
@@ -487,7 +491,7 @@ async def test_attribute_property_multiple_branch_updates(
 
 async def test_attribute_property_branch_create_multiple_updates(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     person = await Node.init(db=db, schema="TestPerson", branch=branch)
@@ -574,7 +578,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     person_jane_main,
     person_john_main,
     car_accord_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
@@ -794,7 +798,7 @@ async def test_relationship_one_property_branch_update(
     person_jane_main,
     person_john_main,
     car_accord_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
@@ -967,7 +971,7 @@ async def test_add_node_branch(
     person_jane_main,
     person_john_main,
     car_accord_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     new_car = await Node.init(db=db, branch=branch, schema="TestCar")
@@ -1066,7 +1070,7 @@ async def test_many_relationship_property_update(
     person_john_main,
     person_jane_main,
     car_accord_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -1140,7 +1144,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     person_jane_main,
     person_albert_main,
     car_accord_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -1375,7 +1379,7 @@ async def test_relationship_property_owner_conflicting_updates(
     default_branch: Branch,
     person_john_main,
     car_accord_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     main_john = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
@@ -1503,7 +1507,7 @@ async def test_agnostic_source_relationship_update(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_global,
-):
+) -> None:
     person_1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person_1.new(db=db, name="Herb", height=165)
     await person_1.save(db=db)
@@ -1559,7 +1563,7 @@ async def test_agnostic_owner_relationship_added(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_global,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     person_1 = await Node.init(db=db, schema="TestPerson", branch=branch)
@@ -1656,7 +1660,7 @@ async def test_update_attribute_under_agnostic_node(
     db: InfrahubDatabase,
     default_branch: Branch,
     fruit_tag_schema_global,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     fruit_1 = await Node.init(db=db, schema="GardenFruit", branch=branch)
@@ -1705,7 +1709,7 @@ async def test_update_attribute_under_agnostic_node(
 
 async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     # change that will be ignored
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
@@ -1770,7 +1774,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
 
 async def test_diff_attribute_branch_update_with_concurrent_base_update_captured(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
     # change that will be ignored
@@ -1864,7 +1868,7 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
 
 async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     # change that will be ignored
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
@@ -1955,7 +1959,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
 
 async def test_diff_attribute_branch_update_with_separate_previous_base_update_captured(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
     alfred_main.name.value = "Big Alfred"
@@ -2070,7 +2074,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
 
 async def test_branch_node_delete_with_base_updates(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main, person_jane_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -2233,7 +2237,7 @@ async def test_branch_node_delete_with_base_updates(
 
 async def test_branch_relationship_delete_with_property_update(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
     persons = []
@@ -2362,7 +2366,7 @@ async def test_branch_relationship_delete_with_property_update(
 
 async def test_node_deleted_on_base_update_on_branch(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
@@ -2433,7 +2437,7 @@ async def test_node_deleted_on_base_update_on_branch(
 
 async def test_node_deleted_on_both(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
@@ -2479,7 +2483,7 @@ async def test_relationship_updated_then_node_deleted(
     person_jane_main,
     car_accord_main,
     car_camry_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_camry_main.id)
@@ -2676,7 +2680,7 @@ async def test_node_added_and_deleted_on_branch(
     person_jane_main,
     car_accord_main,
     car_camry_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     new_car = await Node.init(schema="TestCar", db=db, branch=branch)
@@ -2708,7 +2712,7 @@ async def test_property_update_then_relationship_deleted(
     person_jane_main,
     car_accord_main,
     car_camry_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
@@ -2839,7 +2843,7 @@ async def test_hierarchy_with_same_kind_parent_and_child(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix")
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ip_namespace.new(db=db, name="ns1")
@@ -2986,7 +2990,7 @@ async def test_hierarchy_with_same_kind_parent_and_child(
 
 async def test_diff_unchanged_included_when_not_first_diff(
     db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
     alfred_main.name.value = "Big Alfred"
@@ -3099,7 +3103,7 @@ async def test_diff_unchanged_included_when_not_first_diff(
 
 async def test_create_local_and_aware_nodes_on_branch(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
     person = await Node.init(db=db, schema="TestPerson", branch=branch)
@@ -3133,7 +3137,7 @@ async def test_create_local_and_aware_nodes_on_branch(
 
 async def test_create_aware_and_agnostic_nodes_on_branch(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_global
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
     # person is an agnostic node
@@ -3186,7 +3190,7 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     person_alfred_main: Node,
     person_john_main: Node,
     car_accord_main: Node,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -3304,7 +3308,7 @@ async def test_diff_relationship_property_update_on_main(
     person_alfred_main: Node,
     person_john_main: Node,
     car_accord_main: Node,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
     await car_main.owner.update(db=db, data=person_alfred_main)
@@ -3357,7 +3361,7 @@ async def test_calculate_with_migrated_kind_node(
     person_jane_main,
     person_alfred_main,
     person_albert_main,
-):
+) -> None:
     """Test that the diff can correctly handle a schema kind migration, which results in 2 nodes with the same UUID"""
     branch = await create_branch(db=db, branch_name="branch-migrated-kind")
     branch_car = await Node.init(db=db, schema="TestCar", branch=branch)
@@ -3971,7 +3975,7 @@ async def test_calculate_with_migrated_kind_node(
 
 async def test_calculate_with_migrated_attr_name(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main, person_jane_main
-):
+) -> None:
     """Test that the diff can correctly handle an attribute name migration"""
     branch = await create_branch(db=db, branch_name="branch")
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -4056,7 +4060,7 @@ async def test_calculate_with_migrated_attr_name(
 
 async def test_calculate_with_renamed_relationships(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main, person_jane_main
-):
+) -> None:
     """Test that the diff can correctly handle an attribute name migration"""
     branch = await create_branch(db=db, branch_name="branch")
     new_rel_identifier = "brand_new_identifier"
@@ -4226,7 +4230,7 @@ async def test_migrated_kind_node_then_peer_delete(
     person_jane_main,
     person_alfred_main,
     person_albert_main,
-):
+) -> None:
     # migrate TestPerson kind on main
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     original_person_schema = schema_branch.get_node(name="TestPerson")
@@ -4310,7 +4314,7 @@ async def test_migrated_kind_with_property_level_changes(
     person_john_main,
     person_jane_main,
     person_alfred_main,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="lets-migrate")
 
     # property-level changes before migration

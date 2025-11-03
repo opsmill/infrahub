@@ -8,14 +8,14 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from .conftest import _get_schema_by_kind
 
 
-async def test_one_parent_relationship_allowed(schema_parent_component):
+async def test_one_parent_relationship_allowed(schema_parent_component) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_parent_component))
 
     schema.validate_parent_component()
 
 
-async def test_many_parent_relationships_not_allowed(schema_parent_component):
+async def test_many_parent_relationships_not_allowed(schema_parent_component) -> None:
     schema_dict = _get_schema_by_kind(schema_parent_component, "TestComponentNodeOne")
     schema_dict["relationships"].append(
         {
@@ -38,7 +38,7 @@ async def test_many_parent_relationships_not_allowed(schema_parent_component):
     assert "parent_two" in err_msg
 
 
-async def test_parent_relationship_must_be_cardinality_one(schema_parent_component):
+async def test_parent_relationship_must_be_cardinality_one(schema_parent_component) -> None:
     schema_dict = _get_schema_by_kind(schema_parent_component, "TestComponentNodeOne")
     schema_dict["relationships"][0]["cardinality"] = "many"
 
@@ -51,7 +51,7 @@ async def test_parent_relationship_must_be_cardinality_one(schema_parent_compone
         schema.validate_parent_component()
 
 
-async def test_parent_relationship_must_be_mandatory(schema_parent_component):
+async def test_parent_relationship_must_be_mandatory(schema_parent_component) -> None:
     schema_dict = _get_schema_by_kind(schema_parent_component, "TestComponentNodeOne")
     schema_dict["relationships"][0]["optional"] = True
 
@@ -64,7 +64,7 @@ async def test_parent_relationship_must_be_mandatory(schema_parent_component):
         schema.validate_parent_component()
 
 
-async def test_only_one_parent_relationship_when_inheriting_from_generic(schema_parent_component):
+async def test_only_one_parent_relationship_when_inheriting_from_generic(schema_parent_component) -> None:
     schema_dict = _get_schema_by_kind(schema_parent_component, "TestComponentGenericOne")
     schema_dict["relationships"].append(
         {
@@ -87,7 +87,7 @@ async def test_only_one_parent_relationship_when_inheriting_from_generic(schema_
     assert "parent_two" in err_msg
 
 
-async def test_hierarchy_cannot_contain_loop(schema_parent_component):
+async def test_hierarchy_cannot_contain_loop(schema_parent_component) -> None:
     schema_dict = _get_schema_by_kind(schema_parent_component, "TestComponentGenericOne")
     schema_dict["relationships"].append(
         {
@@ -111,7 +111,7 @@ async def test_hierarchy_cannot_contain_loop(schema_parent_component):
         schema.validate_parent_component()
 
 
-async def test_hierarchy_cannot_contain_implied_loop(schema_parent_component):
+async def test_hierarchy_cannot_contain_implied_loop(schema_parent_component) -> None:
     component_schema_dict = _get_schema_by_kind(schema_parent_component, "TestComponentNodeOne")
     component_schema_dict["relationships"].append(
         {

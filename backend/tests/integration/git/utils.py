@@ -4,7 +4,7 @@ from infrahub.core.constants import RepositoryObjects
 from infrahub.core.manager import NodeManager
 
 
-async def check_repo_correctly_created(repo_id, db, branch_name: str):
+async def check_repo_correctly_created(repo_id, db, branch_name: str) -> None:
     # Check persons have been correctly loaded
     person_ethan = await NodeManager.get_one_by_default_filter(
         db=db, id="Ethan Carter", kind="TestingPerson", raise_on_error=True, branch=branch_name

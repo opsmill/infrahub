@@ -14,7 +14,7 @@ async def migration_003_data(
     default_branch,
     delete_all_nodes_in_db,
     register_core_models_schema: SchemaBranch,
-):
+) -> None:
     node_schema = register_core_models_schema.get(name="SchemaNode")
     rel_schema = register_core_models_schema.get(name="SchemaRelationship")
 
@@ -33,7 +33,7 @@ async def migration_003_data(
 
 async def test_migration_003_query1(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
     query = await Migration003Query01.init(db=db)
     await query.execute(db=db)
@@ -49,7 +49,7 @@ async def test_migration_003_query1(
 
 async def test_migration_003(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
     migration = Migration003()

@@ -62,7 +62,9 @@ async def hierarchical_location_data_simple_and_small(
     return nodes
 
 
-async def test_query_children_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
+async def test_query_children_success(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
+) -> None:
     site_schema = registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children")
 
@@ -77,7 +79,9 @@ async def test_query_children_success(db: InfrahubDatabase, default_branch: Bran
     assert len(all_data_paths) == 0
 
 
-async def test_query_parent_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
+async def test_query_parent_success(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
+) -> None:
     site_schema = registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent")
 
@@ -94,7 +98,7 @@ async def test_query_parent_success(db: InfrahubDatabase, default_branch: Branch
 
 async def test_query_children_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
@@ -158,7 +162,7 @@ async def test_query_children_failure(
 
 async def test_query_parent_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
     site_schema.parent = "LocationRack"
@@ -222,7 +226,7 @@ async def test_query_parent_failure(
 
 async def test_query_update_on_branch_failure(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
@@ -301,7 +305,7 @@ async def test_query_update_on_branch_failure(
 
 async def test_query_delete_on_branch_failure(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
@@ -358,7 +362,7 @@ async def test_query_delete_on_branch_failure(
 
 async def test_validator_parents_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
     site_schema.parent = "LocationRack"
@@ -389,7 +393,7 @@ async def test_validator_parents_failure(
 
 async def test_validator_parents_success(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     site_schema = registry.schema.get(name="LocationSite")
 
     request = SchemaConstraintValidatorRequest(
@@ -410,7 +414,7 @@ async def test_validator_parents_success(
 
 async def test_validator_children_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
     site_schema.children = "LocationRegion"
@@ -441,7 +445,7 @@ async def test_validator_children_failure(
 
 async def test_validator_children_success(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
-):
+) -> None:
     site_schema = registry.schema.get(name="LocationSite")
 
     request = SchemaConstraintValidatorRequest(

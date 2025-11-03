@@ -12,7 +12,7 @@ from infrahub.database import InfrahubDatabase
 
 async def merge_nodes(
     db: InfrahubDatabase, node_uuids: list[str], source_branch_name: str, target_branch_name: str, at: Timestamp
-):
+) -> None:
     """
     Do a simplified graph merge of any active edges for particular Nodes on a source branch into a target branch.
     """
@@ -162,7 +162,7 @@ class TestCheckDuplicateSchemaFields:
         load_main_schema: dict[str, Node],
         load_broken_schema: dict[str, Node],
         branch: Branch,
-    ):
+    ) -> None:
         node_schema_id = load_main_schema["node_schema"].id
         attr_schema_1_main_id = load_main_schema["attribute_schema_1"].id
         attr_schema_2_branch_id = load_broken_schema["attribute_schema_2_branch"].id

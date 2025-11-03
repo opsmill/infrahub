@@ -17,7 +17,7 @@ async def test_schema_validate_migrations(
     car_volt_main: Node,
     person_john_main,
     helper,
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
     person_schema = schema.get(name="TestPerson")
     name_attr = person_schema.get_attribute(name="name")

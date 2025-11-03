@@ -16,7 +16,9 @@ from tests.helpers.schema import COLOR, TICKET, TSHIRT
 from tests.node_creation import create_and_save
 
 
-async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
+async def test_upsert_existing_simple_object_by_id(
+    db: InfrahubDatabase, person_john_main: Node, branch: Branch
+) -> None:
     query = (
         """
     mutation {
@@ -48,7 +50,7 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
 
 async def test_upsert_existing_simple_object_by_default_filter(
     db: InfrahubDatabase, person_schema_default_filter, default_branch
-):
+) -> None:
     registry.schema.register_schema(schema=person_schema_default_filter)
 
     person = await Node.init(db=db, schema="TestPersonDF")
@@ -158,7 +160,7 @@ async def test_upsert_event_on_no_change(
     assert len(memory_event.events) == 0
 
 
-async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_john_main, branch: Branch):
+async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_john_main, branch: Branch) -> None:
     query = """
     mutation {
         TestPersonUpsert(data: {name: { value: "%s"}, height: {value: %s}}) {
@@ -192,7 +194,7 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
 
 async def test_id_for_other_schema_raises_error(
     db: InfrahubDatabase, person_john_main, car_accord_main, branch: Branch
-):
+) -> None:
     query = (
         """
     mutation {
@@ -220,7 +222,7 @@ async def test_id_for_other_schema_raises_error(
 
 async def test_update_by_id_to_nonunique_value_raises_error(
     db: InfrahubDatabase, person_john_main, person_jim_main, branch: Branch
-):
+) -> None:
     query = (
         """
     mutation {
@@ -246,7 +248,9 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     assert any(expected_error in error.message for error in result.errors)
 
 
-async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch):
+async def test_non_unique_value_raises_error(
+    db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
+) -> None:
     _ = await create_and_save(db=db, schema="TestPerson", name="Jack", bag="bag-jacks")
 
     # Make sure correct raised error is raised while violating uniqueness constraint of a non hfid-related attribute.
@@ -274,7 +278,7 @@ async def test_non_unique_value_raises_error(db: InfrahubDatabase, person_schema
 
 async def test_upsert_existing_with_enough_information_for_hfid(
     db: InfrahubDatabase, person_schema_unique_attr_non_hfid, default_branch: Branch
-):
+) -> None:
     car_name = "Ferramboghinierati"
     car_color_1 = "blue"
     car_color_2 = "red"
@@ -389,7 +393,7 @@ async def test_upsert_existing_with_enough_information_for_hfid(
 
 async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
     db: InfrahubDatabase, person_schema_unique_attr_non_hfid, branch: Branch
-):
+) -> None:
     _ = await create_and_save(db=db, schema="TestPerson", name="Fred", bag="bag-fred", branch=branch)
 
     query = """
@@ -411,7 +415,7 @@ async def test_upsert_existing_hfid_with_non_hfid_unique_attr(
     assert result.errors is None
 
 
-async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -460,7 +464,7 @@ async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_p
     assert result.data["TestDogUpsert"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
 
 
-async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -658,7 +662,9 @@ async def test_with_constructed_hfid_with_numbers(
     }
 
 
-async def test_upsert_node_on_branch_with_hfid_on_default(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_upsert_node_on_branch_with_hfid_on_default(
+    db: InfrahubDatabase, default_branch, car_person_schema
+) -> None:
     # create a node on the default branch after the branch is created
     branch = await create_branch(branch_name="test-branch", db=db)
     person = await create_and_save(db=db, branch=default_branch, schema="TestPerson", name="John", height=182)

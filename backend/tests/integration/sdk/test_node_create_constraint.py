@@ -197,7 +197,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
             "nodes": [schema_person_base, schema_03_car_uniqueness_constraint, schema_manufacturer_base],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
         assert len(persons) == 2
@@ -205,7 +205,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
     async def test_step_02_add_node_success(
         self, client: InfrahubClient, initial_dataset, schema_02_uniqueness_constraint
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_02_uniqueness_constraint])
         assert not response.errors
 
@@ -228,7 +228,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
     async def test_step_02_add_node_failure(
         self, client: InfrahubClient, initial_dataset, schema_02_uniqueness_constraint
-    ):
+    ) -> None:
         john_person = await client.get(kind=PERSON_KIND, id=initial_dataset["john"])
         renault_manufacturer = await client.get(kind=MANUFACTURER_KIND, id=initial_dataset["renault"])
         new_car = await client.create(
@@ -247,7 +247,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
     async def test_step_03_add_node_success(
         self, client: InfrahubClient, initial_dataset, schema_03_uniqueness_constraint
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_03_uniqueness_constraint])
         assert not response.errors
 
@@ -272,7 +272,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
     async def test_step_03_add_node_failure(
         self, client: InfrahubClient, initial_dataset, schema_03_uniqueness_constraint
-    ):
+    ) -> None:
         john_person = await client.get(kind=PERSON_KIND, id=initial_dataset["john"])
         renault_manufacturer = await client.get(kind=MANUFACTURER_KIND, id=initial_dataset["renault"])
         new_car = await client.create(
@@ -289,7 +289,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
 
         assert "owner-nbr_seats" in exc.value.message
 
-    async def test_create_repository_with_slash_failure(self, db: InfrahubDatabase, initial_dataset):
+    async def test_create_repository_with_slash_failure(self, db: InfrahubDatabase, initial_dataset) -> None:
         repo = await Node.init(schema="CoreRepository", db=db)
         with pytest.raises(
             ValidationError, match=re.escape("repo/name must conform with the regex: '^[^/]*$' at name")

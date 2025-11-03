@@ -74,7 +74,7 @@ async def test_create_artifact_definition(
     group1: Node,
     transformation1: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         CoreArtifactDefinitionCreate(data: {
@@ -154,7 +154,7 @@ async def test_update_artifact_definition(
     create_test_admin: Node,
     definition1: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         CoreArtifactDefinitionUpdate(data: {

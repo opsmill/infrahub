@@ -11,7 +11,7 @@ async def test_schema_validate_migrations(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema,
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
 
     constraints = [
