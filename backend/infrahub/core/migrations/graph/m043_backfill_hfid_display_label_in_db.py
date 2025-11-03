@@ -13,14 +13,13 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, Relat
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot, internal_schema
-from infrahub.core.schema.manager import SchemaManager
-from infrahub.exceptions import InitializationError
 from infrahub.types import is_large_attribute_type
 
 from ..shared import MigrationRequiringRebase
+from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import AttributeSchema, NodeSchema
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -620,18 +619,6 @@ class Migration043(MigrationRequiringRebase):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def _get_or_load_schema_branch(self, db: InfrahubDatabase, branch: Branch) -> SchemaBranch:
-        try:
-            if registry.schema.has_schema_branch(branch.name):
-                return registry.schema.get_schema_branch(branch.name)
-        except InitializationError:
-            pass
-        schema_manager = SchemaManager()
-        internal_schema_root = SchemaRoot(**internal_schema)
-        schema_manager.register_schema(schema=internal_schema_root)
-        registry.schema = schema_manager
-        return await schema_manager.load_schema_from_db(db=db, branch=branch)
-
     async def _do_one_schema_all(
         self,
         db: InfrahubDatabase,
@@ -722,7 +709,7 @@ class Migration043(MigrationRequiringRebase):
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
 
-        main_schema_branch = await self._get_or_load_schema_branch(db=db, branch=default_branch)
+        main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
 
         total_nodes_query = await DefaultBranchNodeCount.init(db=db, kinds_to_skip=self.kinds_to_skip)
         await total_nodes_query.execute(db=db)
@@ -813,8 +800,6 @@ class Migration043(MigrationRequiringRebase):
                     formatted_v = " ".join(item for item in v if item is not None)
                 formatted_schema_path_values_map[k] = formatted_v
 
-                print(schema.kind, schema_property, k, v)
-
             update_attr_values_query = await UpdateAttributeValuesQuery.init(
                 db=db,
                 branch=branch,
@@ -827,8 +812,8 @@ class Migration043(MigrationRequiringRebase):
 
     async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
         default_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
-        main_schema_branch = await self._get_or_load_schema_branch(db=db, branch=default_branch)
-        schema_branch = await self._get_or_load_schema_branch(db=db, branch=branch)
+        main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
+        schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
 
         base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")

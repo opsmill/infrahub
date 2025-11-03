@@ -1,90 +1,75 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 from rich.progress import Progress
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.initialization import initialization
+from infrahub.core.initialization import get_root_node
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
-from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
-from ..shared import ArbitraryMigration
+from ..shared import MigrationRequiringRebase
+from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
-    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
 
 
-class GetProfilesByBranchQuery(Query):
+class GetUpdatedProfilesForBranchQuery(Query):
     """
-    Get CoreProfile UUIDs by which branches they have attribute updates on
+    Get CoreProfile UUIDs with updated attributes on this branch
     """
 
     name = "get_profiles_by_branch"
     type = QueryType.READ
-    insert_return = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params["branch"] = self.branch.name
         query = """
 MATCH (profile:CoreProfile)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[e:HAS_VALUE]->(:AttributeValue)
-WITH DISTINCT profile.uuid AS profile_uuid, e.branch AS branch
-RETURN profile_uuid, collect(branch) AS branches
+WHERE e.branch = $branch
         """
         self.add_to_query(query)
-        self.return_labels = ["profile_uuid", "branches"]
+        self.return_labels = ["profile.uuid AS profile_uuid"]
 
-    def get_profile_ids_by_branch(self) -> dict[str, set[str]]:
-        """Get dictionary of branch names to set of updated profile UUIDs"""
-        profiles_by_branch = defaultdict(set)
-        for result in self.get_results():
-            profile_uuid = result.get_as_type("profile_uuid", str)
-            branches = result.get_as_type("branches", list[str])
-            for branch in branches:
-                profiles_by_branch[branch].add(profile_uuid)
-        return profiles_by_branch
+    def get_profile_ids(self) -> list[str]:
+        """Get list of updated profile UUIDs"""
+        return [result.get_as_type("profile_uuid", str) for result in self.get_results()]
 
 
-class GetNodesWithProfileUpdatesByBranchQuery(Query):
+class GetNodesWithProfileUpdatesForBranchQuery(Query):
     """
     Get Node UUIDs by which branches they have updated profiles on
     """
 
     name = "get_nodes_with_profile_updates_by_branch"
     type = QueryType.READ
-    insert_return = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params["branch"] = self.branch.name
         query = """
-MATCH (node:Node)-[e1:IS_RELATED]->(:Relationship {name: "node__profile"})
+MATCH (node:Node)-[e:IS_RELATED]->(:Relationship {name: "node__profile"})
 WHERE NOT node:CoreProfile
-WITH DISTINCT node.uuid AS node_uuid, e1.branch AS branch
-RETURN node_uuid, collect(branch) AS branches
+AND e.branch = $branch
+WITH DISTINCT node.uuid AS node_uuid
         """
         self.add_to_query(query)
-        self.return_labels = ["node_uuid", "branches"]
+        self.return_labels = ["node_uuid"]
 
-    def get_node_ids_by_branch(self) -> dict[str, set[str]]:
-        """Get dictionary of branch names to set of updated node UUIDs"""
-        nodes_by_branch = defaultdict(set)
-        for result in self.get_results():
-            node_uuid = result.get_as_type("node_uuid", str)
-            branches = result.get_as_type("branches", list[str])
-            for branch in branches:
-                nodes_by_branch[branch].add(node_uuid)
-        return nodes_by_branch
+    def get_node_ids(self) -> list[str]:
+        """Get list of updated node UUIDs"""
+        return [result.get_as_type("node_uuid", str) for result in self.get_results()]
 
 
-class Migration041(ArbitraryMigration):
+class Migration041(MigrationRequiringRebase):
     """
     Save profile attribute values on each node using the profile in the database
     For any profile that has updates on a given branch (including default branch)
@@ -96,71 +81,64 @@ class Migration041(ArbitraryMigration):
     name: str = "041_profile_attrs_in_db"
     minimum_version: int = 40
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self._appliers_by_branch: dict[str, NodeProfilesApplier] = {}
-
-    async def _get_profile_applier(self, db: InfrahubDatabase, branch_name: str) -> NodeProfilesApplier:
-        if branch_name not in self._appliers_by_branch:
-            branch = await Branch.get_by_name(db=db, name=branch_name)
-            self._appliers_by_branch[branch_name] = NodeProfilesApplier(db=db, branch=branch)
-        return self._appliers_by_branch[branch_name]
+    def _get_profile_applier(self, db: InfrahubDatabase, branch: Branch) -> NodeProfilesApplier:
+        return NodeProfilesApplier(db=db, branch=branch)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        root_node = await get_root_node(db=db, initialize=False)
+        default_branch_name = root_node.default_branch
+        default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
+        return await self._do_execute_for_branch(db=db, branch=default_branch)
+
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        return await self._do_execute_for_branch(db=db, branch=branch)
+
+    async def _do_execute_for_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
         console = Console()
         result = MigrationResult()
-        # load schemas from database into registry
-        initialize_lock()
-        await initialization(db=db)
+        await get_or_load_schema_branch(db=db, branch=branch)
 
-        console.print("Gathering profiles for each branch...", end="")
-        get_profiles_by_branch_query = await GetProfilesByBranchQuery.init(db=db)
-        await get_profiles_by_branch_query.execute(db=db)
-        profiles_ids_by_branch = get_profiles_by_branch_query.get_profile_ids_by_branch()
+        console.print(f"Gathering profiles for each branch {branch.name}...", end="")
+        get_updated_profiles_for_branch_query = await GetUpdatedProfilesForBranchQuery.init(db=db, branch=branch)
+        await get_updated_profiles_for_branch_query.execute(db=db)
+        profile_ids = get_updated_profiles_for_branch_query.get_profile_ids()
 
-        profiles_by_branch: dict[str, list[Node]] = {}
-        for branch_name, profile_ids in profiles_ids_by_branch.items():
-            profiles_map = await NodeManager.get_many(db=db, branch=branch_name, ids=list(profile_ids))
-            profiles_by_branch[branch_name] = list(profiles_map.values())
+        profiles_map = await NodeManager.get_many(db=db, branch=branch, ids=list(profile_ids))
         console.print("done")
 
-        node_ids_to_update_by_branch: dict[str, set[str]] = defaultdict(set)
-        total_size = sum(len(profiles) for profiles in profiles_by_branch.values())
+        node_ids_to_update: set[str] = set()
         with Progress() as progress:
             gather_nodes_task = progress.add_task(
-                "Gathering affected objects for each profile on each branch...", total=total_size
+                "Gathering affected objects for each profile on branch {branch.name}...", total=len(profiles_map)
             )
 
-            for branch_name, profiles in profiles_by_branch.items():
-                for profile in profiles:
-                    node_relationship_manager = profile.get_relationship("related_nodes")
-                    node_peers = await node_relationship_manager.get_db_peers(db=db)
-                    node_ids_to_update_by_branch[branch_name].update({str(peer.peer_id) for peer in node_peers})
-                    progress.update(gather_nodes_task, advance=1)
+            for profile in profiles_map.values():
+                node_relationship_manager = profile.get_relationship("related_nodes")
+                node_peers = await node_relationship_manager.get_db_peers(db=db)
+                node_ids_to_update.update(str(peer.peer_id) for peer in node_peers)
+                progress.update(gather_nodes_task, advance=1)
 
         console.print("Identifying nodes with profile updates by branch...", end="")
-        get_nodes_with_profile_updates_by_branch_query = await GetNodesWithProfileUpdatesByBranchQuery.init(db=db)
+        get_nodes_with_profile_updates_by_branch_query = await GetNodesWithProfileUpdatesForBranchQuery.init(
+            db=db, branch=branch
+        )
         await get_nodes_with_profile_updates_by_branch_query.execute(db=db)
-        nodes_ids_by_branch = get_nodes_with_profile_updates_by_branch_query.get_node_ids_by_branch()
-        for branch_name, node_ids in nodes_ids_by_branch.items():
-            node_ids_to_update_by_branch[branch_name].update(node_ids)
+        node_ids_to_update.update(get_nodes_with_profile_updates_by_branch_query.get_node_ids())
         console.print("done")
 
         right_now = Timestamp()
-        total_size = sum(len(node_ids) for node_ids in node_ids_to_update_by_branch.values())
         with Progress() as progress:
-            apply_task = progress.add_task("Applying profiles to nodes...", total=total_size)
-            for branch_name, node_ids in node_ids_to_update_by_branch.items():
-                applier = await self._get_profile_applier(db=db, branch_name=branch_name)
-                for node_id in node_ids:
-                    node = await NodeManager.get_one(db=db, branch=branch_name, id=node_id, at=right_now)
-                    if node:
-                        updated_field_names = await applier.apply_profiles(node=node)
-                        if updated_field_names:
-                            await node.save(db=db, fields=updated_field_names, at=right_now)
-                    progress.update(apply_task, advance=1)
+            apply_task = progress.add_task("Applying profiles to nodes...", total=len(node_ids_to_update))
+            applier = self._get_profile_applier(db=db, branch=branch)
+            for node_id in node_ids_to_update:
+                node = await NodeManager.get_one(db=db, branch=branch, id=node_id, at=right_now)
+                if node:
+                    updated_field_names = await applier.apply_profiles(node=node)
+                    if updated_field_names:
+                        await node.save(db=db, fields=updated_field_names, at=right_now)
+                progress.update(apply_task, advance=1)
 
         return result
