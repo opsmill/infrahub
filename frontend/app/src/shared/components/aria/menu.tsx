@@ -53,14 +53,16 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
   return (
     <AriaMenuItem
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
-      className={classNames(disabledStyle, pushableItemContainerStyle)}
+      className={composeRenderProps(className, (className) =>
+        classNames(disabledStyle, pushableItemContainerStyle, className)
+      )}
       {...props}
     >
-      {composeRenderProps(children, (children, { isFocused, isPressed }) => (
-        <PushableItem isFocused={isFocused} isPressed={isPressed} className={classNames(className)}>
-          {children}
+      {(renderProps) => (
+        <PushableItem isElevated={renderProps.isFocused} isPressed={renderProps.isPressed}>
+          {typeof children === "function" ? children(renderProps) : children}
         </PushableItem>
-      ))}
+      )}
     </AriaMenuItem>
   );
 };

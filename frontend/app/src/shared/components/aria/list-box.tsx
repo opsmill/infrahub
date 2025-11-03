@@ -39,22 +39,21 @@ export function ListBoxItem<T extends object>({
   return (
     <AriaListBoxItem
       textValue={textValue || (typeof children === "string" ? children : undefined)}
-      className={classNames(disabledStyle, pushableItemContainerStyle)}
+      className={composeRenderProps(className, (className) =>
+        classNames(disabledStyle, pushableItemContainerStyle, className)
+      )}
       {...props}
     >
-      {composeRenderProps(
-        children,
-        (children, { isFocused, isSelected, isPressed, selectionMode }) => (
-          <PushableItem
-            variant="ghost"
-            isFocused={isFocused}
-            isPressed={isPressed}
-            className={classNames(selectionMode !== "none" && "pl-8", className)}
-          >
-            {isSelected && <CheckIcon className="absolute left-2 size-4" />}
-            {children}
-          </PushableItem>
-        )
+      {(renderProps) => (
+        <PushableItem
+          variant="ghost"
+          isElevated={renderProps.isFocused}
+          isPressed={renderProps.isPressed}
+          className={classNames(renderProps.selectionMode !== "none" && "pl-8")}
+        >
+          {renderProps.isSelected && <CheckIcon className="absolute left-2 size-4" />}
+          {typeof children === "function" ? children(renderProps) : children}
+        </PushableItem>
       )}
     </AriaListBoxItem>
   );

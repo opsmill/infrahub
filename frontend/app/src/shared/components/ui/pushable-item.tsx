@@ -20,21 +20,21 @@ export function PushableItemEdge({ isPressed }: PushableItemEdgeProps) {
 }
 
 const pushableItemStyles = cva(
-  "flex w-full min-w-40 items-center gap-2 rounded-lg border px-2 py-1 text-sm text-stone-600 transition-transform will-change-transform",
+  "flex w-full min-w-40 items-center gap-2 rounded-lg border px-2 py-1 text-sm text-stone-700 transition-transform will-change-transform",
   {
     variants: {
       variant: {
         default: "border-white bg-white shadow-xs",
-        ghost: "border-transparent bg-transparent text-stone-800",
+        ghost: "border-transparent bg-transparent",
       },
-      isFocused: {
+      isElevated: {
         true: "-translate-y-0.75 border-stone-200 shadow-none duration-150 ease-in-out",
       },
       isPressed: {
         true: "translate-y-0 duration-80 ease-out",
       },
     },
-    compoundVariants: [{ variant: "ghost", isFocused: true, class: "bg-white" }],
+    compoundVariants: [{ variant: "ghost", isElevated: true, class: "bg-white" }],
     defaultVariants: {
       variant: "default",
     },
@@ -47,17 +47,17 @@ interface PushableItemProps
 
 export function PushableItem({
   variant,
-  isFocused,
+  isElevated,
   isPressed,
   className,
   ...props
 }: PushableItemProps) {
   return (
     <>
-      {isFocused && <PushableItemEdge isPressed={!!isPressed} />}
+      {isElevated && <PushableItemEdge isPressed={!!isPressed} />}
 
       <div
-        className={classNames(pushableItemStyles({ variant, isFocused, isPressed }), className)}
+        className={classNames(pushableItemStyles({ variant, isElevated, isPressed }), className)}
         {...props}
       />
     </>
