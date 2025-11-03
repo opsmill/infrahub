@@ -62,8 +62,11 @@ async def extract_peer_data(
 
     for rel in template_peer.get_schema().relationship_names:
         rel_manager: RelationshipManager = getattr(template_peer, rel)
-
-        if rel_manager.schema.name not in obj_peer_schema.relationship_names:
+        if (
+            rel_manager.schema.kind
+            not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT, RelationshipKind.PROFILE]
+            or rel_manager.schema.name not in obj_peer_schema.relationship_names
+        ):
             continue
 
         peers_map = await rel_manager.get_peers(db=db)
@@ -81,6 +84,14 @@ async def extract_peer_data(
             rel_peer_ids.append({"id": peer_id})
 
         obj_peer_data[rel] = rel_peer_ids
+
+        if rel_manager.schema.kind == RelationshipKind.PROFILE:
+            profiles = list(await rel_manager.get_peers(db=db))
+            obj_peer_data[rel] = profiles
+
+        if rel_manager.schema.kind == RelationshipKind.PROFILE:
+            profiles = list(await rel_manager.get_peers(db=db))
+            obj_peer_data[rel] = profiles
 
     return obj_peer_data
 
@@ -124,6 +135,12 @@ async def handle_template_relationships(
             await obj_peer.new(db=db, **obj_peer_data)
             await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
             await obj_peer.save(db=db)
+
+            template_profile_ids = await get_profile_ids(db=db, obj=template_relationship_peer)
+            if template_profile_ids:
+                node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+                await node_profiles_applier.apply_profiles(node=obj_peer)
+                await obj_peer.save(db=db)
 
             await handle_template_relationships(
                 db=db,

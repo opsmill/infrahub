@@ -19,6 +19,7 @@ from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -2285,6 +2286,18 @@ class SchemaBranch:
                 )
             ],
         )
+        if f"Template{node.kind}" in self.all_names:
+            template = self.get(name=f"Template{node.kind}", duplicate=False)
+            profile.relationships.append(
+                RelationshipSchema(
+                    name="related_templates",
+                    identifier=PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
+                    peer=template.kind,
+                    kind=RelationshipKind.PROFILE,
+                    cardinality=RelationshipCardinality.MANY,
+                    branch=BranchSupportType.AWARE,
+                )
+            )
 
         for node_attr in node.attributes:
             if not node_attr.support_profiles:
@@ -2417,7 +2430,9 @@ class SchemaBranch:
 
         if getattr(node, "generate_profile", False) and getattr(node, "generate_template", False):
             if "profiles" not in [r.name for r in template_schema.relationships]:
-                template_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
+                settings = dict(profiles_rel_settings)
+                settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
+                template_schema.relationships.append(RelationshipSchema(**settings))
 
         self.set(name=template_schema.kind, schema=template_schema)
 
