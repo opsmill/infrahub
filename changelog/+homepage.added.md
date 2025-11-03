@@ -1,0 +1,1 @@
+- Update landing page documentation links to get started with Infrahub
