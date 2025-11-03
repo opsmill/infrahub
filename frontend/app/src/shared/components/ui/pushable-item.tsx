@@ -1,0 +1,65 @@
+import { cva, type VariantProps } from "class-variance-authority";
+
+import { classNames } from "@/shared/utils/common";
+
+export const pushableItemContainerStyle = "relative flex cursor-pointer select-none outline-hidden";
+
+interface PushableItemEdgeProps {
+  isPressed: boolean;
+}
+
+export function PushableItemEdge({ isPressed }: PushableItemEdgeProps) {
+  return (
+    <span
+      className={classNames(
+        "absolute inset-0 translate-y-0.75 rounded-lg border-stone-400 border-b bg-button-edge-gradient shadow-xs",
+        isPressed && "shadow-none"
+      )}
+    />
+  );
+}
+
+const pushableItemStyles = cva(
+  "flex w-full min-w-40 items-center gap-2 rounded-lg border px-2 py-1 text-sm text-stone-600 transition-transform duration-100 will-change-transform",
+  {
+    variants: {
+      variant: {
+        default: "border-white bg-white shadow-xs",
+        ghost: "border-transparent bg-transparent text-stone-800",
+      },
+      isFocused: {
+        true: "border-stone-300 shadow-none",
+      },
+      isPressed: {
+        true: "translate-y-0.75",
+      },
+    },
+    compoundVariants: [{ variant: "ghost", isFocused: true, class: "bg-white" }],
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
+interface PushableItemProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof pushableItemStyles> {}
+
+export function PushableItem({
+  variant,
+  isFocused,
+  isPressed,
+  className,
+  ...props
+}: PushableItemProps) {
+  return (
+    <>
+      {isFocused && <PushableItemEdge isPressed={!!isPressed} />}
+
+      <div
+        className={classNames(pushableItemStyles({ variant, isFocused, isPressed }), className)}
+        {...props}
+      />
+    </>
+  );
+}

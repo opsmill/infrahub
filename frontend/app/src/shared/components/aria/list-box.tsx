@@ -8,6 +8,7 @@ import {
 } from "react-aria-components";
 
 import { disabledStyle } from "@/shared/components/style-rac";
+import { PushableItem, pushableItemContainerStyle } from "@/shared/components/ui/pushable-item";
 import { classNames } from "@/shared/utils/common";
 
 export interface ListBoxProps<T> extends AriaListBoxProps<T> {
@@ -38,38 +39,21 @@ export function ListBoxItem<T extends object>({
   return (
     <AriaListBoxItem
       textValue={textValue || (typeof children === "string" ? children : undefined)}
-      className={classNames(
-        disabledStyle,
-        "relative flex cursor-pointer select-none outline-hidden"
-      )}
+      className={classNames(disabledStyle, pushableItemContainerStyle)}
       {...props}
     >
       {composeRenderProps(
         children,
         (children, { isFocused, isSelected, isPressed, selectionMode }) => (
-          <>
-            {isFocused && (
-              <span
-                className={classNames(
-                  "absolute inset-0 translate-y-0.75 rounded-lg border-stone-400 border-b bg-button-edge-gradient shadow-xs",
-                  isPressed && "shadow-none"
-                )}
-              />
-            )}
-
-            <div
-              className={classNames(
-                "flex w-full items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm transition-transform duration-100 will-change-transform",
-                isFocused && "border-stone-300 bg-white",
-                isPressed && "translate-y-0.75",
-                selectionMode !== "none" && "pl-8",
-                className
-              )}
-            >
-              {isSelected && <CheckIcon className="absolute left-2 size-4" />}
-              {children}
-            </div>
-          </>
+          <PushableItem
+            variant="ghost"
+            isFocused={isFocused}
+            isPressed={isPressed}
+            className={classNames(selectionMode !== "none" && "pl-8", className)}
+          >
+            {isSelected && <CheckIcon className="absolute left-2 size-4" />}
+            {children}
+          </PushableItem>
         )
       )}
     </AriaListBoxItem>

@@ -50,26 +50,6 @@ export const ObjectDetailsButton = ({
         <Menu>
           <MenuSection title="Actions">
             <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
-            <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
 
             {hfid && hfid !== "null" && (
               <CopyToClipboardMenuItem textToCopy={hfid}>Copy HFID</CopyToClipboardMenuItem>

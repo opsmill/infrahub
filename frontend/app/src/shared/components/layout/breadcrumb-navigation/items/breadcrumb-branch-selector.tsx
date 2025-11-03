@@ -18,8 +18,8 @@ export default function BreadcrumbBranchSelector({
   currentBranchName,
   ...props
 }: BreadcrumbBranchSelectorProps) {
-  const { data: branches } = useGetBranches();
-  let { contains } = useFilter({ sensitivity: "base" });
+  const { data: branches = [] } = useGetBranches();
+  const { contains } = useFilter({ sensitivity: "base" });
 
   return (
     <PopoverTrigger>

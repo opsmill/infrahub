@@ -29,14 +29,14 @@ export function BreadcrumbSeparator({
 const breadcrumbItemStyle = cva(
   [
     focusVisibleStyle,
-    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-1 text-neutral-800",
+    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-1 text-stone-800",
   ],
   {
     variants: {
-      isPressed: {
+      isHovered: {
         true: "bg-stone-100",
       },
-      isHovered: {
+      isPressed: {
         true: "bg-stone-100",
       },
     },

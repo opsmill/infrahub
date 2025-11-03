@@ -15,6 +15,7 @@ import {
 
 import { Popover } from "@/shared/components/aria/popover";
 import { disabledStyle } from "@/shared/components/style-rac";
+import { PushableItem, pushableItemContainerStyle } from "@/shared/components/ui/pushable-item";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -52,34 +53,13 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
   return (
     <AriaMenuItem
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
-      className={classNames(
-        disabledStyle,
-        "relative flex cursor-pointer select-none outline-hidden"
-      )}
+      className={classNames(disabledStyle, pushableItemContainerStyle)}
       {...props}
     >
       {composeRenderProps(children, (children, { isFocused, isPressed }) => (
-        <>
-          {isFocused && (
-            <span
-              className={classNames(
-                "absolute inset-0 translate-y-0.75 rounded-lg border-stone-400 border-b bg-button-edge-gradient shadow-xs",
-                isPressed && "shadow-none"
-              )}
-            />
-          )}
-
-          <div
-            className={classNames(
-              "flex w-full min-w-40 items-center gap-2 rounded-lg border border-white bg-white px-2 py-1 text-sm text-stone-600 shadow-xs transition-transform duration-100 will-change-transform",
-              isFocused && "border-stone-300 shadow-none",
-              isPressed && "translate-y-0.75",
-              className
-            )}
-          >
-            {children}
-          </div>
-        </>
+        <PushableItem isFocused={isFocused} isPressed={isPressed} className={classNames(className)}>
+          {children}
+        </PushableItem>
       ))}
     </AriaMenuItem>
   );
