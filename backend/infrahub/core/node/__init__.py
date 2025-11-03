@@ -432,7 +432,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(template, attribute_name)
             attr_value = attr.value
             if attr_value is not None:
-                fields[attribute_name] = {"value": attr_value, "source": attr.source_id if attr.source_id else template.id}
+                fields[attribute_name] = {"value": attr_value, "source": attr.source_id or template.id}
 
         for relationship_name in template._relationships:
             relationship_schema = template._schema.get_relationship(name=relationship_name)
