@@ -112,7 +112,7 @@ class Migration041(MigrationRequiringRebase):
         node_ids_to_update: set[str] = set()
         with Progress() as progress:
             gather_nodes_task = progress.add_task(
-                "Gathering affected objects for each profile on branch {branch.name}...", total=len(profiles_map)
+                f"Gathering affected objects for each profile on branch {branch.name}...", total=len(profiles_map)
             )
 
             for profile in profiles_map.values():
