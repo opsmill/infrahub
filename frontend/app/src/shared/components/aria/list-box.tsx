@@ -46,7 +46,12 @@ export function ListBoxItem<T extends object>({
           variant="ghost"
           isElevated={renderProps.isFocused}
           isPressed={renderProps.isPressed}
-          className={classNames(renderProps.selectionMode !== "none" && "pl-8", className)}
+          className={classNames(
+            renderProps.selectionMode !== "none" && "pl-8",
+            typeof className === "function"
+              ? className({ ...renderProps, defaultClassName: undefined })
+              : className
+          )}
         >
           {renderProps.isSelected && <CheckIcon className="absolute left-2 size-4" />}
           {typeof children === "function" ? children(renderProps) : children}

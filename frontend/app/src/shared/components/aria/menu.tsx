@@ -47,9 +47,7 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
   );
 };
 
-export interface MenuItemProps extends AriaMenuItemProps {
-  className?: string;
-}
+export interface MenuItemProps extends AriaMenuItemProps {}
 
 export const MenuItem = ({ children, className, textValue, ...props }: MenuItemProps) => {
   return (
@@ -62,7 +60,11 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
         <PushableItem
           isElevated={renderProps.isFocused}
           isPressed={renderProps.isPressed}
-          className={className}
+          className={
+            typeof className === "function"
+              ? className({ ...renderProps, defaultClassName: undefined })
+              : className
+          }
         >
           {typeof children === "function" ? children(renderProps) : children}
         </PushableItem>

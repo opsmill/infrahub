@@ -12,6 +12,7 @@ interface PushableItemEdgeProps {
 export function PushableItemEdge({ isPressed }: PushableItemEdgeProps) {
   return (
     <span
+      aria-hidden="true"
       className={classNames(
         "absolute inset-0 rounded-lg border-stone-400 border-b bg-pushable-edge-gradient shadow-xs",
         isPressed && "shadow-none"
