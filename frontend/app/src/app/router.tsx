@@ -87,7 +87,7 @@ export const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                lazy: () => import("@/pages/homepage"),
+                lazy: () => import("@/pages/home/homepage"),
               },
               {
                 path: "/branches",
