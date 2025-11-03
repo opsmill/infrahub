@@ -33,6 +33,7 @@ from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
 )
+from infrahub.git.utils import get_git_user_config
 from infrahub.git.worktree import Worktree
 from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
@@ -1115,8 +1116,8 @@ async def test_repo_merge_allow_explicit_merge_raises_if_no_git_user_name(
         await repo.merge(source_branch=branch02.name, dest_branch="main")
 
 
-async def test_repo_merge_allow_explicit_merge(
-    git_repo_01: InfrahubRepository, branch02: BranchData, git_user_config, git_allow_explicit_merge_commit_config
+async def test_repo_merge_use_explicit_merge(
+    git_repo_01: InfrahubRepository, branch02: BranchData, git_user_config, git_use_explicit_merge_commit_config
 ):
     repo = git_repo_01
     await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)

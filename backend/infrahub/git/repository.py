@@ -15,6 +15,7 @@ from infrahub import config
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
+from infrahub.git.utils import get_git_user_config
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -171,10 +172,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
 
         try:
-            if config.SETTINGS.git.allow_explicit_merge_commit:
-                if not config.SETTINGS.git.user_name:
-                    raise ValueError("Cannot allow explicit merge commit if git user_name setting is not set.")
-                repo.git.merge(commit, "--no-ff", m=f"Merged by Infrahub by {config.SETTINGS.git.user_name}")
+            if config.SETTINGS.git.use_explicit_merge_commit:
+                user_name = config.SETTINGS.git.user_name or get_git_user_config(repo)[0]
+                repo.git.merge(commit, "--no-ff", m=f"Merged by Infrahub by {user_name}")
             else:
                 repo.git.merge(commit)
         except GitCommandError as exc:
