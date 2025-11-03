@@ -39,7 +39,7 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
     <AriaMenu
       className={classNames(
         "no-scrollbar max-h-[inherit] overflow-auto p-1 outline-hidden",
-        "space-y-0.75 *:[[role='group']:not(:last-child)]:mb-2",
+        "space-y-0.5 *:[[role='group']:not(:last-child)]:mb-2",
         className
       )}
       {...props}
@@ -47,19 +47,23 @@ export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) =>
   );
 };
 
-export interface MenuItemProps extends AriaMenuItemProps {}
+export interface MenuItemProps extends AriaMenuItemProps {
+  className?: string;
+}
 
 export const MenuItem = ({ children, className, textValue, ...props }: MenuItemProps) => {
   return (
     <AriaMenuItem
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
-      className={composeRenderProps(className, (className) =>
-        classNames(disabledStyle, pushableItemContainerStyle, className)
-      )}
+      className={classNames(disabledStyle, pushableItemContainerStyle)}
       {...props}
     >
       {(renderProps) => (
-        <PushableItem isElevated={renderProps.isFocused} isPressed={renderProps.isPressed}>
+        <PushableItem
+          isElevated={renderProps.isFocused}
+          isPressed={renderProps.isPressed}
+          className={className}
+        >
           {typeof children === "function" ? children(renderProps) : children}
         </PushableItem>
       )}
@@ -77,7 +81,7 @@ export const MenuSection = <T extends object>({
   ...props
 }: MenuSectionProps<T>) => {
   return (
-    <AriaMenuSection className={classNames("flex flex-col gap-0.75", className)} {...props}>
+    <AriaMenuSection className={classNames("flex flex-col gap-0.5", className)} {...props}>
       {title && <AriaHeader className="px-1 text-stone-500 text-xs">{title}</AriaHeader>}
       <Collection items={props.items}>{children}</Collection>
     </AriaMenuSection>

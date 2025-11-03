@@ -4,7 +4,6 @@ import {
   ListBoxItem as AriaListBoxItem,
   type ListBoxItemProps as AriaListBoxItemProps,
   type ListBoxProps as AriaListBoxProps,
-  composeRenderProps,
 } from "react-aria-components";
 
 import { disabledStyle } from "@/shared/components/style-rac";
@@ -39,9 +38,7 @@ export function ListBoxItem<T extends object>({
   return (
     <AriaListBoxItem
       textValue={textValue || (typeof children === "string" ? children : undefined)}
-      className={composeRenderProps(className, (className) =>
-        classNames(disabledStyle, pushableItemContainerStyle, className)
-      )}
+      className={classNames(disabledStyle, pushableItemContainerStyle)}
       {...props}
     >
       {(renderProps) => (
@@ -49,7 +46,7 @@ export function ListBoxItem<T extends object>({
           variant="ghost"
           isElevated={renderProps.isFocused}
           isPressed={renderProps.isPressed}
-          className={classNames(renderProps.selectionMode !== "none" && "pl-8")}
+          className={classNames(renderProps.selectionMode !== "none" && "pl-8", className)}
         >
           {renderProps.isSelected && <CheckIcon className="absolute left-2 size-4" />}
           {typeof children === "function" ? children(renderProps) : children}
