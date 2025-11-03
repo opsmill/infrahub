@@ -4296,3 +4296,159 @@ async def test_migrated_kind_with_property_level_changes(
     assert is_protected_prop.action is DiffAction.UPDATED
     assert is_protected_prop.new_value is True
     assert is_protected_prop.previous_value is False
+
+
+async def test_migrated_kind_on_main_then_relationship_update_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main,
+    car_camry_main,
+    person_john_main,
+    person_jane_main,
+    person_alfred_main,
+    person_albert_main,
+):
+    """Test that when a schema kind is migrated on the default branch, relationships to instances
+    of the migrated node can be updated on a branch before the diff is calculated."""
+    # Migrate TestPerson kind on default branch
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    original_person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema = schema_branch.get_node(name="TestPerson")
+    person_schema.inherit_from = ["GenericThing"]
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=original_person_schema,
+        new_node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="inherit_from"),
+    )
+    execution_result = await migration.execute(db=db, branch=default_branch)
+    assert not execution_result.errors
+
+    # Create a branch after the migration
+    branch = await create_branch(db=db, branch_name="branch-with-relationship-updates")
+
+    # Update relationships on the branch that reference instances of the migrated node
+    branch_accord = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_accord.owner.update(db=db, data=person_albert_main.id)
+    await branch_accord.save(db=db)
+
+    branch_camry = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
+    await branch_camry.owner.update(db=db, data={"id": person_jane_main.id, "_relation__is_protected": True})
+    await branch_camry.save(db=db)
+
+    # Calculate the diff
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        previous_node_specifiers=None,
+        include_unchanged=True,
+    )
+
+    base_diff = calculated_diffs.base_branch_diff
+    assert len(base_diff.nodes) == 0
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    nodes_by_id: dict[str, list[DiffNode]] = defaultdict(list)
+    for node in branch_diff.nodes:
+        nodes_by_id[node.uuid].append(node)
+
+    # Verify that the cars and related persons appear in the diff
+    expected_ids = {
+        car_accord_main.id,
+        car_camry_main.id,
+        person_john_main.id,
+        person_jane_main.id,
+        person_albert_main.id,
+    }
+    assert set(nodes_by_id.keys()) == expected_ids
+    assert len(nodes_by_id) == len(expected_ids)
+
+    # Get the car schema to find the owner relationship identifier
+    car_schema = registry.schema.get(name="TestCar", branch=branch.name)
+    owner_rel_schema = car_schema.get_relationship(name="owner")
+    owner_identifier = owner_rel_schema.get_identifier()
+
+    # Validate car_accord relationship update
+    accord_diffs = nodes_by_id[car_accord_main.id]
+    assert len(accord_diffs) == 1
+    accord_diff = accord_diffs[0]
+    assert accord_diff.action is DiffAction.UPDATED
+    assert accord_diff.is_node_kind_migration is False
+    rels_by_identifier = {r.identifier: r for r in accord_diff.relationships}
+    assert owner_identifier in rels_by_identifier
+    owner_rel_diff = rels_by_identifier[owner_identifier]
+    assert owner_rel_diff.action is DiffAction.UPDATED
+    elements_by_id = {r.peer_id: r for r in owner_rel_diff.relationships}
+    assert set(elements_by_id.keys()) == {person_john_main.id, person_albert_main.id}
+    # Original owner was person_john_main, so it should be REMOVED
+    john_element = elements_by_id[person_john_main.id]
+    assert john_element.action is DiffAction.REMOVED
+    # Verify the relationship properties for the removed owner
+    props_by_type = {p.property_type: p for p in john_element.properties}
+    assert set(props_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, previous_value in [
+        (DatabaseEdgeType.IS_RELATED, person_john_main.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ]:
+        prop_diff = props_by_type[prop_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.previous_value == previous_value
+        assert prop_diff.new_value is None
+    # The owner should have been updated to person_albert_main
+    albert_element = elements_by_id[person_albert_main.id]
+    assert albert_element.action is DiffAction.ADDED
+    # Verify the relationship properties for the new owner
+    props_by_type = {p.property_type: p for p in albert_element.properties}
+    assert DatabaseEdgeType.IS_RELATED in props_by_type
+    is_related_prop = props_by_type[DatabaseEdgeType.IS_RELATED]
+    assert is_related_prop.action is DiffAction.ADDED
+    assert is_related_prop.new_value == person_albert_main.id
+
+    # Validate car_camry relationship update
+    camry_diffs = nodes_by_id[car_camry_main.id]
+    assert len(camry_diffs) == 1
+    camry_diff = camry_diffs[0]
+    assert camry_diff.action is DiffAction.UPDATED
+    assert camry_diff.is_node_kind_migration is False
+    rels_by_identifier = {r.identifier: r for r in camry_diff.relationships}
+    assert owner_identifier in rels_by_identifier
+    owner_rel_diff = rels_by_identifier[owner_identifier]
+    assert owner_rel_diff.action is DiffAction.UPDATED
+    elements_by_id = {r.peer_id: r for r in owner_rel_diff.relationships}
+    # The owner relationship with person_jane_main should have is_protected updated
+    assert set(elements_by_id.keys()) == {person_jane_main.id}
+    element_diff = elements_by_id[person_jane_main.id]
+    assert element_diff.action is DiffAction.UPDATED
+    properties_by_type = {p.property_type: p for p in element_diff.properties if p.action != DiffAction.UNCHANGED}
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_PROTECTED}
+    is_protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert is_protected_prop.action is DiffAction.UPDATED
+    assert is_protected_prop.new_value is True
+    assert is_protected_prop.previous_value is False
+
+    # Validate only correct TestPerson nodes are present in the diff
+    current_persons_map = await NodeManager.get_many(
+        db=db, ids=[person_john_main.id, person_jane_main.id, person_albert_main.id]
+    )
+    for person_id in [person_john_main.id, person_jane_main.id, person_albert_main.id]:
+        person_object = current_persons_map[person_id]
+        person_diffs = nodes_by_id[person_id]
+        assert len(person_diffs) == 1
+        person_diff = person_diffs[0]
+        assert person_diff.identifier.db_id == person_object.db_id
+        assert person_diff.action is DiffAction.UPDATED
+        assert person_diff.is_node_kind_migration is False
+        assert person_diff.attributes == []
+        assert len(person_diff.relationships) == 1
+        rel_diff = person_diff.relationships[0]
+        assert rel_diff.name == "cars"
+        assert rel_diff.action is DiffAction.UPDATED
