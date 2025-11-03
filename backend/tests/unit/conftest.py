@@ -1805,6 +1805,7 @@ async def criticality_schema_root(register_core_models_schema: None) -> SchemaRo
         "display_labels": ["label__value"],
         "inherit_from": ["TestGenericCriticality"],
         "branch": BranchSupportType.AWARE.value,
+        "generate_template": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
