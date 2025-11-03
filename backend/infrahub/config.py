@@ -14,6 +14,7 @@ from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
     BaseModel,
+    EmailStr,
     Field,
     PrivateAttr,
     ValidationError,
@@ -453,6 +454,8 @@ class GitSettings(BaseSettings):
             "Note: other branches created with sync with git will be imported also"
         ),
     )
+    user_name: str | None = Field(default=None, description="User name of the git user")
+    user_email: EmailStr | None = Field(default=None, description="Email of the git user")
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
