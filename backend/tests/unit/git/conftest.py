@@ -1371,3 +1371,11 @@ async def mock_create_branch_git_repo_01(db: InfrahubDatabase, default_branch: B
 @pytest.fixture
 async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: Branch) -> None:
     await create_branch(branch_name="branch01", db=db)
+
+
+def git_user_config():
+    config.SETTINGS.git.user_email = "test@email.com"
+    config.SETTINGS.git.user_name = "Test User"
+    yield
+    config.SETTINGS.git.user_email = None
+    config.SETTINGS.git.user_name = None
