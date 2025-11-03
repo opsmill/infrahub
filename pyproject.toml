@@ -460,7 +460,7 @@ disable_error_code = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 exclude = [
     ".git",
@@ -732,21 +732,22 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN001",  # Missing type annotation for function argument
-    "ANN002",  # Missing type annotation for `*args`
-    "ANN003",  # Missing type annotation for `**kwargs`
-    "ANN201",  # Missing return type annotation for public function
-    "ANN202",  # Missing return type annotation for private function
-    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
-    "PLR0915", # Too many statements
-    "PT003",   # `scope='function'` is implied in `@pytest.fixture()`
-    "PT007",   # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
-    "PT006",   # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
-    "PT011",   # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
-    "PT012",   # `pytest.raises()` block should contain a single simple statement
-    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
-    "PT018",   # Assertion should be broken down into multiple parts
-    "PT021",   # Use `yield` instead of `request.addfinalizer`
+    "ANN001",   # Missing type annotation for function argument
+    "ANN002",   # Missing type annotation for `*args`
+    "ANN003",   # Missing type annotation for `**kwargs`
+    "ANN201",   # Missing return type annotation for public function
+    "ANN202",   # Missing return type annotation for private function
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ASYNC109", # Async function definition with a `timeout` parameter
+    "PLR0915",  # Too many statements
+    "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
+    "PT018",    # Assertion should be broken down into multiple parts
+    "PT021",    # Use `yield` instead of `request.addfinalizer`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [

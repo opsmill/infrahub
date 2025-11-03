@@ -52,7 +52,7 @@ async def setup_triggers_specific(
             )  # type: ignore[misc]
 
 
-@task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)
 async def setup_triggers(
     client: PrefectClient,
     triggers: list[TriggerDefinition],
@@ -84,7 +84,9 @@ async def setup_triggers(
     existing_automations: dict[str, Automation] = {}
     if trigger_type:
         existing_automations = {
-            item.name: item for item in await client.read_automations() if item.name.startswith(trigger_type.value)
+            item.name: item
+            for item in await client.read_automations()
+            if item.name.startswith(f"{trigger_type.value}::")
         }
     else:
         existing_automations = {item.name: item for item in await client.read_automations()}

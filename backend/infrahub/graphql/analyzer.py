@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
@@ -49,13 +49,13 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
-class MutateAction(str, Enum):
+class MutateAction(StrEnum):
     CREATE = "create"
     DELETE = "delete"
     UPDATE = "update"
 
 
-class ContextType(str, Enum):
+class ContextType(StrEnum):
     EDGE = "edge"
     NODE = "node"
     DIRECT = "direct"
@@ -80,7 +80,7 @@ class ContextType(str, Enum):
                 return cls.NODE
 
 
-class GraphQLOperation(str, Enum):
+class GraphQLOperation(StrEnum):
     QUERY = "query"
     MUTATION = "mutation"
     SUBSCRIPTION = "subscription"

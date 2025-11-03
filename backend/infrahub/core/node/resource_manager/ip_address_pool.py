@@ -15,6 +15,7 @@ from infrahub.exceptions import PoolExhaustedError, ValidationError
 from infrahub.pools.address import get_available
 
 from .. import Node
+from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -34,7 +35,7 @@ class CoreIPAddressPool(Node):
         prefixlen: int | None = None,
         at: Timestamp | None = None,
     ) -> Node:
-        async with lock.registry.get(name=self.get_id(), namespace="resource_pool"):
+        async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
 

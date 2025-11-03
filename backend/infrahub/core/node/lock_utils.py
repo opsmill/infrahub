@@ -1,12 +1,15 @@
 import hashlib
-from typing import Any
+from typing import TYPE_CHECKING
 
-from infrahub.core.branch import Branch
-from infrahub.core.constants.infrahubkind import GENERICGROUP, GRAPHQLQUERYGROUP
+from infrahub.core.node import Node
 from infrahub.core.schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 
-KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED = [GENERICGROUP]
+if TYPE_CHECKING:
+    from infrahub.core.relationship import RelationshipManager
+
+
+RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
@@ -43,55 +46,78 @@ def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch
     return kinds
 
 
-def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch) -> bool:
-    """
-    Check whether kind or any kind generic is in KINDS_TO_LOCK_ON_ANY_BRANCH.
-    """
-
-    if kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-        return True
-
-    node_schema = schema_branch.get(name=kind, duplicate=False)
-    if isinstance(node_schema, GenericSchema):
-        return False
-
-    for generic_kind in node_schema.inherit_from:
-        if generic_kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-            return True
-    return False
-
-
 def _hash(value: str) -> str:
     # Do not use builtin `hash` for lock names as due to randomization results would differ between
     # different processes.
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def get_kind_lock_names_on_object_mutation(
-    kind: str, branch: Branch, schema_branch: SchemaBranch, data: dict[str, Any]
-) -> list[str]:
+def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """
-    Return objects kind for which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
-    concurrent mutations are only allowed on non-main branch as objects validations will be performed at least when merging in main branch.
+    Return lock names for object on which we want to avoid concurrent mutation (create/update).
+    Lock names include kind, some generic kinds, resource pool ids, and values of attributes of corresponding uniqueness constraints.
     """
 
-    if not branch.is_default and not _should_kind_be_locked_on_any_branch(kind=kind, schema_branch=schema_branch):
-        return []
+    lock_names: set[str] = set()
 
-    if kind == GRAPHQLQUERYGROUP:
-        # Lock on name as well to improve performances
-        try:
-            name = data["name"].value
-            return [build_object_lock_name(kind + "." + _hash(name))]
-        except KeyError:
-            # We might reach here if we are updating a CoreGraphQLQueryGroup without updating the name,
-            # in which case we would not need to lock. This is not supposed to happen as current `update`
-            # logic first fetches the node with its name.
-            return []
+    # Check if node is using resource manager allocation via attributes
+    for attr_name in node.get_schema().attribute_names:
+        attribute = getattr(node, attr_name, None)
+        if attribute is not None and getattr(attribute, "from_pool", None) and "id" in attribute.from_pool:
+            lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{attribute.from_pool['id']}")
 
-    lock_kinds = _get_kinds_to_lock_on_object_mutation(kind, schema_branch)
-    lock_names = [build_object_lock_name(kind) for kind in lock_kinds]
-    return lock_names
+    # Check if relationships allocate resources
+    for rel_name in node._relationships:
+        rel_manager: RelationshipManager = getattr(node, rel_name)
+        for rel in rel_manager._relationships:
+            if rel.from_pool and "id" in rel.from_pool:
+                lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{rel.from_pool['id']}")
+
+    lock_kinds = _get_kinds_to_lock_on_object_mutation(node.get_kind(), schema_branch)
+    for kind in lock_kinds:
+        schema = schema_branch.get(name=kind, duplicate=False)
+        ucs = schema.uniqueness_constraints
+        if ucs is None:
+            continue
+
+        ucs_lock_names: list[str] = []
+        uc_attributes_names = set()
+
+        for uc in ucs:
+            uc_attributes_values = []
+            # Keep only attributes constraints
+            for field_path in uc:
+                # Some attributes may exist in different uniqueness constraints, we de-duplicate them
+                if field_path in uc_attributes_names:
+                    continue
+
+                # Exclude relationships uniqueness constraints
+                schema_path = schema.parse_schema_path(path=field_path, schema=schema_branch)
+                if schema_path.related_schema is not None or schema_path.attribute_schema is None:
+                    continue
+
+                uc_attributes_names.add(field_path)
+                attr = getattr(node, schema_path.attribute_schema.name, None)
+                if attr is None or attr.value is None:
+                    # `attr.value` being None corresponds to optional unique attribute.
+                    # `attr` being None is not supposed to happen.
+                    value_hashed = _hash("")
+                else:
+                    value_hashed = _hash(str(attr.value))
+
+                uc_attributes_values.append(value_hashed)
+
+            if uc_attributes_values:
+                uc_lock_name = ".".join(uc_attributes_values)
+                ucs_lock_names.append(uc_lock_name)
+
+        if not ucs_lock_names:
+            continue
+
+        partial_lock_name = kind + "." + ".".join(ucs_lock_names)
+        lock_names.add(build_object_lock_name(partial_lock_name))
+
+    return sorted(lock_names)
 
 
 def build_object_lock_name(name: str) -> str:

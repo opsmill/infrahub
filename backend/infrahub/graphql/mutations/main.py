@@ -28,7 +28,7 @@ from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
-from ...core.node.lock_utils import get_kind_lock_names_on_object_mutation
+from ...core.node.lock_utils import get_lock_names_on_object_mutation
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -180,41 +180,40 @@ class InfrahubMutationMixin:
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
         """
 
-        schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch, data=dict(data)
+        # Prepare a clone to compute locks without triggering pool allocations
+        preview_obj = await NodeManager.get_one_by_id_or_default_filter(
+            db=db,
+            kind=obj.get_kind(),
+            id=obj.get_id(),
+            branch=branch,
         )
+        await preview_obj.from_graphql(db=db, data=data, process_pools=False)
 
-        if db.is_transaction:
-            if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(
-                        db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
-                    )
-            else:
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+        lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
+
+        # FIXME: do not lock when data does not contain uniqueness constraint fields or resource pool allocations
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
+            if db.is_transaction:
                 obj = await cls.mutate_update_object(
                     db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
                 )
-            result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
-            return obj, result
 
-        async with db.start_transaction() as dbt:
-            if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(
-                        db=dbt,
-                        info=info,
-                        data=data,
-                        branch=branch,
-                        obj=obj,
-                        skip_uniqueness_check=skip_uniqueness_check,
-                    )
-            else:
+                result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
+                return obj, result
+
+            async with db.start_transaction() as dbt:
                 obj = await cls.mutate_update_object(
-                    db=dbt, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+                    db=dbt,
+                    info=info,
+                    data=data,
+                    branch=branch,
+                    obj=obj,
+                    skip_uniqueness_check=skip_uniqueness_check,
                 )
-            result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
-            return obj, result
+
+                result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
+                return obj, result
 
     @classmethod
     @retry_db_transaction(name="object_update")
