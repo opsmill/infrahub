@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError
+from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifactValidator,
@@ -1502,8 +1502,14 @@ async def _get_proposed_change_repositories(
     destination_all = await client.execute_graphql(
         query=DESTINATION_ALLREPOSITORIES, branch_name=model.destination_branch
     )
-    source_managed = await client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
-    source_readonly = await client.execute_graphql(query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch)
+    try:
+        source_managed = await client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
+        source_readonly = await client.execute_graphql(
+            query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch
+        )
+    except URLNotFoundError:
+        # If the URL is not found it means that the source branch has been deleted after the proposed change was created
+        return []
 
     destination_all = destination_all[InfrahubKind.GENERICREPOSITORY]["edges"]
     source_all = (

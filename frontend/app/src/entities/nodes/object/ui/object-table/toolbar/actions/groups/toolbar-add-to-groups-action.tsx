@@ -20,7 +20,7 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
       <ToolbarButton>Add to groups</ToolbarButton>
 
       <Popover placement="top start">
-        <PopoverDialog className="p-0">
+        <PopoverDialog>
           {({ close }) => {
             return (
               <BulkMutateGroups

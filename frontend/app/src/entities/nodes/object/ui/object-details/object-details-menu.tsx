@@ -11,7 +11,6 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import {
   CopyToClipboardMenuItem,
   Menu,
-  MenuHeader,
   MenuItem,
   MenuPopover,
   MenuSection,
@@ -71,8 +70,7 @@ export function ObjectDetailsMenu({
 
         <MenuPopover>
           <Menu>
-            <MenuSection>
-              <MenuHeader>Actions</MenuHeader>
+            <MenuSection title="Actions">
               <CopyToClipboardMenuItem textToCopy={objectData.id}>Copy ID</CopyToClipboardMenuItem>
               {objectData.hfid && (
                 <CopyToClipboardMenuItem textToCopy={objectData.hfid.toString()}>
@@ -81,8 +79,7 @@ export function ObjectDetailsMenu({
               )}
             </MenuSection>
 
-            <MenuSection>
-              <MenuHeader>Explore</MenuHeader>
+            <MenuSection title="Explore">
               <MenuItem
                 href={constructPath("/schema", [{ name: "kind", value: objectSchema.kind }])}
               >
@@ -119,8 +116,7 @@ export function ObjectDetailsMenu({
               )}
             </MenuSection>
 
-            <MenuSection>
-              <MenuHeader>Manage</MenuHeader>
+            <MenuSection title="Manage">
               <MenuItem isDisabled={!isEditAllowed} onAction={() => setIsEditModalOpen(true)}>
                 <PencilLineIcon className="size-3.5" />
                 <span>Edit</span>

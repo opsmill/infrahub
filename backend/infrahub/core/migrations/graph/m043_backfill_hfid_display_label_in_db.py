@@ -18,7 +18,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.exceptions import InitializationError
 from infrahub.types import is_large_attribute_type
 
-from ..shared import ArbitraryMigration
+from ..shared import MigrationRequiringRebase
 
 if TYPE_CHECKING:
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
@@ -600,7 +600,7 @@ CALL (n, attr) {
         self.add_to_query(set_value_query)
 
 
-class Migration043(ArbitraryMigration):
+class Migration043(MigrationRequiringRebase):
     """
     Backfill `human_friendly_id` and `display_label` attributes for nodes with schemas that define them.
     """
