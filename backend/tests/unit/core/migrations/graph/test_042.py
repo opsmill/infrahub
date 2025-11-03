@@ -94,6 +94,7 @@ class TestMigration042(TestInfrahubApp):
 
     @pytest.fixture
     async def profile_2_deleted(self, db: InfrahubDatabase, deleted_profile_branch: Branch, profile_2: Node) -> None:
+    async def profile_2_deleted(self, db: InfrahubDatabase, deleted_profile_branch: Branch, profile_2: Node) -> None:
         profile = await NodeManager.get_one(db=db, branch=deleted_profile_branch, id=profile_2.id)
         await profile.delete(db=db)
 
@@ -105,8 +106,8 @@ class TestMigration042(TestInfrahubApp):
     async def criticality_low_deleted(
         self, db: InfrahubDatabase, deleted_node_branch: Branch, criticality_low: Node
     ) -> None:
-        crit_low = await NodeManager.get_one(db=db, branch=deleted_node_branch, id=criticality_low.id)
-        await crit_low.delete(db=db)
+        profile = await NodeManager.get_one(db=db, branch=deleted_node_branch, id=criticality_low.id)
+        await profile.delete(db=db)
 
     @pytest.fixture
     async def load_data(
@@ -118,6 +119,7 @@ class TestMigration042(TestInfrahubApp):
         criticality_high: Node,
         profile_1: Node,
         profile_2: Node,
+    ) -> None:
     ) -> None:
         crit_low = await NodeManager.get_one(db=db, id=criticality_low.id)
         await crit_low.profiles.update(db=db, data=[profile_1])
@@ -141,6 +143,7 @@ class TestMigration042(TestInfrahubApp):
         deleted_node_branch: Branch,
         criticality_low_deleted: Node,
     ) -> None:
+    ) -> None:
         pass
 
     def validate_node(
@@ -148,6 +151,7 @@ class TestMigration042(TestInfrahubApp):
         original_node: Node,
         updated_node: Node,
         expected_profile_attrs: list[AttributeProfileDetails],
+    ) -> None:
     ) -> None:
         expected_profile_attrs_by_name = {attr.attribute_name: attr for attr in expected_profile_attrs}
         for attribute_name in updated_node._attributes:
@@ -179,8 +183,8 @@ class TestMigration042(TestInfrahubApp):
         priority_branch: Branch,
         deleted_profile_branch: Branch,
         deleted_node_branch: Branch,
-    ):
-        migration = WrappedMigration042()
+    ) -> None:
+        migration = WrappedMigration041()
         execution_result = await migration.execute(db=db)
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)
