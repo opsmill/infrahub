@@ -5,6 +5,8 @@ import { PaginationParams } from "@/shared/api/types";
 
 import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
 
+import { treeQueryKeys } from "./diff.query-keys";
+
 export const DIFF_TREE_PER_PAGE = 300;
 
 export type GetDiffTreeParams = PaginationParams & {
@@ -35,7 +37,7 @@ export const getDiffTreeInfiniteQueryOptions = ({
   filters,
 }: GetDiffTreeInfiniteQueryOptionsParams) => {
   return infiniteQueryOptions({
-    queryKey: ["diff-tree", branchName, filters],
+    queryKey: treeQueryKeys.allWithContext({ branchName, filters }),
     queryFn: ({ pageParam }) => getDiffTree({ branchName, filters, offset: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {

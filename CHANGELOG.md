@@ -11,6 +11,56 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.12](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.12) - 2025-10-23
+
+### Added
+
+- - Schema Visualizer now displays `on_delete` settings for relationships
+  - Fixed display of common_parent settings in relationships.
+
+  ([#7431](https://github.com/opsmill/infrahub/issues/7431))
+
+### Fixed
+
+- Loosen requirements for upsert mutations in the GraphQL schema so that required fields can be supplied by a template. ([#7398](https://github.com/opsmill/infrahub/issues/7398))
+- Fix a bug that could cause duplicated attributes to be created when updating a generic schema with a new attribute. Includes a migration to fix any existing duplicated attributes created by this bug. ([#7407](https://github.com/opsmill/infrahub/issues/7407))
+- Fix bug in logic to create an object from a template that would prevent existing objects in relationships of sub-templates from being correctly linked to the created object. ([#7430](https://github.com/opsmill/infrahub/issues/7430))
+- The artifact count has been removed from the Proposed Changes list view.
+
+## [Infrahub - v1.4.11](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.11) - 2025-10-17
+
+### Added
+
+- The login form now automatically focuses on the first field.
+
+### Fixed
+
+- Frontend Updates
+  - Consistent font size for all events in the Proposed Change timeline
+  - Proposed Change action buttons now keep their size and does not strectch anymore
+  - Prevent overflow on the create new relationship button within the relationship input
+  - fixed typos
+
+- SSO Fixes ([#6969](https://github.com/opsmill/infrahub/issues/6969))
+  - Improved logging for SSO authentication to provide better debugging information
+  - Enhanced error handling to properly support all error codes returned by identity providers
+
+- Artifact Display Fixes ([#7294](https://github.com/opsmill/infrahub/issues/7294))
+  - Correctly display XML and CSV artifacts in the UI.
+  - Added a fallback to plain text for unsupported content types.
+
+- Fix a bug that allowed duplicate attributes and/or relationships on Node or Generic schemas to be merged into the default branch,
+  which would cause the application and workers to crash with an error message similar to the following:
+
+  > ValueError: SchemaName: Names of attributes and relationships must be unique : ['field_name_1', 'field_name_2']
+
+  Added a new CLI command `infrahub db check-duplicate-schema-fields` to resolve this duplicated schema fields issue if it appears. ([#7346](https://github.com/opsmill/infrahub/issues/7346))
+- Fixed an issue where boolean fields in the object Details view always displayed a checkmark, even when the value was false. ([#7372](https://github.com/opsmill/infrahub/issues/7372))
+- Fixed prefix utilization showing as greater than 100% after setting the pool attribute to false ([#7388](https://github.com/opsmill/infrahub/issues/7388))
+- Corrected the labels on the branch list and detailed view to use the correct terminology
+- Fixed issue with number pool popover stuck in the top-left corner and not expandable during the initial render in some cases.
+- Improved artifacts generation and proposed change checks performance by leveraging caching and avoiding excessive GraphQL queries.
+
 ## [Infrahub - v1.4.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.10) - 2025-10-01
 
 ### Fixed

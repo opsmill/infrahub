@@ -75,7 +75,7 @@ export const PropertyRow = ({
       case "number":
         return value;
       case "boolean":
-        return <Badge variant={value ? "green-outline" : "red-outline"}>{value.toString()}</Badge>;
+        return <Badge variant={value ? "green" : "red"}>{value.toString()}</Badge>;
       case "object":
         if (Array.isArray(value)) {
           return (

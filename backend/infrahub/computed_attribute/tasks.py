@@ -104,7 +104,7 @@ async def process_transform(
         )  # type: ignore[misc]
 
         data = await client.query_gql_query(
-            name=transform.query.peer.name.value,
+            name=transform.query.id,
             branch_name=branch_name,
             variables={"id": object_id},
             update_group=True,

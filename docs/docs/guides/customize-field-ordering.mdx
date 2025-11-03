@@ -21,7 +21,7 @@ Relationships follow the same `order_weight` rules as attributes. This includes:
 
 - An existing Infrahub schema loaded into your instance
 - Access to the schema explorer under Object Management > Schemas
-- Understanding of [schema basics](../topics/schema)
+- Understanding of [schema basics](../topics/schema.mdx)
 
 ## Step 1: Check current field ordering
 
@@ -36,7 +36,7 @@ Before making changes, examine how your fields are currently ordered.
 
 ### Check default weights
 
-If you see fields without explicit `order_weight` values, they follow the [default assignment pattern](../topics/order-weight#default-assignment-logic):
+If you see fields without explicit `order_weight` values, they follow the [default assignment pattern](../topics/order-weight.mdx#default-assignment-logic):
 
 - First field: `1000`
 - Second field: `2000`
@@ -470,4 +470,4 @@ order_weight: 300  # Appears third
 - **Document decisions**: Comment your schema with weight rationale
 - **Test thoroughly**: Verify both list and detail views after changes
 
-For more information about how order weights work internally, see [Understanding order weight](../topics/order-weight).
+For more information about how order weights work internally, see [Understanding order weight](../topics/order-weight.mdx).

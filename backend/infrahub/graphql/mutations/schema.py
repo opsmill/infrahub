@@ -81,7 +81,7 @@ class SchemaDropdownAdd(Mutation):
         _validate_schema_permission(graphql_context=graphql_context)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
@@ -104,7 +104,7 @@ class SchemaDropdownAdd(Mutation):
             context=graphql_context.get_context(),
         )
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         attrib = kind.get_attribute(attribute)
         dropdown_entry = {}
         success = False
@@ -141,7 +141,7 @@ class SchemaDropdownRemove(Mutation):
         graphql_context: GraphqlContext = info.context
 
         _validate_schema_permission(graphql_context=graphql_context)
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
@@ -197,7 +197,7 @@ class SchemaEnumAdd(Mutation):
         graphql_context: GraphqlContext = info.context
 
         _validate_schema_permission(graphql_context=graphql_context)
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
@@ -243,7 +243,7 @@ class SchemaEnumRemove(Mutation):
         graphql_context: GraphqlContext = info.context
 
         _validate_schema_permission(graphql_context=graphql_context)
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)

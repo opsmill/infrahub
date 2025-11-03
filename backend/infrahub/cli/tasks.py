@@ -3,9 +3,11 @@ import logging
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
+from prefect.client.schemas.objects import StateType
 
 from infrahub import config
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.task_manager.task import PrefectTask
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
 from infrahub.workflows.initialization import setup_task_manager
 from infrahub.workflows.models import WorkerPoolDefinition
@@ -50,3 +52,47 @@ async def execute(
             workflow=DUMMY_FLOW, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
         )  # type: ignore[var-annotated]
         print(result)
+
+
+flush_app = AsyncTyper()
+
+app.add_typer(flush_app, name="flush")
+
+
+@flush_app.command()
+async def flow_runs(
+    ctx: typer.Context,  # noqa: ARG001
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    days_to_keep: int = 30,
+    batch_size: int = 100,
+) -> None:
+    """Flush old task runs"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    await PrefectTask.delete_flow_runs(
+        days_to_keep=days_to_keep,
+        batch_size=batch_size,
+    )
+
+
+@flush_app.command()
+async def stale_runs(
+    ctx: typer.Context,  # noqa: ARG001
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    days_to_keep: int = 2,
+    batch_size: int = 100,
+) -> None:
+    """Flush stale task runs"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    await PrefectTask.delete_flow_runs(
+        states=[StateType.RUNNING], delete=False, days_to_keep=days_to_keep, batch_size=batch_size
+    )

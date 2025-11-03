@@ -28,6 +28,12 @@ Branching in Infrahub supports various infrastructure management workflows:
 - **Experimentation**: Use branches to test new ideas or approaches without affecting the production environment. This provides a safe sandbox to validate new configurations or architectures before committing to them.
 - **Transaction support**: Group related changes into a single branch, ensuring atomic updates and easier rollbacks. This maintains consistency when implementing interdependent infrastructure changes.
 
+:::success Change Management Workflow Blog Post
+
+Want to see how branches can be used in a change management workflow? Read our blog post on [Infrahub’s Change Management Workflow Is Built for Infrastructure Data](https://opsmill.com/blog/infrastructure-change-management-workflow/).
+
+:::
+
 ## Core concepts
 
 Branches in Infrahub serve as isolated workspaces where changes can be prepared, validated, and reviewed before merging into production. Each branch maintains its own independent view of the data while sharing the underlying immutable history.
@@ -192,6 +198,7 @@ This approach means creating a branch has minimal overhead, and storage grows on
 
 ## Related topics
 
+- [Branching Blog Post](https://opsmill.com/blog/infrastructure-change-management-workflow/)
 - [Git Integration](./repository.mdx)
 - [Proposed Change](./proposed-change.mdx)
 - [Immutable History](./version-control.mdx)

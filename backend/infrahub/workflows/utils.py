@@ -9,6 +9,7 @@ from prefect.runtime import flow_run
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.registry import registry
 from infrahub.tasks.registry import refresh_branches
+from infrahub.workers.dependencies import get_http
 
 from .constants import TAG_NAMESPACE, WorkflowTag
 
@@ -26,7 +27,7 @@ async def add_tags(
     namespace: bool = True,
     db_change: bool = False,
 ) -> None:
-    client = get_client(sync_client=False)
+    client = get_client(httpx_settings={"verify": get_http().verify_tls()}, sync_client=False)
     current_flow_run_id = flow_run.id
     current_tags: list[str] = flow_run.tags
     branch_tags = (

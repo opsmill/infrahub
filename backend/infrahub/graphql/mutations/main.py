@@ -479,7 +479,7 @@ def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch
     it means node schema overrided this constraint, in which case we only need to lock on the generic.
     """
 
-    node_schema = schema_branch.get(name=kind)
+    node_schema = schema_branch.get(name=kind, duplicate=False)
 
     schema_uc = None
     kinds = []
@@ -494,7 +494,7 @@ def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch
 
     node_schema_kind_removed = False
     for generic_kind in generics_kinds:
-        generic_uc = schema_branch.get(name=generic_kind).uniqueness_constraints
+        generic_uc = schema_branch.get(name=generic_kind, duplicate=False).uniqueness_constraints
         if generic_uc:
             kinds.append(generic_kind)
             if not node_schema_kind_removed and generic_uc == schema_uc:
@@ -513,7 +513,7 @@ def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch)
     if kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
         return True
 
-    node_schema = schema_branch.get(name=kind)
+    node_schema = schema_branch.get(name=kind, duplicate=False)
     if node_schema.is_generic_schema:
         return False
 

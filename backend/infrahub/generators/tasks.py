@@ -21,6 +21,7 @@ from infrahub.generators.models import (
 )
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
+from infrahub.git.utils import fetch_proposed_change_generator_definition_targets
 from infrahub.workers.dependencies import get_client, get_workflow
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN, REQUEST_GENERATOR_RUN
 from infrahub.workflows.utils import add_tags
@@ -177,14 +178,9 @@ async def request_generator_definition_run(
         branch=model.branch,
     )
 
-    group = await client.get(
-        kind=InfrahubKind.GENERICGROUP,
-        prefetch_relationships=True,
-        populate_store=True,
-        id=model.generator_definition.group_id,
-        branch=model.branch,
+    group = await fetch_proposed_change_generator_definition_targets(
+        client=client, branch=model.branch, definition=model.generator_definition
     )
-    await group.members.fetch()
 
     instance_by_member = {}
     for instance in existing_instances:

@@ -12,7 +12,7 @@ from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import TICKET
+from tests.helpers.schema import COLOR, TICKET, TSHIRT
 from tests.node_creation import create_and_save
 
 
@@ -673,3 +673,82 @@ async def test_upsert_node_on_branch_with_hfid_on_default(db: InfrahubDatabase, 
         in result.errors[0].message
     )
     assert f"Please rebase this branch to access {person.id} / TestPerson" in result.errors[0].message
+
+
+async def test_upsert_with_required_relationship_from_template(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Validate that we can use a template to populate required relationships in upsert mutations.
+
+    Steps:
+      - Create a color node and a Tshirt template node.
+      - Try to upsert a Tshirt without specifying color or template (should fail).
+      - Upsert a Tshirt specifying the template (should succeed and apply the color from the template).
+    """
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[TSHIRT, COLOR]), branch=default_branch.name)
+
+    # Create a color node
+    color_node = await Node.init(db=db, schema="TestingColor", branch=default_branch)
+    await color_node.new(db=db, name="Red", description="Bright Red Color")
+    await color_node.save(db=db)
+
+    # Create a Tshirt template node with the color relationship set
+    template_node = await Node.init(db=db, schema="TemplateTestingTShirt", branch=default_branch)
+    await template_node.new(db=db, template_name="Basic Red Tshirt", color=color_node)
+    await template_node.save(db=db)
+
+    # Try to upsert a TShirt without specifying color or template (should fail)
+    query_missing_required = """
+    mutation {
+        TestingTShirtUpsert(data: {name: {value: "My Shirt"} }) {
+            ok
+            object {
+                id
+                name { value }
+                color { node { id name { value } } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result_missing = await graphql(
+        schema=gql_params.schema,
+        source=query_missing_required,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result_missing.errors
+    assert "color is mandatory for TestingTShirt at color" in str(result_missing.errors)
+
+    # Upsert a Tshirt specifying the template (should succeed and apply the color from the template)
+    query_with_template = """
+    mutation UpsertTShirt($template_id: String!) {
+        TestingTShirtUpsert(data: {
+            name: {value: "My Tshirt"},
+            object_template: {id: $template_id}
+        }) {
+            ok
+            object {
+                id
+                name { value }
+                color { node { id name { value } } }
+            }
+        }
+    }
+    """
+
+    result_with_template = await graphql(
+        schema=gql_params.schema,
+        source=query_with_template,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"template_id": template_node.id},
+    )
+    assert result_with_template.errors is None
+    assert result_with_template.data
+    assert result_with_template.data["TestingTShirtUpsert"]["ok"] is True
+    tshirt_obj = result_with_template.data["TestingTShirtUpsert"]["object"]
+    assert tshirt_obj["name"]["value"] == "My Tshirt"
+    assert tshirt_obj["color"]["node"]["id"] == color_node.id
+    assert tshirt_obj["color"]["node"]["name"]["value"] == "Red"

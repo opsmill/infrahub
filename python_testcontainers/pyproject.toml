@@ -1,11 +1,11 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.4.10"
+version = "1.4.12"
 requires-python = ">=3.9"
 
 [tool.poetry]
 name = "infrahub-testcontainers"
-version = "1.4.10"
+version = "1.4.12"
 description = "Testcontainers instance for Infrahub to easily build integration tests"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"

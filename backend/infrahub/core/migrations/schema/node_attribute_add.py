@@ -42,6 +42,16 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
     name: str = "node.attribute.add"
     queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeAddMigrationQuery01]  # type: ignore[assignment]
 
+    async def execute(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: Timestamp | str | None = None,
+    ) -> MigrationResult:
+        if self.new_attribute_schema.inherited is True:
+            return MigrationResult()
+        return await super().execute(db=db, branch=branch, at=at)
+
     async def execute_post_queries(
         self,
         db: InfrahubDatabase,

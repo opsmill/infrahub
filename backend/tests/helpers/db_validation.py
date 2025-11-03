@@ -130,3 +130,38 @@ RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
         raise ValueError(
             f"{num_paths} paths ({branch=},{edge_type=},{from_time=}) between nodes '{node_id1}' and '{node_id2}'"
         )
+
+
+async def validate_no_duplicate_attributes(db: InfrahubDatabase, branch: Branch) -> list[str]:
+    """
+    Validate that no Nodes have duplicated attribute or relationship names
+    """
+    branch_filter, branch_params = branch.get_query_filter_path()
+
+    query = """
+// -------------
+// get all the active Attributes this branch and count them up
+// -------------
+MATCH (n:Node)-[:HAS_ATTRIBUTE]->(field:Attribute)
+WITH DISTINCT n, field
+CALL (n, field) {
+MATCH (n)-[r:HAS_ATTRIBUTE]->(field)
+WHERE %(branch_filter)s
+RETURN r
+ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+LIMIT 1
+}
+WITH n, field, r
+WHERE r.status = "active" AND r.to IS NULL
+WITH n.uuid AS node_id, field.name AS field_name, count(*) AS num_fields
+WHERE num_fields > 1
+RETURN node_id, field_name, num_fields
+    """ % {"branch_filter": branch_filter}
+    results = await db.execute_query(query=query, params=branch_params)
+    errors = []
+    for result in results:
+        node_id = result.get("node_id")
+        field_name = result.get("field_name")
+        num_fields = result.get("num_fields")
+        errors.append(f"Node '{node_id}' has {num_fields} duplicated attributes with {field_name=}")
+    return errors

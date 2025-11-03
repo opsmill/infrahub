@@ -22,7 +22,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
     name = "relationship_constraints_peer_validator"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        peer_schema = db.schema.get(name=self.relationship_schema.peer, branch=self.branch)
+        peer_schema = db.schema.get(name=self.relationship_schema.peer, branch=self.branch, duplicate=False)
         allowed_peer_kinds = [peer_schema.kind]
         if isinstance(peer_schema, GenericSchema):
             allowed_peer_kinds += peer_schema.used_by

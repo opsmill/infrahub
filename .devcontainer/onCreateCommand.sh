@@ -8,4 +8,4 @@ poetry install --no-interaction --no-ansi
 
 git submodule update --init
 
-invoke demo.pull
+poetry run invoke demo.pull

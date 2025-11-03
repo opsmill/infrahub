@@ -1,5 +1,7 @@
 ---
 nameOverride: cache
+image:
+  repository: bitnamilegacy/redis
 architecture: replication
 auth:
   enabled: false
@@ -15,3 +17,5 @@ replicas:
   podAntiAffinityPreset: hard
 sentinel:
   enabled: true
+  image:
+    repository: bitnamilegacy/redis-sentinel

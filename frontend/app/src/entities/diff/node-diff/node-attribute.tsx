@@ -1,12 +1,11 @@
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 
-import { DataConflict } from "@/entities/diff/checks/data-conflict";
+import { Conflict } from "@/entities/diff/node-diff/conflict";
 import { DiffNodeProperty } from "@/entities/diff/node-diff/node-property";
 import { DiffThread } from "@/entities/diff/node-diff/thread";
 import { DiffAttribute, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffRow } from "@/entities/diff/node-diff/utils";
-
-import { BadgeConflict } from "../ui/diff-badge";
+import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 
 type DiffNodeAttributeProps = {
   attribute: DiffAttribute;
@@ -22,6 +21,7 @@ export const DiffNodeAttribute = ({
   status,
 }: DiffNodeAttributeProps) => {
   const { "*": branchName } = useParams();
+  const { pathname } = useLocation();
 
   return (
     <DiffRow
@@ -43,7 +43,12 @@ export const DiffNodeAttribute = ({
       right={newValue}
     >
       <div className="divide-y divide-gray-200 border-gray-200 border-t">
-        {attribute.conflict && <DataConflict conflict={attribute.conflict} />}
+        {attribute.conflict && pathname.includes("/proposed-changes") && (
+          <Conflict
+            id={attribute.conflict.uuid}
+            selectedBranch={attribute.conflict.selected_branch}
+          />
+        )}
 
         {attribute.properties.map((property, index: number) => (
           <DiffNodeProperty key={index} property={property} status={status} />

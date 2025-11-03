@@ -1,0 +1,35 @@
+---
+title: Release 1.4.12
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.4.12</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>October 23rd, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.4.12](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.4.12)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- vale off -->
+### Added
+
+- - Schema Visualizer now displays `on_delete` settings for relationships
+  - Fixed display of common_parent settings in relationships.
+
+  ([#7431](https://github.com/opsmill/infrahub/issues/7431))
+
+### Fixed
+
+- Loosen requirements for upsert mutations in the GraphQL schema so that required fields can be supplied by a template. ([#7398](https://github.com/opsmill/infrahub/issues/7398))
+- Fix a bug that could cause duplicated attributes to be created when updating a generic schema with a new attribute. Includes a migration to fix any existing duplicated attributes created by this bug. ([#7407](https://github.com/opsmill/infrahub/issues/7407))
+- Fix bug in logic to create an object from a template that would prevent existing objects in relationships of sub-templates from being correctly linked to the created object. ([#7430](https://github.com/opsmill/infrahub/issues/7430))
+- The artifact count has been removed from the Proposed Changes list view.
+<!-- vale on -->
