@@ -51,7 +51,7 @@ class TestDiffAndMerge:
 
     async def test_diff_and_merge_with_list_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-    ):
+    ) -> None:
         new_node = await Node.init(db=db, schema=all_attribute_types_schema.kind)
         await new_node.new(db=db, mylist=["a", "b", 1, 2])
         await new_node.save(db=db)
@@ -74,7 +74,7 @@ class TestDiffAndMerge:
         default_branch: Branch,
         register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
-    ):
+    ) -> None:
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.update_schema_branch(
             db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
@@ -135,7 +135,7 @@ class TestDiffAndMerge:
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
         expected_value: dict[Literal["name", "hfid"], str | list[str]],
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.value = "John-main"
@@ -184,7 +184,7 @@ class TestDiffAndMerge:
         car_accord_main: Node,
         car_camry_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data=person_alfred_main)
@@ -236,7 +236,7 @@ class TestDiffAndMerge:
         person_alfred_main: Node,
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.source = person_alfred_main
@@ -290,7 +290,7 @@ class TestDiffAndMerge:
         car_accord_main: Node,
         car_camry_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         person_schema = db.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         branch2 = await create_branch(db=db, branch_name="branch2")
@@ -352,7 +352,7 @@ class TestDiffAndMerge:
         person_john_main,
         person_jane_main,
         new_height,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_jane_main.id)
         person_branch.height.value = new_height
@@ -383,7 +383,7 @@ class TestDiffAndMerge:
         person_john_main,
         person_jane_main,
         car_camry_main,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         branch_car = await Node.init(db=db, schema="TestCar", branch=branch2)
         await branch_car.new(db=db, name="new camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
@@ -414,7 +414,7 @@ class TestDiffAndMerge:
 
     async def test_relationship_set_to_null(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, animal_person_schema
-    ):
+    ) -> None:
         person_main = await Node.init(db=db, schema="TestPerson")
         await person_main.new(db=db, name="Dude")
         await person_main.save(db=db)
@@ -459,7 +459,7 @@ class TestDiffAndMerge:
         default_branch: Branch,
         diff_repository: DiffRepository,
         car_person_schema_branch_local: SchemaBranch,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
         await person.new(db=db, name="Guy", height=180)
@@ -530,7 +530,7 @@ class TestDiffAndMerge:
 
     async def test_agnostic_and_aware_nodes_added_on_branch(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_person_schema_global
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
         await person.new(db=db, name="Guy", height=180)
@@ -616,7 +616,7 @@ class TestDiffAndMerge:
         person_jane_main,
         car_accord_main,
         car_camry_main,
-    ):
+    ) -> None:
         person_schema = db.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         branch2 = await create_branch(db=db, branch_name="branch2")
@@ -674,7 +674,7 @@ class TestDiffAndMerge:
         person_alfred_main,
         car_accord_main,
         car_camry_main,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data={"id": person_alfred_main.id, "_relation__is_protected": True})
@@ -741,7 +741,7 @@ class TestDiffAndMerge:
         person_alfred_main,
         car_accord_main,
         car_camry_main,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
         await car_branch.owner.update(db=db, data={"id": person_alfred_main.id, "_relation__is_protected": True})
@@ -793,7 +793,7 @@ class TestDiffAndMerge:
 
     async def test_delete_with_many_relationship_added(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-    ):
+    ) -> None:
         # remove TestCar relationship to TestPerson
         car_schema = car_person_schema_unregistered.get(name="TestCar")
         car_schema.relationships = []
@@ -850,7 +850,7 @@ class TestDiffAndMerge:
         diff_repository: DiffRepository,
         person_john_main: Node,
         selection: ConflictSelection,
-    ):
+    ) -> None:
         main_value = 200
         branch_value = 150
         branch2 = await create_branch(db=db, branch_name="branch2")
@@ -949,7 +949,7 @@ class TestDiffAndMerge:
         car_camry_main: Node,
         person_jane_main: Node,
         person_john_main: Node,
-    ):
+    ) -> None:
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.update_schema_branch(db=db, branch=default_branch, schema=schema_main, update_db=True)
         original_car_owner = person_john_main
@@ -1059,7 +1059,7 @@ class TestDiffAndMerge:
         register_internal_models_schema: SchemaBranch,
         register_core_models_schema: SchemaBranch,
         car_person_schema_generics: SchemaBranch,
-    ):
+    ) -> None:
         # schema with multiple generics
         root_with_another_generic = SchemaRoot(
             generics=[

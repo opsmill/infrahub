@@ -122,7 +122,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
             "nodes": [schema_person_base, schema_car_base, schema_02_car_unique, schema_tag_base],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
         tags = await registry.manager.query(db=db, schema=TAG_KIND)
@@ -132,7 +132,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
 
     async def test_step_01_attr_regex_add_rebase_failure(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_01_attr_regex, branch_2
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_01_attr_regex])
         assert not response.errors
         little_john = await Node.init(schema=PERSON_KIND, db=db, branch=branch_2)
@@ -147,7 +147,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
 
     async def test_step_02_node_unique_rebase_failure(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_02_node_unique, branch_2
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_02_node_unique])
         assert not response.errors
 
@@ -172,6 +172,6 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
             assert another_civic.id in exc.value.message
             assert "node.uniqueness_constraints.update" in exc.value.message
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

@@ -9,7 +9,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
-async def test_get_display_labels_per_kind(db: InfrahubDatabase, default_branch, car_person_data):
+async def test_get_display_labels_per_kind(db: InfrahubDatabase, default_branch, car_person_data) -> None:
     persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=default_branch)
     person_ids = [item.id for item in persons_list]
     display_labels = await get_display_labels_per_kind(
@@ -18,7 +18,7 @@ async def test_get_display_labels_per_kind(db: InfrahubDatabase, default_branch,
     assert len(display_labels) == len(person_ids)
 
 
-async def test_get_display_labels_per_kind_with_branch(db: InfrahubDatabase, default_branch, car_person_data):
+async def test_get_display_labels_per_kind_with_branch(db: InfrahubDatabase, default_branch, car_person_data) -> None:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     # Add a new Person
@@ -35,7 +35,7 @@ async def test_get_display_labels_per_kind_with_branch(db: InfrahubDatabase, def
     assert len(display_labels) == len(person_ids)
 
 
-async def test_get_display_labels(db: InfrahubDatabase, default_branch, car_person_data):
+async def test_get_display_labels(db: InfrahubDatabase, default_branch, car_person_data) -> None:
     persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=default_branch)
     person_ids = [item.id for item in persons_list]
     cars_list = await NodeManager.query(db=db, schema="TestCar", branch=default_branch)
@@ -45,7 +45,7 @@ async def test_get_display_labels(db: InfrahubDatabase, default_branch, car_pers
     assert len(display_labels["main"]) == len(car_ids) + len(person_ids)
 
 
-async def test_get_display_labels_with_branch(db: InfrahubDatabase, default_branch, car_person_data):
+async def test_get_display_labels_with_branch(db: InfrahubDatabase, default_branch, car_person_data) -> None:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
@@ -133,7 +133,7 @@ async def r1_update_01(data_diff_attribute):
     return expected_response
 
 
-async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff):
+async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff) -> None:
     with client:
         response = client.get(
             "/api/diff/artifacts?branch=branch3",
@@ -209,7 +209,7 @@ async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_p
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_diff_artifact_anonymous_access(
     db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff, allow_anonymous_access: bool
-):
+) -> None:
     config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
 
     with client:
@@ -221,7 +221,7 @@ async def test_diff_artifact_anonymous_access(
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_diff_files_anonymous_access(
     db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff, allow_anonymous_access: bool
-):
+) -> None:
     config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
 
     with client:

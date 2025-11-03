@@ -185,7 +185,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "nodes": [schema_car_base, schema_person_base, schema_03_cylon_robot],
         }
 
-    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         cylons = await registry.manager.query(db=db, schema=CYLON_KIND)
         cars = await registry.manager.query(db=db, schema=CAR_KIND)
@@ -193,7 +193,9 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(cylons) == 2
         assert len(cars) == 1
 
-    async def test_step_02_add_generic(self, client: InfrahubClient, initial_dataset, schema_step_02_add_generic):
+    async def test_step_02_add_generic(
+        self, client: InfrahubClient, initial_dataset, schema_step_02_add_generic
+    ) -> None:
         success, _ = await client.schema.check(schemas=[schema_step_02_add_generic])
         assert success is True
 
@@ -203,7 +205,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         db: InfrahubDatabase,
         initial_dataset,
         schema_step_03_remove_generic,
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_03_remove_generic])
         assert success is False
         assert len(response["errors"]) == 1
@@ -211,6 +213,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert "Node-level 'inherit_from' constraint violation on schema 'SchemaNode'" in error["message"]
         assert "The error relates to field inherit_from=['TestingHumanoid']." in error["message"]
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

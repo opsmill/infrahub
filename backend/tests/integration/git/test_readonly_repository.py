@@ -35,12 +35,12 @@ if TYPE_CHECKING:
 
 
 class TestCreateReadOnlyRepository(TestInfrahubApp):
-    def setup_method(self):
+    def setup_method(self) -> None:
         lock_patcher = patch("infrahub.git.tasks.lock")
         self.mock_infra_lock = lock_patcher.start()
         self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         patch.stopall()
 
     @pytest.fixture(scope="class")
@@ -108,7 +108,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
 
     async def test_step02_validate_generated_artifacts(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient, person_john: Node
-    ):
+    ) -> None:
         artifacts = await client.all(kind=CoreArtifact, branch="ro_repository")
         artifacts_dict = {item.name.value: item for item in artifacts}
         assert sorted(artifacts_dict.keys()) == [
@@ -151,7 +151,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         helper: TestHelper,
         context: InfrahubContext,
         service: InfrahubServices,
-    ):
+    ) -> None:
         await client.branch.merge(branch_name="ro_repository")
 
         check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
@@ -189,7 +189,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         person_john: Node,
         context: InfrahubContext,
         service: InfrahubServices,
-    ):
+    ) -> None:
         from infrahub.core import registry
         from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 

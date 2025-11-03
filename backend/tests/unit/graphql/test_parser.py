@@ -123,7 +123,7 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
 
 async def test_directive_merge_fields(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, person_tag_schema, first_account
-):
+) -> None:
     """This test validates that the @expand directive doesn't override the source field under username."""
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe", _source=first_account)

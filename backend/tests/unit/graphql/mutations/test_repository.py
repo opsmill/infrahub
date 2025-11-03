@@ -82,7 +82,9 @@ async def test_trigger_repository_import(
         mock_submit_workflow.assert_has_calls(expected_calls)
 
 
-async def test_repository_update(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
+async def test_repository_update(
+    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+) -> None:
     branch2 = await create_branch(branch_name="branch2", db=db)
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
@@ -156,6 +158,6 @@ async def test_repository_update(db: InfrahubDatabase, register_core_models_sche
         ),
     ],
 )
-def test_cleanup_payload(test_input, expected):
+def test_cleanup_payload(test_input, expected) -> None:
     cleanup_payload(data=test_input)
     assert test_input == expected

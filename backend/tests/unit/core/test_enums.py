@@ -3,7 +3,7 @@ import enum
 from infrahub.core.enums import generate_python_enum
 
 
-def test_generate_python_enum():
+def test_generate_python_enum() -> None:
     enum_class = generate_python_enum(name="Color", options=["blue", "red"])
     assert isinstance(enum_class, enum.EnumType)
 
@@ -12,7 +12,7 @@ def test_generate_python_enum():
     assert {enum.name for enum in enum_class} == {"RED", "BLUE"}
 
 
-def test_generate_python_enum_with_integers():
+def test_generate_python_enum_with_integers() -> None:
     enum_class = generate_python_enum(name="DHGroup", options=[2, 5, 14])
     assert isinstance(enum_class, enum.EnumType)
 

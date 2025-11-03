@@ -20,7 +20,7 @@ async def test_query_uniqueness_no_violations(
     car_yaris_main,
     car_prius_main,
     branch: Branch,
-):
+) -> None:
     query = await UniquenessValidationQuery.init(
         db=db,
         branch=branch,
@@ -35,7 +35,7 @@ async def test_query_uniqueness_no_violations(
 
 async def test_query_uniqueness_one_attr_violation(
     db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
-):
+) -> None:
     query_request = NodeUniquenessQueryRequestValued(
         kind="TestCar",
         unique_valued_paths=[QueryAttributePathValued(attribute_name="nbr_seats", value=5)],
@@ -63,7 +63,7 @@ async def test_query_uniqueness_deleted_node_ignored(
     car_accord_main,
     car_prius_main,
     branch: Branch,
-):
+) -> None:
     node_to_delete = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await node_to_delete.delete(db=db)
 
@@ -83,7 +83,7 @@ async def test_query_uniqueness_get_latest_update(
     car_accord_main,
     car_prius_main,
     branch: Branch,
-):
+) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     car_to_update.nbr_seats.value = 3
     await car_to_update.save(db=db)
@@ -106,7 +106,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
     car_camry_main,
     branch: Branch,
     default_branch: Branch,
-):
+) -> None:
     for car_id in (car_volt_main.id, car_camry_main.id, car_accord_main.id):
         car_to_update = await NodeManager.get_one(id=car_id, db=db, branch=branch)
         car_to_update.color.value = "#ffffff"
@@ -133,7 +133,7 @@ async def test_query_relationship_uniqueness_no_violations(
     person_john_main,
     person_albert_main,
     branch: Branch,
-):
+) -> None:
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await car_to_update.owner.update(data=person_jane_main, db=db)
     await car_to_update.save(db=db)
@@ -218,7 +218,7 @@ async def test_query_relationship_uniqueness_one_violation(
     person_john_main,
     person_albert_main,
     branch: Branch,
-):
+) -> None:
     car_accord_branch = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
     await car_accord_branch.owner.update(data=person_jane_main, db=db)
     await car_accord_branch.save(db=db)
@@ -303,7 +303,7 @@ async def test_query_relationship_uniqueness_one_violation(
 
 async def test_query_relationship_no_violation_same_peer_different_rels(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
-):
+) -> None:
     john = await Node.init(schema="TestPerson", db=db)
     await john.new(db=db, name="John", height=175)
     await john.save(db=db)

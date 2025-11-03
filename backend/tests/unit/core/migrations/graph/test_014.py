@@ -13,7 +13,7 @@ async def test_migration_014(
     reset_registry,
     default_branch,
     delete_all_nodes_in_db,
-):
+) -> None:
     indexes = [
         IndexItem(name="node_uuid", label="Node", properties=["uuid"], type=IndexType.RANGE),
         IndexItem(name="attr_value", label="AttributeValue", properties=["value"], type=IndexType.RANGE),

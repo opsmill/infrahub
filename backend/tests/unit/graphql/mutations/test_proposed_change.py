@@ -100,7 +100,9 @@ mutation UpdateProposedChange(
 """
 
 
-async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_branch, register_core_models_schema):
+async def test_create_invalid_branch_combinations(
+    db: InfrahubDatabase, default_branch, register_core_models_schema
+) -> None:
     branch_name = str(uuid4().hex)
     invalid_branch = str(uuid4().hex)
     source_branch = Branch(name=branch_name)
@@ -321,7 +323,7 @@ class TestTriggerProposedChange(TestInfrahubApp):
             mock_submit_workflow.assert_not_called()
 
 
-async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core_models_schema: None):
+async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core_models_schema: None) -> None:
     branch_name = "merged-proposed-change"
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
@@ -345,7 +347,7 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
     assert "A proposed change in the merged state is not allowed to be updated" in str(update_status.errors[0])
 
 
-async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_models_schema: None):
+async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_models_schema: None) -> None:
     branch_name = "draft-proposed-change"
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
@@ -392,7 +394,7 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
         session_admin: AccountSession,
         client: InfrahubClient,
         dependency_provider,
-    ):
+    ) -> None:
         with dependency_provider.scope(build_client, lambda: client):
             cache = MemoryCache()
             message_bus = BusRecorder()
@@ -458,7 +460,7 @@ async def test_create_thread(
     register_core_models_schema: None,
     session_first_account: AccountSession,
     session_admin: AccountSession,
-):
+) -> None:
     service = await InfrahubServices.new(
         database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution(), cache=MemoryCache()
     )

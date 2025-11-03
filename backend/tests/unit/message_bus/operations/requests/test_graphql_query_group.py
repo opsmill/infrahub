@@ -22,7 +22,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 async def test_graphql_group_update(
     db: InfrahubDatabase, httpx_mock: HTTPXMock, mock_schema_query_02, dependency_provider
-):
+) -> None:
     with dependency_provider.scope(
         build_client, lambda: InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
     ):

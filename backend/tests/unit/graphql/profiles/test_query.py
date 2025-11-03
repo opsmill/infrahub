@@ -16,7 +16,7 @@ from tests.helpers.graphql import graphql
 
 
 @pytest.fixture
-def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
+def criticality_schema(default_branch: Branch, data_schema, node_group_schema) -> None:
     GENERIC_SCHEMA = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -56,7 +56,7 @@ def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
     registry.schema.process_schema_branch(name=default_branch.name)
 
 
-async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
@@ -91,7 +91,7 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     assert result.data["ProfileTestCriticality"]["edges"][0]["node"]["display_label"] == obj1.profile_name.value
 
 
-async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
@@ -141,7 +141,7 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     assert retrieved_object.profile_priority.value == 1234
 
 
-async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
@@ -216,7 +216,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     } in crits
 
 
-async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile_generic_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_generic_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
@@ -295,7 +295,9 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
     } in crits
 
 
-async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_setting_illegal_profiles_raises_error(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     profile_generic_schema = registry.schema.get(
         "ProfileTestGenericCriticality", branch=default_branch, duplicate=False
     )
@@ -383,7 +385,7 @@ async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, defau
     }
 
 
-async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
@@ -465,7 +467,9 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     assert crit_2_profile.id in gql_params.context.related_node_ids
 
 
-async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_is_profile_source_set_correctly(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)

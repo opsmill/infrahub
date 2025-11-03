@@ -14,7 +14,7 @@ async def test_relationship(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     query = """
     query (
         $relationship_identifiers: [String!]!

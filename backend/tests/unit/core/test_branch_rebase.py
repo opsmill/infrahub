@@ -15,7 +15,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.workers.dependencies import build_database
 
 
-async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     await branch1.rebase(db=db)
 
@@ -36,7 +36,7 @@ async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core
     assert cars[2].name.value == "volt"
 
 
-async def test_rebase_graph_delete(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+async def test_rebase_graph_delete(db: InfrahubDatabase, base_dataset_02, register_core_models_schema) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     persons = sorted(await NodeManager.query(schema="TestPerson", db=db), key=lambda p: p.id)
@@ -54,7 +54,7 @@ async def test_rebase_graph_delete(db: InfrahubDatabase, base_dataset_02, regist
 
 async def test_merge_relationship_many(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
-):
+) -> None:
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
     await blue.save(db=db)
@@ -97,7 +97,7 @@ async def test_branch_rebase_diff_conflict(
     dependency_provider,
     car_person_schema,
     car_camry_main,
-):
+) -> None:
     # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
     with dependency_provider.scope(build_database, lambda: db):
         branch2 = await create_branch(db=db, branch_name="branch2")

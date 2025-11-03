@@ -15,7 +15,9 @@ from tests.helpers.db_validation import validate_node_relationships, verify_no_d
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
-async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
@@ -58,7 +60,7 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
 
 async def test_migration_aware_relationship(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
@@ -92,7 +94,7 @@ async def test_migration_aware_relationship(
 
 async def test_migration_agnostic_relationship(
     db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
-):
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
 
     person_john = await Node.init(db=db, schema="TestPerson")
@@ -131,7 +133,7 @@ async def test_migration_agnostic_relationship(
     await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())
 
 
-async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch):
+async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch) -> None:
     await load_schema(db=db, schema=LOCATION_SCHEMA)
 
     continent_europe = await Node.init(db=db, schema=TestKind.CONTINENT)
@@ -185,7 +187,7 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
 
 async def test_inheritance_migration_on_branch_and_main(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_alfred_main: Node
-):
+) -> None:
     # 0. add a deleted relationship
     accord_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
     await accord_main.owner.update(db=db, data=person_alfred_main.id)

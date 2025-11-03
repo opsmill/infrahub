@@ -20,19 +20,19 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_no_uniqueness_constraint(
         self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-    ):
+    ) -> None:
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
     async def test_uniqueness_constraint_no_conflicts(
         self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-    ):
+    ) -> None:
         car_accord_main.get_schema().uniqueness_constraints = [["name__value"]]
 
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
     async def test_uniqueness_constraint_conflict_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-    ):
+    ) -> None:
         car_accord_main.name.value = "camry"
         car_accord_main.get_schema().uniqueness_constraints = [["name__value"]]
 
@@ -41,7 +41,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_conflict_attribute_with_null(
         self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-    ):
+    ) -> None:
         # this change is allowed
         car_camry_main.color.value = None
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_camry_main)
@@ -56,7 +56,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_filters(
         self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-    ):
+    ) -> None:
         car_accord_main.name.value = "camry"
         car_accord_main.get_schema().uniqueness_constraints = [
             ["name__value"],
@@ -73,7 +73,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_accord_main: Node,
         car_camry_main: Node,
         car_volt_main: Node,
-    ):
+    ) -> None:
         car_accord_main.get_schema().uniqueness_constraints = [["name__value", "color__value"]]
 
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
@@ -85,7 +85,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_accord_main: Node,
         car_camry_main: Node,
         car_volt_main: Node,
-    ):
+    ) -> None:
         car_accord_main.name.value = "camry"
         car_accord_main.get_schema().uniqueness_constraints = [
             ["name__value", "color__value"],
@@ -102,7 +102,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_accord_main: Node,
         car_camry_main: Node,
         car_volt_main: Node,
-    ):
+    ) -> None:
         car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         car_schema.uniqueness_constraints = [["nbr_seats__value", "name__value"]]
         attr = car_schema.get_attribute("nbr_seats")
@@ -118,7 +118,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_accord_main: Node,
         car_camry_main: Node,
         car_volt_main: Node,
-    ):
+    ) -> None:
         car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         attr = car_schema.get_attribute("nbr_seats")
         attr.optional = False
@@ -132,7 +132,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_no_conflict_one_relationship(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         car_node: Node = car_person_generics_data_simple["c1"]
         car_node.get_schema().uniqueness_constraints = [["previous_owner"]]
 
@@ -140,7 +140,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_conflict_one_relationship(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         car_node: Node = car_person_generics_data_simple["c1"]
         car_node.get_schema().uniqueness_constraints = [["owner"]]
 
@@ -149,7 +149,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_no_conflict_two_relationships(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         car_node: Node = car_person_generics_data_simple["c1"]
         car_node.get_schema().uniqueness_constraints = [["previous_owner", "owner"]]
 
@@ -157,7 +157,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_no_conflict_two_relationships_with_overlap(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         p1 = car_person_generics_data_simple["p1"]
         p2 = car_person_generics_data_simple["p2"]
         p3 = await Node.init(db=db, schema=registry.schema.get(name="TestPerson"))
@@ -179,7 +179,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_conflict_two_relationship(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         person_1 = car_person_generics_data_simple["p1"]
         car_node_1: Node = car_person_generics_data_simple["c1"]
         await car_node_1.previous_owner.update(data=person_1, db=db)
@@ -193,7 +193,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_no_conflict_relationship_and_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         car_node: Node = car_person_generics_data_simple["c1"]
         car_node.get_schema().uniqueness_constraints = [
             ["nbr_seats__value", "name__value"],
@@ -257,7 +257,7 @@ class TestNodeGroupedUniquenessConstraint:
         node_constraints: list[list[str]],
         parent_constraints: list[list[str]],
         expected_number_calls_by_kind: dict[str, int],
-    ):
+    ) -> None:
         car_node: Node = car_person_generics_data_simple["c1"]
         car_schema = car_node.get_schema()
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -278,7 +278,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_uniqueness_constraint_conflict_relationship_and_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         person_1 = car_person_generics_data_simple["p1"]
         car_node_1: Node = car_person_generics_data_simple["c1"]
         await car_node_1.previous_owner.update(data=person_1, db=db)
@@ -297,7 +297,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_generic_constraints_success(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         car_generic_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         car_generic_schema.uniqueness_constraints = [["color__value", "owner"]]
         car_node_1: Node = car_person_generics_data_simple["c1"]
@@ -314,7 +314,7 @@ class TestNodeGroupedUniquenessConstraint:
 
     async def test_generic_constraints_failure(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
-    ):
+    ) -> None:
         car_generic_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
         car_generic_schema.uniqueness_constraints = [["color__value", "owner"]]
         car_node_1 = car_person_generics_data_simple["c1"]
@@ -324,7 +324,7 @@ class TestNodeGroupedUniquenessConstraint:
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'color-owner'"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_node_1)
 
-    async def test_hfid_violated(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_hfid):
+    async def test_hfid_violated(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_hfid) -> None:
         person_john = await create_and_save(db=db, schema="TestPerson", name="John")
         _ = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
         car_mercedes_2 = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)
@@ -332,7 +332,9 @@ class TestNodeGroupedUniquenessConstraint:
         with pytest.raises(HFIDViolatedError, match="Violates uniqueness constraint 'name-owner'"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_mercedes_2)
 
-    async def test_subset_hfid_violated(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_hfid):
+    async def test_subset_hfid_violated(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_hfid
+    ) -> None:
         person_john = await create_and_save(db=db, schema="TestPerson", name="John")
         person_maria = await create_and_save(db=db, schema="TestPerson", name="Maria")
         _ = await create_and_save(db=db, schema="TestCar", name="mercedes", owner=person_john)

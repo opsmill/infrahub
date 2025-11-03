@@ -7,7 +7,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_create_query_no_vars(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_create_query_no_vars(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
     query_value = """
     query MyQuery {
         CoreRepository {
@@ -67,7 +67,9 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch: Branch
     assert query1.models.value == [InfrahubKind.REPOSITORY]
 
 
-async def test_create_query_with_vars(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_create_query_with_vars(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     query_value = """
     query MyQuery {
         CoreRepository {
@@ -135,7 +137,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch: Bran
     assert query2.models.value == [InfrahubKind.TAG, InfrahubKind.REPOSITORY]
 
 
-async def test_update_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_update_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
     query_create = """
     query MyQuery {
         CoreRepository {
@@ -230,7 +232,9 @@ async def test_update_query(db: InfrahubDatabase, default_branch: Branch, regist
     assert obj2.models.value == [InfrahubKind.TAG, InfrahubKind.REPOSITORY]
 
 
-async def test_update_query_no_update(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_update_query_no_update(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     query_create = """
     query MyQuery {
         CoreRepository {

@@ -75,11 +75,11 @@ pytest.register_assert_rewrite("tests.db_snapshot")
 graphql_registry.clear_cache()
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser) -> None:
     parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
 
 
-def pytest_configure(config):
+def pytest_configure(config) -> None:
     markexpr = getattr(config.option, "markexpr", "")
 
     if not markexpr:
@@ -101,7 +101,7 @@ def pytest_configure(config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def add_tracker():
+def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
@@ -321,7 +321,7 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
     return None
 
 
-def wait_for_memgraph_ready(host, port, timeout=15):
+def wait_for_memgraph_ready(host, port, timeout=15) -> bool:
     # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
     URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
 
@@ -418,12 +418,12 @@ def prefect(prefect_container: dict[int, int] | None, reload_settings_before_eac
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_settings_before_session():
+def load_settings_before_session() -> None:
     load_and_exit()
 
 
 @pytest.fixture(scope="module", autouse=True)
-def reload_settings_before_each_module(tmpdir_factory):
+def reload_settings_before_each_module(tmpdir_factory) -> None:
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
     load_and_exit()
 
@@ -1060,7 +1060,7 @@ class BusRPCMock(InfrahubMessageBus):
     ) -> None:
         self.messages.append(message)
 
-    def add_mock_reply(self, response: InfrahubResponse):
+    def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
