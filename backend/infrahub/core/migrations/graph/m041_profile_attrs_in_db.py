@@ -36,9 +36,10 @@ class GetUpdatedProfilesForBranchQuery(Query):
         query = """
 MATCH (profile:CoreProfile)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[e:HAS_VALUE]->(:AttributeValue)
 WHERE e.branch = $branch
+WITH DISTINCT profile.uuid AS profile_uuid
         """
         self.add_to_query(query)
-        self.return_labels = ["profile.uuid AS profile_uuid"]
+        self.return_labels = ["profile_uuid"]
 
     def get_profile_ids(self) -> list[str]:
         """Get list of updated profile UUIDs"""
@@ -101,7 +102,7 @@ class Migration041(MigrationRequiringRebase):
         result = MigrationResult()
         await get_or_load_schema_branch(db=db, branch=branch)
 
-        console.print(f"Gathering profiles for each branch {branch.name}...", end="")
+        console.print(f"Gathering profiles for branch {branch.name}...", end="")
         get_updated_profiles_for_branch_query = await GetUpdatedProfilesForBranchQuery.init(db=db, branch=branch)
         await get_updated_profiles_for_branch_query.execute(db=db)
         profile_ids = get_updated_profiles_for_branch_query.get_profile_ids()
