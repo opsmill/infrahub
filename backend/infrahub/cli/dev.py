@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 import typer
 from graphql import parse, print_ast, print_schema
 from infrahub_sdk.async_typer import AsyncTyper
-from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 from rich.logging import RichHandler
 
 from infrahub import config
+from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.initialization import (
     first_time_initialization,
     initialization,
@@ -72,17 +72,19 @@ async def export_json_schema(
     out.write_text(content)
 
 
-@app.command(name="export-repository-config")
-async def export_repository_config(
+@app.command(name="export-node-schema")
+async def export_node_schema(
     ctx: typer.Context,  # noqa: ARG001
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     out: Path = typer.Option("develop.json"),  # noqa: B008
 ) -> None:
     """Export the repository configuration to a file."""
     config.load_and_exit(config_file_name=config_file)
-    schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
+    schema = SchemaLoadAPI.model_json_schema()
+    schema["title"] = "InfrahubSchema"
+    content = json.dumps(schema, indent=4)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(schema)
+    out.write_text(content)
 
 
 @app.command(name="db-init")
