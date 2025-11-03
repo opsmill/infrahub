@@ -59,6 +59,8 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             related_nodes = await obj.related_nodes.get_relationships(db=db)  # type: ignore[attr-defined]
             if hasattr(obj, "related_templates"):
                 related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
+            if hasattr(obj, "related_templates"):
+                related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
             node_ids = [rel.peer_id for rel in related_nodes]
         if node_ids:
             await workflow_service.submit_workflow(
