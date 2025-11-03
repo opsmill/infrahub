@@ -190,12 +190,12 @@ def get_git_user_config(repo: Repo) -> tuple[str, str]:
     try:
         with repo.config_reader() as git_config:
             return (
-                git_config.get_value("user", "name"),
-                git_config.get_value("user", "email"),
+                str(git_config.get_value("user", "name")),
+                str(git_config.get_value("user", "email")),
             )
     except git_exception.GitCommandError:
         with repo.config_reader(config_level="global") as git_config:
             return (
-                git_config.get_value("user", "name"),
-                git_config.get_value("user", "email"),
+                str(git_config.get_value("user", "name")),
+                str(git_config.get_value("user", "email")),
             )
