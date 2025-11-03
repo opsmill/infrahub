@@ -58,12 +58,11 @@ CALL (node_diff_map, node_db_id) {
     MATCH (n:Node {uuid: node_diff_map.uuid})-[n_is_part_of:IS_PART_OF]->(:Root)
     WHERE node_db_id IS NULL OR %(id_func)s(n) = node_db_id
     AND n_is_part_of.branch IN [$source_branch, $target_branch]
-    RETURN n, n_is_part_of.status = "active" AS n_is_active
+    RETURN n
     ORDER BY n_is_part_of.branch_level DESC, n_is_part_of.from DESC, n_is_part_of.status ASC
     LIMIT 1
 }
 WITH n, node_diff_map, is_node_kind_migration
-WHERE n_is_active = TRUE
 CALL (n, node_diff_map, is_node_kind_migration) {
     WITH CASE
         WHEN node_diff_map.action = "ADDED" THEN "active"
@@ -231,7 +230,6 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                     WHEN relationship_diff_map.peer_id IN $migrated_kinds_uuids THEN $migrated_kinds_id_map[relationship_diff_map.peer_id]
                     ELSE NULL
                 END AS rel_peer_db_id
-
             // ------------------------------
             // find the correct relationship peer if the peer had its kind/inheritance migrated
             // and there are multiple Nodes with the same UUID
@@ -240,12 +238,11 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                 MATCH (rel_peer:Node {uuid: rel_peer_id})-[target_is_part_of:IS_PART_OF]->(:Root)
                 WHERE (rel_peer_db_id IS NULL OR %(id_func)s(rel_peer) = rel_peer_db_id)
                 AND target_is_part_of.branch IN [$source_branch, $target_branch]
-                RETURN rel_peer, target_is_part_of.status = "active" AS rel_peer_is_active
+                RETURN rel_peer
                 ORDER BY target_is_part_of.branch_level DESC, target_is_part_of.from DESC, target_is_part_of.status ASC
                 LIMIT 1
             }
             WITH rel_name, related_rel_status, rel_peer
-            WHERE rel_peer_is_active = TRUE
             // ------------------------------
             // determine the directions of each IS_RELATED
             // ------------------------------
