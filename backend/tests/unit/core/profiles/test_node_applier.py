@@ -36,10 +36,9 @@ async def _validate_node_profile_attrs(
         if expected_profile_attr:
             assert updated_node_attr.value == expected_profile_attr.value
             assert updated_source.id == expected_profile_attr.source_uuid
-        else:
-            if original_node_attr is not None:
-                assert updated_node_attr.value == original_node_attr.value
-                assert updated_source is None
+        elif original_node_attr is not None:
+            assert updated_node_attr.value == original_node_attr.value
+            assert updated_source is None
 
 
 async def test_get_many_with_profile(
@@ -236,7 +235,7 @@ async def test_template_profile_application(
     crit_template = await Node.init(db=db, branch=branch, schema=template_schema)
     await crit_template.new(db=db, template_name="crit_template", name="crit_template")
     await crit_template.save(db=db)
-    
+
     # TODO: Fix profile assignment to template
     await crit_template.profiles.update(db=db, data=[crit_profile_1])
 
@@ -245,11 +244,8 @@ async def test_template_profile_application(
     updated_template_field_names = await node_applier.apply_profiles(node=crit_template)
     assert updated_template_field_names == ["color"]
     await crit_template.save(db=db)
-    
 
-    node = await NodeManager.get_one(
-        db=db, branch=branch, id=crit_template.id, include_source=True
-    )
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
     assert node.id == crit_template.id
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="green", source_uuid=crit_profile_1.id),
