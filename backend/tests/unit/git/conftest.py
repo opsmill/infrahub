@@ -1371,3 +1371,10 @@ async def mock_create_branch_git_repo_01(db: InfrahubDatabase, default_branch: B
 @pytest.fixture
 async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: Branch) -> None:
     await create_branch(branch_name="branch01", db=db)
+
+
+@pytest.fixture
+def git_allow_explicit_merge_commit_config():
+    config.SETTINGS.git.allow_explicit_merge_commit = True
+    yield
+    config.SETTINGS.git.allow_explicit_merge_commit = False

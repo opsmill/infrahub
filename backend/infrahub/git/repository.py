@@ -11,6 +11,7 @@ from prefect import task
 from prefect.cache_policies import NONE
 from pydantic import Field
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
@@ -170,7 +171,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
 
         try:
-            repo.git.merge(commit)
+            if config.SETTINGS.git.allow_explicit_merge_commit:
+                if not config.SETTINGS.git.user_name:
+                    raise ValueError("Cannot allow explicit merge commit if git user_name setting is not set.")
+                repo.git.merge(commit, "--no-ff", m=f"Merged by Infrahub by {config.SETTINGS.git.user_name}")
+            else:
+                repo.git.merge(commit)
         except GitCommandError as exc:
             repo.git.merge("--abort")
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc

@@ -456,6 +456,9 @@ class GitSettings(BaseSettings):
     )
     user_name: str | None = Field(default=None, description="User name of the git user")
     user_email: EmailStr | None = Field(default=None, description="Email of the git user")
+    allow_explicit_merge_commit: bool = Field(
+        default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
+    )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
