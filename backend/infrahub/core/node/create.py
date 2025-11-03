@@ -68,12 +68,15 @@ async def extract_peer_data(
 
     for rel in template_peer.get_schema().relationship_names:
         rel_manager: RelationshipManager = getattr(template_peer, rel)
-
-        if rel_manager.schema.name not in obj_peer_schema.relationship_names:
+        if (
+            rel_manager.schema.kind
+            not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT, RelationshipKind.PROFILE]
+            or rel_manager.schema.name not in obj_peer_schema.relationship_names
+        ):
             continue
 
         peers_map = await rel_manager.get_peers(db=db)
-        if rel_manager.schema.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT] and list(
+        if rel_manager.schema.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT, RelationshipKind.PROFILE] and list(
             peers_map.keys()
         ) == [current_template.id]:
             obj_peer_data[rel] = {"id": parent_obj.id}
