@@ -1,0 +1,1 @@
+Allow `List` attribute kind to be shown in list views.
