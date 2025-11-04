@@ -109,7 +109,9 @@ CONVERSION_RESPONSE_COMMON_FIELDS = {
 
 class TestConvertRepository(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def local_repo(self, db: InfrahubDatabase, git_repos_source_dir_module_scope, git_repos_dir_module_scope):
+    async def local_repo(
+        self, db: InfrahubDatabase, git_repos_source_dir_module_scope, git_repos_dir_module_scope
+    ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
 

@@ -29,10 +29,10 @@ class MockError(Error):
 
 
 class TestAPIExceptionHandler:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.error_message = "Value error, this is the error message"
 
-    async def test_plain_exception_error(self):
+    async def test_plain_exception_error(self) -> None:
         exception = ValueError(self.error_message)
 
         error_response = await generic_api_exception_handler(None, exception)
@@ -40,7 +40,7 @@ class TestAPIExceptionHandler:
         error_dict = loads(error_response.body.decode())
         assert error_dict["errors"] == [{"message": self.error_message, "extensions": {"code": 500}}]
 
-    async def test_pydantic_validation_error(self):
+    async def test_pydantic_validation_error(self) -> None:
         error_message_2 = "Value error, another error message"
         exception = Error()
         try:
@@ -55,7 +55,7 @@ class TestAPIExceptionHandler:
         assert {"message": error_message_2, "extensions": {"code": 400}} in error_dict["errors"]
         assert len(error_dict) == 2
 
-    async def test_infrahub_api_error(self):
+    async def test_infrahub_api_error(self) -> None:
         exception = MockError(self.error_message)
 
         error_response = await generic_api_exception_handler(None, exception)
@@ -63,7 +63,7 @@ class TestAPIExceptionHandler:
         error_dict = loads(error_response.body.decode())
         assert error_dict["errors"] == [{"message": self.error_message, "extensions": {"code": 418}}]
 
-    async def test_infrahub_api_error_default_message(self):
+    async def test_infrahub_api_error_default_message(self) -> None:
         exception = MockError(None)
 
         error_response = await generic_api_exception_handler(None, exception)
@@ -71,7 +71,7 @@ class TestAPIExceptionHandler:
         error_dict = loads(error_response.body.decode())
         assert error_dict["errors"] == [{"message": "the teapot error", "extensions": {"code": 418}}]
 
-    async def test_infrahub_api_error_code_override(self):
+    async def test_infrahub_api_error_code_override(self) -> None:
         exception = MockError(None)
 
         error_response = await generic_api_exception_handler(None, exception, http_code=500)

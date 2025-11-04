@@ -200,7 +200,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         schema_step_02: dict[str, Any],
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_02], branch=default_branch.name)
         assert success
         assert response == {
@@ -331,7 +331,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         regex_02,
         min_length_02,
         max_length_02,
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_02], branch=default_branch.name)
         assert not response.errors

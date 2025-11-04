@@ -34,7 +34,7 @@ async def test_init(
     criticality_schema: NodeSchema,
     first_account: Node,
     second_account: Node,
-):
+) -> None:
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
@@ -61,7 +61,7 @@ async def test_init(
 
 async def test_validate_format_ipnetwork_and_iphost(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
-):
+) -> None:
     schema = criticality_schema.get_attribute("name")
 
     # 1/ test with prefixlen
@@ -101,7 +101,9 @@ async def test_validate_format_ipnetwork_and_iphost(
         )
 
 
-async def test_validate_validate_url(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_validate_url(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     schema = criticality_schema.get_attribute("name")
 
     assert URL(
@@ -114,7 +116,7 @@ async def test_validate_validate_url(db: InfrahubDatabase, default_branch: Branc
 
 async def test_validate_format_datetime_valid(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
-):
+) -> None:
     schema = criticality_schema.get_attribute("time")
 
     assert DateTime(
@@ -127,7 +129,7 @@ async def test_validate_format_datetime_valid(
 
 async def test_validate_format_datetime_invalid(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
-):
+) -> None:
     schema = criticality_schema.get_attribute("time")
 
     with pytest.raises(ValidationError, match=r"invalid-datetime is not a valid DateTime"):
@@ -144,7 +146,9 @@ async def test_validate_format_datetime_invalid(
         )
 
 
-async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_iphost_returns(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     schema = criticality_schema.get_attribute("name")
 
     test_ipv4 = IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="10.0.2.1/31")
@@ -197,7 +201,9 @@ async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Bra
     }
 
 
-async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_ipnetwork_returns(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     schema = criticality_schema.get_attribute("name")
 
     test_ipv4 = IPNetwork(
@@ -257,7 +263,7 @@ async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: 
 
 async def test_validate_mac_address_returns(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
-):
+) -> None:
     schema = criticality_schema.get_attribute("name")
 
     mac_address = "60:23:6c:c4:9f:7e"
@@ -294,7 +300,9 @@ async def test_validate_mac_address_returns(
         )
 
 
-async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_content_dropdown(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     schema = criticality_schema.get_attribute("status")
     Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
 
@@ -304,7 +312,9 @@ async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.mark.parametrize("params_only", [False, True])
-async def test_validate_content_text_parameters(db: InfrahubDatabase, default_branch: Branch, params_only: bool):
+async def test_validate_content_text_parameters(
+    db: InfrahubDatabase, default_branch: Branch, params_only: bool
+) -> None:
     regex = "^[a-z]*$"
     min_length = 2
     max_length = 5
@@ -336,7 +346,9 @@ async def test_validate_content_text_parameters(db: InfrahubDatabase, default_br
     assert new_node.text_test.value == "abc"
 
 
-async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_dropdown_properties(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     schema = criticality_schema.get_attribute("status")
     active = Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
     passive = Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="passive")
@@ -353,7 +365,9 @@ async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch,
     assert passive.color == "#ed6a5a"
 
 
-async def test_validate_format_string(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_format_string(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     name_schema = criticality_schema.get_attribute("name")
 
     String(name="test", schema=name_schema, branch=default_branch, at=Timestamp(), node=None, data="five")
@@ -369,7 +383,9 @@ async def test_validate_format_string(db: InfrahubDatabase, default_branch: Bran
         )
 
 
-async def test_validate_format_integer(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_format_integer(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     level_schema = criticality_schema.get_attribute("level")
 
     Integer(name="test", schema=level_schema, branch=default_branch, at=Timestamp(), node=None, data=88)
@@ -378,7 +394,7 @@ async def test_validate_format_integer(db: InfrahubDatabase, default_branch: Bra
         Integer(name="test", schema=level_schema, branch=default_branch, at=Timestamp(), node=None, data="notaninteger")
 
 
-async def test_validate_enum(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_enum(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     schema = criticality_schema.get_attribute("name")
 
     # 1/ there is no enum defined in the schema
@@ -393,7 +409,7 @@ async def test_validate_enum(db: InfrahubDatabase, default_branch: Branch, criti
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five")
 
 
-async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     schema = criticality_schema.get_attribute("name")
 
     # 1/ there is no regex defined in the schema
@@ -413,7 +429,7 @@ async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, crit
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
 
-async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema) -> None:
     schema = criticality_schema.get_attribute("name")
 
     # 1/ there is no min_length or max_length defined in the schema
@@ -432,7 +448,7 @@ async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, cri
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisstringistoolong")
 
 
-async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
@@ -457,7 +473,7 @@ async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch
     assert attr.owner_id == "yetotheruuid"
 
 
-async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
     filters, params, matchs = await attr_schema.get_query_filter(
         name="description", filter_name="value", filter_value="test"
@@ -487,7 +503,7 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
     assert matchs == []
 
 
-async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
     filters, params, matchs = await attr_schema.get_query_filter(name="any", filter_name="value", filter_value="test")
     expected_response = [
@@ -502,7 +518,7 @@ async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch
     assert matchs == []
 
 
-async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
     filters, params, matchs = await attr_schema.get_query_filter(
         name="descr", filter_name="is_protected", filter_value=False
@@ -519,7 +535,7 @@ async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_bran
     assert matchs == []
 
 
-async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
     filters, params, matchs = await attr_schema.get_query_filter(
         name="any", filter_name="source__id", filter_value="abcdef"
@@ -536,7 +552,7 @@ async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_
     assert matchs == []
 
 
-async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
     filters, params, matchs = await attr_schema.get_query_filter(
         name="name", filter_name="values", filter_value=["test1", "test2"]
@@ -553,7 +569,7 @@ async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_br
     assert matchs == ["av.value IN $attr_name_value"]
 
 
-async def test_get_query_filter_list_attribute(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_query_filter_list_attribute(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="List")
     filters, params, matchs = await attr_schema.get_query_filter(
         name="name", filter_name="values", filter_value=["test1", "test2"]
@@ -574,7 +590,7 @@ async def test_get_query_filter_list_attribute(db: InfrahubDatabase, default_bra
     assert matchs == ["toString(av.value) =~ $attr_name_values"]
 
 
-async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch):
+async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch) -> None:
     config.SETTINGS.experimental_features.graphql_enums = True
 
     class ExternalEnum(Enum):
@@ -597,13 +613,13 @@ async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch):
     assert matchs == ["av.value IN $attr_name_value"]
 
 
-async def test_get_query_filter_multiple_values_invalid_type(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_query_filter_multiple_values_invalid_type(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
     with pytest.raises(TypeError):
         await attr_schema.get_query_filter(name="name", filter_name="values", filter_value=["test1", 1.0])
 
 
-async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
+async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema) -> None:
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(db=db, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
     await obj1.save(db=db)
@@ -645,7 +661,9 @@ async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, 
     assert obj13.mylist.value == obj11.mylist.value
 
 
-async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account: Node):
+async def test_to_graphql(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account: Node
+) -> None:
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
@@ -693,7 +711,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, critical
 
 async def test_to_graphql_no_fields(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account: Node
-):
+) -> None:
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
@@ -743,7 +761,7 @@ async def test_to_graphql_no_fields(
     assert await attr2.to_graphql(db=db) == expected_data
 
 
-async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
+async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema) -> None:
     obj = await Node.init(db=db, schema="TestAllAttributeTypes")
 
     large_string = "a" * 9_000  # It's over 9000!!!!
@@ -774,7 +792,7 @@ async def test_enum_with_default_preserves_is_default(
     hierarchical_location_data_simple: dict[str, Node],
     updated_status,
     expected_is_default,
-):
+) -> None:
     site = hierarchical_location_data_simple["paris"]
     rack = await Node.init(db=db, schema="LocationRack")
     await rack.new(db=db, name="new-rack", parent=site)

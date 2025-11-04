@@ -28,7 +28,7 @@ query actions($proposed_change_id: String!) {
 
 async def test_proposed_change_open(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
-):
+) -> None:
     registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-1"
@@ -86,7 +86,7 @@ async def test_proposed_change_open(
 
 async def test_proposed_change_closed(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
-):
+) -> None:
     registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-3"
@@ -148,7 +148,7 @@ async def test_proposed_change_draft(
     register_core_models_schema: None,
     session_admin: AccountSession,
     session_first_account: AccountSession,
-):
+) -> None:
     registry.permission_backends = [LocalPermissionBackend()]
 
     branch_name = "pc-4"

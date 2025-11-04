@@ -86,7 +86,7 @@ class TestArtifact11(TestInfrahubApp):
         authentication_base: Node,
         client,
         test_client,
-    ):
+    ) -> None:
         _, _, definition = await self.setup_artifact_definition(
             db=db,
             register_core_models_schema=register_core_models_schema,
@@ -139,7 +139,7 @@ class TestArtifact11(TestInfrahubApp):
         car_person_data_generic,
         authentication_base,
         test_client,
-    ):
+    ) -> None:
         response = await test_client.get("/api/artifact/95008984-16ca-4e58-8323-0899bb60035f", headers=admin_headers)
         assert response.status_code == 404
 
@@ -164,7 +164,7 @@ class TestArtifact11(TestInfrahubApp):
         car_person_data_generic,
         allow_anonymous_access: bool,
         test_client,
-    ):
+    ) -> None:
         artifact = await self.setup_artifact(
             db=db,
             register_core_models_schema=register_core_models_schema,

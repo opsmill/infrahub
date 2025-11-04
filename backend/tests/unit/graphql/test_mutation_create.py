@@ -77,7 +77,7 @@ async def test_create_simple_object_with_ok_return(
     assert result.data["TestPersonCreate"]["ok"] is True
 
 
-async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     uuid1 = "79c83773-6b23-4537-a3ce-b214b625ff1d"
     query = (
         """
@@ -132,7 +132,7 @@ async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_s
     assert "not-valid is not a valid UUID" in result.errors[0].message
 
 
-async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -162,7 +162,7 @@ async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_per
     assert "Violates uniqueness constraint" in result.errors[0].message
 
 
-async def test_create_check_unique_across_branch(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_check_unique_across_branch(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -195,7 +195,7 @@ async def test_create_check_unique_across_branch(db: InfrahubDatabase, default_b
     assert "Violates uniqueness constraint" in result.errors[0].message
 
 
-async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     branch1 = await create_branch(branch_name="branch1", db=db)
 
     p1 = await Node.init(db=db, schema="TestPerson", branch=branch1)
@@ -269,7 +269,7 @@ async def test_attr_optional_uniqueness_constraint_create(
     assert result.errors[0].message == "Violates uniqueness constraint 'name-description'"
 
 
-async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
+async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema) -> None:
     query = """
     mutation {
         TestAllAttributeTypesCreate(
@@ -322,7 +322,9 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribut
     assert obj1.prefix.is_default is False
 
 
-async def test_all_attributes_default_value(db: InfrahubDatabase, default_branch, all_attribute_default_types_schema):
+async def test_all_attributes_default_value(
+    db: InfrahubDatabase, default_branch, all_attribute_default_types_schema
+) -> None:
     query = """
     mutation {
         TestAllAttributeTypesCreate(
@@ -387,7 +389,7 @@ async def test_all_attributes_default_value(db: InfrahubDatabase, default_branch
     assert obj1.mylist_none.is_default is True
 
 
-async def test_create_object_with_flag_property(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_object_with_flag_property(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     query = """
     mutation {
         TestPersonCreate(
@@ -455,7 +457,7 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
 
 async def test_create_object_with_node_property(
     db: InfrahubDatabase, default_branch, car_person_schema, first_account, second_account
-):
+) -> None:
     query = """
     mutation {
         TestPersonCreate(
@@ -538,7 +540,7 @@ async def test_create_object_with_node_property(
     ] == await second_account.get_display_label(db=db)
 
 
-async def test_create_object_with_single_relationship(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_object_with_single_relationship(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -578,7 +580,7 @@ async def test_create_object_with_single_relationship(db: InfrahubDatabase, defa
 
 async def test_create_object_with_invalid_single_relationship_fails(
     db: InfrahubDatabase, default_branch, hierarchical_location_schema
-):
+) -> None:
     query = """
     mutation {
         LocationSiteCreate(
@@ -611,7 +613,7 @@ async def test_create_object_with_invalid_single_relationship_fails(
 
 async def test_create_object_with_single_relationship_flag_property(
     db: InfrahubDatabase, default_branch, car_person_schema
-):
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -653,7 +655,7 @@ async def test_create_object_with_single_relationship_flag_property(
 
 async def test_create_object_with_single_relationship_node_property(
     db: InfrahubDatabase, default_branch, car_person_schema, first_account, second_account
-):
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -700,7 +702,9 @@ async def test_create_object_with_single_relationship_node_property(
     assert owner.id == first_account.id
 
 
-async def test_create_object_with_multiple_relationships(db: InfrahubDatabase, default_branch, fruit_tag_schema):
+async def test_create_object_with_multiple_relationships(
+    db: InfrahubDatabase, default_branch, fruit_tag_schema
+) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="tag1")
     await t1.save(db=db)
@@ -747,7 +751,7 @@ async def test_create_object_with_multiple_relationships(db: InfrahubDatabase, d
 
 async def test_create_object_with_multiple_relationships_with_node_property(
     db: InfrahubDatabase, default_branch, fruit_tag_schema, first_account, second_account
-):
+) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="tag1")
     await t1.save(db=db)
@@ -824,7 +828,7 @@ async def test_create_object_with_multiple_relationships_with_node_property(
 
 async def test_create_object_with_multiple_relationships_flag_property(
     db: InfrahubDatabase, default_branch, fruit_tag_schema
-):
+) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="tag1")
     await t1.save(db=db)
@@ -883,7 +887,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
     register_internal_models_schema,
     car_person_schema: Node,
     person_alfred_main: Node,
-):
+) -> None:
     schema = SchemaRoot(generics=[core_group], nodes=[core_standard_group])
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     default_branch.update_schema_hash()
@@ -1061,7 +1065,7 @@ async def test_create_relationship_for_node_with_migrated_kind(
     assert peer_count == 1
 
 
-async def test_create_person_not_valid(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_person_not_valid(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     query = """
     mutation {
         TestPersonCreate(data: {
@@ -1090,7 +1094,7 @@ async def test_create_person_not_valid(db: InfrahubDatabase, default_branch, car
     assert result.errors[0].message == "Expected value of type 'BigInt', found \"182\"."
 
 
-async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -1126,7 +1130,9 @@ async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_bra
     assert "#44444444 must have a maximum length of 7 at color" in result.errors[0].message
 
 
-async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_with_uniqueness_constraint_violation(
+    db: InfrahubDatabase, default_branch, car_person_schema
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get("TestCar", duplicate=True)
     car_schema.uniqueness_constraints = [["owner", "color"]]
@@ -1169,7 +1175,7 @@ async def test_create_with_uniqueness_constraint_violation(db: InfrahubDatabase,
     assert "Violates uniqueness constraint 'owner-color'" in result.errors[0].message
 
 
-async def test_relationship_with_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_relationship_with_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
 
     person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
@@ -1206,7 +1212,7 @@ async def test_relationship_with_hfid(db: InfrahubDatabase, default_branch, anim
     assert result.data["TestDogCreate"]["object"]["id"]
 
 
-async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -1282,7 +1288,7 @@ async def test_incorrect_peer_type_prevented(db: InfrahubDatabase, default_branc
     )
 
 
-async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branch, criticality_schema):
+async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branch, criticality_schema) -> None:
     query = """
     mutation {
         TestCriticalityCreate(data: {name: { value: "HIGH"}, level: {value: 1}, time: {value: "2021-01-01T00:00:00Z"}}) {
@@ -1312,7 +1318,7 @@ async def test_create_valid_datetime_success(db: InfrahubDatabase, default_branc
     assert crit.level.value == 1
 
 
-async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branch, criticality_schema):
+async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branch, criticality_schema) -> None:
     query = """
     mutation {
         TestCriticalityCreate(data: {name: { value: "HIGH"}, level: {value: 1}, time: {value: "10:1010"}}) {
@@ -1337,7 +1343,7 @@ async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branc
 
 async def test_create_with_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
-):
+) -> None:
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
     branch.update_schema_hash()
 
@@ -1525,7 +1531,7 @@ async def test_create_with_object_template(
 
 async def test_create_with_object_template_and_real_object(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
-):
+) -> None:
     """
     Test that relationships on sub-templates will correctly link the created sub-object to an existing object on non-component relationships
     """
@@ -1620,7 +1626,7 @@ async def test_create_with_object_template_and_real_object(
 
 async def test_create_without_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
-):
+) -> None:
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
     branch.update_schema_hash()
 
@@ -1663,7 +1669,7 @@ async def test_create_without_object_template(
 
 async def test_create_sub_object_template_by_hfid(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
-):
+) -> None:
     registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=branch.name)
     branch.update_schema_hash()
 
@@ -1735,7 +1741,7 @@ async def test_create_simple_object_with_enum(
     enum_value,
     response_value,
     reset_graphql_schema_between_tests,
-):
+) -> None:
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
     query = """
     mutation {
@@ -1781,7 +1787,7 @@ async def test_create_enum_when_enums_off_fails(
     default_branch,
     person_john_main,
     car_person_schema,
-):
+) -> None:
     config.SETTINGS.experimental_features.graphql_enums = False
     query = """
     mutation {
@@ -1823,7 +1829,7 @@ async def test_create_string_when_enums_on_fails(
     person_john_main,
     car_person_schema,
     reset_graphql_schema_between_tests,
-):
+) -> None:
     config.SETTINGS.experimental_features.graphql_enums = True
     query = """
     mutation {

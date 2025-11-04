@@ -7,7 +7,7 @@ from infrahub.database import InfrahubDatabase
 
 async def test_get_invalid(
     client: TestClient, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-):
+) -> None:
     with client:
         response = client.get("/api/so-such-route")
 

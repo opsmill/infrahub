@@ -16,7 +16,7 @@ from infrahub.graphql.initialization import GraphqlParams
 
 
 class TestParentAuthChecker:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.account_session = AccountSession(account_id="abc", auth_type=AuthType.JWT)
         self.graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         self.query_parameters = MagicMock(spec=GraphqlParams)
@@ -39,7 +39,7 @@ class TestParentAuthChecker:
             branch=branch,
         )
 
-    async def test_only_checks_one(self, db: InfrahubDatabase, branch: Branch):
+    async def test_only_checks_one(self, db: InfrahubDatabase, branch: Branch) -> None:
         await self.__call_system_under_test(db=db, branch=branch)
 
         self.sub_auth_checker_one.supports.assert_awaited_once_with(
@@ -57,7 +57,7 @@ class TestParentAuthChecker:
             branch=branch,
         )
 
-    async def test_error_if_no_support(self, db: InfrahubDatabase, branch: Branch):
+    async def test_error_if_no_support(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.sub_auth_checker_two.supports.return_value = False
 
         with pytest.raises(PermissionDeniedError):

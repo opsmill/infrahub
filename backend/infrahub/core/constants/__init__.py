@@ -51,6 +51,7 @@ class EventType(InfrahubStringEnum):
     BRANCH_CREATED = f"{EVENT_NAMESPACE}.branch.created"
     BRANCH_DELETED = f"{EVENT_NAMESPACE}.branch.deleted"
     BRANCH_MERGED = f"{EVENT_NAMESPACE}.branch.merged"
+    BRANCH_MIGRATED = f"{EVENT_NAMESPACE}.branch.migrated"
     BRANCH_REBASED = f"{EVENT_NAMESPACE}.branch.rebased"
 
     SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.updated"

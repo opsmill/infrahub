@@ -26,7 +26,7 @@ async def init_prefect(prefect_client: PrefectClient) -> None:
     await setup_deployments(client=prefect_client)
 
 
-async def test_setup_triggers(prefect_client: PrefectClient, init_prefect, cleanup_automation):
+async def test_setup_triggers(prefect_client: PrefectClient, init_prefect, cleanup_automation) -> None:
     report = await setup_triggers(client=prefect_client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN)
 
     assert len(report.deleted) == 0

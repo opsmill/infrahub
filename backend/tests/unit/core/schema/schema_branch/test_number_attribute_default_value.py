@@ -13,7 +13,7 @@ class TestNumberAttrForbidsBool(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch,
         client,
-    ):
+    ) -> None:
         schema = {
             "version": "1.0",
             "nodes": [

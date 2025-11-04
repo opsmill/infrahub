@@ -73,7 +73,7 @@ from tests.test_data import dataset01 as ds01
 
 
 @pytest.fixture(scope="module", autouse=True)
-def load_component_dependency_registry():
+def load_component_dependency_registry() -> None:
     build_component_registry()
 
 
@@ -3042,7 +3042,7 @@ def workflow_local(dependency_provider: Provider):
 
 
 @pytest.fixture
-async def generic_car_person_schema(default_branch: Branch, data_schema):
+async def generic_car_person_schema(default_branch: Branch, data_schema) -> None:
     schema: dict[str, Any] = {
         "generics": [
             {

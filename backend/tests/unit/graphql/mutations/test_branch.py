@@ -25,7 +25,7 @@ class TestBranchCreate(TestInfrahubApp):
         session_admin,
         client: InfrahubClient,
         service: InfrahubServices,
-    ):
+    ) -> None:
         query = """
             mutation {
                 BranchCreate(data: { name: "branch2", sync_with_git: false, origin_branch: "main" }) {
@@ -129,7 +129,7 @@ class TestBranchCreate(TestInfrahubApp):
         session_admin,
         client,
         service,
-    ):
+    ) -> None:
         query = """
         mutation($branch_name: String!) {
             BranchCreate(data: { name: $branch_name, sync_with_git: false }) {
@@ -172,7 +172,7 @@ class TestBranchCreate(TestInfrahubApp):
         register_core_models_schema,
         session_admin,
         service,
-    ):
+    ) -> None:
         query = """
         mutation($branch_name: String!) {
             BranchCreate(data: { name: $branch_name, sync_with_git: false }) {
@@ -201,7 +201,7 @@ class TestBranchCreate(TestInfrahubApp):
         session_admin,
         client,
         service,
-    ):
+    ) -> None:
         query = """
         mutation {
             BranchCreate(data: { name: "branch5", sync_with_git: false }) {
@@ -246,7 +246,7 @@ class TestBranchCreate(TestInfrahubApp):
         default_branch: Branch,
         session_admin,
         service: InfrahubServices,
-    ):
+    ) -> None:
         query = """
         mutation AddBranch {
             BranchCreate(data: {
@@ -291,7 +291,7 @@ async def test_branch_delete(
     register_core_models_schema,
     session_admin,
     local_services: InfrahubServices,
-):
+) -> None:
     delete_query = """
     mutation {
         BranchDelete(data: { name: "branch3" }) {
@@ -309,7 +309,7 @@ async def test_branch_delete(
 
 async def test_branch_rebase_wrong_branch(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin, local_services: InfrahubServices
-):
+) -> None:
     query = """
     mutation {
         BranchRebase(data: { name: "branch2" }) {
@@ -341,7 +341,9 @@ async def test_branch_rebase_wrong_branch(
     assert result.errors[0].message == "Branch: branch2 not found."
 
 
-async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02, local_services: InfrahubServices):
+async def test_branch_update_description(
+    db: InfrahubDatabase, base_dataset_02, local_services: InfrahubServices
+) -> None:
     branch4 = await create_branch(branch_name="branch4", db=db)
 
     query = """
@@ -378,7 +380,7 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02, 
 
 async def test_branch_merge_wrong_branch(
     db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
-):
+) -> None:
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
@@ -411,7 +413,7 @@ async def test_branch_merge_wrong_branch(
 
 async def test_branch_merge_with_conflict_fails(
     db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin, local_services: InfrahubServices
-):
+) -> None:
     query = """
     mutation {
         BranchMerge(data: { name: "branch2" }) {

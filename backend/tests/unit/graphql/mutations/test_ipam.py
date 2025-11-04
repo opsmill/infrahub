@@ -271,7 +271,9 @@ mutation NamespaceDelete($namespace_id: String!) {
 """
 
 
-async def test_protected_default_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
+async def test_protected_default_ipnamespace(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node
+) -> None:
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
@@ -285,7 +287,9 @@ async def test_protected_default_ipnamespace(db: InfrahubDatabase, default_branc
     assert result.errors[0].message == "Cannot delete default IPAM namespace"
 
 
-async def test_delete_regular_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
+async def test_delete_regular_ipnamespace(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node
+) -> None:
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ns1.new(db=db, name="ns1")
     await ns1.save(db=db)
@@ -310,7 +314,7 @@ async def test_ipprefix_create(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure prefix can be created and parent/children relationships are set."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -376,7 +380,7 @@ async def test_ipprefix_create_with_ipnamespace(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
     branch: Branch,
-):
+) -> None:
     ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=branch)
     await ns.new(db=db, name="ns1")
     await ns.save(db=db)
@@ -470,7 +474,7 @@ async def test_ipprefix_create_reverse(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure parent/children relationship are set when creating a parent after a child."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -517,7 +521,7 @@ async def test_ipprefix_update(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure a prefix can be updated."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -552,7 +556,7 @@ async def test_ipprefix_update_within_namespace(
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
     branch: Branch,
-):
+) -> None:
     """Make sure a prefix can be updated within a namespace."""
     test_ns = await Node.init(db=db, branch=branch, schema=InfrahubKind.NAMESPACE)
     await test_ns.new(db=db, name="test")
@@ -717,7 +721,7 @@ async def test_ipprefix_upsert(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure a prefix can be upserted."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -754,7 +758,7 @@ async def test_ipprefix_delete(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure deleting a prefix relocates its children."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -830,7 +834,7 @@ async def test_ipaddress_create(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure IP address is properly created and nested under a subnet."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -907,7 +911,7 @@ async def test_ipaddress_update(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure an IP address can be updated."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -942,7 +946,7 @@ async def test_ipaddress_update_within_namespace(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure an IP address can be updated within a namespace."""
     test_ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await test_ns.new(db=db, name="test")
@@ -1031,7 +1035,7 @@ async def test_ipaddress_upsert(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure an IP address can be upsert."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -1069,7 +1073,7 @@ async def test_ipaddress_change_ipprefix(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     """Make sure relationship between an address and its prefix is properly managed."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -1216,7 +1220,7 @@ async def test_prefix_ancestors_descendants(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
@@ -1328,7 +1332,7 @@ async def test_delete_top_level_prefix(
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)

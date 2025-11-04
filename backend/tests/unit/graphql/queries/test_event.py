@@ -430,7 +430,7 @@ async def test_event_query_prefect(
     register_core_models_schema: None,
     events_data,
     event_ids_inscope,
-):
+) -> None:
     result = await run_query(
         db=db,
         branch=default_branch,

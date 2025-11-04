@@ -33,7 +33,7 @@ log = get_logger()
         BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=True),
     ],
 )
-async def test_diff(benchmark_config, car_person_schema_root, graph_generator, increase_query_size_limit):
+async def test_diff(benchmark_config, car_person_schema_root, graph_generator, increase_query_size_limit) -> None:
     # Initialization
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
         neo4j_image=benchmark_config.neo4j_image,

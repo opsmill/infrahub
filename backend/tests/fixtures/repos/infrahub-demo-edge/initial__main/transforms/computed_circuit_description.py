@@ -4,6 +4,7 @@ from infrahub_sdk.transforms import InfrahubTransform
 class ComputedCircuitDescription(InfrahubTransform):
     query = "computed_circuit_description"
     url = "computed_circuit_description"
+    timeout: int = 60
 
     async def transform(self, data):
         circuit_dict: dict = data["InfraCircuit"]["edges"][0]["node"]

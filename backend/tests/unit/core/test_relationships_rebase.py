@@ -75,7 +75,7 @@ class TestRelationshipsWithRebase:
         branch_peer_id: str,
         branch_name: str,
         rebase_time: Timestamp,
-    ):
+    ) -> None:
         database_paths = await get_database_edges_state(
             db=db, node_uuids=[car_uuid], rel_identiers=["testcar__testperson"]
         )
@@ -173,7 +173,7 @@ class TestRelationshipsWithRebase:
         person_jim_main: Node,
         car_accord_main: Node,
         num_updates: int,
-    ):
+    ) -> None:
         branch_2 = await create_branch(db=db, branch_name="branch_2")
         car_branch = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch_2)
         await car_branch.owner.update(db=db, data=person_alfred_main)
@@ -212,7 +212,7 @@ class TestRelationshipsWithRebase:
         car_person_id_map_branch: dict[str, str],
         branch_name: str,
         rebase_time: Timestamp,
-    ):
+    ) -> None:
         database_paths = await get_database_edges_state(
             db=db, node_uuids=person_uuids, rel_identiers=["testcar__testperson"]
         )
@@ -295,7 +295,7 @@ class TestRelationshipsWithRebase:
         db: InfrahubDatabase,
         default_branch: Branch,
         car_person_schema: SchemaBranch,
-    ):
+    ) -> None:
         people = []
         cars = []
         car_person_id_map_main = {}

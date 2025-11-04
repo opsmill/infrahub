@@ -12,7 +12,7 @@ async def test_get_menu(
     default_branch: Branch,
     register_core_models_schema: SchemaRoot,
     menu_fixture_01: list[MenuItemDefinition],
-):
+) -> None:
     existing_menu = await menu_repository.get_menu()
 
     assert sorted(existing_menu.data.keys()) == [
@@ -34,7 +34,7 @@ async def test_update_menu_small_dataset(
     register_core_models_schema: SchemaRoot,
     menu_fixture_11_data: list[MenuItemDefinition],
     menu_fixture_12_data: list[MenuItemDefinition],
-):
+) -> None:
     await menu_repository.create_menu(menu=menu_fixture_11_data)
 
     menu_nodes = await menu_repository.get_menu_db()
@@ -59,7 +59,7 @@ async def test_update_menu_default_menu(
     default_branch: Branch,
     register_core_models_schema: SchemaRoot,
     menu_fixture_02_data: list[MenuItemDefinition],
-):
+) -> None:
     await menu_repository.create_menu(menu=menu_fixture_02_data)
 
     menu_nodes = await menu_repository.get_menu_db()

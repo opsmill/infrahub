@@ -4,7 +4,7 @@ from infrahub import config
 from infrahub.database import InfrahubDatabase
 
 
-async def test_password_based_login(db: InfrahubDatabase, default_branch, client, first_account):
+async def test_password_based_login(db: InfrahubDatabase, default_branch, client, first_account) -> None:
     with client:
         response = client.post("/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"})
 
@@ -19,7 +19,7 @@ async def test_password_based_login(db: InfrahubDatabase, default_branch, client
     assert first_account.id == decoded["sub"]
 
 
-async def test_refresh_access_token(db: InfrahubDatabase, default_branch, client, first_account):
+async def test_refresh_access_token(db: InfrahubDatabase, default_branch, client, first_account) -> None:
     """Validate that it's possible to refresh an access token using a refresh token"""
     with client:
         login_response = client.post(
@@ -43,7 +43,7 @@ async def test_refresh_access_token(db: InfrahubDatabase, default_branch, client
     assert decoded_access["session_id"] == decoded_refresh["session_id"]
 
 
-async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default_branch, client, first_account):
+async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default_branch, client, first_account) -> None:
     """It should not be possible to access a resource using a refresh token"""
     with client:
         login_response = client.post(
@@ -64,7 +64,7 @@ async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default
     }
 
 
-async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, create_test_admin):
+async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, create_test_admin) -> None:
     """It should not be possible to generate an API token using a JWT token"""
     with client:
         login_response = client.post(

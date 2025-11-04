@@ -13,7 +13,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 
 
-async def test_branch_name_validator(db: InfrahubDatabase):
+async def test_branch_name_validator(db: InfrahubDatabase) -> None:
     assert Branch(name="new-branch")
     assert Branch(name="cr1234")
     assert Branch(name="new.branch")
@@ -106,7 +106,7 @@ async def test_branch_name_validator(db: InfrahubDatabase):
     assert Branch(name="cr1234-qwerty-qwerty")
 
 
-async def test_branch_branched_form_format_validator(db: InfrahubDatabase):
+async def test_branch_branched_form_format_validator(db: InfrahubDatabase) -> None:
     assert Branch(name="new-branch").branched_from is not None
 
     time1 = Timestamp().to_string()
@@ -116,7 +116,7 @@ async def test_branch_branched_form_format_validator(db: InfrahubDatabase):
         Branch(name="cr1234", branched_from="not a date")
 
 
-async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_dataset_02):
+async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_dataset_02) -> None:
     default_branch = await registry.get_branch(branch="main", db=db)
 
     filters, params = default_branch.get_query_filter_relationships(
@@ -135,7 +135,7 @@ async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_da
     assert sorted(params.keys()) == ["branch0", "time0"]
 
 
-async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base_dataset_02):
+async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base_dataset_02) -> None:
     branch1 = await registry.get_branch(branch="branch1", db=db)
 
     filters, params = branch1.get_query_filter_relationships(
@@ -148,7 +148,7 @@ async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base
     assert sorted(params.keys()) == ["branch0", "branch1", "time0", "time1"]
 
 
-async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_dataset_02):
+async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_dataset_02) -> None:
     now = Timestamp("1s")
 
     main_branch = await registry.get_branch(branch="main", db=db)
@@ -161,7 +161,7 @@ async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_d
     assert results[frozenset(["main"])] == t1.to_string()
 
 
-async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, base_dataset_02):
+async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, base_dataset_02) -> None:
     now = Timestamp("1s")
 
     branch1 = await registry.get_branch(branch="branch1", db=db)
@@ -177,7 +177,7 @@ async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, bas
     assert results[frozenset(["main"])] == base_dataset_02["time_m45"]
 
 
-async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase, base_dataset_02):
+async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase, base_dataset_02) -> None:
     now = Timestamp("1s")
 
     main_branch = await registry.get_branch(branch="main", db=db)
@@ -190,7 +190,7 @@ async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase,
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t1.to_string()
 
 
-async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDatabase, base_dataset_02):
+async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDatabase, base_dataset_02) -> None:
     now = Timestamp("1s")
 
     branch1 = await registry.get_branch(branch="branch1", db=db)
@@ -206,7 +206,7 @@ async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDataba
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
 
 
-async def test_get_branches_and_times_for_range_main(db: InfrahubDatabase, base_dataset_02):
+async def test_get_branches_and_times_for_range_main(db: InfrahubDatabase, base_dataset_02) -> None:
     now = Timestamp()
     main_branch = await registry.get_branch(branch="main", db=db)
 
@@ -225,7 +225,7 @@ async def test_get_branches_and_times_for_range_main(db: InfrahubDatabase, base_
     assert end_times["main"] == t1.to_string()
 
 
-async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, base_dataset_02):
+async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, base_dataset_02) -> None:
     now = Timestamp()
     branch1 = await registry.get_branch(branch="branch1", db=db)
 
@@ -248,7 +248,7 @@ async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, ba
     assert start_times["main"] == t10.to_string()
 
 
-async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, base_dataset_03):
+async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, base_dataset_03) -> None:
     now = Timestamp()
     branch2 = await registry.get_branch(branch="branch2", db=db)
 
@@ -271,7 +271,7 @@ async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, ba
     assert start_times["main"] == t10.to_string()
 
 
-async def test_is_isolated(db: InfrahubDatabase, base_dataset_02):
+async def test_is_isolated(db: InfrahubDatabase, base_dataset_02) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     branch1.is_isolated = True
@@ -287,7 +287,7 @@ async def test_is_isolated(db: InfrahubDatabase, base_dataset_02):
     assert cars[0].name.value == "volt"
 
 
-async def test_delete_branch(db: InfrahubDatabase, default_branch: Branch, repos_in_main, car_person_schema):
+async def test_delete_branch(db: InfrahubDatabase, default_branch: Branch, repos_in_main, car_person_schema) -> None:
     branch_name = "delete-me"
     branch = await create_branch(branch_name=branch_name, db=db)
     found = await Branch.get_by_name(name=branch_name, db=db)
@@ -315,7 +315,7 @@ async def test_delete_branch(db: InfrahubDatabase, default_branch: Branch, repos
     assert not post_delete
 
 
-async def test_create_branch(db: InfrahubDatabase, empty_database):
+async def test_create_branch(db: InfrahubDatabase, empty_database) -> None:
     """Validate that creating a branch with quotes in descriptions work and are properly handled with params"""
     branch_name = "branching-out"
     description = "It's supported with quotes"

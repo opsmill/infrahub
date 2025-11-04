@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 class TestTransforms(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase, client):
+    async def base_dataset(self, db: InfrahubDatabase, client) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
         john = await Node.init(schema=TestKind.PERSON, db=db)
@@ -87,7 +87,7 @@ class TestTransforms(TestInfrahubApp):
 
     async def test_transform_jinja(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
-    ):
+    ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
@@ -106,7 +106,7 @@ class TestTransforms(TestInfrahubApp):
 
     async def test_transform_python(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
-    ):
+    ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
@@ -126,7 +126,7 @@ class TestTransforms(TestInfrahubApp):
 
     async def test_convert_query_response_transform_python(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset
-    ):
+    ) -> None:
         repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
         queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
