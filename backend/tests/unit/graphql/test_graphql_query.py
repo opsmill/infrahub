@@ -904,7 +904,7 @@ async def test_query_filter_attribute_isnull(
     person_jane_main: Node,
     car_camry_main: Node,
     car_accord_main: Node,
-):
+) -> None:
     person_albert = await NodeManager.get_one(db=db, id=person_albert_main.id)
     person_albert.height.value = None
     await person_albert.save(db=db)
@@ -1051,7 +1051,7 @@ async def test_query_filter_on_enum(
 
 async def test_query_multiple_filters(
     db: InfrahubDatabase, default_branch: Branch, car_person_manufacturer_schema: None
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
     manufacturer = registry.schema.get(name="TestManufacturer")
@@ -1247,7 +1247,7 @@ async def test_query_multiple_filters(
 
 async def test_query_filter_relationships(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1314,7 +1314,7 @@ async def test_query_filter_relationships(
 
 async def test_query_filter_relationships_with_generic(
     db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         TestPerson(name__value: "John") {
@@ -1358,7 +1358,7 @@ async def test_query_filter_relationships_with_generic(
 
 async def test_query_filter_relationships_with_generic_filter(
     db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         TestPerson(cars__name__value: "volt") {
@@ -1408,7 +1408,7 @@ async def test_query_filter_relationships_with_generic_filter(
 
 async def test_query_filter_relationship_id(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1536,7 +1536,7 @@ async def test_query_filter_list(
     criticality_schema: NodeSchema,
     graphql_filter: str,
     expected_results: list[str],
-):
+) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="obj1", level=1, mylist=["one", "two", "tree", 5])
     await obj1.save(db=db)
@@ -1584,7 +1584,7 @@ async def test_query_filter_list(
 
 async def test_query_attribute_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
-):
+) -> None:
     person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
@@ -1619,7 +1619,7 @@ async def test_query_attribute_multiple_values(
 
 async def test_query_relationship_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -1683,7 +1683,7 @@ async def test_query_relationship_multiple_values(
     assert result.data["TestPerson"]["edges"][1]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "nolt"
 
 
-async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
+async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -1729,7 +1729,7 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
     assert len(result.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"]) == 2
 
 
-async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
+async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -1802,7 +1802,9 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
     assert names == ["Blue", "Red"]
 
 
-async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
+async def test_query_attribute_updated_at(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None
+) -> None:
     p11 = await Node.init(db=db, schema="TestPerson")
     await p11.new(db=db, firstname="John", lastname="Doe")
     await p11.save(db=db)
@@ -1867,7 +1869,7 @@ async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: 
     )
 
 
-async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
+async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe")
     await p1.save(db=db)
@@ -1925,7 +1927,9 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     )
 
 
-async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
+async def test_query_relationship_updated_at(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None
+) -> None:
     t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
@@ -2003,7 +2007,7 @@ async def test_query_attribute_node_property_source(
     register_core_models_schema: SchemaBranch,
     person_tag_schema: None,
     first_account: Node,
-):
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe", _source=first_account)
     await p1.save(db=db)
@@ -2049,7 +2053,7 @@ async def test_query_attribute_node_property_owner(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
     first_account: Node,
-):
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", _owner=first_account)
     await p1.save(db=db)
@@ -2154,7 +2158,7 @@ async def test_query_attribute_node_property_owner(
 
 async def test_query_relationship_node_property(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, first_account: Node
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -2486,7 +2490,7 @@ async def test_query_attribute_flag_property(
     register_core_models_schema: SchemaBranch,
     person_tag_schema: None,
     first_account: Node,
-):
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(
         db=db,
@@ -2531,7 +2535,9 @@ async def test_query_attribute_flag_property(
     assert result1.data["TestPerson"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
 
-async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch):
+async def test_query_branches(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
     query = """
     query {
         Branch {
@@ -2559,7 +2565,7 @@ async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, regi
 
 async def test_query_multiple_branches(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-):
+) -> None:
     query = """
     query {
         branch1: Branch {
@@ -2592,7 +2598,7 @@ async def test_query_multiple_branches(
     assert result1.data["branch2"][0]["name"] == "main"
 
 
-async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None):
+async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, firstname="John", lastname="Doe")
     await p1.save(db=db)
@@ -2643,7 +2649,7 @@ async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, pe
     assert gql_params.context.related_node_ids == {p1.id, p2.id}
 
 
-async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch, car_schema: NodeSchema):
+async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch, car_schema: NodeSchema) -> None:
     d1 = await Node.init(db=db, schema="TestCar")
     await d1.new(db=db, name="Porsche 911", nbr_doors=2)
     await d1.save(db=db)
@@ -2691,7 +2697,7 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
     assert gql_params.context.related_node_ids == {d1.id, d2.id}
 
 
-async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema: None):
+async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema: None) -> None:
     d1 = await Node.init(db=db, schema="TestCar")
     await d1.new(db=db, name="Porsche 911", nbr_doors=2)
     await d1.save(db=db)
@@ -2761,7 +2767,9 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
     assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_results, ignore_order=True).to_dict() == {}
 
 
-async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema: None):
+async def test_model_rel_interface_reverse(
+    db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema: None
+) -> None:
     d1 = await Node.init(db=db, schema="TestCar")
     await d1.new(db=db, name="Porsche 911", nbr_doors=2)
     await d1.save(db=db)
@@ -2814,7 +2822,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
 
 async def test_generic_root_with_pagination(
     db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         TestCar(limit: 2) {
@@ -2854,7 +2862,7 @@ async def test_generic_root_with_pagination(
 
 async def test_generic_root_with_filters(
     db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         TestCar(owner__name__value: "John" ) {
@@ -2894,7 +2902,7 @@ async def test_generic_root_with_filters(
 
 async def test_member_of_groups(
     db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
-):
+) -> None:
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -2982,7 +2990,7 @@ async def test_member_of_groups(
 
 async def test_hierarchical_location_parent_filter(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
-):
+) -> None:
     query = """
     query GetRack {
         LocationRack(parent__name__values: "europe") {
@@ -3017,7 +3025,7 @@ async def test_hierarchical_location_parent_filter(
 
 async def test_hierarchical_location_ancestors(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         LocationRack(name__value: "paris-r1") {
@@ -3073,7 +3081,7 @@ async def test_hierarchical_location_ancestors(
 
 async def test_hierarchical_location_descendants(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         LocationRegion(name__value: "asia") {
@@ -3136,7 +3144,7 @@ async def test_hierarchical_location_descendants(
 
 async def test_hierarchical_location_descendants_filters_attr(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         LocationRegion(name__value: "asia") {
@@ -3185,7 +3193,7 @@ async def test_hierarchical_location_descendants_filters_attr(
 
 async def test_hierarchical_location_descendants_filters_ids(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         LocationRegion(name__value: "asia") {
@@ -3239,7 +3247,7 @@ async def test_hierarchical_location_descendants_filters_ids(
 
 async def test_hierarchical_location_include_descendants(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         LocationRegion(name__value: "asia") {
@@ -3298,7 +3306,7 @@ async def test_properties_on_different_query_paths(
     hierarchical_location_data_thing: dict[str, Node],
     account_bob: Node,
     account_bill: Node,
-):
+) -> None:
     paris_owner = account_bob
     paris_rack_ids = [node.id for name, node in hierarchical_location_data_thing.items() if name.startswith("paris-r")]
     paris_racks = await NodeManager.get_many(db=db, ids=paris_rack_ids)
@@ -3421,7 +3429,7 @@ async def test_properties_on_different_query_paths(
 
 async def test_hierarchical_groups_descendants(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data: dict[str, Node]
-):
+) -> None:
     query = """
     query {
         CoreStandardGroup(name__value: "grp1") {

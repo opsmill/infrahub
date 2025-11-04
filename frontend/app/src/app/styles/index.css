@@ -19,6 +19,16 @@
   }
 }
 
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 body {
   margin: 0;
   font-family: InterVariable, sans-serif;

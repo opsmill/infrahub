@@ -51,7 +51,7 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def load_schema_on_branch(
         self, client: InfrahubClient, load_schema, car_schema_updated: NodeSchema, branch: BranchData
-    ):
+    ) -> None:
         schema_root = SchemaRoot(nodes=[car_schema_updated], version="1.0")
         response = await client.schema.load(schemas=[schema_root.model_dump()], branch=branch.name)
         assert len(response.errors) == 0, response.errors
@@ -59,7 +59,7 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def load_schema_on_main(
         self, client: InfrahubClient, load_schema, car_schema_updated: NodeSchema, default_branch: Branch
-    ):
+    ) -> None:
         schema_root = SchemaRoot(nodes=[car_schema_updated], version="1.0")
         response = await client.schema.load(schemas=[schema_root.model_dump()], branch=default_branch.name)
         assert len(response.errors) == 0, response.errors
@@ -106,7 +106,7 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
         load_schema_on_branch,
         load_schema_on_main,
         branch: BranchData,
-    ):
+    ) -> None:
         car_schema_main = await client.schema.get(kind="TestingCar", branch=default_branch.name, refresh=True)
         car_attributes_by_name_main = {attr.name: attr for attr in car_schema_main.attributes}
         smell_attr_main = car_attributes_by_name_main["smell"]
@@ -140,7 +140,7 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
 
     async def test_merge_succeeds_after_schema_duplicates_are_deleted(
         self, client: InfrahubClient, default_branch: Branch, branch: BranchData, car_schema_updated: NodeSchema
-    ):
+    ) -> None:
         car_schema_branch = await client.schema.get(kind="TestingCar", branch=branch.name, refresh=True)
         car_attributes_by_name_branch = {attr.name: attr for attr in car_schema_branch.attributes}
         smell_attr_branch = car_attributes_by_name_branch["smell"]

@@ -17,7 +17,7 @@ from infrahub.database import InfrahubDatabase
 class Query01(Query):
     type = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         self.order_by = ["at.name", "r2.from"]
 
         query = """
@@ -34,7 +34,7 @@ class Query01(Query):
 class Query02(Query):
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         query = """
         CREATE (n1:NewNode { name: "test1"})-[:IS_CONNECTED]->(n2:NewNode { name: "test2"})
         """
@@ -43,20 +43,20 @@ class Query02(Query):
         self.add_to_query(query)
 
 
-def test_cleanup_return_labels():
+def test_cleanup_return_labels() -> None:
     assert cleanup_return_labels(["r", "n", "l"]) == ["r", "n", "l"]
     assert cleanup_return_labels(["r.uuid", "n", "l"]) == ["r.uuid", "n", "l"]
     assert cleanup_return_labels(["ID(r) as  myid", "n", "l"]) == ["myid", "n", "l"]
 
 
-async def test_query_base(db: InfrahubDatabase):
+async def test_query_base(db: InfrahubDatabase) -> None:
     query = await Query01.init(db=db)
     expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2\nORDER BY at.name,r2.from"
 
     assert query.get_query() == expected_query
 
 
-async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01):
+async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01) -> None:
     params = {
         "my": "tooshort",
         "mystring": "5ffa45d4",
@@ -88,7 +88,7 @@ async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01
     assert result == "\n".join(expected_query_lines)
 
 
-async def test_query_results(db: InfrahubDatabase, simple_dataset_01):
+async def test_query_results(db: InfrahubDatabase, simple_dataset_01) -> None:
     query = await Query01.init(db=db)
 
     assert query.has_been_executed is False
@@ -100,7 +100,7 @@ async def test_query_results(db: InfrahubDatabase, simple_dataset_01):
     assert query.results[0].get("at") is not None
 
 
-async def test_query_stats(db: InfrahubDatabase, simple_dataset_01):
+async def test_query_stats(db: InfrahubDatabase, simple_dataset_01) -> None:
     query = await Query02.init(db=db)
     await query.execute(db=db)
 
@@ -110,7 +110,7 @@ async def test_query_stats(db: InfrahubDatabase, simple_dataset_01):
     assert query.stats.get_counter("relationships_created") == 1
 
 
-async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_01):
+async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_01) -> None:
     query = await Query01.init(db=db, limit=2, offset=1)
     await query.execute(db=db)
     assert query.num_of_results == 2
@@ -130,7 +130,7 @@ async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_0
     assert expected_values == [5]
 
 
-async def test_query_async(db: InfrahubDatabase, simple_dataset_01):
+async def test_query_async(db: InfrahubDatabase, simple_dataset_01) -> None:
     query = await Query01.init(db=db)
 
     assert query.has_been_executed is False
@@ -142,12 +142,12 @@ async def test_query_async(db: InfrahubDatabase, simple_dataset_01):
     assert query.results[0].get("at") is not None
 
 
-async def test_query_count(db: InfrahubDatabase, simple_dataset_01):
+async def test_query_count(db: InfrahubDatabase, simple_dataset_01) -> None:
     query = await Query01.init(db=db)
     assert await query.count(db=db) == 3
 
 
-async def test_query_result_getters(neo4j_factory):
+async def test_query_result_getters(neo4j_factory) -> None:
     time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
@@ -193,7 +193,7 @@ async def test_query_result_getters(neo4j_factory):
         qr.get("r3")
 
 
-async def test_sort_results_by_time(neo4j_factory):
+async def test_sort_results_by_time(neo4j_factory) -> None:
     time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
@@ -241,7 +241,7 @@ async def test_sort_results_by_time(neo4j_factory):
     assert list(results) == [qr3, qr1, qr2]
 
 
-def test_query_node():
+def test_query_node() -> None:
     assert str(QueryNode()) == "()"
     assert str(QueryNode(name="n")) == "(n)"
     assert str(QueryNode(name="n", labels=["MyObject"])) == "(n:MyObject)"
@@ -251,7 +251,7 @@ def test_query_node():
     assert str(QueryNode(name="n", labels=["MyObject"], params={"name": "$myvar"})) == "(n:MyObject { name: $myvar })"
 
 
-def test_query_rel():
+def test_query_rel() -> None:
     assert str(QueryRel()) == "-[]-"
     assert str(QueryRel(name="r2")) == "-[r2]-"
     assert str(QueryRel(name="r2", direction=QueryRelDirection.INBOUND)) == "<-[r2]-"

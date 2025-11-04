@@ -8,13 +8,7 @@ from typing_extensions import Self
 from infrahub.core import registry
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
-from infrahub.core.schema import (
-    AttributeSchema,
-    MainSchemaTypes,
-    RelationshipSchema,
-    SchemaRoot,
-    internal_schema,
-)
+from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema, SchemaRoot, internal_schema
 from infrahub.core.timestamp import Timestamp
 
 from .query import MigrationBaseQuery  # noqa: TC001
@@ -230,3 +224,27 @@ class ArbitraryMigration(BaseModel):
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError()
+
+
+class MigrationRequiringRebase(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    name: str = Field(..., description="Name of the migration")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @classmethod
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()
+
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        """Method that will be run against non-default branches, it assumes that the branches have been rebased."""
+        raise NotImplementedError()
+
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        """Method that will be run against the default branch."""
+        raise NotImplementedError()
+
+
+type MigrationTypes = GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase

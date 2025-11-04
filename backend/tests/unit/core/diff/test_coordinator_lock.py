@@ -67,7 +67,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_incremental_diff_locks_do_not_queue_up(
         self, db: InfrahubDatabase, default_branch: Branch, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -83,7 +83,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_arbitrary_diff_locks_queue_up(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -120,7 +120,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_arbitrary_diff_blocks_incremental_diff(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -151,7 +151,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_incremental_diff_blocks_arbitrary_diff(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -187,7 +187,7 @@ class TestDiffCoordinatorLocks:
         diff_repository: DiffRepository,
         branch_with_data: Branch,
         dummy_repository_schema: None,
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
         branch_merger = BranchMerger(
@@ -222,7 +222,7 @@ class TestDiffCoordinatorLocks:
         diff_repository: DiffRepository,
         branch_with_data: Branch,
         dummy_repository_schema: None,
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 

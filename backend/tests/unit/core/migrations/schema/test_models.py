@@ -8,7 +8,7 @@ from infrahub.database import InfrahubDatabase
 
 def test_SchemaApplyMigrationData_serializer(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema
-):
+) -> None:
     schema_main = registry.schema.get_schema_branch(name=default_branch.name)
 
     data = SchemaApplyMigrationData(

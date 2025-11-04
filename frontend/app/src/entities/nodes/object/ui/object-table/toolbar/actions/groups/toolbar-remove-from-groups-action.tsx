@@ -20,7 +20,7 @@ export function ToolBarRemoveFromGroupsAction({ selectedRows }: ToolBarRemoveFro
       <ToolbarButton variant="danger">Remove from groups</ToolbarButton>
 
       <Popover placement="top start">
-        <PopoverDialog className="p-0">
+        <PopoverDialog>
           {({ close }) => (
             <BulkMutateGroups
               mutationFn={async (group) => {

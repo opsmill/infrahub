@@ -37,20 +37,23 @@ export function SelectField({
       shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
-        const currentSelectedKey = (fieldData?.value as string | undefined) ?? null;
+        const currentSelected = (fieldData?.value as string | undefined) ?? null;
 
         return (
           <div className="space-y-2">
             <FormInput>
               <Select
-                selectedKey={currentSelectedKey}
-                onSelectionChange={(key) =>
-                  field.onChange(
-                    updateFormFieldValue(currentSelectedKey === key ? null : key, defaultValue)
-                  )
-                }
-                placeholder=""
                 {...props}
+                value={currentSelected}
+                onChange={(newSelected) => {
+                  field.onChange(
+                    updateFormFieldValue(
+                      currentSelected === newSelected ? null : newSelected,
+                      defaultValue
+                    )
+                  );
+                }}
+                placeholder=""
               >
                 <Label>{label}</Label>
                 <SelectTrigger />

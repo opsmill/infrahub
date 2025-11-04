@@ -220,7 +220,9 @@ class TestDiffReadQuery(TestInfrahub):
             ),
         ],
     )
-    async def test_summary_no_filter(self, db: InfrahubDatabase, default_branch: Branch, load_data, filters, counters):
+    async def test_summary_no_filter(
+        self, db: InfrahubDatabase, default_branch: Branch, load_data, filters, counters
+    ) -> None:
         query = await DiffSummaryQuery.init(
             db=db,
             base_branch_name=default_branch.name,
@@ -236,7 +238,7 @@ class TestDiffReadQuery(TestInfrahub):
         counters.to_time = load_data["to_time"]
         assert summary == counters
 
-    async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data):
+    async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data) -> None:
         repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
         diffs_without = await repository.get(
             base_branch_name=default_branch.name,

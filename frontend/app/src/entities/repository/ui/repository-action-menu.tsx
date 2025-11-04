@@ -42,7 +42,7 @@ const RepositoryActionMenu = ({ repositoryId }: { repositoryId: string }) => {
 
         <MenuPopover placement="bottom end">
           <Menu>
-            <MenuSection>
+            <MenuSection title="Repository">
               <MenuItem onAction={() => setIsOpen(true)}>
                 <Icon icon="mdi:access-point" className="text-lg" />
                 Check connectivity

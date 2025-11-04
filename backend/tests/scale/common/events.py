@@ -28,7 +28,7 @@ failed_request: bool = False
 
 
 @events.test_start.add_listener
-def setup_iteration_limit(environment: Environment, **kwargs):
+def setup_iteration_limit(environment: Environment, **kwargs) -> None:
     runner: Runner = environment.runner
     runner.iterations_started = 0
     runner.iteration_target_reached = False
@@ -63,7 +63,7 @@ def setup_iteration_limit(environment: Environment, **kwargs):
 @events.request.add_listener
 def request_event_handler(
     request_type, name, response_time, response_length, response, context, exception, start_time, **kwargs
-):
+) -> None:
     result = {
         "name": name,
         "start_time": f"{start_time:.2f}",

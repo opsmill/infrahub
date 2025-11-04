@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-async def test_menu_create(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
+async def test_menu_create(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch) -> None:
     service = await InfrahubServices.new(database=db)
 
     CREATE_MENU = """
@@ -36,7 +36,9 @@ async def test_menu_create(db: InfrahubDatabase, register_core_models_schema: No
     assert "Builtin is not valid" in result.errors[0].args[0]
 
 
-async def test_menu_update_protected(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
+async def test_menu_update_protected(
+    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+) -> None:
     service = await InfrahubServices.new(database=db)
 
     menu_item = MenuItemDefinition(
@@ -76,7 +78,9 @@ async def test_menu_update_protected(db: InfrahubDatabase, register_core_models_
     assert "This object is protected" in result.errors[0].args[0]
 
 
-async def test_menu_delete_protected(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
+async def test_menu_delete_protected(
+    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
+) -> None:
     service = await InfrahubServices.new(database=db)
 
     menu_item = MenuItemDefinition(

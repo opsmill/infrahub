@@ -12,7 +12,7 @@ from infrahub.graphql.initialization import GraphqlParams
 
 
 class TestAnonymousAuthChecker:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.account_session = AccountSession(account_id="abc", auth_type=AuthType.JWT)
         self.graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         self.query_parameters = MagicMock(spec=GraphqlParams)
@@ -22,7 +22,7 @@ class TestAnonymousAuthChecker:
     @pytest.mark.parametrize("is_authenticated,is_supported", [(True, False), (False, True)])
     async def test_supports_unauthenticated_accounts(
         self, db: InfrahubDatabase, branch: Branch, is_authenticated, is_supported
-    ):
+    ) -> None:
         self.account_session.authenticated = is_authenticated
 
         has_support = await self.checker.supports(db=db, account_session=self.account_session, branch=branch)
@@ -32,7 +32,7 @@ class TestAnonymousAuthChecker:
     @pytest.mark.parametrize("anonymous_setting,query_has_mutations", [(False, False), (False, True), (True, True)])
     async def test_failures_raise_error(
         self, db: InfrahubDatabase, branch: Branch, anonymous_setting, query_has_mutations
-    ):
+    ) -> None:
         self.mock_anonymous_setting_get.return_value = anonymous_setting
         self.graphql_query.contains_mutation = query_has_mutations
 
@@ -45,7 +45,7 @@ class TestAnonymousAuthChecker:
                 branch=branch,
             )
 
-    async def test_check_passes(self, db: InfrahubDatabase, branch: Branch):
+    async def test_check_passes(self, db: InfrahubDatabase, branch: Branch) -> None:
         self.mock_anonymous_setting_get.return_value = True
         self.graphql_query.contains_mutation = False
 

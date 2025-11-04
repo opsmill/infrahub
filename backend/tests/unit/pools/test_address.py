@@ -5,7 +5,7 @@ from netaddr import IPNetwork
 from infrahub.pools.address import get_available
 
 
-def test_get_available():
+def test_get_available() -> None:
     network = ip_network("10.16.18.0/30")
     addresses = [ip_interface("10.16.18.1/30")]
     available = get_available(network=network, addresses=addresses, is_pool=False)
@@ -13,7 +13,7 @@ def test_get_available():
     assert available.iter_cidrs()[0] == IPNetwork("10.16.18.2/32")
 
 
-def test_get_available_pool():
+def test_get_available_pool() -> None:
     network = ip_network("10.16.18.0/30")
     addresses = [ip_interface("10.16.18.1/30")]
     available = get_available(network=network, addresses=addresses, is_pool=True)
@@ -22,7 +22,7 @@ def test_get_available_pool():
     assert available.iter_cidrs()[1] == IPNetwork("10.16.18.2/31")
 
 
-def test_get_available_full():
+def test_get_available_full() -> None:
     network = ip_network("10.16.18.0/30")
     addresses = [ip_interface("10.16.18.1/30"), ip_interface("10.16.18.2/30")]
     available = get_available(network=network, addresses=addresses, is_pool=False)

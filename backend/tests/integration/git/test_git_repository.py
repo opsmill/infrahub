@@ -24,7 +24,7 @@ from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 
 
-async def load_infrastructure_schema(db: InfrahubDatabase):
+async def load_infrastructure_schema(db: InfrahubDatabase) -> None:
     base_dir = get_models_dir() / "base"
 
     default_branch_name = registry.default_branch
@@ -54,7 +54,7 @@ class TestInfrahubClient:
         config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class")
-    async def base_dataset(self, db: InfrahubDatabase, redis, nats):
+    async def base_dataset(self, db: InfrahubDatabase, redis, nats) -> None:
         await delete_all_nodes(db=db)
         await first_time_initialization(db=db)
         await load_infrastructure_schema(db=db)
@@ -115,7 +115,9 @@ class TestInfrahubClient:
 
         return repo
 
-    async def test_import_schema_files(self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository):
+    async def test_import_schema_files(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
+    ) -> None:
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
         assert config_file
@@ -125,7 +127,7 @@ class TestInfrahubClient:
 
     async def test_import_schema_files_from_directory(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
-    ):
+    ) -> None:
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
         assert config_file
@@ -137,7 +139,7 @@ class TestInfrahubClient:
 
     async def test_import_all_graphql_query(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
-    ):
+    ) -> None:
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
         assert config_file
@@ -177,7 +179,7 @@ class TestInfrahubClient:
 
     async def test_import_all_python_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
-    ):
+    ) -> None:
         for group in ["backbone_services", "maintenance_circuits", "provisioning_circuits", "upstream_interfaces"]:
             obj = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
             await obj.new(
@@ -262,7 +264,7 @@ class TestInfrahubClient:
 
     async def test_import_all_yaml_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
-    ):
+    ) -> None:
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
         assert config_file
@@ -307,7 +309,7 @@ class TestInfrahubClient:
 class TestGetMissingFile(TestInfrahubApp):
     async def test_get_missing_file(
         self, db: InfrahubDatabase, client: InfrahubClient, git_repo_car_dealership, test_client
-    ):
+    ) -> None:
         # Ideally above tests would rely on `TestInfrahubApp.repo` instead of TestInfrahubClient
         # and we would reuse `TestInfrahubClient.repo` fixture here.
         obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)

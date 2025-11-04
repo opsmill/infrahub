@@ -286,7 +286,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         branch: Branch,
         branch_data: dict[str, Node],
         proposed_change_id: str,
-    ):
+    ) -> None:
         result = await client.execute_graphql(
             query=DIFF_TREE_QUERY,
             variables={"branch": branch.name},
@@ -364,7 +364,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         branch: Branch,
         branch_data: dict[str, Node],
         proposed_change_id: str,
-    ):
+    ) -> None:
         # merge proposed change
         result = await client.execute_graphql(
             query=PROPOSED_CHANGE_UPDATE,

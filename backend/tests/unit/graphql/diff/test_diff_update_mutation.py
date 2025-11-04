@@ -88,7 +88,7 @@ class TestDiffUpdateMutation:
         service_testing: InfrahubServices,
         criticality_schema,
         diff_branch: Branch,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
         default_branch.update_schema_hash()
         params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
@@ -115,7 +115,7 @@ class TestDiffUpdateMutation:
         service_testing: InfrahubServices,
         criticality_schema,
         diff_branch: Branch,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
         default_branch.update_schema_hash()
         params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
@@ -143,7 +143,7 @@ class TestDiffUpdateMutation:
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
-    ):
+    ) -> None:
         default_branch.update_schema_hash()
         params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
         result = await graphql(
@@ -185,7 +185,7 @@ class TestDiffUpdateMutation:
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
         default_branch.update_schema_hash()
         params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
@@ -213,7 +213,7 @@ class TestDiffUpdateMutation:
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
         default_branch.update_schema_hash()
         params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)

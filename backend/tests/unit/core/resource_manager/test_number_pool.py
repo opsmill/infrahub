@@ -13,7 +13,9 @@ from infrahub.graphql.queries.resource_manager import resolve_number_pool_utiliz
 from tests.helpers.schema import TICKET, load_schema
 
 
-async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_allocate_from_number_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 
@@ -43,7 +45,7 @@ async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: B
     assert await np1.get_used(db=db, branch=default_branch) == [1, 2]
 
 
-async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
     """
     Allocates:
     - 1 ticket in first number pool
@@ -121,7 +123,7 @@ async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch
 
 async def test_allocate_from_number_pool_for_generic(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-):
+) -> None:
     ticket = GenericSchema(
         name="Ticket",
         namespace="Testing",
@@ -180,7 +182,7 @@ async def test_allocate_from_number_pool_for_generic(
 
 async def test_allocate_from_number_pool_with_excluded_values(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-):
+) -> None:
     speeding_ticket = NodeSchema(
         name="SpeedingTicket",
         namespace="Testing",

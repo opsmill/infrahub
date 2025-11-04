@@ -28,7 +28,7 @@ class InfrahubClientUser(User):
         )
 
     @task
-    def crud(self):
+    def crud(self) -> None:
         print("--- staging")
         print("--- loading schema")
         if not hasattr(common.stagers, self.custom_options["stager"]):

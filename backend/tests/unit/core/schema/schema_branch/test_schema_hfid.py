@@ -81,7 +81,7 @@ _SCHEMA = {
         (["owner__name__value", "owner__age__value", "driver__name__value"], [["name__value", "age__value"]], True),
     ],
 )
-async def test_schema_constraints(human_friendly_id, uniqueness_constraints, should_raise):
+async def test_schema_constraints(human_friendly_id, uniqueness_constraints, should_raise) -> None:
     schema_root = SchemaRoot(**_SCHEMA)
 
     person_schema = schema_root.get(name="TestPerson")

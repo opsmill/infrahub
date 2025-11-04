@@ -138,7 +138,7 @@ async def test_schema_warnings(
     assert test_case.schema.gather_warnings() == test_case.warnings
 
 
-def test_schema_root_no_generic():
+def test_schema_root_no_generic() -> None:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -156,7 +156,7 @@ def test_schema_root_no_generic():
     assert SchemaRoot(**FULL_SCHEMA)
 
 
-def test_node_schema_property_unique_attributes():
+def test_node_schema_property_unique_attributes() -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -173,7 +173,7 @@ def test_node_schema_property_unique_attributes():
     assert schema.unique_attributes[0].name == "name"
 
 
-async def test_node_schema_hashable():
+async def test_node_schema_hashable() -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -193,7 +193,7 @@ async def test_node_schema_hashable():
     assert schema.get_hash()
 
 
-async def test_attribute_schema_hashable():
+async def test_attribute_schema_hashable() -> None:
     SCHEMA = {"name": "name", "kind": "Text", "unique": True}
 
     schema = AttributeSchema(**SCHEMA)
@@ -202,7 +202,7 @@ async def test_attribute_schema_hashable():
     assert schema.get_hash()
 
 
-async def test_relationship_schema_hashable():
+async def test_relationship_schema_hashable() -> None:
     SCHEMA = {"name": "first", "peer": "Criticality", "identifier": "cardinality__peer", "cardinality": "one"}
 
     schema = RelationshipSchema(**SCHEMA)
@@ -211,7 +211,7 @@ async def test_relationship_schema_hashable():
     assert schema.get_hash()
 
 
-async def test_node_schema_generate_fields_for_display_label():
+async def test_node_schema_generate_fields_for_display_label() -> None:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -231,7 +231,7 @@ async def test_node_schema_generate_fields_for_display_label():
     assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
 
 
-async def test_node_schema_generate_fields_for_display_label_with_generic(default_branch: Branch):
+async def test_node_schema_generate_fields_for_display_label_with_generic(default_branch: Branch) -> None:
     generic_schema = GenericSchema(
         name="ThingGeneric",
         namespace="Test",
@@ -264,7 +264,7 @@ async def test_node_schema_generate_fields_for_display_label_with_generic(defaul
     assert generic_display_label == {"name": {"value": None}, "height": {"value": None}}
 
 
-async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
@@ -299,7 +299,7 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
     assert matches == []
 
 
-async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
@@ -334,7 +334,9 @@ async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_br
     assert matches == []
 
 
-async def test_rel_schema_query_filter_large_attribute_type(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_rel_schema_query_filter_large_attribute_type(
+    db: InfrahubDatabase, default_branch, car_person_schema
+) -> None:
     person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
     car_schema = registry.schema.get(name="TestCar", duplicate=False)
@@ -359,15 +361,15 @@ async def test_rel_schema_query_filter_large_attribute_type(db: InfrahubDatabase
     assert matches == []
 
 
-def test_core_models():
+def test_core_models() -> None:
     assert SchemaRoot(**core_models)
 
 
-def test_internal_schema():
+def test_internal_schema() -> None:
     assert SchemaRoot(**internal_schema)
 
 
-async def test_attribute_schema_parameters():
+async def test_attribute_schema_parameters() -> None:
     regex = "abc"
     min_length = 3
     max_length = 5
@@ -393,7 +395,7 @@ async def test_attribute_schema_parameters():
         attr_schema = AttributeSchema(name="something", kind="Number", parameters={"regex": "abc"})
 
 
-async def test_attribute_schema_choices_invalid_kind():
+async def test_attribute_schema_choices_invalid_kind() -> None:
     SCHEMA = {"name": "name", "kind": "Text", "choices": [DropdownChoice(name="active", color="#AAbb0f")]}
 
     with pytest.raises(ValidationError) as exc:
@@ -402,7 +404,7 @@ async def test_attribute_schema_choices_invalid_kind():
     assert "Can only specify 'choices' for kind=Dropdown" in str(exc.value)
 
 
-async def test_attribute_schema_dropdown_missing_choices():
+async def test_attribute_schema_dropdown_missing_choices() -> None:
     SCHEMA: dict[str, Any] = {"name": "name", "kind": "Dropdown"}
 
     with pytest.raises(ValidationError) as exc:
@@ -411,7 +413,7 @@ async def test_attribute_schema_dropdown_missing_choices():
     assert "The property 'choices' is required for kind=Dropdown" in str(exc.value)
 
 
-def test_dropdown_choice_colors():
+def test_dropdown_choice_colors() -> None:
     active = DropdownChoice(name="active", color="#AAbb0f")
     assert active.color == "#aabb0f"
     with pytest.raises(ValidationError) as exc:
@@ -420,13 +422,13 @@ def test_dropdown_choice_colors():
     assert "Color must be a valid HTML color code" in str(exc.value)
 
 
-def test_dropdown_choice_sort():
+def test_dropdown_choice_sort() -> None:
     active = DropdownChoice(name="active", color="#AAbb0f")
     passive = DropdownChoice(name="passive", color="#AAbb0f")
     assert active < passive
 
 
-def test_validate_python_keywords_with_attribute_and_relationship():
+def test_validate_python_keywords_with_attribute_and_relationship() -> None:
     """Test that validate_python_keywords rejects Python keywords in attribute and relationship names."""
     # Test schema with 'from' keyword as attribute name
     SCHEMA_WITH_KEYWORD_ATTR: dict[str, Any] = {
@@ -525,7 +527,7 @@ def test_validate_python_keywords_with_attribute_and_relationship():
     schema_branch.process_validate()
 
 
-def test_validate_python_keywords_multiple_keywords():
+def test_validate_python_keywords_multiple_keywords() -> None:
     """Test that validate_python_keywords catches multiple Python keywords."""
     SCHEMA_WITH_MULTIPLE_KEYWORDS: dict[str, Any] = {
         "nodes": [
@@ -566,7 +568,7 @@ def test_validate_python_keywords_multiple_keywords():
     assert keyword_found, f"Expected Python keyword error, got: {error_message}"
 
 
-def test_validate_namespaces_and_keyword_separation():
+def test_validate_namespaces_and_keyword_separation() -> None:
     """Test that namespace and Python keyword validation work separately in their proper contexts."""
     # Test that SchemaRoot.validate_namespaces() only catches namespace issues
     SCHEMA_WITH_NAMESPACE_ISSUE: dict[str, Any] = {

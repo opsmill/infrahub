@@ -52,11 +52,11 @@ async def register_default_schema(db: InfrahubDatabase, default_branch: Branch) 
 
 
 @pytest.fixture(scope="module")
-async def dataset04(db: InfrahubDatabase, default_branch, register_default_schema):
+async def dataset04(db: InfrahubDatabase, default_branch, register_default_schema) -> None:
     await load_data(db=db, nbr_query=250)
 
 
-def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04) -> None:
     query = """
     query {
         CoreGraphQLQuery {
@@ -96,7 +96,7 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
     )
 
 
-def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04) -> None:
     query = """
     query {
         CoreGraphQLQuery {
@@ -144,7 +144,7 @@ def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default
     )
 
 
-def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04) -> None:
     query = """
     query {
         CoreGraphQLQuery {

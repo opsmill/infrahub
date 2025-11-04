@@ -13,7 +13,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
-async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -212,7 +212,7 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
 
 async def test_node_changelog_update_with_cardinality_one_relationship(
     db: InfrahubDatabase, default_branch, animal_person_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -286,7 +286,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
 
 async def test_node_changelog_update_with_cardinality_many_relationship(
     db: InfrahubDatabase, default_branch, animal_person_schema, standard_group_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
 
     person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
@@ -333,7 +333,7 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
 
 async def test_node_changelog_delete_with_cardinality_one_relationship(
     db: InfrahubDatabase, default_branch, animal_person_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -355,7 +355,7 @@ async def test_node_changelog_delete_with_cardinality_one_relationship(
 
 async def test_node_changelog_delete_with_cardinality_many_relationship(
     db: InfrahubDatabase, default_branch, animal_person_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
