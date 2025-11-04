@@ -793,17 +793,17 @@ class SchemaBranch:
                 if len(node_schema.display_labels) == 1:
                     # If the previous display_labels consist of a single attribute convert
                     # it to an attribute based display label
-                    converted_display_label = node_schema.display_labels[0]
-                    if "__" not in converted_display_label:
-                        # Previously we allowed defining a raw attribute name as a component of a
-                        # display_label, if this is the case we need to append '__value'
-                        converted_display_label = f"{converted_display_label}__value"
-                    update_candidate.display_label = converted_display_label
+                    update_candidate.display_label = _format_display_label_component(
+                        component=node_schema.display_labels[0]
+                    )
                 else:
                     # If the previous display label consists of multiple attributes
                     # convert it to a Jinja2 based display label
                     update_candidate.display_label = " ".join(
-                        [f"{{{{ {display_label} }}}}" for display_label in node_schema.display_labels]
+                        [
+                            f"{{{{ {_format_display_label_component(component=display_label)} }}}}"
+                            for display_label in node_schema.display_labels
+                        ]
                     )
                 self.set(name=name, schema=update_candidate)
 
@@ -2592,3 +2592,16 @@ class SchemaBranch:
                 updated_used_by_node = set(chain(template_schema_kinds, set(core_node_schema.used_by)))
                 core_node_schema.used_by = sorted(updated_used_by_node)
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
+
+
+def _format_display_label_component(component: str) -> str:
+    """Return correct format for display_label.
+
+    Previously both the format of 'name' and 'name__value' was
+    supported this function ensures that the proper 'name__value'
+    format is used
+    """
+    if "__" in component:
+        return component
+
+    return f"{component}__value"

@@ -3,6 +3,7 @@ from infrahub_sdk.transforms import InfrahubTransform
 
 class OCInterfaces(InfrahubTransform):
     query = "oc_interfaces"
+    timeout: int = 60
 
     async def transform(self, data):
         response_payload = {}
@@ -52,6 +53,7 @@ class OCInterfaces(InfrahubTransform):
 class OCBGPNeighbors(InfrahubTransform):
     query = "oc_bgp_neighbors"
     url = "openconfig/network-instances/network-instance/protocols/protocol/bgp/neighbors"
+    timeout: int = 60
 
     async def transform(self, data):
         response_payload = {}

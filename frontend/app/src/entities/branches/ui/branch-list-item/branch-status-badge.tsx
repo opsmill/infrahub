@@ -22,6 +22,13 @@ export function BranchStatusBadge({ status, className, ...props }: BranchStatusB
         </Badge>
       );
     }
+    case "NEED_UPGRADE_REBASE": {
+      return (
+        <Badge className={classNames(pillStyle, className)} variant="yellow" {...props}>
+          <AlertTriangleIcon className="size-3" /> Rebase needed (upgrade)
+        </Badge>
+      );
+    }
     case "DELETING": {
       return (
         <Badge className={classNames(pillStyle, className)} variant="red" {...props}>
