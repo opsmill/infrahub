@@ -18,6 +18,7 @@ from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
+    AttributeClearNodePropertyQuery,
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -488,6 +489,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if needs_update:
                 query = await AttributeUpdateNodePropertyQuery.init(
                     db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=current_prop_id
+                )
+                await query.execute(db=db)
+
+            if needs_clear:
+                query = await AttributeClearNodePropertyQuery.init(
+                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=database_prop_id
                 )
                 await query.execute(db=db)
 

@@ -20,6 +20,7 @@ from infrahub.core.initialization import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.dependencies.registry import build_component_registry
+from infrahub.lock import initialize_lock
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
@@ -66,6 +67,7 @@ async def upgrade_cmd(
     dbdriver = await context.init_db(retry=1)
 
     await initialize_registry(db=dbdriver)
+    initialize_lock()
 
     build_component_registry()
 
