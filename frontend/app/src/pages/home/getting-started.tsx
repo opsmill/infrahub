@@ -69,7 +69,8 @@ export const GettingStarted = () => {
             </GettingStartedContentItem.Title>
 
             <span className="text-gray-500">
-              Explore our hands-on labs for a deep dive into Infrahub's usage and features.
+              Integrate Infrahub with Nornir for automated network device configuration and
+              management.
             </span>
           </GettingStartedContentItem>
 
