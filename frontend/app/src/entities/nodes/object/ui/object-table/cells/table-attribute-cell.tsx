@@ -1,4 +1,5 @@
 import type { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
+import { Badge } from "@/shared/components/display/badge";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
@@ -9,7 +10,6 @@ import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeKind, AttributeSchema } from "@/entities/schema/types";
-import { Badge } from "@/shared/components/display/badge";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
