@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import StrEnum
 
 TELEMETRY_KIND: str = "community"
 TELEMETRY_VERSION: str = "20250318"
 
 
-class InfrahubType(str, Enum):
+class InfrahubType(StrEnum):
     COMMUNITY = "community"
     ENTERPRISE = "enterprise"

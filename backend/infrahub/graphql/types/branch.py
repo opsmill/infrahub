@@ -7,6 +7,7 @@ from graphene import Boolean, Field, String
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
+from .enums import InfrahubBranchStatus
 from .standard_node import InfrahubObjectType
 
 if TYPE_CHECKING:
@@ -19,6 +20,7 @@ class BranchType(InfrahubObjectType):
     description = String(required=False)
     origin_branch = String(required=False)
     branched_from = String(required=False)
+    status = InfrahubBranchStatus(required=True)
     created_at = String(required=False)
     sync_with_git = Boolean(required=False)
     is_default = Boolean(required=False)

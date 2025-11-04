@@ -84,7 +84,7 @@ The most important file is the `.infrahub.yml` file, which defines how Infrahub 
 
 You will need to push this repository to a remote location that Infrahub can access. It doesn't have to be a public repository as Infrahub supports authentication with private repositories. Depending on the provider you use (for example: GitHub, GitLab, Bitbucket), the process may vary slightly, but the general steps are the same:
 
-1. Create a new repository using the `infrahubctl repository init <directory>` command or manually. More details in the [related topic](../topics/developer-guide#initializing-an-infrahub-repository).
+1. Create a new repository using the `infrahubctl repository init <directory>` command or manually. More details in the [related topic](../topics/developer-guide.mdx#initializing-an-infrahub-repository).
 2. Push the repository to the remote location.
 3. Create a "Infrahub" access token with the required permissions to access the repository.
 
@@ -102,9 +102,9 @@ At this point, you have a running Infrahub instance with a schema, some data loa
 
 From here, depending on your use case and goals, you can:
 
-- [**Create your own schema**](../guides/create-schema) - Extend the existing schema to fit your organization's needs.
-- [**Generate artifacts**](../guides/artifact) - Use transformations to create meaningful files from your data such as startup configurations, documentation, cabling plans and more.
-- [**Build generators**](../guides/generator) - Automate the creation of infrastructure objects based on templates and user inputs.
+- [**Create your own schema**](../guides/create-schema.mdx) - Extend the existing schema to fit your organization's needs.
+- [**Generate artifacts**](../guides/artifact.mdx) - Use transformations to create meaningful files from your data such as startup configurations, documentation, cabling plans and more.
+- [**Build generators**](../guides/generator.mdx) - Automate the creation of infrastructure objects based on templates and user inputs.
 - [**Deploy artifacts to the field using Ansible**]($(base_url)ansible) - Deploy outputs where they're needed and apply your intended state to your infrastructure. You can also use other tools like [Nornir]($(base_url)nornir) to deploy your artifacts.
 
 If you need guidance with which feature to explore next or how to implement a specific use case, feel free to reach out to the community on our [Discord server](https://discord.gg/opsmill) or book a meeting with OpsMill.

@@ -247,6 +247,7 @@ const sidebars: SidebarsConfig = {
                 'topics/metadata',
                 'topics/groups',
                 'topics/graphql',
+                'topics/object-conversion',
                 'topics/resource-manager',
                 'topics/object-template',
                 'topics/profiles',
@@ -342,8 +343,9 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'reference/infrahub-cli/infrahub-db',
-            'reference/infrahub-cli/infrahub-git-agent',
-            'reference/infrahub-cli/infrahub-server'
+            'reference/infrahub-cli/infrahub-server',
+            'reference/infrahub-cli/infrahub-dev',
+            'reference/infrahub-cli/infrahub-upgrade',
           ],
         },
         'reference/infrahub-events',
@@ -415,6 +417,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_4_12',
             'release-notes/infrahub/release-1_4_11',
             'release-notes/infrahub/release-1_4_10',
             'release-notes/infrahub/release-1_4_9',

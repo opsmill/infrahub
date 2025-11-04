@@ -43,9 +43,8 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -55,6 +54,7 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 1
     assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == "Low"
 
@@ -95,9 +95,8 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -107,6 +106,7 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 2
     assert sorted([node["node"]["display_label"] for node in result.data["TestCriticality"]["edges"]]) == [
         "low 4",
@@ -146,9 +146,8 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -158,6 +157,7 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestCriticality"]["edges"]) == 1
     assert result.data["TestCriticality"]["edges"][0]["node"]["display_label"] == f"TestCriticality(ID: {obj1.id})"
 
@@ -190,9 +190,8 @@ async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branc
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -202,6 +201,7 @@ async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branc
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestAnimal"]["edges"]) == 2
     expected_results = ["Kitty Persian #444444", "Rocky Labrador"]
     assert sorted([item["node"]["display_label"] for item in result.data["TestAnimal"]["edges"]]) == expected_results
@@ -257,9 +257,8 @@ async def test_display_label_nested_query(
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -379,9 +378,8 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -391,6 +389,7 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestObjectA"]["edges"]) == 1
     assert result.data["TestObjectA"]["edges"][0]["node"]["display_label"] == "FIRST"
 
@@ -407,9 +406,8 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -419,5 +417,6 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["TestObjectB"]["edges"]) == 1
     assert result.data["TestObjectB"]["edges"][0]["node"]["display_label"] == "first SECOND"

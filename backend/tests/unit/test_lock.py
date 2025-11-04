@@ -71,3 +71,34 @@ def test_unpack_name():
     assert unpack_name("repository.simple-test.long-name") == ("simple-test.long-name", "repository", None)
     assert unpack_name("local.repository.simple") == ("simple", "repository", True)
     assert unpack_name("global.repository.simple") == ("simple", "repository", False)
+
+
+async def test_reentrant_lock_allows_nested_acquisitions():
+    lock.initialize_lock(local_only=True)
+
+    events: list[str] = []
+
+    async def reentrant_task() -> None:
+        async with lock.registry.get(name="resource_pool.test"):
+            events.append("outer acquired")
+            async with lock.registry.get(name="resource_pool.test"):
+                events.append("inner acquired")
+                await sleep(delay=0.1)
+            events.append("inner released")
+            await sleep(delay=0.1)
+        events.append("outer released")
+
+    async def waiting_task() -> None:
+        await sleep(delay=0.05)
+        async with lock.registry.get(name="resource_pool.test"):
+            events.append("waiter acquired")
+
+    await gather(reentrant_task(), waiting_task())
+
+    assert events == [
+        "outer acquired",
+        "inner acquired",
+        "inner released",
+        "outer released",
+        "waiter acquired",
+    ]

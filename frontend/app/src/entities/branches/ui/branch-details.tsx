@@ -10,13 +10,10 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";
-import { Badge } from "@/shared/components/display/badge";
-import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
-import { List } from "@/shared/components/table/list";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
@@ -25,16 +22,16 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
 import { useGetBranchDetails } from "@/entities/branches/domain/get-branch-details.query";
 import { branchesState } from "@/entities/branches/stores";
-
+import { BranchAttributes } from "@/entities/branches/ui/branch-details/branch-attributes";
+import { BranchMergeButton } from "@/entities/branches/ui/branch-merge-button";
+import { BranchRebaseButton } from "@/entities/branches/ui/branch-rebase-button";
+import { BranchValidateButton } from "@/entities/branches/ui/branch-validate-button";
 import {
   BRANCH_MERGE_WORKFLOW,
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
-} from "../../tasks/constants";
-import { TaskDisplay } from "../../tasks/ui/task-display";
-import { BranchMergeButton } from "./branch-merge-button";
-import { BranchRebaseButton } from "./branch-rebase-button";
-import { BranchValidateButton } from "./branch-validate-button";
+} from "@/entities/tasks/constants";
+import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 interface BranchDetailsProps {
   branchName: string;
@@ -91,37 +88,9 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
     }
   };
 
-  const columns = [
-    {
-      name: "name",
-      label: "Name",
-    },
-    {
-      name: "origin_branch",
-      label: "Origin branch",
-    },
-    {
-      name: "created_at",
-      label: "Created at",
-    },
-    {
-      name: "branched_from",
-      label: "Last rebase on main",
-    },
-  ];
-
-  const row = {
-    values: {
-      name: branch.name,
-      origin_branch: <Badge className="text-sm">{branch.origin_branch}</Badge>,
-      branched_from: <DateDisplay date={branch.branched_from} />,
-      created_at: <DateDisplay date={branch.created_at} />,
-    },
-  };
-
   return (
     <div className="flex flex-col gap-4">
-      <List columns={columns} row={row} />
+      <BranchAttributes branch={branch} />
 
       <div className="flex flex-col gap-4">
         <div>

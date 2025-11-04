@@ -7,9 +7,11 @@ import { branchesState } from "@/entities/branches/stores";
 export type GetBranches = () => Promise<Array<Branch>>;
 
 export const getBranches: GetBranches = async () => {
-  const { data, error } = await getBranchesFromApi();
+  const { data, errors } = await getBranchesFromApi();
 
-  if (error) throw error;
+  if (errors) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
 
   const branches = data?.Branch ?? [];
   store.set(branchesState, branches);

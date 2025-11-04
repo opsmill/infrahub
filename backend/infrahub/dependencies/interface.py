@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
@@ -14,7 +14,7 @@ class DependencyBuilderContext:
     branch: Branch
 
 
-class DependencyBuilder(ABC, Generic[T]):
+class DependencyBuilder[T](ABC):
     @classmethod
     @abstractmethod
     def build(cls, context: DependencyBuilderContext) -> T: ...

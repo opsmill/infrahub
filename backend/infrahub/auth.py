@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 import bcrypt
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
-class AuthType(str, Enum):
+class AuthType(StrEnum):
     NONE = "none"
     JWT = "jwt"
     API = "api"

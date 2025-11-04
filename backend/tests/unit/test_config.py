@@ -24,11 +24,12 @@ def test_load_sso_config(helper: TestHelper) -> None:
 
 
 def test_valid_git_settings__sync_branch_names():
-    sync_branch_names = ["main", "infrahub/.*", "release/.*"]
-    git_settings = GitSettings(sync_branch_names=sync_branch_names)
-    assert git_settings.sync_branch_names == sync_branch_names
+    import_sync_branch_names = ["main", "infrahub/.*", "release/.*"]
+    git_settings = GitSettings(import_sync_branch_names=import_sync_branch_names)
+    assert git_settings.import_sync_branch_names == import_sync_branch_names
 
 
 def test_invalid_git_settings__sync_branch_names():
-    with pytest.raises(ValueError):
-        GitSettings(sync_branch_names=["main", "infrahub/.*", "release/.*", "a[b"])
+    with pytest.raises(ValueError) as exc:
+        GitSettings(import_sync_branch_names=["main", "infrahub/.*", "release/.*", "a[b"])
+    assert "Invalid regex pattern for import_sync_branch_names: 'a[b'" in str(exc.value)
