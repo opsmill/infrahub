@@ -280,15 +280,15 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
     assert sorted(remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
 
 
-async def test_get_branches_from_remote_in_sync_branch_names(git_repo_01: InfrahubRepository):
-    config.SETTINGS.git.sync_branch_names = ["branch.*", "main"]
+async def test_get_branches_from_remote_in_import_sync_branch_names(git_repo_01: InfrahubRepository):
+    config.SETTINGS.git.import_sync_branch_names = ["branch.*"]
     repo = git_repo_01
 
     remote_branches = repo.get_branches_from_remote()
     assert isinstance(remote_branches, dict)
-    assert sorted(remote_branches.keys()) == ["branch01", "branch02", "main"]
+    assert sorted(remote_branches.keys()) == ["branch01", "branch02"]
 
-    config.SETTINGS.git.sync_branch_names = []
+    config.SETTINGS.git.import_sync_branch_names = []
 
 
 async def test_get_branches_from_graph(

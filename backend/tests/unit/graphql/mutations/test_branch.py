@@ -165,7 +165,7 @@ class TestBranchCreate(TestInfrahubApp):
             == "Branch name contains invalid patterns or characters: disallowed ASCII characters/patterns"
         )
 
-        config.SETTINGS.git.sync_branch_names = ["branch.*", "main"]
+        config.SETTINGS.git.import_sync_branch_names = ["branch.*"]
         result = await graphql(
             schema=gql_params.schema,
             source=query,
@@ -178,9 +178,9 @@ class TestBranchCreate(TestInfrahubApp):
         assert len(result.errors) == 1
         assert (
             result.errors[0].message
-            == f"Branch name 'infrahub' does not match sync branch names {config.SETTINGS.git.sync_branch_names}"
+            == f"Branch name 'infrahub' does not match import_sync_branch_names: {config.SETTINGS.git.import_sync_branch_names}"
         )
-        config.SETTINGS.git.sync_branch_names = []
+        config.SETTINGS.git.import_sync_branch_names = []
 
     async def test_branch_create_short_name(
         self,

@@ -357,14 +357,14 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
         try:
             obj = Branch(**data_dict)
             if (
-                config.SETTINGS.git.sync_branch_names
+                config.SETTINGS.git.import_sync_branch_names
                 and obj.name not in {GLOBAL_BRANCH_NAME, registry.default_branch}
                 and not obj.is_default
                 and not obj.sync_with_git
                 and not branch_name_in_sync_branches(branch_short_name=obj.name)
             ):
                 raise ValidationError(
-                    f"Branch name '{obj.name}' does not match sync branch names {config.SETTINGS.git.sync_branch_names}"
+                    f"Branch name '{obj.name}' does not match import_sync_branch_names: {config.SETTINGS.git.import_sync_branch_names}"
                 )
         except pydantic.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]

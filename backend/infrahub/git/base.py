@@ -503,7 +503,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             if short_name == "HEAD":
                 continue
 
-            if config.SETTINGS.git.sync_branch_names and not branch_name_in_sync_branches(branch_short_name=short_name):
+            if config.SETTINGS.git.import_sync_branch_names and not branch_name_in_sync_branches(
+                branch_short_name=short_name
+            ):
                 skipped_branch_names.append(short_name)
                 continue
 
@@ -512,7 +514,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if skipped_branch_names:
             log.debug(
                 f"Skipped the following branches {skipped_branch_names} "
-                f"because no match was found in sync branch names {config.SETTINGS.git.sync_branch_names}"
+                f"because no match was found in import_sync_branch_names {config.SETTINGS.git.import_sync_branch_names}"
             )
 
         return branches
