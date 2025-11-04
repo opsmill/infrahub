@@ -445,18 +445,24 @@ class GitSettings(BaseSettings):
         default_factory=default_append_git_suffix_domains,
         description="Automatically append '.git' to HTTP URLs if for these domains.",
     )
-    sync_branch_names: list[str] = Field(
+    import_sync_branch_names: list[str] = Field(
         default_factory=list,
-        description="Names or regex of branches to sync with git e.g. 'main', 'infrahub/.*', 'release/.*', '^branch-'",
+        description=(
+            "Names or regex of branches to be created in infrahub during import "
+            "e.g. 'main', 'infrahub/.*', 'release/.*', '^branch-'. "
+            "Note: other branches created with sync with git will be imported also"
+        ),
     )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
-        for branch_name in self.sync_branch_names:
+        for branch_filter in self.import_sync_branch_names:
             try:
-                re.compile(branch_name)
+                re.compile(branch_filter)
             except re.error as exc:
-                raise ValueError(f"Invalid regex pattern for sync_branch_names: '{branch_name}' — {exc}") from exc
+                raise ValueError(
+                    f"Invalid regex pattern for import_sync_branch_names: '{branch_filter}' — {exc}"
+                ) from exc
         return self
 
 
