@@ -35,7 +35,7 @@ export default function BreadcrumbBranchSelector({
               <ListBox
                 items={branches}
                 emptyMessage="No branches found."
-                className="space-y-0"
+                className="p-1"
                 onAction={close}
               >
                 {(branch) => (
