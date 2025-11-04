@@ -9,6 +9,7 @@ import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeKind, AttributeSchema } from "@/entities/schema/types";
+import { Badge } from "@/shared/components/display/badge";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
@@ -65,7 +66,15 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.ANY:
     case ATTRIBUTE_KIND.JSON:
     case ATTRIBUTE_KIND.LIST: {
-      return null; // Not visible in table view
+      const items = attributeData.value?.map((value?: string) => value ?? "-");
+
+      return (
+        <div className="flex">
+          {items?.map((item: string, index: number) => (
+            <Badge key={index}>{item}</Badge>
+          ))}
+        </div>
+      );
     }
     default: {
       warnUnexpectedType(attributeKind);
