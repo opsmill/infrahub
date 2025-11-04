@@ -9,6 +9,7 @@ export function BreadcrumbBranches() {
 
   return (
     <Breadcrumb data-testid="breadcrumb-branches">
+      <BreadcrumbSeparator />
       <BreadcrumbItem href={constructPath("/branches")}>Branches</BreadcrumbItem>
       {branchName && (
         <>
