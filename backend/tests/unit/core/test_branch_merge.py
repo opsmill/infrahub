@@ -94,7 +94,7 @@ async def test_merge_graph_delete(db: InfrahubDatabase, default_branch, base_dat
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch1)
     await diff_merger.merge_graph(at=Timestamp())
 
-    # Query all personss in MAIN, AFTER the merge
+    # Query all persons in MAIN, AFTER the merge
     persons = sorted(await NodeManager.query(schema="TestPerson", db=db), key=lambda p: p.id)
     assert len(persons) == 2
     assert {p.id for p in persons} == {"p1", "p2"}
