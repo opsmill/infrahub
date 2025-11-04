@@ -126,7 +126,7 @@ jobs:
         run: invoke dev.build
 
       - name: Upgrade Infrahub and apply the latest database migrations
-        run: invoke dev.upgrade
+        run: invoke dev.upgrade --rebase-branches
 
       - name: Start Demo
         run: invoke dev.start
