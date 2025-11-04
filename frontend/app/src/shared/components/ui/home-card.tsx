@@ -25,7 +25,7 @@ const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
 };
 
 const HomeCardContent = ({ className, ...props }: HomeCardProps) => {
-  return <header className={classNames("p-3", className)} {...props} />;
+  return <div className={classNames("p-3", className)} {...props} />;
 };
 
 export const HomeCard = Object.assign(HomeCardRoot, {
