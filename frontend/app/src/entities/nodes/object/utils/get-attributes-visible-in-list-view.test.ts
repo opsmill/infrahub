@@ -49,6 +49,7 @@ describe("getAttributesVisibleInListView", () => {
       "Bandwidth",
       "IPHost",
       "IPNetwork",
+      "List",
     ]);
   });
 
