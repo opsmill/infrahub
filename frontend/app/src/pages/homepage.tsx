@@ -1,6 +1,6 @@
-import { GettingStarted } from "@/pages/home/getting-started";
-
 import Content from "@/shared/components/layout/content";
+
+import { GettingStarted } from "@/entities/homepage/ui/getting-started";
 
 const Homepage = () => {
   return (
