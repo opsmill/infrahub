@@ -33,7 +33,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
-from infrahub.git.utils import branch_name_in_sync_branches
+from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_client
@@ -506,9 +506,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 branch.name not in {GLOBAL_BRANCH_NAME, registry.default_branch}
                 and not branch.is_default
                 and not branch.sync_with_git
-                and not branch_name_in_sync_branches(branch_short_name=short_name)
+                and not branch_name_in_import_sync_branches(branch_short_name=short_name)
             )
-            branch_does_not_exist_import_sync_condition = not branch and not branch_name_in_sync_branches(
+            branch_does_not_exist_import_sync_condition = not branch and not branch_name_in_import_sync_branches(
                 branch_short_name=short_name
             )
 

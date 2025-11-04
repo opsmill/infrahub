@@ -172,7 +172,7 @@ async def fetch_proposed_change_generator_definition_targets(
     )
 
 
-def branch_name_in_sync_branches(branch_short_name: str) -> bool:
+def branch_name_in_import_sync_branches(branch_short_name: str) -> bool:
     for branch_filter in config.SETTINGS.git.import_sync_branch_names:
         if re.fullmatch(branch_filter, branch_short_name) or branch_filter == branch_short_name:
             return True
