@@ -488,7 +488,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return response
 
     async def filter_remote_branches(self, branches: dict[str, BranchInRemote]) -> dict[str, BranchInRemote]:
-        if not config.SETTINGS.git.import_sync_branch_names:
+        if not config.SETTINGS.git.import_sync_branch_names or not self.client:
             return branches
 
         filtered_branches = {}
