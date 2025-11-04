@@ -12,6 +12,4 @@ const Homepage = () => {
   );
 };
 
-export function Component() {
-  return <Homepage />;
-}
+export const Component = Homepage;

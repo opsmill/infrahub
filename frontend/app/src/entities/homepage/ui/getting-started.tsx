@@ -164,7 +164,7 @@ const GettingStartedContentItemRoot = ({ children }: GettingStartedContentItemPr
 };
 
 const GettingStartedContentItemTitle = ({ children }: GettingStartedContentItemProps) => {
-  return <div className="flex items-center gap-2 font-semibold text-sm">{children}</div>;
+  return <div className="flex items-center gap-2 font-semibold">{children}</div>;
 };
 
 interface GettingStartedContentItemLinkProps extends LinkButtonProps {
@@ -180,7 +180,7 @@ const GettingStartedContentItemLink = ({
   return (
     <LinkButton
       variant={"ghost"}
-      className="flex items-center gap-2 px-2 text-gray-500 underline"
+      className="flex items-center gap-2 px-2 py-1 text-gray-500 underline"
       to={to}
       {...props}
     >
