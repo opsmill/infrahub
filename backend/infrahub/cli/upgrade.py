@@ -33,9 +33,9 @@ from infrahub.workflows.initialization import (
 )
 
 from .db import (
-    detect_branches_needing_rebase,
     detect_migration_to_run,
     initialize_internal_schema,
+    mark_branches_needing_rebase,
     migrate_database,
     trigger_rebase_branches,
     update_core_schema,
@@ -121,7 +121,7 @@ async def upgrade_cmd(
     # -------------------------------------------
     # Perform branch rebase and apply migrations to them
     # -------------------------------------------
-    branches = await detect_branches_needing_rebase(db=dbdriver)
+    branches = await mark_branches_needing_rebase(db=dbdriver)
     plural = len(branches) != 1
     rprint(
         f"Found {len(branches)} {'branches' if plural else 'branch'} that {'need' if plural else 'needs'} to be rebased"
