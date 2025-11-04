@@ -488,7 +488,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return response
 
     async def filter_remote_branches(self, branches: dict[str, BranchInRemote]) -> dict[str, BranchInRemote]:
-        if not config.SETTINGS.git.import_sync_branch_names or not self.client:
+        if not config.SETTINGS.git.import_sync_branch_names:
             return branches
 
         filtered_branches = {}
@@ -498,7 +498,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             branch = None
 
             try:
-                branch = await self.client.branch.get(branch_name=short_name)
+                branch = await self.sdk.branch.get(branch_name=short_name)
             except BranchNotFoundError:
                 ...
 
