@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -329,7 +329,7 @@ class PrefectTask:
         logger = get_logger()
 
         async with get_client(sync_client=False) as client:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
+            cutoff = datetime.now(UTC) - timedelta(days=days_to_keep)
 
             flow_run_filter = FlowRunFilter(
                 start_time=FlowRunFilterStartTime(before_=cutoff),  # type: ignore[arg-type]
