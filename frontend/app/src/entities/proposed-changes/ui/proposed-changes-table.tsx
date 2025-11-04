@@ -10,7 +10,7 @@ import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object
 import type { Permission } from "@/entities/permission/types";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
-import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
+import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import type { NodeSchema } from "@/entities/schema/types";
 
@@ -19,9 +19,10 @@ import { computeProposedChangeFilters } from "../utils/compute-proposed-change-f
 type ProposedChangesTableProps = {
   schema: NodeSchema;
   permission: Permission;
+  hideFilters?: boolean;
 };
 
-export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
+export function ProposedChangesTable({ schema, hideFilters }: ProposedChangesTableProps) {
   const [proposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
 
   const [filters] = useFilters();
@@ -38,8 +39,8 @@ export function ProposedChangesTable({ schema }: ProposedChangesTableProps) {
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   return (
-    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
-      <ProposedChangesTableHeader schema={schema} />
+    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage} className="h-full">
+      {!hideFilters && <ProposedChangesTableFilters schema={schema} />}
 
       {flatData.map((node) => {
         return <ProposedChangesItem key={node.id} node={node} />;

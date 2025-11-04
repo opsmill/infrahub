@@ -14,7 +14,7 @@ interface ProposedChangesTableHeaderProps {
   schema: NodeSchema;
 }
 
-export function ProposedChangesTableHeader({ schema }: ProposedChangesTableHeaderProps) {
+export function ProposedChangesTableFilters({ schema }: ProposedChangesTableHeaderProps) {
   const [proposedChangeState, setProposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
   const [filters] = useFilters();
 
