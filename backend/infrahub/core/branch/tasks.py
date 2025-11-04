@@ -8,12 +8,12 @@ from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, MutationAction
+from infrahub.core.constants import MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
@@ -25,7 +25,6 @@ from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import branch_name_in_sync_branches
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
@@ -356,16 +355,6 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
 
         try:
             obj = Branch(**data_dict)
-            if (
-                config.SETTINGS.git.import_sync_branch_names
-                and obj.name not in {GLOBAL_BRANCH_NAME, registry.default_branch}
-                and not obj.is_default
-                and not obj.sync_with_git
-                and not branch_name_in_sync_branches(branch_short_name=obj.name)
-            ):
-                raise ValidationError(
-                    f"Branch name '{obj.name}' does not match import_sync_branch_names: {config.SETTINGS.git.import_sync_branch_names}"
-                )
         except pydantic.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValidationError("\n".join(error_msgs)) from exc

@@ -1,12 +1,16 @@
+import copy
+import json
 import re
 import shutil
 import tarfile
 from pathlib import Path
+from typing import Generator
 
 import anyio
 import pytest
 import ujson
 from git import Repo
+from httpx import Response
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.node import InfrahubNode
@@ -14,6 +18,7 @@ from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
@@ -1345,4 +1350,106 @@ async def mock_update_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
     httpx_mock.add_response(
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
     )
+    return httpx_mock
+
+
+@pytest.fixture
+def import_sync_branch_names() -> Generator[None, None, None]:
+    initial_import_sync_branch_names = config.SETTINGS.git.import_sync_branch_names
+    config.SETTINGS.git.import_sync_branch_names = ["branch.*"]
+    yield
+    config.SETTINGS.git.import_sync_branch_names = initial_import_sync_branch_names
+
+
+@pytest.fixture
+async def mock_get_branch_git_repo_01(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {
+        "data": {
+            "Branch": [
+                {
+                    "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
+                    "name": "main",
+                    "sync_with_git": True,
+                    "is_default": True,
+                    "origin_branch": None,
+                    "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
+                }
+            ]
+        }
+    }
+
+    def graphql_callback(request):
+        payload = json.loads(request.content)
+        variables = payload.get("variables", {})
+        branch_name = variables.get("branch_name")
+
+        if branch_name == "main":
+            return Response(200, json=response)
+
+        if branch_name == "branch01":
+            new_response = copy.deepcopy(response)
+            new_response["data"]["Branch"][0]["name"] = "branch01"
+            new_response["data"]["Branch"][0]["is_default"] = False
+            new_response["data"]["Branch"][0]["sync_with_git"] = False
+            return Response(200, json=new_response)
+
+        if branch_name == "branch02":
+            new_response = copy.deepcopy(response)
+            new_response["data"]["Branch"][0]["name"] = "branch02"
+            new_response["data"]["Branch"][0]["is_default"] = False
+            new_response["data"]["Branch"][0]["sync_with_git"] = False
+            return Response(200, json=new_response)
+
+        if branch_name == "clean-branch":
+            new_response = copy.deepcopy(response)
+            new_response["data"]["Branch"][0]["name"] = "clean-branch"
+            new_response["data"]["Branch"][0]["is_default"] = False
+            new_response["data"]["Branch"][0]["sync_with_git"] = False
+            return Response(200, json=new_response)
+
+        return Response(200, json={"data": {"Branch": []}})
+
+    httpx_mock.add_callback(graphql_callback)
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_get_branch_git_repo_03(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response = {
+        "data": {
+            "Branch": [
+                {
+                    "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
+                    "name": "main",
+                    "sync_with_git": True,
+                    "is_default": True,
+                    "origin_branch": None,
+                    "branched_from": "2023-02-17T09:30:17.811719Z",
+                    "is_isolated": False,
+                    "has_schema_changes": False,
+                }
+            ]
+        }
+    }
+
+    def graphql_callback(request):
+        payload = json.loads(request.content)
+        variables = payload.get("variables", {})
+        branch_name = variables.get("branch_name")
+
+        if branch_name == "main":
+            return Response(200, json=response)
+
+        if branch_name == "branch01":
+            new_response = copy.deepcopy(response)
+            new_response["data"]["Branch"][0]["name"] = "branch01"
+            new_response["data"]["Branch"][0]["is_default"] = False
+            new_response["data"]["Branch"][0]["sync_with_git"] = False
+            return Response(200, json=new_response)
+
+        return Response(200, json={"data": {"Branch": []}})
+
+    httpx_mock.add_callback(graphql_callback)
     return httpx_mock

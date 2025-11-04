@@ -1,7 +1,6 @@
 import pytest
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
@@ -164,23 +163,6 @@ class TestBranchCreate(TestInfrahubApp):
             result.errors[0].message
             == "Branch name contains invalid patterns or characters: disallowed ASCII characters/patterns"
         )
-
-        config.SETTINGS.git.import_sync_branch_names = ["branch.*"]
-        result = await graphql(
-            schema=gql_params.schema,
-            source=query,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={"branch_name": "infrahub"},
-        )
-
-        assert result.errors
-        assert len(result.errors) == 1
-        assert (
-            result.errors[0].message
-            == f"Branch name 'infrahub' does not match import_sync_branch_names: {config.SETTINGS.git.import_sync_branch_names}"
-        )
-        config.SETTINGS.git.import_sync_branch_names = []
 
     async def test_branch_create_short_name(
         self,

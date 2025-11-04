@@ -5,7 +5,6 @@ import re
 from inspect import isclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub import config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
 from infrahub.core.query import QueryType
@@ -279,10 +278,3 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
     @classmethod
     def __init_subclass_with_meta__(cls, **meta_options: dict[str, Any]) -> None:
         """This method just terminates the super() chain"""
-
-
-def branch_name_in_sync_branches(branch_short_name: str) -> bool:
-    for branch_filter in config.SETTINGS.git.import_sync_branch_names:
-        if re.fullmatch(branch_filter, branch_short_name) or branch_filter == branch_short_name:
-            return True
-    return False

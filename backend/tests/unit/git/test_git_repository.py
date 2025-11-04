@@ -12,7 +12,6 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx._httpx_mock import HTTPXMock
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
@@ -278,17 +277,6 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
     remote_branches = repo.get_branches_from_remote()
     assert isinstance(remote_branches, dict)
     assert sorted(remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
-
-
-async def test_get_branches_from_remote_in_import_sync_branch_names(git_repo_01: InfrahubRepository):
-    config.SETTINGS.git.import_sync_branch_names = ["branch.*"]
-    repo = git_repo_01
-
-    remote_branches = repo.get_branches_from_remote()
-    assert isinstance(remote_branches, dict)
-    assert sorted(remote_branches.keys()) == ["branch01", "branch02"]
-
-    config.SETTINGS.git.import_sync_branch_names = []
 
 
 async def test_get_branches_from_graph(
@@ -1090,3 +1078,25 @@ async def test_compare_python_check(
     )
 
     assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False
+
+
+async def test_get_filtered_remote_branches__all_branches_exists(
+    git_repo_01_w_client: InfrahubRepository, mock_get_branch_git_repo_01: HTTPXMock, import_sync_branch_names
+) -> None:
+    repo = git_repo_01_w_client
+    filtered_remote_branches = await repo.get_filtered_remote_branches()
+    assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "main"]
+
+
+async def test_get_filtered_remote_branches__some_branches_exists(
+    git_repo_01_w_client: InfrahubRepository, mock_get_branch_git_repo_03: HTTPXMock, import_sync_branch_names
+) -> None:
+    repo = git_repo_01_w_client
+    filtered_remote_branches = await repo.get_filtered_remote_branches()
+    assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "main"]
+
+
+async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    filtered_remote_branches = await repo.get_filtered_remote_branches()
+    assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
