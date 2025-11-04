@@ -449,7 +449,7 @@ class GitSettings(BaseSettings):
         default_factory=list,
         description=(
             "Names or regex of branches to be created in infrahub during import "
-            "e.g. 'main', 'infrahub/.*', 'release/.*', '^branch-'. "
+            "e.g. 'infrahub/.*', 'release/.*', '^branch-'. "
             "Note: other branches created with sync with git will be imported also"
         ),
     )
