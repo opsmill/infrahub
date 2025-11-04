@@ -2,17 +2,15 @@ import type React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
+import { Card } from "./card";
+
 interface HomeCardProps {
   className?: string;
   children?: React.ReactNode;
 }
 
-const HomeCardRoot = ({ className, children }: HomeCardProps) => {
-  return (
-    <div className={classNames("rounded-lg border border-gray-200 bg-white", className)}>
-      {children}
-    </div>
-  );
+const HomeCardRoot = ({ className, ...props }: HomeCardProps) => {
+  return <Card className={classNames("p-0", className)} {...props} />;
 };
 
 const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
