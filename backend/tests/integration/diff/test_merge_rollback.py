@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Never
 from unittest.mock import patch
 
 import pytest
@@ -39,7 +39,7 @@ class BrokenBranchMerger:
     async def merge(self, at=None) -> None:
         await self.real_merger.merge(at=at)
 
-    async def merge_graph(self, at):
+    async def merge_graph(self, at) -> Never:
         await self.real_merger.diff_merger.merge_graph(at=at)
         raise ValueError("This is broken on purpose")
 

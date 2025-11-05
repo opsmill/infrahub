@@ -127,7 +127,7 @@ async def test_ipprefix_nextavailable(
     prefix,
     prefix_length,
     response,
-):
+) -> None:
     obj = ip_dataset_01[prefix]
 
     default_branch.update_schema_hash()
@@ -169,7 +169,7 @@ async def test_ipaddress_nextavailable(
     prefix,
     prefix_length,
     response,
-):
+) -> None:
     obj = ip_dataset_02[prefix]
 
     default_branch.update_schema_hash()
@@ -524,7 +524,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ip_dataset_ranges: dict[str, Node],
         prefix: str,
         result: list[str],
-    ):
+    ) -> None:
         default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
@@ -576,7 +576,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ip_dataset_range_various_kinds: dict[str, Node],
         limit: int,
         kinds: list[str],
-    ):
+    ) -> None:
         default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         query = """
@@ -631,7 +631,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         default_ipnamespace: Node,
         register_ipam_schema: SchemaBranch,
         ip_dataset_range_various_kinds: dict[str, Node],
-    ):
+    ) -> None:
         default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         query = """
@@ -737,7 +737,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         limit: int,
         offset: int,
         result: list[str],
-    ):
+    ) -> None:
         default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
@@ -884,7 +884,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ip_dataset_available_prefixes: dict[str, Node],
         prefix: str,
         result: list[str],
-    ):
+    ) -> None:
         default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
@@ -1046,7 +1046,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         limit: int,
         offset: int,
         result: list[str],
-    ):
+    ) -> None:
         default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 

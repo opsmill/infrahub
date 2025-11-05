@@ -22,6 +22,7 @@ class BranchType(InfrahubObjectType):
     origin_branch = String(required=False)
     branched_from = String(required=False)
     status = InfrahubBranchStatus(required=True)
+    graph_version = Int(required=False)
     created_at = String(required=False)
     sync_with_git = Boolean(required=False)
     is_default = Boolean(required=False)

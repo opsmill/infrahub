@@ -11,7 +11,7 @@ async def test_get_menu_not_admin(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     await create_default_menu(db=db)
 
     with client:
@@ -32,7 +32,7 @@ async def test_get_menu_admin(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
-):
+) -> None:
     await create_default_menu(db=db)
 
     with client:

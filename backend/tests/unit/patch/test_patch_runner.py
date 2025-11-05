@@ -58,13 +58,13 @@ class TestingPatch(PatchQuery):
         self.edges_to_update = []
         self.edges_to_delete = []
 
-    def set_vertex_to_update(self, v: VertexToUpdate):
+    def set_vertex_to_update(self, v: VertexToUpdate) -> None:
         self.vertex_to_update = v
 
-    def set_vertices_to_delete(self, vertices: list[VertexToDelete]):
+    def set_vertices_to_delete(self, vertices: list[VertexToDelete]) -> None:
         self.vertices_to_delete = vertices
 
-    def set_edges_to_add(self, vertex_map: dict[str, str]):
+    def set_edges_to_add(self, vertex_map: dict[str, str]) -> None:
         for source_id, destination_id in vertex_map.items():
             self.edges_to_add.append(
                 EdgeToAdd(
@@ -75,10 +75,10 @@ class TestingPatch(PatchQuery):
                 )
             )
 
-    def set_edges_to_update(self, edges: list[EdgeToUpdate]):
+    def set_edges_to_update(self, edges: list[EdgeToUpdate]) -> None:
         self.edges_to_update = edges
 
-    def set_edges_to_delete(self, edges: list[EdgeToDelete]):
+    def set_edges_to_delete(self, edges: list[EdgeToDelete]) -> None:
         self.edges_to_delete = edges
 
     async def plan(self) -> PatchPlan:

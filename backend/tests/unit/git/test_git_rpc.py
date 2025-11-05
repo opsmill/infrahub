@@ -75,7 +75,9 @@ class TestAddRepository:
 
             patch.stopall()
 
-    async def test_git_rpc_create_successful(self, prefect_test_fixture, git_upstream_repo_01: dict[str, str], setup):
+    async def test_git_rpc_create_successful(
+        self, prefect_test_fixture, git_upstream_repo_01: dict[str, str], setup
+    ) -> None:
         repo_id = str(UUIDT())
         model = GitRepositoryAdd(
             repository_id=repo_id,
@@ -126,7 +128,7 @@ async def test_git_rpc_merge(
     branch01: BranchData,
     helper: TestHelper,
     create_test_admin: Node,
-):
+) -> None:
     repo = git_repo_01
 
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
@@ -170,7 +172,7 @@ async def test_git_rpc_diff(
     branch01: BranchData,
     branch02: BranchData,
     helper: TestHelper,
-):
+) -> None:
     repo = git_repo_01
 
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
@@ -232,7 +234,7 @@ class TestAddReadOnly:
             # teardown
             patch.stopall()
 
-    async def test_git_rpc_add_read_only_success(self, git_upstream_repo_01: dict[str, str], setup):
+    async def test_git_rpc_add_read_only_success(self, git_upstream_repo_01: dict[str, str], setup) -> None:
         repo_id = str(UUIDT())
         model = GitRepositoryAddReadOnly(
             repository_id=repo_id,
@@ -309,7 +311,7 @@ class TestPullReadOnly:
             # teardown
             patch.stopall()
 
-    async def test_improper_message(self, setup):
+    async def test_improper_message(self, setup) -> None:
         self.model.ref = None
         self.model.commit = None
 
@@ -318,7 +320,7 @@ class TestPullReadOnly:
         self.mock_repo_class.new.assert_not_awaited()
         self.mock_repo_class.init.assert_not_awaited()
 
-    async def test_existing_repository(self, setup):
+    async def test_existing_repository(self, setup) -> None:
         self.mock_repo.import_objects_from_files = AsyncMock()
 
         await pull_read_only(model=self.model)
@@ -340,7 +342,7 @@ class TestPullReadOnly:
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
-    async def test_new_repository(self, setup, prefect_test_fixture):
+    async def test_new_repository(self, setup, prefect_test_fixture) -> None:
         self.mock_repo_class.init.side_effect = RepositoryError(self.repo_name, "it is broken")
         self.mock_repo.import_objects_from_files = AsyncMock()
 

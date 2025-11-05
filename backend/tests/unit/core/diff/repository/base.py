@@ -32,7 +32,7 @@ class DiffRepositoryTestBase:
         await initialize_registry(db=db, initialize=True)
 
     @pytest.fixture
-    async def reset_database(self, db: InfrahubDatabase, default_branch):
+    async def reset_database(self, db: InfrahubDatabase, default_branch) -> None:
         await delete_all_nodes(db=db)
 
     def build_diff_node(self, num_sub_fields=2, no_recurse=False) -> EnrichedDiffNode:

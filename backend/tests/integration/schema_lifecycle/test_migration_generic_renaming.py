@@ -89,6 +89,6 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
         devices = await client.all(kind=DEVICE_KIND)
         assert len(devices) == 2
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

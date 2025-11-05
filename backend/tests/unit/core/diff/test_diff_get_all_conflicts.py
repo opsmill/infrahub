@@ -44,7 +44,7 @@ class TestDiffGetAllConflicts:
             base_branch_diff=base_diff_root,
         )
 
-    async def test_query_initialization_failure(self, diff_repository: DiffRepository):
+    async def test_query_initialization_failure(self, diff_repository: DiffRepository) -> None:
         with pytest.raises(ValueError, match=r"requires one and only one of `tracking_id` or `diff_id`"):
             [_ async for _ in diff_repository.get_all_conflicts_for_diff(diff_branch_name="a")]
 
@@ -56,7 +56,7 @@ class TestDiffGetAllConflicts:
                 )
             ]
 
-    async def test_no_conflicts(self, diff_repository: DiffRepository):
+    async def test_no_conflicts(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         await diff_repository.save(enriched_diffs=enriched_diffs)
 
@@ -69,7 +69,7 @@ class TestDiffGetAllConflicts:
         }
         assert conflicts == {}
 
-    async def test_get_node_level_conflict(self, diff_repository: DiffRepository):
+    async def test_get_node_level_conflict(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         node.conflict = EnrichedConflictFactory.build()
@@ -95,7 +95,7 @@ class TestDiffGetAllConflicts:
         assert len(conflicts_map) == 1
         assert conflicts_map == {node.path_identifier: node.conflict}
 
-    async def test_get_attribute_level_conflict(self, diff_repository: DiffRepository):
+    async def test_get_attribute_level_conflict(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         diff_prop = EnrichedPropertyFactory.build(conflict=EnrichedConflictFactory.build())
@@ -123,7 +123,7 @@ class TestDiffGetAllConflicts:
         assert len(conflicts_map) == 1
         assert conflicts_map == {diff_prop.path_identifier: diff_prop.conflict}
 
-    async def test_get_relationship_level_conflicts(self, diff_repository: DiffRepository):
+    async def test_get_relationship_level_conflicts(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         diff_rel_element = EnrichedRelationshipElementFactory.build(conflict=EnrichedConflictFactory.build())
@@ -151,7 +151,7 @@ class TestDiffGetAllConflicts:
         assert len(conflicts_map) == 1
         assert conflicts_map == {diff_rel_element.path_identifier: diff_rel_element.conflict}
 
-    async def test_get_relationship_property_level_conflicts(self, diff_repository: DiffRepository):
+    async def test_get_relationship_property_level_conflicts(self, diff_repository: DiffRepository) -> None:
         enriched_diffs = self._get_enriched_diffs()
         node = enriched_diffs.diff_branch_diff.nodes.pop()
         diff_prop = EnrichedPropertyFactory.build(conflict=EnrichedConflictFactory.build())

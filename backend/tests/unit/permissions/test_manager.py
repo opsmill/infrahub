@@ -38,7 +38,7 @@ async def test_load_permissions(
     default_branch: Branch,
     session_admin: AccountSession,
     session_first_account: AccountSession,
-):
+) -> None:
     permission_manager = PermissionManager(account_session=session_admin)
     await permission_manager.load_permissions(db=db, branch=default_branch)
 
@@ -64,7 +64,7 @@ async def test_load_permissions(
 
 async def test_load_permissions_multiple_backends(
     db: InfrahubDatabase, default_branch: Branch, session_first_account: AccountSession
-):
+) -> None:
     registry.permission_backends = [DummyBackendAllow(), DummyBackendDeny()]
 
     permission_manager = PermissionManager(account_session=session_first_account)
@@ -85,7 +85,7 @@ async def test_has_permission_global(
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
+) -> None:
     allow_default_branch_edition = GlobalPermission(
         action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
     )
@@ -151,7 +151,7 @@ async def test_has_permission_object(
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
+) -> None:
     role1_permissions = []
     for p in [
         ObjectPermission(
@@ -235,7 +235,7 @@ async def test_has_permissions_object(
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
+) -> None:
     role1_permissions = []
     for p in [
         ObjectPermission(
@@ -339,7 +339,7 @@ async def test_report_permission_object(
     session_admin: AccountSession,
     session_first_account: AccountSession,
     session_second_account: AccountSession,
-):
+) -> None:
     role1_permissions = []
     for p in [
         ObjectPermission(

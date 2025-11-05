@@ -63,7 +63,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
         ),
     ],
 )
-async def test_schema_protected_generics(schema_root: SchemaRoot, expected_error: str):
+async def test_schema_protected_generics(schema_root: SchemaRoot, expected_error: str) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=schema_root)
 

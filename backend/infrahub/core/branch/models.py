@@ -7,9 +7,8 @@ from neo4j.graph import Node as Neo4jNode
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import (
-    GLOBAL_BRANCH_NAME,
-)
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import Query, QueryType
@@ -48,6 +47,7 @@ class Branch(StandardNode):
     is_isolated: bool = True
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
+    graph_version: int | None = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
@@ -278,6 +278,10 @@ class Branch(StandardNode):
             end[self.origin_branch] = end_time.to_string()
 
         return start, end
+
+    async def create(self, db: InfrahubDatabase) -> bool:
+        self.graph_version = GRAPH_VERSION
+        return await super().create(db=db)
 
     async def delete(self, db: InfrahubDatabase) -> None:
         if self.is_default:

@@ -1,41 +1,62 @@
-import { Icon } from "@iconify-icon/react";
-import React from "react";
+import { cva } from "class-variance-authority";
+import type React from "react";
+import { Button, type ButtonProps, Link, type LinkProps } from "react-aria-components";
 
+import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
 
-export const Breadcrumb = React.forwardRef<HTMLOListElement, React.ComponentPropsWithoutRef<"ol">>(
-  ({ className, ...props }, ref) => (
-    <nav ref={ref} aria-label="breadcrumb">
-      <ol
-        ref={ref}
-        className={classNames("flex items-center break-words text-sm", className)}
-        {...props}
-      />
-    </nav>
-  )
-);
+export function Breadcrumb({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={classNames("flex items-center text-sm", className)} {...props} />;
+}
 
-export const BreadcrumbSeparator = ({
+export function BreadcrumbSeparator({
   children,
   className,
   ...props
-}: React.ComponentProps<"li">) => (
-  <li
-    role="presentation"
-    aria-hidden="true"
-    className={classNames("inline-flex", className)}
-    {...props}
-  >
-    {children ?? <Icon icon="mdi:slash-forward" className="text-gray-400 text-xl" />}
-  </li>
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      role="presentation"
+      aria-hidden="true"
+      className={classNames("select-none font-medium text-lg text-neutral-300", className)}
+      {...props}
+    >
+      {children ?? "/"}
+    </div>
+  );
+}
+const breadcrumbItemStyle = cva(
+  [
+    focusVisibleStyle,
+    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-0.5 text-stone-800",
+  ],
+  {
+    variants: {
+      isPressed: {
+        true: "bg-stone-100",
+      },
+    },
+  }
 );
 
-export const BreadcrumbItem = React.forwardRef<HTMLLIElement, React.ComponentPropsWithoutRef<"li">>(
-  ({ className, ...props }, ref) => (
-    <li
-      ref={ref}
-      className={classNames("inline-flex items-center gap-1.5", className)}
+type BreadcrumbItemProps = ButtonProps | (LinkProps & { href: LinkProps["href"] });
+
+export function BreadcrumbItem({ className, ...props }: BreadcrumbItemProps) {
+  if ("href" in props) {
+    return (
+      <Link
+        className={(stylingProps) =>
+          classNames(breadcrumbItemStyle(stylingProps), "hover:underline", className)
+        }
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <Button
+      className={(stylingProps) => classNames(breadcrumbItemStyle(stylingProps), className)}
       {...props}
     />
-  )
-);
+  );
+}

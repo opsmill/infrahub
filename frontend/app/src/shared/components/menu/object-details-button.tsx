@@ -8,7 +8,6 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import {
   CopyToClipboardMenuItem,
   Menu,
-  MenuHeader,
   MenuItem,
   MenuPopover,
   MenuSection,
@@ -49,8 +48,7 @@ export const ObjectDetailsButton = ({
 
       <MenuPopover placement="bottom end">
         <Menu>
-          <MenuSection>
-            <MenuHeader>Actions</MenuHeader>
+          <MenuSection title="Actions">
             <CopyToClipboardMenuItem textToCopy={id}>Copy ID</CopyToClipboardMenuItem>
 
             {hfid && hfid !== "null" && (
@@ -68,8 +66,7 @@ export const ObjectDetailsButton = ({
             {children}
           </MenuSection>
 
-          <MenuSection>
-            <MenuHeader>Go to</MenuHeader>
+          <MenuSection title="Go to">
             <MenuItem
               href={constructPath("/tasks", [
                 { name: QSP.FILTER, value: JSON.stringify([taskFilter]) },

@@ -25,7 +25,7 @@ class TestWorkflowExecution(TestWorkerInfrahubAsync):
         dummy_flows_deployment,
         work_pool: WorkPool,
         client,
-    ):
+    ) -> None:
         service = WorkflowWorkerExecution()
 
         task = asyncio.create_task(
@@ -54,7 +54,7 @@ class TestWorkflowExecution(TestWorkerInfrahubAsync):
         dummy_flows_deployment,
         work_pool: WorkPool,
         client,
-    ):
+    ) -> None:
         service = WorkflowWorkerExecution()
 
         task = asyncio.create_task(

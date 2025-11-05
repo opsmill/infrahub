@@ -53,7 +53,7 @@ class TestBenchmarkNodeCreationBatch(TestInfrahubApp):
         await db.execute_query(query=query, params=params, name="delete_nodes")
 
     @pytest.fixture
-    async def load_schema(self, client, branch, car_person_schema_unique_owner):
+    async def load_schema(self, client, branch, car_person_schema_unique_owner) -> None:
         res = await client.schema.load([car_person_schema_unique_owner], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 
@@ -85,6 +85,6 @@ class TestBenchmarkNodeCreationBatch(TestInfrahubApp):
         )
 
 
-async def execute_batch(infrahub_batch):
+async def execute_batch(infrahub_batch) -> None:
     async for _, _ in infrahub_batch.execute():
         pass

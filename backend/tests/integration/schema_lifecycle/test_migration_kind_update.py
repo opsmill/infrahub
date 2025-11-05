@@ -190,7 +190,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         await branch_specific_one.save(db=db)
         return branch_specific_one
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 1
 
@@ -205,7 +205,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         initial_dataset,
         branch_one: Branch,
         schema_step_02: dict[str, Any],
-    ):
+    ) -> None:
         current_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         current_specific_one_schema = current_schema_branch.get_node(name=SPECIFIC_ONE_KIND, duplicate=False)
         for schema_dict in schema_step_02["nodes"]:
@@ -232,7 +232,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         branch_one: Branch,
         schema_step_02: dict[str, Any],
         specific_one_update_01: Node,
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_02], branch=BRANCH_ONE)
         assert not response.errors
@@ -264,7 +264,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         branch_one: Branch,
         schema_step_02: dict[str, Any],
         specific_one_update_02: Node,
-    ):
+    ) -> None:
         retrieved_specific_one = await NodeManager.get_one(
             db=db, branch=branch_one, id=initial_dataset["specific_one"].id
         )
@@ -309,7 +309,7 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         schema_specific_one_base: dict[str, Any],
         schema_specific_one_new_kind: dict[str, Any],
         specific_one_update_02: Node,
-    ):
+    ) -> None:
         is_success = await client.branch.merge(branch_name=BRANCH_ONE)
         assert is_success
 
@@ -330,6 +330,6 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         assert len(updated_things_rels) == 1
         assert retrieved_things_rels[0].get_peer_id() == updated_things_rels[0].get_peer_id()
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

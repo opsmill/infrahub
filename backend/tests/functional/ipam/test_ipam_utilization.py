@@ -186,7 +186,7 @@ class TestIpamUtilization(TestIpam):
         step2_branch_addresses = step_02_dataset["branch_addresses"]
         await step2_branch_addresses[0].delete(db=db)
 
-    async def test_step01_main_utilization(self, db: InfrahubDatabase, default_branch: Branch, initial_dataset):
+    async def test_step01_main_utilization(self, db: InfrahubDatabase, default_branch: Branch, initial_dataset) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix2 = initial_dataset["prefix2"]
@@ -198,7 +198,7 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step01_graphql_prefix_pool_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         prefix_pool = initial_dataset["prefix_pool"]
         default_branch.update_schema_hash()
@@ -261,7 +261,7 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step01_graphql_address_pool_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
-    ):
+    ) -> None:
         prefix = initial_dataset["prefix"]
         address_pool = initial_dataset["address_pool"]
         default_branch.update_schema_hash()
@@ -322,7 +322,7 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
@@ -498,7 +498,7 @@ class TestIpamUtilization(TestIpam):
         initial_dataset,
         step_02_dataset,
         step_03_dataset,
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]

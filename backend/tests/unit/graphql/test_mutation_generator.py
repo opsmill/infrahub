@@ -49,7 +49,7 @@ async def test_run_generator_definition(
     car_person_data_generic,
     create_test_admin: Node,
     definition1: Node,
-):
+) -> None:
     query = """
     mutation {
         CoreGeneratorDefinitionRun(data: { id: "%s" }, wait_until_completion: false) {

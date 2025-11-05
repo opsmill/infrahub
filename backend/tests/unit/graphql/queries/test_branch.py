@@ -16,7 +16,7 @@ class TestBranchQuery(TestInfrahubApp):
         session_admin,
         client,
         service,
-    ):
+    ) -> None:
         create_branch_query = """
         mutation {
             BranchCreate(data: { name: "branch3", description: "my description" }) {

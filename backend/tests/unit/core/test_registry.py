@@ -6,7 +6,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 
 
-async def test_get_branch_from_registry(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_branch_from_registry(db: InfrahubDatabase, default_branch: Branch) -> None:
     br1 = registry.get_branch_from_registry()
     assert br1.name == default_branch.name
 
@@ -14,7 +14,7 @@ async def test_get_branch_from_registry(db: InfrahubDatabase, default_branch: Br
     assert br2.name == default_branch.name
 
 
-async def test_get_branch_not_in_registry(db: InfrahubDatabase, default_branch: Branch):
+async def test_get_branch_not_in_registry(db: InfrahubDatabase, default_branch: Branch) -> None:
     # initialize internal registry
     registry.schema = SchemaManager()
     schema = SchemaRoot(**internal_schema)

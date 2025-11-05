@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="module", autouse=True)
-def load_component_dependency_registry():
+def load_component_dependency_registry() -> None:
     build_component_registry()
 
 

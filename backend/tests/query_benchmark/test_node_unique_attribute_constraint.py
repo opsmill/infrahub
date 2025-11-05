@@ -33,7 +33,7 @@ async def benchmark_uniqueness_query(
     benchmark_config: BenchmarkConfig,
     test_params_label: str,
     test_name: str,
-):
+) -> None:
     """
     Profile NodeUniqueAttributeConstraintQuery with a given query_request / configuration, using a Car generator.
     """
@@ -105,7 +105,7 @@ async def benchmark_uniqueness_query(
         ),
     ],
 )
-async def test_multiple_constraints(query_request, car_person_schema_root, graph_generator):
+async def test_multiple_constraints(query_request, car_person_schema_root, graph_generator) -> None:
     benchmark_config = BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE)
     await benchmark_uniqueness_query(
         query_request=query_request,
@@ -129,7 +129,7 @@ async def test_multiple_constraints(query_request, car_person_schema_root, graph
         BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=True),
     ],
 )
-async def test_single_constraint_multiple_runtimes(benchmark_config, car_person_schema_root, graph_generator):
+async def test_single_constraint_multiple_runtimes(benchmark_config, car_person_schema_root, graph_generator) -> None:
     query_request = NodeUniquenessQueryRequest(
         kind="TestCar",
         unique_attribute_paths={

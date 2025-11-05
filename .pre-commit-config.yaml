@@ -10,7 +10,7 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: end-of-file-fixer
-        exclude: ^schema/schema\.graphql$
+        exclude: ^(schema/schema\.graphql|schema/openapi\.json)$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
