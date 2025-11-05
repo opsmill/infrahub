@@ -605,7 +605,7 @@ class Migration044(MigrationRequiringRebase):
     """
 
     name: str = "044_backfill_hfid_display_label_in_db"
-    minimum_version: int = 44
+    minimum_version: int = 43
     update_batch_size: int = 1000
     # skip these b/c the attributes on these schema-related nodes are used to define the values included in
     # the human_friendly_id and display_label attributes on instances of these schema, so should not be updated

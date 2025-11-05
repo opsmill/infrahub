@@ -46,7 +46,7 @@ WITH n.kind AS kind, collect(n.uuid) AS node_ids
 
 class Migration043(MigrationRequiringRebase):
     name: str = "043_create_hfid_display_label_in_db"
-    minimum_version: int = 43
+    minimum_version: int = 42
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
