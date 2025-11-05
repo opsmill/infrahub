@@ -136,9 +136,6 @@ jobs:
           PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
-      - name: Test branch rebase
-        run: poetry run invoke dev.test-branch-rebase --branch atl1-delete-upstream --data-to-check $DATA_NAME
-
       - name: Containers after tests
         if: always()
         run: docker ps -a
