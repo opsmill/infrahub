@@ -4,14 +4,13 @@ import ipaddress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from rich.console import Console
 from rich.progress import Progress
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
@@ -235,13 +234,13 @@ class Migration039(ArbitraryMigration):
         return MigrationResult()
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        console = Console()
+        console = get_migration_console()
         result = MigrationResult()
         # load schemas from database into registry
         initialize_lock()
         await initialization(db=db)
 
-        console.print("Identifying IP prefixes/addresses to reconcile...", end="")
+        console.print("Identifying IP prefixes and addresses to reconcile...", end="")
         find_nodes_query = await FindNodesToReconcileQuery.init(db=db)
         await find_nodes_query.execute(db=db)
         console.print("done")
@@ -250,16 +249,17 @@ class Migration039(ArbitraryMigration):
         # reconciler cannot correctly handle a prefix that is its own parent
         ip_node_details_list = find_nodes_query.get_nodes_to_reconcile()
         uuids_to_check = {ip_node_details.node_uuid for ip_node_details in ip_node_details_list}
-        console.print(f"{len(ip_node_details_list)} IP prefixes/addresses will be reconciled")
+        console.log(f"{len(ip_node_details_list)} IP prefixes or addresses will be reconciled.")
 
-        console.print("Deleting any self-parent relationships...", end="")
+        console.print("Deleting self-parent relationships prior to reconciliation...", end="")
         delete_self_parent_relationships_query = await DeleteSelfParentRelationshipsQuery.init(
             db=db, uuids_to_check=list(uuids_to_check)
         )
         await delete_self_parent_relationships_query.execute(db=db)
         console.print("done")
 
-        with Progress() as progress:
+        console.log("Reconciling IP prefixes and addresses across branches...")
+        with Progress(console=console) as progress:
             reconcile_task = progress.add_task("Reconciling IP prefixes/addresses...", total=len(ip_node_details_list))
 
             for ip_node_details in ip_node_details_list:
@@ -270,5 +270,7 @@ class Migration039(ArbitraryMigration):
                     node_uuid=ip_node_details.node_uuid,
                 )
                 progress.update(reconcile_task, advance=1)
+
+        console.log("IP prefix and address reconciliation complete.")
 
         return result

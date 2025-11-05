@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
+from rich.console import Console
 from typing_extensions import Self
 
 from infrahub.core import registry
@@ -12,6 +13,19 @@ from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipS
 from infrahub.core.timestamp import Timestamp
 
 from .query import MigrationBaseQuery  # noqa: TC001
+
+MIGRATION_LOG_TIME_FORMAT = "[%Y-%m-%d %H:%M:%S]"
+_migration_console: Console | None = None
+
+
+def get_migration_console() -> Console:
+    global _migration_console
+
+    if _migration_console is None:
+        _migration_console = Console(log_time_format=MIGRATION_LOG_TIME_FORMAT)
+
+    return _migration_console
+
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
