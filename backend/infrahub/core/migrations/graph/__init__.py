@@ -42,6 +42,7 @@ from .m037_index_attr_vals import Migration037
 from .m038_redo_0000_prefix_fix import Migration038
 from .m039_ipam_reconcile import Migration039
 from .m040_duplicated_attributes import Migration040
+from .m041_deleted_dup_edges import Migration041
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -89,6 +90,7 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration038,
     Migration039,
     Migration040,
+    Migration041,
 ]
 
 
