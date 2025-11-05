@@ -77,7 +77,7 @@ export function BreadcrumbLoading() {
 }
 
 export function BreadcrumbError({ error }: { error: Error }) {
-  console.error("IPAM Breadcrumb Error:", error);
+  console.error("Breadcrumb Error:", error);
 
   return (
     <BreadcrumbItem isDisabled className="text-red-500">
