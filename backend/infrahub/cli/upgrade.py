@@ -8,7 +8,6 @@ import typer
 from deepdiff import DeepDiff
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
-from rich import print as rprint
 
 from infrahub import config
 from infrahub.core.initialization import (
@@ -18,6 +17,7 @@ from infrahub.core.initialization import (
     initialize_registry,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.shared import get_migration_console
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.lock import initialize_lock
@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 app = AsyncTyper()
+console = get_migration_console()
 
 
 @app.command(name="upgrade")
@@ -90,7 +91,7 @@ async def upgrade_cmd(
 
     if not await migrate_database(db=dbdriver, initialize=False, migrations=migrations):
         # A migration failed, stop the upgrade process
-        rprint("Upgrade cancelled due to migration failure.")
+        console.log("Upgrade cancelled due to migration failure.")
         await dbdriver.close()
         return
 
@@ -134,21 +135,21 @@ async def upgrade_menu(db: InfrahubDatabase) -> None:
     diff_menu = DeepDiff(menu_items.to_rest(), default_menu_dict.to_rest(), ignore_order=True)
 
     if not diff_menu:
-        rprint("Menu Up to date, nothing to update")
+        console.log("Menu Up to date, nothing to update")
         return
 
     await menu_repository.update_menu(existing_menu=menu_items, new_menu=default_menu_dict, menu_nodes=menu_nodes)
-    rprint("Menu has been updated")
+    console.log("Menu has been updated")
 
 
 async def upgrade_permissions(db: InfrahubDatabase) -> None:
     existing_permissions = await NodeManager.query(schema=CoreObjectPermission, db=db, limit=1)
     if existing_permissions:
-        rprint("Permissions Up to date, nothing to update")
+        console.log("Permissions Up to date, nothing to update")
         return
 
     await setup_permissions(db=db)
-    rprint("Permissions have been updated")
+    console.log("Permissions have been updated")
 
 
 async def setup_permissions(db: InfrahubDatabase) -> None:

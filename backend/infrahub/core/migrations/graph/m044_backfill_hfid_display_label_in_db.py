@@ -11,7 +11,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipDirection
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
 
@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+
+console = get_migration_console()
 
 
 class DefaultBranchNodeCount(Query):
@@ -721,7 +724,7 @@ class Migration044(MigrationRequiringRebase):
         hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
 
         try:
-            with Progress() as progress:
+            with Progress(console=console) as progress:
                 update_task = progress.add_task(
                     f"Set display_label and human_friendly_id for {total_nodes_count} nodes on default branch",
                     total=total_nodes_count,
