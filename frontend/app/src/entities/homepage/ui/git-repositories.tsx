@@ -42,7 +42,7 @@ export const GitRepositories = () => {
         onLoadMore={fetchNextPage}
         className="flex flex-col gap-2"
       >
-        {flatData.length === 0 && (
+        {!isLoading && flatData.length === 0 && (
           <EmptyHomeCard
             title={"No git repository connected"}
             subtitle={"Connect a Git repo to sync changes."}
