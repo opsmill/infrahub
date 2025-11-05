@@ -3950,3 +3950,75 @@ async def test_identify_object_templates_with_generics() -> None:
         TestKind.SFP,
         TestKind.VIRTUAL_INTERFACE,
     }
+
+
+async def test_validate_attribute_parameter_combinations() -> None:
+    schema = {
+        "nodes": [
+            {
+                "name": "Object",
+                "namespace": "Testing",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "optional": True, "unique": True},
+                    {"name": "other", "kind": "Text", "optional": True},
+                ],
+            }
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema))
+    with pytest.raises(ValidationError, match="You cannot load a schema that has an optional and unique attribute"):
+        schema_branch.process()
+
+    schema2 = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "optional": True, "unique": True},
+                ],
+            },
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test2")
+    schema_branch.load_schema(schema=SchemaRoot(**schema2))
+    with pytest.raises(ValidationError, match="You cannot load a schema that has an optional and unique attribute"):
+        schema_branch.process()
+
+
+async def test_validate_attribute_parameter_combinations__does_not_raise_if_not_schema_strict_mode(
+    not_schema_strict_mode,
+) -> None:
+    schema = {
+        "nodes": [
+            {
+                "name": "Object",
+                "namespace": "Testing",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "optional": True, "unique": True},
+                    {"name": "other", "kind": "Text", "optional": True},
+                ],
+            }
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**schema))
+    schema_branch.process()
+
+    schema2 = {
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "optional": True, "unique": True},
+                ],
+            },
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test2")
+    schema_branch.load_schema(schema=SchemaRoot(**schema2))
+    schema_branch.process()

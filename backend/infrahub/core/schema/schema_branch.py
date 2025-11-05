@@ -1134,6 +1134,8 @@ class SchemaBranch:
                             ) from None
 
     def validate_attribute_parameters(self) -> None:
+        schema_strict_mode = config.SETTINGS.main.schema_strict_mode
+
         for name in self.generics.keys():
             generic_schema = self.get_generic(name=name, duplicate=False)
             for attribute in generic_schema.attributes:
@@ -1144,6 +1146,9 @@ class SchemaBranch:
                 ):
                     attribute.parameters.number_pool_id = str(uuid4())
 
+                if schema_strict_mode:
+                    self._validate_attribute_parameter_combinations(attribute=attribute)
+
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
@@ -1151,6 +1156,14 @@ class SchemaBranch:
                     self._validate_number_pool_parameters(
                         node_schema=node_schema, attribute=attribute, number_pool_parameters=attribute.parameters
                     )
+
+                if schema_strict_mode:
+                    self._validate_attribute_parameter_combinations(attribute=attribute)
+
+    @staticmethod
+    def _validate_attribute_parameter_combinations(attribute: AttributeSchema) -> None:
+        if attribute.optional and attribute.unique:
+            raise ValidationError("You cannot load a schema that has an optional and unique attribute")
 
     def _validate_number_pool_parameters(
         self, node_schema: NodeSchema, attribute: AttributeSchema, number_pool_parameters: NumberPoolParameters

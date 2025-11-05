@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 
+from infrahub import config
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
@@ -388,3 +389,11 @@ def schema_diff_attr_inheritance_types():
         ],
     }
     return FULL_SCHEMA
+
+
+@pytest.fixture
+def not_schema_strict_mode() -> None:
+    initial_schema_strict_mode = config.SETTINGS.main.schema_strict_mode
+    config.SETTINGS.main.schema_strict_mode = False
+    yield
+    config.SETTINGS.main.schema_strict_mode = initial_schema_strict_mode
