@@ -7247,6 +7247,7 @@ type InfrahubBranch {
   branched_from: NonRequiredStringValueField
   created_at: String
   description: NonRequiredStringValueField
+  graph_version: Int
   has_schema_changes: NonRequiredBooleanValueField
   id: String!
   is_default: NonRequiredBooleanValueField
