@@ -8,10 +8,10 @@ export const GitRepositories = () => {
   return (
     <HomeCard>
       <HomeCard.Title className="flex items-center justify-between">
-        Git repositories{" "}
+        Git repositories
         <HomeCard.Link to={`/objects/${GENERIC_REPOSITORY_KIND}`}>
           View all <Icon icon={"mdi:chevron-right"} />
-        </HomeCard.Link>{" "}
+        </HomeCard.Link>
       </HomeCard.Title>
       OK
     </HomeCard>
