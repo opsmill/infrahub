@@ -8,9 +8,10 @@ from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
 
-def test_check_branch_type_and_infrahub_branch_has_equal_fields():
+def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
+    exempted_fields = ("id", "created_at")
     for field_name, field_value in BranchType._meta.fields.items():
-        if field_name in ["id", "created_at"]:
+        if field_name in exempted_fields:
             continue
         if InfrahubBranch._meta.fields[field_name] == field_value:
             raise Exception(f"'{field_name}' is not updated in InfrahubBranch")
