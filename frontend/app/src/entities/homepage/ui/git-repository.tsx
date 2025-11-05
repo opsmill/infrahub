@@ -1,3 +1,5 @@
+import { Icon } from "@iconify-icon/react";
+
 import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames, getTextColor } from "@/shared/utils/common";
@@ -5,7 +7,10 @@ import { classNames, getTextColor } from "@/shared/utils/common";
 export const GitRepositoryItem = ({ display_label, sync_status }: CoreRepository) => {
   return (
     <div className="flex items-center justify-between p-4">
-      <div>{display_label}</div>
+      <div className="flex items-center gap-1">
+        <Icon icon={"mdi:git"} className="text-red-600" />
+        {display_label}
+      </div>
       <Tooltip enabled={!!sync_status?.description} content={sync_status?.description}>
         <div
           className={classNames("rounded-full px-3 py-1.5")}
