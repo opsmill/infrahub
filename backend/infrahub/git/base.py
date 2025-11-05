@@ -11,7 +11,6 @@ from git import BadName, Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TC002
-from infrahub_sdk.exceptions import BranchNotFoundError
 from prefect import Flow, Task
 from prefect.logging import get_run_logger
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,9 +18,10 @@ from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
+from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
+    BranchNotFoundError,
     CommitNotFoundError,
     FileOutOfRepositoryError,
     RepositoryConnectionError,
@@ -487,44 +487,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return response
 
-    async def filter_remote_branches(self, branches: dict[str, BranchInRemote]) -> dict[str, BranchInRemote]:
-        if not config.SETTINGS.git.import_sync_branch_names:
-            return branches
-
-        filtered_branches = {}
-        skipped_branch_names = []
-
-        for short_name, branch_data in branches.items():
-            branch = None
-
-            try:
-                branch = await self.sdk.branch.get(branch_name=short_name)
-            except BranchNotFoundError:
-                ...
-
-            branch_exists_import_sync_condition = branch and (
-                branch.name not in {GLOBAL_BRANCH_NAME, registry.default_branch}
-                and not branch.is_default
-                and not branch.sync_with_git
-                and not branch_name_in_import_sync_branches(branch_short_name=short_name)
-            )
-            branch_does_not_exist_import_sync_condition = not branch and not branch_name_in_import_sync_branches(
-                branch_short_name=short_name
-            )
-
-            if branch_exists_import_sync_condition or branch_does_not_exist_import_sync_condition:
-                skipped_branch_names.append(short_name)
-                continue
-
-            filtered_branches[short_name] = branch_data
-
-        if skipped_branch_names:
-            log.debug(
-                f"Skipped the following branches {skipped_branch_names} "
-                f"because no match was found in import_sync_branch_names {config.SETTINGS.git.import_sync_branch_names}"
-            )
-        return filtered_branches
-
     def get_branches_from_remote(self) -> dict[str, BranchInRemote]:
         """Return a dict with all the branches present on the remote."""
 
@@ -775,8 +737,43 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return True
 
     async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
-        remote_branches = self.get_branches_from_remote()
-        return await self.filter_remote_branches(branches=remote_branches)
+        branches = self.get_branches_from_remote()
+
+        if not config.SETTINGS.git.import_sync_branch_names:
+            return branches
+
+        filtered_branches = {}
+        skipped_branch_names = []
+
+        for short_name, branch_data in branches.items():
+            branch = None
+
+            try:
+                branch = registry.get_branch_from_registry(branch=short_name)
+            except BranchNotFoundError:
+                ...
+
+            branch_exists_import_sync_condition = branch and (
+                branch.name not in {registry.default_branch, self.default_branch}
+                and not branch.sync_with_git
+                and not branch_name_in_import_sync_branches(branch_short_name=short_name)
+            )
+            branch_does_not_exist_import_sync_condition = not branch and not branch_name_in_import_sync_branches(
+                branch_short_name=short_name
+            )
+
+            if branch_exists_import_sync_condition or branch_does_not_exist_import_sync_condition:
+                skipped_branch_names.append(short_name)
+                continue
+
+            filtered_branches[short_name] = branch_data
+
+        if skipped_branch_names:
+            log.debug(
+                f"Skipped the following branches {skipped_branch_names} "
+                f"because no match was found in import_sync_branch_names {config.SETTINGS.git.import_sync_branch_names}"
+            )
+        return filtered_branches
 
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
         """

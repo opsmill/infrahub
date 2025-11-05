@@ -1085,17 +1085,17 @@ async def test_compare_python_check(
 
 
 async def test_get_filtered_remote_branches__all_branches_exists(
-    git_repo_01_w_client: InfrahubRepository, mock_get_branch_git_repo_01: HTTPXMock, import_sync_branch_names
+    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01, import_sync_branch_names
 ) -> None:
-    repo = git_repo_01_w_client
+    repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
     assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "main"]
 
 
 async def test_get_filtered_remote_branches__some_branches_exists(
-    git_repo_01_w_client: InfrahubRepository, mock_get_branch_git_repo_03: HTTPXMock, import_sync_branch_names
+    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_03, import_sync_branch_names
 ) -> None:
-    repo = git_repo_01_w_client
+    repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
     assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "main"]
 

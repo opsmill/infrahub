@@ -1,5 +1,3 @@
-import copy
-import json
 import re
 import shutil
 import tarfile
@@ -10,7 +8,6 @@ import anyio
 import pytest
 import ujson
 from git import Repo
-from httpx import Response
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.node import InfrahubNode
@@ -19,8 +16,11 @@ from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.schema import SchemaRoot, core_models
+from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
@@ -1362,94 +1362,12 @@ def import_sync_branch_names() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-async def mock_get_branch_git_repo_01(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {
-        "data": {
-            "Branch": [
-                {
-                    "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
-                    "name": "main",
-                    "sync_with_git": True,
-                    "is_default": True,
-                    "origin_branch": None,
-                    "branched_from": "2023-02-17T09:30:17.811719Z",
-                    "is_isolated": False,
-                    "has_schema_changes": False,
-                }
-            ]
-        }
-    }
-
-    def graphql_callback(request):
-        payload = json.loads(request.content)
-        variables = payload.get("variables", {})
-        branch_name = variables.get("branch_name")
-
-        if branch_name == "main":
-            return Response(200, json=response)
-
-        if branch_name == "branch01":
-            new_response = copy.deepcopy(response)
-            new_response["data"]["Branch"][0]["name"] = "branch01"
-            new_response["data"]["Branch"][0]["is_default"] = False
-            new_response["data"]["Branch"][0]["sync_with_git"] = False
-            return Response(200, json=new_response)
-
-        if branch_name == "branch02":
-            new_response = copy.deepcopy(response)
-            new_response["data"]["Branch"][0]["name"] = "branch02"
-            new_response["data"]["Branch"][0]["is_default"] = False
-            new_response["data"]["Branch"][0]["sync_with_git"] = False
-            return Response(200, json=new_response)
-
-        if branch_name == "clean-branch":
-            new_response = copy.deepcopy(response)
-            new_response["data"]["Branch"][0]["name"] = "clean-branch"
-            new_response["data"]["Branch"][0]["is_default"] = False
-            new_response["data"]["Branch"][0]["sync_with_git"] = False
-            return Response(200, json=new_response)
-
-        return Response(200, json={"data": {"Branch": []}})
-
-    httpx_mock.add_callback(graphql_callback)
-    return httpx_mock
+async def mock_create_branch_git_repo_01(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await create_branch(branch_name="branch01", db=db)
+    await create_branch(branch_name="branch02", db=db)
+    await create_branch(branch_name="clean-branch", db=db)
 
 
 @pytest.fixture
-async def mock_get_branch_git_repo_03(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {
-        "data": {
-            "Branch": [
-                {
-                    "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
-                    "name": "main",
-                    "sync_with_git": True,
-                    "is_default": True,
-                    "origin_branch": None,
-                    "branched_from": "2023-02-17T09:30:17.811719Z",
-                    "is_isolated": False,
-                    "has_schema_changes": False,
-                }
-            ]
-        }
-    }
-
-    def graphql_callback(request):
-        payload = json.loads(request.content)
-        variables = payload.get("variables", {})
-        branch_name = variables.get("branch_name")
-
-        if branch_name == "main":
-            return Response(200, json=response)
-
-        if branch_name == "branch01":
-            new_response = copy.deepcopy(response)
-            new_response["data"]["Branch"][0]["name"] = "branch01"
-            new_response["data"]["Branch"][0]["is_default"] = False
-            new_response["data"]["Branch"][0]["sync_with_git"] = False
-            return Response(200, json=new_response)
-
-        return Response(200, json={"data": {"Branch": []}})
-
-    httpx_mock.add_callback(graphql_callback)
-    return httpx_mock
+async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await create_branch(branch_name="branch01", db=db)
