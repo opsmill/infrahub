@@ -1,7 +1,8 @@
 import React from "react";
-import { matchPath, type UIMatch, useLocation, useMatches } from "react-router";
+import { matchPath, type UIMatch, useLocation, useMatches, useParams } from "react-router";
 
 import { BreadcrumbBranches } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-branches";
+import { BreadcrumbObjects } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-objects";
 import {
   BreadcrumbDynamicElement,
   type BreadcrumbDynamicElementProps,
@@ -12,6 +13,7 @@ import { classNames } from "@/shared/utils/common";
 
 export default function BreadcrumbNavigation() {
   const { pathname } = useLocation();
+  const { objectKind } = useParams();
   const matches = useMatches() as UIMatch<
     unknown,
     { breadcrumb?: (match: UIMatch) => BreadcrumbDynamicElementProps }
@@ -19,6 +21,10 @@ export default function BreadcrumbNavigation() {
 
   if (matchPath({ path: "/branches", end: false }, pathname)) {
     return <BreadcrumbBranches />;
+  }
+
+  if (objectKind) {
+    return <BreadcrumbObjects />;
   }
 
   const crumbs = matches

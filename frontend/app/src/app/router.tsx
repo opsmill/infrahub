@@ -165,25 +165,9 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     path: ":objectKind",
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "select",
-                          value: match.params.objectKind,
-                          kind: "schema",
-                        };
-                      },
-                    },
                     children: [
                       {
                         path: ":objectId",
-                        handle: {
-                          breadcrumb: (match: UIMatch) => ({
-                            type: "select",
-                            value: match.params.objectId,
-                            kind: match.params.objectKind,
-                          }),
-                        },
                         children: [
                           {
                             path: "convert",
@@ -210,13 +194,6 @@ export const router = createBrowserRouter([
                           },
                           {
                             path: ":objectid",
-                            handle: {
-                              breadcrumb: (match: UIMatch) => ({
-                                type: "select",
-                                value: match.params.objectid,
-                                kind: match.params.objectKind,
-                              }),
-                            },
                             children: [
                               {
                                 index: true,
@@ -439,15 +416,6 @@ export const router = createBrowserRouter([
                           {
                             path: ":objectid",
                             lazy: () => import("@/pages/objects/object-details"),
-                            handle: {
-                              breadcrumb: (match: UIMatch) => {
-                                return {
-                                  type: "select",
-                                  value: match.params.objectid,
-                                  kind: match.params.objectKind,
-                                };
-                              },
-                            },
                           },
                         ],
                       },
