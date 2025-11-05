@@ -1,4 +1,3 @@
-import BreadcrumbBranchSelector from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-branch-selector";
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbObjectSelector from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-object-selector";
 import BreadcrumbSchemaSelector from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-schema-selector";
@@ -30,10 +29,6 @@ export const BreadcrumbDynamicElement = ({ ...props }: BreadcrumbDynamicElementP
     const { value, ...otherProps } = props;
 
     return <BreadcrumbObjectIdDisplay id={value} {...otherProps} />;
-  }
-
-  if (props.type === "branch") {
-    return <BreadcrumbBranchSelector {...props} />;
   }
 
   warnUnexpectedType(props);
