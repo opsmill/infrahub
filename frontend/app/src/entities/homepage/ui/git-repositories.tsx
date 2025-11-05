@@ -28,7 +28,10 @@ export const GitRepositories = () => {
   return (
     <HomeCard className="flex h-full flex-col">
       <HomeCard.Title className="flex items-center justify-between">
-        Git repositories
+        <span className="flex items-center gap-2">
+          <Icon icon={"mdi:git"} /> Git repositories
+        </span>
+
         <HomeCard.Link to={`/objects/${GENERIC_REPOSITORY_KIND}`}>
           View all <Icon icon={"mdi:chevron-right"} />
         </HomeCard.Link>
