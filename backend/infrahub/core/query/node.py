@@ -628,31 +628,27 @@ class NodeListGetAttributeQuery(Query):
 
         query = """
         CALL (n, a) {
-            MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
+            MATCH (n)-[r:HAS_ATTRIBUTE]->(a:Attribute)
             WHERE %(branch_filter)s
-            RETURN n as n1, r as r1, a as a1
-            ORDER BY r.branch_level DESC, r.from DESC
+            RETURN r.status = "active" AS is_active
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n1 as n, r1, a1 as a
-        WHERE r1.status = "active"
-        WITH n, r1, a
-        MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
-        WHERE %(branch_filter)s
-        CALL (a, av) {
-            MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
+        WITH n, a
+        WHERE is_active = TRUE
+        CALL (a) {
+            MATCH (a)-[r:HAS_VALUE]->(av:AttributeValue)
             WHERE %(branch_filter)s
-            RETURN a as a1, r as r2, av as av1
-            ORDER BY r.branch_level DESC, r.from DESC
+            RETURN av, r AS r2
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, r1, a1 as a, r2, av1 as av
+        WITH n, a, av, r2
         WHERE r2.status = "active"
-        WITH n, a, av, r1, r2
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
-        self.return_labels = ["n", "a", "av", "r1", "r2"]
+        self.return_labels = ["n", "a", "av", "r2"]
 
         # Add Is_Protected and Is_visible
         rel_isv_branch_filter, _ = self.branch.get_query_filter_path(

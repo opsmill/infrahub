@@ -301,13 +301,14 @@ WITH p, q, diff_rel, CASE
     ELSE $from_time
 END AS row_from_time
 ORDER BY %(id_func)s(p) DESC
-SKIP $offset
-LIMIT $limit
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([p, q, diff_rel, row_from_time]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+WITH limited_results + [[NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS p, one_result[1] AS q, one_result[2] AS diff_rel, one_result[3] AS row_from_time, has_more_data
 // -------------------------------------
@@ -470,14 +471,15 @@ AND (
 // Limit the number of paths
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q
-ORDER BY r_root.from, p.uuid, q.uuid, diff_rel.branch, diff_rel.from
-SKIP $offset
-LIMIT $limit
+ORDER BY r_root.from, p.uuid, q.uuid, q.name, diff_rel.branch, diff_rel.from
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([root, r_root, p, diff_rel, q]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+WITH limited_results + [[NULL, NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS root, one_result[1] AS r_root, one_result[2] AS p, one_result[3] AS diff_rel, one_result[4] AS q, has_more_data
 // -------------------------------------
@@ -740,13 +742,14 @@ AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(q), type(diff_rel)]
 // -------------------------------------
 WITH diff_rel_path, r_root, n, r_node, p, diff_rel
 ORDER BY r_root.from, n.uuid, p.uuid, type(diff_rel), diff_rel.branch, diff_rel.from
-SKIP $offset
-LIMIT $limit
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([diff_rel_path, r_root, n, r_node, p, diff_rel]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+WITH limited_results + [[NULL, NULL, NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS diff_rel_path, one_result[1] AS r_root, one_result[2] AS n,
     one_result[3] AS r_node, one_result[4] AS p, one_result[5] AS diff_rel, has_more_data
@@ -842,8 +845,8 @@ WHERE num_nodes_with_uuid > 1
 // -------------------------------------
 WITH node_uuid
 ORDER BY node_uuid
-SKIP $offset
-LIMIT $limit
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 WITH collect(node_uuid) AS node_uuids
 WITH node_uuids, size(node_uuids) = $limit AS has_more_data
 MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)
