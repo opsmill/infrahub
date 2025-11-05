@@ -19,12 +19,12 @@ export default function BreadcrumbNavigation() {
     { breadcrumb?: (match: UIMatch) => BreadcrumbDynamicElementProps }
   >[];
 
-  if (matchPath({ path: "/branches", end: false }, pathname)) {
-    return <BreadcrumbBranches />;
-  }
-
   if (objectKind) {
     return <BreadcrumbObjects />;
+  }
+
+  if (matchPath({ path: "/branches", end: false }, pathname)) {
+    return <BreadcrumbBranches />;
   }
 
   const crumbs = matches

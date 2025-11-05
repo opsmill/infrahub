@@ -52,8 +52,8 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
         }
       />
 
-      <div className="grid grid-cols-2 gap-2 overflow-auto p-2" data-testid="convert-source">
-        <Card className="col-span-0 p-0">
+      <div className="grid grid-cols-2 gap-2 overflow-auto p-2">
+        <Card className="col-span-0 p-0" data-testid="convert-source">
           <CardWithBorder.Title>
             <h3 className="font-normal">SOURCE</h3>
             <h4 className="leading-10">{objectSchema.label}</h4>

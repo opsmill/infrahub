@@ -51,7 +51,7 @@ test.describe("Object hierarchy- Navigation", () => {
     });
 
     await test.step("navigate on right panel should not change the tree", async () => {
-      await page.getByLabel("Hierarchy tree").getByText("North America").click();
+      await objectHierarchyTree.getByText("North America").click();
       await expect(page.getByText("NameNorth America")).toBeVisible();
       await expect(
         objectHierarchyTree.getByRole("button", { name: "Collapse North America" })
