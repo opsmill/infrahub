@@ -84,14 +84,14 @@ describe("getObjectAncestors", () => {
 
     // THEN: Should be ordered from root to leaf
     expect(result).toHaveLength(4);
-    expect(result[0].id).toBe("grandparent-id");
-    expect(result[0].display_label).toBe("USA");
-    expect(result[1].id).toBe("parent-id");
-    expect(result[1].display_label).toBe("California");
-    expect(result[2].id).toBe("child-id");
-    expect(result[2].display_label).toBe("Los Angeles");
-    expect(result[3].id).toBe("grandchild-id");
-    expect(result[3].display_label).toBe("Hollywood");
+    expect(result[0]!.id).toBe("grandparent-id");
+    expect(result[0]!.display_label).toBe("USA");
+    expect(result[1]!.id).toBe("parent-id");
+    expect(result[1]!.display_label).toBe("California");
+    expect(result[2]!.id).toBe("child-id");
+    expect(result[2]!.display_label).toBe("Los Angeles");
+    expect(result[3]!.id).toBe("grandchild-id");
+    expect(result[3]!.display_label).toBe("Hollywood");
   });
 
   it("should handle a single object with no ancestors", async () => {
@@ -133,8 +133,8 @@ describe("getObjectAncestors", () => {
 
     // THEN: Should return just the root node
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe("root-id");
-    expect(result[0].display_label).toBe("USA");
+    expect(result[0]!.id).toBe("root-id");
+    expect(result[0]!.display_label).toBe("USA");
   });
 
   it("should handle a two-level hierarchy (parent -> child)", async () => {
@@ -183,10 +183,10 @@ describe("getObjectAncestors", () => {
 
     // THEN: Should be ordered parent first, then child
     expect(result).toHaveLength(2);
-    expect(result[0].id).toBe("parent-id");
-    expect(result[0].display_label).toBe("USA");
-    expect(result[1].id).toBe("child-id");
-    expect(result[1].display_label).toBe("California");
+    expect(result[0]!.id).toBe("parent-id");
+    expect(result[0]!.display_label).toBe("USA");
+    expect(result[1]!.id).toBe("child-id");
+    expect(result[1]!.display_label).toBe("California");
   });
 
   it("should throw an error when object is not found", async () => {
@@ -269,14 +269,13 @@ describe("getObjectAncestors", () => {
     // WHEN
     const result = await getObjectAncestors({
       branchName,
-      atDate,
       objectKind,
       objectId,
     });
 
     // THEN: Should handle gracefully and return just the current node
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe("root-id");
+    expect(result[0]!.id).toBe("root-id");
   });
 
   it("should handle ancestors with null nodes in edges", async () => {
@@ -326,7 +325,7 @@ describe("getObjectAncestors", () => {
 
     // THEN: Should filter out null nodes and still maintain order
     expect(result).toHaveLength(2);
-    expect(result[0].id).toBe("parent-id");
-    expect(result[1].id).toBe("child-id");
+    expect(result[0]!.id).toBe("parent-id");
+    expect(result[1]!.id).toBe("child-id");
   });
 });
