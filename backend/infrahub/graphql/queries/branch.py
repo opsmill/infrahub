@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import ID, Field, Int, List, NonNull, String
 
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 
@@ -36,6 +37,11 @@ async def infrahub_branch_resolver(
     limit: int | None = None,
     offset: int | None = None,
 ) -> dict[str, Any]:
+    if isinstance(limit, int) and limit < 1:
+        raise ValidationError("limit must be >= 1")
+    if isinstance(offset, int) and offset < 0:
+        raise ValidationError("offset must be >= 0")
+
     fields = extract_graphql_fields(info)
     result: dict[str, Any] = {}
     if "edges" in fields:

@@ -3,8 +3,17 @@ import operator
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.types import BranchType, InfrahubBranch
 from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
+
+
+def test_check_branch_type_and_infrahub_branch_has_equal_fields():
+    for field_name, field_value in BranchType._meta.fields.items():
+        if field_name in ["id", "created_at"]:
+            continue
+        if InfrahubBranch._meta.fields[field_name] == field_value:
+            raise Exception(f"'{field_name}' is not updated in InfrahubBranch")
 
 
 class TestBranchQuery(TestInfrahubApp):
@@ -233,3 +242,61 @@ class TestBranchQuery(TestInfrahubApp):
         assert all_branches_data_only.sort(key=lambda x: x["name"]["value"]) == expected_branches.sort(
             key=lambda x: x["name"]["value"]
         )
+
+    async def test_paginated_branch_query__returns_error_on_invalid_offset_or_limit(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema,
+        session_admin,
+        client,
+        service,
+    ):
+        query = """
+            query {
+                InfrahubBranch(offset: -1, limit: 5) {
+                    count
+                    edges {
+                        node {
+                            graph_version {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert len(all_branches.errors)
+        assert all_branches.errors[0].message == "offset must be >= 0"
+
+        query = """
+            query {
+                InfrahubBranch(offset: 0, limit: 0) {
+                    count
+                    edges {
+                        node {
+                            graph_version {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert len(all_branches.errors)
+        assert all_branches.errors[0].message == "limit must be >= 1"
