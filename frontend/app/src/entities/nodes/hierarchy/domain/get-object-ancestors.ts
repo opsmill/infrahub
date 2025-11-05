@@ -37,15 +37,15 @@ export const getObjectAncestors: GetObjectAncestors = async ({
 
   const { ancestors, ...currentObject } = result;
   const ancestorNodes = ancestors?.edges?.map((edge) => edge.node).filter((n) => !!n) ?? [];
-  
+
   // Build an ordered list from root (parent = null) to current object
   const allNodes = [...ancestorNodes, currentObject] as Array<NodeCoreWithParent>;
   const nodeMap = new Map(allNodes.map((node) => [node.id, node]));
-  
+
   // Start from the root (parent is null) and build the ordered chain
   const orderedNodes: Array<NodeCoreWithParent> = [];
   const root = allNodes.find((node) => !node.parent?.node?.id);
-  
+
   if (root) {
     let current: NodeCoreWithParent | undefined = root;
     while (current) {
@@ -54,6 +54,6 @@ export const getObjectAncestors: GetObjectAncestors = async ({
       current = nextId ? nodeMap.get(nextId) : undefined;
     }
   }
-  
+
   return orderedNodes;
 };
