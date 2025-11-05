@@ -1,4 +1,5 @@
 import type React from "react";
+import { Link, type LinkProps } from "react-router";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -22,11 +23,24 @@ const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
   );
 };
 
+const HomeCardLink = ({ className, ...props }: LinkProps) => {
+  return (
+    <Link
+      className={classNames(
+        "flex items-center font-normal text-gray-500 text-sm hover:underline",
+        className
+      )}
+      {...props}
+    />
+  );
+};
+
 const HomeCardContent = ({ className, ...props }: HomeCardProps) => {
   return <div className={classNames("p-3", className)} {...props} />;
 };
 
 export const HomeCard = Object.assign(HomeCardRoot, {
   Title: HomeCardTitle,
+  Link: HomeCardLink,
   Content: HomeCardContent,
 });
