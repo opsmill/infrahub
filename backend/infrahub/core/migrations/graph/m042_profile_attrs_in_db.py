@@ -70,7 +70,7 @@ WITH DISTINCT node.uuid AS node_uuid
         return [result.get_as_type("node_uuid", str) for result in self.get_results()]
 
 
-class Migration041(MigrationRequiringRebase):
+class Migration042(MigrationRequiringRebase):
     """
     Save profile attribute values on each node using the profile in the database
     For any profile that has updates on a given branch (including default branch)
@@ -79,8 +79,8 @@ class Migration041(MigrationRequiringRebase):
     - run NodeProfilesApplier.apply_profiles on the node on that branch
     """
 
-    name: str = "041_profile_attrs_in_db"
-    minimum_version: int = 40
+    name: str = "042_profile_attrs_in_db"
+    minimum_version: int = 42
 
     def _get_profile_applier(self, db: InfrahubDatabase, branch: Branch) -> NodeProfilesApplier:
         return NodeProfilesApplier(db=db, branch=branch)

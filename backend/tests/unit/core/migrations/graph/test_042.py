@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m041_profile_attrs_in_db import Migration041
+from infrahub.core.migrations.graph.m042_profile_attrs_in_db import Migration042
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -26,7 +26,7 @@ class AttributeProfileDetails:
         return self.source_id is not None
 
 
-class WrappedMigration041(Migration041):
+class WrappedMigration042(Migration042):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._appliers_by_branch: dict[str, NodeProfilesApplier] = {}
@@ -40,7 +40,7 @@ class WrappedMigration041(Migration041):
         return wrapped_profile_applier
 
 
-class TestMigration041(TestInfrahubApp):
+class TestMigration042(TestInfrahubApp):
     @pytest.fixture
     async def profile_1(self, db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> Node:
         profile = await Node.init(db=db, schema="ProfileTestCriticality")
@@ -161,7 +161,7 @@ class TestMigration041(TestInfrahubApp):
             assert current_attribute.is_from_profile == original_attribute.is_from_profile
             assert current_attribute.source_id == original_attribute.source_id
 
-    async def test_migration_041(
+    async def test_migration_042(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -177,7 +177,7 @@ class TestMigration041(TestInfrahubApp):
         deleted_profile_branch: Branch,
         deleted_node_branch: Branch,
     ):
-        migration = WrappedMigration041()
+        migration = WrappedMigration042()
         execution_result = await migration.execute(db=db)
         assert not execution_result.errors
         validation_result = await migration.validate_migration(db=db)

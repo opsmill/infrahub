@@ -1211,3 +1211,111 @@ class TestDiffAndMerge:
         # get undeleted node
         undeleted_car = await NodeManager.get_one(db=db, branch=default_branch, id=e_car_2.id)
         assert undeleted_car.get_kind() == "TestElectricCar"
+
+    async def test_diff_and_merge_with_migrated_node_kind_peer(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_internal_models_schema: SchemaBranch,
+        register_core_models_schema: SchemaBranch,
+        car_person_schema: SchemaBranch,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        person_jane_main: Node,
+        person_john_main: Node,
+    ):
+        original_car_owner = person_john_main
+        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        await registry.schema.update_schema_branch(
+            db=db,
+            branch=default_branch,
+            schema=main_schema_branch,
+            limit=["TestCar", "Test2NewCar", "TestPerson"],
+            update_db=True,
+        )
+        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        # migrate TestCar to Test2NewCar on default branch
+        original_car_schema = main_schema_branch.get(name="TestCar", duplicate=True)
+        new_car_schema = main_schema_branch.get(name="TestCar", duplicate=True)
+        new_car_schema.name = "NewCar"
+        new_car_schema.namespace = "Test2"
+        assert new_car_schema.kind == "Test2NewCar"
+        main_schema_branch.set(name="Test2NewCar", schema=new_car_schema)
+        person_schema_branch = main_schema_branch.get(name="TestPerson", duplicate=True)
+        cars_rel = person_schema_branch.get_relationship("cars")
+        cars_rel.peer = "Test2NewCar"
+        cars_driven_rel = person_schema_branch.get_relationship("cars_driven")
+        cars_driven_rel.peer = "Test2NewCar"
+        main_schema_branch.set(name="TestPerson", schema=person_schema_branch)
+        main_schema_branch.delete(name="TestCar")
+        main_schema_branch.process()
+        await registry.schema.update_schema_branch(
+            db=db,
+            branch=default_branch,
+            schema=main_schema_branch,
+            limit=["TestCar", "Test2NewCar", "TestPerson"],
+            update_db=True,
+        )
+        migration = NodeKindUpdateMigration(
+            previous_node_schema=original_car_schema,
+            new_node_schema=new_car_schema,
+            schema_path=SchemaPath(
+                path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"
+            ),
+        )
+        execution_result = await migration.execute(db=db, branch=default_branch)
+        assert not execution_result.errors
+
+        # create new branch
+        branch2 = await create_branch(db=db, branch_name="branch2")
+
+        # update car owner
+        migrated_car = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
+        await migrated_car.owner.update(db=db, data=person_jane_main.id)
+        new_color = "#654321"
+        migrated_car.color.value = new_color
+        await migrated_car.save(db=db)
+
+        # delete a car
+        migrated_car_to_delete = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+        await migrated_car_to_delete.delete(db=db)
+
+        at = Timestamp()
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=at)
+
+        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
+        car_schema_main = updated_schema_branch.get(name="Test2NewCar", duplicate=False)
+
+        retrieved_migrated_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+        assert retrieved_migrated_car.get_kind() == "Test2NewCar"
+        for attr_name in car_schema_main.attribute_names:
+            if attr_name == "color":
+                assert retrieved_migrated_car.color.value == new_color
+            else:
+                assert getattr(retrieved_migrated_car, attr_name).value == getattr(car_accord_main, attr_name).value
+        retrieved_owner_rels = await retrieved_migrated_car.owner.get_relationships(db=db)
+        assert {r.get_peer_id() for r in retrieved_owner_rels} == {person_jane_main.id}
+        retrieved_driver_rels = await retrieved_migrated_car.driver.get_relationships(db=db)
+        assert not {r.get_peer_id() for r in retrieved_driver_rels}
+        with pytest.raises(SchemaNotFoundError):
+            await NodeManager.query(db=db, branch=default_branch, schema="TestCar")
+        # try to get deleted node
+        with pytest.raises(NodeNotFoundError):
+            await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id, raise_on_error=True)
+        await verify_no_duplicate_paths(db=db)
+
+        await diff_merger.rollback(at=at)
+
+        retrieved_still_migrated_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+        assert retrieved_still_migrated_car.get_kind() == "Test2NewCar"
+        assert retrieved_still_migrated_car.color.value == car_accord_main.color.value
+        retrieved_owner_rels = await retrieved_still_migrated_car.owner.get_relationships(db=db)
+        assert {r.get_peer_id() for r in retrieved_owner_rels} == {original_car_owner.id}
+        # get undeleted node
+        undeleted_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_camry_main.id)
+        assert undeleted_car.get_kind() == "Test2NewCar"
