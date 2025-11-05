@@ -651,17 +651,22 @@ class NodeListGetAttributeQuery(Query):
         self.return_labels = ["n", "a", "av", "r2"]
 
         # Add Is_Protected and Is_visible
-        rel_isv_branch_filter, _ = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isv"
-        )
-        rel_isp_branch_filter, _ = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isp"
-        )
         query = """
-        MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
-        MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
-        WHERE (%(rel_isv_branch_filter)s) AND (%(rel_isp_branch_filter)s)
-        """ % {"rel_isv_branch_filter": rel_isv_branch_filter, "rel_isp_branch_filter": rel_isp_branch_filter}
+CALL (a) {
+    MATCH (a)-[r:IS_VISIBLE]-(isv:Boolean)
+    WHERE (%(branch_filter)s)
+    RETURN r AS rel_isv, isv
+    ORDER BY rel_isv.branch_level DESC, rel_isv.from DESC, rel_isv.status ASC
+    LIMIT 1
+}
+CALL (a) {
+    MATCH (a)-[r:IS_PROTECTED]-(isp:Boolean)
+    WHERE (%(branch_filter)s)
+    RETURN r AS rel_isp, isp
+    ORDER BY rel_isp.branch_level DESC, rel_isp.from DESC, rel_isp.status ASC
+    LIMIT 1
+}
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
