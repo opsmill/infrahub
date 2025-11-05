@@ -1,7 +1,7 @@
 import { useParams } from "react-router";
 
-import { BreadcrumbObject } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object";
-import { BreadcrumbObjectHierarchy } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-hierarchy";
+import { BreadcrumbObjectDetails } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details";
+import { BreadcrumbObjectDetailsHierarchy } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemSchema } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-schema";
 import { Breadcrumb } from "@/shared/components/ui/breadcrumb";
 
@@ -24,7 +24,7 @@ export function BreadcrumbObjects() {
     return (
       <Breadcrumb>
         {objId ? (
-          <BreadcrumbObjectHierarchy objectSchema={schema} objectId={objId} />
+          <BreadcrumbObjectDetailsHierarchy objectSchema={schema} objectId={objId} />
         ) : (
           <BreadcrumbSchemaHierarchy schema={schema} />
         )}
@@ -35,7 +35,7 @@ export function BreadcrumbObjects() {
   return (
     <Breadcrumb>
       {objId ? (
-        <BreadcrumbObject objectSchema={schema} objectId={objId} />
+        <BreadcrumbObjectDetails objectSchema={schema} objectId={objId} />
       ) : (
         <BreadcrumbItemSchema schema={schema} />
       )}

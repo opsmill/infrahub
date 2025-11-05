@@ -8,12 +8,15 @@ import type { NodeCoreWithParent } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-interface BreadcrumbObjectProps {
+interface BreadcrumbObjectDetailsHierarchyProps {
   objectSchema: ModelSchema;
   objectId: string;
 }
 
-export function BreadcrumbObjectHierarchy({ objectSchema, objectId }: BreadcrumbObjectProps) {
+export function BreadcrumbObjectDetailsHierarchy({
+  objectSchema,
+  objectId,
+}: BreadcrumbObjectDetailsHierarchyProps) {
   const { data, isPending, error } = useGetObjectAncestors(
     {
       objectKind: objectSchema.kind!,

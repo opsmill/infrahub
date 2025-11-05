@@ -7,12 +7,12 @@ import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import type { NodeRelationshipOne } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
-interface BreadcrumbObjectProps {
+interface BreadcrumbObjectDetailsProps {
   objectSchema: ModelSchema;
   objectId: string;
 }
 
-export function BreadcrumbObject({ objectSchema, objectId }: BreadcrumbObjectProps) {
+export function BreadcrumbObjectDetails({ objectSchema, objectId }: BreadcrumbObjectDetailsProps) {
   const { isPending, error, data } = useGetObject(
     { objectSchema, objectId },
     {
