@@ -32,7 +32,7 @@ export default function BreadcrumbNavigation() {
     .filter((match) => !!match);
 
   return (
-    <Breadcrumb data-testid="breadcrumb-navigation">
+    <Breadcrumb>
       {crumbs.map((crumb, index) => (
         <React.Fragment key={index}>
           <BreadcrumbSeparator />
