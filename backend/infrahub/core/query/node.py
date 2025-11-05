@@ -627,24 +627,24 @@ class NodeListGetAttributeQuery(Query):
         self.add_to_query(query)
 
         query = """
-        CALL (n, a) {
-            MATCH (n)-[r:HAS_ATTRIBUTE]->(a:Attribute)
-            WHERE %(branch_filter)s
-            RETURN r.status = "active" AS is_active
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, a
-        WHERE is_active = TRUE
-        CALL (a) {
-            MATCH (a)-[r:HAS_VALUE]->(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN av, r AS r2
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, a, av, r2
-        WHERE r2.status = "active"
+CALL (n, a) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]->(a:Attribute)
+    WHERE %(branch_filter)s
+    RETURN r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, a
+WHERE is_active = TRUE
+CALL (a) {
+    MATCH (a)-[r:HAS_VALUE]->(av:AttributeValue)
+    WHERE %(branch_filter)s
+    RETURN av, r AS r2
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, a, av, r2
+WHERE r2.status = "active"
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 

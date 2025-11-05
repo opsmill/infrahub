@@ -307,6 +307,7 @@ LIMIT toInteger($limit)
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([p, q, diff_rel, row_from_time]) AS limited_results
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
 WITH limited_results + [[NULL, NULL, NULL, NULL]] AS limited_results
 WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
@@ -478,6 +479,7 @@ LIMIT toInteger($limit)
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([root, r_root, p, diff_rel, q]) AS limited_results
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
 WITH limited_results + [[NULL, NULL, NULL, NULL, NULL]] AS limited_results
 WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
@@ -748,6 +750,7 @@ LIMIT toInteger($limit)
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([diff_rel_path, r_root, n, r_node, p, diff_rel]) AS limited_results
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
 WITH limited_results + [[NULL, NULL, NULL, NULL, NULL, NULL]] AS limited_results
 WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
