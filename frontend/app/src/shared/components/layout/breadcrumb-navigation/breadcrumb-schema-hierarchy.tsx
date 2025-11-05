@@ -1,4 +1,4 @@
-import { BreadcrumbItem, BreadcrumbSeparator } from "@/shared/components/ui/breadcrumb";
+import { BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -20,12 +20,7 @@ export function BreadcrumbSchemaHierarchy({ schema }: BreadcrumbSchemaHierarchic
 
   return (
     <>
-      {parentSchema && (
-        <>
-          <BreadcrumbSchemaHierarchy schema={parentSchema} />
-          <BreadcrumbSeparator />
-        </>
-      )}
+      {parentSchema && <BreadcrumbSchemaHierarchy schema={parentSchema} />}
       <BreadcrumbItem href={getObjectDetailsUrl(schema.kind!)}>{schema.label}</BreadcrumbItem>
     </>
   );

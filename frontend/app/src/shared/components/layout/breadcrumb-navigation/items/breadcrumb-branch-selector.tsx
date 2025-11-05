@@ -4,10 +4,10 @@ import { useFilter } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { Button } from "@/shared/components/aria/button";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+import { BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 
@@ -24,10 +24,10 @@ export default function BreadcrumbBranchSelector({
 
   return (
     <MenuTrigger>
-      <Button variant="ghost" {...props}>
+      <BreadcrumbItem className="gap-1.5" {...props}>
         <span className="truncate">{currentBranchName}</span>
         <ChevronsUpDownIcon className="size-4" />
-      </Button>
+      </BreadcrumbItem>
 
       <Popover className="bg-stone-100/50 backdrop-blur">
         <PopoverDialog aria-label="Branch selector">

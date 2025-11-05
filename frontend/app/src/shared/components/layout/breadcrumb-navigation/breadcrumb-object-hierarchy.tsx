@@ -1,6 +1,7 @@
+import { keepPreviousData } from "@tanstack/react-query";
+
 import { BreadcrumbItemObject } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-object";
-import { BreadcrumbItemSchema } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-schema";
-import { BreadcrumbSeparator } from "@/shared/components/ui/breadcrumb";
+import { BreadcrumbError, BreadcrumbLoading } from "@/shared/components/ui/breadcrumb";
 
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import type { NodeCoreWithParent } from "@/entities/nodes/types";
@@ -13,13 +14,22 @@ interface BreadcrumbObjectProps {
 }
 
 export function BreadcrumbObjectHierarchy({ objectSchema, objectId }: BreadcrumbObjectProps) {
-  const { data, isPending, error } = useGetObjectAncestors({
-    objectKind: objectSchema.kind!,
-    objectId,
-  });
+  const { data, isPending, error } = useGetObjectAncestors(
+    {
+      objectKind: objectSchema.kind!,
+      objectId,
+    },
+    {
+      placeholderData: keepPreviousData,
+    }
+  );
 
-  if (isPending || error) {
-    return <BreadcrumbItemSchema schema={objectSchema} />;
+  if (isPending) {
+    return <BreadcrumbLoading />;
+  }
+
+  if (error) {
+    return <BreadcrumbError error={error} />;
   }
 
   return data.map((ancestor) => (
@@ -34,13 +44,10 @@ function BreadcrumbItemObjectHierarchy({ node }: { node: NodeCoreWithParent }) {
   );
 
   return (
-    <>
-      <BreadcrumbSeparator />
-      <BreadcrumbItemObject
-        node={node}
-        parentId={node.parent.node?.id}
-        parentRelationshipSchema={parentRelationshipSchema}
-      />
-    </>
+    <BreadcrumbItemObject
+      node={node}
+      parentId={node.parent.node?.id}
+      parentRelationshipSchema={parentRelationshipSchema}
+    />
   );
 }
