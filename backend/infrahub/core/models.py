@@ -404,8 +404,8 @@ class HashableModelDiff(BaseModel):
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str | None = None
-    state: HashableModelState = HashableModelState.PRESENT
+    id: str | None = Field(default=None)
+    state: HashableModelState = Field(default=HashableModelState.PRESENT)
 
     _exclude_from_hash: list[str] = []
     _sort_by: list[str] = []
