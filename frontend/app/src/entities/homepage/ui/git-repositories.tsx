@@ -3,6 +3,7 @@ import React from "react";
 
 import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
 
+import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
@@ -17,7 +18,7 @@ export const GitRepositories = () => {
   const { schema } = useSchema(GENERIC_REPOSITORY_KIND);
 
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({
-    schema,
+    schema: schema!,
   });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
@@ -46,7 +47,9 @@ export const GitRepositories = () => {
         )}
 
         {flatData.map((repository) => {
-          return <GitRepositoryItem {...repository} />;
+          return (
+            <GitRepositoryItem {...(repository as unknown as CoreRepository)} key={repository.id} />
+          );
         })}
 
         {isLoading && <LoadingIndicator />}
