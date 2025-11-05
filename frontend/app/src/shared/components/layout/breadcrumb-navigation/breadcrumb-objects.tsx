@@ -24,7 +24,7 @@ export function BreadcrumbObjects() {
     return (
       <Breadcrumb>
         {objId ? (
-          <BreadcrumbObjectHierarchy schema={schema} objectId={objId} />
+          <BreadcrumbObjectHierarchy objectSchema={schema} objectId={objId} />
         ) : (
           <BreadcrumbSchemaHierarchy schema={schema} />
         )}

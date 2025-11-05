@@ -8,15 +8,18 @@ import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface BreadcrumbObjectProps {
-  schema: ModelSchema;
+  objectSchema: ModelSchema;
   objectId: string;
 }
 
-export function BreadcrumbObjectHierarchy({ schema, objectId }: BreadcrumbObjectProps) {
-  const { data, isPending, error } = useGetObjectAncestors({ objectKind: schema.kind!, objectId });
+export function BreadcrumbObjectHierarchy({ objectSchema, objectId }: BreadcrumbObjectProps) {
+  const { data, isPending, error } = useGetObjectAncestors({
+    objectKind: objectSchema.kind!,
+    objectId,
+  });
 
   if (isPending || error) {
-    return <BreadcrumbItemSchema schema={schema} />;
+    return <BreadcrumbItemSchema schema={objectSchema} />;
   }
 
   return data.map((ancestor) => (
