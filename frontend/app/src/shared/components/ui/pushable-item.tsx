@@ -3,26 +3,28 @@ import type React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
-export const pushableItemContainerStyle = "relative flex cursor-pointer select-none outline-hidden";
-
+export const pushableItemContainerStyle =
+  "relative flex cursor-pointer select-none outline-hidden rounded-lg";
 interface PushableItemEdgeProps {
   isPressed: boolean;
+  isFocusVisible: boolean;
 }
 
-export function PushableItemEdge({ isPressed }: PushableItemEdgeProps) {
+export function PushableItemEdge({ isPressed, isFocusVisible }: PushableItemEdgeProps) {
   return (
     <span
       aria-hidden="true"
       className={classNames(
-        "absolute inset-0 rounded-lg border-stone-400 border-b bg-pushable-edge-gradient shadow-xs",
-        isPressed && "shadow-none"
+        "absolute inset-0 rounded-[inherit] border-stone-400 border-b bg-pushable-edge-gradient shadow-xs",
+        isPressed && "shadow-none",
+        isFocusVisible && "border-custom-blue-600 shadow-custom-blue-600/25"
       )}
     />
   );
 }
 
 const pushableItemStyles = cva(
-  "flex w-full min-w-40 items-center gap-2 rounded-lg border px-2 py-1 text-sm text-stone-700 transition-transform will-change-transform",
+  "flex w-full items-center gap-2 rounded-[inherit] border px-2 py-1 text-sm text-stone-700 transition-transform will-change-transform",
   {
     variants: {
       variant: {
@@ -43,20 +45,23 @@ const pushableItemStyles = cva(
   }
 );
 
-interface PushableItemProps
+export interface PushableItemProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof pushableItemStyles> {}
+    VariantProps<typeof pushableItemStyles> {
+  isFocusVisible?: boolean;
+}
 
 export function PushableItem({
   variant,
   isElevated,
   isPressed,
   className,
+  isFocusVisible,
   ...props
 }: PushableItemProps) {
   return (
     <>
-      {isElevated && <PushableItemEdge isPressed={!!isPressed} />}
+      {isElevated && <PushableItemEdge isFocusVisible={!!isFocusVisible} isPressed={!!isPressed} />}
 
       <div
         className={classNames(pushableItemStyles({ variant, isElevated, isPressed }), className)}
