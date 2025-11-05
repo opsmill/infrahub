@@ -26,8 +26,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
