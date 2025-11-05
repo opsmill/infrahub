@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Generator
 
 import pytest
 
@@ -392,7 +392,7 @@ def schema_diff_attr_inheritance_types():
 
 
 @pytest.fixture
-def not_schema_strict_mode() -> None:
+def not_schema_strict_mode() -> Generator[None, None, None]:
     initial_schema_strict_mode = config.SETTINGS.main.schema_strict_mode
     config.SETTINGS.main.schema_strict_mode = False
     yield

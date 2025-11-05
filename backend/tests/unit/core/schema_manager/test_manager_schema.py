@@ -3959,7 +3959,7 @@ async def test_validate_attribute_parameter_combinations() -> None:
                 "name": "Object",
                 "namespace": "Testing",
                 "attributes": [
-                    {"name": "name", "kind": "Text", "optional": True, "unique": True},
+                    {"name": "sample_name", "kind": "Text", "optional": True, "unique": True},
                     {"name": "other", "kind": "Text", "optional": True},
                 ],
             }
@@ -3967,7 +3967,7 @@ async def test_validate_attribute_parameter_combinations() -> None:
     }
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**schema))
-    with pytest.raises(ValidationError, match="You cannot load a schema that has an optional and unique attribute"):
+    with pytest.raises(ValidationError, match="Attribute 'sample_name' cannot be both optional and unique"):
         schema_branch.process()
 
     schema2 = {
@@ -3984,7 +3984,7 @@ async def test_validate_attribute_parameter_combinations() -> None:
     }
     schema_branch = SchemaBranch(cache={}, name="test2")
     schema_branch.load_schema(schema=SchemaRoot(**schema2))
-    with pytest.raises(ValidationError, match="You cannot load a schema that has an optional and unique attribute"):
+    with pytest.raises(ValidationError, match="Attribute 'my_generic_name' cannot be both optional and unique"):
         schema_branch.process()
 
 

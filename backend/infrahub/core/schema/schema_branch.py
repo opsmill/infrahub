@@ -1163,7 +1163,7 @@ class SchemaBranch:
     @staticmethod
     def _validate_attribute_parameter_combinations(attribute: AttributeSchema) -> None:
         if attribute.optional and attribute.unique:
-            raise ValidationError("You cannot load a schema that has an optional and unique attribute")
+            raise ValidationError(f"Attribute '{attribute.name}' cannot be both optional and unique")
 
     def _validate_number_pool_parameters(
         self, node_schema: NodeSchema, attribute: AttributeSchema, number_pool_parameters: NumberPoolParameters
