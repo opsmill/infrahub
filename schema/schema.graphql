@@ -7247,7 +7247,7 @@ type InfrahubBranch {
   branched_from: NonRequiredStringValueField
   created_at: String
   description: NonRequiredStringValueField
-  graph_version: Int
+  graph_version: NonRequiredIntValueField
   has_schema_changes: NonRequiredBooleanValueField
   id: String!
   is_default: NonRequiredBooleanValueField
@@ -9408,6 +9408,10 @@ type NodeMutatedEvent implements EventNodeInterface {
 
 type NonRequiredBooleanValueField {
   value: Boolean
+}
+
+type NonRequiredIntValueField {
+  value: Int
 }
 
 type NonRequiredStringValueField {
