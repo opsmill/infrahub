@@ -14,7 +14,7 @@ const Homepage = () => {
         <div className="col-span-2 flex flex-col gap-4">
           <ProposedChanges className="h-80" />
 
-          <Branches />
+          <Branches className="h-80" />
         </div>
 
         <GitRepositories className="h-44" />
