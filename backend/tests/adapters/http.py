@@ -1,14 +1,24 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
 from infrahub.services.adapters.http import InfrahubHTTP
+
+if TYPE_CHECKING:
+    import ssl
+
+    import httpx
 
 
 class MemoryHTTP(InfrahubHTTP):
     def __init__(self) -> None:
         self._get_response: dict[str, httpx.Response] = {}
         self._post_response: dict[str, httpx.Response] = {}
+
+    def verify_tls(self, verify: bool | None = None) -> bool | ssl.SSLContext:
+        return False
 
     async def get(
         self,

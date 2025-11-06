@@ -91,15 +91,6 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/branches",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "Branches",
-                      to: constructPath("/branches"),
-                    };
-                  },
-                },
                 children: [
                   {
                     index: true,
@@ -108,14 +99,6 @@ export const router = createBrowserRouter([
                   {
                     path: "*",
                     lazy: () => import("@/pages/branches/details"),
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "branch",
-                          value: match.params["*"],
-                        };
-                      },
-                    },
                   },
                 ],
               },
