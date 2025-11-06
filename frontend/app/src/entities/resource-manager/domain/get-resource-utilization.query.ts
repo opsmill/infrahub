@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import type { ContextParams, QueryConfig } from "@/shared/api/types";
+import type { QueryConfig } from "@/shared/api/types";
 
 import {
   type GetResourcePoolUtilizationParams,
@@ -16,11 +16,11 @@ export function getResourceUtilizationQueryOptions(params: GetResourcePoolUtiliz
 }
 
 export function useGetResourceUtilization(
-  { resourceId }: Omit<GetResourcePoolUtilizationParams, keyof ContextParams>,
+  params: GetResourcePoolUtilizationParams,
   config?: QueryConfig<typeof getResourceUtilizationQueryOptions>
 ) {
   return useQuery({
-    ...getResourceUtilizationQueryOptions({ resourceId }),
+    ...getResourceUtilizationQueryOptions(params),
     ...config,
   });
 }

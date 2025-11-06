@@ -37,4 +37,3 @@ export const resourceManagerQueryKeys = {
       params.objectKinds,
     ] as const,
 };
-

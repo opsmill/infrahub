@@ -5,7 +5,6 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-
 import {
   type GetNumberPoolsParams,
   getNumberPools,

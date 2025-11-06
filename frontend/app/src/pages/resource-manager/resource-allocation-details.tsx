@@ -18,13 +18,13 @@ import { useGetResourceAllocated } from "@/entities/resource-manager/domain/get-
 
 const ResourceAllocationDetailsPage = () => {
   const { resourcePoolId, resourceId } = useParams();
-  const [pagination] = usePagination();
+  const [{ limit, offset }] = usePagination();
 
   const { data, error, isPending } = useGetResourceAllocated({
     poolId: resourcePoolId!,
     resourceId: resourceId!,
-    limit: pagination.limit,
-    offset: pagination.offset,
+    limit,
+    offset,
   });
 
   if (isPending) return <ResourceAllocationPageSkeleton />;

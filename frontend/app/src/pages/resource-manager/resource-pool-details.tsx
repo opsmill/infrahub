@@ -111,8 +111,12 @@ const ResourcePoolContent = ({
     return <LoadingIndicator className="h-full" />;
   }
 
-  if (error || utilizationError) {
-    return <ErrorScreen message="Error when fetching the resource pool details" />;
+  if (error) {
+    return <ErrorScreen message={`Error fetching resource pool: ${error.message}`} />;
+  }
+
+  if (utilizationError) {
+    return <ErrorScreen message={`Error fetching utilization data: ${utilizationError.message}`} />;
   }
 
   const properties: Property[] = [
