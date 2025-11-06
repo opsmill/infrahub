@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
+import { constructPath } from "@/shared/api/rest/fetch";
 import { HomeCard } from "@/shared/components/ui/home-card";
 import { classNames } from "@/shared/utils/common";
 
@@ -18,8 +19,14 @@ export const ProposedChanges = ({ className }: ProposedChangesProps) => {
 
   return (
     <HomeCard className={classNames("flex flex-col", className)}>
-      <HomeCard.Title className="flex items-center gap-2">
-        <Icon icon={"mdi:file-replace-outline"} className={"text-base"} /> Open Proposed changes
+      <HomeCard.Title className="flex items-center justify-between">
+        <span className="flex items-center gap-2">
+          <Icon icon={"mdi:file-replace-outline"} /> Open Proposed changes
+        </span>
+
+        <HomeCard.Link to={constructPath("/proposed-changes")}>
+          View all <Icon icon={"mdi:chevron-right"} />
+        </HomeCard.Link>
       </HomeCard.Title>
 
       <RequireObjectPermissions objectKind={PROPOSED_CHANGE_OBJECT}>
