@@ -428,7 +428,6 @@ async def test_branch_merge_need_upgrade_rebase(
     }
     """
 
-    branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db, branch=branch, account_session=session_admin, service=local_services
     )
