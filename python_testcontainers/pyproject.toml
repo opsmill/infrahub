@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.4.12"
+version = "1.4.13"
 requires-python = ">=3.9"
 
 [tool.poetry]
