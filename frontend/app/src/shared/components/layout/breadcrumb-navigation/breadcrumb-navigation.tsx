@@ -1,4 +1,4 @@
-import { matchPath, useLocation, useParams } from "react-router";
+import { matchPath, useLocation } from "react-router";
 
 import { BreadcrumbActivities } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-activities";
 import { BreadcrumbBranches } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-branches";
@@ -15,7 +15,6 @@ import { BreadcrumbTasks } from "@/shared/components/layout/breadcrumb-navigatio
 
 export default function BreadcrumbNavigation() {
   const { pathname } = useLocation();
-  const { objectKind } = useParams();
 
   if (matchPath({ path: "/branches", end: false }, pathname)) {
     return <BreadcrumbBranches />;
@@ -61,13 +60,5 @@ export default function BreadcrumbNavigation() {
     return <BreadcrumbRoleManagement />;
   }
 
-  if (matchPath({ path: "/objects/CoreArtifact", end: false }, pathname)) {
-    return <BreadcrumbObjects />;
-  }
-
-  if (objectKind) {
-    return <BreadcrumbObjects />;
-  }
-
-  return null;
+  return <BreadcrumbObjects />;
 }
