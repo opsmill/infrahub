@@ -1,5 +1,6 @@
 import Content from "@/shared/components/layout/content";
 
+import { Branches } from "@/entities/homepage/ui/branches";
 import { GettingStarted } from "@/entities/homepage/ui/getting-started";
 import { GitRepositories } from "@/entities/homepage/ui/git-repositories";
 
@@ -8,8 +9,10 @@ const Homepage = () => {
     <Content className="flex flex-col gap-4 p-4">
       <h1 className="font-semibold text-2xl">Welcome to Infrahub!</h1>
 
-      <div className="grid grid-cols-3">
-        <div className="col-span-2 max-h-44" />
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2 flex max-h-80 flex-col">
+          <Branches />
+        </div>
 
         <div className="max-h-44">
           <GitRepositories />
