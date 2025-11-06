@@ -11,7 +11,7 @@ const Homepage = () => {
       <div className="grid grid-cols-3">
         <div className="col-span-2 max-h-44" />
 
-        <GitRepositories className="min-h-44" />
+        <GitRepositories className="h-44" />
       </div>
 
       <GettingStarted />
