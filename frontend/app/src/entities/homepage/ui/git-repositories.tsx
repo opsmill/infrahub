@@ -5,6 +5,7 @@ import { ListBox } from "react-aria-components";
 import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
 
 import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
@@ -45,7 +46,7 @@ export const GitRepositories = ({ className }: GitRepositoriesProps) => {
           <Icon icon={"mdi:git"} /> Git repositories
         </span>
 
-        <HomeCard.Link to={`/objects/${GENERIC_REPOSITORY_KIND}`}>
+        <HomeCard.Link to={constructPath(`/objects/${GENERIC_REPOSITORY_KIND}`)}>
           View all <Icon icon={"mdi:chevron-right"} />
         </HomeCard.Link>
       </HomeCard.Title>
