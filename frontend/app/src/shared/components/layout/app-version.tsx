@@ -15,8 +15,8 @@ export const AppVersion = () => {
     fetchUrl(CONFIG.CONFIG_URL).then((result) => setConfig(result));
   }, []);
 
-  var installationType = config ? config.installation_type.charAt(0).toUpperCase() + config.installation_type.slice(1) + " Edition": <Skeleton className="h-4 w-14" />;
-  var version = info ? info.version : <Skeleton className="h-4 w-14" />;
+  const installationType = config ? config.installation_type.charAt(0).toUpperCase() + config.installation_type.slice(1) + " Edition": <Skeleton className="h-4 w-14" />;
+  const version = info ? info.version : <Skeleton className="h-4 w-14" />;
 
   return (
     <div className="inline-flex w-full items-center justify-end text-gray-400 text-xs">
