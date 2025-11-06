@@ -452,8 +452,16 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return
 
         if self.peer_id and not is_valid_uuid(self.peer_id):
+            fields = {"display_label": None}
+            peer_schema = db.schema.get(
+                name=self.schema.peer, branch=self.get_branch_based_on_support_type(), duplicate=False
+            )
+            if peer_schema.default_filter:
+                default_filter = peer_schema.default_filter.split("__")[0]
+                fields[default_filter] = None
+
             peer = await registry.manager.get_one_by_default_filter(
-                db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+                db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields=fields
             )
             if peer:
                 self.set_peer(value=peer)
