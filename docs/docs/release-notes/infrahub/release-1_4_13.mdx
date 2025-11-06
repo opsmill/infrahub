@@ -21,6 +21,7 @@ title: Release 1.4.13
 ### Added
 
 - Added new error message for git connection error ([#7392](https://github.com/opsmill/infrahub/issues/7392))
+
 ### Changed
 
 - Changed behaviour for when artifacts are regenerated during a proposed change. Infrahub now runs the query through the GraphQL query analyzer to check if it's feasible to use the GraphQLQueryGroup to track all of the members, if this is the case Infrahub can selectively regenerate artifacts on non git integrated branches to avoid regenerating all artifacts. ([#4991](https://github.com/opsmill/infrahub/issues/4991))
