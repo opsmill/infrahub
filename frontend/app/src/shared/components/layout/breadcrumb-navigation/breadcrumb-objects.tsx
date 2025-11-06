@@ -1,6 +1,6 @@
 import { useLocation, useParams } from "react-router";
 
-import { ARTIFACT_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT, PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/config/constants";
 
 import { BreadcrumbObjectDetails } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details";
 import { BreadcrumbObjectDetailsHierarchy } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details-hierarchy";
@@ -20,7 +20,7 @@ export function BreadcrumbObjects() {
   const isArtifactRoute = pathname.includes(`/objects/${ARTIFACT_OBJECT}`);
   const actualObjectKind = isArtifactRoute ? ARTIFACT_OBJECT : objectKind;
 
-  const { schema } = useSchema(actualObjectKind);
+  const { schema, isProfile, isTemplate } = useSchema(actualObjectKind);
 
   if (!schema) {
     return null;
@@ -42,10 +42,12 @@ export function BreadcrumbObjects() {
 
   return (
     <Breadcrumb>
+      {isProfile && <BreadcrumbItemSchema kind={PROFILE_KIND} />}
+      {isTemplate && <BreadcrumbItemSchema kind={TEMPLATE_GENERIC_KIND} />}
       {objId ? (
         <BreadcrumbObjectDetails objectSchema={schema} objectId={objId} />
       ) : (
-        <BreadcrumbItemSchema schema={schema} />
+        <BreadcrumbItemSchema kind={schema.kind!} />
       )}
     </Breadcrumb>
   );

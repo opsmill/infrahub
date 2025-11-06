@@ -75,7 +75,7 @@ export function BreadcrumbItemObject({
               {...(parentRelationshipSchema && parentToChildRelationshipSchema && parentId
                 ? {
                     objectKind: parentToChildRelationshipSchema.peer,
-                    filters: {
+                    filterQuery: {
                       [`${parentRelationshipSchema.name}__ids`]: [parentId],
                     },
                   }
