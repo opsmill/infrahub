@@ -20,6 +20,7 @@ export const CONFIG = {
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
   INFO_URL: `${INFRAHUB_API_SERVER_URL}/api/info`,
+  CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/api/config`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
   ARTIFACTS_DIFF_URL: (branch?: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/diff/artifacts?branch=${branch}`,
