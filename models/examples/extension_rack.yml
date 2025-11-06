@@ -8,8 +8,7 @@ nodes:
     label: "Rack"
     default_filter: name__value
     icon: clarity:rack-server-solid
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text

@@ -93,8 +93,7 @@ version: "1.0"
 nodes:
   - name: Site
     namespace: Location
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -108,8 +107,7 @@ nodes:
 
   - name: Circuit
     namespace: Infra
-    display_labels:
-      - circuit_id__value
+    display_label: "{{ circuit_id__value }}"
     attributes:
       - name: circuit_id
         kind: Text
@@ -131,8 +129,7 @@ nodes:
   - name: CircuitEndpoint
     namespace: Infra
     label: Circuit endpoint
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
