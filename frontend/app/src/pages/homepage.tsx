@@ -10,7 +10,7 @@ const Homepage = () => {
       <h1 className="font-semibold text-2xl">Welcome to Infrahub!</h1>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 flex max-h-80 flex-col">
+        <div className="col-span-2 flex h-80 flex-col">
           <Branches />
         </div>
 
