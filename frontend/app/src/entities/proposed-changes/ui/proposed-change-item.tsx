@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
 import { CHECK_OBJECT, TASK_OBJECT } from "@/config/constants";
@@ -24,7 +25,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
   const { permission } = useObjectTableContext();
 
   return (
-    <div className="flex items-center border border-gray-200 border-b-0 p-2">
+    <ListBoxItem className="flex items-center p-2">
       <div className="grid flex-grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
@@ -50,7 +51,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
         objectLabel={node.display_label}
         permission={permission}
       />
-    </div>
+    </ListBoxItem>
   );
 };
 

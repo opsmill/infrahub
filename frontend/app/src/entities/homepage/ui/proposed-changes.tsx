@@ -25,11 +25,12 @@ export const ProposedChanges = ({ className }: ProposedChangesProps) => {
       <RequireObjectPermissions objectKind={PROPOSED_CHANGE_OBJECT}>
         {({ permission }) => {
           return (
-            <ObjectTableProvider schema={proposedChangeSchema}>
+            <ObjectTableProvider schema={proposedChangeSchema!}>
               <ProposedChangesTable
                 permission={permission}
                 schema={proposedChangeSchema}
                 hideFilters
+                className="m-0 rounded-none border-none"
               />
             </ObjectTableProvider>
           );

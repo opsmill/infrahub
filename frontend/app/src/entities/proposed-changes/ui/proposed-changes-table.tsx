@@ -1,10 +1,12 @@
 import { useQueryState } from "nuqs";
 import React from "react";
+import { ListBox } from "react-aria-components";
 
 import { QSP } from "@/config/qsp";
 
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
+import { classNames } from "@/shared/utils/common";
 
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import type { Permission } from "@/entities/permission/types";
@@ -20,9 +22,14 @@ type ProposedChangesTableProps = {
   schema: NodeSchema;
   permission: Permission;
   hideFilters?: boolean;
+  className?: string;
 };
 
-export function ProposedChangesTable({ schema, hideFilters }: ProposedChangesTableProps) {
+export function ProposedChangesTable({
+  schema,
+  hideFilters,
+  className,
+}: ProposedChangesTableProps) {
   const [proposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
 
   const [filters] = useFilters();
@@ -42,9 +49,18 @@ export function ProposedChangesTable({ schema, hideFilters }: ProposedChangesTab
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage} className="h-full">
       {!hideFilters && <ProposedChangesTableFilters schema={schema} />}
 
-      {flatData.map((node) => {
-        return <ProposedChangesItem key={node.id} node={node} />;
-      })}
+      <ListBox
+        aria-label="Branches list"
+        items={flatData}
+        className={classNames(
+          "m-2 flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200",
+          className
+        )}
+      >
+        {flatData.map((node) => {
+          return <ProposedChangesItem key={node.id} node={node} />;
+        })}
+      </ListBox>
 
       {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
 
