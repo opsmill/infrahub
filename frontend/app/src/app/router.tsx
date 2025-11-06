@@ -19,7 +19,6 @@ import type { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navig
 
 import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
-import { constructPathForIpam } from "@/entities/ipam/utils";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 
@@ -165,25 +164,9 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     path: ":objectKind",
-                    handle: {
-                      breadcrumb: (match: UIMatch) => {
-                        return {
-                          type: "select",
-                          value: match.params.objectKind,
-                          kind: "schema",
-                        };
-                      },
-                    },
                     children: [
                       {
                         path: ":objectId",
-                        handle: {
-                          breadcrumb: (match: UIMatch) => ({
-                            type: "select",
-                            value: match.params.objectId,
-                            kind: match.params.objectKind,
-                          }),
-                        },
                         children: [
                           {
                             path: "convert",
@@ -210,13 +193,6 @@ export const router = createBrowserRouter([
                           },
                           {
                             path: ":objectid",
-                            handle: {
-                              breadcrumb: (match: UIMatch) => ({
-                                type: "select",
-                                value: match.params.objectid,
-                                kind: match.params.objectKind,
-                              }),
-                            },
                             children: [
                               {
                                 index: true,
@@ -406,27 +382,9 @@ export const router = createBrowserRouter([
               },
               {
                 path: "ipam",
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "IP Address Manager",
-                      to: constructPathForIpam("/ipam"),
-                    } as BreadcrumbItem;
-                  },
-                },
                 children: [
                   {
                     path: "namespaces",
-                    handle: {
-                      breadcrumb: () => {
-                        return {
-                          type: "link",
-                          label: "namespaces",
-                          to: constructPath("/ipam/namespaces"),
-                        } satisfies BreadcrumbItem;
-                      },
-                    },
                     children: [
                       {
                         index: true,
@@ -439,15 +397,6 @@ export const router = createBrowserRouter([
                           {
                             path: ":objectid",
                             lazy: () => import("@/pages/objects/object-details"),
-                            handle: {
-                              breadcrumb: (match: UIMatch) => {
-                                return {
-                                  type: "select",
-                                  value: match.params.objectid,
-                                  kind: match.params.objectKind,
-                                };
-                              },
-                            },
                           },
                         ],
                       },
@@ -458,15 +407,6 @@ export const router = createBrowserRouter([
               {
                 path: "ipam",
                 lazy: () => import("@/pages/ipam/ipam-layout"),
-                handle: {
-                  breadcrumb: () => {
-                    return {
-                      type: "link",
-                      label: "IP Address Manager",
-                      to: constructPathForIpam("/ipam"),
-                    } as BreadcrumbItem;
-                  },
-                },
                 children: [
                   {
                     index: true,
