@@ -445,23 +445,20 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         )
         await delete_query.execute(db=db)
 
-    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
+    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> None:
         """Resolve the peer of the relationship."""
+
+        fields = fields or []
+        query_fields = dict.fromkeys(fields)
+        if "display_label" not in query_fields:
+            query_fields["display_label"] = None
 
         if self._peer is not None:
             return
 
         if self.peer_id and not is_valid_uuid(self.peer_id):
-            fields = {"display_label": None}
-            peer_schema = db.schema.get(
-                name=self.schema.peer, branch=self.get_branch_based_on_support_type(), duplicate=False
-            )
-            if peer_schema.default_filter:
-                default_filter = peer_schema.default_filter.split("__")[0]
-                fields[default_filter] = None
-
             peer = await registry.manager.get_one_by_default_filter(
-                db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields=fields
+                db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields=query_fields
             )
             if peer:
                 self.set_peer(value=peer)
@@ -478,7 +475,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 hfid=self.peer_hfid,
                 branch=self.branch,
                 kind=kind,
-                fields={"display_label": None},
+                fields=query_fields,
                 raise_on_error=True,
             )
             self.set_peer(value=peer)
@@ -1150,9 +1147,9 @@ class RelationshipManager:
 
         return True
 
-    async def resolve(self, db: InfrahubDatabase) -> None:
+    async def resolve(self, db: InfrahubDatabase, fields: list[str] | None = None) -> None:
         for rel in self._relationships:
-            await rel.resolve(db=db)
+            await rel.resolve(db=db, fields=fields)
 
     async def remove_locally(
         self,
