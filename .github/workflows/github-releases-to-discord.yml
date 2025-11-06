@@ -1,3 +1,4 @@
+# https://github.com/SethCohen/github-releases-to-discord
 on:
   release:
     types: [published]
