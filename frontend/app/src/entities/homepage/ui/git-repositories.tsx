@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import React from "react";
+import { ListBox } from "react-aria-components";
 
 import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
 
 import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
-import { ListBox } from "@/shared/components/aria/list-box";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
@@ -35,7 +35,6 @@ export const GitRepositories = ({ className }: GitRepositoriesProps) => {
   });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
-  // const flatData = [];
 
   const isLoading = isPending || isFetchingNextPage;
 
@@ -51,19 +50,15 @@ export const GitRepositories = ({ className }: GitRepositoriesProps) => {
         </HomeCard.Link>
       </HomeCard.Title>
 
-      <InfiniteScroll
-        hasNextPage={hasNextPage}
-        onLoadMore={fetchNextPage}
-        className="flex h-full flex-col items-center justify-center gap-2"
-      >
+      <InfiniteScroll hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
         <ListBox
           aria-label="Git repositories list"
-          className={"h-full"}
           items={flatData}
           renderEmptyState={() => (
             <EmptyHomeCard
               title={"No git repository connected"}
               subtitle={"Connect a Git repo to sync changes."}
+              className="py-10"
             />
           )}
         >
