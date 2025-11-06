@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { ListBox } from "react-aria-components";
 
-import { ListBox } from "@/shared/components/aria/list-box";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
@@ -19,9 +20,9 @@ export const Branches = () => {
   }
 
   const sortedBranches = sortByCreatedAtDesc(
-    (storedBranches?.filter((b) => b.name !== "main" && b.created_at) ?? []) as {
+    (storedBranches?.filter((b) => b.name !== "main" && b.created_at) ?? []) as (Branch & {
       created_at: string;
-    }[]
+    })[]
   );
   const branches = [...(storedBranches?.filter((b) => b.name === "main") ?? []), ...sortedBranches];
 
@@ -52,7 +53,7 @@ export const Branches = () => {
           items={branches}
           className="flex h-full flex-col divide-y overflow-scroll"
         >
-          {(branch) => <BranchListItem branch={branch} />}
+          {(branch) => <BranchListItem branch={branch} target="_blank" rel="noopener noreferrer" />}
         </ListBox>
       )}
     </HomeCard>
