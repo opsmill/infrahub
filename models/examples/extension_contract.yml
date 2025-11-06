@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 nodes:
   - name: Contract
     namespace: Procurement
@@ -8,8 +8,7 @@ nodes:
     label: "Contract"
     icon: "clarity:contract-solid"
     menu_placement: OrganizationGeneric
-    display_labels:
-      - contract_ref__value
+    display_label: "{{ contract_ref__value }}"
     order_by:
       - contract_ref__value
     uniqueness_constraints:
