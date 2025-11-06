@@ -4,7 +4,7 @@ import { ListBox } from "@/shared/components/aria/list-box";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
-import { sortByName } from "@/shared/utils/common";
+import { sortByCreatedAtDesc } from "@/shared/utils/common";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
@@ -18,9 +18,12 @@ export const Branches = () => {
     return <ErrorScreen message={error.message} />;
   }
 
-  const sortedBranches = sortByName(storedBranches?.filter((b) => b.name !== "main") ?? []);
+  const sortedBranches = sortByCreatedAtDesc(
+    (storedBranches?.filter((b) => b.name !== "main" && b.created_at) ?? []) as {
+      created_at: string;
+    }[]
+  );
   const branches = [...(storedBranches?.filter((b) => b.name === "main") ?? []), ...sortedBranches];
-  // const branches = [];
 
   return (
     <HomeCard className="flex h-full min-h-40 flex-col">
