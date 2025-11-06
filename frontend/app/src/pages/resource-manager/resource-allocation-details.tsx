@@ -110,6 +110,4 @@ const ResourceAllocationPageSkeleton = () => {
   );
 };
 
-export function Component() {
-  return <ResourceAllocationDetailsPage />;
-}
+export const Component = ResourceAllocationDetailsPage;

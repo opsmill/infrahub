@@ -52,7 +52,7 @@ const usePagination = () => {
     setPaginationInQueryString(newValidatedPagination);
   };
 
-  return [pagination, setPagination];
+  return [pagination, setPagination] as const;
 };
 
 export default usePagination;
