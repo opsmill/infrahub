@@ -10,8 +10,8 @@ const Homepage = () => {
       <h1 className="font-semibold text-2xl">Welcome to Infrahub!</h1>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 flex h-80 flex-col">
-          <Branches />
+        <div className="col-span-2 flex flex-col">
+          <Branches className="h-80" />
         </div>
 
         <GitRepositories className="h-44" />
