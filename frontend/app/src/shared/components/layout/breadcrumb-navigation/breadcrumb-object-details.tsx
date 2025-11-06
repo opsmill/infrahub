@@ -10,9 +10,14 @@ import type { ModelSchema } from "@/entities/schema/types";
 interface BreadcrumbObjectDetailsProps {
   objectSchema: ModelSchema;
   objectId: string;
+  autocompleteObjectKind?: string;
 }
 
-export function BreadcrumbObjectDetails({ objectSchema, objectId }: BreadcrumbObjectDetailsProps) {
+export function BreadcrumbObjectDetails({
+  autocompleteObjectKind,
+  objectSchema,
+  objectId,
+}: BreadcrumbObjectDetailsProps) {
   const { isPending, error, data } = useGetObject(
     { objectSchema, objectId },
     {
@@ -38,6 +43,7 @@ export function BreadcrumbObjectDetails({ objectSchema, objectId }: BreadcrumbOb
       {parentNode && <BreadcrumbItemObject node={parentNode} />}
       <BreadcrumbItemObject
         node={data}
+        autocompleteObjectKind={autocompleteObjectKind}
         parentId={parentNode?.id}
         parentRelationshipSchema={parentRelationship}
       />

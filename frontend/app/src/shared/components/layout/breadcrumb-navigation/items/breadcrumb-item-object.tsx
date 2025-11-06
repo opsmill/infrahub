@@ -15,10 +15,12 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbItemObject({
   node,
+  autocompleteObjectKind,
   parentRelationshipSchema,
   parentId,
 }: {
   node: NodeCore;
+  autocompleteObjectKind?: string;
   parentId?: string;
   parentRelationshipSchema?: RelationshipSchema;
 }) {
@@ -77,7 +79,7 @@ export function BreadcrumbItemObject({
                       [`${parentRelationshipSchema.name}__ids`]: [parentId],
                     },
                   }
-                : { objectKind: node.__typename })}
+                : { objectKind: autocompleteObjectKind ?? node.__typename })}
             />
           </Popover>
         </MenuTrigger>

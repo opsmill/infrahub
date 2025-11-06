@@ -1,5 +1,4 @@
 import { Icon } from "@iconify-icon/react";
-import { ChevronsUpDownIcon } from "lucide-react";
 import { useFilter } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -7,7 +6,7 @@ import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
-import { BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
+import { BreadcrumbItemTrigger } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-trigger";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 
@@ -17,17 +16,13 @@ interface BreadcrumbBranchSelectorProps {
 
 export default function BreadcrumbBranchSelector({
   currentBranchName,
-  ...props
 }: BreadcrumbBranchSelectorProps) {
   const { data: branches = [] } = useGetBranches();
   const { contains } = useFilter({ sensitivity: "base" });
 
   return (
     <MenuTrigger>
-      <BreadcrumbItem className="gap-1.5" {...props}>
-        <span className="truncate">{currentBranchName}</span>
-        <ChevronsUpDownIcon className="size-4" />
-      </BreadcrumbItem>
+      <BreadcrumbItemTrigger>{currentBranchName}</BreadcrumbItemTrigger>
 
       <Popover className="bg-stone-100/50 backdrop-blur">
         <PopoverDialog aria-label="Branch selector">

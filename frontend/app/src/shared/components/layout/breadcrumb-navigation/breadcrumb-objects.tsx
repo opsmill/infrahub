@@ -1,4 +1,6 @@
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
+
+import { ARTIFACT_OBJECT } from "@/config/constants";
 
 import { BreadcrumbObjectDetails } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details";
 import { BreadcrumbObjectDetailsHierarchy } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details-hierarchy";
@@ -12,7 +14,13 @@ import { BreadcrumbSchemaHierarchy } from "./breadcrumb-schema-hierarchy";
 
 export function BreadcrumbObjects() {
   const { objectKind, objectid, objectId, artifactId } = useParams();
-  const { schema } = useSchema(objectKind);
+  const { pathname } = useLocation();
+
+  // For CoreArtifact route, objectKind is hardcoded in the path
+  const isArtifactRoute = pathname.includes(`/objects/${ARTIFACT_OBJECT}`);
+  const actualObjectKind = isArtifactRoute ? ARTIFACT_OBJECT : objectKind;
+
+  const { schema } = useSchema(actualObjectKind);
 
   if (!schema) {
     return null;
