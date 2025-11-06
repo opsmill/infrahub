@@ -1,7 +1,8 @@
 # https://github.com/SethCohen/github-releases-to-discord
-on:
-  release:
-    types: [published]
+# on:
+#   release:
+#     types: [published]
+on: workflow_dispatch
 
 jobs:
   github-releases-to-discord:
