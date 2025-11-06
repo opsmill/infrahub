@@ -335,7 +335,7 @@ class Branch(StandardNode):
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = f"{variable_name}.from <= ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            filter_str = f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
@@ -348,10 +348,10 @@ class Branch(StandardNode):
         filters = []
         for idx in range(len(branches_times)):
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
+                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"
