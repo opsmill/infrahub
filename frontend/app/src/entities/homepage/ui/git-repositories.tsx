@@ -10,6 +10,7 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { classNames } from "@/shared/utils/common";
 
 import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
+import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { EmptyHomeCard } from "./empty-home-card";
@@ -24,6 +25,12 @@ export const GitRepositories = ({ className }: GitRepositoriesProps) => {
 
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({
     schema: schema!,
+    getAttributesVisible: (attributes) => {
+      return attributes.filter(({ name }) => {
+        return name === REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME;
+      });
+    },
+    getRelationshipsVisible: () => [],
   });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
@@ -42,32 +49,27 @@ export const GitRepositories = ({ className }: GitRepositoriesProps) => {
         </HomeCard.Link>
       </HomeCard.Title>
 
-      {!isLoading && flatData.length === 0 && (
-        <EmptyHomeCard
-          title={"No git repository connected"}
-          subtitle={"Connect a Git repo to sync changes."}
-        />
-      )}
+      <InfiniteScroll
+        scrollX
+        hasNextPage={hasNextPage}
+        onLoadMore={fetchNextPage}
+        className="flex h-full flex-col items-center justify-center gap-2"
+      >
+        {!isLoading && flatData.length === 0 && (
+          <EmptyHomeCard
+            title={"No git repository connected"}
+            subtitle={"Connect a Git repo to sync changes."}
+          />
+        )}
 
-      {flatData.length > 0 && (
-        <InfiniteScroll
-          scrollX
-          hasNextPage={hasNextPage}
-          onLoadMore={fetchNextPage}
-          className="flex h-full flex-col items-center justify-center gap-2"
-        >
-          {flatData.map((repository) => {
-            return (
-              <GitRepositoryItem
-                {...(repository as unknown as CoreRepository)}
-                key={repository.id}
-              />
-            );
-          })}
+        {flatData.map((repository) => {
+          return (
+            <GitRepositoryItem {...(repository as unknown as CoreRepository)} key={repository.id} />
+          );
+        })}
 
-          {isLoading && <LoadingIndicator />}
-        </InfiniteScroll>
-      )}
+        {isLoading && <LoadingIndicator />}
+      </InfiniteScroll>
     </HomeCard>
   );
 };
