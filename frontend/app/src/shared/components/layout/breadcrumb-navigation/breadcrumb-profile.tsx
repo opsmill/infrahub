@@ -1,10 +1,10 @@
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Breadcrumb, BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
+import { BreadcrumbItem, Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 
 export function BreadcrumbProfile() {
   return (
-    <Breadcrumb data-testid="breadcrumb-profile">
+    <Breadcrumbs data-testid="breadcrumb-profile">
       <BreadcrumbItem href={constructPath("/profile")}>Account settings</BreadcrumbItem>
-    </Breadcrumb>
+    </Breadcrumbs>
   );
 }

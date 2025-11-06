@@ -1,10 +1,10 @@
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Breadcrumb, BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
+import { BreadcrumbItem, Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 
 export function BreadcrumbGraphql() {
   return (
-    <Breadcrumb data-testid="breadcrumb-graphql">
+    <Breadcrumbs data-testid="breadcrumb-graphql">
       <BreadcrumbItem href={constructPath("/graphql")}>GraphQL Sandbox</BreadcrumbItem>
-    </Breadcrumb>
+    </Breadcrumbs>
   );
 }

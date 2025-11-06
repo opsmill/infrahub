@@ -1,7 +1,7 @@
 import { matchPath, useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Breadcrumb, BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
+import { BreadcrumbItem, Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 
 export function BreadcrumbRoleManagement() {
   const { pathname } = useLocation();
@@ -19,7 +19,7 @@ export function BreadcrumbRoleManagement() {
   );
 
   return (
-    <Breadcrumb data-testid="breadcrumb-role-management">
+    <Breadcrumbs data-testid="breadcrumb-role-management">
       <BreadcrumbItem href={constructPath("/role-management")}>Users & Permissions</BreadcrumbItem>
       {isAccountsPage && (
         <BreadcrumbItem href={constructPath("/role-management")}>Accounts</BreadcrumbItem>
@@ -40,6 +40,6 @@ export function BreadcrumbRoleManagement() {
           Object Permissions
         </BreadcrumbItem>
       )}
-    </Breadcrumb>
+    </Breadcrumbs>
   );
 }

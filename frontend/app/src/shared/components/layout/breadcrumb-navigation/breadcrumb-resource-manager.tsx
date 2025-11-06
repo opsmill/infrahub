@@ -3,19 +3,19 @@ import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbItemError,
+  BreadcrumbItemLoading,
+  Breadcrumbs,
+} from "@/shared/components/aria/breadcrumbs";
 import { Button } from "@/shared/components/aria/button";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 import { BreadcrumbObjectDetails } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details";
-import {
-  Breadcrumb,
-  BreadcrumbError,
-  BreadcrumbItem,
-  BreadcrumbLoading,
-  BreadcrumbSeparator,
-} from "@/shared/components/ui/breadcrumb";
 
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
@@ -26,7 +26,7 @@ export function BreadcrumbResourceManager() {
   const { schema } = useSchema(RESOURCE_GENERIC_KIND);
 
   return (
-    <Breadcrumb data-testid="breadcrumb-resource-manager">
+    <Breadcrumbs data-testid="breadcrumb-resource-manager">
       <BreadcrumbItem href={constructPath("/resource-manager")}>Resource manager</BreadcrumbItem>
       {schema && resourcePoolId && (
         <BreadcrumbObjectDetails
@@ -38,7 +38,7 @@ export function BreadcrumbResourceManager() {
       {resourceId && resourcePoolId && (
         <ResourceSelector resourceId={resourceId} resourcePoolId={resourcePoolId} />
       )}
-    </Breadcrumb>
+    </Breadcrumbs>
   );
 }
 
@@ -55,11 +55,11 @@ function ResourceSelector({
   );
 
   if (isPending) {
-    return <BreadcrumbLoading />;
+    return <BreadcrumbItemLoading />;
   }
 
   if (error) {
-    return <BreadcrumbError error={error} />;
+    return <BreadcrumbItemError error={error} />;
   }
 
   const resources = data.edges.map(({ node }) => node);
@@ -68,8 +68,7 @@ function ResourceSelector({
   if (!currentResource) return null;
 
   return (
-    <>
-      <BreadcrumbSeparator />
+    <Breadcrumb>
       <Row className="items-end gap-0.5 pr-1 pl-2">
         <Col className="gap-0 py-0.5">
           <div className="truncate text-neutral-600 text-xs leading-3.5">Resources</div>
@@ -108,6 +107,6 @@ function ResourceSelector({
           </Popover>
         </MenuTrigger>
       </Row>
-    </>
+    </Breadcrumb>
   );
 }

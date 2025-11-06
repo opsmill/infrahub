@@ -4,15 +4,15 @@ import { useLocation, useParams } from "react-router";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import {
+  BreadcrumbItem,
+  BreadcrumbItemError,
+  BreadcrumbItemLoading,
+  Breadcrumbs,
+} from "@/shared/components/aria/breadcrumbs";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
 import { BreadcrumbItemTrigger } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-trigger";
-import {
-  Breadcrumb,
-  BreadcrumbError,
-  BreadcrumbItem,
-  BreadcrumbLoading,
-} from "@/shared/components/ui/breadcrumb";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
@@ -24,13 +24,13 @@ export function BreadcrumbProposedChanges() {
   const isNewPage = pathname.endsWith("/new");
 
   return (
-    <Breadcrumb data-testid="breadcrumb-proposed-changes">
+    <Breadcrumbs data-testid="breadcrumb-proposed-changes">
       <BreadcrumbItem href={constructPath("/proposed-changes")}>Proposed changes</BreadcrumbItem>
       {isNewPage && (
         <BreadcrumbItem href={constructPath("/proposed-changes/new")}>new</BreadcrumbItem>
       )}
       {proposedChangeId && <BreadcrumbProposedChangeSelector proposedChangeId={proposedChangeId} />}
-    </Breadcrumb>
+    </Breadcrumbs>
   );
 }
 
@@ -48,11 +48,11 @@ function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChange
   );
 
   if (isPending || !schema) {
-    return <BreadcrumbLoading />;
+    return <BreadcrumbItemLoading />;
   }
 
   if (error) {
-    return <BreadcrumbError error={error} />;
+    return <BreadcrumbItemError error={error} />;
   }
 
   return (

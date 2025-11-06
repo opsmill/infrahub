@@ -1,11 +1,11 @@
 import { ChevronsUpDownIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { Breadcrumb } from "@/shared/components/aria/breadcrumbs";
 import { Button } from "@/shared/components/aria/button";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
-import { BreadcrumbSeparator } from "@/shared/components/ui/breadcrumb";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import type { NodeCore } from "@/entities/nodes/types";
@@ -45,8 +45,7 @@ export function BreadcrumbItemObject({
     : null;
 
   return (
-    <>
-      <BreadcrumbSeparator />
+    <Breadcrumb>
       <Row className="items-end gap-0.5 pr-1 pl-2">
         <Col className="gap-0 py-0.5">
           <Link
@@ -84,6 +83,6 @@ export function BreadcrumbItemObject({
           </Popover>
         </MenuTrigger>
       </Row>
-    </>
+    </Breadcrumb>
   );
 }
