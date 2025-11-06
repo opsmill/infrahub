@@ -1,5 +1,3 @@
-import { useQuery } from "@apollo/client";
-import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -14,72 +12,95 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
-import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import {
+  type AttributeType,
+  ObjectAttributeValue,
+} from "@/entities/nodes/getObjectItemDisplayValue";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import {
-  GET_KIND_FOR_RESOURCE_POOL,
-  GET_RESOURCE_POOL_UTILIZATION,
-} from "@/entities/resource-manager/api/resource-pool";
-import {
-  RESOURCE_GENERIC_KIND,
-  RESOURCE_POOL_UTILIZATION_KIND,
-} from "@/entities/resource-manager/constants";
+import type { Permission } from "@/entities/permission/types";
+import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { useGetResourceUtilization } from "@/entities/resource-manager/domain/get-resource-utilization.query";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector, {
   type ResourceProps,
 } from "@/entities/resource-manager/ui/resource-selector";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { NodeSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();
-  const nodes = useAtomValue(nodeSchemasAtom);
+  const { schema: genericPoolSchema } = useSchema(RESOURCE_GENERIC_KIND);
 
-  const { data, loading } = useQuery(GET_KIND_FOR_RESOURCE_POOL, {
-    variables: { ids: [resourcePoolId] },
+  const { data, error, isPending } = useGetObject({
+    objectSchema: genericPoolSchema!,
+    objectId: resourcePoolId!,
+    getAttributesVisible: () => [],
+    getRelationshipsVisible: () => [],
   });
 
-  if (loading) return <LoadingIndicator className="h-full" />;
+  if (isPending) return <LoadingIndicator className="h-full" />;
 
-  const resourcePoolData = data[RESOURCE_GENERIC_KIND].edges[0];
-  if (!resourcePoolData) return <NoDataFound />;
+  if (error) return <ErrorScreen message={error.message} />;
 
-  const { id, __typename: kind } = resourcePoolData.node;
-  const schema = nodes.find((node) => node.kind === kind);
-  if (!schema) return <NoDataFound />;
-
-  return <ResourcePoolContent id={id} schema={schema} />;
+  const objectKind = data.__typename;
+  return (
+    <RequireObjectPermissions objectKind={objectKind}>
+      {({ permission }) => (
+        <ResourcePoolContent
+          resourcePoolId={resourcePoolId!}
+          resourcePoolKind={objectKind}
+          permission={permission}
+        />
+      )}
+    </RequireObjectPermissions>
+  );
 };
 
 type ResourcePoolContentProps = {
-  id: string;
-  schema: NodeSchema;
+  resourcePoolId: string;
+  resourcePoolKind: string;
+  permission: Permission;
 };
 
-const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
-  const { loading, error, data, refetch, permission } = useObjectDetails(schema, id);
-
-  const getResourcePoolUtilizationQuery = useQuery(GET_RESOURCE_POOL_UTILIZATION, {
-    variables: {
-      poolId: id,
+const ResourcePoolContent = ({
+  resourcePoolId,
+  resourcePoolKind,
+  permission,
+}: ResourcePoolContentProps) => {
+  const { schema } = useSchema(resourcePoolKind);
+  const {
+    isPending,
+    isRefetching,
+    error,
+    data: resourcePool,
+    refetch,
+  } = useGetObject(
+    {
+      objectSchema: schema!,
+      objectId: resourcePoolId,
     },
-  });
+    {
+      enabled: !!schema,
+    }
+  );
 
-  if (loading || getResourcePoolUtilizationQuery.loading) {
+  const {
+    data: resourcePoolUtilization,
+    isPending: isUtilizationPending,
+    error: utilizationError,
+    refetch: refetchUtilization,
+  } = useGetResourceUtilization({ resourceId: resourcePoolId });
+
+  if (!schema) return <NoDataFound />;
+
+  if (isPending || isUtilizationPending) {
     return <LoadingIndicator className="h-full" />;
   }
 
-  if (error || getResourcePoolUtilizationQuery.error) {
+  if (error || utilizationError) {
     return <ErrorScreen message="Error when fetching the resource pool details" />;
   }
-
-  const resourcePoolData = data[schema.kind!].edges[0];
-  if (!resourcePoolData) return <NoDataFound />;
-
-  const resourcePool = resourcePoolData.node;
-  const resourcePoolUtilization =
-    getResourcePoolUtilizationQuery.data[RESOURCE_POOL_UTILIZATION_KIND];
 
   const properties: Property[] = [
     { name: "ID", value: resourcePool.id },
@@ -89,7 +110,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         value: (
           <ObjectAttributeValue
             attributeSchema={schemaAttribute}
-            attributeValue={resourcePool[schemaAttribute.name]}
+            attributeValue={resourcePool[schemaAttribute.name] as AttributeType}
           />
         ),
       };
@@ -123,11 +144,11 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   return (
     <Content.Card>
       <Content.CardTitle
-        title={resourcePoolData.node.display_label}
-        isReloadLoading={loading}
+        title={resourcePool.display_label}
+        isReloadLoading={isRefetching}
         reload={() => {
           refetch();
-          getResourcePoolUtilizationQuery.refetch();
+          refetchUtilization();
         }}
         end={
           <ObjectHelpButton
@@ -151,7 +172,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
                 schema={schema}
                 onUpdateComplete={() => {
                   refetch();
-                  getResourcePoolUtilizationQuery.refetch();
+                  refetchUtilization();
                 }}
                 permission={permission}
               />
@@ -173,6 +194,4 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   );
 };
 
-export function Component() {
-  return <ResourcePoolDetailsPage />;
-}
+export const Component = ResourcePoolDetailsPage;
