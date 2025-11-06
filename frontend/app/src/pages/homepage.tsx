@@ -14,7 +14,7 @@ const Homepage = () => {
           <Branches />
         </div>
 
-        <GitRepositories className="min-h-44" />
+        <GitRepositories className="h-44" />
       </div>
 
       <GettingStarted />
