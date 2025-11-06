@@ -57,18 +57,17 @@ CALL (profile, attr) {
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     RETURN r.status = "active" AS is_active
 }
-WITH profile, attr, is_active
+WITH profile, attr
 WHERE is_active = TRUE
 // --------------
 // get the attribute values
 // --------------
-MATCH (attr)-[:HAS_VALUE]->(av:AttributeValue)
-WITH DISTINCT profile, attr, av
-CALL (attr, av) {
+CALL (attr) {
     MATCH (attr)-[r:HAS_VALUE]->(av)
     WHERE %(branch_filter)s
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-    RETURN r.status = "active" AS is_active
+    RETURN av, r.status = "active" AS is_active
+    LIMIT 1
 }
 WITH profile, attr, av
 WHERE is_active = TRUE

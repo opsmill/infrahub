@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub import config
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality, SchemaPathType
@@ -26,10 +27,20 @@ if TYPE_CHECKING:
     from infrahub.core.diff.model.path import DiffNode
 
 
+@pytest.fixture(autouse=True)
+def parallel_runtime(db: InfrahubDatabase):
+    original = db.default_neo4j_runtime
+    db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
+
+    yield
+
+    db.default_neo4j_runtime = original
+
+
 @pytest.fixture(autouse=True, scope="module")
 def low_query_size_limit():
     original = config.SETTINGS.database.query_size_limit
-    config.SETTINGS.database.query_size_limit = 30
+    config.SETTINGS.database.query_size_limit = 5
 
     yield
 
