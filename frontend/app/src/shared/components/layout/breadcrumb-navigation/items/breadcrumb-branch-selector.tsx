@@ -1,65 +1,57 @@
-import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Icon } from "@iconify-icon/react";
+import { ChevronsUpDownIcon } from "lucide-react";
+import { useFilter } from "react-aria-components";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { breadcrumbItemStyle } from "@/shared/components/layout/breadcrumb-navigation/style";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxTrigger,
-} from "@/shared/components/ui/combobox";
-import { CommandEmpty, CommandItem } from "@/shared/components/ui/command";
-import { classNames } from "@/shared/utils/common";
+import { Autocomplete } from "@/shared/components/aria/autocomplete";
+import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
+import { MenuTrigger } from "@/shared/components/aria/menu";
+import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+import { BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
 
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
-import { branchesState } from "@/entities/branches/stores";
+import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
+
+interface BreadcrumbBranchSelectorProps {
+  currentBranchName: string;
+}
 
 export default function BreadcrumbBranchSelector({
-  value,
-  className,
+  currentBranchName,
   ...props
-}: {
-  value: string;
-  className?: string;
-}) {
-  const branches = useAtomValue(branchesState);
-  const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) queryClient.invalidateQueries(getBranchesQueryOptions());
-  }, [isOpen]);
+}: BreadcrumbBranchSelectorProps) {
+  const { data: branches = [] } = useGetBranches();
+  const { contains } = useFilter({ sensitivity: "base" });
 
   return (
-    <Combobox open={isOpen} onOpenChange={setIsOpen}>
-      <ComboboxTrigger className={classNames(breadcrumbItemStyle, className)} {...props}>
-        {value}
-      </ComboboxTrigger>
+    <MenuTrigger>
+      <BreadcrumbItem className="gap-1.5" {...props}>
+        <span className="truncate">{currentBranchName}</span>
+        <ChevronsUpDownIcon className="size-4" />
+      </BreadcrumbItem>
 
-      <ComboboxContent align="start" fitTriggerWidth={false}>
-        <ComboboxList>
-          <CommandEmpty>No branch found.</CommandEmpty>
-          {branches.map((branch) => {
-            const branchUrl = constructPath(`/branches/${branch.name}`);
-            return (
-              <CommandItem
-                key={branch.name}
-                value={branch.name}
-                onSelect={() => {
-                  setIsOpen(false);
-                  navigate(branchUrl);
-                }}
-                asChild
+      <Popover className="bg-stone-100/50 backdrop-blur">
+        <PopoverDialog aria-label="Branch selector">
+          {({ close }) => (
+            <Autocomplete filter={contains}>
+              <ListBox
+                items={branches}
+                emptyMessage="No branches found."
+                className="p-1"
+                onAction={close}
               >
-                <Link to={branchUrl}>{branch.name}</Link>
-              </CommandItem>
-            );
-          })}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+                {(branch) => (
+                  <ListBoxItem
+                    textValue={branch.name}
+                    href={constructPath(`/branches/${branch.name}`)}
+                  >
+                    <Icon icon="mdi:source-branch" /> {branch.name}
+                  </ListBoxItem>
+                )}
+              </ListBox>
+            </Autocomplete>
+          )}
+        </PopoverDialog>
+      </Popover>
+    </MenuTrigger>
   );
 }
