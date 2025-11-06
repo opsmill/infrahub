@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { ListBox } from "react-aria-components";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
+import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
@@ -37,7 +38,7 @@ export const Branches = ({ className }: BranchesProps) => {
           <Icon icon={"mdi:source-branch"} /> Branches
         </span>
 
-        <HomeCard.Link to={"/branches"}>
+        <HomeCard.Link to={constructPath("/branches")}>
           View all <Icon icon={"mdi:chevron-right"} />
         </HomeCard.Link>
       </HomeCard.Title>
