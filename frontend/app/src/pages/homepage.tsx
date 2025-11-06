@@ -12,7 +12,7 @@ const Homepage = () => {
 
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2 flex flex-col gap-4">
-          <ProposedChanges />
+          <ProposedChanges className="h-80" />
 
           <Branches />
         </div>
