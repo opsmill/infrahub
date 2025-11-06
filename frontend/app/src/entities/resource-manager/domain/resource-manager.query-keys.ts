@@ -1,7 +1,7 @@
 import type { PaginationParams } from "@/shared/api/types";
 
 export interface ResourceUtilizationKeysParams {
-  resourceId: string;
+  poolId: string;
 }
 
 export interface ResourceAllocatedKeysParams extends PaginationParams {
@@ -18,7 +18,7 @@ export interface NumberPoolsKeysParams {
 export const resourceManagerQueryKeys = {
   all: ["resource-manager"] as const,
   utilization: (params: ResourceUtilizationKeysParams) =>
-    [...resourceManagerQueryKeys.all, "utilization", params.resourceId] as const,
+    [...resourceManagerQueryKeys.all, "utilization", params.poolId] as const,
   allocated: (params: ResourceAllocatedKeysParams) =>
     [
       ...resourceManagerQueryKeys.all,

@@ -22,12 +22,10 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { useGetResourceUtilization } from "@/entities/resource-manager/domain/get-resource-utilization.query";
+import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
-import ResourceSelector, {
-  type ResourceProps,
-} from "@/entities/resource-manager/ui/resource-selector";
+import ResourceSelector from "@/entities/resource-manager/ui/resource-selector";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ResourcePoolDetailsPage = () => {
@@ -92,7 +90,7 @@ const ResourcePoolContent = ({
     isPending: isUtilizationPending,
     error: utilizationError,
     refetch: refetchUtilization,
-  } = useGetResourceUtilization({ resourceId: resourcePoolId });
+  } = useGetPoolUtilization({ poolId: resourcePoolId });
 
   const handleRefetchAll = async () => {
     await Promise.all([
@@ -192,11 +190,7 @@ const ResourcePoolContent = ({
             <PropertyList properties={properties} labelClassName="font-semibold" />
           </Card>
 
-          <ResourceSelector
-            resources={resourcePoolUtilization.edges.map(
-              ({ node }: { node: ResourceProps }) => node
-            )}
-          />
+          <ResourceSelector resources={resourcePoolUtilization.edges.map(({ node }) => node)} />
         </aside>
 
         <Outlet />
