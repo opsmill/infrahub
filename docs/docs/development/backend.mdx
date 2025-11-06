@@ -65,10 +65,16 @@ It is also possible to disable the automatic startup of services and to rely on 
 export INFRAHUB_USE_TEST_CONTAINERS=false
 ```
 
+To build the required services locally, run the following command:
+
+```shell
+poetry run invoke dev.build
+```
+
 The required services now need to be started using dedicated commands:
 
 ```shell
-invoke dev.destroy dev.deps
+poetry run invoke dev.destroy dev.deps
 ```
 
 This will actually pass two commands, one to destroy any remains of a previous run and one to start services. So this will effectively bring up clean services without leftovers. We can see which services are running by using:
@@ -94,7 +100,7 @@ When following a guide, like the [installation guide](../guides/installation.mdx
 With the required services working and properly setup Python virtual environment we can now run the Infrahub test suite to make sure the code works as intended.
 
 ```shell
-INFRAHUB_LOG_LEVEL=CRITICAL pytest -v backend/tests/unit
+INFRAHUB_LOG_LEVEL=CRITICAL poetry run invoke backend
 ```
 
 The environment variable at the beginning of the command is useful to have a much more cleaner output when running tests.
