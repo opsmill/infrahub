@@ -11,7 +11,11 @@ import {
   BreadcrumbLoading,
 } from "@/shared/components/ui/breadcrumb";
 
-import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import {
+  IP_ADDRESS_GENERIC,
+  IP_PREFIX_GENERIC,
+  IP_PREFIX_RELATIONSHIP_NAME,
+} from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import type { NodeRelationshipOne } from "@/entities/nodes/types";
@@ -84,7 +88,7 @@ export function BreadcrumbIpAddress({ ipAddressSchema, ipAddressId }: Breadcrumb
   }
 
   const ipPrefixRelationshipSchema = ipAddressSchema.relationships?.find(
-    ({ name }) => name === "ip_prefix"
+    ({ name }) => name === IP_PREFIX_RELATIONSHIP_NAME
   );
   const ipPrefixNode = (data.ip_prefix as NodeRelationshipOne | undefined)?.node;
 
