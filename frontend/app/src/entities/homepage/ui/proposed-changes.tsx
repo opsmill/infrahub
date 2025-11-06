@@ -17,7 +17,7 @@ export const ProposedChanges = ({ className }: ProposedChangesProps) => {
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT);
 
   return (
-    <HomeCard className={classNames("", className)}>
+    <HomeCard className={classNames("flex flex-col", className)}>
       <HomeCard.Title className="flex items-center gap-2">
         <Icon icon={"mdi:file-replace-outline"} className={"text-base"} /> Open Proposed changes
       </HomeCard.Title>
