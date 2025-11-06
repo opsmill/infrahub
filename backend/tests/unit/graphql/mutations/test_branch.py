@@ -3,6 +3,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
@@ -407,6 +408,40 @@ async def test_branch_merge_wrong_branch(
     assert result.errors
     assert len(result.errors) == 1
     assert result.errors[0].message == "Branch: branch99 not found."
+
+
+async def test_branch_merge_need_upgrade_rebase(
+    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
+):
+    branch = await create_branch(db=db, branch_name="branch_to_upgrade")
+    branch.status = BranchStatus.NEED_UPGRADE_REBASE
+    await branch.save(db=db)
+
+    query = """
+    mutation {
+        BranchMerge(data: { name: "branch_to_upgrade" }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(
+        db=db, branch=branch, account_session=session_admin, service=local_services
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Cannot merge branch 'branch_to_upgrade' with status 'NEED_UPGRADE_REBASE'"
 
 
 async def test_branch_merge_with_conflict_fails(
