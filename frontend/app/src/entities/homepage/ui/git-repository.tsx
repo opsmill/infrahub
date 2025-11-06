@@ -25,7 +25,7 @@ export const GitRepositoryItem = ({ id, display_label, sync_status }: CoreReposi
 
       <Tooltip enabled={!!sync_status?.description} content={sync_status?.description}>
         <div
-          className={classNames("rounded-full px-3 py-1.5")}
+          className={classNames("rounded-full px-3 py-1.5 text-xs")}
           style={
             sync_status?.color
               ? { backgroundColor: sync_status?.color, color: getTextColor(sync_status?.color) }
