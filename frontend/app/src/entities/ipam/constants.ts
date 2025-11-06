@@ -8,6 +8,8 @@ export const IP_ADDRESS_AVAILABLE_KIND = "InternalIPRangeAvailable" as const;
 export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
 export const IP_PREFIX_AVAILABLE_KIND = "InternalIPPrefixAvailable";
 
+export const IP_PREFIX_RELATIONSHIP_NAME = "ip_prefix";
+
 export const TREE_ROOT_ID = "root" as const;
 
 export const IPAM_QSP = {
