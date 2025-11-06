@@ -1,5 +1,6 @@
 import { Outlet, useParams } from "react-router";
 
+import { queryClient } from "@/shared/api/rest/client";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -22,6 +23,7 @@ import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { useGetResourceUtilization } from "@/entities/resource-manager/domain/get-resource-utilization.query";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector, {
   type ResourceProps,
@@ -92,6 +94,17 @@ const ResourcePoolContent = ({
     refetch: refetchUtilization,
   } = useGetResourceUtilization({ resourceId: resourcePoolId });
 
+  const handleRefetchAll = async () => {
+    await Promise.all([
+      refetch(),
+      refetchUtilization(),
+      // Invalidate all resource allocated queries for this pool
+      queryClient.invalidateQueries({
+        queryKey: resourceManagerQueryKeys.all,
+      }),
+    ]);
+  };
+
   if (!schema) return <NoDataFound />;
 
   if (isPending || isUtilizationPending) {
@@ -146,10 +159,7 @@ const ResourcePoolContent = ({
       <Content.CardTitle
         title={resourcePool.display_label}
         isReloadLoading={isRefetching}
-        reload={() => {
-          refetch();
-          refetchUtilization();
-        }}
+        reload={handleRefetchAll}
         end={
           <ObjectHelpButton
             className="ml-auto"
@@ -170,10 +180,7 @@ const ResourcePoolContent = ({
               <ObjectEditSlideOverTrigger
                 data={resourcePool}
                 schema={schema}
-                onUpdateComplete={() => {
-                  refetch();
-                  refetchUtilization();
-                }}
+                onUpdateComplete={handleRefetchAll}
                 permission={permission}
               />
             </CardWithBorder.Title>

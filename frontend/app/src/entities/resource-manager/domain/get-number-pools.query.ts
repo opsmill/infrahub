@@ -5,13 +5,16 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 
-import { type GetNumberPoolsParams, getNumberPools } from "./get-number-pools";
+import {
+  type GetNumberPoolsParams,
+  getNumberPools,
+} from "@/entities/resource-manager/domain/get-number-pools";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
 
 export function getNumberPoolsQueryOptions(params: GetNumberPoolsParams) {
   return queryOptions({
-    queryKey: [params.branchName, params.atDate, NUMBER_POOL_KIND, params.objectKinds],
+    queryKey: resourceManagerQueryKeys.numberPools(params),
     queryFn: () => getNumberPools(params),
   });
 }

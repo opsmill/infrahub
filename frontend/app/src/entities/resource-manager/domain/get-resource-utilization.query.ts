@@ -2,16 +2,15 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { ContextParams, QueryConfig } from "@/shared/api/types";
 
-import { RESOURCE_POOL_UTILIZATION_KIND } from "@/entities/resource-manager/constants";
-
 import {
   type GetResourcePoolUtilizationParams,
   getResourceUtilization,
-} from "./get-resource-utilization";
+} from "@/entities/resource-manager/domain/get-resource-utilization";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
 
 export function getResourceUtilizationQueryOptions(params: GetResourcePoolUtilizationParams) {
   return queryOptions({
-    queryKey: [RESOURCE_POOL_UTILIZATION_KIND, params.resourceId],
+    queryKey: resourceManagerQueryKeys.utilization(params),
     queryFn: () => getResourceUtilization(params),
   });
 }
