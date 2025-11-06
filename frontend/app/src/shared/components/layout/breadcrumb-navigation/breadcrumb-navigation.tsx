@@ -10,7 +10,7 @@ import { BreadcrumbProfile } from "@/shared/components/layout/breadcrumb-navigat
 import { BreadcrumbProposedChanges } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-proposed-changes";
 import { BreadcrumbResourceManager } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-resource-manager";
 import { BreadcrumbRoleManagement } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-role-management";
-import { BreadcrumbSchema } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-schema";
+import { BreadcrumbSchemaViewer } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-schema-viewer";
 import { BreadcrumbTasks } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-tasks";
 
 export default function BreadcrumbNavigation() {
@@ -53,7 +53,7 @@ export default function BreadcrumbNavigation() {
   }
 
   if (matchPath({ path: "/schema" }, pathname)) {
-    return <BreadcrumbSchema />;
+    return <BreadcrumbSchemaViewer />;
   }
 
   if (matchPath({ path: "/role-management", end: false }, pathname)) {
