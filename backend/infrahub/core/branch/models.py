@@ -188,7 +188,7 @@ class Branch(StandardNode):
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> dict[frozenset, str]:
+    def get_branches_and_times_to_query(self, at: Optional[Timestamp] = None) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
 
         at = Timestamp(at)
@@ -209,7 +209,7 @@ class Branch(StandardNode):
 
     def get_branches_and_times_to_query_global(
         self,
-        at: Optional[Union[Timestamp, str]] = None,
+        at: Optional[Timestamp] = None,
         is_isolated: bool = True,
     ) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
@@ -342,7 +342,7 @@ class Branch(StandardNode):
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
-        branches_times = self.get_branches_and_times_to_query_global(at=at_str, is_isolated=is_isolated)
+        branches_times = self.get_branches_and_times_to_query_global(at=at, is_isolated=is_isolated)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
             params[f"{pp}branch{idx}"] = list(branch_name)

@@ -157,7 +157,7 @@ async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_d
     assert Timestamp(results[frozenset(["main"])]) > now
 
     t1 = Timestamp("2s")
-    results = main_branch.get_branches_and_times_to_query(at=t1.to_string())
+    results = main_branch.get_branches_and_times_to_query(at=t1)
     assert results[frozenset(["main"])] == t1.to_string()
 
 
@@ -186,7 +186,7 @@ async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase,
     assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "main"))]) > now
 
     t1 = Timestamp("2s")
-    results = main_branch.get_branches_and_times_to_query_global(at=t1.to_string())
+    results = main_branch.get_branches_and_times_to_query_global(at=t1)
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t1.to_string()
 
 
@@ -201,7 +201,7 @@ async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDataba
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
 
     t1 = Timestamp("2s")
-    results = branch1.get_branches_and_times_to_query_global(at=t1.to_string())
+    results = branch1.get_branches_and_times_to_query_global(at=t1)
     assert results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))] == t1.to_string()
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == base_dataset_02["time_m45"]
 
