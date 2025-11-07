@@ -319,7 +319,7 @@ class Branch(StandardNode):
         branch_agnostic: bool = False,
         variable_name: str = "r",
         params_prefix: str = "",
-        include_exact_date_from: bool = False,
+        include_exact_from_date: bool = False,
     ) -> tuple[str, dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
@@ -335,7 +335,7 @@ class Branch(StandardNode):
         params: dict[str, Any] = {}
         at = Timestamp(at)
         at_str = at.to_string()
-        from_condition_operator = f"<{'=' if include_exact_date_from else ''}"
+        from_condition_operator = f"<{'=' if include_exact_from_date else ''}"
         if branch_agnostic:
             filter_str = (
                 f"{variable_name}.from {from_condition_operator} ${pp}time1 "

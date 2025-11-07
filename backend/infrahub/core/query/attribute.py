@@ -177,7 +177,7 @@ class AttributeGetQuery(AttributeQuery):
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=at.to_string(), include_exact_date_from=True)
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=at.to_string(), include_exact_from_date=True)
         self.params.update(rels_params)
 
         query = (
