@@ -11,6 +11,25 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.4.13](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.13) - 2025-11-06
+
+### Added
+
+- Added new error message for git connection error ([#7392](https://github.com/opsmill/infrahub/issues/7392))
+
+### Changed
+
+- Changed behaviour for when artifacts are regenerated during a proposed change. Infrahub now runs the query through the GraphQL query analyzer to check if it's feasible to use the GraphQLQueryGroup to track all of the members, if this is the case Infrahub can selectively regenerate artifacts on non git integrated branches to avoid regenerating all artifacts. ([#4991](https://github.com/opsmill/infrahub/issues/4991))
+- Updated the internal GraphQLQueryAnalyzer to correctly report that queries that require a single unique ID should be reported as having a single response where any future updates would have been captured within a GraphQL query group.
+
+### Fixed
+
+- Fix bug in branch merge logic that could cause duplicate edges to be created to Nodes that had their kind or inheritance updated on the default branch.
+  This would have been invisible to the end user until they tried to rebase a new branch onto the default branch, at which point they would have seen errors that mentioned "Relationship-level 'count' constraint violation"
+  Also includes a fix to the diff calculation logic to stop including the older versions of nodes with migrated kind or inheritance when it is not actually part of the changes on the branch. ([#7432](https://github.com/opsmill/infrahub/issues/7432))
+- Fix bug in cypher query that could cause relationships in a large result set to be incorrectly set to null. By default, the nodes in the result set would need to collectively have over 5,000 relationships for the issue to appear.
+- Resolved a problem that caused generator checks to fail when retrying requests
+
 ## [Infrahub - v1.4.12](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.12) - 2025-10-23
 
 ### Added
