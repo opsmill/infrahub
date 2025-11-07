@@ -199,7 +199,11 @@ services:
       - 6362:6362
 
   task-manager:
+<<<<<<< HEAD
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.5.0b2}"
+=======
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.4.13}"
+>>>>>>> stable
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -232,7 +236,11 @@ services:
       retries: 5
 
   infrahub-server:
+<<<<<<< HEAD
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.5.0b2}"
+=======
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.4.13}"
+>>>>>>> stable
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -278,7 +286,11 @@ services:
     deploy:
       mode: replicated
       replicas: 2
+<<<<<<< HEAD
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.5.0b2}"
+=======
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.4.13}"
+>>>>>>> stable
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
