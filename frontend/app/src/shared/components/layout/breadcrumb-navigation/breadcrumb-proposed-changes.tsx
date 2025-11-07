@@ -5,6 +5,7 @@ import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
+  Breadcrumb,
   BreadcrumbItem,
   BreadcrumbItemError,
   BreadcrumbItemLoading,
@@ -12,7 +13,7 @@ import {
 } from "@/shared/components/aria/breadcrumbs";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
-import { BreadcrumbItemTrigger } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-trigger";
+import { BreadcrumbSelectorTrigger } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-selector-trigger";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
@@ -56,12 +57,14 @@ function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChange
   }
 
   return (
-    <MenuTrigger>
-      <BreadcrumbItemTrigger>{data.display_label}</BreadcrumbItemTrigger>
+    <Breadcrumb>
+      <MenuTrigger>
+        <BreadcrumbSelectorTrigger>{data.display_label}</BreadcrumbSelectorTrigger>
 
-      <Popover className="bg-stone-100/50 backdrop-blur">
-        <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGES_OBJECT} />
-      </Popover>
-    </MenuTrigger>
+        <Popover className="bg-stone-100/50 backdrop-blur">
+          <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGES_OBJECT} />
+        </Popover>
+      </MenuTrigger>
+    </Breadcrumb>
   );
 }

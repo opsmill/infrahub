@@ -1,12 +1,12 @@
 import { matchPath, useLocation } from "react-router";
 
+import { BreadcrumbAccountProfile } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-account-profile";
 import { BreadcrumbActivities } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-activities";
 import { BreadcrumbBranches } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-branches";
 import { BreadcrumbGraphql } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-graphql";
 import { BreadcrumbIpNamespaces } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ip-namespaces";
 import { BreadcrumbIpam } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ipam";
 import { BreadcrumbObjects } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-objects";
-import { BreadcrumbProfile } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-profile";
 import { BreadcrumbProposedChanges } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-proposed-changes";
 import { BreadcrumbResourceManager } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-resource-manager";
 import { BreadcrumbRoleManagement } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-role-management";
@@ -33,7 +33,7 @@ export default function BreadcrumbNavigation() {
   }
 
   if (matchPath({ path: "/profile" }, pathname)) {
-    return <BreadcrumbProfile />;
+    return <BreadcrumbAccountProfile />;
   }
 
   if (matchPath({ path: "/proposed-changes", end: false }, pathname)) {
