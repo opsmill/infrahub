@@ -11,6 +11,8 @@ import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/propose
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
 import type { NodeSchema } from "@/entities/schema/types";
 
+import { ProposedChangesTableHeader } from "./proposed-changes-table-header";
+
 type ProposedChangesTableHomepageProps = {
   schema: NodeSchema;
   permission: Permission;
@@ -33,6 +35,8 @@ export function ProposedChangesTableHomepage({
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage} className="h-full">
+      <ProposedChangesTableHeader />
+
       <ListBox
         aria-label="Branches list"
         items={flatData}

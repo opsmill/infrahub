@@ -82,7 +82,7 @@ const ProposedChangesData = ({
   updatedAt,
 }: ProposedChangesDataProps) => {
   return (
-    <div className="grid grid-cols-7 items-center gap-4 pr-2">
+    <div className="grid grid-cols-7 items-center gap-4 text-gray-500">
       <ProposedChangesComments comments={comments} />
 
       <ProposedChangeDiffSummary
@@ -95,7 +95,7 @@ const ProposedChangesData = ({
 
       <DateDisplay
         date={updatedAt}
-        containerClassName={"col-span-2 text-right"}
+        containerClassName={"col-span-2 text-right justify-end"}
         dateFormat="d MMM yyyy hh:mm"
       />
     </div>
@@ -109,7 +109,7 @@ const ProposedChangesComments = ({ comments }: { comments: number }) => {
 
   return (
     <Tooltip enabled content="Comments">
-      <span className="flex items-center justify-center gap-1 text-gray-500">
+      <span className="flex items-center justify-center gap-1">
         <Icon icon={"mdi:comment-outline"} /> {comments}
       </span>
     </Tooltip>
@@ -121,7 +121,7 @@ const ProposedChangesChecks = ({ validations }: { validations: number }) => {
 
   return (
     <Tooltip enabled content="Checks">
-      <span className="flex items-center justify-center text-gray-500">
+      <span className="flex items-center justify-center">
         <Icon icon={schema?.icon ?? "mdi:check-circle-outline"} /> {validations}
       </span>
     </Tooltip>
