@@ -12,7 +12,7 @@ export default function Header() {
 
       <BranchSelector />
 
-      <div className="flex-1">
+      <div className="flex-1" data-testid="breadcrumb-navigation">
         <BreadcrumbNavigation />
       </div>
 

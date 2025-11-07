@@ -59,7 +59,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await expect(page.getByText("Peer Session", { exact: true })).toBeVisible();
 
       // Relationships Generics
-      await expect(page.getByText("Device", { exact: true })).toBeVisible();
+      await expect(page.getByTestId("object-details").getByText("Device")).toBeVisible();
     });
 
     test("should display the select 2 steps correctly", async ({ page }) => {

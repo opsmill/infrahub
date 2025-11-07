@@ -132,6 +132,7 @@ class StandardNodeGetItemQuery(Query):
 class StandardNodeGetListQuery(Query):
     name = "standard_node_list"
     type = QueryType.READ
+    raw_filter: str | None = None
 
     def __init__(
         self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, **kwargs: Any
@@ -150,6 +151,8 @@ class StandardNodeGetListQuery(Query):
         if self.node_name:
             filters.append("n.name = $name")
             self.params["name"] = self.node_name
+        if self.raw_filter:
+            filters.append(self.raw_filter)
 
         where = ""
         if filters:

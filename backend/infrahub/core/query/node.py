@@ -642,53 +642,55 @@ class NodeListGetAttributeQuery(Query):
         self.add_to_query(query)
 
         query = """
-        CALL (n, a) {
-            MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
-            WHERE %(branch_filter)s
-            RETURN r AS r1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r1, a, might_use_profile
-        WHERE r1.status = "active"
-        WITH n, r1, a, might_use_profile
-        MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
-        WHERE %(branch_filter)s
-        CALL (a, might_use_profile) {
-            OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
-            WHERE might_use_profile = TRUE AND %(branch_filter)s
-            RETURN r.status = "active" AS has_active_profile
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH *, has_active_profile = TRUE AS is_from_profile
-        CALL (a, av) {
-            MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN a as a1, r as r2, av as av1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r1, a1 as a, r2, av1 as av, is_from_profile
-        WHERE r2.status = "active"
-        WITH n, a, av, r1, r2, is_from_profile
+CALL (n, a) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
+    WHERE %(branch_filter)s
+    RETURN r AS r1
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH n, r1, a, might_use_profile
+WHERE r1.status = "active"
+WITH n, r1, a, might_use_profile
+CALL (a, might_use_profile) {
+    OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
+    WHERE might_use_profile = TRUE AND %(branch_filter)s
+    RETURN r.status = "active" AS has_active_profile
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH *, has_active_profile = TRUE AS is_from_profile
+CALL (a) {
+    MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
+    WHERE %(branch_filter)s
+    RETURN r as r2, av
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH n, r1, a, r2, av, is_from_profile
+WHERE r2.status = "active"
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
         self.return_labels = ["n", "a", "av", "r1", "r2", "is_from_profile"]
 
         # Add Is_Protected and Is_visible
-        rel_isv_branch_filter, _ = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isv"
-        )
-        rel_isp_branch_filter, _ = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isp"
-        )
         query = """
-        MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
-        MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
-        WHERE (%(rel_isv_branch_filter)s) AND (%(rel_isp_branch_filter)s)
-        """ % {"rel_isv_branch_filter": rel_isv_branch_filter, "rel_isp_branch_filter": rel_isp_branch_filter}
+CALL (a) {
+    MATCH (a)-[r:IS_VISIBLE]-(isv:Boolean)
+    WHERE (%(branch_filter)s)
+    RETURN r AS rel_isv, isv
+    ORDER BY rel_isv.branch_level DESC, rel_isv.from DESC, rel_isv.status ASC
+    LIMIT 1
+}
+CALL (a) {
+    MATCH (a)-[r:IS_PROTECTED]-(isp:Boolean)
+    WHERE (%(branch_filter)s)
+    RETURN r AS rel_isp, isp
+    ORDER BY rel_isp.branch_level DESC, rel_isp.from DESC, rel_isp.status ASC
+    LIMIT 1
+}
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
