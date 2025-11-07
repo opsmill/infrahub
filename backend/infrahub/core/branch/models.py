@@ -364,8 +364,8 @@ class Branch(StandardNode):
     def get_query_filter_relationships_range(
         self,
         rel_labels: list,
-        start_time: Union[Timestamp, str],
-        end_time: Union[Timestamp, str],
+        start_time: Timestamp,
+        end_time: Timestamp,
         include_outside_parentheses: bool = False,
         include_global: bool = False,
     ) -> tuple[list, dict]:
@@ -446,7 +446,7 @@ class Branch(StandardNode):
         return filters, params
 
     def get_query_filter_range(
-        self, rel_label: list, start_time: Union[Timestamp, str], end_time: Union[Timestamp, str]
+        self, rel_label: list, start_time: Timestamp, end_time: Timestamp
     ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
