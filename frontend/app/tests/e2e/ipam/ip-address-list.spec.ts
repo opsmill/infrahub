@@ -34,7 +34,7 @@ test.describe("/ipam/ip_addresses - IP Address list", () => {
 
     await test.step("use breadcrumb to go back to parent prefix", async () => {
       await page
-        .getByLabel("IPAM navigation breadcrumb")
+        .getByTestId("breadcrumb-ipam")
         .getByRole("link", { name: "172.16.0.0/16" })
         .click();
 
