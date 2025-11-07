@@ -14,11 +14,13 @@ import {
 interface ProposedChangeDiffSummaryProps {
   branchName: string;
   proposedChangeId: string;
+  className?: string;
 }
 
 export function ProposedChangeDiffSummary({
   proposedChangeId,
   branchName,
+  className,
 }: ProposedChangeDiffSummaryProps) {
   const { error, data, isPending } = useGetDiffSummary({ branch: branchName });
 
@@ -43,7 +45,7 @@ export function ProposedChangeDiffSummary({
   const proposedChangeDetailsPath = `/proposed-changes/${proposedChangeId}`;
 
   return (
-    <DiffSummaryTagGroup>
+    <DiffSummaryTagGroup className={className}>
       <DiffSummaryTag
         variant="added"
         count={data.num_added}
