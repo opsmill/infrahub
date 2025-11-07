@@ -9,6 +9,7 @@ type DateDisplayProps = {
   hideDefault?: boolean;
   className?: string;
   containerClassName?: string;
+  dateFormat?: string;
 };
 
 export const getDateDisplay = (date?: number | string | Date | null) =>
@@ -19,6 +20,7 @@ export const DateDisplay = ({
   hideDefault,
   className,
   containerClassName,
+  dateFormat,
 }: DateDisplayProps) => {
   if (!date && hideDefault) {
     return null;
@@ -28,14 +30,14 @@ export const DateDisplay = ({
 
   const distanceFromNow = differenceInDays(new Date(), dateData);
 
-  if (distanceFromNow > 7) {
-    const dateFormat = isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM";
+  if (distanceFromNow > 7 || dateFormat) {
+    const newDateFormat = dateFormat ?? (isInPreviousYear(dateData) ? "d MMM yyyy" : "d MMM");
 
     return (
       <span className={classNames("flex flex-wrap items-center", containerClassName)}>
         <Tooltip enabled content={getDateDisplay(dateData)}>
           <span className={classNames("font-normal text-xs", className)}>
-            {format(dateData, dateFormat)}
+            {format(dateData, newDateFormat)}
           </span>
         </Tooltip>
       </span>

@@ -21,7 +21,7 @@ type ProposedChangesItemLightProps = {
 export const ProposedChangesItemLight = ({ node }: ProposedChangesItemLightProps) => {
   return (
     <ListBoxItem className="flex items-center p-4">
-      <div className="grid flex-grow grid-cols-3 items-center">
+      <div className="grid flex-grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
@@ -50,21 +50,19 @@ type ProposedChangesInfoProps = {
 
 const ProposedChangesInfo = ({ id, name, isDraft, isApproved }: ProposedChangesInfoProps) => {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="flex items-center space-x-4">
-        <Link
-          to={constructPath(`/proposed-changes/${id}`)}
-          className={classNames("font-semibold text-lg transition-all hover:text-gray-500")}
-        >
-          {name}
-        </Link>
+    <span className="flex min-w-0 max-w-full items-center gap-4 whitespace-nowrap">
+      <Link
+        to={constructPath(`/proposed-changes/${id}`)}
+        className={classNames("truncate font-semibold transition-all hover:text-gray-500")}
+      >
+        {name}
+      </Link>
 
-        <div className="space-x-2">
-          {isDraft && <Badge variant={"gray-outline"}>draft</Badge>}
-          {isApproved && <Badge variant={"blue-outline"}>approved</Badge>}
-        </div>
-      </span>
-    </div>
+      <div className="flex-shrink-0 space-x-2">
+        {isDraft && <Badge variant={"gray-outline"}>draft</Badge>}
+        {isApproved && <Badge variant={"blue-outline"}>approved</Badge>}
+      </div>
+    </span>
   );
 };
 
@@ -84,18 +82,22 @@ const ProposedChangesData = ({
   updatedAt,
 }: ProposedChangesDataProps) => {
   return (
-    <div className="col-span-2 grid grid-cols-5 items-center gap-4 pr-2">
+    <div className="grid grid-cols-7 items-center gap-4 pr-2">
       <ProposedChangesComments comments={comments} />
 
       <ProposedChangeDiffSummary
         proposedChangeId={id}
         branchName={branchName}
-        className="col-span-2 flex items-center justify-center"
+        className="col-span-3 flex items-center justify-center"
       />
 
       <ProposedChangesChecks validations={validations} />
 
-      <DateDisplay date={updatedAt} containerClassName={"flex items-center justify-end"} />
+      <DateDisplay
+        date={updatedAt}
+        containerClassName={"col-span-2 text-right"}
+        dateFormat="d MMM yyyy hh:mm"
+      />
     </div>
   );
 };
