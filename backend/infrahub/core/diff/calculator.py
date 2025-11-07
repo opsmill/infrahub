@@ -141,8 +141,8 @@ class DiffCalculator:
             to_time=to_time,
             previous_node_field_specifiers=previous_node_specifiers,
         )
-        node_limit = int(config.SETTINGS.database.query_size_limit / 10)
-        fields_limit = int(config.SETTINGS.database.query_size_limit / 3)
+        node_limit = max(int(config.SETTINGS.database.query_size_limit / 10), 1)
+        fields_limit = max(int(config.SETTINGS.database.query_size_limit / 3), 1)
         properties_limit = config.SETTINGS.database.query_size_limit
 
         calculation_request = DiffCalculationRequest(

@@ -26,7 +26,7 @@ test.describe("Object details - convert", () => {
       await page.getByRole("menuitem", { name: "Convert object type" }).click();
       await expect(page.getByText("SOURCE")).toBeVisible();
       await expect(page.getByText("NameEthernet1")).toBeVisible();
-      await expect(page.getByText("Deviceatl1-edge1")).toBeVisible();
+      await expect(page.getByTestId("convert-source").getByText("Deviceatl1-edge1")).toBeVisible();
     });
 
     await test.step("display the interface L3 form with default values from the source object", async () => {

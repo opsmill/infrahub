@@ -491,6 +491,17 @@ const sidebars: SidebarsConfig = {
             'release-notes/infrahub/release-0_6'
           ],
         },
+        {
+          type: 'category',
+          label: 'Deprecation Guides',
+          link: {
+            type: 'generated-index',
+            slug: 'release-notes/deprecation-guides',
+          },
+          items: [
+            'release-notes/deprecation-guides/display_labels',
+          ],
+        },
       ],
     },
     'faq/faq',

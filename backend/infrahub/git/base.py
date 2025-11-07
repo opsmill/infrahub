@@ -16,10 +16,12 @@ from prefect.logging import get_run_logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
+    BranchNotFoundError,
     CommitNotFoundError,
     FileOutOfRepositoryError,
     RepositoryConnectionError,
@@ -31,6 +33,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
+from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_client
@@ -733,6 +736,45 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return True
 
+    async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
+        branches = self.get_branches_from_remote()
+
+        if not config.SETTINGS.git.import_sync_branch_names:
+            return branches
+
+        filtered_branches = {}
+        skipped_branch_names = []
+
+        for short_name, branch_data in branches.items():
+            branch = None
+
+            try:
+                branch = registry.get_branch_from_registry(branch=short_name)
+            except BranchNotFoundError:
+                ...
+
+            branch_exists_import_sync_condition = branch and (
+                branch.name not in {registry.default_branch, self.default_branch}
+                and not branch.sync_with_git
+                and not branch_name_in_import_sync_branches(branch_short_name=short_name)
+            )
+            branch_does_not_exist_import_sync_condition = not branch and not branch_name_in_import_sync_branches(
+                branch_short_name=short_name
+            )
+
+            if branch_exists_import_sync_condition or branch_does_not_exist_import_sync_condition:
+                skipped_branch_names.append(short_name)
+                continue
+
+            filtered_branches[short_name] = branch_data
+
+        if skipped_branch_names:
+            log.debug(
+                f"Skipped the following branches {skipped_branch_names} "
+                f"because no match was found in import_sync_branch_names {config.SETTINGS.git.import_sync_branch_names}"
+            )
+        return filtered_branches
+
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
         """
         Returns:
@@ -745,7 +787,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         # TODO move this section into a dedicated function to compare and bring in sync the remote repo with the local one.
         # It can be useful just after a clone etc ...
         local_branches = self.get_branches_from_local()
-        remote_branches = self.get_branches_from_remote()
+        remote_branches = await self.get_filtered_remote_branches()
 
         new_branches = set(remote_branches.keys()) - set(local_branches.keys())
         existing_branches = set(local_branches.keys()) - new_branches

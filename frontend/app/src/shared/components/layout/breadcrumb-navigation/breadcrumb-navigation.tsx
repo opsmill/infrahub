@@ -1,7 +1,10 @@
 import React from "react";
-import { matchPath, type UIMatch, useLocation, useMatches } from "react-router";
+import { matchPath, type UIMatch, useLocation, useMatches, useParams } from "react-router";
 
 import { BreadcrumbBranches } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-branches";
+import { BreadcrumbIpNamespaces } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ip-namespaces";
+import { BreadcrumbIpam } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ipam";
+import { BreadcrumbObjects } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-objects";
 import {
   BreadcrumbDynamicElement,
   type BreadcrumbDynamicElementProps,
@@ -12,6 +15,7 @@ import { classNames } from "@/shared/utils/common";
 
 export default function BreadcrumbNavigation() {
   const { pathname } = useLocation();
+  const { objectKind } = useParams();
   const matches = useMatches() as UIMatch<
     unknown,
     { breadcrumb?: (match: UIMatch) => BreadcrumbDynamicElementProps }
@@ -21,12 +25,24 @@ export default function BreadcrumbNavigation() {
     return <BreadcrumbBranches />;
   }
 
+  if (matchPath({ path: "/ipam/namespaces", end: false }, pathname)) {
+    return <BreadcrumbIpNamespaces />;
+  }
+
+  if (matchPath({ path: "/ipam", end: false }, pathname)) {
+    return <BreadcrumbIpam />;
+  }
+
+  if (objectKind) {
+    return <BreadcrumbObjects />;
+  }
+
   const crumbs = matches
     .map((match) => match.handle?.breadcrumb?.(match))
     .filter((match) => !!match);
 
   return (
-    <Breadcrumb data-testid="breadcrumb-navigation">
+    <Breadcrumb>
       {crumbs.map((crumb, index) => (
         <React.Fragment key={index}>
           <BreadcrumbSeparator />

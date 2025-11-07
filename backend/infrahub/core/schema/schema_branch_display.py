@@ -14,6 +14,7 @@ class TemplateLabel:
     template: str
     attributes: set[str] = field(default_factory=set)
     relationships: set[str] = field(default_factory=set)
+    relationship_fields: dict[str, set[str]] = field(default_factory=dict)
     filter_key: str = "ids"
 
     @property
@@ -76,6 +77,17 @@ class DisplayLabels:
             self._template_based_display_labels[kind].attributes.add(schema_path.active_attribute_schema.name)
         elif schema_path.is_type_relationship and schema_path.related_schema:
             self._template_based_display_labels[kind].relationships.add(schema_path.active_relationship_schema.name)
+            if (
+                schema_path.active_relationship_schema.name
+                not in self._template_based_display_labels[kind].relationship_fields
+            ):
+                self._template_based_display_labels[kind].relationship_fields[
+                    schema_path.active_relationship_schema.name
+                ] = set()
+            self._template_based_display_labels[kind].relationship_fields[
+                schema_path.active_relationship_schema.name
+            ].add(schema_path.active_attribute_schema.name)
+
             if schema_path.related_schema.kind not in self._template_relationship_triggers:
                 self._template_relationship_triggers[schema_path.related_schema.kind] = RelationshipTriggers()
             if (

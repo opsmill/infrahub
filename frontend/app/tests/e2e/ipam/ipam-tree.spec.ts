@@ -60,7 +60,7 @@ test.describe("/ipam - Ipam Tree", () => {
 
     await test.step("search results are visible after navigation", async () => {
       await page.getByRole("treeitem", { name: "10.2.0.0/16" }).click();
-      await expect(page.getByText("Prefix10.2.0.0/16")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "10.2.0.0/16" })).toBeVisible();
       await expect(page.getByRole("treeitem", { name: "10.2.0.0/16" })).toBeVisible();
       expect(await page.getByRole("treeitem").count()).toEqual(1);
     });

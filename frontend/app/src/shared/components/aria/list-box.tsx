@@ -1,8 +1,10 @@
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, LoaderIcon } from "lucide-react";
 import {
   ListBox as AriaListBox,
   ListBoxItem as AriaListBoxItem,
   type ListBoxItemProps as AriaListBoxItemProps,
+  ListBoxLoadMoreItem as AriaListBoxLoadMoreItem,
+  type ListBoxLoadMoreItemProps as AriaListBoxLoadMoreItemProps,
   type ListBoxProps as AriaListBoxProps,
 } from "react-aria-components";
 
@@ -58,5 +60,15 @@ export function ListBoxItem<T extends object>({
         </PushableItem>
       )}
     </AriaListBoxItem>
+  );
+}
+
+export function ListBoxLoadMoreItem({ ...props }: AriaListBoxLoadMoreItemProps) {
+  return (
+    <AriaListBoxLoadMoreItem {...props}>
+      <PushableItem variant="ghost" className="text-stone-400">
+        <LoaderIcon className="size-3.5 animate-spin" /> loading...
+      </PushableItem>
+    </AriaListBoxLoadMoreItem>
   );
 }
