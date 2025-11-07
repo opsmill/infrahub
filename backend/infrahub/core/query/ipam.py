@@ -450,12 +450,23 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         CALL (ip_node) {
             OPTIONAL MATCH parent_prefix_path = (ip_node)-[r1:IS_RELATED]->(:Relationship {name: "parent__child"})-[r2:IS_RELATED]->(current_parent:%(ip_prefix_kind)s)
-            WHERE all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s))
+            WHERE $is_prefix = TRUE
+            AND all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s))
             RETURN current_parent, (r1.status = "active" AND r2.status = "active") AS parent_is_active
             ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
             LIMIT 1
         }
-        WITH ip_namespace, ip_node, CASE WHEN parent_is_active THEN current_parent ELSE NULL END as current_parent
+        WITH ip_namespace, ip_node, CASE WHEN parent_is_active THEN current_parent ELSE NULL END as prefix_parent
+        CALL (ip_node) {
+            OPTIONAL MATCH parent_prefix_path = (ip_node)-[r1:IS_RELATED]->(:Relationship {name: "ip_prefix__ip_address"})<-[r2:IS_RELATED]-(current_parent:%(ip_prefix_kind)s)
+            WHERE $is_prefix = FALSE
+            AND all(r IN relationships(parent_prefix_path) WHERE (%(branch_filter)s))
+            RETURN current_parent, (r1.status = "active" AND r2.status = "active") AS parent_is_active
+            ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
+            LIMIT 1
+        }
+        WITH ip_namespace, ip_node, prefix_parent, CASE WHEN parent_is_active THEN current_parent ELSE NULL END as address_parent
+        WITH ip_namespace, ip_node, COALESCE(prefix_parent, address_parent) AS current_parent
         """ % {
             "branch_filter": branch_filter,
             "ip_prefix_kind": InfrahubKind.IPPREFIX,
@@ -467,7 +478,7 @@ class IPPrefixReconcileQuery(Query):
         // Get prefix node's current prefix children, if any exist
         // ------------------
         CALL (ip_node) {
-            OPTIONAL MATCH child_prefix_path = (ip_node)<-[r1:IS_RELATED]-(:Relationship {name: "parent__child"})<-[r2:IS_RELATED]-(current_prefix_child:%(ip_prefix_kind)s)
+            OPTIONAL MATCH child_prefix_path = (ip_node:%(ip_prefix_kind)s)<-[r1:IS_RELATED]-(:Relationship {name: "parent__child"})<-[r2:IS_RELATED]-(current_prefix_child:%(ip_prefix_kind)s)
             WHERE all(r IN relationships(child_prefix_path) WHERE (%(branch_filter)s))
             WITH current_prefix_child, (r1.status = "active" AND r2.status = "active") AS is_active
             ORDER BY current_prefix_child.uuid, r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
@@ -479,7 +490,7 @@ class IPPrefixReconcileQuery(Query):
         // Get prefix node's current address children, if any exist
         // ------------------
         CALL (ip_node) {
-            OPTIONAL MATCH child_address_path = (ip_node)-[r1:IS_RELATED]-(:Relationship {name: "ip_prefix__ip_address"})-[r2:IS_RELATED]-(current_address_child:%(ip_address_kind)s)
+            OPTIONAL MATCH child_address_path = (ip_node:%(ip_prefix_kind)s)-[r1:IS_RELATED]->(:Relationship {name: "ip_prefix__ip_address"})<-[r2:IS_RELATED]-(current_address_child:%(ip_address_kind)s)
             WHERE all(r IN relationships(child_address_path) WHERE (%(branch_filter)s))
             WITH current_address_child, (r1.status = "active" AND r2.status = "active") AS is_active
             ORDER BY current_address_child.uuid, r1.branch_level DESC, r1.from DESC, r2.branch_level DESC, r2.from DESC
