@@ -1,7 +1,6 @@
+---
 # https://github.com/SethCohen/github-releases-to-discord
-# on:
-#   release:
-#     types: [published]
+# Original trigger: release: types: [published]
 on: workflow_dispatch
 
 jobs:
