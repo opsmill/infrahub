@@ -7,7 +7,7 @@ import { classNames } from "@/shared/utils/common";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
-import { ProposedChangesTable } from "@/entities/proposed-changes/ui/proposed-changes-table";
+import { ProposedChangesTableHomepage } from "@/entities/proposed-changes/ui/proposed-changes-table-homepage";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface ProposedChangesProps {
@@ -33,10 +33,9 @@ export const ProposedChanges = ({ className }: ProposedChangesProps) => {
         {({ permission }) => {
           return (
             <ObjectTableProvider schema={proposedChangeSchema!}>
-              <ProposedChangesTable
+              <ProposedChangesTableHomepage
                 permission={permission}
                 schema={proposedChangeSchema}
-                hideFilters
                 className="m-0 rounded-none border-none"
               />
             </ObjectTableProvider>
