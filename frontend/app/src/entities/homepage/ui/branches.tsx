@@ -58,7 +58,7 @@ export const Branches = ({ className }: BranchesProps) => {
           items={branches}
           className="flex h-full flex-col divide-y overflow-scroll"
         >
-          {(branch) => <BranchListItem branch={branch} target="_blank" rel="noopener noreferrer" />}
+          {(branch) => <BranchListItem branch={branch} />}
         </ListBox>
       )}
     </HomeCard>
