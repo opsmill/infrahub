@@ -34,6 +34,8 @@ export const Component = () => {
         {!ipamTreeCollapsed && (
           <>
             <ResizablePanel
+              id="tree-panel"
+              order={0}
               defaultSize={20}
               minSize={10}
               maxSize={50}
@@ -56,7 +58,7 @@ export const Component = () => {
           </>
         )}
 
-        <ResizablePanel className="flex grow flex-col">
+        <ResizablePanel id="main-panel" order={1} className="flex grow flex-col">
           <Content.Card className="flex grow flex-col">
             {ipamTreeCollapsed && <IpamToolbar />}
             <Outlet />
