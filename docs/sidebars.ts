@@ -414,6 +414,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_4_13',
             'release-notes/infrahub/release-1_4_12',
             'release-notes/infrahub/release-1_4_11',
             'release-notes/infrahub/release-1_4_10',
