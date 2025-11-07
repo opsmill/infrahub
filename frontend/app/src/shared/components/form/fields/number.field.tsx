@@ -40,6 +40,7 @@ const NumberField = ({
               const value = event.target.valueAsNumber;
               field.onChange(updateFormFieldValue(isNaN(value) ? null : value, defaultValue));
             }}
+            onWheel={(event) => event.currentTarget.blur()}
             {...props}
           />
         );
