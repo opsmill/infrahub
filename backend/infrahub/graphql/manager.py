@@ -21,9 +21,8 @@ from infrahub.core.schema import (
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
-from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
-
 from infrahub.graphql.types.scalars import NonNegativeInt
+from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ID, Field, Int, List, NonNull, String
+from graphene import ID, Field, List, NonNull, String
 
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
-
 from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:

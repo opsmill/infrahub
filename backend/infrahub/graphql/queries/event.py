@@ -8,10 +8,9 @@ from infrahub.events.constants import EventSortOrder
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
+from infrahub.graphql.types.scalars import NonNegativeInt
 from infrahub.task_manager.event import PrefectEvent
 from infrahub.task_manager.models import InfrahubEventFilter
-
-from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from datetime import datetime

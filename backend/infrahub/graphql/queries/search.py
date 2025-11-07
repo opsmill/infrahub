@@ -9,7 +9,6 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.graphql.field_extractor import extract_graphql_fields
-
 from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:

@@ -133,4 +133,3 @@ async def test_builtin_tag_rejects_negative_offset(
     assert result.errors
     assert "non-negative integer" in result.errors[0].message
     assert result.errors[0].path is None
-

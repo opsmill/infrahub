@@ -17,7 +17,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQLConflictSelection
 from infrahub.graphql.field_extractor import extract_graphql_fields
-
 from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:

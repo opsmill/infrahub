@@ -6,11 +6,10 @@ from graphene import Field, Int, List, NonNull, ObjectType, String
 from prefect.client.schemas.objects import StateType
 
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.types.scalars import NonNegativeInt
 from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.task import PrefectTask
 from infrahub.workflows.constants import WorkflowTag
-
-from infrahub.graphql.types.scalars import NonNegativeInt
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
