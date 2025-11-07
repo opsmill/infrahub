@@ -54,7 +54,11 @@ export function ObjectTableSchemaSelector() {
         <RenderItem schema={selectedSchema ?? baseSchema} />
       </ComboboxTrigger>
 
-      <ComboboxContent portal fitTriggerWidth={false}>
+      <ComboboxContent
+        portal
+        fitTriggerWidth={false}
+        data-testid="object-schema-schema-selector-popover"
+      >
         <ComboboxList shouldFilter>
           <ComboboxItem
             value={baseSchema.hash}
