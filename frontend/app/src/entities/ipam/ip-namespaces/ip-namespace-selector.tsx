@@ -36,7 +36,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         data-testid="namespace-select"
         className={classNames(
           focusVisibleStyle,
-          "flex h-10 w-full flex-col rounded px-1.5 py-0.5",
+          "flex h-10 flex-col rounded px-1.5 py-0.5",
           "border border-transparent",
           "hover:bg-gray-100",
           className

@@ -58,7 +58,7 @@ const ObjectPageLayout = () => {
               </Content.Card>
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="w-0.5 bg-transparent" />
+            <ResizableHandle />
           </>
         )}
 
