@@ -10,6 +10,8 @@ from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.task import PrefectTask
 from infrahub.workflows.constants import WorkflowTag
 
+from infrahub.graphql.types.scalars import NonNegativeInt
+
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
@@ -105,16 +107,16 @@ class Tasks(ObjectType):
 
 Task = Field(
     Tasks,
-    limit=Int(required=False),
-    offset=Int(required=False),
+    limit=NonNegativeInt(required=False),
+    offset=NonNegativeInt(required=False),
     related_node__ids=List(String),
     branch=String(required=False),
     state=List(TaskState),
     workflow=List(String),
     ids=List(String),
     q=String(required=False),
-    log_limit=Int(required=False),
-    log_offset=Int(required=False),
+    log_limit=NonNegativeInt(required=False),
+    log_offset=NonNegativeInt(required=False),
     resolver=Tasks.resolve,
     required=True,
 )

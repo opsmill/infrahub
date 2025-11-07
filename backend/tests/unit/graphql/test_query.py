@@ -83,3 +83,54 @@ async def test_execute_missing_query(db: InfrahubDatabase, default_branch: Branc
         await execute_query(name="query02", db=db, branch=default_branch)
 
     assert "Unable to find the CoreGraphQLQuery" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_builtin_tag_rejects_negative_limit(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+            query {
+                BuiltinTag(limit: -1) { count }
+            }
+        """,
+        context_value=gql_params.context,
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert "non-negative integer" in result.errors[0].message
+    assert result.errors[0].path is None
+
+
+@pytest.mark.asyncio
+async def test_builtin_tag_rejects_negative_offset(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+            query {
+                BuiltinTag(offset: -1) { count }
+            }
+        """,
+        context_value=gql_params.context,
+    )
+
+    assert result.data is None
+    assert result.errors
+    assert "non-negative integer" in result.errors[0].message
+    assert result.errors[0].path is None
+

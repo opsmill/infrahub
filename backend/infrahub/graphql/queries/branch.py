@@ -8,6 +8,8 @@ from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 
+from infrahub.graphql.types.scalars import NonNegativeInt
+
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
@@ -56,8 +58,8 @@ async def infrahub_branch_resolver(
 
 InfrahubBranchQueryList = Field(
     InfrahubBranchType,
-    offset=Int(),
-    limit=Int(),
+    offset=NonNegativeInt(),
+    limit=NonNegativeInt(),
     description="Retrieve paginated information about active branches.",
     resolver=infrahub_branch_resolver,
     required=True,

@@ -11,6 +11,8 @@ from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.task_manager.event import PrefectEvent
 from infrahub.task_manager.models import InfrahubEventFilter
 
+from infrahub.graphql.types.scalars import NonNegativeInt
+
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -95,8 +97,8 @@ class Events(ObjectType):
 
 Event = Field(
     Events,
-    limit=Int(required=False),
-    offset=Int(required=False),
+    limit=NonNegativeInt(required=False),
+    offset=NonNegativeInt(required=False),
     level=Int(required=False),
     has_children=Boolean(required=False, description="Filter events based on if they can have children or not"),
     event_type=List(NonNull(String), description="Filter events that match a specific type"),
