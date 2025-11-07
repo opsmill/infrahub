@@ -123,7 +123,7 @@ async def upgrade_cmd(
     # -------------------------------------------
     branches = await mark_branches_needing_rebase(db=dbdriver)
     plural = len(branches) != 1
-    rprint(
+    get_migration_console().log(
         f"Found {len(branches)} {'branches' if plural else 'branch'} that {'need' if plural else 'needs'} to be rebased"
     )
 
