@@ -319,7 +319,6 @@ class Branch(StandardNode):
         branch_agnostic: bool = False,
         variable_name: str = "r",
         params_prefix: str = "",
-        include_exact_from_date: bool = False,
     ) -> tuple[str, dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
@@ -335,12 +334,8 @@ class Branch(StandardNode):
         params: dict[str, Any] = {}
         at = Timestamp(at)
         at_str = at.to_string()
-        from_condition_operator = f"<{'=' if include_exact_from_date else ''}"
         if branch_agnostic:
-            filter_str = (
-                f"{variable_name}.from {from_condition_operator} ${pp}time1 "
-                f"AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
-            )
+            filter_str = f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
@@ -354,11 +349,11 @@ class Branch(StandardNode):
         for idx in range(len(branches_times)):
             filters.append(
                 f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from {from_condition_operator} ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
                 f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from {from_condition_operator} ${pp}time{idx} "
+                f"AND {variable_name}.from < ${pp}time{idx} "
                 f"AND {variable_name}.to >= ${pp}time{idx})"
             )
 

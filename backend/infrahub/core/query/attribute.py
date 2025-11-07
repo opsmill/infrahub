@@ -38,7 +38,7 @@ class AttributeQuery(Query):
         if at:
             self.at = Timestamp(at)
         else:
-            self.at = self.attr.at
+            self.at = Timestamp()
 
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
@@ -174,10 +174,9 @@ class AttributeGetQuery(AttributeQuery):
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 
-        at = self.at or self.attr.at
-        self.params["at"] = at.to_string()
+        self.params["at"] = self.at.to_string()
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=at.to_string(), include_exact_from_date=True)
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(rels_params)
 
         query = (
