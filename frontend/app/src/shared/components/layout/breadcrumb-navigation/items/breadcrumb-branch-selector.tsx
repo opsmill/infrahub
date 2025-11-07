@@ -5,7 +5,8 @@ import { useFilter } from "react-aria-components";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
-import { Popover, PopoverDialog, PopoverTrigger } from "@/shared/components/aria/popover";
+import { MenuTrigger } from "@/shared/components/aria/menu";
+import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import { BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
@@ -22,10 +23,10 @@ export default function BreadcrumbBranchSelector({
   const { contains } = useFilter({ sensitivity: "base" });
 
   return (
-    <PopoverTrigger>
-      <BreadcrumbItem {...props}>
+    <MenuTrigger>
+      <BreadcrumbItem className="gap-1.5" {...props}>
         <span className="truncate">{currentBranchName}</span>
-        <ChevronsUpDownIcon className="ml-2 size-4" />
+        <ChevronsUpDownIcon className="size-4" />
       </BreadcrumbItem>
 
       <Popover className="bg-stone-100/50 backdrop-blur">
@@ -51,6 +52,6 @@ export default function BreadcrumbBranchSelector({
           )}
         </PopoverDialog>
       </Popover>
-    </PopoverTrigger>
+    </MenuTrigger>
   );
 }

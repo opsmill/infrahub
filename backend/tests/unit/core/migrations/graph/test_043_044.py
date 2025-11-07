@@ -10,8 +10,8 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m042_create_hfid_display_label_in_db import Migration042
-from infrahub.core.migrations.graph.m043_backfill_hfid_display_label_in_db import Migration043
+from infrahub.core.migrations.graph.m043_create_hfid_display_label_in_db import Migration043
+from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import Migration044
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
@@ -39,7 +39,7 @@ class NodeDetails:
         return self.status is NodeStatus.ACTIVE
 
 
-class TestMigration042(TestInfrahubApp):
+class TestMigration043(TestInfrahubApp):
     @pytest.fixture
     def primary_thing_schema(self) -> NodeSchema:
         return NodeSchema(
@@ -614,7 +614,7 @@ DETACH DELETE attr
     ) -> None:
         await branch.rebase(db=db)
         async with db.start_session() as dbs:
-            migration = Migration042(migrations=[])
+            migration = Migration043(migrations=[])
             execution_result = await migration.execute_against_branch(db=dbs, branch=branch)
             assert not execution_result.errors
 
@@ -633,7 +633,7 @@ DETACH DELETE attr
         registry.schema.set_schema_branch(name=branch.name, schema=branch_schema_branch)
 
         async with db.start_session() as dbs:
-            migration = Migration043()
+            migration = Migration044()
             execution_result = await migration.execute_against_branch(db=dbs, branch=branch)
             assert not execution_result.errors
 
@@ -659,7 +659,7 @@ DETACH DELETE attr
                     == node_details.human_friendly_id
                 )
 
-    async def test_migration_042_043(
+    async def test_migration_043_044(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -676,7 +676,7 @@ DETACH DELETE attr
 
         # test adding display label and HFID attributes on default branch
         async with db.start_session() as dbs:
-            migration = Migration042(migrations=[])
+            migration = Migration043(migrations=[])
             execution_result = await migration.execute(db=dbs)
             assert not execution_result.errors
 
@@ -685,7 +685,7 @@ DETACH DELETE attr
 
         # test backfilling display label and HFID attributes on default branch
         async with db.start_session() as dbs:
-            migration = Migration043()
+            migration = Migration044()
             execution_result = await migration.execute(db=dbs)
             assert not execution_result.errors
 

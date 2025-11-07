@@ -5,10 +5,10 @@ from uuid import uuid4
 
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
+from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision, RelationshipCardinality
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
@@ -164,6 +164,100 @@ async def test_update_display_label_update(
     assert after_change.data
     assert after_change.data["TestingTShirt"]["count"] == 1
     assert after_change.data["TestingTShirt"]["edges"][0]["node"]["display_label"] == "very-new-label"
+
+
+async def test_create_nodes_with_display_labels(
+    db: InfrahubDatabase,
+    node_group_schema: None,
+    default_branch: Branch,
+) -> None:
+    """Validate that the correct display label is assigned when creating nodes."""
+    schema_root = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Widget",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text"), AttributeSchema(name="status", kind="Text")],
+                relationships=[
+                    RelationshipSchema(name="container", peer="TestContainer", cardinality=RelationshipCardinality.ONE)
+                ],
+                display_labels=["name__value", "status"],
+                display_label="{{ name__value|upper }}: {{ status__value|lower }} - {{ container__storage_name__value }}",
+            ),
+            NodeSchema(
+                name="Container",
+                namespace="Test",
+                attributes=[
+                    AttributeSchema(name="storage_name", kind="Text", unique=True, optional=False),
+                    AttributeSchema(name="status", kind="Text"),
+                ],
+                display_label="storage_name__value",
+                default_filter="storage_name__value",
+            ),
+            NodeSchema(
+                name="Owner",
+                namespace="Test",
+                attributes=[
+                    AttributeSchema(name="family_name", kind="Text", unique=True, optional=False),
+                    AttributeSchema(name="description", kind="Text", optional=True),
+                ],
+                display_label="family_name__value",
+            ),
+        ]
+    )
+
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    container1 = await Node.init(db=db, schema="TestContainer")
+    await container1.new(db=db, storage_name="WarehouseA", status="Active")
+    await container1.save(db=db)
+
+    event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=event)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+
+    create_widget = """
+    mutation TestWidgetCreate($name: String!, $container_id: String, $container_hfid: [String!]) {
+        TestWidgetCreate(data:
+        {
+            name: { value: $name},
+            status: { value: "NEW"},
+            container: {id: $container_id, hfid: $container_hfid}
+        }) {
+            ok
+            object {
+                id
+                display_label
+            }
+        }
+    }
+    """
+
+    widget1_default_filter = await graphql(
+        schema=gql_params.schema,
+        source=create_widget,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": "Trinket1", "container_id": "WarehouseA"},
+    )
+    assert widget1_default_filter.errors is None
+    assert widget1_default_filter.data
+    assert widget1_default_filter.data["TestWidgetCreate"]["ok"] is True
+    assert widget1_default_filter.data["TestWidgetCreate"]["object"]["display_label"] == "TRINKET1: new - WarehouseA"
+
+    widget2_hfid = await graphql(
+        schema=gql_params.schema,
+        source=create_widget,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"name": "Trinket2", "container_hfid": ["WarehouseA"]},
+    )
+    assert widget2_hfid.errors is None
+    assert widget2_hfid.data
+    assert widget2_hfid.data["TestWidgetCreate"]["ok"] is True
+    assert widget2_hfid.data["TestWidgetCreate"]["object"]["display_label"] == "TRINKET2: new - WarehouseA"
 
 
 UPDATE_DISPLAY_LABEL = """
