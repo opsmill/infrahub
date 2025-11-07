@@ -14,9 +14,12 @@ type DateDisplayProps = {
 export const getDateDisplay = (date?: number | string | Date | null) =>
   format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
 
-export const DateDisplay = (props: DateDisplayProps) => {
-  const { date, hideDefault, className, containerClassName } = props;
-
+export const DateDisplay = ({
+  date,
+  hideDefault,
+  className,
+  containerClassName,
+}: DateDisplayProps) => {
   if (!date && hideDefault) {
     return null;
   }
