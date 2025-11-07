@@ -79,8 +79,8 @@ class NonNegativeInt(Scalar):
             return None
         try:
             value = int(value)
-        except (ValueError, TypeError):
-            raise GraphQLError("Value must be a non-negative integer")
+        except (ValueError, TypeError) as exc:
+            raise GraphQLError("Value must be a non-negative integer") from exc
         if value < 0:
             raise GraphQLError("Value must be a non-negative integer")
         return value

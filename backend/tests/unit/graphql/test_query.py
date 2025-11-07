@@ -134,6 +134,7 @@ async def test_builtin_tag_rejects_negative_offset(
     assert "non-negative integer" in result.errors[0].message
     assert result.errors[0].path is None
 
+
 async def test_builtin_tag_rejects_unknown_limit(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -182,4 +183,3 @@ async def test_builtin_tag_rejects_unknown_offset(
     assert result.errors
     assert "non-negative integer" in result.errors[0].message
     assert result.errors[0].path is None
-
