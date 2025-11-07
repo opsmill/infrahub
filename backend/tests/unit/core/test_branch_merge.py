@@ -147,7 +147,7 @@ async def test_merge_relationship_one(
     tag_red_main: Node,
     tag_black_main: Node,
     person_jack_main: Node,
-):
+) -> None:
     await person_jack_main.primary_tag.update(db=db, data=[tag_blue_main])
     await person_jack_main.save(db=db)
 
