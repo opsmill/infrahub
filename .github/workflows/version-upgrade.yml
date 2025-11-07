@@ -136,6 +136,9 @@ jobs:
           PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
+      - name: Verify bracnh graph version
+        run: poetry run invoke dev.test-branch-graph-version --branch atl1-delete-upstream
+
       - name: Containers after tests
         if: always()
         run: docker ps -a

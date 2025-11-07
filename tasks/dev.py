@@ -257,3 +257,19 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
 
     if data_to_check:
         client.get(kind="LocationContinent", hfid=data_to_check, branch=branch)
+
+
+@task
+def test_branch_graph_version(context: Context, branch: str) -> None:  # noqa: ARG001
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync()
+
+    default_branch = client.branch.get(branch_name=client.default_branch)
+    other_branch = client.branch.get(branch_name=branch)
+
+    if default_branch.graph_version != other_branch.graph_version:
+        raise AssertionError(
+            f"Branch '{branch}' with graph version {other_branch.graph_version} has not been rebased and upgrade properly, "
+            f"expected graph version is {default_branch.graph_version}"
+        )
