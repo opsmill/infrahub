@@ -955,6 +955,42 @@ class NodeManager:
         id: str,
         db: InfrahubDatabase,
         kind: str,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: str,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: str,
         raise_on_error: bool = ...,
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
@@ -964,7 +1000,43 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: None = ...,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: None = ...,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
 
     @overload
     @classmethod
@@ -982,7 +1054,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
 
     @classmethod
     async def get_one(
@@ -999,7 +1071,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any | None:
+    ) -> Node | SchemaProtocol | None:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
 

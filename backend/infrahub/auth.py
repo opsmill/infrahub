@@ -20,7 +20,7 @@ from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreAccount, CoreAccountGroup
+from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreGenericAccount
 from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError
 from infrahub.log import get_logger
@@ -28,7 +28,6 @@ from infrahub.log import get_logger
 if TYPE_CHECKING:
     import httpx
 
-    from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -53,7 +52,7 @@ class AccountSession(BaseModel):
 
 
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
-    account: CoreGenericAccount = await NodeManager.get_one(db=db, id=account_id, raise_on_error=True)
+    account = await NodeManager.get_one(db=db, kind=CoreGenericAccount, id=account_id, raise_on_error=True)
     if account.status.value != AccountStatus.ACTIVE.value:
         raise AuthorizationError("This account has been deactivated")
 
@@ -114,7 +113,7 @@ async def create_fresh_access_token(
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
-    account: CoreGenericAccount | None = await NodeManager.get_one(id=refresh_data.account_id, db=db)
+    account = await NodeManager.get_one(id=refresh_data.account_id, kind=CoreGenericAccount, db=db)
     if not account:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
