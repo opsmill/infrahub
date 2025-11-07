@@ -14,22 +14,16 @@ import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-pr
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
+import { computeProposedChangeFilters } from "@/entities/proposed-changes/utils/compute-proposed-change-filters";
 import type { NodeSchema } from "@/entities/schema/types";
-
-import { computeProposedChangeFilters } from "../utils/compute-proposed-change-filters";
 
 type ProposedChangesTableProps = {
   schema: NodeSchema;
   permission: Permission;
-  hideFilters?: boolean;
   className?: string;
 };
 
-export function ProposedChangesTable({
-  schema,
-  hideFilters,
-  className,
-}: ProposedChangesTableProps) {
+export function ProposedChangesTable({ schema, className }: ProposedChangesTableProps) {
   const [proposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
 
   const [filters] = useFilters();
@@ -47,7 +41,7 @@ export function ProposedChangesTable({
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage} className="h-full">
-      {!hideFilters && <ProposedChangesTableFilters schema={schema} />}
+      <ProposedChangesTableFilters schema={schema} />
 
       <ListBox
         aria-label="Branches list"
