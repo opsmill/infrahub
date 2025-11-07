@@ -1,8 +1,12 @@
-import { BreadcrumbItem } from "@/shared/components/ui/breadcrumb";
+import { BreadcrumbItem } from "@/shared/components/aria/breadcrumbs";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import type { ModelSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-export function BreadcrumbItemSchema({ schema }: { schema: ModelSchema }) {
-  return <BreadcrumbItem href={getObjectDetailsUrl(schema.kind!)}>{schema.label}</BreadcrumbItem>;
+export function BreadcrumbItemSchema({ kind }: { kind: string }) {
+  const { schema } = useSchema(kind);
+
+  if (!schema) return null;
+
+  return <BreadcrumbItem href={getObjectDetailsUrl(kind)}>{schema.label}</BreadcrumbItem>;
 }

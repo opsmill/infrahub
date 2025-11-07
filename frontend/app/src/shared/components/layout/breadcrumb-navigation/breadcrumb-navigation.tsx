@@ -1,25 +1,20 @@
-import React from "react";
-import { matchPath, type UIMatch, useLocation, useMatches, useParams } from "react-router";
+import { matchPath, useLocation } from "react-router";
 
+import { BreadcrumbAccountProfile } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-account-profile";
+import { BreadcrumbActivities } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-activities";
 import { BreadcrumbBranches } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-branches";
+import { BreadcrumbGraphql } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-graphql";
 import { BreadcrumbIpNamespaces } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ip-namespaces";
 import { BreadcrumbIpam } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ipam";
 import { BreadcrumbObjects } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-objects";
-import {
-  BreadcrumbDynamicElement,
-  type BreadcrumbDynamicElementProps,
-} from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-dynamic-element";
-import { breadcrumbActiveStyle } from "@/shared/components/layout/breadcrumb-navigation/style";
-import { Breadcrumb, BreadcrumbSeparator } from "@/shared/components/ui/breadcrumb";
-import { classNames } from "@/shared/utils/common";
+import { BreadcrumbProposedChanges } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-proposed-changes";
+import { BreadcrumbResourceManager } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-resource-manager";
+import { BreadcrumbRoleManagement } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-role-management";
+import { BreadcrumbSchemaViewer } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-schema-viewer";
+import { BreadcrumbTasks } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-tasks";
 
 export default function BreadcrumbNavigation() {
   const { pathname } = useLocation();
-  const { objectKind } = useParams();
-  const matches = useMatches() as UIMatch<
-    unknown,
-    { breadcrumb?: (match: UIMatch) => BreadcrumbDynamicElementProps }
-  >[];
 
   if (matchPath({ path: "/branches", end: false }, pathname)) {
     return <BreadcrumbBranches />;
@@ -33,25 +28,37 @@ export default function BreadcrumbNavigation() {
     return <BreadcrumbIpam />;
   }
 
-  if (objectKind) {
-    return <BreadcrumbObjects />;
+  if (matchPath({ path: "/activities", end: false }, pathname)) {
+    return <BreadcrumbActivities />;
   }
 
-  const crumbs = matches
-    .map((match) => match.handle?.breadcrumb?.(match))
-    .filter((match) => !!match);
+  if (matchPath({ path: "/profile" }, pathname)) {
+    return <BreadcrumbAccountProfile />;
+  }
 
-  return (
-    <Breadcrumb>
-      {crumbs.map((crumb, index) => (
-        <React.Fragment key={index}>
-          <BreadcrumbSeparator />
-          <BreadcrumbDynamicElement
-            {...crumb}
-            className={classNames(index === crumbs.length - 1 && breadcrumbActiveStyle)}
-          />
-        </React.Fragment>
-      ))}
-    </Breadcrumb>
-  );
+  if (matchPath({ path: "/proposed-changes", end: false }, pathname)) {
+    return <BreadcrumbProposedChanges />;
+  }
+
+  if (matchPath({ path: "/tasks", end: false }, pathname)) {
+    return <BreadcrumbTasks />;
+  }
+
+  if (matchPath({ path: "/graphql", end: false }, pathname)) {
+    return <BreadcrumbGraphql />;
+  }
+
+  if (matchPath({ path: "/resource-manager", end: false }, pathname)) {
+    return <BreadcrumbResourceManager />;
+  }
+
+  if (matchPath({ path: "/schema" }, pathname)) {
+    return <BreadcrumbSchemaViewer />;
+  }
+
+  if (matchPath({ path: "/role-management", end: false }, pathname)) {
+    return <BreadcrumbRoleManagement />;
+  }
+
+  return <BreadcrumbObjects />;
 }
