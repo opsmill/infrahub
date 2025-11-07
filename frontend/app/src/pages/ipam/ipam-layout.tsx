@@ -78,14 +78,14 @@ function IpamToolbar() {
           size="square"
           aria-label="toggle IPAM tree"
           onClick={() => setCollapsed(!collapsed)}
-          className="m-1 text-gray-400 hover:text-neutral-600"
+          className="m-1 rounded-lg text-gray-400 hover:text-neutral-600"
         >
           <SidebarIcon className="size-4" />
         </Button>
 
         <Separator orientation="vertical" />
 
-        <IpNamespaceSelector className={classNames("m-0.75 grow", collapsed && "max-w-[313px]")} />
+        <IpNamespaceSelector className={classNames("m-0.5 grow", collapsed && "max-w-[313px]")} />
       </Row>
 
       <Separator />

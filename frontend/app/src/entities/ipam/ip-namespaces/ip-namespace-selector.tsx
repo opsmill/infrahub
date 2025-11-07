@@ -36,14 +36,14 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         data-testid="namespace-select"
         className={classNames(
           focusVisibleStyle,
-          "flex h-10 flex-col rounded px-1.5 py-0.5",
+          "flex flex-col justify-center rounded-lg px-2 py-1",
           "border border-transparent",
           "hover:bg-gray-100",
           className
         )}
       >
         <Row className="text-gray-600 text-xs">IP Namespace</Row>
-        <Row className="gap-1.5 text-sm">
+        <Row className="gap-1.5 text-sm leading-3.5">
           <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
           <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-gray-600" />
         </Row>
