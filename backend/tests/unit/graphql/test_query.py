@@ -85,12 +85,12 @@ async def test_execute_missing_query(db: InfrahubDatabase, default_branch: Branc
     assert "Unable to find the CoreGraphQLQuery" in str(exc.value)
 
 
-@pytest.mark.asyncio
 async def test_builtin_tag_rejects_negative_limit(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema,
 ) -> None:
+    """Test that BuiltinTag query rejects negative limit values."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
@@ -110,12 +110,12 @@ async def test_builtin_tag_rejects_negative_limit(
     assert result.errors[0].path is None
 
 
-@pytest.mark.asyncio
 async def test_builtin_tag_rejects_negative_offset(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema,
 ) -> None:
+    """Test that BuiltinTag query rejects negative offset values."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
@@ -134,12 +134,12 @@ async def test_builtin_tag_rejects_negative_offset(
     assert "non-negative integer" in result.errors[0].message
     assert result.errors[0].path is None
 
-@pytest.mark.asyncio
 async def test_builtin_tag_rejects_unknown_limit(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema,
 ) -> None:
+    """Test that BuiltinTag query rejects unknown limit values."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
@@ -159,12 +159,12 @@ async def test_builtin_tag_rejects_unknown_limit(
     assert result.errors[0].path is None
 
 
-@pytest.mark.asyncio
 async def test_builtin_tag_rejects_unknown_offset(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema,
 ) -> None:
+    """Test that BuiltinTag query rejects unknown offset values."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
