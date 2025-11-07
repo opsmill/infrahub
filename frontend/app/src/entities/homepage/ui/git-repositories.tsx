@@ -11,12 +11,11 @@ import { HomeCard } from "@/shared/components/ui/home-card";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { classNames } from "@/shared/utils/common";
 
+import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
+import { GitRepositoryItem } from "@/entities/homepage/ui/git-repository";
 import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
 import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-
-import { EmptyHomeCard } from "./empty-home-card";
-import { GitRepositoryItem } from "./git-repository";
 
 interface GitRepositoriesProps {
   className?: string;
@@ -55,13 +54,15 @@ export const GitRepositories = ({ className }: GitRepositoriesProps) => {
         <ListBox
           aria-label="Git repositories list"
           items={flatData}
-          renderEmptyState={() => (
-            <EmptyHomeCard
-              title={"No git repository connected"}
-              subtitle={"Connect a Git repo to sync changes."}
-              className="py-10"
-            />
-          )}
+          renderEmptyState={() =>
+            !isLoading && (
+              <EmptyHomeCard
+                title={"No git repository connected"}
+                subtitle={"Connect a Git repo to sync changes."}
+                className="py-10"
+              />
+            )
+          }
         >
           {(repository) => {
             return (
