@@ -48,7 +48,7 @@ async def validate_namespace(
         namespace_id = namespace.id
     elif "hfid" in data["ip_namespace"]:
         namespace = await registry.manager.get_one_by_hfid(
-            db=db, branch=branch, kind=InfrahubKind.IPNAMESPACE, hfid=data["ip_namespace"]["hfid"]
+            db=db, branch=branch, kind=InfrahubKind.IPNAMESPACE, hfid=data["ip_namespace"]["hfid"], raise_on_error=True
         )
         namespace_id = namespace.id
     else:
