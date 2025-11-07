@@ -612,12 +612,7 @@ class Migration044(MigrationRequiringRebase):
     update_batch_size: int = 1000
     # skip these b/c the attributes on these schema-related nodes are used to define the values included in
     # the human_friendly_id and display_label attributes on instances of these schema, so should not be updated
-    kinds_to_skip: list[str] = [
-        "SchemaNode",
-        "SchemaAttribute",
-        "SchemaRelationship",
-        "SchemaGeneric",
-    ]
+    kinds_to_skip: list[str] = ["SchemaNode", "SchemaAttribute", "SchemaRelationship", "SchemaGeneric"]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
