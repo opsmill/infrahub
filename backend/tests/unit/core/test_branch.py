@@ -120,7 +120,7 @@ async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_da
     default_branch = await registry.get_branch(branch="main", db=db)
 
     filters, params = default_branch.get_query_filter_relationships(
-        rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
+        rel_labels=["r1", "r2"], at=Timestamp(), include_outside_parentheses=False
     )
 
     expected_filters = [
@@ -139,7 +139,7 @@ async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base
     branch1 = await registry.get_branch(branch="branch1", db=db)
 
     filters, params = branch1.get_query_filter_relationships(
-        rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
+        rel_labels=["r1", "r2"], at=Timestamp(), include_outside_parentheses=False
     )
 
     assert isinstance(filters, list)

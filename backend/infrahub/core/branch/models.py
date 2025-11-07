@@ -279,7 +279,7 @@ class Branch(StandardNode):
         await super().delete(db=db)
 
     def get_query_filter_relationships(
-        self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
+        self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False
     ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
