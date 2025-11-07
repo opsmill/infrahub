@@ -97,13 +97,7 @@ When following a guide, like the [installation guide](../guides/installation.mdx
 
 ## Running Infrahub test suite
 
-Install necessary Poetry packages:
-
-```shell
-`poetry install
-```
-
-With the required services working, Python packages installed and properly setup Python virtual environment we can now run the Infrahub test suite to make sure the code works as intended.
+With the required services working and properly setup Python virtual environment we can now run the Infrahub test suite to make sure the code works as intended.
 
 ```shell
 INFRAHUB_LOG_LEVEL=CRITICAL poetry run pytest -v backend/tests/unit
