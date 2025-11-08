@@ -31,7 +31,7 @@ export function Button({
           isPressed={renderProps.isPressed}
           isFocusVisible={renderProps.isFocusVisible}
           className={classNames(
-            "inline-flex items-center justify-center",
+            "inline-flex items-center justify-center gap-1.5",
             typeof className === "function"
               ? className({ ...renderProps, defaultClassName: undefined })
               : className

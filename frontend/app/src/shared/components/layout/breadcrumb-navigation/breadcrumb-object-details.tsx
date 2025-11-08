@@ -1,7 +1,7 @@
 import { keepPreviousData } from "@tanstack/react-query";
 
+import { BreadcrumbItemError, BreadcrumbItemLoading } from "@/shared/components/aria/breadcrumbs";
 import { BreadcrumbItemObject } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-object";
-import { BreadcrumbError, BreadcrumbLoading } from "@/shared/components/ui/breadcrumb";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import type { NodeRelationshipOne } from "@/entities/nodes/types";
@@ -10,9 +10,14 @@ import type { ModelSchema } from "@/entities/schema/types";
 interface BreadcrumbObjectDetailsProps {
   objectSchema: ModelSchema;
   objectId: string;
+  autocompleteObjectKind?: string;
 }
 
-export function BreadcrumbObjectDetails({ objectSchema, objectId }: BreadcrumbObjectDetailsProps) {
+export function BreadcrumbObjectDetails({
+  autocompleteObjectKind,
+  objectSchema,
+  objectId,
+}: BreadcrumbObjectDetailsProps) {
   const { isPending, error, data } = useGetObject(
     { objectSchema, objectId },
     {
@@ -21,11 +26,11 @@ export function BreadcrumbObjectDetails({ objectSchema, objectId }: BreadcrumbOb
   );
 
   if (isPending) {
-    return <BreadcrumbLoading />;
+    return <BreadcrumbItemLoading />;
   }
 
   if (error) {
-    return <BreadcrumbError error={error} />;
+    return <BreadcrumbItemError error={error} />;
   }
 
   const parentRelationship = objectSchema.relationships?.find((rel) => rel.kind === "Parent");
@@ -38,6 +43,7 @@ export function BreadcrumbObjectDetails({ objectSchema, objectId }: BreadcrumbOb
       {parentNode && <BreadcrumbItemObject node={parentNode} />}
       <BreadcrumbItemObject
         node={data}
+        autocompleteObjectKind={autocompleteObjectKind}
         parentId={parentNode?.id}
         parentRelationshipSchema={parentRelationship}
       />

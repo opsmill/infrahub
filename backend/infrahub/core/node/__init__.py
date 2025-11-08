@@ -752,9 +752,34 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return self
 
     async def resolve_relationships(self, db: InfrahubDatabase) -> None:
+        extra_filters: dict[str, set[str]] = {}
+
+        if not self._existing:
+            # If we are creating a new node, we need to resolve extra filters from HFID and Display Labels,
+            # if we don't do this the fields might be blank
+            schema_branch = db.schema.get_schema_branch(name=self.get_branch_based_on_support_type().name)
+            try:
+                hfid_identifier = schema_branch.hfids.get_node_definition(kind=self._schema.kind)
+                for rel_name, attrs in hfid_identifier.relationship_fields.items():
+                    extra_filters.setdefault(rel_name, set()).update(attrs)
+            except KeyError:
+                # No HFID defined for this kind
+                ...
+            try:
+                display_label_identifier = schema_branch.display_labels.get_template_node(kind=self._schema.kind)
+                for rel_name, attrs in display_label_identifier.relationship_fields.items():
+                    extra_filters.setdefault(rel_name, set()).update(attrs)
+            except KeyError:
+                # No Display Label defined for this kind
+                ...
+
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
-            await relm.resolve(db=db)
+            query_filter = []
+            if name in extra_filters:
+                query_filter.extend(list(extra_filters[name]))
+
+            await relm.resolve(db=db, fields=query_filter)
 
     async def load(
         self,
