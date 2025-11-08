@@ -455,7 +455,7 @@ class NodeManager:
         branch: Branch | str | None = ...,
         id: str | None = ...,
         hfid: list[str] | None = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def find_object(
@@ -466,7 +466,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         id: str | None = None,
         hfid: list[str] | None = None,
-    ) -> Any:
+    ) -> Node | SchemaProtocol:
         if id and is_valid_uuid(id):
             return await cls.get_one(
                 db=db,
