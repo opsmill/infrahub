@@ -359,6 +359,20 @@ class AttributeDBNodeType(Flag):
     IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
+class MetadataOptions(Flag):
+    NONE = auto()
+    SOURCE = auto()
+    OWNER = auto()
+    LINKED_NODES = SOURCE | OWNER
+    IS_PROTECTED = auto()
+    CREATED_BY = auto()
+    CREATED_AT = auto()
+    UPDATED_BY = auto()
+    UPDATED_AT = auto()
+    TIMESTAMPS = CREATED_AT | UPDATED_AT
+    USERS = CREATED_BY | UPDATED_BY
+
+
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",

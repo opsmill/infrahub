@@ -3,7 +3,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import HashableModelState, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -412,7 +412,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": False,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Starbuck"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -559,7 +559,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": False,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=new_person_id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=new_person_id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -649,7 +649,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "source": {"id": person_profile_1.id},
             "is_default": False,
         }
-        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_1.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Kara Thrace"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None
@@ -784,7 +784,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "is_default": True,
         }
 
-        retrieved_person = await NodeManager.get_one(db=db, id=person_2.id, include_source=True)
+        retrieved_person = await NodeManager.get_one(db=db, id=person_2.id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved_person.name.value == "Apollo"
         assert retrieved_person.name.is_from_profile is False
         assert retrieved_person.name.source_id is None

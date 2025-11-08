@@ -8,7 +8,7 @@ from netaddr import IPSet
 from opentelemetry import trace
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -380,8 +380,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 limit=query_limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_source=True,
-                include_owner=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
                 partial_match=partial_match,
                 order=order,
             )

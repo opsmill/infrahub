@@ -11,6 +11,7 @@ from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.models import NodeChangelog, RelationshipChangelogGetter
 from infrahub.core.constants import (
     InfrahubKind,
+    MetadataOptions,
     PermissionAction,
     PermissionDecision,
     RelationshipCardinality,
@@ -318,8 +319,7 @@ async def _validate_node(info: GraphQLResolveInfo, data: RelationshipNodesInput)
             db=graphql_context.db,
             id=input_id,
             branch=graphql_context.branch,
-            include_owner=False,
-            include_source=False,
+            include_metadata=MetadataOptions.NONE,
         )
     ):
         raise NodeNotFoundError(node_type="node", identifier=input_id, branch_name=graphql_context.branch.name)
