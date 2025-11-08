@@ -13,6 +13,9 @@ export const sortByOrderWeight = <T extends { order_weight?: number | null | und
   arr: T[]
 ) => R.sortBy(arr, (x) => x.order_weight ?? 0);
 
+export const sortByCreatedAtDesc = <T extends { created_at: string }>(arr: T[]) =>
+  R.sortBy(arr, [(x) => x.created_at, "desc"]);
+
 export const parseJwt = (token: string | null) => {
   if (!token) {
     return;
