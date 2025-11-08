@@ -360,7 +360,7 @@ class AttributeDBNodeType(Flag):
 
 
 class MetadataOptions(Flag):
-    NONE = auto()
+    NONE = 0
     SOURCE = auto()
     OWNER = auto()
     LINKED_NODES = SOURCE | OWNER
