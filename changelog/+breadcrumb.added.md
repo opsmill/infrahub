@@ -1,5 +1,5 @@
 New breadcrumb navigation:
 
-- Select and switch branches directly from the breadcrumb
-- Display full ancestors lineage of objects (Parents, ancestors for hierarchy schemas, etc...)
-- You can now switch object directly from breadcrumb
+- Display full ancestors lineage of objects (parent objects or all ancestors for hierarchical schemas)
+- Display schema hierarchy for hierarchical schemas
+- Search and switch objects directly from breadcrumbs

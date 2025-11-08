@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.protocols import CoreNode
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
@@ -59,7 +58,7 @@ class PoolAllocatedEdge(ObjectType):
     node = Field(PoolAllocatedNode, required=True)
 
 
-def _validate_pool_type(pool_id: str, pool: CoreNode | None = None) -> CoreNode:
+def _validate_pool_type(pool_id: str, pool: Node | None = None) -> Node:
     if not pool or pool.get_kind() not in [
         InfrahubKind.IPADDRESSPOOL,
         InfrahubKind.IPPREFIXPOOL,
@@ -83,9 +82,7 @@ class PoolAllocated(ObjectType):
         limit: int = 10,
     ) -> dict:
         graphql_context: GraphqlContext = info.context
-        pool: CoreNode | None = await NodeManager.get_one(
-            id=pool_id, db=graphql_context.db, branch=graphql_context.branch
-        )
+        pool = await NodeManager.get_one(id=pool_id, db=graphql_context.db, branch=graphql_context.branch)
 
         fields = extract_graphql_fields(info=info)
 
@@ -190,7 +187,7 @@ class PoolUtilization(ObjectType):
     ) -> dict:
         graphql_context: GraphqlContext = info.context
         db: InfrahubDatabase = graphql_context.db
-        pool: CoreNode | None = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
+        pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
         if pool.get_kind() == "CoreNumberPool":
             return await resolve_number_pool_utilization(
@@ -275,7 +272,7 @@ class PoolUtilization(ObjectType):
 
 
 async def resolve_number_pool_allocation(
-    db: InfrahubDatabase, graphql_context: GraphqlContext, pool: CoreNode, fields: dict, offset: int, limit: int
+    db: InfrahubDatabase, graphql_context: GraphqlContext, pool: Node, fields: dict, offset: int, limit: int
 ) -> dict:
     response: dict[str, Any] = {}
     query = await NumberPoolGetAllocated.init(
@@ -304,7 +301,7 @@ async def resolve_number_pool_allocation(
 
 
 async def resolve_number_pool_utilization(
-    db: InfrahubDatabase, pool: CoreNode, at: Timestamp | str | None, branch: Branch
+    db: InfrahubDatabase, pool: Node, at: Timestamp | str | None, branch: Branch
 ) -> dict:
     """
     Returns a mapping containg utilization info of a number pool.

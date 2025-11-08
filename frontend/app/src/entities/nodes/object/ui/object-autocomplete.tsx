@@ -15,15 +15,19 @@ import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 interface ObjectAutocompleteProps {
   objectKind: string;
-  filters?: GetRelationshipsParams["filterQuery"];
+  filterQuery?: GetRelationshipsParams["filterQuery"];
   className?: string;
 }
 
-export function ObjectAutocomplete({ objectKind, filters, className }: ObjectAutocompleteProps) {
+export function ObjectAutocomplete({
+  objectKind,
+  filterQuery,
+  className,
+}: ObjectAutocompleteProps) {
   const [search, setSearch] = React.useState("");
   const setSearchDebounced = debounce(setSearch, 300);
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useRelationships({ peer: objectKind, search, filterQuery: filters });
+    useRelationships({ peer: objectKind, search, filterQuery });
 
   if (error) return <ErrorScreen message={error.message} />;
 

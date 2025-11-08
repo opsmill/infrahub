@@ -2,14 +2,14 @@ import { keepPreviousData } from "@tanstack/react-query";
 import type React from "react";
 import { useParams } from "react-router";
 
+import {
+  BreadcrumbItem,
+  BreadcrumbItemError,
+  BreadcrumbItemLoading,
+  Breadcrumbs,
+} from "@/shared/components/aria/breadcrumbs";
 import { BreadcrumbObjectDetailsHierarchy } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details-hierarchy";
 import { BreadcrumbItemObject } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-object";
-import {
-  Breadcrumb,
-  BreadcrumbError,
-  BreadcrumbItem,
-  BreadcrumbLoading,
-} from "@/shared/components/ui/breadcrumb";
 
 import {
   IP_ADDRESS_GENERIC,
@@ -38,10 +38,10 @@ export function BreadcrumbIpam() {
 
 export function BreadcrumbIpamBase({ children }: { children?: React.ReactNode }) {
   return (
-    <Breadcrumb data-testid="breadcrumb-ipam">
+    <Breadcrumbs data-testid="breadcrumb-ipam">
       <BreadcrumbItem href={constructPathForIpam("/ipam")}>IP Address Manager</BreadcrumbItem>
       {children}
-    </Breadcrumb>
+    </Breadcrumbs>
   );
 }
 
@@ -80,11 +80,11 @@ export function BreadcrumbIpAddress({ ipAddressSchema, ipAddressId }: Breadcrumb
   );
 
   if (isPending) {
-    return <BreadcrumbLoading />;
+    return <BreadcrumbItemLoading />;
   }
 
   if (error) {
-    return <BreadcrumbError error={error} />;
+    return <BreadcrumbItemError error={error} />;
   }
 
   const ipPrefixRelationshipSchema = ipAddressSchema.relationships?.find(

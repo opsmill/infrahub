@@ -34,7 +34,7 @@ test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
 
     await test.step("use breadcrumb to go back to parent prefix", async () => {
       await page
-        .getByLabel("IPAM navigation breadcrumb")
+        .getByTestId("breadcrumb-ipam")
         .getByRole("link", { name: "2001:db8::/100" })
         .click();
     });
