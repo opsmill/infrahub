@@ -186,6 +186,18 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = "tests.functional.*"
 disallow_untyped_defs = false
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+]
+
+[[tool.mypy.overrides]]
+module = "tests.integration.*"
+disable_error_code = [
+    "assignment",
+    "attr-defined",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.attribute"

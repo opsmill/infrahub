@@ -186,6 +186,7 @@ class InfrahubProfilesRefresh(Mutation):
             branch=branch,
             id=str(data.id),
             include_source=True,
+            raise_on_error=True,
         )
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         updated_fields = await node_profiles_applier.apply_profiles(node=obj)

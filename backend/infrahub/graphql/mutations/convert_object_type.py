@@ -76,7 +76,7 @@ class ConvertObjectType(Mutation):
 
         if target_schema.kind in [REPOSITORY, READONLYREPOSITORY]:
             new_node = await convert_repository_type(
-                repository=node_to_convert,
+                repository=node_to_convert,  # type: ignore[arg-type]
                 target_schema=target_schema,
                 mapping=fields_mapping,
                 branch=graphql_context.branch,

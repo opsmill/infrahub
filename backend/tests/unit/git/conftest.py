@@ -2,6 +2,7 @@ import re
 import shutil
 import tarfile
 from pathlib import Path
+from typing import Generator
 
 import anyio
 import pytest
@@ -14,8 +15,12 @@ from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
 
+from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.schema import SchemaRoot, core_models
+from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
@@ -1346,3 +1351,23 @@ async def mock_update_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
     )
     return httpx_mock
+
+
+@pytest.fixture
+def import_sync_branch_names() -> Generator[None, None, None]:
+    initial_import_sync_branch_names = config.SETTINGS.git.import_sync_branch_names
+    config.SETTINGS.git.import_sync_branch_names = ["branch.*"]
+    yield
+    config.SETTINGS.git.import_sync_branch_names = initial_import_sync_branch_names
+
+
+@pytest.fixture
+async def mock_create_branch_git_repo_01(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await create_branch(branch_name="branch01", db=db)
+    await create_branch(branch_name="branch02", db=db)
+    await create_branch(branch_name="clean-branch", db=db)
+
+
+@pytest.fixture
+async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await create_branch(branch_name="branch01", db=db)

@@ -9,6 +9,7 @@ from typing_extensions import Self
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
@@ -289,6 +290,10 @@ class BranchMerge(Mutation):
         await verify_branch_merge_mutation_allowed(
             db=graphql_context.db, account_session=graphql_context.active_account_session
         )
+
+        obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
+        if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
+            raise ValidationError(f"Cannot merge branch '{branch_name}' with status '{obj.status.name}'")
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(

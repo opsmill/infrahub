@@ -8,6 +8,7 @@ from graphql import GraphQLResolveInfo
 from infrahub import lock
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     CheckType,
     GlobalPermissions,
@@ -156,6 +157,11 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         if updated_state == ProposedChangeState.MERGED:
             if will_be_draft:
                 raise ValidationError("A draft proposed change is not allowed to be merged")
+
+            source_branch = await Branch.get_by_name(db=graphql_context.db, name=obj.source_branch.value)
+            if source_branch.status == BranchStatus.NEED_UPGRADE_REBASE:
+                raise ValidationError("The branch must be upgraded and rebased prior to merging the proposed change")
+
             data["state"]["value"] = ProposedChangeState.MERGING.value
 
         proposed_change, result = await super().mutate_update(

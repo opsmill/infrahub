@@ -13,7 +13,7 @@ from infrahub.graphql.field_extractor import extract_graphql_fields
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.protocols import CoreNode
+    from infrahub.core.node import Node as InfrahubNode
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -106,12 +106,12 @@ async def search_resolver(
 ) -> dict[str, Any]:
     graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}
-    results: list[CoreNode] = []
+    results: list[InfrahubNode] = []
 
     fields = extract_graphql_fields(info=info)
 
     if is_valid_uuid(q):
-        matching: CoreNode | None = await NodeManager.get_one(
+        matching = await NodeManager.get_one(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
         if matching:

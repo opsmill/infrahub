@@ -1,7 +1,7 @@
 import { keepPreviousData } from "@tanstack/react-query";
 
+import { BreadcrumbItemError, BreadcrumbItemLoading } from "@/shared/components/aria/breadcrumbs";
 import { BreadcrumbItemObject } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-object";
-import { BreadcrumbError, BreadcrumbLoading } from "@/shared/components/ui/breadcrumb";
 
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import type { NodeCoreWithParent } from "@/entities/nodes/types";
@@ -28,11 +28,11 @@ export function BreadcrumbObjectDetailsHierarchy({
   );
 
   if (isPending) {
-    return <BreadcrumbLoading />;
+    return <BreadcrumbItemLoading />;
   }
 
   if (error) {
-    return <BreadcrumbError error={error} />;
+    return <BreadcrumbItemError error={error} />;
   }
 
   return data.map((ancestor) => (

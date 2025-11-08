@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ID, Field, List, NonNull, String
+from graphene import ID, Field, Int, List, NonNull, String
 
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.types import BranchType
+from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -26,5 +27,38 @@ BranchQueryList = Field(
     name=String(),
     description="Retrieve information about active branches.",
     resolver=branch_resolver,
+    required=True,
+)
+
+
+async def infrahub_branch_resolver(
+    root: dict,  # noqa: ARG001
+    info: GraphQLResolveInfo,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> dict[str, Any]:
+    if isinstance(limit, int) and limit < 1:
+        raise ValidationError("limit must be >= 1")
+    if isinstance(offset, int) and offset < 0:
+        raise ValidationError("offset must be >= 0")
+
+    fields = extract_graphql_fields(info)
+    result: dict[str, Any] = {}
+    if "edges" in fields:
+        branches = await InfrahubBranch.get_list(
+            graphql_context=info.context, fields=fields.get("edges", {}).get("node", {}), limit=limit, offset=offset
+        )
+        result["edges"] = [{"node": branch} for branch in branches]
+    if "count" in fields:
+        result["count"] = await InfrahubBranchType.get_list_count(graphql_context=info.context)
+    return result
+
+
+InfrahubBranchQueryList = Field(
+    InfrahubBranchType,
+    offset=Int(),
+    limit=Int(),
+    description="Retrieve paginated information about active branches.",
+    resolver=infrahub_branch_resolver,
     required=True,
 )

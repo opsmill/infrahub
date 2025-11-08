@@ -557,7 +557,43 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> SchemaProtocol: ...
+    ) -> SchemaProtocol | None: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
 
     @overload
     @classmethod
@@ -575,7 +611,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
 
     @classmethod
     async def get_one_by_default_filter(
@@ -592,7 +628,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -688,7 +724,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> SchemaProtocol: ...
+    ) -> SchemaProtocol | None: ...
 
     @overload
     @classmethod
@@ -706,7 +742,25 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_hfid(
+        cls,
+        db: InfrahubDatabase,
+        hfid: list[str],
+        kind: str,
+        raise_on_error: Literal[False],
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
 
     @overload
     @classmethod
@@ -724,7 +778,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
 
     @classmethod
     async def get_one_by_hfid(
@@ -741,7 +795,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -955,6 +1009,42 @@ class NodeManager:
         id: str,
         db: InfrahubDatabase,
         kind: str,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: str,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: str,
         raise_on_error: bool = ...,
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
@@ -964,7 +1054,43 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: None = ...,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: None = ...,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
 
     @overload
     @classmethod
@@ -982,7 +1108,7 @@ class NodeManager:
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
 
     @classmethod
     async def get_one(
@@ -999,7 +1125,7 @@ class NodeManager:
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any | None:
+    ) -> Node | SchemaProtocol | None:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
 
