@@ -1,14 +1,16 @@
 from typing import Any
 
 from graphene import Scalar
-from graphql import GraphQLError, language
+from graphql import language
+
+from infrahub.exceptions import ValidationError
 
 
 class NonNegativeInt(Scalar):
     """A GraphQL scalar type that validates non-negative integer values.
 
     This scalar ensures that values are integers >= 0. It accepts None (null in GraphQL)
-    and rejects negative integers by raising GraphQLError.
+    and rejects negative integers by raising ValidationError.
     """
 
     @staticmethod
@@ -22,7 +24,7 @@ class NonNegativeInt(Scalar):
            The validated non-negative integer or None.
 
         Raises:
-           GraphQLError: If the value is negative.
+           ValidationError: If the value is negative.
         """
 
         return NonNegativeInt._validate(value)
@@ -38,7 +40,7 @@ class NonNegativeInt(Scalar):
            The validated non-negative integer or None.
 
         Raises:
-           GraphQLError: If the value is negative or cannot be converted to int.
+           ValidationError: If the value is negative or cannot be converted to int.
         """
 
         return NonNegativeInt._validate(value)
@@ -54,12 +56,13 @@ class NonNegativeInt(Scalar):
            The validated non-negative integer or None.
 
         Raises:
-           GraphQLError: If the node is not an IntValueNode or the value is negative.
+           ValidationError: If the node is not an IntValueNode or the value is negative.
         """
 
         if isinstance(node, language.ast.IntValueNode):
             return NonNegativeInt._validate(int(node.value))
-        raise GraphQLError("Value must be a non-negative integer")
+
+        raise ValidationError("Value must be a non-negative integer")
 
     @staticmethod
     def _validate(value: Any) -> int | None:
@@ -72,15 +75,18 @@ class NonNegativeInt(Scalar):
            The validated non-negative integer or None if the input is None.
 
         Raises:
-           GraphQLError: If the value is negative or cannot be converted to int.
+           ValidationError: If the value is negative or cannot be converted to int.
         """
 
         if value is None:
             return None
+
         try:
             value = int(value)
         except (ValueError, TypeError) as exc:
-            raise GraphQLError("Value must be a non-negative integer") from exc
+            raise ValidationError("Value must be a non-negative integer") from exc
+
         if value < 0:
-            raise GraphQLError("Value must be a non-negative integer")
+            raise ValidationError("Value must be a non-negative integer")
+
         return value
