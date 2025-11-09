@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlite3 import dbapi2
+from tracemalloc import start
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Path, Request
@@ -64,17 +66,18 @@ async def transform_python(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = await prepare_graphql_params(
-        db=request.app.state.db, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
-    )
+    async with db.start_session(read_only=True) as dbs:
+        gql_params = await prepare_graphql_params(
+            db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+        )
 
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query.query.value,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values=params,
-    )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query.query.value,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values=params,
+        )
 
     data = extract_data(query_name=query.name.value, result=result)
 
@@ -128,17 +131,18 @@ async def transform_jinja2(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = await prepare_graphql_params(
-        db=request.app.state.db, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
-    )
+    async with db.start_session(read_only=True) as dbs:
+        gql_params = await prepare_graphql_params(
+            db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+        )
 
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query.query.value,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values=params,
-    )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query.query.value,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values=params,
+        )
 
     data = extract_data(query_name=query.name.value, result=result)
 

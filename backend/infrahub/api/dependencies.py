@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -36,16 +36,9 @@ class BranchParams(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
-    session = request.app.state.db.session(database=config.SETTINGS.database.database_name)
-    try:
-        yield session
-    finally:
-        await session.close()
-
-
-async def get_db(request: Request) -> InfrahubDatabase:
-    return request.app.state.db.start_session()
+async def get_db(request: Request) -> AsyncGenerator[InfrahubDatabase, None, None]:
+    async with request.app.state.db.start_session() as db:
+        yield db
 
 
 async def get_access_token(
