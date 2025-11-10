@@ -312,7 +312,7 @@ These migrations need to be run on the main branch, and then afterwards the exis
 
 Infrahub provides the `infrahub upgrade` command to start these migrations.
 
-Optionally you can instruct the `infrahub upgrade` command to rebase existing branches and to trigger the migrations on the branches using the `--rebase-branches` option. You can use the `--interactive` option together with the `--rebase-branhces` option. In that case the `infrahub upgrade` command will ask you for each branch, whether you want it to be rebased as part of the upgrade.
+Optionally you can instruct the `infrahub upgrade` command to rebase existing branches and to trigger the migrations on the branches using the `--rebase-branches` option. You can use the `--interactive` option together with the `--rebase-branches` option. In that case the `infrahub upgrade` command will ask you for each branch, whether you want it to be rebased as part of the upgrade.
 
 Alternatively you can manually rebase branches after you have run the `infrahub upgrade` command. A rebase operation can be performed from the branch detailed view or through the `infrahubctl branch rebase <branch name>` command. The required migrations in a branch will be triggered automatically by Infrahub, after it has been rebased.
 
