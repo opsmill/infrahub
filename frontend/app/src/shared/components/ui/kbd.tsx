@@ -1,4 +1,4 @@
-import { forwardRef, HTMLAttributes, useMemo } from "react";
+import { forwardRef, type HTMLAttributes, useMemo } from "react";
 
 import { classNames } from "@/shared/utils/common";
 

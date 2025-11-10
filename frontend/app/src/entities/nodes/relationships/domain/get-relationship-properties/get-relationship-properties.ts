@@ -1,8 +1,8 @@
 import {
-  GetObjectRelationshipsFromApiParams,
+  type GetObjectRelationshipsFromApiParams,
   getRelationshipPropertiesFromApi,
 } from "@/entities/nodes/relationships/api/get-relationship-properties-from-api";
-import { RelationshipProperties } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipProperties } from "@/entities/nodes/relationships/domain/types";
 
 export type GetRelationshipPropertiesParams = GetObjectRelationshipsFromApiParams;
 

@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BranchContextParams } from "@/shared/api/types";
+import type { BranchContextParams } from "@/shared/api/types";
 import {
   RELATIONSHIP_BULK_ADD_PREFIX,
   RELATIONSHIP_BULK_REMOVE_PREFIX,

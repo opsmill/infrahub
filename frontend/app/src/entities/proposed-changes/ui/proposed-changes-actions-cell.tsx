@@ -11,7 +11,7 @@ import {
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 
 import { PROPOSED_CHANGE_OBJECT } from "../constants";
 

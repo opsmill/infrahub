@@ -336,6 +336,10 @@ class EnrichedDiffNode(BaseSummary):
         return self.identifier.kind
 
     @property
+    def is_schema_node(self) -> bool:
+        return self.identifier.kind.startswith("Schema")
+
+    @property
     def num_properties(self) -> int:
         return sum(a.num_properties for a in self.attributes) + sum(r.num_properties for r in self.relationships)
 

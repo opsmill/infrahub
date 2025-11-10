@@ -7,9 +7,9 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
-  DefaultParentParams,
+  type DefaultParentParams,
   getDefaultParent,
-  UseDefaultParentParams,
+  type UseDefaultParentParams,
 } from "@/entities/nodes/relationships/domain/get-default-parent";
 
 export function getDefaultParentQueryOptions(params: DefaultParentParams) {

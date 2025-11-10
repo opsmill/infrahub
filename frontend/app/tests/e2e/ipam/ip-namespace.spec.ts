@@ -76,6 +76,7 @@ test.describe("/ipam - IP Namespace", () => {
   }) => {
     await page.goto(`/ipam?branch=${BRANCH_NAME}`);
     await page.getByRole("link", { name: "10.0.0.0/16" }).click();
+    await expect(page.getByRole("heading", { name: "10.0.0.0/16" })).toBeVisible();
 
     await page.getByTestId("namespace-select").click();
     await page.getByRole("option", { name: "test-namespace" }).click();

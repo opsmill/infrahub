@@ -1,14 +1,14 @@
 import { FileBoxIcon, PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button, ButtonProps, Dialog, DialogTrigger } from "react-aria-components";
+import { Button, type ButtonProps, Dialog, DialogTrigger } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
-import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
+import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 import { classNames } from "@/shared/utils/common";
 
 import { ObjectTemplateAutocomplete } from "@/entities/nodes/object-template/object-template-autocomplete";
-import { NodeObject } from "@/entities/nodes/types";
-import { TemplateSchema } from "@/entities/schema/types";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { TemplateSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface StartButtonProps extends ButtonProps {

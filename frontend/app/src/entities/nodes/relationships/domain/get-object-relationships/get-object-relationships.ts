@@ -1,9 +1,9 @@
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { getObjectRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-object-relationships-from-api";
-import { NodeObject } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

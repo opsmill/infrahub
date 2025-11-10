@@ -1,4 +1,4 @@
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 
 // https://docs.infrahub.app/reference/schema/relationship/#kind
 export type RelationshipKind = components["schemas"]["RelationshipKind"];

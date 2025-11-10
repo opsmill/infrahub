@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.types import is_large_attribute_type
 
-from ..query import AttributeMigrationQuery
+from ..query import AttributeMigrationQuery, MigrationBaseQuery
 from ..shared import AttributeSchemaMigration, MigrationResult
 
 if TYPE_CHECKING:
@@ -147,10 +147,16 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.kind.update"
     queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]  # type: ignore[assignment]
 
-    async def execute(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | str | None = None) -> MigrationResult:
+    async def execute(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: Timestamp | str | None = None,
+        queries: Sequence[type[MigrationBaseQuery]] | None = None,
+    ) -> MigrationResult:
         is_indexed_previous = is_large_attribute_type(self.previous_attribute_schema.kind)
         is_indexed_new = is_large_attribute_type(self.new_attribute_schema.kind)
         if is_indexed_previous is is_indexed_new:
             return MigrationResult()
 
-        return await super().execute(db=db, branch=branch, at=at)
+        return await super().execute(db=db, branch=branch, at=at, queries=queries)

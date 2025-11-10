@@ -7,14 +7,6 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 test.describe("/proposed-changes", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test.describe("when not logged in", () => {
     test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");

@@ -1,7 +1,7 @@
 import { toast } from "react-toastify";
 
 import DynamicForm from "@/shared/components/form/dynamic-form";
-import { FormFieldValue } from "@/shared/components/form/type";
+import type { FormFieldValue } from "@/shared/components/form/type";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 

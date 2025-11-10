@@ -1,5 +1,5 @@
-import { User } from "@/entities/authentication/ui/useAuth";
-import { NodeObject } from "@/entities/nodes/types";
+import type { User } from "@/entities/authentication/types";
+import type { NodeObject } from "@/entities/nodes/types";
 
 export const hasUserRejectedProposedChange = (proposedChangesDetails: NodeObject, user: User) => {
   const usersId = proposedChangesDetails?.rejected_by?.edges?.map(

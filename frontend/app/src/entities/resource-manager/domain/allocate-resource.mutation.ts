@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
-  AllocateResourceParams,
+  type AllocateResourceParams,
   allocateResource,
 } from "@/entities/resource-manager/domain/allocate-resource";
 

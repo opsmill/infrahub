@@ -219,7 +219,8 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
                 "added": {},
                 "changed": {SPECIFIC_ONE_KIND_UPDATED: {"added": {}, "changed": {"name": None}, "removed": {}}},
                 "removed": {},
-            }
+            },
+            "warnings": [],
         }
 
     async def test_step02_load_node_kind_change(

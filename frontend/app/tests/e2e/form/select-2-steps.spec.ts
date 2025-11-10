@@ -8,7 +8,7 @@ test.describe("Verifies the object creation", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 
-  const BRANCH_NAME = generateRandomBranchName();
+  const BRANCH_NAME = generateRandomBranchName("select-2-steps");
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
@@ -18,17 +18,9 @@ test.describe("Verifies the object creation", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("creates and verifies the nodes values", async ({ page }) => {
     await test.step("create the object", async () => {
-      await page.goto("/objects/InfraVLAN");
+      await page.goto(`/objects/InfraVLAN?branch=${BRANCH_NAME}`);
       await page.getByTestId("create-object-button").click();
       await page.getByRole("combobox", { name: "Site" }).click();
       await page.getByRole("option", { name: "atl1" }).click();

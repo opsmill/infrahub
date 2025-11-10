@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 import { Badge } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 

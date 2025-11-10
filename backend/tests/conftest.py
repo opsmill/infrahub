@@ -44,6 +44,7 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
@@ -70,6 +71,8 @@ ResponseClass = TypeVar("ResponseClass")
 DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
 pytest.register_assert_rewrite("tests.db_snapshot")
+
+graphql_registry.clear_cache()
 
 
 def pytest_addoption(parser):
@@ -1269,6 +1272,7 @@ async def schemas_conversion(db: InfrahubDatabase, node_group_schema, data_schem
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "favorite_color", "kind": "Text", "optional": True, "default_value": "blue"},
                 ],
                 "relationships": [
                     {
@@ -1478,6 +1482,100 @@ async def schema_conversion_aware_agnostic(db: InfrahubDatabase, node_group_sche
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ],
+    }
+
+    return schema
+
+
+@pytest.fixture
+async def schema_conversion_agnostic_node_with_aware_attributes(
+    db: InfrahubDatabase, node_group_schema, data_schema
+) -> dict:
+    schema: dict[str, Any] = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "PersonGeneric",
+                "namespace": "Testaa",
+                "human_friendly_id": ["name_agnostic__value"],
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "attributes": [
+                    {
+                        "name": "name_agnostic",
+                        "kind": "Text",
+                        "unique": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                    {
+                        "name": "age_aware",
+                        "kind": "Number",
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_car",
+                        "peer": "TestaaCar",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "other_cars",
+                        "peer": "TestaaCar",
+                        "cardinality": "many",
+                        "optional": True,
+                        "identifier": "person__other_cars",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Person1",
+                "namespace": "Testaa",
+                "inherit_from": ["TestaaPersonGeneric"],
+                "branch": BranchSupportType.AGNOSTIC.value,
+            },
+            {
+                "name": "Person2",
+                "namespace": "Testaa",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "inherit_from": ["TestaaPersonGeneric"],
+                "attributes": [
+                    {
+                        "name": "height_aware",
+                        "kind": "Number",
+                        "branch": BranchSupportType.AWARE.value,
+                    },
+                ],
+            },
+            {
+                "name": "Car",
+                "namespace": "Testaa",
+                "human_friendly_id": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "favorite_person",
+                        "peer": "TestaaPersonGeneric",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__favorite_car",
+                    },
+                    {
+                        "name": "owner",
+                        "peer": "TestaaPersonGeneric",
+                        "cardinality": "one",
+                        "optional": True,
+                        "identifier": "person__other_cars",
+                    },
                 ],
             },
         ],

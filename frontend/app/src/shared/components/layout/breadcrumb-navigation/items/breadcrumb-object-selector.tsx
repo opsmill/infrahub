@@ -4,7 +4,7 @@ import BreadcrumbLoading from "@/shared/components/layout/breadcrumb-navigation/
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export default function BreadcrumbObjectSelector({

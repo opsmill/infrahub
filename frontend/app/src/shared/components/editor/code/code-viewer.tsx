@@ -1,4 +1,4 @@
-import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
+import { Prism as SyntaxHighlighter, type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { darcula } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import { classNames } from "@/shared/utils/common";

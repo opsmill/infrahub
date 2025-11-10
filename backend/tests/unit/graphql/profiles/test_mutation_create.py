@@ -1,6 +1,8 @@
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.graphql import graphql
 
 
@@ -19,7 +21,10 @@ async def test_create_profile(db: InfrahubDatabase, default_branch, car_person_s
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    # gql mutation needs function workflow
+    gql_params.context.service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
     result = await graphql(
         schema=gql_params.schema,
         source=query,

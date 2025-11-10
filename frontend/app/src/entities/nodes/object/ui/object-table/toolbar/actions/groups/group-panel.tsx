@@ -1,6 +1,6 @@
-import React from "react";
+import type React from "react";
 
-import { Card, CardProps } from "@/shared/components/ui/card";
+import { Card, type CardProps } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 export function GroupCard({ className, ...props }: CardProps) {

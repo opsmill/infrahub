@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
-import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
+import type { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { Badge } from "@/shared/components/ui/badge";
-import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
-import { Tree, TreeItemProps } from "@/shared/components/ui/tree";
+import { SearchInput, type SearchInputProps } from "@/shared/components/ui/search-input";
+import { Tree, type TreeItemProps } from "@/shared/components/ui/tree";
 import { debounce } from "@/shared/utils/common";
 
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
@@ -21,7 +21,7 @@ import {
   EMPTY_TREE,
   formatIPPrefixResponseForTreeView,
   getTreeItemAncestors,
-  PrefixData,
+  type PrefixData,
   updateTreeData,
 } from "./utils";
 

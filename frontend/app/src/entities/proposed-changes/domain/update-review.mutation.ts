@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 
 import {
-  UpdateProposedChangeReviewParams,
+  type UpdateProposedChangeReviewParams,
   updateProposedChangeReview,
 } from "@/entities/proposed-changes/domain/update-proposed-change-review";
 

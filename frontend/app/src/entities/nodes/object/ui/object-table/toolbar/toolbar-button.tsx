@@ -1,5 +1,5 @@
-import { cva, VariantProps } from "class-variance-authority";
-import { Button as AriaButton, ButtonProps as AriaButtonProps } from "react-aria-components";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Button as AriaButton, type ButtonProps as AriaButtonProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";

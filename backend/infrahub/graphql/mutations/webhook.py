@@ -127,7 +127,7 @@ class InfrahubWebhookMutation(InfrahubMutationMixin, Mutation):
 
 
 def _validate_input(graphql_context: GraphqlContext, branch: Branch, input_data: WebhookCreate) -> None:
-    if input_data.node_kind:
+    if input_data.node_kind and input_data.node_kind.value:
         # Validate that the requested node_kind exists, will raise an error if not
         graphql_context.db.schema.get(name=input_data.node_kind.value, branch=branch, duplicate=False)
 

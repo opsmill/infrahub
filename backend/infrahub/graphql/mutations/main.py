@@ -1,22 +1,18 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
+from infrahub_sdk.utils import extract_fields_first_node
 from typing_extensions import Self
 
 from infrahub import config, lock
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.constants import MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.create import (
-    create_node,
-    get_profile_ids,
-    refresh_for_profile_update,
-)
+from infrahub.core.node.create import create_node, get_profile_ids
 from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
@@ -28,9 +24,11 @@ from infrahub.events.generator import generate_node_mutation_events
 from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.lock import InfrahubMultiLock, build_object_lock_name
+from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
+from ...core.node.lock_utils import get_lock_names_on_object_mutation
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -38,7 +36,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.types.context import ContextInput
 
@@ -46,8 +43,6 @@ if TYPE_CHECKING:
 
 
 log = get_logger()
-
-KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED = [InfrahubKind.GENERICGROUP]
 
 
 @dataclass
@@ -147,23 +142,6 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
-    async def _call_mutate_create_object(
-        cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch, override_data: dict[str, Any] | None = None
-    ) -> Node:
-        """
-        Wrapper around mutate_create_object to potentially activate locking.
-        """
-        schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch, data=data
-        )
-        if lock_names:
-            async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
-
-        return await cls.mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
-
-    @classmethod
     async def mutate_create(
         cls,
         info: GraphQLResolveInfo,
@@ -172,40 +150,21 @@ class InfrahubMutationMixin:
         database: InfrahubDatabase | None = None,
         override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
-        graphql_context: GraphqlContext = info.context
-        db = database or graphql_context.db
-        obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch, override_data=override_data)
-        result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
-        return obj, result
-
-    @classmethod
-    @retry_db_transaction(name="object_create")
-    async def mutate_create_object(
-        cls,
-        data: InputObjectType,
-        db: InfrahubDatabase,
-        branch: Branch,
-        override_data: dict[str, Any] | None = None,
-    ) -> Node:
+        db = database or info.context.db
         schema = cls._meta.active_schema
-        if isinstance(schema, GenericSchema):
-            raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
+
         create_data = dict(data)
         create_data.update(override_data or {})
-        return await create_node(
+
+        obj = await create_node(
             data=create_data,
             db=db,
             branch=branch,
             schema=schema,
         )
 
-    @classmethod
-    async def mutate_create_to_graphql(cls, info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> Self:
-        fields = extract_graphql_fields(info=info)
-        result: dict[str, Any] = {"ok": True}
-        if "object" in fields:
-            result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
-        return cls(**result)
+        graphql_response = await build_graphql_response(info=info, db=db, obj=obj)
+        return obj, cls(**graphql_response)
 
     @classmethod
     async def _call_mutate_update(
@@ -221,41 +180,40 @@ class InfrahubMutationMixin:
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
         """
 
-        schema_branch = db.schema.get_schema_branch(name=branch.name)
-        lock_names = _get_kind_lock_names_on_object_mutation(
-            kind=cls._meta.active_schema.kind, branch=branch, schema_branch=schema_branch, data=data
+        # Prepare a clone to compute locks without triggering pool allocations
+        preview_obj = await NodeManager.get_one_by_id_or_default_filter(
+            db=db,
+            kind=obj.get_kind(),
+            id=obj.get_id(),
+            branch=branch,
         )
+        await preview_obj.from_graphql(db=db, data=data, process_pools=False)
 
-        if db.is_transaction:
-            if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(
-                        db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
-                    )
-            else:
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+        lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
+
+        # FIXME: do not lock when data does not contain uniqueness constraint fields or resource pool allocations
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
+            if db.is_transaction:
                 obj = await cls.mutate_update_object(
                     db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
                 )
-            result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
-            return obj, result
 
-        async with db.start_transaction() as dbt:
-            if lock_names:
-                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
-                    obj = await cls.mutate_update_object(
-                        db=dbt,
-                        info=info,
-                        data=data,
-                        branch=branch,
-                        obj=obj,
-                        skip_uniqueness_check=skip_uniqueness_check,
-                    )
-            else:
+                result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
+                return obj, result
+
+            async with db.start_transaction() as dbt:
                 obj = await cls.mutate_update_object(
-                    db=dbt, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+                    db=dbt,
+                    info=info,
+                    data=data,
+                    branch=branch,
+                    obj=obj,
+                    skip_uniqueness_check=skip_uniqueness_check,
                 )
-            result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
-            return obj, result
+
+                result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
+                return obj, result
 
     @classmethod
     @retry_db_transaction(name="object_update")
@@ -290,7 +248,6 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        before_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
         await node_constraint_runner.check(
@@ -302,15 +259,13 @@ class InfrahubMutationMixin:
             if field_to_remove in fields:
                 fields.remove(field_to_remove)
 
+        after_mutate_profile_ids = await get_profile_ids(db=db, obj=obj)
+        if after_mutate_profile_ids or (not after_mutate_profile_ids and obj.uses_profiles()):
+            node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+            updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
+            fields += updated_field_names
         await obj.save(db=db, fields=fields)
 
-        obj = await refresh_for_profile_update(
-            db=db,
-            branch=branch,
-            obj=obj,
-            previous_profile_ids=before_mutate_profile_ids,
-            schema=cls._meta.active_schema,
-        )
         return obj
 
     @classmethod
@@ -423,6 +378,15 @@ class InfrahubMutationMixin:
             return updated_obj, mutation, False
 
     @classmethod
+    async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:
+        db = graphql_context.db
+        async with db.start_transaction() as dbt:
+            deleted = await NodeManager.delete(db=dbt, branch=branch, nodes=[obj])
+        deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
+        log.info(f"nodes deleted: {deleted_str}")
+        return deleted
+
+    @classmethod
     @retry_db_transaction(name="object_delete")
     async def mutate_delete(
         cls,
@@ -440,11 +404,7 @@ class InfrahubMutationMixin:
             branch=branch,
         )
 
-        async with graphql_context.db.start_transaction() as db:
-            deleted = await NodeManager.delete(db=db, branch=branch, nodes=[obj])
-
-        deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
-        log.info(f"nodes deleted: {deleted_str}")
+        deleted = await cls._delete_obj(graphql_context=graphql_context, branch=branch, obj=obj)
 
         ok = True
 
@@ -471,90 +431,13 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
 
-def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
-    """
-    Return kinds for which we want to lock during creating / updating an object of a given schema node.
-    Lock should be performed on schema kind and its generics having a uniqueness_constraint defined.
-    If a generic uniqueness constraint is the same as the node schema one,
-    it means node schema overrided this constraint, in which case we only need to lock on the generic.
-    """
-
-    node_schema = schema_branch.get(name=kind, duplicate=False)
-
-    schema_uc = None
-    kinds = []
-    if node_schema.uniqueness_constraints:
-        kinds.append(node_schema.kind)
-        schema_uc = node_schema.uniqueness_constraints
-
-    if node_schema.is_generic_schema:
-        return kinds
-
-    generics_kinds = node_schema.inherit_from
-
-    node_schema_kind_removed = False
-    for generic_kind in generics_kinds:
-        generic_uc = schema_branch.get(name=generic_kind, duplicate=False).uniqueness_constraints
-        if generic_uc:
-            kinds.append(generic_kind)
-            if not node_schema_kind_removed and generic_uc == schema_uc:
-                # Check whether we should remove original schema kind as it simply overrides uniqueness_constraint
-                # of a generic
-                kinds.pop(0)
-                node_schema_kind_removed = True
-    return kinds
-
-
-def _should_kind_be_locked_on_any_branch(kind: str, schema_branch: SchemaBranch) -> bool:
-    """
-    Check whether kind or any kind generic is in KINDS_TO_LOCK_ON_ANY_BRANCH.
-    """
-
-    if kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-        return True
-
-    node_schema = schema_branch.get(name=kind, duplicate=False)
-    if node_schema.is_generic_schema:
-        return False
-
-    for generic_kind in node_schema.inherit_from:
-        if generic_kind in KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED:
-            return True
-    return False
-
-
-def _hash(value: str) -> str:
-    # Do not use builtin `hash` for lock names as due to randomization results would differ between
-    # different processes.
-    return hashlib.sha256(value.encode()).hexdigest()
-
-
-def _get_kind_lock_names_on_object_mutation(
-    kind: str, branch: Branch, schema_branch: SchemaBranch, data: InputObjectType
-) -> list[str]:
-    """
-    Return objects kind for which we want to avoid concurrent mutation (create/update). Except for some specific kinds,
-    concurrent mutations are only allowed on non-main branch as objects validations will be performed at least when merging in main branch.
-    """
-
-    if not branch.is_default and not _should_kind_be_locked_on_any_branch(kind=kind, schema_branch=schema_branch):
-        return []
-
-    if kind == InfrahubKind.GRAPHQLQUERYGROUP:
-        # Lock on name as well to improve performances
-        try:
-            name = data.name.value
-            return [build_object_lock_name(kind + "." + _hash(name))]
-        except AttributeError:
-            # We might reach here if we are updating a CoreGraphQLQueryGroup without updating the name,
-            # in which case we would not need to lock. This is not supposed to happen as current `update`
-            # logic first fetches the node with its name.
-            return []
-
-    lock_kinds = _get_kinds_to_lock_on_object_mutation(kind, schema_branch)
-    lock_names = [build_object_lock_name(kind) for kind in lock_kinds]
-    return lock_names
-
-
 def _get_data_fields(data: InputObjectType) -> list[str]:
     return [field for field in data.keys() if field not in ["id", "hfid"]]
+
+
+async def build_graphql_response(info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> dict:
+    fields = await extract_fields_first_node(info)
+    result: dict[str, Any] = {"ok": True}
+    if "object" in fields:
+        result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
+    return result

@@ -6,7 +6,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
+import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -16,7 +16,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
+import type { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

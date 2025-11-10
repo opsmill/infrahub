@@ -8,17 +8,17 @@ import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
 import {
   FILTER_CONDITION,
-  FilterCondition,
+  type FilterCondition,
   FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
 export interface RelationshipFilterFormProps {
   relationshipSchema: RelationshipSchema;

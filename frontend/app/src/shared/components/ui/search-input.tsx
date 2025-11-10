@@ -3,7 +3,7 @@ import { forwardRef } from "react";
 
 import { classNames } from "@/shared/utils/common";
 
-import { Input, InputProps } from "./input";
+import { Input, type InputProps } from "./input";
 import { Spinner } from "./spinner";
 
 export interface SearchInputProps extends InputProps {

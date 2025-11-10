@@ -133,7 +133,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
     def __init__(
         self,
         prop_name: str,
-        prop_id: str,
+        prop_id: str | None = None,
         **kwargs: Any,
     ):
         self.prop_name = prop_name
@@ -144,6 +144,8 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
+        self.params.update(branch_params)
         self.params["attr_uuid"] = self.attr.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -151,19 +153,90 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         self.params["prop_name"] = self.prop_name
         self.params["prop_id"] = self.prop_id
 
-        rel_name = f"HAS_{self.prop_name.upper()}"
+        rel_label = f"HAS_{self.prop_name.upper()}"
 
-        query = (
+        if self.branch.is_default or self.branch.is_global:
+            node_query = """
+        MATCH (np:Node { uuid: $prop_id })-[r:IS_PART_OF]->(:Root)
+        WHERE r.branch IN $branch0
+        AND r.status = "active"
+        AND r.from <= $at AND (r.to IS NULL OR r.to > $at)
+        WITH np
+        LIMIT 1
             """
-        MATCH (a:Attribute { uuid: $attr_uuid })
-        MATCH (np:Node { uuid: $prop_id })
-        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(np)
-        """
-            % rel_name
-        )
+        else:
+            node_query = """
+        MATCH (np:Node { uuid: $prop_id })-[r:IS_PART_OF]->(:Root)
+        WHERE %(branch_filter)s
+        ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+        LIMIT 1
+        WITH np
+        WHERE r.status = "active"
+            """ % {"branch_filter": branch_filter}
+        self.add_to_query(node_query)
 
-        self.add_to_query(query)
+        attr_query = """
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(np)
+        """ % {"rel_label": rel_label}
+        self.add_to_query(attr_query)
+
         self.return_labels = ["a", "np", "r"]
+
+
+class AttributeClearNodePropertyQuery(AttributeQuery):
+    name = "attribute_clear_node_property"
+    type: QueryType = QueryType.WRITE
+    insert_return: bool = False
+
+    def __init__(
+        self,
+        prop_name: str,
+        prop_id: str | None = None,
+        **kwargs: Any,
+    ):
+        self.prop_name = prop_name
+        self.prop_id = prop_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        at = self.at or self.attr.at
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
+        self.params.update(branch_params)
+        self.params["attr_uuid"] = self.attr.id
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = at.to_string()
+        self.params["prop_name"] = self.prop_name
+        self.params["prop_id"] = self.prop_id
+
+        rel_label = f"HAS_{self.prop_name.upper()}"
+        query = """
+MATCH (a:Attribute { uuid: $attr_uuid })-[r:%(rel_label)s]->(np:Node { uuid: $prop_id })
+WITH DISTINCT a, np
+CALL (a, np) {
+    MATCH (a)-[r:%(rel_label)s]->(np)
+    WHERE %(branch_filter)s
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN r AS property_edge
+}
+WITH a, np, property_edge
+WHERE property_edge.status = "active"
+CALL (property_edge) {
+    WITH property_edge
+    WHERE property_edge.branch = $branch
+    SET property_edge.to = $at
+}
+CALL (a, np, property_edge) {
+    WITH property_edge
+    WHERE property_edge.branch_level < $branch_level
+    CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(np)
+}
+        """ % {"branch_filter": branch_filter, "rel_label": rel_label}
+        self.add_to_query(query)
 
 
 class AttributeGetQuery(AttributeQuery):
@@ -204,7 +277,6 @@ async def default_attribute_query_filter(
     param_prefix: str | None = None,
     db: InfrahubDatabase | None = None,  # noqa: ARG001
     partial_match: bool = False,
-    support_profiles: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
     """Generate Query String Snippet to filter the right node."""
     attribute_value_label = GraphAttributeValueNode.get_default_label()
@@ -251,9 +323,6 @@ async def default_attribute_query_filter(
                 query_where.append(f"toString(av.{filter_name}) =~ ${param_prefix}_{filter_name}")
             elif filter_name == "isnull":
                 query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
-            elif support_profiles:
-                query_filter.append(QueryNode(name="av", labels=[attribute_value_label]))
-                query_where.append(f"(av.{filter_name} = ${param_prefix}_{filter_name} OR av.is_default)")
             else:
                 query_filter.append(
                     QueryNode(
@@ -271,8 +340,6 @@ async def default_attribute_query_filter(
         if attribute_kind and attribute_kind == "List":
             query_params[f"{param_prefix}_{filter_name}"] = build_regex_attrs(values=filter_value)
             query_where.append(f"toString(av.value) =~ ${param_prefix}_{filter_name}")
-        elif support_profiles:
-            query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
         else:
             query_where.append(f"av.value IN ${param_prefix}_value")
         query_params[f"{param_prefix}_value"] = filter_value

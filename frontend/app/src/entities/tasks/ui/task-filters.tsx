@@ -7,7 +7,7 @@ import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-pr
 import SlideOver from "@/shared/components/display/slide-over";
 import { TasksFilterForm } from "@/shared/components/filters/tasks-filter-form";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
-import { FormFieldValue } from "@/shared/components/form/type";
+import type { FormFieldValue } from "@/shared/components/form/type";
 import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
 

@@ -1,5 +1,3 @@
-from typing import Any
-
 from infrahub import config
 
 from ..app import InfrahubGraphQLApp
@@ -36,5 +34,5 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
     )
 
 
-def build_graphql_app(**kwargs: Any) -> InfrahubGraphQLApp:
-    return InfrahubGraphQLApp(build_graphql_query_permission_checker(), **kwargs)
+def build_graphql_app() -> InfrahubGraphQLApp:
+    return InfrahubGraphQLApp(build_graphql_query_permission_checker())

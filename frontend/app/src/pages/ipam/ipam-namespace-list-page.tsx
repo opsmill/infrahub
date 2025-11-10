@@ -15,9 +15,9 @@ import { IpNamespaceCard } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-c
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface IpNamespaceListPageProps {

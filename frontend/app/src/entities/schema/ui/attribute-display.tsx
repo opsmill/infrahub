@@ -1,5 +1,5 @@
 import { constructPath } from "@/shared/api/rest/fetch";
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 import Accordion from "@/shared/components/display/accordion";
 import { Link } from "@/shared/components/ui/link";
 import { formatNumberDisplay } from "@/shared/utils/number";

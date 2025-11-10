@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 
 import { TASK_OBJECT } from "@/config/constants";
 
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 

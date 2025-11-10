@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import ModuleImportError
+from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifactDefinition,
@@ -311,6 +311,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
         populate_store=True,
         branch=model.source_branch,
     )
+
     generator_definitions = [
         ProposedChangeGeneratorDefinition(
             definition_id=generator.id,
@@ -323,8 +324,11 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             parameters=generator.parameters.value,
             group_id=generator.targets.peer.id,
             convert_query_response=generator.convert_query_response.value,
+            execute_in_proposed_change=generator.execute_in_proposed_change.value,
+            execute_after_merge=generator.execute_after_merge.value,
         )
         for generator in generators
+        if generator.execute_in_proposed_change.value
     ]
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
@@ -528,7 +532,11 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
     log = get_run_logger()
     client = get_client()
 
-    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    try:
+        proposed_change = await client.get(kind=CoreProposedChange, id=model.proposed_change)
+    except NodeNotFoundError:
+        log.warning(f"Proposed change ({model.proposed_change}) not found, skipping user tests execution")
+        return
 
     def _execute(
         directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
@@ -792,6 +800,8 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
         query=model.generator_definition.query_name,
         targets=model.generator_definition.group_id,
         convert_query_response=model.generator_definition.convert_query_response,
+        execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
+        execute_after_merge=model.generator_definition.execute_after_merge,
     )
 
     commit_worktree = repository.get_commit_worktree(commit=model.commit)
@@ -818,6 +828,8 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
             params=model.variables,
             generator_instance=generator_instance.id,
             convert_query_response=generator_definition.convert_query_response,
+            execute_after_merge=generator_definition.execute_after_merge,
+            execute_in_proposed_change=generator_definition.execute_in_proposed_change,
             infrahub_node=InfrahubNode,
         )
         generator._init_client.request_context = context.to_request_context()
@@ -961,7 +973,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     requested_instances = 0
     impacted_instances = model.branch_diff.get_subscribers_ids(kind=InfrahubKind.GENERATORINSTANCE)
 
-    check_generator_run_models = []
+    check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
@@ -997,6 +1009,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
             context=context,
         )
         for check_generator_run_model in check_generator_run_models
+        if check_generator_run_model.generator_definition.execute_in_proposed_change
     ]
 
     await run_checks_and_update_validator(
@@ -1523,8 +1536,14 @@ async def _get_proposed_change_repositories(
     destination_all = await client.execute_graphql(
         query=DESTINATION_ALLREPOSITORIES, branch_name=model.destination_branch
     )
-    source_managed = await client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
-    source_readonly = await client.execute_graphql(query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch)
+    try:
+        source_managed = await client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
+        source_readonly = await client.execute_graphql(
+            query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch
+        )
+    except URLNotFoundError:
+        # If the URL is not found it means that the source branch has been deleted after the proposed change was created
+        return []
 
     destination_all = destination_all[InfrahubKind.GENERICREPOSITORY]["edges"]
     source_all = (

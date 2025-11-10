@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, NoReturn
 from uuid import UUID  # noqa: TC003
 
 import git
-from git import Blob, Repo
+from git import BadName, Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -65,6 +65,15 @@ class RepoFileInformation(BaseModel):
 
     extension: str
     """Extension of the file Example: py """
+
+
+class RepoChangedFiles(BaseModel):
+    added: list[str] = Field(default_factory=list)
+    copied: list[tuple[str, str]] = Field(default_factory=list)
+    deleted: list[str] = Field(default_factory=list)
+    renamed: list[tuple[str, str]] = Field(default_factory=list)
+    modified: list[str] = Field(default_factory=list)
+    type_changed: list[tuple[str, str]] = Field(default_factory=list)
 
 
 def extract_repo_file_information(
@@ -973,3 +982,31 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if branch_name == self.default_branch and branch_name != registry.default_branch:
             return registry.default_branch
         return branch_name
+
+    def get_changed_files(self, first_commit: str, second_commit: str | None = None) -> RepoChangedFiles:
+        """Return the changes between two commits in this repo."""
+        changes = RepoChangedFiles()
+        repo = self.get_git_repo_main()
+
+        try:
+            commit_a = repo.commit(first_commit)
+            commit_b = repo.commit(second_commit) if second_commit else repo.head.commit
+        except BadName as exc:
+            raise CommitNotFoundError(identifier=str(self.id), commit=exc.args[0]) from exc
+
+        for diff in commit_a.diff(commit_b):
+            match diff.change_type:
+                case "A":
+                    changes.added.append(diff.b_path)
+                case "C":
+                    changes.copied.append((diff.a_path, diff.b_path))
+                case "D":
+                    changes.deleted.append(diff.a_path)
+                case "R":
+                    changes.renamed.append((diff.a_path, diff.b_path))
+                case "M":
+                    changes.modified.append(diff.b_path)
+                case "T":
+                    changes.type_changed.append((diff.a_path, diff.b_path))
+
+        return changes

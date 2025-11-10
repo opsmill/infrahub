@@ -8,7 +8,7 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import Accordion from "@/shared/components/display/accordion";
 import { classNames } from "@/shared/utils/common";

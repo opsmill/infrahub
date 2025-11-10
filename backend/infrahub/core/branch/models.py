@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
-from infrahub.core.constants import (
-    GLOBAL_BRANCH_NAME,
-)
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import QueryType
@@ -20,8 +20,6 @@ from infrahub.core.query.branch import (
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
-
-from .enums import BranchStatus
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -47,6 +45,7 @@ class Branch(StandardNode):
     is_isolated: bool = True
     schema_changed_at: Optional[str] = None
     schema_hash: Optional[SchemaBranchHash] = None
+    graph_version: int | None = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
@@ -261,6 +260,10 @@ class Branch(StandardNode):
             end[self.origin_branch] = end_time.to_string()
 
         return start, end
+
+    async def create(self, db: InfrahubDatabase) -> bool:
+        self.graph_version = GRAPH_VERSION
+        return await super().create(db=db)
 
     async def delete(self, db: InfrahubDatabase) -> None:
         if self.is_default:
@@ -485,6 +488,7 @@ class Branch(StandardNode):
         # FIXME, we must ensure that there is no conflict before rebasing a branch
         #   Otherwise we could endup with a complicated situation
         self.branched_from = at.to_string()
+        self.status = BranchStatus.OPEN
         await self.save(db=db)
 
         # Update the branch in the registry after the rebase

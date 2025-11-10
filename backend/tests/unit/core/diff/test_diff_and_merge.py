@@ -119,7 +119,10 @@ class TestDiffAndMerge:
 
     @pytest.mark.parametrize(
         "conflict_selection,expected_value",
-        [(ConflictSelection.BASE_BRANCH, "John-main"), (ConflictSelection.DIFF_BRANCH, "John-branch")],
+        [
+            (ConflictSelection.BASE_BRANCH, {"name": "John-main", "hfid": ["John-main"]}),
+            (ConflictSelection.DIFF_BRANCH, {"name": "John-branch", "hfid": ["John-branch"]}),
+        ],
     )
     async def test_diff_and_merge_with_attribute_value_conflict(
         self,
@@ -131,7 +134,7 @@ class TestDiffAndMerge:
         person_alfred_main: Node,
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
-        expected_value: Literal["John-main", "John-branch"],
+        expected_value: dict[Literal["name", "hfid"], str | list[str]],
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
@@ -150,14 +153,15 @@ class TestDiffAndMerge:
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
-        assert len(conflicts_map) == 1
-        conflict = next(iter(conflicts_map.values()))
-        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        assert len(conflicts_map) == 3
+        for conflict in conflicts_map.values():
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
         updated_john = await NodeManager.get_one(db=db, id=person_john_main.id)
-        assert updated_john.name.value == expected_value
+        assert updated_john.name.value == expected_value["name"]
+        assert await updated_john.get_hfid(db=db) == expected_value["hfid"]
 
         await diff_merger.rollback(at=at)
 

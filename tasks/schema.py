@@ -4,10 +4,18 @@ from pathlib import Path
 from invoke.context import Context
 from invoke.tasks import task
 
-from .utils import REPO_BASE
+from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
 INFRAHUB_DIRECTORY = REPO_BASE / "generated" / "infrahub"
+SCHEMA_DIRECTORY = REPO_BASE / "schema"
+
+
+@task
+def generate_graphqlschema(context: Context) -> None:
+    """Generate GraphQL schema into ./schema"""
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run("poetry run infrahub dev export-graphql-schema --out schema/schema.graphql")
 
 
 @task
@@ -16,6 +24,16 @@ def generate_jsonschema(context: Context) -> None:  # noqa: ARG001
 
     generate_sdk_repository_config()
     generate_infrahub_node_schema()
+
+
+@task
+def validate_graphqlschema(context: Context) -> None:
+    """Validate that the generated GraphQL schema is up to date."""
+    generate_graphqlschema(context)
+
+    exec_cmd = "git diff --exit-code schema/schema.graphql"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
 
 
 def generate_infrahub_node_schema() -> None:

@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
 import { classNames } from "@/shared/utils/common";

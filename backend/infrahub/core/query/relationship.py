@@ -350,17 +350,20 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
     def __init__(
         self,
-        properties_to_update: list[str],
-        data: RelationshipPeerData,
+        rel_node_id: str,
+        flag_properties_to_update: dict[str, bool],
+        node_properties_to_update: dict[str, str],
         **kwargs,
     ):
-        self.properties_to_update = properties_to_update
-        self.data = data
-
+        self.rel_node_id = rel_node_id
+        if not flag_properties_to_update and not node_properties_to_update:
+            raise ValueError("Either flag_properties_to_update or node_properties_to_update must be set")
+        self.flag_properties_to_update = flag_properties_to_update
+        self.node_properties_to_update = node_properties_to_update
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["rel_node_id"] = self.data.rel_node_id
+        self.params["rel_node_id"] = self.rel_node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
@@ -370,36 +373,51 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         """
         self.add_to_query(query)
 
-        self.query_add_all_flag_property_merge()
         self.query_add_all_node_property_merge()
+        self.query_add_all_flag_property_merge()
 
-        self.query_add_all_flag_property_create()
         self.query_add_all_node_property_create()
+        self.query_add_all_flag_property_create()
 
     def query_add_all_flag_property_merge(self) -> None:
-        for prop_name in self.rel._flag_properties:
-            if prop_name in self.properties_to_update:
-                self.query_add_flag_property_merge(name=prop_name)
+        for prop_name, prop_value in self.flag_properties_to_update.items():
+            self.query_add_flag_property_merge(name=prop_name, value=prop_value)
 
-    def query_add_flag_property_merge(self, name: str) -> None:
+    def query_add_flag_property_merge(self, name: str, value: bool) -> None:
         self.add_to_query("MERGE (prop_%s:Boolean { value: $prop_%s })" % (name, name))
-        self.params[f"prop_{name}"] = getattr(self.rel, name)
+        self.params[f"prop_{name}"] = value
         self.return_labels.append(f"prop_{name}")
 
     def query_add_all_node_property_merge(self) -> None:
-        for prop_name in self.rel._node_properties:
-            if prop_name in self.properties_to_update:
-                self.query_add_node_property_merge(name=prop_name)
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
 
-    def query_add_node_property_merge(self, name: str) -> None:
-        self.add_to_query("MERGE (prop_%s:Node { uuid: $prop_%s })" % (name, name))
-        self.params[f"prop_{name}"] = getattr(self.rel, f"{name}_id")
-        self.return_labels.append(f"prop_{name}")
+        for prop_name, prop_value in self.node_properties_to_update.items():
+            self.params[f"prop_{prop_name}"] = prop_value
+            if self.branch.is_default or self.branch.is_global:
+                node_query = """
+            MATCH (prop_%(prop_name)s:Node {uuid: $prop_%(prop_name)s })-[r_%(prop_name)s:IS_PART_OF]->(:Root)
+            WHERE r_%(prop_name)s.branch IN $branch0
+            AND r_%(prop_name)s.status = "active"
+            AND r_%(prop_name)s.from <= $at AND (r_%(prop_name)s.to IS NULL OR r_%(prop_name)s.to > $at)
+            WITH *
+            LIMIT 1
+                """ % {"prop_name": prop_name}
+            else:
+                node_query = """
+            MATCH (prop_%(prop_name)s:Node {uuid: $prop_%(prop_name)s })-[r_%(prop_name)s:IS_PART_OF]->(:Root)
+            WHERE all(r in [r_%(prop_name)s] WHERE %(branch_filter)s)
+            ORDER BY r_%(prop_name)s.branch_level DESC, r_%(prop_name)s.from DESC, r_%(prop_name)s.status ASC
+            LIMIT 1
+            WITH *
+            WHERE r_%(prop_name)s.status = "active"
+                """ % {"branch_filter": branch_filter, "prop_name": prop_name}
+            self.add_to_query(node_query)
+            self.return_labels.append(f"prop_{prop_name}")
 
     def query_add_all_flag_property_create(self) -> None:
-        for prop_name in self.rel._flag_properties:
-            if prop_name in self.properties_to_update:
-                self.query_add_flag_property_create(name=prop_name)
+        for prop_name in self.flag_properties_to_update:
+            self.query_add_flag_property_create(name=prop_name)
 
     def query_add_flag_property_create(self, name: str) -> None:
         query = """
@@ -411,9 +429,8 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         self.add_to_query(query)
 
     def query_add_all_node_property_create(self) -> None:
-        for prop_name in self.rel._node_properties:
-            if prop_name in self.properties_to_update:
-                self.query_add_node_property_create(name=prop_name)
+        for prop_name in self.node_properties_to_update:
+            self.query_add_node_property_create(name=prop_name)
 
     def query_add_node_property_create(self, name: str) -> None:
         query = """
@@ -1019,6 +1036,7 @@ class RelationshipCountPerNodeQuery(Query):
         """ % {"branch_filter": branch_filter, "path": path}
 
         self.add_to_query(query)
+        self.order_by = ["peer_node.uuid"]
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
 
     async def get_count_per_peer(self) -> dict[str, int]:

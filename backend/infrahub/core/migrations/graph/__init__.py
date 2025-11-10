@@ -43,13 +43,15 @@ from .m038_redo_0000_prefix_fix import Migration038
 from .m039_ipam_reconcile import Migration039
 from .m040_duplicated_attributes import Migration040
 from .m041_deleted_dup_edges import Migration041
+from .m042_profile_attrs_in_db import Migration042
+from .m043_create_hfid_display_label_in_db import Migration043
+from .m044_backfill_hfid_display_label_in_db import Migration044
 
 if TYPE_CHECKING:
-    from infrahub.core.root import Root
+    from ..shared import MigrationTypes
 
-    from ..shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
 
-MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigration]] = [
+MIGRATIONS: list[type[MigrationTypes]] = [
     Migration001,
     Migration002,
     Migration003,
@@ -91,25 +93,24 @@ MIGRATIONS: list[type[GraphMigration | InternalSchemaMigration | ArbitraryMigrat
     Migration039,
     Migration040,
     Migration041,
+    Migration042,
+    Migration043,
+    Migration044,
 ]
 
 
-async def get_graph_migrations(
-    root: Root,
-) -> Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration]:
+async def get_graph_migrations(current_graph_version: int) -> Sequence[MigrationTypes]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
-        if root.graph_version > migration.minimum_version:
+        if current_graph_version > migration.minimum_version:
             continue
         applicable_migrations.append(migration)
 
     return applicable_migrations
 
 
-def get_migration_by_number(
-    migration_number: int | str,
-) -> GraphMigration | InternalSchemaMigration | ArbitraryMigration:
+def get_migration_by_number(migration_number: int | str) -> MigrationTypes:
     # Convert to string and pad with zeros if needed
     try:
         num = int(migration_number)

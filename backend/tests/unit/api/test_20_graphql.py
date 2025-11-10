@@ -1,14 +1,22 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from infrahub import config
-from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 async def test_graphql_endpoint(
-    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, create_test_admin, car_person_data
+    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch: Branch, create_test_admin, car_person_data
 ):
     query = """
     query {
@@ -50,7 +58,7 @@ async def test_graphql_endpoint(
 
 
 async def test_graphql_endpoint_with_timestamp(
-    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, create_test_admin, car_person_data
+    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch: Branch, create_test_admin, car_person_data
 ):
     time_before = Timestamp()
 
@@ -221,4 +229,17 @@ async def test_download_schema_anonymous_account(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get("/schema.graphql")
+        assert response.status_code == 200 if allow_anonymous_access else 401
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_download_graphql_schema_sorted(
+    db: InfrahubDatabase, client, client_headers, allow_anonymous_access: bool
+):
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.get("/schema.graphql?sorted=true")
+        assert response.text
         assert response.status_code == 200 if allow_anonymous_access else 401

@@ -37,6 +37,7 @@ RESERVED_ATTR_REL_NAMES = [
     "rels",
     "save",
     "hfid",
+    "process_pools",
 ]
 
 RESERVED_ATTR_GEN_NAMES = ["type"]
@@ -50,6 +51,7 @@ class EventType(InfrahubStringEnum):
     BRANCH_CREATED = f"{EVENT_NAMESPACE}.branch.created"
     BRANCH_DELETED = f"{EVENT_NAMESPACE}.branch.deleted"
     BRANCH_MERGED = f"{EVENT_NAMESPACE}.branch.merged"
+    BRANCH_MIGRATED = f"{EVENT_NAMESPACE}.branch.migrated"
     BRANCH_REBASED = f"{EVENT_NAMESPACE}.branch.rebased"
 
     SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.updated"
@@ -99,6 +101,7 @@ class GlobalPermissions(InfrahubStringEnum):
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
     OVERRIDE_CONTEXT = "override_context"
+    UPDATE_OBJECT_HFID_DISPLAY_LABEL = "update_object_hfid_display_label"
 
 
 class PermissionAction(InfrahubStringEnum):
@@ -387,3 +390,4 @@ DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
 OBJECT_TEMPLATE_NAME_ATTR = "template_name"
+PROFILE_NODE_RELATIONSHIP_IDENTIFIER = "node__profile"

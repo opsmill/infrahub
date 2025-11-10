@@ -7,6 +7,8 @@ from prefect.exceptions import ObjectAlreadyExists
 from prefect.logging import get_run_logger
 
 from infrahub import config
+from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
+from infrahub.hfid.gather import gather_trigger_hfid
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
@@ -74,3 +76,22 @@ async def setup_task_manager() -> None:
         await setup_triggers(
             client=client, triggers=builtin_triggers, trigger_type=TriggerType.BUILTIN, force_update=True
         )
+
+
+@flow(name="task-manager-identifiers", flow_run_name="Setup Task Manager Display Labels and HFID")
+async def setup_task_manager_identifiers() -> None:
+    async with get_client(sync_client=False) as client:
+        display_label_triggers = await gather_trigger_display_labels_jinja2()
+        await setup_triggers(
+            client=client,
+            triggers=display_label_triggers,
+            trigger_type=TriggerType.DISPLAY_LABEL_JINJA2,
+            force_update=True,
+        )  # type: ignore[misc]
+        hfid_triggers = await gather_trigger_hfid()
+        await setup_triggers(
+            client=client,
+            triggers=hfid_triggers,
+            trigger_type=TriggerType.HUMAN_FRIENDLY_ID,
+            force_update=True,
+        )  # type: ignore[misc]

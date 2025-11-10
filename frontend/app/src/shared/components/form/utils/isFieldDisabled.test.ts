@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  IsFieldDisabledParams,
+  type IsFieldDisabledParams,
   isFieldDisabled,
 } from "@/shared/components/form/utils/isFieldDisabled";
 

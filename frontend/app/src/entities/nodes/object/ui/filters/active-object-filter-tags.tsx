@@ -1,4 +1,4 @@
-import { TagGroup, TagGroupProps, TagList } from "react-aria-components";
+import { TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { formatFullDate } from "@/shared/utils/date";
@@ -13,7 +13,7 @@ import {
 } from "@/entities/ipam/constants";
 import { IpAddressAvailabilityFilterTag } from "@/entities/ipam/ip-addresses/ui/ip-address-availability-filter-tag";
 import { IpPrefixAvailabilityFilterTag } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-availability-filter-tag";
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 import {
@@ -24,7 +24,7 @@ import {
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { AttributeKind, ModelSchema } from "@/entities/schema/types";
+import type { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export function formatAttributeFilterValue({

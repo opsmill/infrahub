@@ -1,5 +1,5 @@
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
+import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -16,6 +16,7 @@ const CheckboxField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: CheckboxFieldProps) => {
   return (
@@ -33,6 +34,7 @@ const CheckboxField = ({
         },
       }}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 
