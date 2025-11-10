@@ -736,7 +736,7 @@ async def test_relationship_groups_add_remove(
     assert result.errors is None
 
     nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
+    assert nbr_rels_after - nbr_rels_before == 6
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -772,7 +772,7 @@ async def test_relationship_groups_add_remove(
     assert result.errors is None
 
     nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
+    assert nbr_rels_after - nbr_rels_before == 6
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -812,7 +812,7 @@ async def test_relationship_groups_add_remove(
     assert result.errors is None
 
     nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
+    assert nbr_rels_after - nbr_rels_before == 6
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -847,7 +847,7 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
     nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
+    assert nbr_rels_after - nbr_rels_before == 6
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)

@@ -70,7 +70,6 @@ class AttributeCreateData(BaseModel):
     content: dict[str, Any]
     is_default: bool
     is_protected: bool
-    is_visible: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
 
@@ -150,9 +149,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if self.is_protected is None:
             self.is_protected = False
-
-        if self.is_visible is None:
-            self.is_visible = True
 
     @property
     def is_enum(self) -> bool:
@@ -449,10 +445,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Flags ----------
-        SUPPORTED_FLAGS = (
-            ("is_visible", "isv", "rel_isv"),
-            ("is_protected", "isp", "rel_isp"),
-        )
+        SUPPORTED_FLAGS = (("is_protected", "isp", "rel_isp"),)
 
         for flag_name, _, rel_name in SUPPORTED_FLAGS:
             if current_attr_data.flag_properties[flag_name] != getattr(self, flag_name):
@@ -620,9 +613,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if "is_protected" in data and data["is_protected"] != self.is_protected:
             self.is_protected = data["is_protected"]
             changed = True
-        if "is_visible" in data and data["is_visible"] != self.is_visible:
-            self.is_visible = data["is_visible"]
-            changed = True
 
         if "source" in data and data["source"] != self.source_id:
             self.source = data["source"]
@@ -657,7 +647,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             content=self.to_db(),
             is_default=self.is_default,
             is_protected=self.is_protected,
-            is_visible=self.is_visible,
         )
         if self.source_id:
             data.source_prop.append(NodePropertyData(name="source", peer_id=self.source_id))

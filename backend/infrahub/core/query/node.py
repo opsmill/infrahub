@@ -272,11 +272,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            WITH a, ip, iv
+            WITH a, ip
             LIMIT 1
             CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
-            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
@@ -298,9 +296,7 @@ class NodeCreateAllQuery(NodeQuery):
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
             CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
-            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
@@ -322,11 +318,9 @@ class NodeCreateAllQuery(NodeQuery):
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            WITH a, ip, iv
+            WITH a, ip
             LIMIT 1
             CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
-            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
@@ -349,11 +343,9 @@ class NodeCreateAllQuery(NodeQuery):
             LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            WITH a, ip, iv
+            WITH a, ip
             LIMIT 1
             CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(ip)
-            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
@@ -411,11 +403,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
             CREATE (dest_node)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            WITH rl, ip, iv
+            WITH rl, ip
             LIMIT 1
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(ip)
-            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(iv)
             FOREACH ( prop IN rel.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
@@ -436,11 +426,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
             CREATE (dest_node)<-[:IS_RELATED %(rel_prop)s ]-(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            WITH rl, ip, iv
+            WITH rl, ip
             LIMIT 1
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(ip)
-            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(iv)
             FOREACH ( prop IN rel.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
@@ -461,11 +449,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
             CREATE (dest_node)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            WITH rl, ip, iv
+            WITH rl, ip
             LIMIT 1
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(ip)
-            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(iv)
             FOREACH ( prop IN rel.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
@@ -601,7 +587,6 @@ class NodeListGetAttributeQuery(Query):
         "HAS_OWNER": ("rel_owner", "owner"),
         "HAS_SOURCE": ("rel_source", "source"),
         "IS_PROTECTED": ("rel_isp", "isp"),
-        "IS_VISIBLE": ("rel_isv", "isv"),
     }
 
     def __init__(
@@ -674,15 +659,8 @@ WHERE r2.status = "active"
 
         self.return_labels = ["n", "a", "av", "r1", "r2", "is_from_profile"]
 
-        # Add Is_Protected and Is_visible
+        # Add Is_Protected
         query = """
-CALL (a) {
-    MATCH (a)-[r:IS_VISIBLE]-(isv:Boolean)
-    WHERE (%(branch_filter)s)
-    RETURN r AS rel_isv, isv
-    ORDER BY rel_isv.branch_level DESC, rel_isv.from DESC, rel_isv.status ASC
-    LIMIT 1
-}
 CALL (a) {
     MATCH (a)-[r:IS_PROTECTED]-(isp:Boolean)
     WHERE (%(branch_filter)s)
@@ -693,7 +671,7 @@ CALL (a) {
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
-        self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
+        self.return_labels.extend(["isp", "rel_isp"])
 
         if self.include_source:
             query = """
@@ -770,7 +748,6 @@ CALL (a) {
             branch=self.branch.name,
             flag_properties={
                 "is_protected": result.get("isp").get("value"),
-                "is_visible": result.get("isv").get("value"),
             },
         )
 

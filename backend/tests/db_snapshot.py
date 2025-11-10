@@ -95,7 +95,6 @@ class DbSnapshotter:
 PropertyTypes = Literal[
     DatabaseEdgeType.HAS_OWNER,
     DatabaseEdgeType.HAS_SOURCE,
-    DatabaseEdgeType.IS_VISIBLE,
     DatabaseEdgeType.IS_PROTECTED,
     DatabaseEdgeType.IS_RELATED,
 ]

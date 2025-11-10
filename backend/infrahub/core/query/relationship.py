@@ -288,7 +288,6 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["at"] = self.at.to_string()
 
         self.params["is_protected"] = self.rel.is_protected
-        self.params["is_visible"] = self.rel.is_visible
 
         self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
         self.add_dest_match_to_query(
@@ -307,16 +306,14 @@ class RelationshipCreateQuery(RelationshipQuery):
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
         MERGE (ip:Boolean { value: $is_protected })
-        MERGE (iv:Boolean { value: $is_visible })
         CREATE (rl)-[r3:IS_PROTECTED $rel_prop ]->(ip)
-        CREATE (rl)-[r4:IS_VISIBLE $rel_prop ]->(iv)
         """ % (
             r1,
             r2,
         )
 
         self.add_to_query(query_create)
-        self.return_labels = ["s", "d", "rl", "r1", "r2", "r3", "r4"]
+        self.return_labels = ["s", "d", "rl", "r1", "r2", "r3"]
         self.query_add_all_node_property_create()
 
     def query_add_all_node_property_match(self) -> None:
@@ -543,17 +540,6 @@ class RelationshipDeleteQuery(RelationshipQuery):
         CREATE (rl)%(r2)s(d)
         WITH rl
         CALL (rl) {
-            MATCH (rl)-[edge:IS_VISIBLE]->(visible)
-            WHERE %(rel_filter)s AND edge.status = "active"
-            WITH rl, edge, visible
-            ORDER BY edge.branch_level DESC
-            LIMIT 1
-            CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(visible)
-            WITH edge
-            WHERE edge.branch = $branch
-            SET edge.to = $at
-        }
-        CALL (rl) {
             MATCH (rl)-[edge:IS_PROTECTED]->(protected)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, protected
@@ -742,13 +728,6 @@ class RelationshipGetPeerQuery(Query):
         # ----------------------------------------------------------------------------
         query = """
         CALL (rl) {
-            MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
-            WHERE %(branch_filter)s
-            RETURN r AS rel_is_visible, is_visible
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        CALL (rl) {
             MATCH (rl)-[r:IS_PROTECTED]-(is_protected)
             WHERE %(branch_filter)s
             RETURN r AS rel_is_protected, is_protected
@@ -759,7 +738,7 @@ class RelationshipGetPeerQuery(Query):
 
         self.add_to_query(query)
 
-        self.update_return_labels(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
+        self.update_return_labels(["rel_is_protected", "is_protected"])
 
         # Add Node Properties
         # We must query them one by one otherwise the second one won't return
@@ -1094,7 +1073,6 @@ class RelationshipDeleteAllQuery(Query):
         """ % {"active_rel_filter": active_rel_filter}
 
         edge_types = [
-            DatabaseEdgeType.IS_VISIBLE.value,
             DatabaseEdgeType.IS_PROTECTED.value,
             DatabaseEdgeType.HAS_OWNER.value,
             DatabaseEdgeType.HAS_SOURCE.value,

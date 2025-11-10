@@ -335,7 +335,7 @@ CALL (p, q, diff_rel, row_from_time) {
     AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
     AND any(l in labels(node) WHERE l in ["Attribute", "Relationship"])
     AND node.branch_support IN [$branch_aware, $branch_agnostic]
-    AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+    AND type(r_prop) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
     AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
@@ -532,7 +532,7 @@ CALL (root, r_root, p, diff_rel, q) {
     )
     WHERE %(id_func)s(mid_r_root) =  %(id_func)s(r_root)
     AND %(id_func)s(mid_diff_rel) =  %(id_func)s(diff_rel)
-    AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+    AND type(r_prop) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
     AND r_prop.from < $to_time AND r_prop.branch = mid_diff_rel.branch
     AND (mid_diff_rel.to IS NULL OR mid_diff_rel.to >= r_prop.from)
@@ -609,7 +609,7 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
 MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(p)-[diff_rel {branch: $branch_name}]->(q)
 WHERE p.branch_support = $branch_aware
 AND any(l in labels(p) WHERE l in ["Attribute", "Relationship"])
-AND type(diff_rel) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
+AND type(diff_rel) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
 AND any(l in labels(q) WHERE l in ["Boolean", "Node", "AttributeValue"])
 AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
 // node ID and field name filtering first pass

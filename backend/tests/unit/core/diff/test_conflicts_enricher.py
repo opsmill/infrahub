@@ -125,7 +125,6 @@ class TestConflictsEnricher:
         )
         branch_properties = {
             branch_conflict_property,
-            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
         }
         branch_attributes = {
             EnrichedAttributeFactory.build(),
@@ -184,7 +183,6 @@ class TestConflictsEnricher:
         )
         base_properties = {
             base_conflict_property,
-            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
         }
         base_relationships = {
             EnrichedRelationshipGroupFactory.build(
@@ -285,7 +283,6 @@ class TestConflictsEnricher:
         )
         base_properties_1 = {
             base_conflict_property_1,
-            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
         }
         base_conflict_property_2 = EnrichedPropertyFactory.build(
             property_type=conflict_property_type_2,
@@ -440,7 +437,6 @@ class TestConflictsEnricher:
         )
         branch_properties = {
             branch_conflict_property,
-            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
         }
         branch_attributes = {
             EnrichedAttributeFactory.build(),
@@ -473,12 +469,8 @@ class TestConflictsEnricher:
         base_property_1 = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_VALUE, action=DiffAction.UNCHANGED, new_value="potato salad"
         )
-        base_property_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, action=DiffAction.UPDATED, new_value="True"
-        )
         base_properties = {
             base_property_1,
-            base_property_2,
             EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_SOURCE),
         }
         base_attributes = {
@@ -502,16 +494,8 @@ class TestConflictsEnricher:
             new_value="ham sandwich",
             conflict=EnrichedConflictFactory.build(),
         )
-        branch_conflict_property_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            action=DiffAction.UNCHANGED,
-            previous_value="False",
-            new_value="False",
-            conflict=EnrichedConflictFactory.build(),
-        )
         branch_properties = {
             branch_conflict_property,
-            branch_conflict_property_2,
             EnrichedPropertyFactory.build(
                 property_type=DatabaseEdgeType.IS_PROTECTED, conflict=EnrichedConflictFactory.build()
             ),
@@ -550,9 +534,7 @@ class TestConflictsEnricher:
         node_kind = "TestCar"
         previous_peer_id = str(uuid4())
         new_base_peer_id = str(uuid4())
-        base_properties = {
-            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
-        }
+        base_properties = {}
         base_relationships = {
             EnrichedRelationshipGroupFactory.build(
                 name=relationship_name,
@@ -632,7 +614,6 @@ class TestConflictsEnricher:
         node_kind = "TestCar"
         peer_id = str(uuid4())
         base_properties = {
-            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
             EnrichedPropertyFactory.build(property_type=property_type, action=base_action),
         }
         base_relationships = {
@@ -726,7 +707,6 @@ class TestConflictsEnricher:
         )
         base_properties_1 = {
             base_conflict_property_1,
-            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
         }
         base_conflict_property_2 = EnrichedPropertyFactory.build(
             property_type=conflict_property_type_2,

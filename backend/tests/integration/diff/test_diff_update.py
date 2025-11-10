@@ -293,7 +293,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.HAS_VALUE,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for prop_diff in properties_by_type.values():
                 assert prop_diff.action is DiffAction.REMOVED
@@ -313,7 +312,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
@@ -334,7 +332,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
@@ -362,7 +359,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED
@@ -389,7 +385,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_diff in properties_by_type.values():
             assert prop_diff.action is DiffAction.REMOVED

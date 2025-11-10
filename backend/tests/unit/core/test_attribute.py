@@ -683,9 +683,8 @@ async def test_to_graphql(
 
     expected_data = {
         "id": attr1.id,
-        "is_visible": True,
     }
-    assert await attr1.to_graphql(db=db, fields={"id": None, "is_visible": None}) == expected_data
+    assert await attr1.to_graphql(db=db, fields={"id": None}) == expected_data
 
     attr2 = String(
         id=str(UUIDT()),
@@ -727,7 +726,6 @@ async def test_to_graphql_no_fields(
         "__typename": "Text",
         "id": attr1.id,
         "is_protected": False,
-        "is_visible": True,
         "owner": None,
         "source": None,
         "value": "mystring",
@@ -748,7 +746,6 @@ async def test_to_graphql_no_fields(
         "__typename": "Text",
         "id": attr2.id,
         "is_protected": False,
-        "is_visible": True,
         "owner": None,
         "source": {
             "__typename": InfrahubKind.ACCOUNT,

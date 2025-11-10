@@ -71,7 +71,6 @@ class RelationshipCreateData(BaseModel):
     direction: str
     status: str
     is_protected: bool
-    is_visible: bool
     hierarchical: str | None = None
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
@@ -576,7 +575,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             branch_support=self.schema.branch.value if self.schema.branch else None,
             hierarchical=self.schema.hierarchical,
             is_protected=self.is_protected,
-            is_visible=self.is_visible,
         )
         if hasattr(self, "source_id") and self.source_id:
             data.source_prop.append(NodePropertyData(name="source", peer_id=str(self.source_id)))

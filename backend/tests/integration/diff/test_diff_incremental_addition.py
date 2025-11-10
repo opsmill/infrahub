@@ -241,18 +241,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert visible_prop.new_value == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert visible_prop.conflict is None
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert protected_prop.new_value == "False"
@@ -329,22 +323,15 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.conflict.diff_branch_action is DiffAction.UPDATED
         assert rel_element.conflict.diff_branch_value == marty.get_id()
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert str(visible_prop.new_value) == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert not visible_prop.conflict
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert str(protected_prop.new_value) == "False"
@@ -422,18 +409,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert visible_prop.new_value == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert visible_prop.conflict is None
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert protected_prop.new_value == "True"
@@ -504,15 +485,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.conflict.diff_branch_action is DiffAction.REMOVED
         assert rel_element.conflict.diff_branch_value is None
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_type, previous_value in (
             (DatabaseEdgeType.IS_RELATED, doc_brown.get_id()),
-            (DatabaseEdgeType.IS_VISIBLE, "True"),
             (DatabaseEdgeType.IS_PROTECTED, "True"),
         ):
             diff_prop = properties_by_type[prop_type]
@@ -580,18 +558,16 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.action is DiffAction.REMOVED
         assert rel_element.conflict is None
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value is None
         assert related_prop.action is DiffAction.REMOVED
         assert related_prop.conflict is None
-        for prop_type in (DatabaseEdgeType.IS_PROTECTED, DatabaseEdgeType.IS_VISIBLE):
+        for prop_type in (DatabaseEdgeType.IS_PROTECTED,):
             protected_prop = properties_by_type[prop_type]
             assert protected_prop.previous_value == "True"
             assert protected_prop.new_value is None

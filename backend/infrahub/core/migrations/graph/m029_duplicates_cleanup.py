@@ -631,7 +631,6 @@ class Migration029(ArbitraryMigration):
                     offset=offset,
                     outbound_edge_types=[
                         DatabaseEdgeType.IS_RELATED,
-                        DatabaseEdgeType.IS_VISIBLE,
                         DatabaseEdgeType.IS_PROTECTED,
                         DatabaseEdgeType.HAS_OWNER,
                         DatabaseEdgeType.HAS_SOURCE,

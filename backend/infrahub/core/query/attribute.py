@@ -95,7 +95,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         flag_name: str,
         **kwargs: Any,
     ) -> None:
-        SUPPORTED_FLAGS = ["is_visible", "is_protected"]
+        SUPPORTED_FLAGS = ["is_protected"]
 
         if flag_name not in SUPPORTED_FLAGS:
             raise ValueError(f"Only {SUPPORTED_FLAGS} are supported for now.")
@@ -256,7 +256,7 @@ class AttributeGetQuery(AttributeQuery):
         query = (
             """
         MATCH (a:Attribute { uuid: $attr_uuid })
-        MATCH p = ((a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap))
+        MATCH p = ((a)-[r2:HAS_VALUE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap))
         WHERE all(r IN relationships(p) WHERE ( %s ))
         """
             % rels_filter

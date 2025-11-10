@@ -308,7 +308,6 @@ class TestDiffRebase(TestInfrahubApp):
             properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
-                DatabaseEdgeType.IS_VISIBLE,
                 DatabaseEdgeType.IS_PROTECTED,
             }
             related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -316,7 +315,7 @@ class TestDiffRebase(TestInfrahubApp):
             assert related_prop.previous_value == koenigsegg_id
             assert related_prop.new_value == new_peer_id
             assert related_prop.conflict is None
-            for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+            for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
                 diff_prop = properties_by_type[prop_type]
                 assert diff_prop.action is DiffAction.UNCHANGED
                 assert diff_prop.previous_value == diff_prop.new_value == value
@@ -338,12 +337,10 @@ class TestDiffRebase(TestInfrahubApp):
                 assert set(properties_by_type.keys()) == {
                     DatabaseEdgeType.IS_RELATED,
                     DatabaseEdgeType.IS_PROTECTED,
-                    DatabaseEdgeType.IS_VISIBLE,
                 }
                 for property_type, check_value in (
                     (DatabaseEdgeType.IS_RELATED, jesko_id),
                     (DatabaseEdgeType.IS_PROTECTED, "False"),
-                    (DatabaseEdgeType.IS_VISIBLE, "True"),
                 ):
                     prop_diff = properties_by_type[property_type]
                     assert prop_diff.action is expected_action
@@ -408,7 +405,6 @@ class TestDiffRebase(TestInfrahubApp):
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
-            DatabaseEdgeType.IS_VISIBLE,
             DatabaseEdgeType.IS_PROTECTED,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -417,7 +413,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == omnicorp_id
         assert related_prop.conflict is None
-        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+        for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
             diff_prop = properties_by_type[prop_type]
             assert diff_prop.action is DiffAction.UNCHANGED
             assert diff_prop.previous_value == diff_prop.new_value == value
@@ -436,12 +432,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for property_type, check_value in (
                 (DatabaseEdgeType.IS_RELATED, jesko_id),
                 (DatabaseEdgeType.IS_PROTECTED, "False"),
-                (DatabaseEdgeType.IS_VISIBLE, "True"),
             ):
                 prop_diff = properties_by_type[property_type]
                 assert prop_diff.action is expected_action
@@ -503,7 +497,6 @@ class TestDiffRebase(TestInfrahubApp):
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
-            DatabaseEdgeType.IS_VISIBLE,
             DatabaseEdgeType.IS_PROTECTED,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -512,7 +505,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == cyberdyne_id
         assert related_prop.conflict is None
-        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+        for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
             diff_prop = properties_by_type[prop_type]
             assert diff_prop.action is DiffAction.UNCHANGED
             assert diff_prop.previous_value == diff_prop.new_value == value
@@ -531,12 +524,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for property_type, check_value in (
                 (DatabaseEdgeType.IS_RELATED, jesko_id),
                 (DatabaseEdgeType.IS_PROTECTED, "False"),
-                (DatabaseEdgeType.IS_VISIBLE, "True"),
             ):
                 prop_diff = properties_by_type[property_type]
                 assert prop_diff.action is expected_action

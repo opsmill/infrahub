@@ -142,13 +142,6 @@ class TestMergeDiff:
             action=DiffAction.REMOVED,
             conflict=None,
         )
-        deleted_height_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value="True",
-            new_value=None,
-            action=DiffAction.REMOVED,
-            conflict=None,
-        )
         deleted_height_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value="False",
@@ -162,19 +155,11 @@ class TestMergeDiff:
             properties={
                 deleted_height_value_property,
                 deleted_height_owner_property,
-                deleted_height_visible_property,
                 deleted_height_protected_property,
             },
         )
         deleted_node_diff.attributes = {deleted_attribute_diff}
         # relationships
-        deleted_rel_is_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value="True",
-            new_value=None,
-            action=DiffAction.REMOVED,
-            conflict=None,
-        )
         deleted_rel_is_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value="False",
@@ -202,7 +187,6 @@ class TestMergeDiff:
             conflict=None,
             properties={
                 deleted_is_related_property,
-                deleted_rel_is_visible_property,
                 deleted_rel_is_protected_property,
                 deleted_rel_source_property,
             },
@@ -234,13 +218,6 @@ class TestMergeDiff:
             action=DiffAction.ADDED,
             conflict=None,
         )
-        added_height_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value=None,
-            new_value="True",
-            action=DiffAction.ADDED,
-            conflict=None,
-        )
         added_height_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value=None,
@@ -254,19 +231,11 @@ class TestMergeDiff:
             properties={
                 added_height_value_property,
                 added_height_owner_property,
-                added_height_visible_property,
                 added_height_protected_property,
             },
         )
         added_node_diff.attributes = {added_attribute_diff}
         # relationships
-        added_rel_is_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value=None,
-            new_value="True",
-            action=DiffAction.ADDED,
-            conflict=None,
-        )
         added_rel_is_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value=None,
@@ -294,7 +263,6 @@ class TestMergeDiff:
             conflict=None,
             properties={
                 added_is_related_property,
-                added_rel_is_visible_property,
                 added_rel_is_protected_property,
                 added_rel_source_property,
             },
@@ -356,7 +324,6 @@ class TestMergeDiff:
         assert retrieved_node.height.value == person_node_branch.height.value
         owner_node = await retrieved_node.height.get_owner(db=db)
         assert owner_node.id == retrieved_node.id
-        assert retrieved_node.height.is_visible is True
         assert retrieved_node.height.is_protected is True
         car_rel_elements = await retrieved_node.cars.get(db=db)
         car_elements_by_peer_id = {c.get_peer_id(): c for c in car_rel_elements}
@@ -515,13 +482,6 @@ class TestMergeDiff:
             action=DiffAction.REMOVED,
             conflict=None,
         )
-        deleted_rel_is_visible_property = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE,
-            previous_value="True",
-            new_value=None,
-            action=DiffAction.REMOVED,
-            conflict=None,
-        )
         deleted_rel_is_protected_property = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_PROTECTED,
             previous_value="False",
@@ -549,7 +509,6 @@ class TestMergeDiff:
             conflict=None,
             properties={
                 deleted_is_related_property,
-                deleted_rel_is_visible_property,
                 deleted_rel_is_protected_property,
                 deleted_rel_source_property,
                 deleted_rel_owner_property,
@@ -693,7 +652,6 @@ class TestMergeDiff:
         )
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.is_protected is True
-        assert owner_rel.is_visible is True
         assert owner_rel.peer_id == person_node_main2.id
         rel_owner_node = await owner_rel.get_owner(db=db)
         assert rel_owner_node.id == car_node_main.id
@@ -713,7 +671,6 @@ class TestMergeDiff:
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_node_main.id
         assert owner_rel.is_protected is False
-        assert owner_rel.is_visible is True
         owner_prop = await owner_rel.get_owner(db=db)
         assert owner_prop.id == car_node_main2.id
         source_prop = await owner_rel.get_source(db=db)

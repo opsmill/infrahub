@@ -973,15 +973,6 @@ class TestUserWorkflow01(TestInfrahubApp):
                                     "status": "ADDED",
                                     "conflict": None,
                                 },
-                                {
-                                    "property_type": "IS_VISIBLE",
-                                    "previous_value": None,
-                                    "new_value": "True",
-                                    "previous_label": None,
-                                    "new_label": None,
-                                    "status": "ADDED",
-                                    "conflict": None,
-                                },
                             ],
                         }
                     ],
@@ -1047,15 +1038,6 @@ class TestUserWorkflow01(TestInfrahubApp):
                             "status": "ADDED",
                             "conflict": None,
                         },
-                        {
-                            "property_type": "IS_VISIBLE",
-                            "previous_value": None,
-                            "new_value": "True",
-                            "previous_label": None,
-                            "new_label": None,
-                            "status": "ADDED",
-                            "conflict": None,
-                        },
                     ],
                 }
                 for name, new_value in expected_new_attributes.items()
@@ -1085,7 +1067,6 @@ class TestUserWorkflow01(TestInfrahubApp):
                                 for property_type, new_value, new_label in [
                                     ("IS_RELATED", state.data["spine1_id"], "spine1"),
                                     ("IS_PROTECTED", "False", None),
-                                    ("IS_VISIBLE", "True", None),
                                 ]
                             ],
                         }

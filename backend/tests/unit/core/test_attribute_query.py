@@ -12,4 +12,4 @@ async def test_AttributeGetQuery(db: InfrahubDatabase, default_branch: Branch, c
     query = await AttributeGetQuery.init(db=db, attr=obj.name)
     await query.execute(db=db)
 
-    assert query.num_of_results == 3
+    assert query.num_of_results == 2

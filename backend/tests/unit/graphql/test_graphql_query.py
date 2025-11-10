@@ -2495,7 +2495,7 @@ async def test_query_attribute_flag_property(
     await p1.new(
         db=db,
         firstname={"value": "John", "is_protected": True},
-        lastname={"value": "Doe", "is_visible": False},
+        lastname={"value": "Doe"},
         _source=first_account,
     )
     await p1.save(db=db)
@@ -2512,7 +2512,6 @@ async def test_query_attribute_flag_property(
                     }
                     lastname {
                         value
-                        is_visible
                     }
                 }
             }
@@ -2532,7 +2531,6 @@ async def test_query_attribute_flag_property(
     assert result1.errors is None
     assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_protected"] is True
-    assert result1.data["TestPerson"]["edges"][0]["node"]["lastname"]["is_visible"] is False
 
 
 async def test_query_branches(
