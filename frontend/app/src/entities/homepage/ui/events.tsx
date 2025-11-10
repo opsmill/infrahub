@@ -5,13 +5,11 @@ import { HomeCard } from "@/shared/components/ui/home-card";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 
-import { NodeEvents } from "@/entities/events/ui/node-details-events";
+import { HomeEvents } from "@/entities/events/ui/node-details-events-homepage";
 
 interface EventsProps {
   className?: string;
 }
-
-const MAX_EVENTS = 10;
 
 export const Events = ({ className }: EventsProps) => {
   return (
@@ -27,7 +25,7 @@ export const Events = ({ className }: EventsProps) => {
       </HomeCard.Title>
 
       <ScrollArea>
-        <NodeEvents maxEvent={MAX_EVENTS} />
+        <HomeEvents />
       </ScrollArea>
     </HomeCard>
   );
