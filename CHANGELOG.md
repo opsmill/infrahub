@@ -23,14 +23,6 @@ For automation, we introduced controls to disable generator runs during CI/merge
 
 Finally, we've ensured Webhooks are more consistent by aligning custom webhook data formats with standard events, and improved overall efficiency via memory optimizations in multi-branch setups.
 
-## Upgrading from earlier versions
-
-Due to the changes implemented for display_labels, human friendly IDs and profiles a data migration is required as part of the upgrade process. A new parameter to the upgrade command has been added and the correct way to run the upgrade is now to use:
-
-```bash
-infrahub upgrade --rebase-branches
-```
-
 ## Main changes
 
 ### Disable generator in Infrahub's CI pipeline and after a branch merge operation
