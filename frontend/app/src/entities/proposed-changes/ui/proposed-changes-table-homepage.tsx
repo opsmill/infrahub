@@ -38,7 +38,7 @@ export function ProposedChangesTableHomepage({
       <ProposedChangesTableHeader />
 
       <ListBox
-        aria-label="Branches list"
+        aria-label="Proposed changes list"
         items={flatData}
         className={classNames(
           "m-2 flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200",
