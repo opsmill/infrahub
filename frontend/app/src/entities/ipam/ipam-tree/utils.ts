@@ -1,4 +1,4 @@
-import { TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
+import type { TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 
 import { IP_PREFIX_GENERIC, TREE_ROOT_ID } from "@/entities/ipam/constants";
 

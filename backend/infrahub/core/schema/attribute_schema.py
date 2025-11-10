@@ -68,6 +68,10 @@ class AttributeSchema(GeneratedAttributeSchema):
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
 
+    @property
+    def support_profiles(self) -> bool:
+        return self.read_only is False and self.optional is True
+
     def get_id(self) -> str:
         if self.id is None:
             raise InitializationError("The attribute schema has not been saved yet and doesn't have an id")
@@ -202,7 +206,6 @@ class AttributeSchema(GeneratedAttributeSchema):
         param_prefix: str | None = None,
         db: InfrahubDatabase | None = None,
         partial_match: bool = False,
-        support_profiles: bool = False,
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         if self.enum:
             filter_value = self.convert_enum_to_value(filter_value)
@@ -217,7 +220,6 @@ class AttributeSchema(GeneratedAttributeSchema):
             param_prefix=param_prefix,
             db=db,
             partial_match=partial_match,
-            support_profiles=support_profiles,
         )
 
 

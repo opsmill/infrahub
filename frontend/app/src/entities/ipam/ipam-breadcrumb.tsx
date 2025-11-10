@@ -1,20 +1,20 @@
 import { ChevronRightIcon, HouseIcon } from "lucide-react";
-import React from "react";
-import { Link, LinkProps, useParams } from "react-router";
+import type React from "react";
+import { Link, type LinkProps, useParams } from "react-router";
 
 import { Spinner } from "@/shared/components/ui/spinner";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { IPPrefixNode } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-ancestors";
+import type { IPPrefixNode } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-ancestors";
 import { useGetIpPrefixAncestors } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-ancestors.query";
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import { NodeRelationshipOne } from "@/entities/nodes/types";
+import type { NodeRelationshipOne } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 

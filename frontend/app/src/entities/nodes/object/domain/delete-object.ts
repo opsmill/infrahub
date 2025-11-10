@@ -1,4 +1,4 @@
-import { ContextParams } from "@/shared/api/types";
+import type { ContextParams } from "@/shared/api/types";
 
 import { deleteObjectFromApi } from "@/entities/nodes/object/api/delete-object-from-api";
 

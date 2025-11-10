@@ -1,9 +1,12 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { MutationConfig } from "@/shared/api/types";
+import type { MutationConfig } from "@/shared/api/types";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { UpdateObjectParams, updateObject } from "@/entities/nodes/object/domain/update-object";
+import {
+  type UpdateObjectParams,
+  updateObject,
+} from "@/entities/nodes/object/domain/update-object";
 
 interface UpdateObjectProps extends MutationConfig<typeof updateObject> {}
 

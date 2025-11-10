@@ -14,19 +14,30 @@ import {
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
+
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 export interface ObjectDetailsButtonProps extends ButtonProps {
   id: string;
   hfid?: string | null;
+  objectKind: string;
   className?: string;
 }
 
-export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDetailsButtonProps) => {
+export const ObjectDetailsButton = ({
+  id,
+  hfid,
+  children,
+  objectKind,
+  ...props
+}: ObjectDetailsButtonProps) => {
   const taskFilter = {
     name: "node__value",
     value: id,
   };
+
+  const { isAuthenticated } = useAuth();
 
   return (
     <MenuTrigger>
@@ -45,6 +56,14 @@ export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDeta
             {hfid && hfid !== "null" && (
               <CopyToClipboardMenuItem textToCopy={hfid}>Copy HFID</CopyToClipboardMenuItem>
             )}
+
+            <MenuItem
+              href={objectKind ? constructPath(`/objects/${objectKind}/${id}/convert`) : undefined}
+              isDisabled={!isAuthenticated}
+            >
+              <Icon icon="mdi:swap-horizontal" className="size-3" />
+              Convert object type
+            </MenuItem>
 
             {children}
           </MenuSection>

@@ -4,7 +4,7 @@ import { useTitle } from "@/shared/hooks/useTitle";
 
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { ProposedChangesManager } from "@/entities/proposed-changes/ui/proposed-changes-manager";
-import { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const Component = () => {

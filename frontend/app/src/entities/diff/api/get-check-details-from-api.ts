@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 
-import {
+import type {
   Get_Check_DetailsQuery,
   Get_Check_DetailsQueryVariables,
 } from "@/shared/api/graphql/generated/graphql";

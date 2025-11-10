@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 
-import { Tasks_Branch_Status_CountQuery } from "@/shared/api/graphql/generated/graphql";
+import type { Tasks_Branch_Status_CountQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 export const TASKS_BRANCH_STATUS_COUNT = gql`

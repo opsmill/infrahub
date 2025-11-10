@@ -5,7 +5,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -32,9 +32,8 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
     }
     """
 
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -68,7 +67,7 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
     } in result.data["TestCriticality"]["edges"]
 
 
-async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -89,9 +88,8 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
     }
     """
 
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -147,9 +145,8 @@ async def test_directive_merge_fields(
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,

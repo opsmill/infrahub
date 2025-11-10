@@ -1,10 +1,10 @@
-import { ReactElement } from "react";
-import { Tab, TabPanel, TabPanelProps, TabProps } from "react-aria-components";
-import { ArrayParam, useQueryParam } from "use-query-params";
+import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
+import type { ReactElement } from "react";
+import { Tab, TabPanel, type TabPanelProps, type TabProps } from "react-aria-components";
 
 import { QSP } from "@/config/qsp";
 
-import Accordion, { AccordionProps } from "@/shared/components/display/accordion";
+import Accordion, { type AccordionProps } from "@/shared/components/display/accordion";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
@@ -146,7 +146,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
 export const NullDisplay = () => <div className="text-gray-500 text-xs">null</div>;
 
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
-  const [selectedKinds, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
+  const [selectedKinds, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   if (!kinds) return null;
   if (kinds.length === 0) return <span>empty</span>;
 

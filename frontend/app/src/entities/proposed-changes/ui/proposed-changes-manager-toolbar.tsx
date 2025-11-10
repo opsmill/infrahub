@@ -7,8 +7,8 @@ import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive"
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import ObjectHeader from "@/entities/nodes/object-header";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface ProposedChangesManagerToolbarProps {
   schema: ModelSchema;

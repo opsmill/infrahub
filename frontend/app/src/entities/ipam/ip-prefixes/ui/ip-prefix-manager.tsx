@@ -1,7 +1,10 @@
-import { IpPrefixTable, IpPrefixTableProps } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-table";
+import {
+  IpPrefixTable,
+  type IpPrefixTableProps,
+} from "@/entities/ipam/ip-prefixes/ui/ip-prefix-table";
 import { ObjectTableProvider } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectsManagerToolbar } from "@/entities/nodes/object/ui/objects-manager-toolbar";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface IpPrefixManagerProps {
   schema: ModelSchema;

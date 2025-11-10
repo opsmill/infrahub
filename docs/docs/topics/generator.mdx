@@ -22,13 +22,28 @@ Generators are defined as a **generator definition** within an [.infrahub.yml](i
 
 ![](../media/topics/generator/generator_overview.excalidraw.svg)
 
-Running an artifact definition will create new nodes as defined by the generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
+Running a generator definition will create new nodes as defined by the generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
 
 The targets point to a [group](./groups.mdx) that will consist of objects that are impacted by the generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger generator execution, while the actual tracking of generated objects is handled by individual generator instances.
 
 The [GraphQL query](graphql) defines the data that will be collected when running the generator. Any object identified in this step is added as a member to a GraphQL query [group](./groups.mdx) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which generators need to be executed as part of a proposed change during the pipeline run.
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [transforms](transformation) and [checks](check), the Generators are user defined.
+
+Generators can be executed in several ways, depending on your workflow and where you are in the lifecycle (local development vs. in Infrahub):
+
+1. During development with infrahubctl
+
+   Use the `infrahubctl generator` command to iterate locally while building and testing your generator.
+2. Manually from the UI
+
+   From the Infrahub UI, open the Generator Definition detail page (Actions > Generator Definitions) and click Run to trigger the generator on demand.
+3. Automatically via Proposed Changes
+
+   When you open a Proposed Change that affects the generator’s targets, the generator runs as part of Infrahub’s CI checks. Review the results in the Checks and Data tabs of the Proposed Change. This behavior can also be disabled per generator in the repository configuration file.
+4. Automatically via Events and Actions
+
+   You can configure Infrahub Event rules and Actions to trigger generators automatically based on changes in your data. This enables fully automated execution aligned with your workflows.
 
 ## Video guides
 

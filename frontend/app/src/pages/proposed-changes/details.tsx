@@ -1,12 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useQueryState } from "nuqs";
 import { Link, useLocation, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 
-import { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
+import type { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -41,8 +41,8 @@ interface ProposedChangesDetailsPageProps {
 
 const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDetailsPageProps) => {
   const { pathname } = useLocation();
-  const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
-  const [qspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [qspTab] = useQueryState(QSP.PROPOSED_CHANGES_TAB);
+  const [qspTaskId] = useQueryState(QSP.TASK_ID);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
   useTitle(
     `${

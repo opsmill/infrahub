@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
-import { FieldValues, useForm, useFormContext } from "react-hook-form";
+import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
@@ -12,8 +12,8 @@ import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import NumberField from "@/shared/components/form/fields/number.field";
-import { ObjectFormProps } from "@/shared/components/form/object-form";
-import { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
+import type { ObjectFormProps } from "@/shared/components/form/object-form";
+import type { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
@@ -40,7 +40,7 @@ import {
 } from "@/entities/resource-manager/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 interface NumberPoolFormProps {
   currentObject?: ObjectFormProps["currentObject"];

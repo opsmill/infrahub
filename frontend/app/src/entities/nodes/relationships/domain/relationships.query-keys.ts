@@ -1,7 +1,7 @@
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import {
-  ObjectDetailKeysParams,
+  type ObjectDetailKeysParams,
   objectQueryKeys,
 } from "@/entities/nodes/object/domain/object.query-keys";
 

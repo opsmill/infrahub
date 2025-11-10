@@ -109,7 +109,7 @@ class BranchRebasedEvent(InfrahubEvent):
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.rebased"
 
-    branch_id: str = Field(..., description="The ID of the mutated node")
+    branch_id: str = Field(..., description="The ID of the branch")
     branch_name: str = Field(..., description="The name of the branch")
 
     def get_resource(self) -> dict[str, str]:
@@ -122,6 +122,32 @@ class BranchRebasedEvent(InfrahubEvent):
     def get_messages(self) -> list[InfrahubMessage]:
         events: list[InfrahubMessage] = [
             # EventBranchRebased(
+            #     branch=self.branch,
+            #     meta=self.get_message_meta(),
+            # ),
+            RefreshRegistryRebasedBranch(branch=self.branch_name),
+        ]
+        return events
+
+
+class BranchMigratedEvent(InfrahubEvent):
+    """Event generated when a branch has been migrated"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.migrated"
+
+    branch_id: str = Field(..., description="The ID of the branch")
+    branch_name: str = Field(..., description="The name of the branch")
+
+    def get_resource(self) -> dict[str, str]:
+        return {
+            "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
+            "infrahub.branch.id": self.branch_id,
+            "infrahub.branch.name": self.branch_name,
+        }
+
+    def get_messages(self) -> list[InfrahubMessage]:
+        events: list[InfrahubMessage] = [
+            # EventBranchMigrated(
             #     branch=self.branch,
             #     meta=self.get_message_meta(),
             # ),

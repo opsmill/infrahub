@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { forwardRef } from "react";
 
 import { ACCOUNT_PERMISSION_OBJECT } from "@/config/constants";
@@ -21,7 +21,7 @@ import { classNames, debounce } from "@/shared/utils/common";
 
 import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type PermissionNode = NodeCore & { identifier: { value: string } };

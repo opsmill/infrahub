@@ -33,8 +33,7 @@ nodes:
     label: "Interface"
     include_in_menu: true
     icon: "mdi:ethernet"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     uniqueness_constraints:
@@ -64,8 +63,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -87,8 +85,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text

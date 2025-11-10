@@ -1,7 +1,7 @@
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import { PoolValue } from "@/shared/components/form/pool-selector";
-import {
+import type { PoolValue } from "@/shared/components/form/pool-selector";
+import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
   PoolSource,
@@ -11,7 +11,7 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import {
   RelationshipHierarchicalInput,
   RelationshipHierarchicalManyInput,
@@ -31,12 +31,14 @@ export default function RelationshipHierarchicalField({
   name,
   rules,
   unique,
+  shouldUnregister,
 }: RelationshipHierarchicalFieldProps) {
   return (
     <FormField
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormRelationshipValue = field.value;
         const value: RelationshipNode | RelationshipNode[] | null =

@@ -8,7 +8,7 @@ import {
   keymap,
   lineNumbers,
   placeholder as placeholderView,
-  ViewUpdate,
+  type ViewUpdate,
 } from "@codemirror/view";
 import { graphql } from "cm6-graphql";
 import { basicLight } from "cm6-theme-basic-light";

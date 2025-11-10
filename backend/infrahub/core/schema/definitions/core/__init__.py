@@ -29,6 +29,7 @@ from .core import core_node, core_task_target
 from .generator import core_generator_definition, core_generator_instance
 from .graphql_query import core_graphql_query
 from .group import (
+    core_generator_aware_group,
     core_generator_group,
     core_graphql_query_group,
     core_group,
@@ -128,6 +129,7 @@ core_models_mixed: dict[str, list] = {
         core_group_action,
         core_standard_group,
         core_generator_group,
+        core_generator_aware_group,
         core_graphql_query_group,
         core_repository_group,
         builtin_tag,

@@ -699,6 +699,7 @@ class IPPrefixReconcileQuery(Query):
             "ip_address_attribute_kind": ADDRESS_ATTRIBUTE_LABEL,
         }
         self.add_to_query(get_new_children_query)
+        self.order_by = ["ip_node.uuid"]
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
 
     def _get_uuid_from_query(self, node_name: str) -> str | None:

@@ -1,12 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 interface ObjectEditSlideOverTriggerProps extends ButtonProps {
   data: any;

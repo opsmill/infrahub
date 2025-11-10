@@ -1,5 +1,5 @@
 import { apiClient } from "@/shared/api/rest/client";
-import { ContextParams } from "@/shared/api/types";
+import type { ContextParams } from "@/shared/api/types";
 
 export type GetSchemaSummaryFromApiParams = ContextParams;
 

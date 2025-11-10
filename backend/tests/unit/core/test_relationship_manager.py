@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.core import registry
@@ -305,3 +307,79 @@ async def test_get_parent(db: InfrahubDatabase, car_accord_main: Node, person_jo
     assert parent
     assert parent.get_peer_id() == person_john_main.id
     assert parent.get_peer_kind() == person_john_main.get_kind()
+
+
+@dataclass
+class RelationshipManagerOptionalAndCountTestCaseData:
+    name: str
+    optional: bool
+    schema_min_count: int
+    schema_max_count: int
+    expected_min_count: int
+    expected_max_count: int
+
+
+RELATIONSHIP_MANAGER_OPTIONAL_AND_COUNT_CONSTRAINTS_TEST_CASES = [
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="not-optional-with-min-count-only",
+        optional=False,
+        schema_min_count=2,
+        schema_max_count=0,
+        expected_min_count=2,
+        expected_max_count=0,
+    ),
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="optional-with-min-count-only",
+        optional=True,
+        schema_min_count=2,
+        schema_max_count=0,
+        expected_min_count=0,
+        expected_max_count=0,
+    ),
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="not-optional-with-min-and-max-count",
+        optional=False,
+        schema_min_count=2,
+        schema_max_count=5,
+        expected_min_count=2,
+        expected_max_count=5,
+    ),
+    RelationshipManagerOptionalAndCountTestCaseData(
+        name="optional-with-min-and-max-count",
+        optional=True,
+        schema_min_count=2,
+        schema_max_count=5,
+        expected_min_count=0,
+        expected_max_count=5,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in RELATIONSHIP_MANAGER_OPTIONAL_AND_COUNT_CONSTRAINTS_TEST_CASES],
+)
+async def test_can_create_relationship_manager_with_optional_and_count_constraints(
+    db: InfrahubDatabase,
+    tag_blue_main: Node,
+    person_jack_primary_tag_main: Node,
+    branch: Branch,
+    test_case: RelationshipManagerOptionalAndCountTestCaseData,
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("primary_tag")
+    rel_schema.optional = test_case.optional
+    rel_schema.min_count = test_case.schema_min_count
+    rel_schema.max_count = test_case.schema_max_count
+
+    relm = await RelationshipManager.init(
+        db=db,
+        schema=rel_schema,
+        branch=branch,
+        at=Timestamp(),
+        node=person_jack_primary_tag_main,
+    )
+    await relm.save(db=db)
+
+    assert relm._relationships.min_count == test_case.expected_min_count
+    assert relm._relationships.max_count == test_case.expected_max_count

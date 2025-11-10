@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import {
   Button as AriaButton,
-  ButtonProps as AriaButtonProps,
+  type ButtonProps as AriaButtonProps,
   Group as AriaGroup,
-  GroupProps as AriaGroupProps,
+  type GroupProps as AriaGroupProps,
   Input as AriaInput,
-  InputProps as AriaInputProps,
+  type InputProps as AriaInputProps,
   SearchField as AriaSearchField,
-  SearchFieldProps as AriaSearchFieldProps,
+  type SearchFieldProps as AriaSearchFieldProps,
   composeRenderProps,
 } from "react-aria-components";
 

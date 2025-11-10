@@ -5,7 +5,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
-  RemoveRelationshipsParams,
+  type RemoveRelationshipsParams,
   removeRelationships,
 } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
 

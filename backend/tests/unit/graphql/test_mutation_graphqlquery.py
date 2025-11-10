@@ -1,4 +1,5 @@
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -6,7 +7,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, register_core_models_schema):
+async def test_create_query_no_vars(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     query_value = """
     query MyQuery {
         CoreRepository {
@@ -42,8 +43,8 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
         }
     }
     """ % query_value.replace("\n", " ").replace('"', '\\"')
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -53,6 +54,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["CoreGraphQLQueryCreate"]["ok"] is True
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
     assert len(query_id) == 36  # length of an UUID
@@ -65,7 +67,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     assert query1.models.value == [InfrahubKind.REPOSITORY]
 
 
-async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, register_core_models_schema):
+async def test_create_query_with_vars(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     query_value = """
     query MyQuery {
         CoreRepository {
@@ -109,7 +111,8 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     }
     """ % query_value.replace("\n", " ").replace('"', '\\"')
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -119,6 +122,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["CoreGraphQLQueryCreate"]["ok"] is True
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
     assert len(query_id) == 36  # length of an UUID
@@ -131,7 +135,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     assert query2.models.value == [InfrahubKind.TAG, InfrahubKind.REPOSITORY]
 
 
-async def test_update_query(db: InfrahubDatabase, default_branch, register_core_models_schema):
+async def test_update_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     query_create = """
     query MyQuery {
         CoreRepository {
@@ -204,8 +208,8 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
         obj.id,
         query_update.replace("\n", " ").replace('"', '\\"'),
     )
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -215,6 +219,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["CoreGraphQLQueryUpdate"]["ok"] is True
 
     obj2 = await registry.manager.get_one(id=obj.id, db=db)
@@ -225,7 +230,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
     assert obj2.models.value == [InfrahubKind.TAG, InfrahubKind.REPOSITORY]
 
 
-async def test_update_query_no_update(db: InfrahubDatabase, default_branch, register_core_models_schema):
+async def test_update_query_no_update(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     query_create = """
     query MyQuery {
         CoreRepository {
@@ -266,8 +271,8 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
         }
     }
     """ % (obj.id)
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -277,6 +282,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["CoreGraphQLQueryUpdate"]["ok"] is True
 
     obj2 = await registry.manager.get_one(id=obj.id, db=db)

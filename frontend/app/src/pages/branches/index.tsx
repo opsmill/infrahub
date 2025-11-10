@@ -1,5 +1,5 @@
-import BranchesItems from "@/entities/branches/ui/branches-items";
+import BranchesList from "@/entities/branches/ui/branches-list";
 
 export function Component() {
-  return <BranchesItems />;
+  return <BranchesList />;
 }

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-server"
-version = "1.4.13"
+version = "1.5.0b2"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -11,8 +11,6 @@ documentation = "https://docs.infrahub.app/"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
@@ -23,7 +21,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10, < 3.13"
+python = "^3.12, < 3.13"
 neo4j = "~5.28"
 neo4j-rust-ext = "~5.28"
 pydantic = "~2.10"
@@ -35,13 +33,14 @@ boto3 = "1.34.129"
 email-validator = "~2.1"
 redis = { version = "^6.0.0", extras = ["hiredis"] }
 typer = "0.12.5"
-prefect = "3.4.13"
-prefect-redis = "0.2.4"
+click = "8.1.7"
+prefect = "3.4.23"
+prefect-redis = "0.2.5"
 ujson = "^5"
 Jinja2 = "^3"
 gitpython = "^3"
 pyyaml = "^6"
-toml = "^0.10"
+tomli = { version = ">=1.1.0", python = "<3.11" }
 
 # Dependencies specific to the API Server
 fastapi = "0.116.1"
@@ -68,15 +67,13 @@ cachetools-async = "^0.0.5"
 
 # Dependencies specific to the SDK
 rich = "^13"
-pyarrow = "^14"
-numpy = [
-    { version = "^1.24.2", python = ">=3.9,<3.12" },
-    { version = "^1.26.2", python = ">=3.12" },
-]
+pyarrow = ">=14"
+numpy = "^1.26.2"
 dulwich = "^0.22.7"
 whenever = "0.7.3"
 netutils = "1.12.0"
 copier = "^9.8.0"
+ariadne-codegen = "0.15.3"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
@@ -84,11 +81,10 @@ mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
 pytest-clarity = "~1.0"
-pytest-cov = "~4.1"
+pytest-cov = "7.0.0"
 pytest-xdist = "~3.4"
 types-python-slugify = "^8.0.0.3"
 pre-commit = "^2.20.0"
-types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 types-cachetools = "^6.2.0.20250827"
@@ -760,6 +756,9 @@ allow-dunder-method-names = [
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
 ]
 
+"backend/tests/unit/graphql/test_schema_sort.py" = [
+    "W293", # Blank line contains whitespace
+]
 
 "models/infrastructure_edge.py" = [
     "S106", # Hardcoded password

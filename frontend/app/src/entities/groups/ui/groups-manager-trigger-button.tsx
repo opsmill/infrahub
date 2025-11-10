@@ -1,12 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 
-import { GroupsManager, GroupsManagerProps } from "@/entities/groups/ui/groups-manager";
+import { GroupsManager, type GroupsManagerProps } from "@/entities/groups/ui/groups-manager";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 
 export interface GroupsManagerTriggerProps extends ButtonProps, GroupsManagerProps {
   permission: Permission;

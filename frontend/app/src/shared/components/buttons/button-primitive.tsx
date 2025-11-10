@@ -1,10 +1,10 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { ButtonHTMLAttributes, forwardRef } from "react";
-import { Link, LinkProps } from "react-router";
+import { type ButtonHTMLAttributes, forwardRef } from "react";
+import { Link, type LinkProps } from "react-router";
 
 import { Spinner } from "@/shared/components/ui/spinner";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
-import { Tooltip, TooltipProps } from "@/shared/components/ui/tooltip";
+import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 const buttonVariants = cva(

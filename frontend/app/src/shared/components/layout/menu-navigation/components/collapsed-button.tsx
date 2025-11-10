@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { forwardRef } from "react";
 
-import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { classNames } from "@/shared/utils/common";
 
 export interface CollapsedButton extends ButtonProps {

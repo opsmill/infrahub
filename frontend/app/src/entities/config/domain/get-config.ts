@@ -1,6 +1,6 @@
 import { apiClient } from "@/shared/api/rest/client";
 
-import { ConfigAPI } from "@/entities/config/types";
+import type { ConfigAPI } from "@/entities/config/types";
 
 export type GetConfig = () => Promise<ConfigAPI>;
 

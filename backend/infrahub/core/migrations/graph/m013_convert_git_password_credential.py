@@ -286,7 +286,7 @@ class Migration013AddInternalStatusData(AttributeAddQuery):
         kwargs.pop("branch", None)
 
         super().__init__(
-            node_kind="CoreGenericRepository",
+            node_kinds=["CoreGenericRepository"],
             attribute_name="internal_status",
             attribute_kind="Dropdown",
             branch_support=BranchSupportType.LOCAL.value,

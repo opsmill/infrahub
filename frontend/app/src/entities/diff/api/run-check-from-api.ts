@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 
-import {
+import type {
   Run_CheckMutation,
   Run_CheckMutationVariables,
 } from "@/shared/api/graphql/generated/graphql";

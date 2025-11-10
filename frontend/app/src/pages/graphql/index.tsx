@@ -2,20 +2,18 @@ import { explorerPlugin } from "@graphiql/plugin-explorer";
 import type { Fetcher } from "@graphiql/toolkit";
 import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useAtomValue } from "jotai";
-// Bundle Monaco workers locally so build works offline and avoids dep pre-bundling issues
-// with ?worker imports inside node_modules.
-import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker&module";
-import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&module";
-import { StringParam, useQueryParam } from "use-query-params";
+import { useQueryState } from "nuqs";
 
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { QSP } from "@/config/qsp";
-import GraphQLWorker from "@/vendor/monaco-graphql/graphql.worker?worker&module";
 
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+
+import "@/shared/libs/graphiql/setup-worker";
+
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
 
@@ -41,23 +39,9 @@ const fetcher =
   };
 
 const GraphqlSandboxPage = () => {
-  const [query] = useQueryParam(QSP.QUERY, StringParam);
-  const branch = useAtomValue(currentBranchAtom);
+  const [query] = useQueryState(QSP.QUERY);
+  const { currentBranch } = useCurrentBranch();
   const waybackMachineDate = useAtomValue(datetimeAtom);
-
-  // Ensure Monaco workers are available when running offline
-  (globalThis as any).MonacoEnvironment = {
-    getWorker(_workerId: unknown, label: string) {
-      switch (label) {
-        case "json":
-          return new (JsonWorker as unknown as { new (): Worker })();
-        case "graphql":
-          return new (GraphQLWorker as unknown as { new (): Worker })();
-        default:
-          return new (EditorWorker as unknown as { new (): Worker })();
-      }
-    },
-  };
 
   return (
     <GraphiQL
@@ -66,7 +50,7 @@ const GraphqlSandboxPage = () => {
       initialQuery={query ?? undefined}
       plugins={plugins}
       forcedTheme="light"
-      fetcher={fetcher(CONFIG.GRAPHQL_URL(branch?.name, waybackMachineDate))}
+      fetcher={fetcher(CONFIG.GRAPHQL_URL(currentBranch.name, waybackMachineDate))}
     />
   );
 };

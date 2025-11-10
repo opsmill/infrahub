@@ -1,22 +1,21 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import { DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
+import type { DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import Accordion from "@/shared/components/display/accordion";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 
-import { DIFF_STATUS, DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
-import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
-
+import { DIFF_STATUS, type DiffProperty, type DiffStatus } from "@/entities/diff/node-diff/types";
 import {
   BadgeAdded,
   BadgeConflict,
   BadgeRemoved,
-  BadgeType,
+  type BadgeType,
   BadgeUnchanged,
   BadgeUpdated,
-  DiffBadgeProps,
-} from "../ui/diff-badge";
+  type DiffBadgeProps,
+} from "@/entities/diff/ui/diff-badge";
+import type { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,

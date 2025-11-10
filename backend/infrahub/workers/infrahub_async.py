@@ -19,6 +19,7 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.initialization import initialization
+from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
@@ -131,6 +132,9 @@ class InfrahubWorkerAsync(BaseWorker):
 
             await self.service.component.refresh_schema_hash()
 
+        async with self.service.database.start_session() as dbs:
+            await validate_graph_version(db=dbs)
+
         initialize_repositories_directory()
         build_component_registry()
         await self.service.scheduler.start_schedule()
@@ -140,7 +144,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         flow_run: FlowRun,
         configuration: BaseJobConfiguration,
-        task_status: TaskStatus | None = None,
+        task_status: TaskStatus[int] | None = None,
     ) -> BaseWorkerResult:
         flow_run_logger = self.get_flow_run_logger(flow_run)
 

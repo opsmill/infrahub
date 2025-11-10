@@ -1,5 +1,5 @@
-import { Link, LinkProps, useLocation } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
+import { useQueryState } from "nuqs";
+import { Link, type LinkProps, useLocation } from "react-router";
 
 import { QSP } from "@/config/qsp";
 
@@ -9,7 +9,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/domain/get-relationship-count/get-relationship-count.query";
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
 export interface ObjectDetailsTabProps extends LinkProps {
   isActive?: boolean;
@@ -53,7 +53,7 @@ export function RelationshipTab({
     relationshipName: relationshipSchema.name,
   });
   const { pathname } = useLocation();
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
 
   return (
     <ObjectDetailsTab

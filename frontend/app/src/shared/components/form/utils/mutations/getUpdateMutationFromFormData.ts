@@ -1,6 +1,6 @@
 import { isDeepEqual } from "remeda";
 
-import {
+import type {
   AttributeValueFromPool,
   DynamicFieldProps,
   FormFieldValue,

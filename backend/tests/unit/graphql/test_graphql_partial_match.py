@@ -134,6 +134,7 @@ async def test_query_filter_relationships_with_generic_filter_partial_match(
         }
     }
     """
+    default_branch.update_schema_hash()
     result = await graphql_query(query=query, db=db, branch=default_branch)
 
     assert result.errors is None

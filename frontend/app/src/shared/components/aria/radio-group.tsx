@@ -2,8 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
-  RadioGroupProps as AriaRadioGroupProps,
-  RadioProps as AriaRadioProps,
+  type RadioGroupProps as AriaRadioGroupProps,
+  type RadioProps as AriaRadioProps,
   composeRenderProps,
 } from "react-aria-components";
 
@@ -14,7 +14,7 @@ export const RadioGroup = ({ className, ...props }: AriaRadioGroupProps) => {
     <AriaRadioGroup
       className={composeRenderProps(className, (className, renderProps) =>
         classNames(
-          "flex flex-col flex-wrap gap-2",
+          "relative flex flex-col flex-wrap gap-1",
           renderProps.orientation === "horizontal" && "flex-row items-center",
           className
         )

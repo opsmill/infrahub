@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 generics:
   - name: Interface
     namespace: Infra
@@ -8,8 +8,7 @@ generics:
     label: "Interface"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__name__value
       - name__value
@@ -83,8 +82,7 @@ generics:
     include_in_menu: false
     label: "Choice"
     default_filter: name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:
@@ -109,8 +107,7 @@ generics:
     label: "Panel Port (Front & Rear)"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__name__value
       - name__value
@@ -143,9 +140,7 @@ nodes:
     menu_placement: InfraBGPSession
     default_filter: name__value
     order_by: ["asn__value"]
-    display_labels:
-      - name__value
-      - asn__value
+    display_label: "{{ name__value }} {{ asn__value }}"
     attributes:
       - name: name
         kind: Text
@@ -171,8 +166,7 @@ nodes:
     default_filter: name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -278,8 +272,7 @@ nodes:
     default_filter: circuit_id__value
     order_by:
       - circuit_id__value
-    display_labels:
-      - circuit_id__value
+    display_label: "{{ circuit_id__value }}"
     attributes:
       - name: circuit_id
         kind: Text
@@ -352,8 +345,7 @@ nodes:
     label: "Circuit Type"
     icon: "mdi:poll"
     menu_placement: "InfraCircuit"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -374,8 +366,7 @@ nodes:
       - "CoreArtifactTarget"
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -459,8 +450,7 @@ nodes:
     icon: "mdi:poll"
     menu_placement: "InfraDevice"
     default_filter: name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - manufacturer__name__value
       - name__value
@@ -497,8 +487,7 @@ nodes:
     description: "Patch Panel Front Port"
     label: "Front Port"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -515,8 +504,7 @@ nodes:
     description: "Network Interface"
     label: "Network Interface"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -592,8 +580,7 @@ nodes:
     label: "Location Type"
     icon: "mdi:map-marker-question"
     menu_placement: "LocationGeneric"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -609,8 +596,7 @@ nodes:
     label: "Nautobot Namespace"
     include_in_menu: false
     default_filter: name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -630,8 +616,7 @@ nodes:
     default_filter: name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     uniqueness_constraints:
       - ["name__value"]
     human_friendly_id:
@@ -670,8 +655,7 @@ nodes:
     default_filter: name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -753,8 +737,7 @@ nodes:
     icon: "mdi:server"
     menu_placement: "LocationGeneric"
     default_filter: name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -803,8 +786,7 @@ nodes:
     description: "Patch Panel Front Port"
     label: "Front Port"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -825,8 +807,7 @@ nodes:
     default_filter: name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -856,9 +837,7 @@ nodes:
     order_by:
       - vlan_id__value
       - name__value
-    display_labels:
-      - vlan_id__value
-      - name__value
+    display_label: "{{ vlan_id__value }} {{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -907,8 +886,7 @@ nodes:
     order_by:
       - ip_namespace__name__value
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     uniqueness_constraints:
       - ["ip_namespace", "name__value"]
     human_friendly_id: ["name__value", "ip_namespace__name__value"]
@@ -965,12 +943,12 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Generic  # Organization
+  - name: Generic # Organization
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
     default_filter: name__value
-    display_labels: [label__value]
+    display_label: "{{ label__value }}"
     order_by: [name__value]
     icon: mdi:domain
     include_in_menu: true
@@ -999,12 +977,12 @@ nodes:
         optional: true
         cardinality: one
         kind: Generic
-  - name: Generic  # Status
+  - name: Generic # Status
     namespace: Status
     label: Status
-    description: 'Represent the status of an object: active, maintenance'
+    description: "Represent the status of an object: active, maintenance"
     default_filter: name__value
-    display_labels: [label__value]
+    display_label: "{{ label__value }}"
     icon: mdi:list-status
     include_in_menu: false
     attributes:
@@ -1017,12 +995,12 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Generic  # Role
+  - name: Generic # Role
     namespace: Role
     label: Role
     description: Represent the role of an object
     default_filter: name__value
-    display_labels: [label__value]
+    display_label: "{{ label__value }}"
     order_by: [name__value]
     icon: mdi:ballot
     include_in_menu: false
@@ -1036,12 +1014,12 @@ nodes:
       - kind: Text
         name: description
         optional: true
-  - name: Generic  # Location
+  - name: Generic # Location
     namespace: Location
     label: Location
-    description: 'A location represent a physical element: a building, a site, a city'
+    description: "A location represent a physical element: a building, a site, a city"
     default_filter: name__value
-    display_labels: [name__value]
+    display_label: "{{ name__value }}"
     order_by: [name__value]
     icon: mdi:map-marker-radius-outline
     include_in_menu: true

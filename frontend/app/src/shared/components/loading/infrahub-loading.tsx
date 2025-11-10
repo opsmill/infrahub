@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 import infrahubLogo from "@/assets/infrahub-logo.svg";
 

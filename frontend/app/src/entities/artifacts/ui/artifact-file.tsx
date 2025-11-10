@@ -1,4 +1,4 @@
-import { HTMLAttributes, useCallback, useEffect, useState } from "react";
+import { type HTMLAttributes, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 import { fetchStream } from "@/shared/api/rest/fetch";
@@ -12,7 +12,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 
-import { ArtifactContentType } from "@/entities/artifacts/types";
+import type { ArtifactContentType } from "@/entities/artifacts/types";
 import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
 import { ArtifactFileCopy } from "@/entities/artifacts/ui/artifact-file-copy";
 import { ArtifactFileDownload } from "@/entities/artifacts/ui/artifact-file-download";

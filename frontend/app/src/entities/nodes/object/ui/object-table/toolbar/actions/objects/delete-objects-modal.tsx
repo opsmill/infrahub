@@ -7,7 +7,7 @@ import { pluralize } from "@/shared/utils/string";
 
 import { useDeleteObjects } from "@/entities/nodes/object/domain/delete-objects.mutation";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 export interface DeleteObjectModalProps {
   selectedRows: Array<NodeCore>;
