@@ -96,7 +96,7 @@ const ProposedChangesData = ({
       <DateDisplay
         date={updatedAt}
         containerClassName={"col-span-2 text-right justify-end"}
-        dateFormat="d MMM yyyy hh:mm"
+        dateFormat="d MMM yyyy HH:mm"
       />
     </div>
   );
