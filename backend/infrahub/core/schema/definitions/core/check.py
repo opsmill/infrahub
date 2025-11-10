@@ -29,7 +29,7 @@ core_check_definition = NodeSchema(
         Attr(name="description", kind="Text", optional=True),
         Attr(name="file_path", kind="Text"),
         Attr(name="class_name", kind="Text"),
-        Attr(name="timeout", kind="Number", default_value=10),
+        Attr(name="timeout", kind="Number", default_value=60),
         Attr(name="parameters", kind="JSON", optional=True),
     ],
     relationships=[
