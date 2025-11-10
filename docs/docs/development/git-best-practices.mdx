@@ -151,7 +151,7 @@ Infrahub follows a structured branching model designed for stable releases and c
 
 **Release branches**:
 
-- `release-x.y`: Cut from `develop` during release prep, merged into `stable` and then back into `develop`
+- `release-x.y`: Cut from `develop` during release prep, merged into `stable` and then back into `develop`; an automation bot keeps them in sync by continuously PR-ing `stable → release-x.y` and `release-x.y → develop` (or `stable → develop` when no release branch exists)
 
 **Feature branches**:
 
@@ -292,6 +292,12 @@ Use the branch that matches when the change must appear on https://docs.infrahub
 - Branch directly from `stable` (for example, `docs/stable-doc-workflow`) so the fix deploys as soon as the PR merges
 - If you already authored the fix on `develop`, rebase or cherry-pick it onto a `stable`-based branch before opening the PR
 - Target `stable` in the pull request
+
+### Docs for work on a release branch
+
+- When a feature (or its documentation) lives on an active `release-x.y` branch, create your docs branch from that same release branch (for example, `release-1.5`)
+- Target the release branch in your PR so the docs ship with the release and flow back into `develop` via the automated sync
+- Rebase on the release branch regularly to pick up stabilization commits
 
 ### Future or feature documentation
 
