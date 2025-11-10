@@ -1,3 +1,4 @@
 - Update landing page documentation links to get started with Infrahub
 - Display git repositories
 - Add branches sorted by creation date (with main branch at the top) in the landing page
+- Add the proposed changes, providing only essential details

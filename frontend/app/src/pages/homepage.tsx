@@ -3,6 +3,7 @@ import Content from "@/shared/components/layout/content";
 import { Branches } from "@/entities/homepage/ui/branches";
 import { GettingStarted } from "@/entities/homepage/ui/getting-started";
 import { GitRepositories } from "@/entities/homepage/ui/git-repositories";
+import { ProposedChanges } from "@/entities/homepage/ui/proposed-changes";
 
 const Homepage = () => {
   return (
@@ -10,7 +11,9 @@ const Homepage = () => {
       <h1 className="font-semibold text-2xl">Welcome to Infrahub!</h1>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 flex flex-col">
+        <div className="col-span-2 flex flex-col gap-4">
+          <ProposedChanges className="h-80" />
+
           <Branches className="h-80" />
         </div>
 
