@@ -9,7 +9,6 @@ import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
-import type { Permission } from "@/entities/permission/types";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
 import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
@@ -19,7 +18,6 @@ import type { NodeSchema } from "@/entities/schema/types";
 
 type ProposedChangesTableProps = {
   schema: NodeSchema;
-  permission: Permission;
   className?: string;
 };
 
@@ -51,9 +49,7 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
           className
         )}
       >
-        {flatData.map((node) => {
-          return <ProposedChangesItem key={node.id} node={node} />;
-        })}
+        {(node) => <ProposedChangesItem key={node.id} node={node} />}
       </ListBox>
 
       {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
