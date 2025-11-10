@@ -21,7 +21,7 @@ const Homepage = () => {
         <div className="space-y-4">
           <GitRepositories className="h-44" />
 
-          <Events className="" />
+          <Events />
         </div>
       </div>
 
