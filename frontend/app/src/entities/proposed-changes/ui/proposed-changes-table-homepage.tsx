@@ -4,7 +4,7 @@ import { ListBox } from "react-aria-components";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { classNames } from "@/shared/utils/common";
 
-import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
+import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import type { Permission } from "@/entities/permission/types";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/proposed-change-item-light";
@@ -50,7 +50,13 @@ export function ProposedChangesTableHomepage({
         })}
       </ListBox>
 
-      {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
+      {!isLoading && flatData.length === 0 && (
+        <EmptyHomeCard
+          className="py-20"
+          title={"You don’t have any open proposed changes"}
+          subtitle={"Once you create or review a branch, changes will appear here."}
+        />
+      )}
 
       {isLoading && <ProposedChangesTableSkeleton headerCount={flatData.length} />}
     </InfiniteScroll>
