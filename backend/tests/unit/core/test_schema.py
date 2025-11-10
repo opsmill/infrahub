@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Hashable
 
 import pytest
@@ -12,6 +13,9 @@ from infrahub.core.schema import (
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
+    SchemaWarning,
+    SchemaWarningKind,
+    SchemaWarningType,
     core_models,
     internal_schema,
 )
@@ -20,6 +24,118 @@ from infrahub.core.schema.attribute_schema import TextAttributeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+
+
+@dataclass
+class SchemaWarningTestCaseData:
+    name: str
+    schema: SchemaRoot
+    warnings: list[SchemaWarning]
+
+
+SCHEMA_WARNING_TESTCASES: list[SchemaWarningTestCaseData] = [
+    SchemaWarningTestCaseData(
+        name="use_display_labels",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Unit",
+                    display_labels=["name__value"],
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                )
+            ]
+        ),
+        warnings=[
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestUnit")],
+                message="display_labels are deprecated, use display_label instead",
+            )
+        ],
+    ),
+    SchemaWarningTestCaseData(
+        name="use_default_filter",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Unit",
+                    default_filter="name__value",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                )
+            ]
+        ),
+        warnings=[
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestUnit")],
+                message="default_filter is deprecated",
+            )
+        ],
+    ),
+    SchemaWarningTestCaseData(
+        name="use_default_filter_and_display_labels",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Unit",
+                    default_filter="name__value",
+                    display_labels=["name__value"],
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                )
+            ]
+        ),
+        warnings=[
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestUnit")],
+                message="display_labels are deprecated, use display_label instead",
+            ),
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestUnit")],
+                message="default_filter is deprecated",
+            ),
+        ],
+    ),
+    SchemaWarningTestCaseData(
+        name="use_min_max_length_on_attribute",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Ticket",
+                    attributes=[AttributeSchema(name="name", kind="Text", min_length=1, max_length=40)],
+                )
+            ]
+        ),
+        warnings=[
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestTicket", field="name")],
+                message="Use of 'max_length' on attributes is deprecated, use parameters instead",
+            ),
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind="TestTicket", field="name")],
+                message="Use of 'min_length' on attributes is deprecated, use parameters instead",
+            ),
+        ],
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in SCHEMA_WARNING_TESTCASES],
+)
+async def test_schema_warnings(
+    test_case: SchemaWarningTestCaseData,
+) -> None:
+    """Validate that the expected warnings show up for each schema."""
+    assert test_case.schema.gather_warnings() == test_case.warnings
 
 
 def test_schema_root_no_generic():
@@ -144,7 +260,6 @@ async def test_node_schema_generate_fields_for_display_label_with_generic(defaul
     schema_root = SchemaRoot(generics=[generic_schema], nodes=[node_schema_1, node_schema_2])
     registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-
     generic_display_label = schema_branch.generate_fields_for_display_label(name="TestThingGeneric")
     assert generic_display_label == {"name": {"value": None}, "height": {"value": None}}
 

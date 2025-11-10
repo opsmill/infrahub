@@ -1,6 +1,6 @@
-import { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
+import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { GenericRelationshipField } from "./generic-relationship.field";

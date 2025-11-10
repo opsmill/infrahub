@@ -4,8 +4,8 @@ import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
-import { NodeFormProps } from "@/shared/components/form/node-form";
-import { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import type { NodeFormProps } from "@/shared/components/form/node-form";
+import type { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";

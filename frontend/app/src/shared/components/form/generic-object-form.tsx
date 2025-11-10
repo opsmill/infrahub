@@ -2,9 +2,9 @@ import { useState } from "react";
 
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { GenericSelector } from "@/shared/components/form/generic-selector";
-import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
+import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 
-import { GenericSchema } from "@/entities/schema/types";
+import type { GenericSchema } from "@/entities/schema/types";
 
 interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {
   genericSchema: GenericSchema;

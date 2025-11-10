@@ -1,5 +1,5 @@
 import {
-  GetNextIPAddressAvailableFromApiParams,
+  type GetNextIPAddressAvailableFromApiParams,
   getNextIpAddressAvailableFromApi,
 } from "@/entities/ipam/ip-addresses/api/get-next-ip-address-available-from-api";
 

@@ -145,6 +145,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         updated_schema.pop("uniqueness_constraints", None)
         updated_schema.pop("order_by", None)
         updated_schema.pop("display_labels", None)
+        updated_schema["display_label"] = "{{ tax_id__value }}"
         return updated_schema
 
     @pytest.fixture(scope="class")
@@ -237,7 +238,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step02_check_more_fields(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_02
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_02], branch=branch_1.name)
         assert success, response.get("errors") if response else None
         assert response == {
@@ -259,6 +260,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                             },
                             "uniqueness_constraints": None,
                             "order_by": None,
+                            "display_label": None,
                             "display_labels": None,
                         },
                         "removed": {},
@@ -266,6 +268,13 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingPerson", "field": None}],
+                    "message": "display_labels are deprecated, use display_label instead",
+                }
+            ],
         }
 
     async def test_step02_load_more_fields(
@@ -345,6 +354,13 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingPerson", "field": None}],
+                    "message": "display_labels are deprecated, use display_label instead",
+                }
+            ],
         }
 
     async def test_step03_load_unique_fields(
@@ -390,6 +406,9 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             if attr_dict["name"] == "real_name":
                 attr_dict["id"] = attr.id
 
+        # Update the display label since the old one is invalid now
+        schema_step_04["nodes"][0]["display_label"] = "real_name__value"
+
         success, response = await client.schema.check(schemas=[schema_step_04], branch=branch_1.name)
         assert success, response.get("errors") if response else None
         assert response == {
@@ -414,6 +433,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                             },
                             "human_friendly_id": None,
                             "uniqueness_constraints": None,
+                            "display_label": None,
                             "display_labels": None,
                             "order_by": None,
                         },
@@ -422,6 +442,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step04_load_renamed_fields(
@@ -462,7 +483,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step05_check_remove_original_unique(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_05
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_05], branch=branch_1.name)
         assert success, response.get("errors") if response else None
         assert response == {
@@ -487,6 +508,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                             },
                             "human_friendly_id": None,
                             "uniqueness_constraints": None,
+                            "display_label": None,
                             "display_labels": None,
                             "order_by": None,
                         },
@@ -495,6 +517,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step05_load_remove_original_unique(
@@ -562,6 +585,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step06_load_remove_unique_attr_from_generic(

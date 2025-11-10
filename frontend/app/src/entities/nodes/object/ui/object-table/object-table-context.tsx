@@ -1,11 +1,15 @@
+import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
-import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import { QSP } from "@/config/qsp";
 
-import { useSchemaSelectedInObjectTable } from "@/entities/nodes/object/ui/object-table/hooks/use-schema-selected-in-object-table";
-import { Permission } from "@/entities/permission/types";
+import useFilters, { type Filter, FilterSchema } from "@/shared/hooks/useFilters";
+
+import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
-import { ModelSchema } from "@/entities/schema/types";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import type { ModelSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export type ObjectTableContextProps = {
   filters: Filter[];
@@ -24,8 +28,45 @@ export const ObjectTableProvider = ({
   children?: React.ReactNode;
   schema: ModelSchema;
 }) => {
-  const [filters, setFilters] = useFilters();
-  const selectedSchema = useSchemaSelectedInObjectTable(schema);
+  const [, setFilters] = useFilters();
+  const [{ filters, kind: kindInQsp }, setObjectTableQueryParams] = useQueryStates(
+    {
+      [QSP.KIND]: parseAsString,
+      [QSP.FILTER]: parseAsJson(FilterSchema).withDefault([]),
+    },
+    { history: "push" }
+  );
+
+  React.useEffect(() => {
+    if (!kindInQsp) return;
+    if (window.location.pathname === "/schema") {
+      // nuqs updates faster than React router QSP. If navigating to another route using "kind" QSP, it'll update it here 1st.
+      return;
+    }
+    if (!isGenericSchema(schema) || !schema.used_by?.find((kind) => kind === kindInQsp)) {
+      setObjectTableQueryParams({ kind: null });
+    }
+  }, [kindInQsp, schema.hash]);
+
+  const selectedSchema = React.useMemo<ModelSchema>(() => {
+    if (!isGenericSchema(schema)) return schema;
+
+    if (schema.used_by?.length === 1) {
+      const singleInheritingKind = schema.used_by[0] as string;
+      const { schema: schemaOfSingleInheritingKind } = getSchema(singleInheritingKind);
+      if (schemaOfSingleInheritingKind) return schemaOfSingleInheritingKind;
+    }
+
+    if (!kindInQsp) return schema;
+
+    const inheritingKindInQsp = schema.used_by?.find((kind) => kind === kindInQsp);
+    if (!inheritingKindInQsp) return schema;
+
+    const { schema: schemaOfInheritingKindInQsp } = getSchema(inheritingKindInQsp);
+    if (!schemaOfInheritingKindInQsp) return schema;
+
+    return schemaOfInheritingKindInQsp;
+  }, [kindInQsp, schema.hash]);
 
   return (
     <RequireObjectPermissions objectKind={schema.kind as string}>

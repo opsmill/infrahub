@@ -3,7 +3,7 @@ import { Icon } from "@iconify-icon/react";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
-import { EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/types";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
 

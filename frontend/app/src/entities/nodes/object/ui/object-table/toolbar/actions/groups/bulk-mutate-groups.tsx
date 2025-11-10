@@ -2,13 +2,13 @@ import React from "react";
 
 import {
   ProcessingGroupsPanel,
-  ProcessingGroupsPanelProps,
+  type ProcessingGroupsPanelProps,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/processing-groups-panel";
 import { SelectedGroupsPanel } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/selected-groups-panel";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import {
   RelationshipComboboxList,
-  RelationshipComboboxListProps,
+  type RelationshipComboboxListProps,
 } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 
 export interface BulkMutateGroupsProps extends Omit<ProcessingGroupsPanelProps, "selectedGroups"> {

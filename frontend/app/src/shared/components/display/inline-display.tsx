@@ -1,4 +1,4 @@
-import { ReactElement, useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";

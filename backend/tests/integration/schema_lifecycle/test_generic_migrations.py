@@ -596,6 +596,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step02_load_schema_with_overrides(
@@ -787,6 +788,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step03_load_schema_with_deleted_override(
@@ -942,6 +944,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step04_load_schema_with_updated_generic_weight(
@@ -1170,6 +1173,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step05_load_schema_with_generic_deletes(
@@ -1331,6 +1335,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step06_load_schema_with_override_deletes(

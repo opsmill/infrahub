@@ -1,6 +1,4 @@
 ---
-schemas:
-  - schemas/demo_edge_fabric.yml
 
 jinja2_transforms:
   - name: "device_startup"

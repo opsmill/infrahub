@@ -3,8 +3,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
-import { Permission } from "@/entities/permission/types";
-import { ModelSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 export interface ObjectDetailsProps {
   objectId: string;

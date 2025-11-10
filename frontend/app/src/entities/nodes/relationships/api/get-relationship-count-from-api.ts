@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
+import type { ContextParams } from "@/shared/api/types";
 
 export type getRelationshipCountQueryParams = {
   objectKind: string;

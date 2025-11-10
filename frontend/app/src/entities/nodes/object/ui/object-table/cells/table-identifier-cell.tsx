@@ -1,3 +1,5 @@
+import type { PressEvent } from "react-aria-components";
+
 import { Checkbox } from "@/shared/components/aria/checkbox";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 
@@ -10,7 +12,7 @@ export interface TableIdentifierCellProps {
   objectId: string;
   label: React.ReactNode;
   isSelected?: boolean;
-  onSelectionChange?: (isSelected: boolean) => void;
+  onClickCheckbox?: (e: PressEvent) => void;
 }
 
 export function TableIdentifierCell({
@@ -18,7 +20,7 @@ export function TableIdentifierCell({
   objectId,
   label,
   isSelected,
-  onSelectionChange,
+  onClickCheckbox,
 }: TableIdentifierCellProps) {
   const { isAuthenticated } = useAuth();
   return (
@@ -26,7 +28,7 @@ export function TableIdentifierCell({
       {isAuthenticated && (
         <Checkbox
           isSelected={isSelected}
-          onChange={onSelectionChange}
+          onPress={onClickCheckbox}
           data-testid="identifier-checkbox-cell"
         />
       )}

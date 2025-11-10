@@ -1,7 +1,7 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
-import { DiffTree, DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
-import { PaginationParams } from "@/shared/api/types";
+import type { DiffTree, DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
+import type { PaginationParams } from "@/shared/api/types";
 
 import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
 

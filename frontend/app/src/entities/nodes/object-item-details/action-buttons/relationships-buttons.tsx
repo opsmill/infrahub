@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -14,15 +14,15 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
-import { SelectOption } from "@/shared/components/inputs/select-old";
+import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
-import { Permission } from "@/entities/permission/types";
+import type { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface RelationshipsButtonsProps {
@@ -40,7 +40,7 @@ export function RelationshipsButtons({
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
-  const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
+  const [relationshipTab] = useQueryState(QSP.TAB);
 
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);

@@ -12,6 +12,7 @@ from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.component.registry import ComponentDependencyRegistry
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
@@ -98,7 +99,7 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
             ),
             call(
                 workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
-                parameters={"branch": target_branch_name},
+                parameters={"branch": target_branch_name, "source": GeneratorDefinitionRunSource.MERGE},
                 context=context,
             ),
             call(

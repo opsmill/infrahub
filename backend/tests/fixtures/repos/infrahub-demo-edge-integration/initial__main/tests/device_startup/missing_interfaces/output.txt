@@ -1,0 +1,121 @@
+!
+no aaa root
+!
+username admin privilege 15 role network-admin secret sha512 $6$q4ez.aZgB/G/eeWW$ukvRobb5RtYmUlCcY0atxhwPmA6FPoRjR3AxYFJqNFoCRgJjrohKGrBsbY12n1uRZeCer1L8oejx5aPlrf.op0
+!
+transceiver qsfp default-mode 4x10G
+!
+service routing protocols model multi-agent
+!
+hostname atl-spine1
+ip name-server 8.8.8.8
+!
+ntp server pool.ntp.org
+!
+spanning-tree mode mstp
+!
+management api http-commands
+   no shutdown
+!
+management api gnmi
+   transport grpc default
+!
+management api netconf
+   transport ssh default
+!
+interface Ethernet1
+   description role: transit
+   ip address 203.0.113.1/29
+   no switchport
+!
+interface Ethernet10
+   description role: spare
+!
+interface Ethernet11
+   description role: server
+!
+interface Ethernet12
+   description role: server
+!
+interface Ethernet2
+   description role: transit
+   ip address 203.0.113.9/29
+   no switchport
+!
+interface Ethernet3
+   description Connected to atl-leaf1 Ethernet3
+   ip ospf area 1
+   ip ospf network point-to-point
+!
+interface Ethernet4
+   description Connected to atl-leaf2 Ethernet3
+   ip ospf area 1
+   ip ospf network point-to-point
+!
+interface Ethernet5
+   description Connected to atl-leaf3 Ethernet3
+   ip ospf area 1
+   ip ospf network point-to-point
+!
+interface Ethernet6
+   description Connected to atl-leaf4 Ethernet3
+   ip ospf area 1
+   ip ospf network point-to-point
+!
+interface Ethernet7
+   description role: spare
+!
+interface Ethernet8
+   description role: spare
+!
+interface Ethernet9
+   description role: spare
+!
+!
+interface Management0
+   description role: management
+   ip address 172.100.100.23/24
+   no shutdown
+!
+interface Loopback0
+   description role: loopback
+   ip address 10.0.0.7/32
+   no shutdown
+!
+ip prefix-list BOGON-Prefixes seq 10 permit 172.16.0.0/12 le 24
+ip prefix-list BOGON-Prefixes seq 20 permit 192.168.0.0/16 le 24
+ip prefix-list BOGON-Prefixes seq 10 permit 172.16.0.0/12 le 24
+ip prefix-list BOGON-Prefixes seq 20 permit 192.168.0.0/16 le 24
+!
+ip routing
+!
+ip route 0.0.0.0/0 172.20.20.1
+!
+router bgp 64496
+   router-id 10.0.0.7
+   neighbor IX_DEFAULT peer group
+   neighbor POP_GLOBAL peer group
+   neighbor POP_INTERNAL peer group
+   neighbor POP_INTERNAL remote-as 64496
+   neighbor TRANSIT_DEFAULT peer group
+   neighbor TRANSIT_TELIA peer group
+   neighbor TRANSIT_TELIA remote-as 1299
+   neighbor 10.0.0.3 peer group POP_INTERNAL
+   neighbor 10.0.0.4 peer group POP_INTERNAL
+   neighbor 10.0.0.5 peer group POP_INTERNAL
+   neighbor 10.0.0.6 peer group POP_INTERNAL
+!
+!
+router ospf 1
+   router-id 10.0.0.7
+   redistribute connected
+   max-lsa 12000
+   passive-interface Loopback0
+   network 0.0.0.0/0 area 0.0.0.0
+!
+route-map BOGONS permit 10
+   match ip address prefix-list BOGON-Prefixes
+!
+route-map BOGONS deny 20
+!
+end

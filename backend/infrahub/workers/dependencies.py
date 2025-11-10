@@ -35,7 +35,9 @@ def get_component_type() -> ComponentType:
 
 
 def build_client() -> InfrahubClient:
-    client = InfrahubClient(config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True))
+    client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
+    client_config.set_ssl_context(context=get_http().verify_tls())
+    client = InfrahubClient(config=client_config)
     # Populate client schema cache using our internal schema cache
     if registry.schema:
         for branch in registry.schema.get_branches():

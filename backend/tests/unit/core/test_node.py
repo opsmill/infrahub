@@ -213,6 +213,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == "John"
+    assert await obj.get_display_label(db=db) == "John"
+    assert not obj.has_display_label()
 
     # Display Labels with 2 attributes
     schema_01["display_labels"] = ["firstname__value", "age__value"]
@@ -222,6 +224,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == "John 99"
+    assert await obj.get_display_label(db=db) == "John 99"
+    assert not obj.has_display_label()
 
     # Empty Display Label
     schema_01["display_labels"] = []
@@ -231,6 +235,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
     assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
+    assert await obj.get_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
+    assert not obj.has_display_label()
 
     # Display Labels with an ENUM String
     schema_01["display_labels"] = ["firstname__value", "color__value"]
@@ -240,6 +246,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, color="red")
     assert await obj.render_display_label(db=db) == "John red"
+    assert await obj.get_display_label(db=db) == "John red"
+    assert not obj.has_display_label()
 
     # Display Labels with an ENUM Number
     schema_01["display_labels"] = ["firstname__value", "height__value"]
@@ -249,6 +257,54 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99, height=180)
     assert await obj.render_display_label(db=db) == "John 180"
+    assert await obj.get_display_label(db=db) == "John 180"
+    assert not obj.has_display_label()
+
+
+@pytest.mark.parametrize(
+    "display_label,expected",
+    [
+        ("firstname__value", "John"),
+        ("{{ firstname__value }} {{ age__value }}", "John 99"),
+        ("{{ firstname__value }} {{ color__value.value }}", "John red"),
+        ("color__value", "red"),
+        ("{{ firstname__value }} {{ height__value.value }}", "John 170"),
+        ("height__value", "170"),
+    ],
+)
+async def test_display_label(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, display_label: str, expected: str
+):
+    schema_01 = {
+        "name": "Display",
+        "namespace": "Test",
+        "display_label": display_label,
+        "attributes": [
+            {"name": "firstname", "kind": "Text"},
+            {"name": "lastname", "kind": "Text"},
+            {"name": "age", "kind": "Number"},
+            {"name": "color", "kind": "Text", "enum": ["blue", "red"], "default_value": "red"},
+            {"name": "height", "kind": "Number", "enum": [170, 180], "default_value": 170},
+        ],
+    }
+
+    kind = f"{schema_01['namespace']}{schema_01['name']}"
+    registry.schema.set(name=kind, schema=NodeSchema(**schema_01))
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    node_schema = registry.schema.get_node_schema(name=kind, duplicate=False)
+
+    obj = await Node.init(db=db, schema=node_schema)
+    await obj.new(db=db, firstname="John", lastname="Doe", age=99)
+    await obj.save(db=db)
+
+    assert obj.has_display_label()
+    assert await obj.get_display_label(db=db) == expected
+
+    obj = await NodeManager.get_one(db=db, kind=node_schema.kind, id=obj.id)
+
+    assert obj.has_display_label()
+    assert await obj.get_display_label(db=db) == expected
 
 
 async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
@@ -262,6 +318,18 @@ async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_sche
     dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
     await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
     await dog1.save(db=db)
+
+    assert dog1.has_human_friendly_id()
+
+    assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
+    assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
+
+    assert await dog1.get_hfid_as_string(db=db) == "Jack__Rocky"
+    assert await dog1.get_hfid_as_string(db=db, include_kind=True) == "TestDog__Jack__Rocky"
+
+    dog1 = await NodeManager.get_one(db=db, kind=dog_schema.kind, id=dog1.id)
+
+    assert dog1.has_human_friendly_id()
 
     assert await dog1.get_hfid(db=db) == ["Jack", "Rocky"]
     assert await dog1.get_hfid(db=db, include_kind=True) == ["TestDog", "Jack", "Rocky"]
@@ -878,22 +946,57 @@ async def test_node_update_local_attrs_with_flags(db: InfrahubDatabase, default_
     assert obj3.level.is_visible is False
 
 
-async def test_node_update_local_attrs_with_source(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account, second_account
+async def test_node_update_local_attrs_with_metadata(
+    db: InfrahubDatabase, criticality_schema, first_account, second_account, branch: Branch
 ):
-    obj1 = await Node.init(db=db, schema=criticality_schema)
-    await obj1.new(db=db, name="low", level=4, _source=first_account)
+    obj1 = await Node.init(db=db, branch=branch, schema=criticality_schema)
+    await obj1.new(db=db, name="low", level=4)
+    obj1.name.source = first_account
     await obj1.save(db=db)
 
-    obj2 = await NodeManager.get_one(id=obj1.id, include_source=True, db=db)
+    obj2 = await NodeManager.get_one(id=obj1.id, include_source=True, db=db, branch=branch)
+    assert obj2.name.value == "low"
+    assert obj2.name.source_id == first_account.id
+    assert obj2.name.owner_id is None
+    assert obj2.name.is_visible is True
+    assert obj2.name.is_protected is False
+    # make sure that source can be set when not included in get request
+    obj2 = await NodeManager.get_one(id=obj1.id, db=db, branch=branch)
+    assert obj2.name.value == "low"
+    assert obj2.name.source_id is None
+    assert obj2.name.owner_id is None
+    assert obj2.name.is_visible is True
+    assert obj2.name.is_protected is False
     obj2.name.source = second_account
+    obj2.name.owner = first_account
+    obj2.name.is_visible = False
+    obj2.name.is_protected = True
     await obj2.save(db=db)
 
-    obj3 = await NodeManager.get_one(id=obj1.id, include_source=True, db=db)
+    obj3 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    assert obj3.name.value == "low"
     assert obj3.name.source_id == second_account.id
+    assert obj3.name.owner_id == first_account.id
+    assert obj3.name.is_visible is False
+    assert obj3.name.is_protected is True
+    # make sure that source can be cleared when not included in get request
+    obj3 = await NodeManager.get_one(id=obj1.id, db=db, branch=branch)
+    assert obj3.name.value == "low"
+    assert obj3.name.source_id is None
+    obj3.name.clear_source()
+    obj3.name.is_visible = True
+    await obj3.save(db=db)
+
+    obj4 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    assert obj4.name.value == "low"
+    assert obj4.name.source_id is None
+    assert obj4.name.owner_id == first_account.id
+    assert obj4.name.is_visible is True
+    assert obj4.name.is_protected is True
 
 
-async def test_update_related_node(db: InfrahubDatabase, default_branch, data_schema):
+@pytest.mark.parametrize("use_branch", [True, False])
+async def test_update_related_node(db: InfrahubDatabase, data_schema, default_branch: Branch, use_branch: bool):
     """
     This test has been written to troubleshoot a specific issue
     where a relationship between 2 nodes was being deleted when one of the node was getting updated.
@@ -933,7 +1036,7 @@ async def test_update_related_node(db: InfrahubDatabase, default_branch, data_sc
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     # ----------------------------------------------------------------
     # Create objects
@@ -951,11 +1054,19 @@ async def test_update_related_node(db: InfrahubDatabase, default_branch, data_sc
     t3 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t3.new(db=db, name="Black", description="The Black tag", person=p1)
     await t3.save(db=db)
+    t4 = await Node.init(db=db, schema=InfrahubKind.TAG)
+    await t4.new(db=db, name="Blurple", description="The Blurple tag")
+    await t4.save(db=db)
+
+    if use_branch:
+        branch = await create_branch(branch_name="branch1", db=db)
+    else:
+        branch = default_branch
 
     # ----------------------------------------------------------------
     # Query all tags attached to person
     # ----------------------------------------------------------------
-    p11 = await NodeManager.get_one(db=db, id=p1.id)
+    p11 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
     tags = await p11.tags.get(db=db)
     assert len(tags) == 3
 
@@ -963,16 +1074,73 @@ async def test_update_related_node(db: InfrahubDatabase, default_branch, data_sc
     # Update the description of Tag1 in the main branch
     # ----------------------------------------------------------------
     new_description = "New description in main"
-    t11 = await NodeManager.get_one(db=db, id=t1.id)
+    t11 = await NodeManager.get_one(db=db, branch=branch, id=t1.id)
     t11.description.value = new_description
     await t11.save(db=db)
 
     # ----------------------------------------------------------------
     # Re-query the tag via the related objects to validate that everything is still connected
     # ----------------------------------------------------------------
-    p12 = await NodeManager.get_one(db=db, id=p1.id)
+    p12 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
     tags = await p12.tags.get(db=db)
     assert len(tags) == 3
+
+    # ----------------------------------------------------------------
+    # Update the properties and flags of one of the tag relationships
+    # ----------------------------------------------------------------
+    p13 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
+    tag_rels = await p13.tags.get_relationships(db=db)
+    t1_tag_rel = [tag_rel for tag_rel in tag_rels if tag_rel.peer_id == t1.id]
+    assert len(t1_tag_rel) == 1
+    t1_tag_rel[0].source = t2
+    t1_tag_rel[0].owner = t3
+    t1_tag_rel[0].is_visible = False
+    t1_tag_rel[0].is_protected = True
+    await p13.save(db=db)
+    p14 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
+    tag_rels = await p14.tags.get_relationships(db=db)
+    t1_tag_rel = [tag_rel for tag_rel in tag_rels if tag_rel.peer_id == t1.id]
+    assert len(t1_tag_rel) == 1
+    t1_source = await t1_tag_rel[0].get_source(db=db)
+    assert t1_source.get_id() == t2.id
+    t1_owner = await t1_tag_rel[0].get_owner(db=db)
+    assert t1_owner.get_id() == t3.id
+    assert t1_tag_rel[0].is_visible is False
+    assert t1_tag_rel[0].is_protected is True
+
+    # ----------------------------------------------------------------
+    # Update and clear the properties and flags
+    # ----------------------------------------------------------------
+    t1_tag_rel[0].source = t3
+    t1_tag_rel[0].clear_owner()
+    t1_tag_rel[0].is_visible = True
+    await p14.save(db=db)
+    p15 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
+    tag_rels = await p15.tags.get_relationships(db=db)
+    t1_tag_rel = [tag_rel for tag_rel in tag_rels if tag_rel.peer_id == t1.id]
+    assert len(t1_tag_rel) == 1
+    t1_source = await t1_tag_rel[0].get_source(db=db)
+    assert t1_source.get_id() == t3.id
+    t1_owner = await t1_tag_rel[0].get_owner(db=db)
+    assert t1_owner is None
+    assert t1_tag_rel[0].is_visible is True
+    assert t1_tag_rel[0].is_protected is True
+
+    # ----------------------------------------------------------------
+    # clear the source node
+    # ----------------------------------------------------------------
+    t1_tag_rel[0].clear_source()
+    await p15.save(db=db)
+    p16 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
+    tag_rels = await p16.tags.get_relationships(db=db)
+    t1_tag_rel = [tag_rel for tag_rel in tag_rels if tag_rel.peer_id == t1.id]
+    assert len(t1_tag_rel) == 1
+    t1_source = await t1_tag_rel[0].get_source(db=db)
+    assert t1_source is None
+    t1_owner = await t1_tag_rel[0].get_owner(db=db)
+    assert t1_owner is None
+    assert t1_tag_rel[0].is_visible is True
+    assert t1_tag_rel[0].is_protected is True
 
 
 # --------------------------------------------------------------------------

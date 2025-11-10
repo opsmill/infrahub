@@ -13,7 +13,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
-import { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/types";
 
 interface Props {
   row: any;

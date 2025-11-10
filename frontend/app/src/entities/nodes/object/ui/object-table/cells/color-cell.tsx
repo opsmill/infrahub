@@ -1,4 +1,4 @@
-import { TextAttribute } from "@/shared/api/graphql/generated/graphql";
+import type { TextAttribute } from "@/shared/api/graphql/generated/graphql";
 
 export function ColorCell({ color }: { color: TextAttribute }) {
   if (!color.value) return "-";

@@ -6,7 +6,7 @@ import { useEffect, useId } from "react";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { ProfileData } from "@/shared/components/form/object-form";
+import type { ProfileData } from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -25,7 +25,7 @@ import { classNames } from "@/shared/utils/common";
 import { getProfiles } from "@/entities/nodes/api/getProfiles";
 import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/types";
 
 type ProfilesSelectorProps = {
   schema: NodeSchema;
@@ -41,12 +41,6 @@ export const ProfilesSelector = ({
   onChange,
 }: ProfilesSelectorProps) => {
   const id = useId();
-
-  useEffect(() => {
-    if (!value && defaultValue) {
-      onChange(defaultValue);
-    }
-  }, [defaultValue]);
 
   const genericSchemas = useAtomValue(genericSchemasAtom);
   const profileSchemas = useAtomValue(profileSchemasAtom);
@@ -96,10 +90,6 @@ export const ProfilesSelector = ({
 
   const { data, error, loading } = useQuery(query);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
-
-  if (error) return <ErrorScreen message={error.message} />;
-
   // Get all profiles name to retrieve the information from the result
   const profilesNameList: string[] = profilesList
     .map((profile) => profile?.name ?? "")
@@ -113,6 +103,26 @@ export const ProfilesSelector = ({
     ],
     []
   );
+
+  useEffect(() => {
+    if (!value && defaultValue && profiles.length && !loading) {
+      const defaultProfiles = defaultValue
+        .map((defaultProfile) => {
+          return profiles.find((profile) => {
+            return profile.id === defaultProfile.id;
+          });
+        })
+        .filter((profile): profile is ProfileData => {
+          return !!profile?.id;
+        });
+
+      onChange(defaultProfiles);
+    }
+  }, [defaultValue, loading, profiles]);
+
+  if (loading) return <LoadingIndicator className="p-4" />;
+
+  if (error) return <ErrorScreen message={error.message} />;
 
   if (!profiles || profiles.length === 0) return null;
 

@@ -1,5 +1,5 @@
 import {
-  CreateAccountTokenFromApiParams,
+  type CreateAccountTokenFromApiParams,
   createAccountTokenFromApi,
 } from "@/entities/user-profile/api/create-account-token-from-api";
 

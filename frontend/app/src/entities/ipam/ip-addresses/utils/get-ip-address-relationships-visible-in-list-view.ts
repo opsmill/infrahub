@@ -1,5 +1,5 @@
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
 export function getIpAddressRelationshipsVisibleInListView(
   relationships: Array<RelationshipSchema>

@@ -1,4 +1,4 @@
-import { BadgeProps } from "@/shared/components/ui/badge";
+import type { BadgeProps } from "@/shared/components/ui/badge";
 
 export const getProposedChangesStateBadgeType = (
   state: string

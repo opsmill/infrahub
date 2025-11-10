@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -88,7 +88,7 @@ async def authenticate_with_password(
     if not valid_credentials:
         raise AuthorizationError("Incorrect password")
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
 
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
@@ -149,7 +149,7 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
                 await group.members.add(db=db, data=account)
                 await group.members.save(db=db)
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
@@ -158,7 +158,7 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
 
 
 def generate_access_token(account_id: str, session_id: uuid.UUID) -> str:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     access_expires = now + timedelta(seconds=config.SETTINGS.security.access_token_lifetime)
     access_data = {
@@ -175,7 +175,7 @@ def generate_access_token(account_id: str, session_id: uuid.UUID) -> str:
 
 
 def generate_refresh_token(account_id: str, session_id: uuid.UUID, expiration: datetime) -> str:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     refresh_data = {
         "sub": account_id,

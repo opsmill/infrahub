@@ -1,10 +1,10 @@
-import { components } from "@/shared/api/rest/types.generated";
-import { ProfileData } from "@/shared/components/form/object-form";
-import {
+import type { components } from "@/shared/api/rest/types.generated";
+import type { ProfileData } from "@/shared/components/form/object-form";
+import type {
   DynamicAttributeFieldProps,
   DynamicDropdownFieldProps,
   DynamicEnumFieldProps,
-  DynamicInputFieldProps,
+  DynamicFieldProps,
   DynamicNumberFieldProps,
   FormFieldValue,
 } from "@/shared/components/form/type";
@@ -12,13 +12,13 @@ import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDef
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
-import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject } from "@/entities/nodes/types";
-import { NumberPool } from "@/entities/resource-manager/domain/type";
+import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { NumberPool } from "@/entities/resource-manager/domain/type";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/utils/get-pool-kind-from-schema";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import {
+import type {
   AttributeKind,
   AttributeSchema,
   ModelSchema,
@@ -53,7 +53,7 @@ export const getFormFieldFromAttribute = ({
 }): DynamicAttributeFieldProps => {
   const attributeData = currentObject?.[attributeSchema.name];
 
-  const basicFormFieldProps: DynamicInputFieldProps = {
+  const basicFormFieldProps: DynamicFieldProps = {
     name: attributeSchema.name,
     label: attributeSchema.label ?? undefined,
     defaultValue: getFieldDefaultValue({

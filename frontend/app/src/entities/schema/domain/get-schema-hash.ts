@@ -1,5 +1,5 @@
 import {
-  GetSchemaSummaryFromApiParams,
+  type GetSchemaSummaryFromApiParams,
   getSchemaSummaryFromApi,
 } from "@/entities/schema/api/get-schema-summary-from-api";
 

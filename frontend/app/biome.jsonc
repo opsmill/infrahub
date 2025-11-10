@@ -139,7 +139,7 @@
         "useEnumInitializers": "off",
         "useExplicitLengthCheck": "off",
         "useFilenamingConvention": "off",
-        "useImportType": "off",
+        "useImportType": "error",
         "useNamingConvention": "off",
         "useNumberNamespace": "off",
         "useSelfClosingElements": "off",

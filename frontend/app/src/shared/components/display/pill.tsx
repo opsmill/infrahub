@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";

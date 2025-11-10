@@ -5,13 +5,13 @@ import { classNames } from "@/shared/utils/common";
 import { isInPreviousYear } from "@/shared/utils/date";
 
 type DateDisplayProps = {
-  date?: number | string | Date;
+  date?: number | string | Date | null;
   hideDefault?: boolean;
   className?: string;
   containerClassName?: string;
 };
 
-export const getDateDisplay = (date?: number | string | Date) =>
+export const getDateDisplay = (date?: number | string | Date | null) =>
   format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
 
 export const DateDisplay = (props: DateDisplayProps) => {

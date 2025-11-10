@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 

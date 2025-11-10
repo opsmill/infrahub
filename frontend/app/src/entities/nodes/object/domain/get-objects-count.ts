@@ -1,5 +1,5 @@
 import {
-  GetObjectsCountFromApiParams,
+  type GetObjectsCountFromApiParams,
   getObjectsCountFromApi,
 } from "@/entities/nodes/object/api/get-objects-count-from-api";
 
