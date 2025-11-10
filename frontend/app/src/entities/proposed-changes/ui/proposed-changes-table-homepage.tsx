@@ -5,7 +5,6 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { classNames } from "@/shared/utils/common";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
-import type { Permission } from "@/entities/permission/types";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
 import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/proposed-change-item-light";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
@@ -15,7 +14,6 @@ import { ProposedChangesTableHeader } from "./proposed-changes-table-header";
 
 type ProposedChangesTableHomepageProps = {
   schema: NodeSchema;
-  permission: Permission;
   className?: string;
 };
 
