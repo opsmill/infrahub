@@ -118,7 +118,7 @@ export const ProfilesSelector = ({
 
       onChange(defaultProfiles);
     }
-  }, [defaultValue, loading, profiles.length]);
+  }, [defaultValue, loading, profiles]);
 
   if (loading) return <LoadingIndicator className="p-4" />;
 
