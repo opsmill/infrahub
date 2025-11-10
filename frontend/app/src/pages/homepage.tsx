@@ -11,7 +11,7 @@ const Homepage = () => {
     <Content className="flex flex-col gap-4 p-4">
       <h1 className="font-semibold text-2xl">Welcome to Infrahub!</h1>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="col-span-2 flex flex-col gap-4">
           <ProposedChanges className="min-h-80" />
 
