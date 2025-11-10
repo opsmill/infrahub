@@ -1,1 +1,0 @@
-Fix initial values in edit form when using profiles on nodes

@@ -11,6 +11,62 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.5.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.0) - 2025-11-10
+
+### Added
+
+- Clean up deadlocks at set intervals controlled by the `INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS` environment variable with a default value of `15` mins ([#1290](https://github.com/opsmill/infrahub/issues/1290))
+- Generate order_weight for generic templates ([#7157](https://github.com/opsmill/infrahub/issues/7157))
+- - Added a "Select All" checkbox on list views that selects all rows currently loaded on the page.
+  - Select multiple rows at once by holding Shift and clicking.
+- Add `InfrahubRecomputeComputedAttribute` GraphQL mutation to trigger computed attribute re-computation on all nodes of a given kind or a subset of nodes given their IDs
+- Add support for updating existing Profiles when the associated node or generic schema is updated to change an attribute's optional or read-only value or when an attribute is added or removed
+- Added a 'warnings' attribute to the API payload for /api/schema/load and /api/schema/check, so that deprecation warnings could be returned for non critical schema violations.
+- Added the name of the artifact definition to the payload of artifact webhook events.
+- Added warnings to API endpoints /api/schema/check and /api/schema/load, as a way to notify schema developers when they use deprecated fields.
+- Allow objects to be converted to another type by mapping fields or defining custom values.
+
+  * For attributes, values from the source object will appear in the target form when the attribute type matches between the source and target schemas.
+  * For dropdowns and enums, if the set of options is identical in both schemas, the selected source value will appear in the target form; otherwise, no value will be shown.
+  * For relationships, linked objects from the source will appear in the target form when the related object type matches between the source and target schemas.
+- Branches list page refreshed:
+
+  - Improved layout for clearer grouping and labels
+  - Better accessibility and full keyboard navigation
+  - New: branch status is now displayed
+
+  Branch details page:
+
+  - Now shows all branch attributes for a complete view.
+  - Added fields: description, status, schema changes, and sync with Git.
+
+### Changed
+
+- Add a new flow to apply migrations inside branches that will also set a `graph_version` property on branches after running. The upgrade process (via the provided command) is also updated with a new `--rebase-branches` flag to trigger branch rebases as part of the upgrade process. Also add the `NEED_UPGRADE_REBASE` branch status to identify branches that need the migrations flow to run.
+
+### Fixed
+
+- Prevent creation of relationships with state `absent` ([#4302](https://github.com/opsmill/infrahub/issues/4302))
+- - In a proposed change, within the diff tree, clicking the arrow now only expands/collapses the tree without also triggering the item itself (and vice versa).
+  - Diff tree and list of changes can be scrolled separately
+
+  ([#5451](https://github.com/opsmill/infrahub/issues/5451))
+- Bugfix to allow updating the node kind to null when creating or updating a webhook ([#6397](https://github.com/opsmill/infrahub/issues/6397))
+- Breaking change: The format of the data payload has been corrected for transform based webhooks so that they are consistend with standard webhooks as well as custom webhooks (without an attached transform). Due to this change any transforms attached to a webhook needs to be updated to account for the new format. ([#6815](https://github.com/opsmill/infrahub/issues/6815))
+- Fixed an issue with resource pools allocating duplicate values on concurrent mutations. ([#7254](https://github.com/opsmill/infrahub/issues/7254))
+- Fix bug in IP address reconciliation that could cause an address to be set as its own parent if the address was created or updated on a branch that was previously merged. ([#7319](https://github.com/opsmill/infrahub/issues/7319))
+- Prevent creation of attributes with state `absent` ([#7353](https://github.com/opsmill/infrahub/issues/7353))
+- Prevent creation of nodes with state `absent` ([#7354](https://github.com/opsmill/infrahub/issues/7354))
+- Fix initial values in edit form when using profiles on nodes
+- Fixed incorrect data diff counter when viewing a branch or proposed changes
+- Improved 401 in UI: parallel queries now share a single refresh token call instead of each triggering their own.
+- Performance improvements thanks to more granular locking on mutations.
+
+### Housekeeping
+
+- Pin click version to 8.2.1.
+- Refactor Generator execution triggered by an action.
+
 ## [Infrahub - v1.4.13](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.13) - 2025-11-06
 
 ### Added
