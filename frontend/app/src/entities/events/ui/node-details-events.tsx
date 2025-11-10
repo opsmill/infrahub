@@ -19,16 +19,18 @@ export const NodeEvents = ({
   parentId,
   objectId,
   objectKind,
+  maxEvent = MAX_EVENTS,
 }: {
   parentId?: string;
   objectId?: string;
   objectKind?: string;
+  maxEvent?: number;
 }) => {
   const { isPending, data, error } = useGetEvents({
     filters: {
       parentIds: parentId ? [parentId] : undefined,
       relatedNodeIds: objectId ? [objectId] : undefined,
-      limit: parentId ? 0 : MAX_EVENTS,
+      limit: parentId ? 0 : maxEvent,
     },
   });
 

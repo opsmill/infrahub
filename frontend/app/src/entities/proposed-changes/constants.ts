@@ -13,6 +13,8 @@ export const DRAFT_STATE = "draft";
 export const CANCEL_STATE = "canceled";
 export const PROPOSED_CHANGE_OBJECT = "CoreProposedChange";
 
+export const STATE_VALUES_FILTER = "state__values";
+
 export const PROPOSED_CHANGE_STATES = {
   opened: [OPEN_STATE, MERGING_STATE],
   closed: [CLOSE_STATE, MERGE_STATE, CANCEL_STATE],

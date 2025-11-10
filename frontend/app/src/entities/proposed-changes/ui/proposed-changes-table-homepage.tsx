@@ -1,35 +1,30 @@
-import { useQueryState } from "nuqs";
 import React from "react";
 import { ListBox } from "react-aria-components";
 
-import { QSP } from "@/config/qsp";
-
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
-import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
+import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
+import { PROPOSED_CHANGE_STATES, STATE_VALUES_FILTER } from "@/entities/proposed-changes/constants";
 import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-proposed-changes.query";
-import { ProposedChangesItem } from "@/entities/proposed-changes/ui/proposed-change-item";
-import { ProposedChangesTableFilters } from "@/entities/proposed-changes/ui/proposed-changes-table-filters";
+import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/proposed-change-item-light";
+import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
-import { computeProposedChangeFilters } from "@/entities/proposed-changes/utils/compute-proposed-change-filters";
 import type { NodeSchema } from "@/entities/schema/types";
 
-type ProposedChangesTableProps = {
+type ProposedChangesTableHomepageProps = {
   schema: NodeSchema;
   className?: string;
 };
 
-export function ProposedChangesTable({ schema, className }: ProposedChangesTableProps) {
-  const [proposedChangeState] = useQueryState(QSP.PROPOSED_CHANGES_STATE);
-
-  const [filters] = useFilters();
-
+export function ProposedChangesTableHomepage({
+  schema,
+  className,
+}: ProposedChangesTableHomepageProps) {
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
     {
       schema,
-      filters: computeProposedChangeFilters({ filters, qsp: proposedChangeState as string }),
+      filters: [{ value: PROPOSED_CHANGE_STATES.opened, name: STATE_VALUES_FILTER }],
     }
   );
 
@@ -39,20 +34,26 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
 
   return (
     <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage} className="h-full">
-      <ProposedChangesTableFilters schema={schema} />
+      <ProposedChangesTableHeader />
 
       <ListBox
-        aria-label="Branches list"
+        aria-label="Proposed changes list"
         items={flatData}
         className={classNames(
           "m-2 flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200",
           className
         )}
       >
-        {(node) => <ProposedChangesItem key={node.id} node={node} />}
+        {(node) => <ProposedChangesItemLight key={node.id} node={node} />}
       </ListBox>
 
-      {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
+      {!isLoading && flatData.length === 0 && (
+        <EmptyHomeCard
+          className="py-20"
+          title={"You don’t have any open proposed changes"}
+          subtitle={"Once you create or review a branch, changes will appear here."}
+        />
+      )}
 
       {isLoading && <ProposedChangesTableSkeleton headerCount={flatData.length} />}
     </InfiniteScroll>

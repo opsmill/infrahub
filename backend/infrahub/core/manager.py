@@ -455,7 +455,7 @@ class NodeManager:
         branch: Branch | str | None = ...,
         id: str | None = ...,
         hfid: list[str] | None = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def find_object(
@@ -466,7 +466,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         id: str | None = None,
         hfid: list[str] | None = None,
-    ) -> Any:
+    ) -> Node | SchemaProtocol:
         if id and is_valid_uuid(id):
             return await cls.get_one(
                 db=db,
@@ -824,14 +824,14 @@ class NodeManager:
         for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
             path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
 
-            if path.is_type_relationship:
+            if path.is_type_relationship and path.related_schema:
                 rel_schema = path.related_schema
                 # Keep the relationship attribute path and parse it
                 path = rel_schema.parse_schema_path(
                     path=key.split("__", maxsplit=1)[1], schema=registry.schema.get_schema_branch(name=branch.name)
                 )
 
-            filters[key] = path.attribute_schema.get_class().deserialize_from_string(item)
+            filters[key] = path.active_attribute_schema.get_class().deserialize_from_string(item)
 
         items = await NodeManager.query(
             db=db,
@@ -1390,7 +1390,7 @@ class NodeManager:
         db: InfrahubDatabase,
         nodes: list[Node],
         branch: Branch | str | None = None,
-        at: Timestamp | str | None = None,
+        at: Timestamp | None = None,
         cascade_delete: bool = True,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
