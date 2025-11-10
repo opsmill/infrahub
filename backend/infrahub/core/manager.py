@@ -467,9 +467,6 @@ class NodeManager:
         id: str | None = None,
         hfid: list[str] | None = None,
     ) -> Any:
-        if not id and not hfid:
-            raise ProcessingError(message="either id or hfid must be provided.")
-
         if id and is_valid_uuid(id):
             return await cls.get_one(
                 db=db,
@@ -494,16 +491,19 @@ class NodeManager:
                 raise_on_error=True,
             )
 
-        return await cls.get_one_by_default_filter(
-            db=db,
-            kind=kind,
-            id=id,
-            branch=branch,
-            at=at,
-            include_owner=True,
-            include_source=True,
-            raise_on_error=True,
-        )
+        if id:
+            return await cls.get_one_by_default_filter(
+                db=db,
+                kind=kind,
+                id=id,
+                branch=branch,
+                at=at,
+                include_owner=True,
+                include_source=True,
+                raise_on_error=True,
+            )
+
+        raise ProcessingError(message="either id or hfid must be provided.")
 
     @overload
     @classmethod
