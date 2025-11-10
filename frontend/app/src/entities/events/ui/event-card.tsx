@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { useLocation } from "react-router";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
@@ -15,8 +16,14 @@ import { NodeEventTitle } from "./node-events/node-event-title";
 import { ProposedChangeEventTitle } from "./proposed-change-events/proposed-change-event-title";
 import { StandardEventTitle } from "./standard-events/standard-event-title";
 
-const getEventComponent = (props: EventType) => {
+const EventContent = (props: EventType) => {
+  const { pathname } = useLocation();
+
   if ("attributes" in props) {
+    if (pathname === "/") {
+      return <NodeEventTitle {...props} />;
+    }
+
     return (
       <>
         <NodeEventTitle {...props} />
@@ -54,13 +61,15 @@ const getEventComponent = (props: EventType) => {
 };
 
 export const EventCard = (props: EventType) => {
+  const { pathname } = useLocation();
+
   return (
     <div className="flex gap-2">
       <TimelineBorder />
 
       <div className="flex grow gap-3 rounded-md border border-gray-200 bg-white p-2 shadow-xs">
         <div className="flex grow flex-col gap-2 text-sm">
-          {getEventComponent(props)}
+          <EventContent {...props} />
 
           <div className="flex justify-between text-gray-500">
             <DateDisplay date={props.occurred_at} />
@@ -74,7 +83,7 @@ export const EventCard = (props: EventType) => {
                 </div>
               )}
 
-              <EventDetailsPopover {...props} />
+              {pathname !== "/" && <EventDetailsPopover {...props} />}
             </div>
           </div>
         </div>
