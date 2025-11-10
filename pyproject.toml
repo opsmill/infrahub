@@ -221,7 +221,6 @@ disable_error_code = [
     "no-untyped-def",
     "return-value",
     "union-attr",
-    "var-annotated",
 ]
 
 [[tool.mypy.overrides]]
