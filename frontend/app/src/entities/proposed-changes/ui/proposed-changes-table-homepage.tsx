@@ -45,9 +45,7 @@ export function ProposedChangesTableHomepage({
           className
         )}
       >
-        {flatData.map((node) => {
-          return <ProposedChangesItemLight key={node.id} node={node} />;
-        })}
+        {(node) => <ProposedChangesItemLight key={node.id} node={node} />}
       </ListBox>
 
       {!isLoading && flatData.length === 0 && (
