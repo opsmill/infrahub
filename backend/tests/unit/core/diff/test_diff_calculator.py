@@ -4271,10 +4271,10 @@ async def test_migrated_kind_with_property_level_changes(
     assert element_diff.peer_id == car_accord_main.id
     properties_by_type = {p.property_type: p for p in element_diff.properties if p.action != DiffAction.UNCHANGED}
     assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_PROTECTED}
-    is_visible_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
-    assert is_visible_prop.action is DiffAction.UPDATED
-    assert is_visible_prop.new_value is True
-    assert is_visible_prop.previous_value is False
+    is_protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert is_protected_prop.action is DiffAction.UPDATED
+    assert is_protected_prop.new_value is True
+    assert is_protected_prop.previous_value is False
 
     # validate person_jane_main migrated
     jane_previous_diff = [n for n in nodes_by_id[person_jane_main.id] if n.action is DiffAction.REMOVED][0]
@@ -4328,10 +4328,10 @@ async def test_migrated_kind_with_property_level_changes(
     assert element_diff.peer_id == person_john_main.id
     properties_by_type = {p.property_type: p for p in element_diff.properties if p.action != DiffAction.UNCHANGED}
     assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_PROTECTED}
-    is_visible_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
-    assert is_visible_prop.action is DiffAction.UPDATED
-    assert is_visible_prop.new_value is True
-    assert is_visible_prop.previous_value is False
+    is_protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert is_protected_prop.action is DiffAction.UPDATED
+    assert is_protected_prop.new_value is True
+    assert is_protected_prop.previous_value is False
 
     # validate car_camry
     car_diffs = nodes_by_id[car_camry_main.id]
