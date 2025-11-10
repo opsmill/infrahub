@@ -50,19 +50,17 @@ Benefit: Eliminates redundant generator runs
 
 Requirement: This feature requires using version 1.15.0 or newer of the Infrahub Python SDK.
 
-
 ## New Infrahub Backup and Restore tool
 
 We are introducing a new tool to ease the backup and restore process of Infrahub.
 
 Infrahub stores critical state for your infrastructure in multiple systems: the Neo4j graph database, the PostgreSQL database that powers the task manager, and external artifact storage. If any piece is lost or corrupted, you can end up with drifted configurations, orphaned tasks, or a completely unusable deployment. Regulatory requirements and business continuity plans often demand auditable recovery procedures, so "having some dumps around" is rarely enough—you need consistent, verifiable recovery points.
 
-The Infrahub Backup & Restore Tool orchestrates backup and restore workflows across deployment targets. It coordinates quiescing and snapshotting services, pulls data out with the right credentials, and packages everything so restores are deterministic. During restore, the tool brings services back in dependency order, reapplies data, and captures logs so you can prove the operation succeeded. 
+The Infrahub Backup & Restore Tool orchestrates backup and restore workflows across deployment targets. It coordinates quiescing and snapshotting services, pulls data out with the right credentials, and packages everything so restores are deterministic. During restore, the tool brings services back in dependency order, reapplies data, and captures logs so you can prove the operation succeeded.
 
 Installation instructions for the `infrahub-backup` tool can be found in the [documentation](https://infrahub-ops-cli.pages.dev/).
 
 At this stage the tool only support Docker Compose based deployments, in the future we will be adding support for other deployment methods, such as Kubernetes.
-
 
 ## Refactor HFID of objects
 
@@ -71,7 +69,6 @@ We’ve refactored how HFIDs are handled internally to improve performance and s
 Previously, HFIDs were computed on-the-fly at read time and were not stored in the database. On objects with many relationships, this could lead to slower queries and higher CPU usage.
 
 With this release, Infrahub now computes the HFID at write time (on create and update) and persists it in the database. Reads no longer need to derive HFIDs dynamically, resulting in faster object retrieval and more predictable query performance.
-
 
 ## Refactor the display_labels of objects
 
@@ -102,7 +99,6 @@ In the documentation you can find specific instructions to migrate existing sche
 
 Today, in some places in the UI, we are using the HFID of objects to display them with useful context. This was mostly done to overcome the restriction of not supporting relationships in the `display_label`. In a future release we will use the `display_label` for this instead.
 
-
 ## Refactor profiles
 
 Profiles have been reworked for performance and future flexibility.
@@ -111,7 +107,6 @@ Previously, attribute values derived from profiles were resolved dynamically at 
 - Attribute values influenced by profiles are now computed and stored at write time (create/update object or profile).
 - Reads no longer have to compute derived values, improving query performance and predictability.
 - This refactor lays groundwork to expand profile capabilities, such as adding relationships to profiles in future versions of Infrahub.
-
 
 ## Memory optimizations
 
@@ -122,9 +117,7 @@ We reduced the memory footprint of the GraphQL schema in multi-branch setups:
 
 This lowers memory consumption and improves runtime efficiency.
 
-
 ## Webhook improvements
-
 
 ### Aligned the format of custom webhooks with the schema of standard webhooks
 
@@ -160,7 +153,6 @@ An example of the format of the event data:
 
 ⚠ !!! ***WARNING** this is a breaking change, existing Python transforms for custom webhooks will need to be adapted to handle this new format.
 
-
 ### Artifact definition name has been added to the webhook payload for artifact events
 
 For artifact events, the webhook payload now includes the artifact definition name.
@@ -172,13 +164,11 @@ Events affected:
 
 This makes it easier to interpret artifacts in downstream systems without additional API queries and simplifies integration with configuration deployment frameworks.
 
-
 ## Web interface improvements
 
 - Bulk select objects in list view — select multiple rows to apply bulk actions more efficiently.
 - Better navigation for large diffs — improvements to the branch and proposed change diff views help you navigate big changes faster.
 - Task list: direct access to related nodes — from each task, you can jump directly to the related nodes for quicker investigation.
-
 
 ## Convert between object types
 
@@ -202,40 +192,32 @@ The following methods have been added to the Infrahub Python SDK:
 
 ![Convert Object Type](https://github.com/user-attachments/assets/d7d6b0ba-867e-4116-94be-8db4e598495b)
 
-
 ## SDK improvements
 
-Version 1.5.0b2 of Infrahub requires the usage of infrahub-sdk version v1.15.0b0, which has been published to [PyPi](https://pypi.org/project/infrahub-sdk/1.15.0b0/).
-
+Version 1.5.0 of Infrahub requires the usage of infrahub-sdk version v1.15.0, which has been published to [PyPi](https://pypi.org/project/infrahub-sdk/1.15.0b0/).
 
 ### Diff based on timestamp
 
 - `create_diff` — manually create a diff between two timestamps on a branch.
 - `get_diff_summary` now accepts start/end timestamps to retrieve that diff.
 
-
 ### Object type conversion
 
 new `convert_object_type` method — converts an object to a different type using field mappings.
-
 
 ### Clearing attribute/relationships of objects
 
 You can clear the value of an optional attribute and a cardinality one relationship of an object via the SDK.
 
-
 ### Support for object file range expansion
 
 Object templates support range expansion on string attributes to generate multiple similar objects more easily (e.g., device interfaces).
 
-
 # Deprecations
-
 
 ## Graphql mutations
 
 `IPPrefixPoolGetResource` and `IPAddressPoolGetResource` have been deprecated in favor of `InfrahubIPPrefixPoolGetResource` and `InfrahubIPAddressPoolGetResource`. The deprecated mutations will be removed in a future release. Please update your integrations accordingly.
-
 
 ## SDK
 
@@ -249,10 +231,9 @@ In the SDK client the `raise_for_error` attribute has been deprecated for the fo
 
 Migrate to try/except for handling errors raised by these methods. The deprecated attribute will be removed in a future release.
 
-
 # Full changelog
 
-### Added
+## Added
 
 - Clean up deadlocks at set intervals controlled by the `INFRAHUB_CACHE_CLEAN_UP_DEADLOCKS_INTERVAL_MINS` environment variable with a default value of `15` mins ([#1290](https://github.com/opsmill/infrahub/issues/1290))
 - Generate order_weight for generic templates ([#7157](https://github.com/opsmill/infrahub/issues/7157))
@@ -266,9 +247,9 @@ Migrate to try/except for handling errors raised by these methods. The deprecate
 - Added warnings to API endpoints /api/schema/check and /api/schema/load, as a way to notify schema developers when they use deprecated fields.
 - Allow objects to be converted to another type by mapping fields or defining custom values.
 
-  * For attributes, values from the source object will appear in the target form when the attribute type matches between the source and target schemas.
-  * For dropdowns and enums, if the set of options is identical in both schemas, the selected source value will appear in the target form; otherwise, no value will be shown.
-  * For relationships, linked objects from the source will appear in the target form when the related object type matches between the source and target schemas.
+  - For attributes, values from the source object will appear in the target form when the attribute type matches between the source and target schemas.
+  - For dropdowns and enums, if the set of options is identical in both schemas, the selected source value will appear in the target form; otherwise, no value will be shown.
+  - For relationships, linked objects from the source will appear in the target form when the related object type matches between the source and target schemas.
 - Branches list page refreshed:
 
   - Improved layout for clearer grouping and labels
@@ -280,16 +261,15 @@ Migrate to try/except for handling errors raised by these methods. The deprecate
   - Now shows all branch attributes for a complete view.
   - Added fields: description, status, schema changes, and sync with Git.
 
-### Changed
+## Changed
 
 - Add a new flow to apply migrations inside branches that will also set a `graph_version` property on branches after running. The upgrade process (via the provided command) is also updated with a new `--rebase-branches` flag to trigger branch rebases as part of the upgrade process. Also add the `NEED_UPGRADE_REBASE` branch status to identify branches that need the migrations flow to run.
 
-### Fixed
+## Fixed
 
 - Prevent creation of relationships with state `absent` ([#4302](https://github.com/opsmill/infrahub/issues/4302))
-- - In a proposed change, within the diff tree, clicking the arrow now only expands/collapses the tree without also triggering the item itself (and vice versa).
+  - In a proposed change, within the diff tree, clicking the arrow now only expands/collapses the tree without also triggering the item itself (and vice versa).
   - Diff tree and list of changes can be scrolled separately
-
   ([#5451](https://github.com/opsmill/infrahub/issues/5451))
 - Bugfix to allow updating the node kind to null when creating or updating a webhook ([#6397](https://github.com/opsmill/infrahub/issues/6397))
 - Breaking change: The format of the data payload has been corrected for transform based webhooks so that they are consistend with standard webhooks as well as custom webhooks (without an attached transform). Due to this change any transforms attached to a webhook needs to be updated to account for the new format. ([#6815](https://github.com/opsmill/infrahub/issues/6815))
@@ -302,24 +282,25 @@ Migrate to try/except for handling errors raised by these methods. The deprecate
 - Performance improvements thanks to more granular locking on mutations.
 - Resolved a problem that caused generator checks to fail when retrying requests
 
-### Housekeeping
+## Housekeeping
 
 - Pin click version to 8.2.1.
 - Refactor Generator execution triggered by an action.
 
-## Migration of an Infrahub instance
+# Migration of an Infrahub instance
 
 Before you upgrade an instance of Infrahub, we strongly advise you to delete branches that are no longer needed within Infrahub. Deleting old branches helps speeding up the upgrade process and to avoid spending time running migrations for branches that are no longer needed.
 
 This process can be used to determine if a branch can be deleted:
+
 - navigate to the branches page in Infrahub
 - for each open branch:
-	- navigate to the branch detail page
-	- refresh the diff from within the data tab
-	- review the data and schema changes in the branch
-	- if the branch is synchronized with your git repository, review the changes in the files tab
-	- review any open proposed changes open for this branch and close or merge the proposed change
-	- delete the branch after the proposed changes have been merged/closed or if the changes are no longer relevant
+  - navigate to the branch detail page
+  - refresh the diff from within the data tab
+  - review the data and schema changes in the branch
+  - if the branch is synchronized with your git repository, review the changes in the files tab
+  - review any open proposed changes open for this branch and close or merge the proposed change
+  - delete the branch after the proposed changes have been merged/closed or if the changes are no longer relevant
 
 **Please** make sure to upgrade any existing installations of the infrahub-sdk to v1.15.0.
 
@@ -337,7 +318,7 @@ Below are some example ways to get the latest version of Infrahub in your enviro
 
 These migrations need to be run on the main branch, and then afterwards the existing branches in Infrahub will need to be rebased, after which the migrations will be run in the branches.
 
-Infrahub provides the `infrahub upgrade` command to start these migrations. 
+Infrahub provides the `infrahub upgrade` command to start these migrations.
 
 Optionally you can instruct the `infrahub upgrade` command to rebase existing branches and to trigger the migrations on the branches using the `--rebase-branches` option. You can use the `--interactive` option together with the `--rebase-branhces` option. In that case the `infrahub upgrade` command will ask you for each branch, whether you want it to be rebased as part of the upgrade.
 
@@ -374,7 +355,7 @@ infrahub upgrade --rebase-branches
 
 **Finally**, restart all instances of Infrahub.
 
-### Migration of a dev or demo instance
+## Migration of a dev or demo instance
 
 If you are using the `dev` or `demo` environments, we have provided `invoke` commands to aid in the migration to the latest version.
 The below examples provide the `demo` version of the commands, however similar commands can be used for `dev` as well.
