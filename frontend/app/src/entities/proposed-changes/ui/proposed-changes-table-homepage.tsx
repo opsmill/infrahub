@@ -24,6 +24,7 @@ export function ProposedChangesTableHomepage({
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
     {
       schema,
+      filters: [{ value: "open", name: "state__value" }],
     }
   );
 
