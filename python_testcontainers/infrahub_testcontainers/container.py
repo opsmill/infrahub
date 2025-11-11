@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 import time
@@ -72,7 +74,10 @@ class InfrahubDockerCompose(DockerCompose):
 
     @classmethod
     def init(
-        cls, directory: Path | None = None, version: str | None = None, deployment_type: str | None = None
+        cls,
+        directory: Path | None = None,
+        version: str | None = None,
+        deployment_type: str | None = None,
     ) -> Self:
         if not directory:
             directory = Path.cwd()
@@ -84,7 +89,11 @@ class InfrahubDockerCompose(DockerCompose):
         if version == "local" and infrahub_image_version:
             version = infrahub_image_version
 
-        compose = cls(project_name=cls.generate_project_name(), context=directory, deployment_type=deployment_type)
+        compose = cls(
+            project_name=cls.generate_project_name(),
+            context=directory,
+            deployment_type=deployment_type,
+        )
         compose.create_docker_file(directory=directory)
         compose.create_env_file(directory=directory, version=version)
 
@@ -240,7 +249,10 @@ class InfrahubDockerCompose(DockerCompose):
         }
 
     def database_create_backup(
-        self, backup_name: str = "neo4j_database.backup", dest_dir: Path | None = None, compress: bool = False
+        self,
+        backup_name: str = "neo4j_database.backup",
+        dest_dir: Path | None = None,
+        compress: bool = False,
     ) -> None:
         assert self.use_neo4j_enterprise
 
@@ -283,7 +295,14 @@ class InfrahubDockerCompose(DockerCompose):
                 self.start_container(service_name=service_name)
 
             self.exec_in_container(
-                command=["cypher-shell", "-u", "neo4j", "-p", "admin", "STOP DATABASE neo4j;"],
+                command=[
+                    "cypher-shell",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "STOP DATABASE neo4j;",
+                ],
                 service_name=service_name,
             )
 
@@ -368,7 +387,14 @@ class InfrahubDockerCompose(DockerCompose):
             time.sleep(10)
 
             self.exec_in_container(
-                command=["cypher-shell", "-u", "neo4j", "-p", "admin", "DROP DATABASE neo4j;"],
+                command=[
+                    "cypher-shell",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "DROP DATABASE neo4j;",
+                ],
                 service_name=service_name,
             )
 
