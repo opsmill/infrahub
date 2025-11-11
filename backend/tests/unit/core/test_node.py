@@ -897,6 +897,58 @@ async def test_node_create_with_object_template(
     )
 
 
+async def test_node_create_user_timestamp_metadata(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
+    # Assume test user id for created_by
+    test_user_id = "user-123"
+
+    # Create object on default branch
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=2)
+    before_create_default = Timestamp()
+    await obj.save(db=db, user_id=test_user_id)
+    after_create_default = Timestamp()
+
+    # validate created object on default branch
+    assert before_create_default < obj.get_created_at() < after_create_default
+    assert obj.get_created_by() == test_user_id
+    assert obj.get_updated_at() == obj.get_created_at()
+    assert obj.get_updated_by() == test_user_id
+
+    # Retrieve node and validate metadata
+    retrieved_obj = await NodeManager.get_one(db=db, id=obj.id, include_metadata=MetadataOptions.USER_TIMESTAMPS)
+    assert retrieved_obj.get_created_at() == obj.get_created_at()
+    assert retrieved_obj.get_created_by() == obj.get_created_by()
+    assert retrieved_obj.get_updated_at() == obj.get_updated_at()
+    assert retrieved_obj.get_updated_by() == obj.get_updated_by()
+
+    # Create a branch and create another object on the branch
+    branch1 = await create_branch(branch_name="branch1", db=db)
+    branch_user_id = "user-456"
+
+    obj_branch = await Node.init(db=db, schema=criticality_schema, branch=branch1)
+    await obj_branch.new(db=db, name="medium", level=3)
+    before_create_branch = Timestamp()
+    await obj_branch.save(db=db, user_id=branch_user_id)
+    after_create_branch = Timestamp()
+
+    # Validate created object on branch
+    assert before_create_branch < obj_branch.get_created_at() < after_create_branch
+    assert obj_branch.get_created_by() == branch_user_id
+    assert obj_branch.get_updated_at() == obj_branch.get_created_at()
+    assert obj_branch.get_updated_by() == branch_user_id
+
+    # Retrieve node from branch and validate metadata
+    retrieved_obj_branch = await NodeManager.get_one(
+        db=db, id=obj_branch.id, branch=branch1, include_metadata=MetadataOptions.USER_TIMESTAMPS
+    )
+    assert retrieved_obj_branch.get_created_at() == obj_branch.get_created_at()
+    assert retrieved_obj_branch.get_created_by() == obj_branch.get_created_by()
+    assert retrieved_obj_branch.get_updated_at() == obj_branch.get_updated_at()
+    assert retrieved_obj_branch.get_updated_by() == obj_branch.get_updated_by()
+
+
 # --------------------------------------------------------------------------
 # Update
 # --------------------------------------------------------------------------

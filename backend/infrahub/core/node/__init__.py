@@ -814,6 +814,8 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
         create_at = Timestamp(at)
         self.set_created_at(create_at)
         self.set_created_by(user_id)
+        self.set_updated_at(create_at)
+        self.set_updated_by(user_id)
 
         if not self._schema.is_schema_node:
             await self.add_human_friendly_id(db=db)
