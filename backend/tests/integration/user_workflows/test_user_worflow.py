@@ -1013,7 +1013,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                 {
                     "name": name,
                     "status": "ADDED",
-                    "num_added": 3,
+                    "num_added": 2,
                     "num_removed": 0,
                     "num_updated": 0,
                     "num_conflicts": 0,

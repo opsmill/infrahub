@@ -796,6 +796,7 @@ async def test_relationship_one_property_branch_update(
     await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": True})
     before_branch_change = Timestamp()
     await car_branch.save(db=db)
+    after_branch_change = Timestamp()
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
@@ -827,6 +828,11 @@ async def test_relationship_one_property_branch_update(
     assert single_relationship.action is DiffAction.UPDATED
     assert len(single_relationship.properties) == 2
     property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_PROTECTED
+    assert property_diff.previous_value is False
+    assert property_diff.new_value is True
+    assert before_branch_change < property_diff.changed_at < after_branch_change
     property_diff = property_diff_by_type[DatabaseEdgeType.IS_RELATED]
     assert property_diff.property_type == DatabaseEdgeType.IS_RELATED
     assert property_diff.previous_value == person_john_main.id
@@ -850,6 +856,11 @@ async def test_relationship_one_property_branch_update(
     assert single_relationship.action is DiffAction.UPDATED
     assert len(single_relationship.properties) == 2
     property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_PROTECTED
+    assert property_diff.previous_value is False
+    assert property_diff.new_value is True
+    assert before_branch_change < property_diff.changed_at < after_branch_change
     property_diff = property_diff_by_type[DatabaseEdgeType.IS_RELATED]
     assert property_diff.property_type == DatabaseEdgeType.IS_RELATED
     assert property_diff.previous_value == car_main.get_id()
@@ -2194,8 +2205,10 @@ async def test_branch_relationship_delete_with_property_update(
     after_branch_change = Timestamp()
 
     dog_main = await NodeManager.get_one(db=db, id=dogs[0].id)
+    before_main_change = Timestamp()
     await dog_main.best_friend.update(db=db, data={"id": persons[0].id, "_relation__is_protected": True})
     await dog_main.save(db=db)
+    after_main_change = Timestamp()
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
@@ -2229,6 +2242,11 @@ async def test_branch_relationship_delete_with_property_update(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
+    is_protected_prop = prop_diff_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert is_protected_prop.action is DiffAction.UPDATED
+    assert is_protected_prop.new_value is True
+    assert is_protected_prop.previous_value is False
+    assert before_main_change < is_protected_prop.changed_at < after_main_change
     diff_prop = prop_diff_by_type[DatabaseEdgeType.IS_RELATED]
     assert diff_prop.action is DiffAction.UNCHANGED
     assert diff_prop.new_value == persons[0].id
@@ -3132,11 +3150,11 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     assert related_prop.action is DiffAction.ADDED
     assert related_prop.previous_value is None
     assert related_prop.new_value == person_alfred_main.id
-    for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, False),):
-        prop_diff = properties_by_type[prop_type]
-        assert prop_diff.action is DiffAction.ADDED
-        assert prop_diff.previous_value is None
-        assert prop_diff.new_value == value
+    prop_type, value = (DatabaseEdgeType.IS_PROTECTED, False)
+    prop_diff = properties_by_type[prop_type]
+    assert prop_diff.action is DiffAction.ADDED
+    assert prop_diff.previous_value is None
+    assert prop_diff.new_value == value
     # john on branch
     node_diff = nodes_by_id[person_john_main.id]
     assert node_diff.kind == "TestPerson"
@@ -3159,11 +3177,11 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     assert related_prop.action is DiffAction.REMOVED
     assert related_prop.previous_value == car_accord_main.id
     assert related_prop.new_value is None
-    for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, False),):
-        prop_diff = properties_by_type[prop_type]
-        assert prop_diff.action is DiffAction.REMOVED
-        assert prop_diff.previous_value == value
-        assert prop_diff.new_value is None
+    prop_type, value = (DatabaseEdgeType.IS_PROTECTED, False)
+    prop_diff = properties_by_type[prop_type]
+    assert prop_diff.action is DiffAction.REMOVED
+    assert prop_diff.previous_value == value
+    assert prop_diff.new_value is None
     # alfred on branch
     node_diff = nodes_by_id[person_alfred_main.id]
     assert node_diff.kind == "TestPerson"
@@ -3186,11 +3204,11 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     assert related_prop.action is DiffAction.ADDED
     assert related_prop.previous_value is None
     assert related_prop.new_value == car_accord_main.id
-    for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, False),):
-        prop_diff = properties_by_type[prop_type]
-        assert prop_diff.action is DiffAction.ADDED
-        assert prop_diff.previous_value is None
-        assert prop_diff.new_value == value
+    prop_type, value = (DatabaseEdgeType.IS_PROTECTED, False)
+    prop_diff = properties_by_type[prop_type]
+    assert prop_diff.action is DiffAction.ADDED
+    assert prop_diff.previous_value is None
+    assert prop_diff.new_value == value
 
 
 async def test_diff_relationship_property_update_on_main(

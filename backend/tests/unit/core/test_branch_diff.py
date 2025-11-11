@@ -589,7 +589,16 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02) -> 
             "c1": {"id": "c1", "labels": ["TestCar", "Node"], "kind": "TestCar"},
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
-        "properties": {},
+        "properties": {
+            "IS_PROTECTED": {
+                "branch": "branch1",
+                "type": "IS_PROTECTED",
+                "path": None,
+                "action": DiffAction.UPDATED,
+                "value": {"previous": False, "new": True},
+                "changed_at": Timestamp(base_dataset_02["time_m20"]),
+            }
+        },
         "changed_at": None,
     }
 

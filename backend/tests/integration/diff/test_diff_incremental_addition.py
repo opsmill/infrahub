@@ -567,12 +567,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert related_prop.new_value is None
         assert related_prop.action is DiffAction.REMOVED
         assert related_prop.conflict is None
-        for prop_type in (DatabaseEdgeType.IS_PROTECTED,):
-            protected_prop = properties_by_type[prop_type]
-            assert protected_prop.previous_value == "True"
-            assert protected_prop.new_value is None
-            assert protected_prop.action is DiffAction.REMOVED
-            assert protected_prop.conflict is None
+        prop_type = DatabaseEdgeType.IS_PROTECTED
+        protected_prop = properties_by_type[prop_type]
+        assert protected_prop.previous_value == "True"
+        assert protected_prop.new_value is None
+        assert protected_prop.action is DiffAction.REMOVED
+        assert protected_prop.conflict is None
 
     async def test_remove_previous_owner_on_main_again(
         self,

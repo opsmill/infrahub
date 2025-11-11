@@ -628,7 +628,7 @@ class TestDiffAndMerge:
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
 
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
-        await car_branch.owner.update(db=db, data={"id": person_john_main.id})
+        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": True})
         await car_branch.save(db=db)
 
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
