@@ -121,9 +121,6 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
 
         raise InitializationError("The node has not been saved yet and doesn't have an id")
 
-    def get_updated_at(self) -> Timestamp | None:
-        return self._updated_at
-
     def get_attribute(self, name: str) -> BaseAttribute:
         attribute = getattr(self, name)
         if not isinstance(attribute, BaseAttribute):
@@ -1020,8 +1017,9 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "_updated_at":
-                if self._updated_at:
-                    response[field_name] = await self._updated_at.to_graphql()
+                updated_at = self.get_updated_at()
+                if updated_at:
+                    response[field_name] = await updated_at.to_graphql()
                 else:
                     response[field_name] = None
                 continue

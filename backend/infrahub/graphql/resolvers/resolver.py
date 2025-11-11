@@ -169,6 +169,10 @@ async def default_paginated_list_resolver(
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
 
+        include_metadata = MetadataOptions.LINKED_NODES
+        if "_updated_at" in node_fields:
+            include_metadata |= MetadataOptions.UPDATED_AT
+
         permission_set: dict[str, Any] | None = None
         permissions = (
             await get_permissions(schema=schema, graphql_context=graphql_context)
@@ -195,7 +199,7 @@ async def default_paginated_list_resolver(
                 limit=limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_metadata=include_metadata,
                 partial_match=partial_match,
                 order=order,
             )

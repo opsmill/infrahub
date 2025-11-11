@@ -1147,10 +1147,10 @@ WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(upda
 
             created_at = None
             created_by = None
-            if self.include_metadata & MetadataOptions.CREATED_AT:
+            if self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.UPDATED_AT):
                 raw_created_at = result.get_as_str(label="created_at")
                 created_at = Timestamp(raw_created_at) if raw_created_at else None
-            if self.include_metadata & MetadataOptions.CREATED_BY:
+            if self.include_metadata & (MetadataOptions.CREATED_BY | MetadataOptions.UPDATED_BY):
                 created_by = result.get_as_str(label="created_by")
             updated_at = None
             updated_by = None
