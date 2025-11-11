@@ -16,11 +16,11 @@ packages = [{ include = "infrahub_testcontainers" }]
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 include = ["infrahub_testcontainers/docker-compose.test.yml", "infrahub_testcontainers/docker-compose-cluster.test.yml", "infrahub_testcontainers/haproxy.cfg", "infrahub_testcontainers/prometheus.yml"]
@@ -33,13 +33,13 @@ infrahub_testcontainers = ["docker-compose.test.yml", "docker-compose-cluster.te
 "pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 
 [tool.poetry.dependencies]
-python = "^3.9, < 3.14"
+python = "^3.10, < 3.15"
 testcontainers = "~4.8"
 psutil = "*"
 pytest = "*"
 httpx = "^0.28.1"
 pydantic = "^2.10.6"
-prefect-client = "3.4.23"
+prefect-client = "3.5.0"
 
 [tool.poetry.group.dev.dependencies]
 rich = "^13.9.4"
