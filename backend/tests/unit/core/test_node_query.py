@@ -1,5 +1,6 @@
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    SYSTEM_USER_ID,
     InfrahubKind,
     MetadataOptions,
     RelationshipDirection,
@@ -25,6 +26,7 @@ from infrahub.core.query.node import (
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.registry import registry
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, get_nodes
 from infrahub.database import InfrahubDatabase
 
@@ -46,7 +48,7 @@ async def test_query_NodeCreateAllQuery(
         owner={"id": obj.id, "_relation__source": first_account},
     )
 
-    query = await NodeCreateAllQuery.init(db=db, node=car)
+    query = await NodeCreateAllQuery.init(db=db, node=car, user_id="abcd")
     await query.execute(db=db)
 
     assert query.get_self_ids()
@@ -58,7 +60,7 @@ async def test_query_NodeCreateAllQuery_iphost(
     obj = await Node.init(db=db, schema="TestAllAttributeTypes", branch=default_branch)
     await obj.new(db=db, ipaddress="10.2.5.2/24")
 
-    query = await NodeCreateAllQuery.init(db=db, node=obj)
+    query = await NodeCreateAllQuery.init(db=db, node=obj, user_id="abcd")
     await query.execute(db=db)
 
     nodes = await get_nodes(db=db, label="AttributeIPHost")
@@ -79,7 +81,7 @@ async def test_query_NodeCreateAllQuery_ipnetwork(
     obj = await Node.init(db=db, schema="TestAllAttributeTypes", branch=default_branch)
     await obj.new(db=db, prefix="10.2.5.0/24")
 
-    query = await NodeCreateAllQuery.init(db=db, node=obj)
+    query = await NodeCreateAllQuery.init(db=db, node=obj, user_id="abcd")
     await query.execute(db=db)
 
     nodes = await get_nodes(db=db, label="AttributeIPNetwork")
@@ -98,11 +100,21 @@ async def test_query_NodeCreateAllQuery_ipnetwork(
 async def test_query_NodeListGetInfoQuery(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ) -> None:
+    right_now = Timestamp()
     ids = [person_john_main.id, person_jim_main.id, person_albert_main.id]
     query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
     await query.execute(db=db)
-    assert len(list(query.get_results_group_by(("n", "uuid")))) == 3
+    assert len(query.results) == 3
+    assert {r.get("node_uuid") for r in query.results} == {person_john_main.id, person_jim_main.id, person_albert_main.id}
 
+    query_with_metadata = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids, include_metadata=MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY | MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY)
+    await query_with_metadata.execute(db=db)
+    async for node in query_with_metadata.get_nodes(db=db, duplicate=False):
+        assert node.node_uuid in ids
+        assert node.created_at < right_now
+        assert node.created_by == SYSTEM_USER_ID
+        assert node.updated_at == node.created_at
+        assert node.updated_by == SYSTEM_USER_ID
 
 async def test_query_NodeListGetInfoQuery_renamed(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
@@ -407,7 +419,7 @@ async def test_query_NodeDeleteQuery(
 ) -> None:
     tags_before = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)
 
-    query = await NodeDeleteQuery.init(db=db, node=tag_blue_main, branch=default_branch)
+    query = await NodeDeleteQuery.init(db=db, node=tag_blue_main, branch=default_branch, user_id="abcd")
     await query.execute(db=db)
 
     tags_after = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)

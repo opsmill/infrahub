@@ -334,7 +334,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if not self.id:
             return None
 
-        return await self._update(at=save_at, db=db)
+        return await self._update(db=db, at=save_at)
 
     async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> AttributeChangelog | None:
         if not self.db_id:

@@ -1156,7 +1156,7 @@ class NodeManager:
 
         # Query all nodes
         query = await NodeListGetInfoQuery.init(
-            db=db, ids=ids, branch=branch, account=account, at=at, branch_agnostic=branch_agnostic
+            db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic, include_metadata=include_metadata
         )
         await query.execute(db=db)
         nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
@@ -1185,7 +1185,6 @@ class NodeManager:
             new_node_data: dict[str, str | AttributeFromDB] = {
                 "db_id": node.node_id,
                 "id": node_id,
-                "updated_at": node.updated_at,
             }
 
             if not node.schema:
@@ -1206,6 +1205,10 @@ class NodeManager:
             node_branch = await registry.get_branch(db=db, branch=node.branch)
             item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
             await item.load(**new_node_data, db=db)
+            item.set_created_at(node.created_at)
+            item.set_created_by(node.created_by)
+            item.set_updated_at(node.updated_at)
+            item.set_updated_by(node.updated_by)
 
             nodes[node_id] = item
 
