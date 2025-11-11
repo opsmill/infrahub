@@ -43,3 +43,9 @@ prefect-client = "3.4.23"
 
 [tool.poetry.group.dev.dependencies]
 rich = "^13.9.4"
+pytest-cov = "7.0.0"
+pytest-xdist = "~3.4"
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"

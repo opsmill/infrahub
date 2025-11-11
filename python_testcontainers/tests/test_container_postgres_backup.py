@@ -54,10 +54,12 @@ def fixture_compose_factory(tmp_path: Path) -> Callable[[], InfrahubDockerCompos
     return _factory
 
 
-def test_task_manager_db_create_backup_creates_archive(compose_factory: Callable[[], InfrahubDockerCompose]) -> None:
+def test_task_manager_db_create_backup_creates_archive(
+    compose_factory: Callable[[], InfrahubDockerCompose],
+) -> None:
     compose = compose_factory()
 
-    result = compose.task_manager_db_create_backup()
+    result = compose.task_manager_create_backup()
 
     assert result.name == "prefect.dump"
     assert result.exists()
@@ -70,7 +72,7 @@ def test_task_manager_db_create_backup_respects_destination(
     compose = compose_factory()
     destination = tmp_path / "exports"
 
-    result = compose.task_manager_db_create_backup(dest_dir=destination)
+    result = compose.task_manager_create_backup(dest_dir=destination)
 
     assert result.parent == destination
     assert result.exists()
@@ -105,7 +107,7 @@ def test_task_manager_db_restore_backup_runs_expected_commands(
     backup_file = tmp_path / "prefect.dump"
     backup_file.write_bytes(b"backup")
 
-    compose.task_manager_db_restore_backup(backup_file)
+    compose.task_manager_restore_backup(backup_file)
 
     assert started_services == ["task-manager-db"]
     assert (compose.external_backup_dir / backup_file.name).exists()
