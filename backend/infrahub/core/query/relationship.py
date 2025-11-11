@@ -871,7 +871,7 @@ class RelationshipGetQuery(RelationshipQuery):
         self.params["branch"] = self.branch.name
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
+            rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )
 
         self.params.update(rels_params)
@@ -954,7 +954,7 @@ class RelationshipGetByIdentifierQuery(Query):
         self.params["at"] = self.at.to_string()
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
+            rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )
         self.params.update(rels_params)
 
