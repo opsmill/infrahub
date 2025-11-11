@@ -625,6 +625,7 @@ SET r.to_user_id = $user_id
         """
         self.add_to_query(query)
 
+
 class NodeCheckIDQuery(Query):
     name = "node_check_id"
 
