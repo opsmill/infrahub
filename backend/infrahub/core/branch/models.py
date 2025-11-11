@@ -445,9 +445,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_range(
-        self, rel_label: list, start_time: Timestamp, end_time: Timestamp
-    ) -> tuple[list, dict]:
+    def get_query_filter_range(self, rel_label: list, start_time: Timestamp, end_time: Timestamp) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
 
