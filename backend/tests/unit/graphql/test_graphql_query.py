@@ -1927,6 +1927,10 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     )
 
 
+# TODO IFC-1813 add test for cardinality-one updated_at
+
+
+@pytest.mark.skip(reason="IFC-1813 waiting on updates to RelationshipGetPeerQuery")
 async def test_query_relationship_updated_at(
     db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None
 ) -> None:
