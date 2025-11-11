@@ -1,4 +1,5 @@
 import { LabelFormField } from "@/shared/components/form/fields/common";
+import { usePreventScrollOnNumberInput } from "@/shared/components/form/fields/usePreventScrollOnNumber";
 import { PoolSelector } from "@/shared/components/form/pool-selector";
 import type { DynamicNumberFieldProps, FormAttributeValue } from "@/shared/components/form/type";
 import {
@@ -23,6 +24,8 @@ const NumberField = ({
   shouldUnregister,
   ...props
 }: NumberFieldProps) => {
+  const numRef = usePreventScrollOnNumberInput();
+
   return (
     <FormField
       key={name}
@@ -36,6 +39,7 @@ const NumberField = ({
         const numberInput = (
           <Input
             {...field}
+            ref={numRef}
             type="number"
             value={(fieldData?.value as number) ?? ""}
             onChange={(event) => {

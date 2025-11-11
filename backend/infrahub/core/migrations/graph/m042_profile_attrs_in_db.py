@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from rich.console import Console
 from rich.progress import Progress
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import get_root_node
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.migrations.shared import MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
@@ -98,7 +97,7 @@ class Migration042(MigrationRequiringRebase):
         return await self._do_execute_for_branch(db=db, branch=branch)
 
     async def _do_execute_for_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
-        console = Console()
+        console = get_migration_console()
         result = MigrationResult()
         await get_or_load_schema_branch(db=db, branch=branch)
 
@@ -111,7 +110,7 @@ class Migration042(MigrationRequiringRebase):
         console.print("done")
 
         node_ids_to_update: set[str] = set()
-        with Progress() as progress:
+        with Progress(console=console) as progress:
             gather_nodes_task = progress.add_task(
                 f"Gathering affected objects for each profile on branch {branch.name}...", total=len(profiles_map)
             )
@@ -121,6 +120,7 @@ class Migration042(MigrationRequiringRebase):
                 node_peers = await node_relationship_manager.get_db_peers(db=db)
                 node_ids_to_update.update(str(peer.peer_id) for peer in node_peers)
                 progress.update(gather_nodes_task, advance=1)
+        console.log(f"Collected nodes impacted by profiles on branch {branch.name}.")
 
         console.print("Identifying nodes with profile updates by branch...", end="")
         get_nodes_with_profile_updates_by_branch_query = await GetNodesWithProfileUpdatesForBranchQuery.init(
@@ -131,7 +131,8 @@ class Migration042(MigrationRequiringRebase):
         console.print("done")
 
         right_now = Timestamp()
-        with Progress() as progress:
+        console.log("Applying profiles to nodes...")
+        with Progress(console=console) as progress:
             apply_task = progress.add_task("Applying profiles to nodes...", total=len(node_ids_to_update))
             applier = self._get_profile_applier(db=db, branch=branch)
             for node_id in node_ids_to_update:
@@ -141,5 +142,6 @@ class Migration042(MigrationRequiringRebase):
                     if updated_field_names:
                         await node.save(db=db, fields=updated_field_names, at=right_now)
                 progress.update(apply_task, advance=1)
+        console.log("Completed applying profiles to nodes.")
 
         return result
