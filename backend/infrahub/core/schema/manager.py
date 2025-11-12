@@ -6,6 +6,7 @@ from cachetools import LRUCache
 from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
 
 from infrahub import lock
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -382,8 +383,7 @@ class SchemaManager(NodeManager):
             ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
             db=db,
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
 
         for item in node.local_attributes:
@@ -466,8 +466,7 @@ class SchemaManager(NodeManager):
                 ids=list(item_ids),
                 db=db,
                 branch=branch,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
         if missing_field_names:
             missing_attrs = await self.query(
@@ -475,16 +474,14 @@ class SchemaManager(NodeManager):
                 branch=branch,
                 schema=attribute_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             missing_rels = await self.query(
                 db=db,
                 branch=branch,
                 schema=relationship_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             items.update({field.id: field for field in missing_attrs + missing_rels})
 

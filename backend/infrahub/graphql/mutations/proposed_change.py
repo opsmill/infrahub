@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     CheckType,
     GlobalPermissions,
     InfrahubKind,
+    MetadataOptions,
     PermissionDecision,
 )
 from infrahub.core.manager import NodeManager
@@ -128,8 +129,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         state = ProposedChangeState(obj.state.value.value)
         state.validate_updatable()
