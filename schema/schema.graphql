@@ -1,5 +1,3 @@
-scalar NonNegativeInt
-
 type AccountGlobalPermissionEdge {
   node: AccountGlobalPermissionNode!
 }
@@ -9407,6 +9405,14 @@ type NodeMutatedEvent implements EventNodeInterface {
   related_nodes: [RelatedNode!]!
   relationships: [InfrahubMutatedRelationship!]!
 }
+
+"""
+A GraphQL scalar type that validates non-negative integer values.
+
+This scalar ensures that values are integers >= 0. It accepts None (null in GraphQL)
+and rejects negative integers by raising ValidationError.
+"""
+scalar NonNegativeInt
 
 type NonRequiredBooleanValueField {
   value: Boolean
