@@ -1022,8 +1022,7 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "_updated_at":
-                updated_at = self.get_updated_at()
-                if updated_at:
+                if updated_at := self.get_updated_at():
                     response[field_name] = await updated_at.to_graphql()
                 else:
                     response[field_name] = None
