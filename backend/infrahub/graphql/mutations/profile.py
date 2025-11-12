@@ -7,6 +7,7 @@ from graphql import GraphQLResolveInfo
 from opentelemetry import trace
 from typing_extensions import Self
 
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import ProfileSchema
 from infrahub.graphql.types.context import ContextInput
@@ -185,7 +186,7 @@ class InfrahubProfilesRefresh(Mutation):
             db=db,
             branch=branch,
             id=str(data.id),
-            include_source=True,
+            include_metadata=MetadataOptions.SOURCE,
             raise_on_error=True,
         )
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)

@@ -5,7 +5,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.constants import DiffAction, MetadataOptions, RelationshipHierarchyDirection, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -260,7 +260,7 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
-        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_source=True)
+        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE)
 
         attr_source = await updated_john.name.get_source(db=db)
         if conflict_selection is ConflictSelection.BASE_BRANCH:
@@ -270,7 +270,9 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_source=True)
+        rolled_back_john = await NodeManager.get_one(
+            db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE
+        )
         attr_source = await rolled_back_john.name.get_source(db=db)
         assert attr_source.id == person_alfred_main.id
         await verify_no_duplicate_paths(db=db)
@@ -317,7 +319,7 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
-        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER)
         owner_rel = await updated_car.owner.get(db=db)
         owner_prop = await owner_rel.get_owner(db=db)
         if conflict_selection is ConflictSelection.BASE_BRANCH:
@@ -337,7 +339,9 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        rolled_back_car = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER
+        )
         owner_rel = await rolled_back_car.owner.get(db=db)
         owner_prop = await owner_rel.get_owner(db=db)
         assert owner_prop.id == person_alfred_main.id
@@ -724,7 +728,9 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        rolled_back_car = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER
+        )
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False

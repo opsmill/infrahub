@@ -7,7 +7,7 @@ import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import config
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.schema import NodeSchema
@@ -101,8 +101,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 kind=cls._meta.schema.kind,
                 id=data.get("id"),
                 branch=branch,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
         if node.get_kind() != InfrahubKind.READONLYREPOSITORY:
             return await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
