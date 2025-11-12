@@ -124,9 +124,11 @@ class TestWorker(TestWorkerInfrahubAsync):
     async def git_global_user_config(self) -> AsyncGenerator[None, None]:
         async def set_git_config(key: str, value: str | None) -> None:
             if value is not None:
-                await asyncio.create_subprocess_exec("git", "config", "--global", key, value)
+                proc = await asyncio.create_subprocess_exec("git", "config", "--global", key, value)
+                await proc.wait()
             else:
-                await asyncio.create_subprocess_exec("git", "config", "--global", "--unset", key)
+                proc = await asyncio.create_subprocess_exec("git", "config", "--global", "--unset", key)
+                await proc.wait()
 
         initial_user_name = config.SETTINGS.git.user_name
         initial_user_email = config.SETTINGS.git.user_email
