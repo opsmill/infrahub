@@ -206,7 +206,7 @@ class Branch(StandardNode):
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> dict[frozenset, str]:
+    def get_branches_and_times_to_query(self, at: Optional[Timestamp] = None) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
 
         at = Timestamp(at)
@@ -227,7 +227,7 @@ class Branch(StandardNode):
 
     def get_branches_and_times_to_query_global(
         self,
-        at: Optional[Union[Timestamp, str]] = None,
+        at: Optional[Timestamp] = None,
         is_isolated: bool = True,
     ) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
@@ -297,7 +297,7 @@ class Branch(StandardNode):
         await super().delete(db=db)
 
     def get_query_filter_relationships(
-        self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
+        self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False
     ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
@@ -360,7 +360,7 @@ class Branch(StandardNode):
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
-        branches_times = self.get_branches_and_times_to_query_global(at=at_str, is_isolated=is_isolated)
+        branches_times = self.get_branches_and_times_to_query_global(at=at, is_isolated=is_isolated)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
             params[f"{pp}branch{idx}"] = list(branch_name)
@@ -382,8 +382,8 @@ class Branch(StandardNode):
     def get_query_filter_relationships_range(
         self,
         rel_labels: list,
-        start_time: Union[Timestamp, str],
-        end_time: Union[Timestamp, str],
+        start_time: Timestamp,
+        end_time: Timestamp,
         include_outside_parentheses: bool = False,
         include_global: bool = False,
     ) -> tuple[list, dict]:
@@ -463,9 +463,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_range(
-        self, rel_label: list, start_time: Union[Timestamp, str], end_time: Union[Timestamp, str]
-    ) -> tuple[list, dict]:
+    def get_query_filter_range(self, rel_label: list, start_time: Timestamp, end_time: Timestamp) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
 

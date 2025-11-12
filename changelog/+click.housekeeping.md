@@ -1,1 +1,0 @@
-Pin click version to 8.2.1.
