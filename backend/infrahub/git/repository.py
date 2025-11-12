@@ -172,7 +172,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
 
         try:
-            if config.SETTINGS.git.use_explicit_merge_commit:
+            if config.SETTINGS.git.allow_explicit_merge_commit:
                 user_name = config.SETTINGS.git.user_name or get_git_user_config(repo)[0]
                 repo.git.merge(commit, "--no-ff", m=f"Merged by Infrahub by {user_name}")
             else:
