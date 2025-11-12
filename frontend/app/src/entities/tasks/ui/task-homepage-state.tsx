@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import ErrorScreen from "@/shared/components/errors/error-screen";
-
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { useGetTasks } from "@/entities/tasks/domain/get-tasks/get-tasks.query";
 import { TaskHomepageCard } from "@/entities/tasks/ui/task-homepage-card";
@@ -23,7 +21,13 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
 
       {isPending && <TaskHomepageCardSkeleton />}
 
-      {error && <ErrorScreen message={error.message} />}
+      {error && (
+        <EmptyHomeCard
+          title="An error occured"
+          subtitle={error.message}
+          className="text-center text-gray-500"
+        />
+      )}
 
       {data?.map((task) => {
         return (
@@ -33,7 +37,7 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
         );
       })}
 
-      {!data?.length && (
+      {!data?.length && !error && (
         <EmptyHomeCard
           title="No tasks"
           subtitle="Tasks will appear here after you start a migration or assign workflow"
