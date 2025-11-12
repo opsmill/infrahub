@@ -8,7 +8,7 @@ import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
 
 interface GetTasksParams extends Omit<GetTasksFromApiParams, "branchName"> {}
 
-export function getTasksQueryOptions(params?: GetTasksFromApiParams) {
+export function getTasksQueryOptions(params: GetTasksFromApiParams) {
   return queryOptions({
     queryKey: [
       ...objectQueryKeys.all,

@@ -48,7 +48,7 @@ export interface GetTasksFromApiParams extends PaginationParams, BranchContextPa
   relatedNodes?: string[];
 }
 
-export const getTasksFromApi = (params?: GetTasksFromApiParams) => {
+export const getTasksFromApi = (params: GetTasksFromApiParams) => {
   return graphqlClient.query({
     query: GET_TASKS,
     variables: params,

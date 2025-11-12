@@ -5,7 +5,7 @@ import {
   getTasksFromApi,
 } from "@/entities/tasks/api/get-tasks-from-api";
 
-export type GetTasks = (params?: GetTasksFromApiParams) => Promise<TaskNode[]>;
+export type GetTasks = (params: GetTasksFromApiParams) => Promise<TaskNode[]>;
 
 export const getTasks: GetTasks = async (params) => {
   const { data } = await getTasksFromApi(params);
