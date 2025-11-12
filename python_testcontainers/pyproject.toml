@@ -1,7 +1,7 @@
 [project]
 name = "infrahub-testcontainers"
 version = "1.5.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [tool.poetry]
 name = "infrahub-testcontainers"
@@ -43,3 +43,9 @@ prefect-client = "3.5.0"
 
 [tool.poetry.group.dev.dependencies]
 rich = "^13.9.4"
+pytest-cov = "7.0.0"
+pytest-xdist = "~3.4"
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
