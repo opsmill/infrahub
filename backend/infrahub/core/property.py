@@ -37,7 +37,7 @@ class FlagPropertyMixin:
     is_visible = True
     is_protected = False
 
-    def _init_flag_property_mixin(self, kwargs: dict | None = None) -> None:
+    def _init_flag_property_mixin(self, kwargs: dict | None) -> None:
         if not kwargs:
             return
 
@@ -52,7 +52,7 @@ class NodePropertyMixin:
     branch: Branch
     at: Timestamp
 
-    def _init_node_property_mixin(self, kwargs: dict | None = None) -> None:
+    def _init_node_property_mixin(self, kwargs: dict | None) -> None:
         for node in self._node_properties:
             setattr(self, f"_{node}", None)
             setattr(self, f"{node}_id", None)

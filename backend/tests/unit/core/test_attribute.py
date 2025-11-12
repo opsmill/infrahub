@@ -550,9 +550,11 @@ async def test_attribute_properties_on_branch(
 
     await verify_no_duplicate_paths(db=db)
 
+
 # TODO: add updated/created_by/at metadata to test
 # TODO: tests for updating value
 # TODO: tests for updating flags
+
 
 async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
