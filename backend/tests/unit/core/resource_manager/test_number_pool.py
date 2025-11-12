@@ -33,14 +33,22 @@ async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: B
     assert ticket2.ticket_id.value == 2
 
     # If a resource is deleted the allocated number should be returned to the pool
-    await ticket2.delete(db=db)
-    recreated_ticket2 = await Node.init(db=db, schema=TICKET.kind)
-    await recreated_ticket2.new(db=db, title="ticket2", ticket_id={"from_pool": {"id": np1.id}})
-    await recreated_ticket2.save(db=db)
-    assert recreated_ticket2.ticket_id.value == 2
+    await ticket1.delete(db=db)
+
+    # Check pool status
+    assert await np1.get_free(db=db, branch=default_branch, limit=3) == [1, 3, 4]
+
+    recreated_ticket1 = await Node.init(db=db, schema=TICKET.kind)
+    await recreated_ticket1.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": np1.id}})
+    await recreated_ticket1.save(db=db)
+    assert recreated_ticket1.ticket_id.value == 1
 
     # Validate methods at the pool level
     assert await np1.get_used(db=db, branch=default_branch) == [1, 2]
+
+    assert await np1.get_free(db=db, branch=default_branch) == [3, 4, 5, 6, 7, 8, 9, 10]
+
+    assert await np1.get_free(db=db, branch=default_branch, limit=3) == [3, 4, 5]
 
 
 async def test_resource_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):

@@ -338,6 +338,71 @@ class NumberPoolGetUsed(Query):
             )
 
 
+class NumberPoolGetFree(Query):
+    name = "number_pool_get_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        pool: CoreNumberPool,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        self.pool = pool
+
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params["pool_id"] = self.pool.get_id()
+        self.params["start_range"] = self.pool.start_range.value
+        self.params["end_range"] = self.pool.end_range.value
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+
+        self.params.update(branch_params)
+        self.params["attribute_name"] = self.pool.node_attribute.value
+
+        query = """
+        MATCH (pool:%(number_pool)s { uuid: $pool_id })-[res:IS_RESERVED]->(av:AttributeValueIndexed)
+        WHERE toInteger(av.value) >= $start_range and toInteger(av.value) <= $end_range
+        CALL (pool, res, av) {
+            MATCH (pool)-[res]->(av)<-[hv:HAS_VALUE]-(attr:Attribute)<-[ha:HAS_ATTRIBUTE]-(n:%(node)s)
+            WHERE
+                n.uuid = res.identifier AND
+                attr.name = $attribute_name AND
+                all(r in [res, hv, ha] WHERE (%(branch_filter)s))
+            ORDER BY res.branch_level DESC, hv.branch_level DESC, ha.branch_level DESC, res.from DESC, hv.from DESC, ha.from DESC
+            RETURN (res.status = "active" AND hv.status = "active" AND ha.status = "active") AS is_active
+            LIMIT 1
+        }
+        WITH av, res, is_active
+        WHERE is_active = True
+        WITH DISTINCT av.value AS used_value
+        ORDER BY toInteger(used_value) ASC
+        WITH [toInteger($start_range - 1)] + collect(used_value) + [toInteger($end_range + 1)] AS nums
+        UNWIND range(0, size(nums)-2) AS i
+        WITH nums[i] AS curr, nums[i+1] AS nxt
+        WHERE nxt > curr + 1
+        WITH collect([x IN range(curr+1, nxt-1) | x]) AS gaps
+        // flatten the list of lists
+        UNWIND gaps AS gap
+        UNWIND gap AS free_number
+        """ % {
+            "branch_filter": branch_filter,
+            "number_pool": InfrahubKind.NUMBERPOOL,
+            "node": self.pool.node.value,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_number as value"]
+        self.order_by = ["value"]
+
+    def iter_results(self) -> Generator[int]:
+        for result in self.results:
+            yield result.get_as_type("value", return_type=int)
+
+
 class NumberPoolSetReserved(Query):
     name = "numberpool_set_reserved"
     type = QueryType.WRITE

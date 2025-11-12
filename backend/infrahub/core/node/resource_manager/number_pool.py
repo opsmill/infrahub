@@ -4,7 +4,12 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPoolGetUsed, NumberPoolSetReserved
+from infrahub.core.query.resource_manager import (
+    NumberPoolGetFree,
+    NumberPoolGetReserved,
+    NumberPoolGetUsed,
+    NumberPoolSetReserved,
+)
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.exceptions import PoolExhaustedError
 
@@ -19,6 +24,8 @@ if TYPE_CHECKING:
 
 
 class CoreNumberPool(Node):
+    _free_number_page_size_factor = 10
+
     def get_attribute_nb_excluded_values(self) -> int:
         """Returns the number of excluded values for the attribute of the number pool."""
 
@@ -46,6 +53,21 @@ class CoreNumberPool(Node):
         await query.execute(db=db)
         used = [result.value for result in query.iter_results()]
         return [item for item in used if item is not None]
+
+    async def get_free(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[int]:
+        """Returns a list of free numbers in the pool."""
+
+        query = await NumberPoolGetFree.init(
+            db=db, branch=branch, pool=self, branch_agnostic=True, limit=limit, offset=offset
+        )
+        await query.execute(db=db)
+        return list(query.iter_results())
 
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
         """Reserve a number in the pool for a specific identifier."""
@@ -85,51 +107,59 @@ class CoreNumberPool(Node):
             return number
 
     async def get_next(self, db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema) -> int:
-        taken = await self.get_used(db=db, branch=branch)
+        parameters = attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None
 
-        next_number = find_next_free(
-            start=self.start_range.value,  # type: ignore[attr-defined]
-            end=self.end_range.value,  # type: ignore[attr-defined]
-            taken=taken,
-            parameters=attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None,
-        )
-        if next_number is None:
-            raise PoolExhaustedError("There are no more values available in this pool.")
+        page_index = 0
+        while True:
+            free = await self.get_free(
+                db=db,
+                branch=branch,
+                offset=page_index * self._free_number_page_size_factor,
+                limit=self._free_number_page_size_factor,
+            )
+            if not free:
+                raise PoolExhaustedError("There are no more values available in this pool.")
 
-        return next_number
+            for num in free:
+                if parameters is None or parameters.is_valid_value(num):
+                    return num
+
+            page_index += 1
 
     async def get_next_many(
         self, db: InfrahubDatabase, quantity: int, branch: Branch, attribute: AttributeSchema
     ) -> list[int]:
-        taken = await self.get_used(db=db, branch=branch)
+        if quantity <= 0:
+            return []
 
         allocated: list[int] = []
+        allocated_set: set[int] = set()
+        page_index = 0
+        page_size = quantity * self._free_number_page_size_factor
+        parameters = attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None
 
-        for _ in range(quantity):
-            next_number = find_next_free(
-                start=self.start_range.value,  # type: ignore[attr-defined]
-                end=self.end_range.value,  # type: ignore[attr-defined]
-                taken=list(set(taken) | set(allocated)),
-                parameters=attribute.parameters
-                if isinstance(attribute.parameters, NumberAttributeParameters)
-                else None,
+        while len(allocated) < quantity:
+            free = await self.get_free(
+                db=db,
+                branch=branch,
+                offset=page_index * page_size,
+                limit=page_size,
             )
-            if next_number is None:
+            if not free:
                 raise PoolExhaustedError(
                     f"There are no more values available in this pool, couldn't allocate {quantity} values, only {len(allocated)} available."
                 )
 
-            allocated.append(next_number)
+            for number in free:
+                if number in allocated_set:
+                    continue
+                if parameters is not None and not parameters.is_valid_value(number):
+                    continue
+                allocated.append(number)
+                allocated_set.add(number)
+                if len(allocated) == quantity:
+                    break
+
+            page_index += 1
 
         return allocated
-
-
-def find_next_free(start: int, end: int, taken: list[int], parameters: NumberAttributeParameters | None) -> int | None:
-    used_set = set(taken)
-
-    for num in range(start, end + 1):
-        if num not in used_set:
-            if parameters is None or parameters.is_valid_value(num):
-                return num
-
-    return None
