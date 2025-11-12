@@ -3,4 +3,4 @@
 - List branches on the landing page, sorted by creation date, with the main branch displayed first.
 - Include the proposed changes, showing only the key details.
 - Show recent activities, displaying only essential information.
-- Add tasks overview to display recent tasks and sort them by state
+- Add tasks overview to display recent tasks and sort them by state.
