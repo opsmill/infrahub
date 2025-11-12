@@ -10,11 +10,7 @@ interface GetTasksParams extends Omit<GetTasksFromApiParams, "branchName"> {}
 
 export function getTasksQueryOptions(params: GetTasksFromApiParams) {
   return queryOptions({
-    queryKey: [
-      ...objectQueryKeys.all,
-      ...tasksQueryKeys.all,
-      ...tasksQueryKeys.states(params?.states),
-    ],
+    queryKey: [...objectQueryKeys.all, ...tasksQueryKeys.all, ...tasksQueryKeys.filters(params)],
     queryFn: () => getTasks(params),
   });
 }
