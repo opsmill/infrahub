@@ -3,7 +3,6 @@ from typing import Any
 
 from aiodataloader import DataLoader
 
-from infrahub.auth import AccountSession
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
@@ -21,7 +20,6 @@ class GetManyParams:
     at: Timestamp | str | None = None
     include_metadata: MetadataOptions = MetadataOptions.NONE
     prefetch_relationships: bool = False
-    account: AccountSession | None = None
     branch_agnostic: bool = False
 
     def __hash__(self) -> int:
@@ -30,7 +28,6 @@ class GetManyParams:
             frozen_fields = to_frozen_set(self.fields)
         timestamp = Timestamp(self.at)
         branch = self.branch.name if isinstance(self.branch, Branch) else self.branch
-        account_id = self.account.account_id if isinstance(self.account, AccountSession) else None
         hash_str = "|".join(
             [
                 str(hash(frozen_fields)),
@@ -38,7 +35,6 @@ class GetManyParams:
                 branch,
                 str(self.include_metadata.value),
                 str(self.prefetch_relationships),
-                str(account_id),
                 str(self.branch_agnostic),
             ]
         )
@@ -61,7 +57,6 @@ class NodeDataLoader(DataLoader[str, Node | None]):
                 branch=self.query_params.branch,
                 include_metadata=self.query_params.include_metadata,
                 prefetch_relationships=self.query_params.prefetch_relationships,
-                account=self.query_params.account,
                 branch_agnostic=self.query_params.branch_agnostic,
             )
         results = []

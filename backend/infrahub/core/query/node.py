@@ -671,10 +671,8 @@ class NodeListGetAttributeQuery(Query):
         ids: list[str],
         fields: dict | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
-        account=None,
         **kwargs,
     ):
-        self.account = account
         self.ids = ids
         self.fields = fields
         self.include_source = MetadataOptions.SOURCE in include_metadata

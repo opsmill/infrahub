@@ -200,7 +200,6 @@ class NodeManager:
             ids=node_ids,
             fields=fields,
             branch=branch,
-            account=account,
             at=at,
             include_metadata=include_metadata,
             db=db,
@@ -897,7 +896,6 @@ class NodeManager:
             include_metadata=include_metadata,
             db=db,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
         )
         if node:
@@ -932,7 +930,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -949,7 +946,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -966,7 +962,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -983,7 +978,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -1000,7 +994,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1017,7 +1010,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1034,7 +1026,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -1051,7 +1042,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1068,7 +1058,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1084,7 +1073,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
         """Return one node based on its ID."""
@@ -1096,7 +1084,6 @@ class NodeManager:
             at=at,
             branch=branch,
             include_metadata=include_metadata,
-            account=account,
             prefetch_relationships=prefetch_relationships,
             db=db,
             branch_agnostic=branch_agnostic,
@@ -1146,7 +1133,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
@@ -1168,7 +1154,6 @@ class NodeManager:
             fields=fields,
             branch=branch,
             include_metadata=include_metadata,
-            account=account,
             at=at,
             branch_agnostic=branch_agnostic,
         )
