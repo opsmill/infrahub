@@ -17,22 +17,22 @@ from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import (
     NULL_VALUE,
+    SYSTEM_USER_ID,
     AttributeDBNodeType,
     BranchSupportType,
     MetadataOptions,
-    RelationshipStatus,
 )
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
     AttributeClearNodePropertyQuery,
-    AttributeGetQuery,
+    AttributeDeleteQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import add_relationship, convert_ip_to_binary_str, update_relationships_to
+from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
 
@@ -326,7 +326,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return data.value
 
-    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None) -> AttributeChangelog | None:
+    async def save(
+        self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
+    ) -> AttributeChangelog | None:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
@@ -334,70 +336,34 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if not self.id:
             return None
 
-        return await self._update(db=db, at=save_at)
+        return await self._update(db=db, user_id=user_id, at=save_at)
 
-    async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> AttributeChangelog | None:
+    async def delete(
+        self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
+    ) -> AttributeChangelog | None:
         if not self.db_id:
             return None
 
         delete_at = Timestamp(at)
+        branch = self.get_branch_based_on_support_type()
 
-        query = await AttributeGetQuery.init(db=db, attr=self)
+        query = await AttributeDeleteQuery.init(db=db, branch=branch, attr=self, user_id=user_id, at=delete_at)
         await query.execute(db=db)
-        results = query.get_results()
+        previous_value = query.get_previous_property_value()
 
-        if not results:
+        if not previous_value:
             return None
 
-        changelog = AttributeChangelog(
+        return AttributeChangelog(
             name=self.name,
             value=None,
-            value_previous=None,
+            value_previous=previous_value,
             kind=self.schema.kind,
         )
 
-        properties_to_delete = []
-        branch = self.get_branch_based_on_support_type()
-
-        # Check all the relationship and update the one that are in the same branch
-        rel_ids_to_update = set()
-        for result in results:
-            if result.get_rel("r2").type == "HAS_VALUE":
-                changelog.value_previous = result.get_node("ap").get("value")
-            properties_to_delete.append((result.get_rel("r2").type, result.get_node("ap").element_id))
-
-            await add_relationship(
-                src_node_id=self.db_id,
-                dst_node_id=result.get_node("ap").element_id,
-                rel_type=result.get_rel("r2").type,
-                branch_name=branch.name,
-                branch_level=branch.hierarchy_level,
-                at=delete_at,
-                status=RelationshipStatus.DELETED,
-                db=db,
-            )
-
-            for rel in result.get_rels():
-                if rel.get("branch") == branch.name:
-                    rel_ids_to_update.add(rel.element_id)
-
-        if rel_ids_to_update:
-            await update_relationships_to(ids=list(rel_ids_to_update), to=delete_at, db=db)
-
-        await add_relationship(
-            src_node_id=self.node.db_id,
-            dst_node_id=self.db_id,
-            rel_type="HAS_ATTRIBUTE",
-            branch_name=branch.name,
-            branch_level=branch.hierarchy_level,
-            at=delete_at,
-            status=RelationshipStatus.DELETED,
-            db=db,
-        )
-
-        return changelog
-
-    async def _update(self, db: InfrahubDatabase, at: Timestamp | None = None) -> AttributeChangelog | None:
+    async def _update(
+        self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None
+    ) -> AttributeChangelog | None:
         """Update the attribute in the database.
 
         Get the current value
@@ -431,9 +397,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             include_metadata=MetadataOptions.LINKED_NODES,
         )
         await query.execute(db=db)
-        current_attr_data, current_attr_result = query.get_result_by_id_and_name(self.node.id, self.name)
-
-        branch = self.get_branch_based_on_support_type()
+        current_attr_data, _ = query.get_result_by_id_and_name(self.node.id, self.name)
 
         changelog = AttributeChangelog(
             name=self.name,
@@ -442,36 +406,28 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             kind=self.schema.kind,
         )
 
+        branch = self.get_branch_based_on_support_type()
+
         # ---------- Update the Value ----------
         if current_attr_data.content != self.to_db():
             # Create the new AttributeValue and update the existing relationship
-            query = await AttributeUpdateValueQuery.init(db=db, attr=self, at=update_at)
+            query = await AttributeUpdateValueQuery.init(db=db, branch=branch, attr=self, user_id=user_id, at=update_at)
             await query.execute(db=db)
 
-            # TODO check that everything went well
-            rel = current_attr_result.get_rel("r2")
-            if rel.get("branch") == branch.name:
-                await update_relationships_to([rel.element_id], to=update_at, db=db)
-
         # ---------- Update the Flags ----------
-        SUPPORTED_FLAGS = (
-            ("is_visible", "isv", "rel_isv"),
-            ("is_protected", "isp", "rel_isp"),
-        )
+        SUPPORTED_FLAGS = ("is_visible", "is_protected")
 
-        for flag_name, _, rel_name in SUPPORTED_FLAGS:
+        for flag_name in SUPPORTED_FLAGS:
             if current_attr_data.flag_properties[flag_name] != getattr(self, flag_name):
                 changelog.add_property(
                     name=flag_name,
                     value_current=getattr(self, flag_name),
                     value_previous=current_attr_data.flag_properties[flag_name],
                 )
-                query = await AttributeUpdateFlagQuery.init(db=db, attr=self, at=update_at, flag_name=flag_name)
+                query = await AttributeUpdateFlagQuery.init(
+                    db=db, branch=branch, attr=self, user_id=user_id, at=update_at, flag_name=flag_name
+                )
                 await query.execute(db=db)
-
-                rel = current_attr_result.get(rel_name)
-                if rel.get("branch") == branch.name:
-                    await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Node Properties ----------
         for prop_name in self._node_properties:
@@ -493,20 +449,26 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if needs_update:
                 query = await AttributeUpdateNodePropertyQuery.init(
-                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=current_prop_id
+                    db=db,
+                    branch=branch,
+                    attr=self,
+                    user_id=user_id,
+                    at=update_at,
+                    prop_name=prop_name,
+                    prop_id=current_prop_id,
                 )
                 await query.execute(db=db)
 
             if needs_clear:
                 query = await AttributeClearNodePropertyQuery.init(
-                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=database_prop_id
+                    db=db,
+                    branch=branch,
+                    attr=self,
+                    user_id=user_id,
+                    at=update_at,
+                    prop_name=prop_name,
                 )
                 await query.execute(db=db)
-
-            # set the to time on the previously active edge
-            rel = current_attr_result.get(f"rel_{prop_name}")
-            if rel and rel.get("branch") == branch.name:
-                await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         if changelog.has_updates:
             return changelog

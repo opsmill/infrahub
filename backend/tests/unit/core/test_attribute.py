@@ -18,7 +18,8 @@ from infrahub.core.attribute import (
     String,
 )
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
@@ -26,6 +27,7 @@ from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 async def test_init(
@@ -472,6 +474,85 @@ async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch
     assert attr._owner is None
     assert attr.owner_id == "yetotheruuid"
 
+
+async def test_attribute_properties_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
+) -> None:
+    # Create a criticality_schema object on the default branch
+    crit_low = await Node.init(db=db, schema=criticality_schema)
+    await crit_low.new(db=db, name="low", level=4)
+    await crit_low.save(db=db)
+
+    # Set the source and owner properties on the object on the default branch
+    crit_low.name.source = first_account
+    crit_low.name.owner = second_account
+    await crit_low.name.save(db=db)
+
+    # Retrieve the object from the database and validate that the source and owner properties are correct
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=default_branch
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.source_id == first_account.id
+    assert refreshed_crit_low.name.owner_id == second_account.id
+
+    # Create a branch
+    branch1 = await create_branch(branch_name="branch1", db=db)
+
+    # Update the source and owner properties on the branch
+    crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch1
+    )
+    crit_low_branch.name.source = second_account
+    crit_low_branch.name.owner = first_account
+    await crit_low_branch.name.save(db=db)
+
+    # Retrieve the object on the branch and validate the source and owner properties
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch1
+    )
+    assert refreshed_crit_low_branch.name.value == "low"
+    assert refreshed_crit_low_branch.name.source_id == second_account.id
+    assert refreshed_crit_low_branch.name.owner_id == first_account.id
+
+    # Delete the source and owner properties on the object on the branch
+    refreshed_crit_low_branch.name.clear_source()
+    refreshed_crit_low_branch.name.clear_owner()
+    await refreshed_crit_low_branch.name.save(db=db)
+
+    # Retrieve the object on the branch and validate the source and owner properties
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch1
+    )
+    assert refreshed_crit_low_branch.name.value == "low"
+    assert refreshed_crit_low_branch.name.source_id is None
+    assert refreshed_crit_low_branch.name.owner_id is None
+
+    # Delete the source and owner properties on the object on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=default_branch
+    )
+    refreshed_crit_low.name.clear_source()
+    refreshed_crit_low.name.clear_owner()
+    await refreshed_crit_low.name.save(db=db)
+
+    # Retrieve the object on the default branch and validate the source and owner properties
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=default_branch
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.source_id is None
+    assert refreshed_crit_low.name.owner_id is None
+
+    await verify_no_duplicate_paths(db=db)
+
+# TODO: add updated/created_by/at metadata to test
+# TODO: tests for updating value
+# TODO: tests for updating flags
 
 async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch) -> None:
     attr_schema = AttributeSchema(name="something", kind="Text")
