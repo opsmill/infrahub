@@ -75,12 +75,15 @@ class AttributeFromDB:
     value: Any
     content: Any
 
-    updated_at: str
-
     branch: str
 
     is_default: bool
     is_from_profile: bool = dataclass_field(default=False)
+
+    updated_at: Timestamp | None = None
+    updated_by: str | None = None
+    created_at: Timestamp | None = None
+    created_by: str | None = None
 
     node_properties: dict[str, AttributeNodePropertyFromDB] = dataclass_field(default_factory=dict)
     flag_properties: dict[str, bool] = dataclass_field(default_factory=dict)
@@ -675,14 +678,107 @@ class NodeListGetAttributeQuery(Query):
     ):
         self.ids = ids
         self.fields = fields
-        self.include_source = MetadataOptions.SOURCE in include_metadata
-        self.include_owner = MetadataOptions.OWNER in include_metadata
-
+        self.include_metadata = include_metadata
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
+
+    @property
+    def _include_source(self) -> bool:
+        return bool(self.include_metadata & MetadataOptions.SOURCE)
+
+    @property
+    def _include_owner(self) -> bool:
+        return bool(self.include_metadata & MetadataOptions.OWNER)
+
+    @property
+    def _include_updated_metadata(self) -> bool:
+        return bool(self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY))
+
+    @property
+    def _include_created_metadata(self) -> bool:
+        return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
+
+    def _add_source_to_query(self, branch_filter_str: str) -> None:
+        source_query = """
+CALL (a) {
+    OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
+    WHERE all(r IN [rel_source] WHERE ( %(branch_filter)s ))
+    RETURN source, rel_source
+    ORDER BY rel_source.branch_level DESC, rel_source.from DESC, rel_source.status ASC
+    LIMIT 1
+}
+WITH *,
+    CASE WHEN rel_source.status = "active" THEN source ELSE NULL END AS source,
+    CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
+        """ % {"branch_filter": branch_filter_str}
+        self.add_to_query(source_query)
+        self.return_labels.extend(["source", "rel_source"])
+
+    def _add_owner_to_query(self, branch_filter_str: str) -> None:
+        owner_query = """
+CALL (a) {
+    OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
+    WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
+    RETURN owner, rel_owner
+    ORDER BY rel_owner.branch_level DESC, rel_owner.from DESC, rel_owner.status ASC
+    LIMIT 1
+}
+WITH *,
+    CASE WHEN rel_owner.status = "active" THEN owner ELSE NULL END AS owner,
+    CASE WHEN rel_owner.status = "active" THEN rel_owner ELSE NULL END AS rel_owner
+        """ % {"branch_filter": branch_filter_str}
+        self.add_to_query(owner_query)
+        self.return_labels.extend(["owner", "rel_owner"])
+
+    def _add_created_metadata_to_query(self) -> None:
+        if self.branch.is_default or self.branch.is_global:
+            last_created_query = """
+WITH *, a.created_at AS created_at, a.created_by AS created_by
+            """
+        else:
+            last_created_query = """
+WITH *, r1.from AS created_at, r1.from_user_id AS created_by
+            """
+        self.add_to_query(last_created_query)
+        self.return_labels.extend(["created_at", "created_by"])
+
+    def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
+        if self.branch.is_default or self.branch.is_global:
+            last_updated_query = """
+WITH *, a.updated_at AS updated_at, a.updated_by AS updated_by
+            """
+        else:
+            last_updated_query = """
+CALL (a) {
+    MATCH (a)-[r]-(property)
+    WHERE %(branch_filter)s
+    WITH CASE
+        WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
+        WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
+        ELSE [NULL, NULL]
+    END AS from_details,
+    CASE
+        WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to, r.to_user_id]
+        WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
+        ELSE [NULL, NULL]
+    END AS to_details
+    WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
+    WITH from_details_list + to_details_list AS details_list
+    UNWIND details_list AS one_details
+    WITH one_details[0] AS updated_at, one_details[1] AS updated_by
+    WHERE updated_at IS NOT NULL
+    WITH updated_at, updated_by
+    ORDER BY updated_at DESC
+    LIMIT 1
+    RETURN updated_at, updated_by
+}
+            """ % {"branch_filter": branch_filter_str}
+        self.add_to_query(last_updated_query)
+        self.return_labels.extend(["updated_at", "updated_by"])
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
         self.params["profile_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
+        self.params["field_names"] = list(self.fields.keys()) if self.fields else []
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
@@ -693,11 +789,9 @@ class NodeListGetAttributeQuery(Query):
         MATCH (n:Node) WHERE n.uuid IN $ids
         WITH n, exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_relationship_name})) AS might_use_profile
         MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
+        WHERE (a.name IN $field_names OR size($field_names) = 0)
+        WITH DISTINCT n, a, might_use_profile
         """
-        if self.fields:
-            query += "\n WHERE a.name IN $field_names"
-            self.params["field_names"] = list(self.fields.keys())
-
         self.add_to_query(query)
 
         query = """
@@ -754,37 +848,14 @@ CALL (a) {
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
 
-        if self.include_source:
-            query = """
-            CALL (a) {
-                OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
-                WHERE all(r IN [rel_source] WHERE ( %(branch_filter)s ))
-                RETURN source, rel_source
-                ORDER BY rel_source.branch_level DESC, rel_source.from DESC, rel_source.status ASC
-                LIMIT 1
-            }
-            WITH *,
-                CASE WHEN rel_source.status = "active" THEN source ELSE NULL END AS source,
-                CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
-            """ % {"branch_filter": branch_filter}
-            self.add_to_query(query)
-            self.return_labels.extend(["source", "rel_source"])
-
-        if self.include_owner:
-            query = """
-            CALL (a) {
-                OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
-                WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
-                RETURN owner, rel_owner
-                ORDER BY rel_owner.branch_level DESC, rel_owner.from DESC, rel_owner.status ASC
-                LIMIT 1
-            }
-            WITH *,
-                CASE WHEN rel_owner.status = "active" THEN owner ELSE NULL END AS owner,
-                CASE WHEN rel_owner.status = "active" THEN rel_owner ELSE NULL END AS rel_owner
-            """ % {"branch_filter": branch_filter}
-            self.add_to_query(query)
-            self.return_labels.extend(["owner", "rel_owner"])
+        if self._include_source:
+            self._add_source_to_query(branch_filter_str=branch_filter)
+        if self._include_owner:
+            self._add_owner_to_query(branch_filter_str=branch_filter)
+        if self._include_created_metadata:
+            self._add_created_metadata_to_query()
+        if self._include_updated_metadata:
+            self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
     def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
         attrs_by_node: dict[str, NodeAttributesFromDB] = {}
@@ -821,7 +892,6 @@ CALL (a) {
             attr_uuid=attr.get("uuid"),
             attr_value_id=attr_value.element_id,
             attr_value_uuid=attr_value.get("uuid"),
-            updated_at=result.get_rel("r2").get("from"),
             value=attr_value.get("value"),
             is_default=attr_value.get("is_default"),
             is_from_profile=is_from_profile,
@@ -833,12 +903,23 @@ CALL (a) {
             },
         )
 
-        if self.include_source and result.get("source"):
+        if self.include_metadata & MetadataOptions.CREATED_AT:
+            created_at_str = result.get_as_str("created_at")
+            data.created_at = Timestamp(created_at_str) if created_at_str else None
+        if self.include_metadata & MetadataOptions.CREATED_BY:
+            data.created_by = result.get_as_str("created_by")
+        if self.include_metadata & MetadataOptions.UPDATED_AT:
+            updated_at_str = result.get_as_str("updated_at")
+            data.updated_at = Timestamp(updated_at_str) if updated_at_str else None
+        if self.include_metadata & MetadataOptions.UPDATED_BY:
+            data.updated_by = result.get_as_str("updated_by")
+
+        if self._include_source and result.get("source"):
             data.node_properties["source"] = AttributeNodePropertyFromDB(
                 uuid=result.get_node("source").get("uuid"), labels=list(result.get_node("source").labels)
             )
 
-        if self.include_owner and result.get("owner"):
+        if self._include_owner and result.get("owner"):
             data.node_properties["owner"] = AttributeNodePropertyFromDB(
                 uuid=result.get_node("owner").get("uuid"), labels=list(result.get_node("owner").labels)
             )

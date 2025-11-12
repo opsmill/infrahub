@@ -337,10 +337,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             if prop_name in data.node_properties:
                 setattr(self, prop_name, data.node_properties[prop_name].uuid)
 
-        self.set_created_at(data.created_at)
-        self.set_created_by(data.created_by)
-        self.set_updated_at(data.updated_at)
-        self.set_updated_by(data.updated_by)
+        self._set_created_at(data.created_at)
+        self._set_created_by(data.created_by)
+        self._set_updated_at(data.updated_at)
+        self._set_updated_by(data.updated_by)
 
     def value_from_db(self, data: AttributeFromDB) -> Any:
         if data.value == NULL_VALUE:
