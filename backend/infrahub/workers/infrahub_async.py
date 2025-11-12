@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from typing import Any
@@ -122,6 +123,7 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         set_component_type(component_type=self.component_type)
+        await self.set_git_global_config()
         await self._init_services(client=client)
 
         if not registry.schema_has_been_initialized():
@@ -204,3 +206,30 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         self.service = service
+
+    async def set_git_global_config(self) -> None:
+        if config.SETTINGS.git.user_name:
+            proc_name = await asyncio.create_subprocess_exec(
+                "git",
+                "config",
+                "--global",
+                "user.name",
+                config.SETTINGS.git.user_name,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await proc_name.wait()
+            self._logger.info("Git user name set")
+
+        if config.SETTINGS.git.user_email:
+            proc_email = await asyncio.create_subprocess_exec(
+                "git",
+                "config",
+                "--global",
+                "user.email",
+                config.SETTINGS.git.user_email,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await proc_email.wait()
+            self._logger.info("Git user email set")

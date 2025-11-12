@@ -1,3 +1,4 @@
+import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
@@ -107,3 +108,30 @@ class TestWorker(TestWorkerInfrahubAsync):
             await flow_after.state.result(raise_on_failure=True)
 
         assert "validation error for DummyOutput" in str(exc.value)
+
+    async def test_worker_has_set_git_user_config(self, client, work_pool, git_user_config):
+        worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
+        await worker.setup(client=client, metric_port=0)
+        proc_name = await asyncio.create_subprocess_exec(
+            "git",
+            "config",
+            "--global",
+            "user.name",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_name, _ = await proc_name.communicate()
+        user_name = stdout_name.decode().strip()
+        assert user_name == "Test User"
+
+        proc_email = await asyncio.create_subprocess_exec(
+            "git",
+            "config",
+            "--global",
+            "user.email",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_email, _ = await proc_email.communicate()
+        user_email = stdout_email.decode().strip()
+        assert user_email == "test@email.com"

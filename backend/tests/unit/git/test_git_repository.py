@@ -1104,22 +1104,3 @@ async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_rep
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
     assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
-
-
-async def test_new_repo_has_config(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, git_user_config):
-    repo = await InfrahubRepository.new(
-        id=UUIDT.new(),
-        name=git_upstream_repo_01["name"],
-        location=str(git_upstream_repo_01["path"]),
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-    )
-
-    # Check if all the directories are present
-    assert repo.directory_root.is_dir()
-    assert repo.directory_branches.is_dir()
-    assert repo.directory_commits.is_dir()
-    assert repo.directory_temp.is_dir()
-
-    with repo.get_git_repo_main().config_reader() as git_config:
-        assert git_config.get_value("user", "name") == "Test User"
-        assert git_config.get_value("user", "email") == "test@email.com"
