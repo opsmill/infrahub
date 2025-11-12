@@ -1048,14 +1048,8 @@ class NodeListGetInfoQuery(Query):
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
         if self.branch.is_default or self.branch.is_global:
             last_update_query = """
-CALL (n) {
-    MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
-    WHERE %(branch_filter)s
-    RETURN r.updated_at AS updated_at, r.updated_by AS updated_by
-    ORDER BY r.updated_at DESC
-    LIMIT 1
-}
-            """ % {"branch_filter": branch_filter_str}
+WITH *, n.updated_at AS updated_at, n.updated_by AS updated_by
+            """
         else:
             last_update_query = """
 MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
