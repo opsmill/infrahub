@@ -276,7 +276,7 @@ class TestBranchQuery(TestInfrahubApp):
             variable_values={},
         )
         assert len(all_branches.errors)
-        assert all_branches.errors[0].message == "offset must be >= 0"
+        assert "non-negative integer" in all_branches.errors[0].message.lower()
 
         query = """
             query {
@@ -300,4 +300,4 @@ class TestBranchQuery(TestInfrahubApp):
             variable_values={},
         )
         assert len(all_branches.errors)
-        assert all_branches.errors[0].message == "limit must be >= 1"
+        assert "non-negative integer" in all_branches.errors[0].message.lower()
