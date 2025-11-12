@@ -142,14 +142,3 @@ def prefect_test_fixture() -> Generator:
 def prefect_test(prefect_test_fixture) -> Generator:
     with disable_run_logger():
         yield
-
-
-@pytest.fixture
-def git_user_config():
-    initial_user_name = config.SETTINGS.git.user_name
-    initial_user_email = config.SETTINGS.git.user_email
-    config.SETTINGS.git.user_email = "test@email.com"
-    config.SETTINGS.git.user_name = "Test User"
-    yield
-    config.SETTINGS.git.user_email = initial_user_email
-    config.SETTINGS.git.user_name = initial_user_name

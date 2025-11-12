@@ -8,6 +8,7 @@ from prefect.deployments import run_deployment
 from pydantic import ValidationError
 
 from infrahub import __version__ as infrahub_version
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN, DummyInput, DummyOutput
@@ -109,29 +110,46 @@ class TestWorker(TestWorkerInfrahubAsync):
 
         assert "validation error for DummyOutput" in str(exc.value)
 
-    async def test_worker_has_set_git_user_config(self, client, work_pool, git_user_config):
+    async def _run_git_command(self, *args: str) -> str | None:
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        return stdout.decode().strip() if proc.returncode == 0 else None
+
+    @pytest.fixture
+    async def git_global_user_config(self) -> None:
+        async def set_git_config(key: str, value: str | None):
+            if value is not None:
+                await asyncio.create_subprocess_exec("git", "config", "--global", key, value)
+            else:
+                await asyncio.create_subprocess_exec("git", "config", "--global", "--unset", key)
+
+        initial_user_name = config.SETTINGS.git.user_name
+        initial_user_email = config.SETTINGS.git.user_email
+
+        previous_global_git_user_name = await self._run_git_command("config", "--global", "--get", "user.name")
+        previous_global_git_user_email = await self._run_git_command("config", "--global", "--get", "user.email")
+
+        try:
+            config.SETTINGS.git.user_name = "Test User"
+            config.SETTINGS.git.user_email = "test@email.com"
+            yield
+        finally:
+            config.SETTINGS.git.user_name = initial_user_name
+            config.SETTINGS.git.user_email = initial_user_email
+
+            await set_git_config("user.name", previous_global_git_user_name)
+            await set_git_config("user.email", previous_global_git_user_email)
+
+    async def test_worker_has_set_git_user_config(self, client, work_pool, git_global_user_config) -> None:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
         await worker.setup(client=client, metric_port=0)
-        proc_name = await asyncio.create_subprocess_exec(
-            "git",
-            "config",
-            "--global",
-            "user.name",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout_name, _ = await proc_name.communicate()
-        user_name = stdout_name.decode().strip()
+        user_name = await self._run_git_command("config", "--global", "--get", "user.name")
         assert user_name == "Test User"
 
-        proc_email = await asyncio.create_subprocess_exec(
-            "git",
-            "config",
-            "--global",
-            "user.email",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout_email, _ = await proc_email.communicate()
-        user_email = stdout_email.decode().strip()
+        user_email = await self._run_git_command("config", "--global", "--get", "user.email")
         assert user_email == "test@email.com"
