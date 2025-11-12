@@ -33,7 +33,6 @@ from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
 )
-from infrahub.git.utils import get_git_user_config
 from infrahub.git.worktree import Worktree
 from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
