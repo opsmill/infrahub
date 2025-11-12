@@ -121,7 +121,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         return stdout.decode().strip() if proc.returncode == 0 else None
 
     @pytest.fixture
-    async def git_global_user_config(self) -> AsyncGenerator[None, None, None]:
+    async def git_global_user_config(self) -> AsyncGenerator[None, None]:
         async def set_git_config(key: str, value: str | None) -> None:
             if value is not None:
                 await asyncio.create_subprocess_exec("git", "config", "--global", key, value)
