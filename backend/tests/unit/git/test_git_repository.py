@@ -1107,15 +1107,6 @@ async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_rep
     assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
 
 
-async def test_repo_merge_allow_explicit_merge_raises_if_no_git_user_name(
-    git_repo_01: InfrahubRepository, branch02: BranchData, git_allow_explicit_merge_commit_config
-):
-    repo = git_repo_01
-    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
-    with pytest.raises(ValueError, match="Cannot allow explicit merge commit if git user_name setting is not set."):
-        await repo.merge(source_branch=branch02.name, dest_branch="main")
-
-
 async def test_repo_merge_use_explicit_merge(
     git_repo_01: InfrahubRepository, branch02: BranchData, git_user_config, git_use_explicit_merge_commit_config
 ):

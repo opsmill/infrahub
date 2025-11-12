@@ -16,7 +16,6 @@ from prefect.logging import get_run_logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
 from infrahub.core.registry import registry
@@ -407,7 +406,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc, branch_name=checkout_ref or self.default_branch)
 
-        self.create_repo_config(repo)
         self.has_origin = True
 
         # Create a worktree for the commit in the default branch
@@ -418,13 +416,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
 
         return True
-
-    @staticmethod
-    def create_repo_config(repo: Repo) -> None:
-        if config.SETTINGS.git.user_name and config.SETTINGS.git.user_email:
-            with repo.config_writer() as git_config:
-                git_config.set_value("user", "name", config.SETTINGS.git.user_name)
-                git_config.set_value("user", "email", config.SETTINGS.git.user_email)
 
     def has_worktree(self, identifier: str) -> bool:
         """Return True if a worktree with a given identifier already exist."""
