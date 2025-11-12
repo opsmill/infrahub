@@ -29,7 +29,7 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
         />
       )}
 
-      {!data?.length && !error && (
+      {!data?.length && !error && !isPending && (
         <EmptyHomeCard
           title="No tasks"
           subtitle="Tasks will appear here after you start a migration or assign workflow"
