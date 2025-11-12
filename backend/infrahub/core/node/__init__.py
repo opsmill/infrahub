@@ -864,8 +864,6 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
 
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
-        self.set_updated_at(update_at)
-        self.set_updated_by(user_id)
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
@@ -916,6 +914,11 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
                 node_changelog.add_attribute(attribute=updated_attribute)
 
         node_changelog.display_label = await self.get_display_label(db=db)
+
+        if node_changelog.has_changes:
+            self.set_updated_at(update_at)
+            self.set_updated_by(user_id)
+
         return node_changelog
 
     async def save(

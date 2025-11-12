@@ -916,6 +916,11 @@ async def test_node_create_user_timestamp_metadata(
     assert obj.get_updated_at() == obj.get_created_at()
     assert obj.get_updated_by() == test_user_id
 
+    # validate save with no changes does not update updated times
+    await obj.save(db=db, user_id="no-change-user")
+    assert obj.get_updated_at() == obj.get_created_at()
+    assert obj.get_updated_by() == obj.get_created_by()
+
     # Retrieve node and validate metadata
     retrieved_obj = await NodeManager.get_one(db=db, id=obj.id, include_metadata=MetadataOptions.USER_TIMESTAMPS)
     assert retrieved_obj.get_created_at() == obj.get_created_at()
