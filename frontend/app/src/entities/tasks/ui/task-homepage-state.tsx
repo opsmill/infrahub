@@ -29,14 +29,6 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
         />
       )}
 
-      {data?.map((task) => {
-        return (
-          <TaskHomepageCard key={task.id}>
-            <TaskHomepageDetails {...task} />
-          </TaskHomepageCard>
-        );
-      })}
-
       {!data?.length && !error && (
         <EmptyHomeCard
           title="No tasks"
@@ -44,6 +36,14 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
           className="text-center text-gray-500"
         />
       )}
+
+      {data?.map((task) => {
+        return (
+          <TaskHomepageCard key={task.id}>
+            <TaskHomepageDetails {...task} />
+          </TaskHomepageCard>
+        );
+      })}
     </TaskHomepageColumn>
   );
 };
