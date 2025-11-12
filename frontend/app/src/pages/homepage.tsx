@@ -5,6 +5,7 @@ import { Events } from "@/entities/homepage/ui/events";
 import { GettingStarted } from "@/entities/homepage/ui/getting-started";
 import { GitRepositories } from "@/entities/homepage/ui/git-repositories";
 import { ProposedChanges } from "@/entities/homepage/ui/proposed-changes";
+import { Tasks } from "@/entities/homepage/ui/tasks";
 
 const Homepage = () => {
   return (
@@ -24,6 +25,8 @@ const Homepage = () => {
           <Events />
         </div>
       </div>
+
+      <Tasks />
 
       <GettingStarted />
     </Content>
