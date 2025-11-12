@@ -33,7 +33,7 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
         <EmptyHomeCard
           title="No tasks"
           subtitle="Tasks will appear here after you start a migration or assign workflow"
-          className="text-center text-gray-500"
+          className="text-center text-gray-400"
         />
       )}
 
