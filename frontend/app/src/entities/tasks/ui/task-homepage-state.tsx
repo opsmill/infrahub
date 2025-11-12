@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import ErrorScreen from "@/shared/components/errors/error-screen";
+
+import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { useGetTasks } from "@/entities/tasks/domain/get-tasks/get-tasks.query";
 import { TaskHomepageCard } from "@/entities/tasks/ui/task-homepage-card";
 import { TaskHomepageColumn } from "@/entities/tasks/ui/task-homepage-column";
@@ -12,13 +15,15 @@ interface TaskHomepageStateProps {
 }
 
 export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) => {
-  const { data, isPending } = useGetTasks({ states, limit: 5 });
+  const { data, error, isPending } = useGetTasks({ states, limit: 5 });
 
   return (
     <TaskHomepageColumn>
       {children}
 
       {isPending && <TaskHomepageCardSkeleton />}
+
+      {error && <ErrorScreen message={error.message} />}
 
       {data?.map((task) => {
         return (
@@ -27,6 +32,14 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
           </TaskHomepageCard>
         );
       })}
+
+      {!data?.length && (
+        <EmptyHomeCard
+          title="No tasks"
+          subtitle="Tasks will appear here after you start a migration or assign workflow"
+          className="text-center text-gray-500"
+        />
+      )}
     </TaskHomepageColumn>
   );
 };
