@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
-import { useGetTasks } from "@/entities/tasks/domain/get-tasks/get-tasks.query";
+import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage.query";
 import { TaskHomepageCard } from "@/entities/tasks/ui/task-homepage-card";
 import { TaskHomepageColumn } from "@/entities/tasks/ui/task-homepage-column";
 import { TaskHomepageDetails } from "@/entities/tasks/ui/task-homepage-details";
@@ -13,7 +13,7 @@ interface TaskHomepageStateProps {
 }
 
 export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) => {
-  const { data, error, isPending } = useGetTasks({ states, limit: 5 });
+  const { data, error, isPending } = useGetTasksHomepage({ states, limit: 5 });
 
   return (
     <TaskHomepageColumn>
