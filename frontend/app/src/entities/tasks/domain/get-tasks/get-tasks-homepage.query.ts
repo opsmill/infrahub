@@ -10,7 +10,7 @@ export interface GetTasksHomepageParams extends GetTasksFromApiParams {}
 
 export function getTasksHomepageQueryOptions(params: GetTasksHomepageParams) {
   return queryOptions({
-    queryKey: [...objectQueryKeys.all, ...tasksQueryKeys.all, ...tasksQueryKeys.filters(params)],
+    queryKey: [...objectQueryKeys.all, ...tasksQueryKeys.filters(params)],
     queryFn: () => getTasksHomepage(params),
   });
 }
