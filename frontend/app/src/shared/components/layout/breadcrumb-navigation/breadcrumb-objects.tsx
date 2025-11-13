@@ -13,7 +13,7 @@ import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-sc
 import { BreadcrumbSchemaHierarchy } from "./breadcrumb-schema-hierarchy";
 
 export function BreadcrumbObjects() {
-  const { objectKind, objectid, objectId, artifactId } = useParams();
+  const { objectKind, objectId, artifactId } = useParams();
   const { pathname } = useLocation();
 
   // For CoreArtifact route, objectKind is hardcoded in the path
@@ -26,7 +26,7 @@ export function BreadcrumbObjects() {
     return null;
   }
 
-  const objId = objectId ?? objectid ?? artifactId;
+  const objId = objectId ?? artifactId;
 
   if (isHierarchicalSchema(schema)) {
     return (

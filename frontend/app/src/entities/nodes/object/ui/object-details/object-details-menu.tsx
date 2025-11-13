@@ -180,7 +180,7 @@ export function ObjectDetailsMenu({
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setIsEditModalOpen(false);
           }}
-          objectid={objectData.id!}
+          objectId={objectData.id!}
           objectname={objectSchema.kind!}
         />
       </SlideOver>

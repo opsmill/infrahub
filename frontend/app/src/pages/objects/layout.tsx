@@ -16,7 +16,7 @@ import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const ObjectPageLayout = () => {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
 
   const generics = useAtomValue(genericSchemasAtom);
   const { schema } = useSchema(objectKind);
@@ -53,7 +53,7 @@ const ObjectPageLayout = () => {
             >
               <Content.Card className="flex grow flex-col">
                 <ScrollArea scrollX className="h-full p-1">
-                  <ObjectHierarchyTreeWrapper treeSchema={treeSchema} currentNodeId={objectid} />
+                  <ObjectHierarchyTreeWrapper treeSchema={treeSchema} currentNodeId={objectId} />
                 </ScrollArea>
               </Content.Card>
             </ResizablePanel>
@@ -64,7 +64,7 @@ const ObjectPageLayout = () => {
 
         <ResizablePanel className="flex grow flex-col">
           <Content.Card className="flex grow flex-col">
-            <ObjectHeader schema={schema} objectId={objectid} />
+            <ObjectHeader schema={schema} objectId={objectId} />
 
             <Outlet />
           </Content.Card>
@@ -75,7 +75,7 @@ const ObjectPageLayout = () => {
 
   return (
     <Content.Card className="flex flex-col">
-      <ObjectHeader schema={schema} objectId={objectid} />
+      <ObjectHeader schema={schema} objectId={objectId} />
 
       <Outlet />
     </Content.Card>
