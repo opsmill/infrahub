@@ -6,11 +6,12 @@ import type { BranchContextParams, PaginationParams } from "@/shared/api/types";
 export const GET_TASKS_HOMEPAGE = gql`
 query GET_TASKS_HOMEPAGE(
   $limit: Int,
-  $branch: String,
+  $branchName: String,
   $states: [StateType],
 ) {
   InfrahubTask(
     limit: $limit
+    branch: $branchName
     state: $states
   ) {
     count

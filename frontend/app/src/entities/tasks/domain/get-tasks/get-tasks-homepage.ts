@@ -7,7 +7,7 @@ import {
 
 export type GetTasks = (params: GetTasksHomepageFromApiParams) => Promise<TaskNode[]>;
 
-export const getTasks: GetTasks = async (params) => {
+export const getTasksHomepage: GetTasks = async (params) => {
   const { data } = await getTasksHomepageFromApi(params);
 
   return data.InfrahubTask.edges.map((edge: TaskNodes) => edge.node);
