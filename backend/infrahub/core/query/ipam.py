@@ -240,6 +240,7 @@ class IPPrefixIPAddressFetchFree(Query):
 
         self.params["maxprefixlen"] = self.obj.prefixlen
         self.params["ip_version"] = self.obj.version
+        self.limit = 1  # Query only works at returning a single, free entry
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at.to_string(), branch_agnostic=self.branch_agnostic
@@ -271,14 +272,15 @@ class IPPrefixIPAddressFetchFree(Query):
         ORDER BY av.binary_address
         WITH DISTINCT av.binary_address AS used_addresses
         WITH [x IN split(used_addresses, "") | toInteger(x)] AS bits
-        WITH [toInteger($start_range - 1)] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) + [toInteger($end_range + 1)] AS nums
-        UNWIND range(0, size(nums)-2) AS i
-        WITH nums[i] AS curr, nums[i+1] AS nxt
-        WHERE nxt > curr + 1
-        WITH collect([x IN range(curr+1, nxt-1) | x]) AS gaps
-        // flatten the list of lists
-        UNWIND gaps AS gap
-        UNWIND gap AS free_addr
+        WITH [$start_range - 1] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) AS nums
+        UNWIND range(0, size(nums) - 1) AS idx
+        CALL (nums, idx) {
+            WITH nums[idx] AS curr, idx - 1 + $start_range AS expected
+            RETURN expected AS addr, expected <> curr AS is_free, idx = size(nums) - 1 AS is_last
+        }
+        WITH addr, is_free, is_last
+        WHERE is_free = true OR is_last = true
+        WITH addr AS free_addr, is_free, is_last
         """ % {
             "ns_label": InfrahubKind.IPNAMESPACE,
             "node_label": InfrahubKind.IPADDRESS,
@@ -286,13 +288,20 @@ class IPPrefixIPAddressFetchFree(Query):
         }
 
         self.add_to_query(query)
-        self.return_labels = ["free_addr"]
+        self.return_labels = ["free_addr", "is_free", "is_last"]
         self.order_by = ["free_addr"]
 
     def get_address(self) -> IPAddressType | None:
         """Return a list of all addresses fitting in the prefix."""
-        for result in self.get_results():
-            return ipaddress.ip_interface(result.get_as_type("free_addr", return_type=int))
+        result = self.results[0]
+        free_addr = result.get_as_type("free_addr", return_type=int)
+        is_free = result.get_as_type("is_free", return_type=bool)
+        is_last = result.get_as_type("is_last", return_type=bool)
+        if not is_free:
+            if is_last and free_addr < self.params["end_range"]:
+                return ipaddress.ip_interface(free_addr + 1)
+        else:
+            return ipaddress.ip_interface(free_addr)
 
         return None
 
