@@ -3,23 +3,17 @@ import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks
 import { TaskHomepageItem } from "@/entities/tasks/ui/tasks-homepage/task-homepage-item";
 import { TaskHomepageCardSkeleton } from "@/entities/tasks/ui/tasks-homepage/tasks-homepage-skeleton";
 
+const TASK_LIMIT = 5;
+
 interface TaskHomepageStateProps {
   states: string[];
 }
 
 export const TaskHomepageState = ({ states }: TaskHomepageStateProps) => {
-  const { data, error, isPending } = useGetTasksHomepage({ states, limit: 5 });
+  const { data, error, isPending } = useGetTasksHomepage({ states, limit: TASK_LIMIT });
 
   if (isPending) {
-    return (
-      <>
-        <TaskHomepageCardSkeleton />
-        <TaskHomepageCardSkeleton />
-        <TaskHomepageCardSkeleton />
-        <TaskHomepageCardSkeleton />
-        <TaskHomepageCardSkeleton />
-      </>
-    );
+    return Array.from({ length: TASK_LIMIT }, (_, i) => <TaskHomepageCardSkeleton key={i} />);
   }
 
   if (error) {
