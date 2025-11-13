@@ -7,14 +7,14 @@ import { classNames } from "@/shared/utils/common";
 export const TaskHomepageColumn = ({ className, ...props }: ColProps) => {
   return (
     <Col
-      className={classNames("items-start gap-1.5 rounded-lg bg-gray-50 p-2", className)}
+      className={classNames("items-start gap-1.5 rounded-xl bg-gray-50 p-2", className)}
       {...props}
     />
   );
 };
 
 const taskHomepageColumnHeaderVariants = cva(
-  "my-1 inline-flex items-center rounded-md px-2 py-1 font-semibold text-xs",
+  "mb-0.5 inline-flex items-center rounded-md px-2 py-1 font-semibold text-xs",
   {
     variants: {
       variant: {
