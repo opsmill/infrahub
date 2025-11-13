@@ -23,7 +23,7 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
 
       {error && (
         <EmptyHomeCard
-          title="An error occured"
+          title="An error occurred"
           subtitle={error.message}
           className="text-center text-gray-500"
         />
