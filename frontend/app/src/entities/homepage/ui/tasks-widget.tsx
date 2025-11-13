@@ -1,7 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Badge } from "@/shared/components/ui/badge";
 import { HomeCard } from "@/shared/components/ui/home-card";
 import { classNames } from "@/shared/utils/common";
 
@@ -12,7 +11,10 @@ import {
   TASK_STATE_PENDING,
   TASK_STATE_RUNNING,
 } from "@/entities/tasks/constants";
-import { TaskHomepageColumn } from "@/entities/tasks/ui/task-homepage-column";
+import {
+  TaskHomepageColumn,
+  TaskHomepageColumnHeader,
+} from "@/entities/tasks/ui/task-homepage-column";
 import { TaskHomepageState } from "@/entities/tasks/ui/task-homepage-state";
 
 interface TasksWidgetProps {
@@ -35,27 +37,27 @@ export const TasksWidget = ({ className }: TasksWidgetProps) => {
       <HomeCard.Content className="">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
           <TaskHomepageColumn>
-            <Badge variant={"green"}>COMPLETED</Badge>
+            <TaskHomepageColumnHeader variant={"green"}>COMPLETED</TaskHomepageColumnHeader>
             <TaskHomepageState states={[TASK_STATE_COMPLETED]} />
           </TaskHomepageColumn>
 
           <TaskHomepageColumn>
-            <Badge variant={"blue"}>RUNNING</Badge>
+            <TaskHomepageColumnHeader variant={"blue"}>RUNNING</TaskHomepageColumnHeader>
             <TaskHomepageState states={[TASK_STATE_RUNNING]} />
           </TaskHomepageColumn>
 
           <TaskHomepageColumn>
-            <Badge variant={"yellow"}>PENDING</Badge>
+            <TaskHomepageColumnHeader variant={"yellow"}>PENDING</TaskHomepageColumnHeader>
             <TaskHomepageState states={[TASK_STATE_PENDING]} />
           </TaskHomepageColumn>
 
           <TaskHomepageColumn>
-            <Badge variant={"red"}>FAILED</Badge>
+            <TaskHomepageColumnHeader variant={"red"}>FAILED</TaskHomepageColumnHeader>
             <TaskHomepageState states={[TASK_STATE_FAILED]} />
           </TaskHomepageColumn>
 
           <TaskHomepageColumn>
-            <Badge variant={"gray"}>MORE</Badge>
+            <TaskHomepageColumnHeader variant={"gray"}>MORE</TaskHomepageColumnHeader>
             <TaskHomepageState states={MORE_TASKS_STATES} />
           </TaskHomepageColumn>
         </div>
