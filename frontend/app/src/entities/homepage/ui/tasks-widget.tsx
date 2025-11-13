@@ -14,8 +14,8 @@ import {
 import {
   TaskHomepageColumn,
   TaskHomepageColumnHeader,
-} from "@/entities/tasks/ui/task-homepage-column";
-import { TaskHomepageState } from "@/entities/tasks/ui/task-homepage-state";
+} from "@/entities/tasks/ui/tasks-homepage/task-homepage-column";
+import { TaskHomepageState } from "@/entities/tasks/ui/tasks-homepage/task-homepage-state";
 
 interface TasksWidgetProps {
   className?: string;
@@ -34,33 +34,31 @@ export const TasksWidget = ({ className }: TasksWidgetProps) => {
         </HomeCard.Link>
       </HomeCard.Title>
 
-      <HomeCard.Content className="">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <TaskHomepageColumn>
-            <TaskHomepageColumnHeader variant={"green"}>COMPLETED</TaskHomepageColumnHeader>
-            <TaskHomepageState states={[TASK_STATE_COMPLETED]} />
-          </TaskHomepageColumn>
+      <HomeCard.Content className="grid grid-cols-1 gap-2 lg:grid-cols-5">
+        <TaskHomepageColumn>
+          <TaskHomepageColumnHeader variant={"green"}>COMPLETED</TaskHomepageColumnHeader>
+          <TaskHomepageState states={[TASK_STATE_COMPLETED]} />
+        </TaskHomepageColumn>
 
-          <TaskHomepageColumn>
-            <TaskHomepageColumnHeader variant={"blue"}>RUNNING</TaskHomepageColumnHeader>
-            <TaskHomepageState states={[TASK_STATE_RUNNING]} />
-          </TaskHomepageColumn>
+        <TaskHomepageColumn>
+          <TaskHomepageColumnHeader variant={"blue"}>RUNNING</TaskHomepageColumnHeader>
+          <TaskHomepageState states={[TASK_STATE_RUNNING]} />
+        </TaskHomepageColumn>
 
-          <TaskHomepageColumn>
-            <TaskHomepageColumnHeader variant={"yellow"}>PENDING</TaskHomepageColumnHeader>
-            <TaskHomepageState states={[TASK_STATE_PENDING]} />
-          </TaskHomepageColumn>
+        <TaskHomepageColumn>
+          <TaskHomepageColumnHeader variant={"yellow"}>PENDING</TaskHomepageColumnHeader>
+          <TaskHomepageState states={[TASK_STATE_PENDING]} />
+        </TaskHomepageColumn>
 
-          <TaskHomepageColumn>
-            <TaskHomepageColumnHeader variant={"red"}>FAILED</TaskHomepageColumnHeader>
-            <TaskHomepageState states={[TASK_STATE_FAILED]} />
-          </TaskHomepageColumn>
+        <TaskHomepageColumn>
+          <TaskHomepageColumnHeader variant={"red"}>FAILED</TaskHomepageColumnHeader>
+          <TaskHomepageState states={[TASK_STATE_FAILED]} />
+        </TaskHomepageColumn>
 
-          <TaskHomepageColumn>
-            <TaskHomepageColumnHeader variant={"gray"}>MORE</TaskHomepageColumnHeader>
-            <TaskHomepageState states={MORE_TASKS_STATES} />
-          </TaskHomepageColumn>
-        </div>
+        <TaskHomepageColumn>
+          <TaskHomepageColumnHeader variant={"gray"}>MORE</TaskHomepageColumnHeader>
+          <TaskHomepageState states={MORE_TASKS_STATES} />
+        </TaskHomepageColumn>
       </HomeCard.Content>
     </HomeCard>
   );

@@ -1,23 +1,20 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ReactNode } from "react";
+import type React from "react";
 
+import { Col, type ColProps } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
-interface TaskHomepageColumnProps {
-  children?: ReactNode;
-  className?: string;
-}
-
-export const TaskHomepageColumn = ({ children, className }: TaskHomepageColumnProps) => {
+export const TaskHomepageColumn = ({ className, ...props }: ColProps) => {
   return (
-    <div className={classNames("flex flex-col gap-4 rounded bg-gray-50 p-2", className)}>
-      {children}
-    </div>
+    <Col
+      className={classNames("items-start gap-1.5 rounded-lg bg-gray-50 p-2", className)}
+      {...props}
+    />
   );
 };
 
-const headerVariant = cva(
-  "inline-flex items-center rounded-md border border-transparent px-1.5 py-0.5 font-semibold text-xs",
+const taskHomepageColumnHeaderVariants = cva(
+  "my-1 inline-flex items-center rounded-md px-2 py-1 font-semibold text-xs",
   {
     variants: {
       variant: {
@@ -36,12 +33,17 @@ const headerVariant = cva(
 
 export interface TaskHomepageColumnHeaderProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof headerVariant> {}
+    VariantProps<typeof taskHomepageColumnHeaderVariants> {}
 
 export const TaskHomepageColumnHeader = ({
-  className = "",
+  className,
   variant,
   ...props
 }: TaskHomepageColumnHeaderProps) => {
-  return <span className={classNames(headerVariant({ variant }), className)} {...props} />;
+  return (
+    <span
+      className={classNames(taskHomepageColumnHeaderVariants({ variant }), className)}
+      {...props}
+    />
+  );
 };
