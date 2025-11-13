@@ -19,7 +19,6 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Fixed
 
-- Increase default timeout for transform/checks from 10 to 60 seconds ([#increase-timeouts](https://github.com/opsmill/infrahub/issues/increase-timeouts))
 - Disabled scroll on number input fields to prevent accidental value changes. ([#7602](https://github.com/opsmill/infrahub/issues/7602))
 - Backend database sessions are now handled consistently avoiding resource leakage.
 
