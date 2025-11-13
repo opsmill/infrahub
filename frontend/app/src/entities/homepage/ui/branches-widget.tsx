@@ -13,11 +13,11 @@ import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-l
 
 import { EmptyHomeCard } from "./empty-home-card";
 
-interface BranchesProps {
+interface BranchesWidgetProps {
   className?: string;
 }
 
-export const Branches = ({ className }: BranchesProps) => {
+export const BranchesWidget = ({ className }: BranchesWidgetProps) => {
   const { data: storedBranches, isPending, error } = useGetBranches();
 
   if (error) {

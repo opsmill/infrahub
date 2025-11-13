@@ -14,11 +14,11 @@ import {
 } from "@/entities/tasks/constants";
 import { TaskHomepageState } from "@/entities/tasks/ui/task-homepage-state";
 
-interface TasksProps {
+interface TasksWidgetProps {
   className?: string;
 }
 
-export const Tasks = ({ className }: TasksProps) => {
+export const TasksWidget = ({ className }: TasksWidgetProps) => {
   return (
     <HomeCard className={classNames("flex flex-col", className)}>
       <HomeCard.Title className="flex items-center justify-between">
