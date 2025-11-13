@@ -1,8 +1,8 @@
-import type { GetTasksFromApiParams } from "@/entities/tasks/api/get-tasks-from-api";
+import type { GetTasksParams } from "./get-tasks/get-tasks.query";
 
 export const tasksQueryKeys = {
   all: ["tasks"] as const,
-  filters: (filters: GetTasksFromApiParams) => [
+  filters: (filters: GetTasksParams) => [
     filters?.branchName,
     filters?.states,
     filters?.search,

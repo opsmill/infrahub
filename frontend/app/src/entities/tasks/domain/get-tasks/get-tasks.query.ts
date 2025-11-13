@@ -6,16 +6,16 @@ import type { GetTasksFromApiParams } from "@/entities/tasks/api/get-tasks-from-
 import { getTasks } from "@/entities/tasks/domain/get-tasks/get-tasks";
 import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
 
-interface GetTasksParams extends Omit<GetTasksFromApiParams, "branchName"> {}
+export interface GetTasksParams extends GetTasksFromApiParams {}
 
-export function getTasksQueryOptions(params: GetTasksFromApiParams) {
+export function getTasksQueryOptions(params: GetTasksParams) {
   return queryOptions({
     queryKey: [...objectQueryKeys.all, ...tasksQueryKeys.all, ...tasksQueryKeys.filters(params)],
     queryFn: () => getTasks(params),
   });
 }
 
-export function useGetTasks(params: GetTasksParams) {
+export function useGetTasks(params: Omit<GetTasksParams, "branchName">) {
   const { currentBranch } = useCurrentBranch();
 
   return useQuery({
