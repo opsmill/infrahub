@@ -513,7 +513,7 @@ class TestConflictsEnricher:
             branch_conflict_property,
             branch_conflict_property_2,
             EnrichedPropertyFactory.build(
-                property_type=DatabaseEdgeType.IS_PROTECTED, conflict=EnrichedConflictFactory.build()
+                property_type=DatabaseEdgeType.HAS_VALUE, conflict=EnrichedConflictFactory.build()
             ),
         }
         branch_attributes = {
