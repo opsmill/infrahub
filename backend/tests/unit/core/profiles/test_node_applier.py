@@ -1,13 +1,15 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Sequence
 
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
+from tests.helpers.schema import CHILD, THING, load_schema
 
 
 @dataclass
@@ -214,3 +216,107 @@ async def test_get_many_with_multiple_profiles_same_priority(
     assert updated_field_names == []
     updated_field_names = await node_applier.apply_profiles(node=updated_crit_low)
     assert updated_field_names == []
+
+
+@dataclass
+class ExpectedProfileRelationship:
+    name: str
+    peers: Sequence[Node]
+    source_uuid: str
+
+
+async def _validate_node_profile_relationships(
+    db: InfrahubDatabase,
+    schema: NodeSchema,
+    original_node: Node,
+    updated_node: Node,
+    expected_profile_relationships: list[ExpectedProfileRelationship],
+):
+    expected_profile_relationships_by_name = {r.name: r for r in expected_profile_relationships}
+    for rel_name in schema.relationship_names:
+        updated_node_rel_manager = updated_node.get_relationship(name=rel_name)
+        updated_source = set()
+        updated_peers = list((await updated_node_rel_manager.get_peers(db=db)).values())
+        for peer in updated_peers:
+            if source := peer._source:
+                updated_source.add(source.id)
+
+        original_node_rel_manager = original_node.get_relationship(name=rel_name)
+        original_peers = list((await original_node_rel_manager.get_peers(db=db)).values())
+        expected_profile_relationship = expected_profile_relationships_by_name.get(rel_name)
+
+        if expected_profile_relationship:
+            assert updated_peers == expected_profile_relationship.peers
+            assert updated_source == {expected_profile_relationship.source_uuid}
+        else:
+            assert updated_peers == original_peers
+            assert updated_source is None
+
+
+async def test_get_many_with_profile_relationships(
+    db: InfrahubDatabase,
+    branch: Branch,
+) -> None:
+    THING.relationships[0].optional = True
+
+    child_schema = SchemaRoot(nodes=[CHILD, THING])
+    await load_schema(db=db, schema=child_schema, branch_name=branch.name)
+
+    child_node_schema = registry.schema.get_node_schema(name=CHILD.kind, branch=branch, duplicate=False)
+    thing_node_schema = registry.schema.get_node_schema(name=THING.kind, branch=branch, duplicate=False)
+
+    child_one = await Node.init(db=db, branch=branch, schema=child_node_schema)
+    await child_one.new(db=db, name="adam")
+    await child_one.save(db=db)
+
+    child_two = await Node.init(db=db, branch=branch, schema=child_node_schema)
+    await child_two.new(db=db, name="megan")
+    await child_two.save(db=db)
+
+    thing_one = await Node.init(db=db, branch=branch, schema=thing_node_schema)
+    await thing_one.new(db=db, name="Eye cover augmentation", color="black")
+    await thing_one.save(db=db)
+
+    thing_two = await Node.init(db=db, branch=branch, schema=thing_node_schema)
+    await thing_two.new(db=db, name="Cybernetic arms", color="black")
+    await thing_two.save(db=db)
+
+    thing_three = await Node.init(db=db, branch=branch, schema=thing_node_schema)
+    await thing_three.new(db=db, name="Pearl necklace", color="white")
+    await thing_three.save(db=db)
+
+    profile_schema = registry.schema.get_profile_schema(name=f"Profile{CHILD.kind}", branch=branch, duplicate=False)
+    augmented_child_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await augmented_child_profile.new(
+        db=db, profile_name="mechanically_augmented", things=[thing_one, thing_two], profile_priority=100
+    )
+    await augmented_child_profile.save(db=db)
+    missing_child_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await missing_child_profile.new(db=db, profile_name="missing", things=[thing_three], profile_priority=200)
+
+    await child_one.profiles.update(db=db, data=[augmented_child_profile])
+    await child_one.save(db=db)
+
+    await child_two.profiles.update(db=db, data=[missing_child_profile])
+    await child_two.save(db=db)
+
+    node_applier = NodeProfilesApplier(db=db, branch=branch)
+
+    updated_field_names = await node_applier.apply_profiles(node=child_one)
+    assert updated_field_names == ["things"]
+    await child_one.save(db=db)
+
+    node_map = await NodeManager.get_many(db=db, branch=branch, ids=[child_one.id], include_source=True)
+    assert len(node_map) == 1
+    updated_child_one = node_map[child_one.id]
+    await _validate_node_profile_relationships(
+        db=db,
+        schema=child_node_schema,
+        original_node=child_one,
+        updated_node=updated_child_one,
+        expected_profile_relationships=[
+            ExpectedProfileRelationship(
+                name="things", peers=[thing_one, thing_two], source_uuid=augmented_child_profile.id
+            ),
+        ],
+    )
