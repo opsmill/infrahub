@@ -2,10 +2,11 @@ from typing import Any
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
-from .queries.get_profile_data import GetProfileDataQuery, ProfileData
+from .queries.get_profile_data import GetProfileDataQuery, ProfileData, RelationshipFilter
 
 
 class NodeProfilesApplier:
@@ -39,7 +40,15 @@ class NodeProfilesApplier:
         if not profile_ids:
             return []
         query = await GetProfileDataQuery.init(
-            db=self.db, branch=self.branch, profile_ids=profile_ids, attr_names=attr_names_for_profiles
+            db=self.db,
+            branch=self.branch,
+            profile_ids=profile_ids,
+            attr_names=attr_names_for_profiles,
+            relationship_filters=[
+                RelationshipFilter(
+                    relationship_identifier="profile_testingchild__testingthing", direction=RelationshipDirection.BIDIR
+                )
+            ],
         )
         await query.execute(db=self.db)
         profile_data_list = query.get_profile_data()
