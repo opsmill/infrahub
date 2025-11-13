@@ -6,16 +6,16 @@ import type { GetTasksFromApiParams } from "@/entities/tasks/api/get-tasks-from-
 import { getTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage";
 import { tasksQueryKeys } from "@/entities/tasks/domain/tasks.query-keys";
 
-interface GetTasksHomepageParams extends Omit<GetTasksFromApiParams, "branchName"> {}
+export interface GetTasksHomepageParams extends GetTasksFromApiParams {}
 
-export function getTasksHomepageQueryOptions(params: GetTasksFromApiParams) {
+export function getTasksHomepageQueryOptions(params: GetTasksHomepageParams) {
   return queryOptions({
     queryKey: [...objectQueryKeys.all, ...tasksQueryKeys.all, ...tasksQueryKeys.filters(params)],
     queryFn: () => getTasksHomepage(params),
   });
 }
 
-export function useGetTasksHomepage(params: GetTasksHomepageParams) {
+export function useGetTasksHomepage(params: Omit<GetTasksHomepageParams, "branchName">) {
   const { currentBranch } = useCurrentBranch();
 
   return useQuery({
