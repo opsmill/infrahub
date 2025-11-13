@@ -87,7 +87,6 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
         self._at: Timestamp = at
         self._existing: bool = False
 
-        self._updated_at: Timestamp | None = None
         self.id: str = None
         self.db_id: str = None
 
@@ -784,18 +783,11 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         id: str | None = None,
         db_id: str | None = None,
-        updated_at: Timestamp | str | None = None,
         **kwargs: Any,
     ) -> Self:
         self.id = id
         self.db_id = db_id
         self._existing = True
-
-        if updated_at:
-            kwargs["updated_at"] = (
-                updated_at  # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
-            )
-            self._updated_at = Timestamp(updated_at)
 
         if not self._schema.is_schema_node:
             if hfid := kwargs.pop("human_friendly_id", None):
@@ -826,7 +818,6 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
 
         _, self.db_id = query.get_self_ids()
         self._at = create_at
-        self._updated_at = create_at
         self._existing = True
 
         new_ids = query.get_ids()
