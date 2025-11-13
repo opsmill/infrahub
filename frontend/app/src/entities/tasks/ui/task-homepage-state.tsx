@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage.query";
 import { TaskHomepageCard } from "@/entities/tasks/ui/task-homepage-card";
-import { TaskHomepageDetails } from "@/entities/tasks/ui/task-homepage-details";
+import { TaskHomepageItem } from "@/entities/tasks/ui/task-homepage-item";
 import { TaskHomepageCardSkeleton } from "@/entities/tasks/ui/tasks-homepage-skeleton";
 
 interface TaskHomepageStateProps {
@@ -39,7 +39,7 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
       {data?.map((task) => {
         return (
           <TaskHomepageCard key={task.id}>
-            <TaskHomepageDetails {...task} />
+            <TaskHomepageItem {...task} />
           </TaskHomepageCard>
         );
       })}
