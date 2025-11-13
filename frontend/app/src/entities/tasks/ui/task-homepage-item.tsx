@@ -12,8 +12,8 @@ export const TaskHomepageItem = ({ id, title, branch, updated_at }: TaskNode) =>
   return (
     <Link className={"flex flex-col gap-2 text-sm"} to={constructPath(`/tasks/${id}`)}>
       <TaskHomepageCard className={classNames("transition-all hover:bg-gray-50")}>
-        <span className="font-semibold">{title}</span>
-        <span className="flex items-center gap-1 text-gray-500">
+        <span className="overflow-hidden text-ellipsis font-semibold">{title}</span>
+        <span className="flex items-center gap-1 overflow-hidden text-ellipsis text-gray-500">
           <Icon icon={"mdi:source-branch"} />
           {branch}
         </span>
