@@ -239,6 +239,8 @@ class NodeCreateAllQuery(NodeQuery):
             "from_user_id": self.user_id,
         }
 
+        # set all the property strings that we reuse
+        # include the create/updated_at/by metadata if on default or global branch
         attr_edge_prop_str = "{ branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, from_user_id: $user_id }"
         attr_vertex_prop_str = "{ uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support"
         if self.branch.is_default or self.branch.is_global:
@@ -587,6 +589,7 @@ class NodeDeleteQuery(NodeQuery):
         self.params["at"] = self.at.to_string()
 
         if self.branch.is_global or self.branch.is_default:
+            # update the updated_at/by metadata on the Node if we're on the global or default branch
             node_query_match = """
 MATCH (n:Node { uuid: $uuid })-[r:IS_PART_OF { branch_level: 1, status: "active" }]->(:Root)
 WHERE r.to IS NULL
@@ -614,6 +617,7 @@ WHERE r.status = "active"
             self.params.update(node_filter_params)
         self.add_to_query(node_query_match)
 
+        # set the to time/user_id if the active IS_PART_OF edge is on this branch
         query = """
 MATCH (root:Root)
 LIMIT 1
