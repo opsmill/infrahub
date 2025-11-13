@@ -436,6 +436,7 @@ class NumberPoolGetFree(Query):
         self.params["pool_id"] = self.pool.get_id()
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
+        self.limit = 1  # Query only works at returning a single, free entry
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at.to_string(), branch_agnostic=self.branch_agnostic
@@ -459,16 +460,17 @@ class NumberPoolGetFree(Query):
         }
         WITH av, res, is_active
         WHERE is_active = True
-        WITH DISTINCT av.value AS used_value
-        ORDER BY toInteger(used_value) ASC
-        WITH [toInteger($start_range - 1)] + collect(used_value) + [toInteger($end_range + 1)] AS nums
-        UNWIND range(0, size(nums)-2) AS i
-        WITH nums[i] AS curr, nums[i+1] AS nxt
-        WHERE nxt > curr + 1
-        WITH collect([x IN range(curr+1, nxt-1) | x]) AS gaps
-        // flatten the list of lists
-        UNWIND gaps AS gap
-        UNWIND gap AS free_number
+        WITH DISTINCT toInteger(av.value) AS used_value
+        ORDER BY used_value ASC
+        WITH [$start_range - 1] + collect(used_value) AS nums
+        UNWIND range(0, size(nums) - 1) AS idx
+        CALL (nums, idx) {
+            WITH nums[idx] AS curr, idx - 1 + $start_range AS expected
+            RETURN expected AS number, expected <> curr AS is_free, idx = size(nums) - 1 AS is_last
+        }
+        WITH number, is_free, is_last
+        WHERE is_free = true OR is_last = true
+        WITH number AS free_number, is_free, is_last
         """ % {
             "branch_filter": branch_filter,
             "number_pool": InfrahubKind.NUMBERPOOL,
@@ -476,12 +478,19 @@ class NumberPoolGetFree(Query):
         }
 
         self.add_to_query(query)
-        self.return_labels = ["free_number as value"]
+        self.return_labels = ["free_number as value", "is_free", "is_last"]
         self.order_by = ["value"]
 
     def iter_results(self) -> Generator[int]:
-        for result in self.results:
-            yield result.get_as_type("value", return_type=int)
+        result = self.results[0]
+        value = result.get_as_type("value", return_type=int)
+        is_free = result.get_as_type("is_free", return_type=bool)
+        is_last = result.get_as_type("is_last", return_type=bool)
+        if not is_free:
+            if is_last and value < self.pool.end_range.value:
+                yield value + 1
+        else:
+            yield value
 
 
 class NumberPoolSetReserved(Query):

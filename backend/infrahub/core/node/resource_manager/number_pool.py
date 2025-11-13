@@ -24,8 +24,6 @@ if TYPE_CHECKING:
 
 
 class CoreNumberPool(Node):
-    _free_number_page_size_factor = 10
-
     def get_attribute_nb_excluded_values(self) -> int:
         """Returns the number of excluded values for the attribute of the number pool."""
 
@@ -109,57 +107,12 @@ class CoreNumberPool(Node):
     async def get_next(self, db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema) -> int:
         parameters = attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None
 
-        page_index = 0
-        while True:
-            free = await self.get_free(
-                db=db,
-                branch=branch,
-                offset=page_index * self._free_number_page_size_factor,
-                limit=self._free_number_page_size_factor,
-            )
-            if not free:
-                raise PoolExhaustedError("There are no more values available in this pool.")
+        free = await self.get_free(db=db, branch=branch)
+        if not free:
+            raise PoolExhaustedError("There are no more values available in this pool.")
 
-            for num in free:
-                if parameters is None or parameters.is_valid_value(num):
-                    return num
+        for num in free:
+            if parameters is None or parameters.is_valid_value(num):
+                return num
 
-            page_index += 1
-
-    async def get_next_many(
-        self, db: InfrahubDatabase, quantity: int, branch: Branch, attribute: AttributeSchema
-    ) -> list[int]:
-        if quantity <= 0:
-            return []
-
-        allocated: list[int] = []
-        allocated_set: set[int] = set()
-        page_index = 0
-        page_size = quantity * self._free_number_page_size_factor
-        parameters = attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None
-
-        while len(allocated) < quantity:
-            free = await self.get_free(
-                db=db,
-                branch=branch,
-                offset=page_index * page_size,
-                limit=page_size,
-            )
-            if not free:
-                raise PoolExhaustedError(
-                    f"There are no more values available in this pool, couldn't allocate {quantity} values, only {len(allocated)} available."
-                )
-
-            for number in free:
-                if number in allocated_set:
-                    continue
-                if parameters is not None and not parameters.is_valid_value(number):
-                    continue
-                allocated.append(number)
-                allocated_set.add(number)
-                if len(allocated) == quantity:
-                    break
-
-            page_index += 1
-
-        return allocated
+        raise PoolExhaustedError("There are no more values available in this pool.")
