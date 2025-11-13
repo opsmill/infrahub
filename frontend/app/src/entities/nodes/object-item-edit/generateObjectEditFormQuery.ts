@@ -3,7 +3,7 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 
-import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export const generateObjectEditFormQuery = ({
   schema,

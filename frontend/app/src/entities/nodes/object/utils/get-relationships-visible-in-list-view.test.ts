@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { RelationshipSchema } from "@/entities/schema/types";
+import type { RelationshipSchema } from "@/entities/schema/types";
 
 import { getRelationshipsVisibleInListView } from "./get-relationships-visible-in-list-view";
 

@@ -300,6 +300,13 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
                     },
                 },
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingCar", "field": None}],
+                    "message": "default_filter is deprecated",
+                }
+            ],
         }
 
     async def test_step_03_check_relationship_cardinality_change_failure(
@@ -402,7 +409,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     async def test_step_07_check_generate_profile_failure(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_07_generate_profile_false
-    ):
+    ) -> None:
         car_profile_schema = registry.schema.get(name=f"Profile{CAR_KIND}", duplicate=False)
         assert isinstance(car_profile_schema, ProfileSchema)
         car_profile = await Node.init(db=db, schema=car_profile_schema)
@@ -411,11 +418,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         success, response = await client.schema.check(schemas=[schema_07_generate_profile_false])
         assert success is False
+        assert isinstance(response, dict)
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
 
-        assert car_profile.id in err_msg
+        assert "cool car" in err_msg
         assert "Node-level 'generate_profile' constraint violation" in err_msg
 
     async def test_step_08_check_generate_profile_failure(
@@ -432,6 +440,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_07_generate_profile_false])
         assert success is True
         assert success
+        assert isinstance(response, dict)
         assert "diff" in response
         assert "changed" in response["diff"]
         assert "TestingCar" in response["diff"]["changed"]
@@ -451,6 +460,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         success, response = await client.schema.check(schemas=[schema_09_add_generic])
         assert success is True
+        assert isinstance(response, dict)
         assert "diff" in response
         assert "changed" in response["diff"]
         assert "TestingVelocipede" in response["diff"]["changed"]
@@ -470,11 +480,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         success, response = await client.schema.check(schemas=[schema_09_add_generic])
         assert success is False
+        assert isinstance(response, dict)
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
 
-        assert generic_profile.id in err_msg
+        assert "cool unicycle" in err_msg
         assert "Node-level 'generate_profile' constraint violation" in err_msg
 
     async def test_final_validate(self, db: InfrahubDatabase):

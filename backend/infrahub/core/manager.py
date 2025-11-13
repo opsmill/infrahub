@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from copy import copy
-from functools import reduce
 from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
@@ -11,9 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
     AttributeFromDB,
-    AttributeNodePropertyFromDB,
     GroupedPeerNodes,
-    NodeAttributesFromDB,
     NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
@@ -76,60 +73,6 @@ def get_schema(
         raise ValueError(f"Invalid schema provided {node_schema}")
 
     return node_schema
-
-
-class ProfileAttributeIndex:
-    def __init__(
-        self,
-        profile_attributes_id_map: dict[str, NodeAttributesFromDB],
-        profile_ids_by_node_id: dict[str, list[str]],
-    ) -> None:
-        self._profile_attributes_id_map = profile_attributes_id_map
-        self._profile_ids_by_node_id = profile_ids_by_node_id
-
-    def apply_profiles(self, node_data_dict: dict[str, Any]) -> dict[str, Any]:
-        updated_data: dict[str, Any] = {**node_data_dict}
-        node_id = node_data_dict.get("id")
-        profile_ids = self._profile_ids_by_node_id.get(node_id, [])
-        if not profile_ids:
-            return updated_data
-        profiles = [
-            self._profile_attributes_id_map[p_id] for p_id in profile_ids if p_id in self._profile_attributes_id_map
-        ]
-
-        def get_profile_priority(nafd: NodeAttributesFromDB) -> tuple[int | float, str]:
-            try:
-                return (int(nafd.attrs.get("profile_priority").value), nafd.node.get("uuid"))
-            except (TypeError, AttributeError):
-                return (float("inf"), "")
-
-        profiles.sort(key=get_profile_priority)
-
-        for attr_name, attr_data in updated_data.items():
-            if not isinstance(attr_data, AttributeFromDB):
-                continue
-            if not attr_data.is_default:
-                continue
-            profile_value, profile_uuid = None, None
-            index = 0
-
-            while profile_value is None and index <= (len(profiles) - 1):
-                try:
-                    profile_value = profiles[index].attrs[attr_name].value
-                    if profile_value != "NULL":
-                        profile_uuid = profiles[index].node["uuid"]
-                        break
-                    profile_value = None
-                except (IndexError, KeyError, AttributeError):
-                    ...
-                index += 1
-
-            if profile_value is not None:
-                attr_data.value = profile_value
-                attr_data.is_from_profile = True
-                attr_data.is_default = False
-                attr_data.node_properties["source"] = AttributeNodePropertyFromDB(uuid=profile_uuid, labels=[])
-        return updated_data
 
 
 class NodeManager:
@@ -1132,21 +1075,11 @@ class NodeManager:
         )
         await query.execute(db=db)
         nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
-        profile_ids_by_node_id = query.get_profile_ids_by_node_id()
-        all_profile_ids = reduce(
-            lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
-        )
-
-        if fields and all_profile_ids:
-            if "profile_priority" not in fields:
-                fields["profile_priority"] = {}
-            if "value" not in fields["profile_priority"]:
-                fields["profile_priority"]["value"] = None
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
             db=db,
-            ids=list(nodes_info_by_id.keys()) + list(all_profile_ids),
+            ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
             include_source=include_source,
@@ -1156,17 +1089,7 @@ class NodeManager:
             branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
-        all_node_attributes = query.get_attributes_group_by_node()
-        profile_attributes: dict[str, dict[str, AttributeFromDB]] = {}
-        node_attributes: dict[str, dict[str, AttributeFromDB]] = {}
-        for node_id, attribute_dict in all_node_attributes.items():
-            if node_id in all_profile_ids:
-                profile_attributes[node_id] = attribute_dict
-            else:
-                node_attributes[node_id] = attribute_dict
-        profile_index = ProfileAttributeIndex(
-            profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
-        )
+        node_attributes = query.get_attributes_group_by_node()
 
         nodes: dict[str, Node] = {}
 
@@ -1195,11 +1118,10 @@ class NodeManager:
                 for attr_name, attr in node_attributes[node_id].attrs.items():
                     new_node_data[attr_name] = attr
 
-            new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
             item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
-            await item.load(**new_node_data_with_profile_overrides, db=db)
+            await item.load(**new_node_data, db=db)
 
             nodes[node_id] = item
 

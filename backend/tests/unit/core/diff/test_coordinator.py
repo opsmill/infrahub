@@ -68,7 +68,7 @@ class TestDiffCoordinator:
         assert node_diff.action is DiffAction.REMOVED
         assert len(node_diff.relationships) == 0
         attributes_by_name = {a.name: a for a in node_diff.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "height"}
+        assert set(attributes_by_name.keys()) == {"name", "height", "human_friendly_id", "display_label"}
         for attr_diff in node_diff.attributes:
             assert attr_diff.action is DiffAction.REMOVED
             properties_by_type = {p.property_type: p for p in attr_diff.properties}

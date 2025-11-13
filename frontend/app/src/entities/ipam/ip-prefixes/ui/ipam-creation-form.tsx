@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import { NodeForm, NodeFormProps } from "@/shared/components/form/node-form";
+import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";

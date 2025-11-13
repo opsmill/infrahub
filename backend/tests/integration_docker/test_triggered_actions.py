@@ -3,7 +3,17 @@ from pathlib import Path
 
 import pytest
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.protocols import CoreGenericRepository
+from infrahub_sdk.protocols import (
+    BuiltinTag,
+    CoreGeneratorAction,
+    CoreGeneratorDefinition,
+    CoreGenericRepository,
+    CoreGroupAction,
+    CoreGroupTriggerRule,
+    CoreNodeTriggerAttributeMatch,
+    CoreNodeTriggerRule,
+    CoreStandardGroup,
+)
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
@@ -75,7 +85,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         repo_dir = fixture_dir / "repos" / repo_name / "initial__main"
         repo = GitRepo(name=repo_name, src_directory=repo_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(client=client, retries=20)
         assert in_sync
 
         repos = await client.all(kind=CoreGenericRepository)
@@ -100,19 +110,20 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
     async def test_create_main_triggers(
         self, client: InfrahubClient, default_branch: str, prefect_client: PrefectClient, load_initial_data: None
     ) -> None:
-        group_people = await client.get(
-            kind="CoreStandardGroup", id="people", prefetch_relationships=True, populate_store=True
-        )
         description_trigger_value = "right-stuff"
 
-        group_action = await client.create(kind="CoreGroupAction", name="add-to-people", group=group_people)
+        group_people = await client.get(
+            kind=CoreStandardGroup, name__value="people", prefetch_relationships=True, populate_store=True
+        )
+
+        group_action = await client.create(kind=CoreGroupAction, name="add-to-people", group=group_people)
         await group_action.save()
 
-        tags_original = await client.all(kind="BuiltinTag")
+        tags_original = await client.all(kind=BuiltinTag)
         tag_names_original = [tag.name.value for tag in tags_original]
 
         node_trigger = await client.create(
-            kind="CoreNodeTriggerRule",
+            kind=CoreNodeTriggerRule,
             name="trigger-add-to-people",
             active=False,
             node_kind=TESTING_PERSON,
@@ -122,7 +133,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         await node_trigger.save()
 
         attribute_match = await client.create(
-            kind="CoreNodeTriggerAttributeMatch",
+            kind=CoreNodeTriggerAttributeMatch,
             attribute_name="description",
             value=description_trigger_value,
             value_match="value",
@@ -134,14 +145,14 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         await node_trigger.save()
 
         # Get the generator definition defined in the car-dealership repository
-        generator_definition = await client.get(kind="CoreGeneratorDefinition", id="cartags")
+        generator_definition = await client.get(kind=CoreGeneratorDefinition, name__value="cartags")
         generator_action = await client.create(
-            kind="CoreGeneratorAction", name="run-cartags-generator", generator=generator_definition
+            kind=CoreGeneratorAction, name="run-cartags-generator", generator=generator_definition
         )
         await generator_action.save()
 
         group_trigger = await client.create(
-            kind="CoreGroupTriggerRule",
+            kind=CoreGroupTriggerRule,
             name="run-generator-for-new-members",
             branch_scope="all_branches",
             members_added=True,
@@ -151,7 +162,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         await group_trigger.save()
 
         group_people = await client.get(
-            kind="CoreStandardGroup", id="people", prefetch_relationships=True, populate_store=True
+            kind=CoreStandardGroup, name__value="people", prefetch_relationships=True, populate_store=True
         )
 
         await group_people.members.fetch()
@@ -173,19 +184,19 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         await laura.save()
 
         group_people = await client.get(
-            kind="CoreStandardGroup", id="people", prefetch_relationships=True, populate_store=True
+            kind=CoreStandardGroup, name__value="people", prefetch_relationships=True, populate_store=True
         )
 
         await group_people.members.fetch()
         for _ in range(30):
-            tags_updated = await client.all(kind="BuiltinTag")
+            tags_updated = await client.all(kind=BuiltinTag)
             tag_names_updated = [tag.name.value for tag in tags_updated]
             if len(tag_names_updated) > len(tag_names_original):
                 break
             await asyncio.sleep(1)
 
         group_people = await client.get(
-            kind="CoreStandardGroup", id="people", prefetch_relationships=True, populate_store=True
+            kind=CoreStandardGroup, name__value="people", prefetch_relationships=True, populate_store=True
         )
 
         await group_people.members.fetch()

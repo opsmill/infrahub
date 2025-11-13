@@ -10,11 +10,12 @@ import { AccountMenu } from "@/shared/components/account-menu";
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
-import { SearchAnywhere } from "@/shared/components/search/search-anywhere";
 import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
+
+import { SearchAnywhere } from "@/entities/search-anywhere/ui/search-anywhere";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);

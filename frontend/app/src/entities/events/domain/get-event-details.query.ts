@@ -1,6 +1,9 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { GetEventDetailsParams, getEventDetails } from "@/entities/events/domain/get-event-details";
+import {
+  type GetEventDetailsParams,
+  getEventDetails,
+} from "@/entities/events/domain/get-event-details";
 
 export function getEventDetailsQueryOptions(params: GetEventDetailsParams) {
   return queryOptions({

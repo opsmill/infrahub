@@ -2,7 +2,7 @@ import { userEvent } from "@vitest/browser/context";
 import { describe, expect, test } from "vitest";
 
 import ListField from "@/shared/components/form/fields/list.field";
-import { FormAttributeValue } from "@/shared/components/form/type";
+import type { FormAttributeValue } from "@/shared/components/form/type";
 
 import { TestForm } from "../../../../../tests/components/form.story";
 import { render } from "../../../../../tests/components/render";

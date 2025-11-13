@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { NodeForm, NodeFormProps } from "@/shared/components/form/node-form";
-import { ProfileData } from "@/shared/components/form/object-form";
+import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
+import type { ProfileData } from "@/shared/components/form/object-form";
 import { ProfilesSelector } from "@/shared/components/form/profiles-selector";
 
 export const NodeWithProfileForm = ({ schema, profiles, ...props }: NodeFormProps) => {

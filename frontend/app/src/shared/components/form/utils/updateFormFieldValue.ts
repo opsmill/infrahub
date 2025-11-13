@@ -1,7 +1,7 @@
 import { isDeepEqual } from "remeda";
 
-import { PoolValue } from "@/shared/components/form/pool-selector";
-import {
+import type { PoolValue } from "@/shared/components/form/pool-selector";
+import type {
   AttributeValueFromPool,
   FormAttributeValue,
   FormFieldValue,

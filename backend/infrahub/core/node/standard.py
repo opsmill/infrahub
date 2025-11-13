@@ -111,7 +111,7 @@ class StandardNode(BaseModel):
         node = result.get("n")
 
         self.id = node.element_id
-        self.uuid = node["uuid"]
+        self.uuid = UUID(node["uuid"])
 
         return True
 

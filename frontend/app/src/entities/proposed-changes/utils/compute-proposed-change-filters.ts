@@ -1,4 +1,4 @@
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { PROPOSED_CHANGE_STATES } from "../constants";
 

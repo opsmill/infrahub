@@ -307,6 +307,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
             "weight": "6",
             "part_number": "NULL",
             "airflow": "Front to rear",
+            "human_friendly_id": '["device-01"]',
         }
 
         # verify sfp created with profile
@@ -314,6 +315,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         sfp_diff_node = diff_nodes_by_uuid[sfp_uuid]
         sfp_attr_values = self._get_diff_node_attribute_values(sfp_diff_node)
         assert sfp_attr_values == {
+            "human_friendly_id": '["SFP (1GE)","54321"]',
             "phys_type": "SFP (1GE)",
             "serial_number": "54321",
             # no part number here because it only exists in the profile at the database level

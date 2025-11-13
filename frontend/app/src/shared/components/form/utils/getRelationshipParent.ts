@@ -1,5 +1,5 @@
-import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeRelationship } from "@/entities/nodes/types";
+import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeRelationship } from "@/entities/nodes/types";
 
 export const getRelationshipParent = (
   relationshipData: RelationshipType | NodeRelationship | undefined

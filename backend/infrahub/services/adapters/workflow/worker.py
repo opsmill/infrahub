@@ -8,7 +8,7 @@ from prefect.deployments import run_deployment
 
 from infrahub.services.adapters.http.httpx import HttpxAdapter
 from infrahub.workers.utils import inject_context_parameter
-from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
@@ -27,9 +27,12 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     _http_adapter = HttpxAdapter()
 
     @staticmethod
-    async def initialize(component_is_primary_server: bool) -> None:
+    async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
         if component_is_primary_server:
             await setup_task_manager()
+
+        if is_initial_setup:
+            await setup_task_manager_identifiers()
 
     @overload
     async def execute_workflow(

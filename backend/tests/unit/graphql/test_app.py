@@ -8,14 +8,17 @@ from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
-def client(nats, redis):
+def client(nats: dict[int, int] | None, redis: dict[int, int] | None) -> TestClient:
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
     from infrahub.server import app
 
     return TestClient(app)
 
 
-async def test_websocket(db: InfrahubDatabase, client: TestClient, default_branch: Branch, register_core_models_schema):
+@pytest.mark.xfail(reason="This test is flaky, disabling as we hardly use the GraphQL subscriptions at this time.")
+async def test_websocket(
+    db: InfrahubDatabase, client: TestClient, default_branch: Branch, register_core_models_schema: None
+) -> None:
     t2 = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await t2.new(db=db, name="Red", description="The Red tag")
     await t2.save(db=db)

@@ -513,3 +513,19 @@ RETURN count(*) AS num_paths
         },
     )
     assert result[0].get("num_paths") == 1
+
+
+async def test_can_create_relationship_with_min_count_only(
+    db: InfrahubDatabase, person_jack_main: Node, branch: Branch
+):
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_doe_one = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+
+    result = RelationshipValidatorList(rel_jack, rel_doe_one, name="name", min_count=1, max_count=None)
+
+    assert result.min_count == 1
+    assert result.max_count == 0
+    assert len(result) == 2

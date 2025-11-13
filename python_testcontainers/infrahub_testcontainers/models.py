@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 
 from pydantic import BaseModel, Field
 
@@ -15,13 +17,13 @@ class ContextUnit(str, Enum):
 class MeasurementDefinition(BaseModel):
     name: str
     description: str
-    dimensions: list[str] = Field(default_factory=dict)
+    dimensions: list[str] = Field(default_factory=list)
     unit: ContextUnit
 
 
 class InfrahubResultContext(BaseModel):
     name: str
-    value: int | float | str
+    value: Union[int, float, str]
     unit: ContextUnit
 
 
@@ -33,6 +35,6 @@ class InfrahubActiveMeasurementItem(BaseModel):
 
 class InfrahubMeasurementItem(BaseModel):
     name: str
-    value: int | float | str
+    value: Union[int, float, str]
     unit: ContextUnit
     context: dict[str, Any] = Field(default_factory=dict)

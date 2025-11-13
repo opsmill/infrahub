@@ -163,6 +163,9 @@ class SchemaManager(NodeManager):
         self._branches[name] = schema
         self._branch_hash_by_name[name] = schema.get_hash()
 
+    def has_schema_branch(self, name: str) -> bool:
+        return name in self._branches
+
     def process_schema_branch(self, name: str) -> None:
         schema_branch = self.get_schema_branch(name=name)
         schema_branch.process()

@@ -72,9 +72,9 @@ def destroy(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 
 
 @task(optional=["database"], aliases=["migrate"])
-def upgrade(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+def upgrade(context: Context, database: str = INFRAHUB_DATABASE, rebase_branches: bool = False) -> None:
     """Upgrade Infrahub to the latest version and apply the required migrations."""
-    upgrade_infrahub(context=context, database=database, namespace=NAMESPACE)
+    upgrade_infrahub(context=context, database=database, namespace=NAMESPACE, rebase_branches=rebase_branches)
 
 
 @task(optional=["database"])

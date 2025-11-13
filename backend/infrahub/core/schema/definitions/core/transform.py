@@ -29,7 +29,7 @@ core_transform = GenericSchema(
         Attr(name="name", kind="Text", unique=True),
         Attr(name="label", kind="Text", optional=True),
         Attr(name="description", kind="Text", optional=True),
-        Attr(name="timeout", kind="Number", default_value=10),
+        Attr(name="timeout", kind="Number", default_value=60),
     ],
     relationships=[
         Rel(

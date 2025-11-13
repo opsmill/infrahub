@@ -51,6 +51,9 @@ def build_images(
         if nocache:
             exec_cmd += " --no-cache"
 
+        if os.getenv("CI") is not None:
+            exec_cmd += " --progress=plain"
+
         if service:
             exec_cmd += f" {service}"
 
@@ -137,13 +140,15 @@ def update_core_schema(context: Context, database: str, namespace: Namespace, de
         execute_command(context=context, command=command)
 
 
-def upgrade_infrahub(context: Context, database: str, namespace: Namespace) -> None:
+def upgrade_infrahub(context: Context, database: str, namespace: Namespace, rebase_branches: bool) -> None:
     """Update Infrahub to the latest version."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
         command = f"{base_cmd} run {SERVICE_SERVER_NAME} infrahub upgrade"
+        if rebase_branches:
+            command += " --rebase-branches"
         execute_command(context=context, command=command)
 
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AttributeSchema } from "@/entities/schema/types";
+import type { AttributeSchema } from "@/entities/schema/types";
 
 import { generateAttributeSchema } from "../../../../../tests/fake/schema";
 import { getAttributesVisibleInListView } from "./get-attributes-visible-in-list-view";

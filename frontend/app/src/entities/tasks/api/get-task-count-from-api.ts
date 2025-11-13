@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BranchContextParams } from "@/shared/api/types";
+import type { BranchContextParams } from "@/shared/api/types";
 
 const TASK_COUNT = gql`
   query TASK_COUNT($nodeIds: [String]) {

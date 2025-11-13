@@ -5,6 +5,7 @@ import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
+from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
@@ -25,6 +26,7 @@ registry: InfrahubLockRegistry = None
 
 
 METRIC_PREFIX = "infrahub_lock"
+LOCK_PREFIX = "lock"
 
 LOCK_ACQUIRE_TIME_METRICS = Histogram(
     f"{METRIC_PREFIX}_acquire_seconds",
@@ -49,9 +51,12 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together"""
 
-    def __init__(self, lock_registry: InfrahubLockRegistry, locks: list[str] | None = None) -> None:
+    def __init__(
+        self, lock_registry: InfrahubLockRegistry, locks: list[str] | None = None, metrics: bool = True
+    ) -> None:
         self.registry = lock_registry
         self.locks = locks or []
+        self.metrics = metrics
 
     async def __aenter__(self):
         await self.acquire()
@@ -66,11 +71,11 @@ class InfrahubMultiLock:
 
     async def acquire(self) -> None:
         for lock in self.locks:
-            await self.registry.get(name=lock).acquire()
+            await self.registry.get(name=lock, metrics=self.metrics).acquire()
 
     async def release(self) -> None:
         for lock in reversed(self.locks):
-            await self.registry.get(name=lock).release()
+            await self.registry.get(name=lock, metrics=self.metrics).release()
 
 
 class NATSLock:
@@ -97,10 +102,10 @@ class NATSLock:
         while True:
             if await self.do_acquire(token):
                 self.token = token
-                return True
+                return
             await sleep(0.1)  # default Redis GlobalLock value
 
-    async def do_acquire(self, token: str) -> bool:
+    async def do_acquire(self, token: str) -> bool | None:
         return await self.service.cache.set(key=self.name, value=token, not_exists=True)
 
     async def release(self) -> None:
@@ -122,16 +127,19 @@ class InfrahubLock:
         connection: redis.Redis | InfrahubServices | None = None,
         local: bool | None = None,
         in_multi: bool = False,
+        metrics: bool = True,
     ) -> None:
-        self.use_local: bool = local
+        self.use_local: bool | None = local
         self.local: LocalLock = None
         self.remote: GlobalLock = None
         self.name: str = name
         self.connection: redis.Redis | None = connection
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
-        self.acquire_time: int | None = None
+        self._acquire_time: int | None = None
         self.event = asyncio.Event()
+        self._recursion_var: ContextVar[int | None] = ContextVar(f"infrahub_lock_recursion_{self.name}", default=None)
+        self.metrics = metrics
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -139,9 +147,20 @@ class InfrahubLock:
         if self.use_local:
             self.local = LocalLock()
         elif config.SETTINGS.cache.driver == config.CacheDriver.Redis:
-            self.remote = GlobalLock(redis=self.connection, name=f"lock.{self.name}")
+            self.remote = GlobalLock(redis=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
         else:
-            self.remote = NATSLock(service=self.connection, name=f"lock.{self.name}")
+            self.remote = NATSLock(service=self.connection, name=f"{LOCK_PREFIX}.{self.name}")
+
+    @property
+    def acquire_time(self) -> int:
+        if self._acquire_time is not None:
+            return self._acquire_time
+
+        raise ValueError("The lock has not been initialized")
+
+    @acquire_time.setter
+    def acquire_time(self, value: int) -> None:
+        self._acquire_time = value
 
     async def __aenter__(self):
         await self.acquire()
@@ -155,21 +174,47 @@ class InfrahubLock:
         await self.release()
 
     async def acquire(self) -> None:
-        with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
-            if not self.use_local:
-                await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
-            else:
-                await self.local.acquire()
+        depth = self._recursion_var.get()
+        if depth is not None:
+            self._recursion_var.set(depth + 1)
+            return
+
+        if self.metrics:
+            with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
+                if not self.use_local:
+                    await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+                else:
+                    await self.local.acquire()
+        elif not self.use_local:
+            await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+        else:
+            await self.local.acquire()
+
         self.acquire_time = time.time_ns()
         self.event.clear()
+        self._recursion_var.set(1)
 
     async def release(self) -> None:
-        duration_ns = time.time_ns() - self.acquire_time
-        LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
+        depth = self._recursion_var.get()
+        if depth is None:
+            raise RuntimeError("Lock release attempted without ownership context.")
+
+        if depth > 1:
+            self._recursion_var.set(depth - 1)
+            return
+
+        if self.acquire_time is not None:
+            duration_ns = time.time_ns() - self.acquire_time
+            if self.metrics:
+                LOCK_RESERVE_TIME_METRICS.labels(self.name, self.lock_type).observe(duration_ns / 1000000000)
+            self.acquire_time = None
+
         if not self.use_local:
             await self.remote.release()
         else:
             self.local.release()
+
+        self._recursion_var.set(None)
         self.event.set()
 
     async def locked(self) -> bool:
@@ -179,9 +224,54 @@ class InfrahubLock:
         return self.local.locked()
 
 
+class LockNameGenerator:
+    local = "local"
+    _global = "global"
+
+    def generate_name(self, name: str, namespace: str | None = None, local: bool | None = None) -> str:
+        if namespace is None and local is None:
+            return name
+
+        new_name = ""
+        if local is True:
+            new_name = f"{self.local}."
+        elif local is False:
+            new_name = f"{self._global}."
+
+        if namespace is not None:
+            new_name += f"{namespace}."
+        new_name += name
+
+        return new_name
+
+    def unpack_name(self, name: str) -> tuple[str, str | None, bool | None]:
+        local = None
+        namespace = None
+
+        parts = name.split(".")
+        if parts[0] == self.local:
+            local = True
+            parts = parts[1:]
+        elif parts[0] == self._global:
+            local = False
+            parts = parts[1:]
+
+        if len(parts) > 1:
+            namespace = parts[0]
+            original_name = ".".join(parts[1:])
+        else:
+            original_name = parts[0]
+
+        return original_name, namespace, local
+
+
 class InfrahubLockRegistry:
     def __init__(
-        self, token: str | None = None, local_only: bool = False, service: InfrahubServices | None = None
+        self,
+        token: str | None = None,
+        local_only: bool = False,
+        service: InfrahubServices | None = None,
+        name_generator: LockNameGenerator | None = None,
     ) -> None:
         if config.SETTINGS.cache.enable and not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
@@ -201,23 +291,7 @@ class InfrahubLockRegistry:
 
         self.token = token or str(uuid.uuid4())
         self.locks: dict[str, InfrahubLock] = {}
-
-    @classmethod
-    def _generate_name(cls, name: str, namespace: str | None = None, local: bool | None = None) -> str:
-        if namespace is None and local is None:
-            return name
-
-        new_name = ""
-        if local is True:
-            new_name = "local."
-        elif local is False:
-            new_name = "global."
-
-        if namespace is not None:
-            new_name += f"{namespace}."
-        new_name += name
-
-        return new_name
+        self.name_generator = name_generator or LockNameGenerator()
 
     def get_existing(
         self,
@@ -225,17 +299,24 @@ class InfrahubLockRegistry:
         namespace: str | None,
         local: bool | None = None,
     ) -> InfrahubLock | None:
-        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
             return None
         return self.locks[lock_name]
 
     def get(
-        self, name: str, namespace: str | None = None, local: bool | None = None, in_multi: bool = False
+        self,
+        name: str,
+        namespace: str | None = None,
+        local: bool | None = None,
+        in_multi: bool = False,
+        metrics: bool = True,
     ) -> InfrahubLock:
-        lock_name = self._generate_name(name=name, namespace=namespace, local=local)
+        lock_name = self.name_generator.generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
-            self.locks[lock_name] = InfrahubLock(name=lock_name, connection=self.connection, in_multi=in_multi)
+            self.locks[lock_name] = InfrahubLock(
+                name=lock_name, connection=self.connection, in_multi=in_multi, metrics=metrics
+            )
         return self.locks[lock_name]
 
     def local_schema_lock(self) -> LocalLock:
@@ -257,7 +338,3 @@ class InfrahubLockRegistry:
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
     global registry
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
-
-
-def build_object_lock_name(name: str) -> str:
-    return f"global.object.{name}"

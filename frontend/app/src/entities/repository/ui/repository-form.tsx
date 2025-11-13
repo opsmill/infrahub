@@ -1,11 +1,11 @@
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { DynamicInput } from "@/shared/components/form/dynamic-form";
+import { DynamicField } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
-import { NodeFormProps } from "@/shared/components/form/node-form";
+import type { NodeFormProps } from "@/shared/components/form/node-form";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { Card, CardProps } from "@/shared/components/ui/card";
+import { Card, type CardProps } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
@@ -63,7 +63,7 @@ const RepositoryForm = ({
     >
       <FormGroup>
         {gitUrlFieldProps && (
-          <DynamicInput
+          <DynamicField
             {...gitUrlFieldProps}
             label="Repository location"
             placeholder="https://github.com/organization/project.git"
@@ -83,20 +83,20 @@ const RepositoryForm = ({
       </FormGroup>
 
       <FormGroup>
-        {nameFieldProps && <DynamicInput {...nameFieldProps} placeholder="example-name" />}
+        {nameFieldProps && <DynamicField {...nameFieldProps} placeholder="example-name" />}
         {descriptionFieldProps && (
-          <DynamicInput {...descriptionFieldProps} placeholder="Add your description here..." />
+          <DynamicField {...descriptionFieldProps} placeholder="Add your description here..." />
         )}
       </FormGroup>
 
       <FormGroup>
-        {refFieldProps && <DynamicInput {...refFieldProps} />}
-        {defaultBranchFieldProps && <DynamicInput {...defaultBranchFieldProps} />}
+        {refFieldProps && <DynamicField {...refFieldProps} />}
+        {defaultBranchFieldProps && <DynamicField {...defaultBranchFieldProps} />}
       </FormGroup>
 
       {tagsFieldProps && (
         <FormGroup>
-          <DynamicInput {...tagsFieldProps} />
+          <DynamicField {...tagsFieldProps} />
         </FormGroup>
       )}
 

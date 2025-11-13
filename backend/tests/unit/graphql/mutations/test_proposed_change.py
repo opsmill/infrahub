@@ -7,6 +7,7 @@ from prefect.client.orchestration import get_client
 from infrahub.auth import AccountSession, AuthType
 from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import CheckType, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -110,9 +111,9 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     await account.new(db=db, name="user", password="password")
     await account.save(db=db)
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         branch=default_branch,
         account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
     )
@@ -175,10 +176,9 @@ async def test_create_invalid_state_combinations(
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(db=db, name="user", password="password")
     await account.save(db=db)
-
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         branch=default_branch,
         account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
     )
@@ -381,6 +381,33 @@ async def test_merge_draft_proposed_change(db: InfrahubDatabase, register_core_m
 
     assert update_status.errors
     assert "A draft proposed change is not allowed to be merged" in str(update_status.errors[0])
+
+
+async def test_merge_proposed_change_with_branch_upgrade_rebase_status(
+    db: InfrahubDatabase, register_core_models_schema: None
+):
+    branch_name = "upgrade-rebase-status-proposed-change"
+    source_branch = Branch(name=branch_name)
+    source_branch.status = BranchStatus.NEED_UPGRADE_REBASE
+    await source_branch.save(db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(db=db, name="pc-1234", destination_branch="main", source_branch=branch_name, state="open")
+    await proposed_change.save(db=db)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        service=service,
+    )
+
+    assert update_status.errors
+    assert "The branch must be upgraded and rebased prior to merging the proposed change" in str(
+        update_status.errors[0]
+    )
 
 
 class TestMergeProposedChangePermissionFailure(TestInfrahubApp):

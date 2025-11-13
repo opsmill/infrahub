@@ -191,9 +191,9 @@ def stop(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 
 
 @task(optional=["database"])
-def upgrade(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+def upgrade(context: Context, database: str = INFRAHUB_DATABASE, rebase_branches: bool = False) -> None:
     """Upgrade Infrahub to the latest version and apply the required migrations."""
-    upgrade_infrahub(context=context, database=database, namespace=NAMESPACE)
+    upgrade_infrahub(context=context, database=database, namespace=NAMESPACE, rebase_branches=rebase_branches)
 
 
 @task
@@ -257,3 +257,16 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
 
     if data_to_check:
         client.get(kind="LocationContinent", hfid=data_to_check, branch=branch)
+
+
+@task
+def test_branch_graph_version(context: Context, branch: str) -> None:  # noqa: ARG001
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync()
+
+    b = client.branch.get(branch_name=branch)
+    if b.graph_version is None:
+        raise AssertionError(
+            f"Branch '{branch}' with graph version {b.graph_version} has not been rebased and upgrade properly"
+        )

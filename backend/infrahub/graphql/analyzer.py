@@ -312,6 +312,13 @@ class GraphQLQueryReport:
         return []
 
     def required_argument(self, argument: GraphQLArgument) -> bool:
+        if argument.name == "ids" and argument.kind == "list_value":
+            for variable in self.variables:
+                if f"['${variable.name}']" == argument.as_variable_name and variable.required:
+                    return True
+
+            return False
+
         if not argument.is_variable:
             # If the argument isn't a variable it would have been
             # statically defined in the input and as such required
@@ -364,6 +371,8 @@ class GraphQLQueryReport:
                     if [[argument.name]] == query.infrahub_model.uniqueness_constraints:
                         if self.required_argument(argument=argument):
                             targets_single_query = True
+                    elif argument.name == "ids" and self.required_argument(argument=argument):
+                        targets_single_query = True
 
             if not targets_single_query:
                 return False

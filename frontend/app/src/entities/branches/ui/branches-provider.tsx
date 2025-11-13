@@ -1,13 +1,13 @@
 import { useAtom } from "jotai";
+import { useQueryState } from "nuqs";
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 
-import { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -35,7 +35,7 @@ export function useCurrentBranch() {
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: branches, isPending, error } = useGetBranches();
   const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
-  const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const [branchInQueryString] = useQueryState(QSP.BRANCH);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,12 +63,16 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     navigate("/");
   }, [branches, branchInQueryString]);
 
-  if (isPending || currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
+  if (isPending) {
     return <InfrahubLoading>loading branches...</InfrahubLoading>;
   }
 
   if (error) {
     return <ErrorScreen message={error.message} />;
+  }
+
+  if (currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
+    return <InfrahubLoading>loading branches...</InfrahubLoading>;
   }
 
   return <BranchContext value={{ currentBranch, setCurrentBranch }}>{children}</BranchContext>;

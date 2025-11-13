@@ -8,11 +8,11 @@ import {
   addRelationshipsToRequest,
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import { IP_ADDRESS_AVAILABLE_KIND, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface GetIpAddressListGraphQLQueryParams extends PaginationParams {
   filters?: Array<Filter>;

@@ -22,7 +22,7 @@ class GroupMutatedEvent(InfrahubEvent):
     def get_related(self) -> list[dict[str, str]]:
         related = super().get_related()
 
-        if self.kind in [InfrahubKind.GENERATORGROUP, InfrahubKind.GRAPHQLQUERYGROUP]:
+        if self.kind in [InfrahubKind.GENERATORGROUP, InfrahubKind.GENERATORAWAREGROUP, InfrahubKind.GRAPHQLQUERYGROUP]:
             # Temporary workaround to avoid too large payloads for the related field
             return related
 

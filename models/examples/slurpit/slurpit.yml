@@ -11,8 +11,7 @@ generics:
       - ["name__value"]
     human_friendly_id:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:
@@ -30,7 +29,7 @@ nodes:
       - ["name__value"]
     human_friendly_id:
       - name__value
-    display_labels: [label__value]
+    display_label: "{{ label__value }}"
     order_by: [name__value]
     icon: mdi:domain
     include_in_menu: true
@@ -62,7 +61,7 @@ nodes:
       - ["name__value"]
     human_friendly_id:
       - name__value
-    display_labels: [name__value]
+    display_label: "{{ name__value }}"
     order_by: [name__value]
     icon: mdi:map-marker-radius-outline
     include_in_menu: true
@@ -152,8 +151,7 @@ nodes:
       - name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -176,8 +174,7 @@ nodes:
     human_friendly_id:
       - device__hostname__value
       - serial__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__hostname__value
       - name__value
@@ -215,8 +212,7 @@ nodes:
       - ["version__value"]
     human_friendly_id:
       - version__value
-    display_labels:
-      - version__value
+    display_label: "{{ version__value }}"
     order_by:
       - version__value
     attributes:
@@ -239,8 +235,7 @@ nodes:
       - ["hostname__value"]
     human_friendly_id:
       - hostname__value
-    display_labels:
-      - hostname__value
+    display_label: "{{ hostname__value }}"
     order_by:
       - hostname__value
     attributes:
@@ -303,9 +298,7 @@ nodes:
     order_by:
       - vlan_id__value
       - name__value
-    display_labels:
-      - name__value
-      - vlan_id__value
+    display_label: "{{ name__value }} {{ vlan_id__value }}"
     attributes:
       - name: name
         kind: Text
@@ -327,8 +320,7 @@ nodes:
       - name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -342,8 +334,7 @@ nodes:
     label: "Interface"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__hostname__value
       - name__value
@@ -396,8 +387,7 @@ nodes:
     icon: "mdi:ip"
     order_by:
       - address__value
-    display_labels:
-      - address__value
+    display_label: "{{ address__value }}"
     inherit_from:
       - BuiltinIPAddress
     uniqueness_constraints:
@@ -418,8 +408,7 @@ nodes:
     label: "Prefix"
     order_by:
       - prefix__value
-    display_labels:
-      - prefix__value
+    display_label: "{{ prefix__value }}"
     inherit_from:
       - BuiltinIPPrefix
     human_friendly_id:

@@ -1,5 +1,5 @@
 import {
-  DeleteObjectsFromApiParams,
+  type DeleteObjectsFromApiParams,
   deleteObjectsFromApi,
 } from "@/entities/nodes/object/api/delete-objects-from-api";
 

@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { useQueryState } from "nuqs";
 import { useRef } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { TASK_TAB } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -9,10 +9,10 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
-import { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject } from "@/entities/nodes/types";
 import { REPOSITORY_OBJECTS_TAB } from "@/entities/repository/constants";
 import { RepositoryObjectsManager } from "@/entities/repository/ui/repository-objects-manager";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 
@@ -26,8 +26,8 @@ export function ObjectDetailsTabContent({
 }: ObjectDetailsTabContentProps) {
   const { pathname } = location;
 
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const [qspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
+  const [qspTaskId] = useQueryState(QSP.TASK_ID);
   const refetchRef = useRef(null);
 
   if (!qspTab) {

@@ -5,7 +5,7 @@ import { Button } from "@/shared/components/buttons/button-primitive";
 import { JsonEditor } from "@/shared/components/editor/json/json-editor";
 import { ColorPicker } from "@/shared/components/inputs/color-picker";
 import { DatePicker } from "@/shared/components/inputs/date-picker";
-import { Dropdown, DropdownOption } from "@/shared/components/inputs/dropdown";
+import { Dropdown, type DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Enum } from "@/shared/components/inputs/enum";
 import { List } from "@/shared/components/list";
 import { Badge } from "@/shared/components/ui/badge";
@@ -17,7 +17,7 @@ import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface DynamicFilterInputProps {
   fieldSchema: AttributeSchema | RelationshipSchema;

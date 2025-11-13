@@ -5,12 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.computed_attribute.tasks import (
-    gather_trigger_computed_attribute_python,
-    process_jinja2,
-    process_transform,
-    query_transform_targets,
-)
+from infrahub.computed_attribute.tasks import gather_trigger_computed_attribute_python, query_transform_targets
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -27,6 +22,15 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
+
+
+RECOMPUTE_COMPUTED_ATTRIBUTE_MUTATION = """
+mutation Recompute($kind: String!, $attribute: String!, $node_ids: [String!]) {
+  InfrahubRecomputeComputedAttribute(data: {kind: $kind, attribute: $attribute, node_ids: $node_ids}) {
+    ok
+  }
+}
+"""
 
 
 class TestComputedAttribute(TestInfrahubApp):
@@ -138,17 +142,12 @@ class TestComputedAttribute(TestInfrahubApp):
         tshirt_1.color = data["c2"].id
         await tshirt_1.save()
 
-        # As we currently don't have a way to trigger on events within these tests we fire the automated workflow
-        # manually
-        await process_jinja2(
-            branch_name=default_branch.name,
-            node_kind="TestingTShirt",
-            object_id=tshirt_1.id,
-            computed_attribute_kind="TestingTShirt",
-            computed_attribute_name="description",
-            updated_fields=["color"],
-            context=context,
+        response = await client.execute_graphql(
+            query=RECOMPUTE_COMPUTED_ATTRIBUTE_MUTATION,
+            variables={"kind": TSHIRT.kind, "attribute": "description", "node_ids": [tshirt_1.id]},
         )
+        assert "InfrahubRecomputeComputedAttribute" in response
+        assert response["InfrahubRecomputeComputedAttribute"]["ok"]
 
         tshirt_updated = await client.get(kind="TestingTShirt", id=data["t1"].id)
         assert (
@@ -163,21 +162,17 @@ class TestComputedAttribute(TestInfrahubApp):
         default_branch: Branch,
         context: InfrahubContext,
     ) -> None:
-        # As we currently don't have a way to trigger on events within these tests we fire the automated workflow
-        # manually
         tshirt_obj = data["t2"]
         color_obj = data["c3"]
 
         tshirt_initial = await client.get(kind="TestingTShirt", id=tshirt_obj.id)
 
-        await process_transform(
-            branch_name=default_branch.name,
-            object_id=tshirt_obj.id,
-            node_kind="TestingTShirt",
-            computed_attribute_name="pitch",
-            computed_attribute_kind="TestingTShirt",
-            context=context,
+        response = await client.execute_graphql(
+            query=RECOMPUTE_COMPUTED_ATTRIBUTE_MUTATION,
+            variables={"kind": TSHIRT.kind, "attribute": "pitch", "node_ids": [tshirt_obj.id]},
         )
+        assert "InfrahubRecomputeComputedAttribute" in response
+        assert response["InfrahubRecomputeComputedAttribute"]["ok"]
 
         tshirt_first_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)
 

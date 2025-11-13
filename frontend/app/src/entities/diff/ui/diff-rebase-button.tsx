@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useRebaseBranch } from "@/entities/branches/domain/rebase-branch";

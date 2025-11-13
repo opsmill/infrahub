@@ -78,7 +78,7 @@ class GeneratedAttributeSchema(HashableModel):
     read_only: bool = Field(
         default=False,
         description="Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.",
-        json_schema_extra={"update": "allowed"},
+        json_schema_extra={"update": "migration_required"},
     )
     unique: bool = Field(
         default=False,
@@ -88,7 +88,7 @@ class GeneratedAttributeSchema(HashableModel):
     optional: bool = Field(
         default=False,
         description="Indicate if this attribute is mandatory or optional.",
-        json_schema_extra={"update": "validate_constraint"},
+        json_schema_extra={"update": "migration_required"},
     )
     branch: BranchSupportType | None = Field(
         default=None,

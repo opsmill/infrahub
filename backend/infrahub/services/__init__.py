@@ -110,14 +110,17 @@ class InfrahubServices:
         # This circular dependency could be removed if InfrahubScheduler only depends on what it needs.
         scheduler.service = service
 
-        if workflow is not None and isinstance(workflow, WorkflowWorkerExecution):
-            assert service.component is not None
+        return service
+
+    async def initialize_workflow(self, is_initial_setup: bool = False) -> None:
+        if self.workflow is not None and isinstance(self.workflow, WorkflowWorkerExecution):
+            assert self.component is not None
             # Ideally `WorkflowWorkerExecution.initialize` would be directly part of WorkflowWorkerExecution
             # constructor but this requires some redesign as it depends on InfrahubComponent which is instantiated
             # after workflow instantiation.
-            await workflow.initialize(component_is_primary_server=await service.component.is_primary_gunicorn_worker())
-
-        return service
+            await self.component.refresh_heartbeat()
+            is_primary = await self.component.is_primary_gunicorn_worker()
+            await self.workflow.initialize(component_is_primary_server=is_primary, is_initial_setup=is_initial_setup)
 
     @property
     def component(self) -> InfrahubComponent:

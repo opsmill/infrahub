@@ -20,10 +20,14 @@ class EnrichedDiffDeleteQuery(Query):
             diff_filter = "WHERE d_root.uuid IN $diff_root_uuids"
 
         query = """
-        MATCH (d_root:DiffRoot)
-        %(diff_filter)s
-        OPTIONAL MATCH (d_root)-[*]->(diff_thing)
-        DETACH DELETE diff_thing
-        DETACH DELETE d_root
+MATCH (d_root:DiffRoot)
+%(diff_filter)s
+OPTIONAL MATCH (d_root)-[*]->(diff_thing)
+WITH DISTINCT d_root, diff_thing
+ORDER BY elementId(diff_thing)
+CALL (diff_thing) {
+    DETACH DELETE diff_thing
+} IN TRANSACTIONS
+DETACH DELETE d_root
         """ % {"diff_filter": diff_filter}
         self.add_to_query(query=query)

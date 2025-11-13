@@ -1,6 +1,6 @@
 import {
   Separator as AriaSeparator,
-  SeparatorProps as AriaSeparatorProps,
+  type SeparatorProps as AriaSeparatorProps,
 } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";

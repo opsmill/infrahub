@@ -1,6 +1,6 @@
 import {
   getProposedChangesCountsFromApi,
-  ProposedChangesCountsFromApiParams,
+  type ProposedChangesCountsFromApiParams,
 } from "@/entities/proposed-changes/api/get-proposed-changes-counts-from-api";
 
 export type GetProposedChangesCountsParams = ProposedChangesCountsFromApiParams;

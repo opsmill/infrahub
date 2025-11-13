@@ -1,7 +1,7 @@
 import {
   getProposedChangeDetailsFromApi,
-  ProposedChangeDetailsFromApiParams,
-  ProposedChangeDetailsFromApiResponse,
+  type ProposedChangeDetailsFromApiParams,
+  type ProposedChangeDetailsFromApiResponse,
 } from "@/entities/proposed-changes/api/get-proposed-change-details-from-api";
 
 export type GetProposedChangeDetailsParams = ProposedChangeDetailsFromApiParams;

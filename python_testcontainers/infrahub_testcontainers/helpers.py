@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import subprocess  # noqa: S404
 import uuid
@@ -24,13 +26,21 @@ class TestInfrahubDocker:
         env["INFRAHUB_API_TOKEN"] = PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN"]
         env["INFRAHUB_MAX_CONCURRENT_EXECUTION"] = "1"
         result = subprocess.run(  # noqa: S602
-            f"infrahubctl run {script}", shell=True, capture_output=True, text=True, env=env, check=False
+            f"infrahubctl run {script}",
+            shell=True,
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
         )
         return result.stdout
 
     @staticmethod
     def execute_command(
-        command: str, address: str, concurrent_execution: int = 10, pagination_size: int = 50
+        command: str,
+        address: str,
+        concurrent_execution: int = 10,
+        pagination_size: int = 50,
     ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["INFRAHUB_ADDRESS"] = address
@@ -79,7 +89,9 @@ class TestInfrahubDocker:
         deployment_type: str | None,
     ) -> InfrahubDockerCompose:
         return InfrahubDockerCompose.init(
-            directory=tmp_directory, version=infrahub_version, deployment_type=deployment_type
+            directory=tmp_directory,
+            version=infrahub_version,
+            deployment_type=deployment_type,
         )
 
     @pytest.fixture(scope="class")
@@ -90,7 +102,10 @@ class TestInfrahubDocker:
             tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
             if tests_failed_during_class > 0:
                 stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
-                warnings.warn(f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}", stacklevel=2)
+                warnings.warn(
+                    f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}",
+                    stacklevel=2,
+                )
             infrahub_compose.stop()
 
         request.addfinalizer(cleanup)

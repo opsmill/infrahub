@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
 
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
+import { QSP } from "@/config/qsp";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
@@ -11,7 +12,7 @@ import {
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 
 interface ObjectHelpButtonProps extends ButtonProps {
   className?: string;
@@ -50,7 +51,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
 
             <MenuItem
               isDisabled={!kind}
-              href={constructPath("/schema", [{ name: "kind", value: kind }])}
+              href={constructPath("/schema", [{ name: QSP.KIND, value: kind }])}
             >
               <Icon icon="mdi:code-json" className="text-lg" />
               Schema

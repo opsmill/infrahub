@@ -33,6 +33,8 @@ core_generator_definition = NodeSchema(
         Attr(name="file_path", kind="Text"),
         Attr(name="class_name", kind="Text"),
         Attr(name="convert_query_response", kind="Boolean", optional=True, default_value=False),
+        Attr(name="execute_in_proposed_change", kind="Boolean", optional=True, default_value=True),
+        Attr(name="execute_after_merge", kind="Boolean", optional=True, default_value=True),
     ],
     relationships=[
         Rel(

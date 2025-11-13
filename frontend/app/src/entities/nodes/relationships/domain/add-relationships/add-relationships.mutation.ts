@@ -5,7 +5,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import {
-  AddRelationshipsParams,
+  type AddRelationshipsParams,
   addRelationships,
 } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships";
 

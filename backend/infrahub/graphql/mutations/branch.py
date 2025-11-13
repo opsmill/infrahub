@@ -7,8 +7,11 @@ from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
+from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.database import retry_db_transaction
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.context import ContextInput
@@ -66,11 +69,20 @@ class BranchCreate(Mutation):
         background_execution: bool = False,
         wait_until_completion: bool = True,
     ) -> Self:
+        if data.origin_branch and data.origin_branch != registry.default_branch:
+            raise ValueError(f"origin_branch must be '{registry.default_branch}'")
+
         graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
         model = BranchCreateModel(**data)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        try:
+            await Branch.get_by_name(db=graphql_context.db, name=model.name)
+            raise ValidationError(f"The branch {model.name} already exists")
+        except BranchNotFoundError:
+            pass
 
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
@@ -278,6 +290,10 @@ class BranchMerge(Mutation):
         await verify_branch_merge_mutation_allowed(
             db=graphql_context.db, account_session=graphql_context.active_account_session
         )
+
+        obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
+        if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
+            raise ValidationError(f"Cannot merge branch '{branch_name}' with status '{obj.status.name}'")
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(

@@ -98,8 +98,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByTestId("branch-selector-trigger").click();
       await page.getByRole("link", { name: "View all branches" }).click();
       await saveScreenshotForDocs(page, "tutorial_1_branch_list");
-      await page.getByTestId("branches-items").getByText("cr1234").click();
-      await expect(page.getByRole("definition").filter({ hasText: "cr1234" })).toBeVisible();
+      await page.getByLabel("Branches list").getByText("cr1234").click();
+      await expect(page.getByRole("heading", { name: "cr1234" })).toBeVisible();
     });
 
     await test.step("trigger the diff update", async () => {
