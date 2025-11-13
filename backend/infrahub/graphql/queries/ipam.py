@@ -9,9 +9,8 @@ from netaddr import IPSet
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import BuiltinIPPrefix
-from infrahub.core.query.ipam import get_ip_addresses, get_subnets
+from infrahub.core.query.ipam import get_next_free_ip_address, get_subnets
 from infrahub.exceptions import NodeNotFoundError, ValidationError
-from infrahub.pools.address import get_available
 from infrahub.pools.prefix import get_next_available_prefix
 
 if TYPE_CHECKING:
@@ -48,23 +47,17 @@ class IPAddressGetNextAvailable(ObjectType):
             raise ValidationError(input_value="Invalid prefix length for current selected prefix")
 
         namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)  # type: ignore[attr-defined]
-        addresses = await get_ip_addresses(
+
+        next_address = await get_next_free_ip_address(
             db=graphql_context.db,
             ip_prefix=ip_prefix,
             namespace=namespace,
             branch=graphql_context.branch,
-        )
-
-        available = get_available(
-            network=ip_prefix,
-            addresses=[ip.address for ip in addresses],
             is_pool=prefix.is_pool.value,  # type: ignore[attr-defined]
         )
 
-        if not available:
+        if not next_address:
             raise IndexError("No addresses available in prefix")
-
-        next_address = available.iter_cidrs()[0]
 
         return {"address": f"{next_address.ip}/{prefix_length}"}
 

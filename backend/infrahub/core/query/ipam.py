@@ -210,6 +210,93 @@ class IPPrefixIPAddressFetch(Query):
         return addresses
 
 
+class IPPrefixIPAddressFetchFree(Query):
+    name = "ipprefix_ipaddress_fetch_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        is_pool: bool,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ):
+        self.obj = obj
+        self.namespace_id = _get_namespace_id(namespace)
+        self.is_pool = is_pool
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["start_range"] = int(self.obj.network_address)
+        self.params["end_range"] = int(self.obj.broadcast_address)
+        if not self.is_pool:
+            self.params["start_range"] += 1
+            self.params["end_range"] -= 1
+
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN ns as ns1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r1 as r
+        WHERE r.status = "active"
+        WITH ns
+        // MATCH all IPAddress that are IN SCOPE
+        MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(addr:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "address"})-[:HAS_VALUE]-(av:AttributeIPHost)
+        WHERE ns_rel.name = "ip_namespace__ip_address"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen >= $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
+        ORDER BY av.binary_address
+        WITH DISTINCT av.binary_address AS used_addresses
+        WITH [x IN split(used_addresses, "") | toInteger(x)] AS bits
+        WITH [toInteger($start_range - 1)] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) + [toInteger($end_range + 1)] AS nums
+        UNWIND range(0, size(nums)-2) AS i
+        WITH nums[i] AS curr, nums[i+1] AS nxt
+        WHERE nxt > curr + 1
+        WITH collect([x IN range(curr+1, nxt-1) | x]) AS gaps
+        // flatten the list of lists
+        UNWIND gaps AS gap
+        UNWIND gap AS free_addr
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPADDRESS,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_addr"]
+        self.order_by = ["free_addr"]
+
+    def get_address(self) -> IPAddressType | None:
+        """Return a list of all addresses fitting in the prefix."""
+        for result in self.get_results():
+            return ipaddress.ip_interface(result.get_as_type("free_addr", return_type=int))
+
+        return None
+
+
 async def get_subnets(
     db: InfrahubDatabase,
     ip_prefix: IPNetworkType,
@@ -240,6 +327,29 @@ async def get_ip_addresses(
     )
     await query.execute(db=db)
     return query.get_addresses()
+
+
+async def get_next_free_ip_address(
+    db: InfrahubDatabase,
+    ip_prefix: IPNetworkType,
+    namespace: Node | str | None = None,
+    branch: Branch | str | None = None,
+    at: Timestamp | str | None = None,
+    branch_agnostic: bool = False,
+    is_pool: bool = False,
+) -> IPAddressType | None:
+    branch = await registry.get_branch(db=db, branch=branch)
+    query = await IPPrefixIPAddressFetchFree.init(
+        db=db,
+        branch=branch,
+        obj=ip_prefix,
+        namespace=namespace,
+        at=at,
+        branch_agnostic=branch_agnostic,
+        is_pool=is_pool,
+    )
+    await query.execute(db=db)
+    return query.get_address()
 
 
 @dataclass(frozen=True)
