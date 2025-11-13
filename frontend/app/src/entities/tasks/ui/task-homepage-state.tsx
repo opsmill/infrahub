@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage.query";
 import { TaskHomepageCard } from "@/entities/tasks/ui/task-homepage-card";
-import { TaskHomepageColumn } from "@/entities/tasks/ui/task-homepage-column";
 import { TaskHomepageDetails } from "@/entities/tasks/ui/task-homepage-details";
 import { TaskHomepageCardSkeleton } from "@/entities/tasks/ui/tasks-homepage-skeleton";
 
@@ -16,7 +15,7 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
   const { data, error, isPending } = useGetTasksHomepage({ states, limit: 5 });
 
   return (
-    <TaskHomepageColumn>
+    <>
       {children}
 
       {isPending && <TaskHomepageCardSkeleton />}
@@ -44,6 +43,6 @@ export const TaskHomepageState = ({ states, children }: TaskHomepageStateProps) 
           </TaskHomepageCard>
         );
       })}
-    </TaskHomepageColumn>
+    </>
   );
 };

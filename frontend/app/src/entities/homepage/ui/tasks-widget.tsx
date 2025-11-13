@@ -12,6 +12,7 @@ import {
   TASK_STATE_PENDING,
   TASK_STATE_RUNNING,
 } from "@/entities/tasks/constants";
+import { TaskHomepageColumn } from "@/entities/tasks/ui/task-homepage-column";
 import { TaskHomepageState } from "@/entities/tasks/ui/task-homepage-state";
 
 interface TasksWidgetProps {
@@ -33,25 +34,30 @@ export const TasksWidget = ({ className }: TasksWidgetProps) => {
 
       <HomeCard.Content className="">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <TaskHomepageState states={[TASK_STATE_COMPLETED]}>
+          <TaskHomepageColumn>
             <Badge variant={"green"}>COMPLETED</Badge>
-          </TaskHomepageState>
+            <TaskHomepageState states={[TASK_STATE_COMPLETED]} />
+          </TaskHomepageColumn>
 
-          <TaskHomepageState states={[TASK_STATE_RUNNING]}>
+          <TaskHomepageColumn>
             <Badge variant={"blue"}>RUNNING</Badge>
-          </TaskHomepageState>
+            <TaskHomepageState states={[TASK_STATE_RUNNING]} />
+          </TaskHomepageColumn>
 
-          <TaskHomepageState states={[TASK_STATE_PENDING]}>
+          <TaskHomepageColumn>
             <Badge variant={"yellow"}>PENDING</Badge>
-          </TaskHomepageState>
+            <TaskHomepageState states={[TASK_STATE_PENDING]} />
+          </TaskHomepageColumn>
 
-          <TaskHomepageState states={[TASK_STATE_FAILED]}>
+          <TaskHomepageColumn>
             <Badge variant={"red"}>FAILED</Badge>
-          </TaskHomepageState>
+            <TaskHomepageState states={[TASK_STATE_FAILED]} />
+          </TaskHomepageColumn>
 
-          <TaskHomepageState states={MORE_TASKS_STATES}>
+          <TaskHomepageColumn>
             <Badge variant={"gray"}>MORE</Badge>
-          </TaskHomepageState>
+            <TaskHomepageState states={MORE_TASKS_STATES} />
+          </TaskHomepageColumn>
         </div>
       </HomeCard.Content>
     </HomeCard>
