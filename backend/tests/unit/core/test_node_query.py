@@ -1,6 +1,7 @@
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
+    MetadataOptions,
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
@@ -176,7 +177,7 @@ async def test_query_NodeListGetAttributeQuery_with_source(
     default_branch = await registry.get_branch(db=db, branch="main")
 
     query = await NodeListGetAttributeQuery.init(
-        db=db, ids=[obj1.id, obj2.id], branch=default_branch, include_source=True
+        db=db, ids=[obj1.id, obj2.id], branch=default_branch, include_metadata=MetadataOptions.SOURCE
     )
     await query.execute(db=db)
     assert sorted(query.get_attributes_group_by_node().keys()) == sorted([obj1.id, obj2.id])

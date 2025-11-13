@@ -15,7 +15,13 @@ from pydantic import BaseModel, Field
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
-from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
+from infrahub.core.constants import (
+    NULL_VALUE,
+    AttributeDBNodeType,
+    BranchSupportType,
+    MetadataOptions,
+    RelationshipStatus,
+)
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
     AttributeClearNodePropertyQuery,
@@ -418,8 +424,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             fields={self.name: True},
             branch=self.branch,
             at=update_at,
-            include_source=True,
-            include_owner=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         await query.execute(db=db)
         current_attr_data, current_attr_result = query.get_result_by_id_and_name(self.node.id, self.name)

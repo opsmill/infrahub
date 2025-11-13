@@ -16,50 +16,35 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `check`: Run database sanity checks and output the...
-* `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
+* `migrate`: Check the current format of the internal...
 * `check-inheritance`: Check the database for any vertices with...
+* `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
+* `update-core-schema`: Check the current format of the internal...
 * `constraint`: Manage Database Constraints
 * `index`: Manage Database Indexes
-* `load-export`: Cannot be used for backup/restore...
-* `migrate`: Check the current format of the internal...
-* `patch`: Commands for planning, applying, and...
 * `selected-export`: Export database structure of selected...
-* `update-core-schema`: Check the current format of the internal...
+* `load-export`: Cannot be used for backup/restore...
+* `check`: Run database sanity checks and output the...
+* `patch`: Commands for planning, applying, and...
 
-## `infrahub db check`
+## `infrahub db migrate`
 
-Run database sanity checks and output the results to the CSV files.
-
-**Usage**:
-
-```console
-$ infrahub db check [OPTIONS]
-```
-
-**Options**:
-
-* `--output-dir PATH`: Directory to save detailed check results (defaults to infrahub_db_check_YYYYMMDD-HHMMSS)
-* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
-* `--help`: Show this message and exit.
-
-## `infrahub db check-duplicate-schema-fields`
-
-Check for any duplicate schema attributes or relationships on the default branch
+Check the current format of the internal graph and apply the necessary migrations
 
 **Usage**:
 
 ```console
-$ infrahub db check-duplicate-schema-fields [OPTIONS] [CONFIG_FILE]
+$ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 ```
 
 **Arguments**:
 
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 
 **Options**:
 
-* `--fix / --no-fix`: Fix the duplicate schema fields on the default branch.  [default: no-fix]
+* `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
+* `--migration-number INTEGER`: Apply a specific migration by number
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-inheritance`
@@ -74,11 +59,49 @@ $ infrahub db check-inheritance [OPTIONS] [CONFIG_FILE]
 
 **Arguments**:
 
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 
 **Options**:
 
 * `--fix / --no-fix`: Fix the inheritance of any invalid nodes.  [default: no-fix]
+* `--help`: Show this message and exit.
+
+## `infrahub db check-duplicate-schema-fields`
+
+Check for any duplicate schema attributes or relationships on the default branch
+
+**Usage**:
+
+```console
+$ infrahub db check-duplicate-schema-fields [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--fix / --no-fix`: Fix the duplicate schema fields on the default branch.  [default: no-fix]
+* `--help`: Show this message and exit.
+
+## `infrahub db update-core-schema`
+
+Check the current format of the internal graph and apply the necessary migrations
+
+**Usage**:
+
+```console
+$ infrahub db update-core-schema [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--debug / --no-debug`: Enable advanced logging and troubleshooting  [default: no-debug]
 * `--help`: Show this message and exit.
 
 ## `infrahub db constraint`
@@ -94,7 +117,7 @@ $ infrahub db constraint [OPTIONS] [ACTION]:[show|add|drop] [CONFIG_FILE]
 **Arguments**:
 
 * `[ACTION]:[show|add|drop]`: [default: show]
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 
 **Options**:
 
@@ -113,10 +136,32 @@ $ infrahub db index [OPTIONS] [ACTION]:[show|add|drop] [CONFIG_FILE]
 **Arguments**:
 
 * `[ACTION]:[show|add|drop]`: [default: show]
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 
 **Options**:
 
+* `--help`: Show this message and exit.
+
+## `infrahub db selected-export`
+
+Export database structure of selected nodes from the database without any actual data
+
+**Usage**:
+
+```console
+$ infrahub db selected-export [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--kinds TEXT`: Node kinds to export
+* `--uuids TEXT`: UUIDs of nodes to export
+* `--query-limit INTEGER`: Maximum batch size of export query  [default: 1000]
+* `--export-dir PATH`: Path of directory to save exports  [default: infrahub-exports]
 * `--help`: Show this message and exit.
 
 ## `infrahub db load-export`
@@ -134,31 +179,27 @@ $ infrahub db load-export [OPTIONS] EXPORT_DIR [CONFIG_FILE]
 **Arguments**:
 
 * `EXPORT_DIR`: Path to export directory  [required]
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 
 **Options**:
 
 * `--query-limit INTEGER`: Maximum batch size of import query  [default: 1000]
 * `--help`: Show this message and exit.
 
-## `infrahub db migrate`
+## `infrahub db check`
 
-Check the current format of the internal graph and apply the necessary migrations
+Run database sanity checks and output the results to the CSV files.
 
 **Usage**:
 
 ```console
-$ infrahub db migrate [OPTIONS] [CONFIG_FILE]
+$ infrahub db check [OPTIONS]
 ```
-
-**Arguments**:
-
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
 
 **Options**:
 
-* `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
-* `--migration-number INTEGER`: Apply a specific migration by number
+* `--output-dir PATH`: Directory to save detailed check results (defaults to infrahub_db_check_YYYYMMDD-HHMMSS)
+* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahub db patch`
@@ -177,28 +218,9 @@ $ infrahub db patch [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `apply`: Apply a given patch plan
 * `plan`: Create a plan for a given patch and save...
+* `apply`: Apply a given patch plan
 * `revert`: Revert a given patch plan
-
-### `infrahub db patch apply`
-
-Apply a given patch plan
-
-**Usage**:
-
-```console
-$ infrahub db patch apply [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
-```
-
-**Arguments**:
-
-* `PATCH_PLAN_DIR`: Path to the directory containing a patch plan  [required]
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
-
-**Options**:
-
-* `--help`: Show this message and exit.
 
 ### `infrahub db patch plan`
 
@@ -213,12 +235,31 @@ $ infrahub db patch plan [OPTIONS] PATCH_PATH [CONFIG_FILE]
 **Arguments**:
 
 * `PATCH_PATH`: Path to the file containing the PatchQuery instance to run. Use Python-style dot paths, such as infrahub.cli.patch.queries.base  [required]
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 
 **Options**:
 
 * `--patch-plans-dir PATH`: Path to patch plans directory  [default: infrahub-patches]
 * `--apply / --no-apply`: Apply the patch immediately after creating it  [default: no-apply]
+* `--help`: Show this message and exit.
+
+### `infrahub db patch apply`
+
+Apply a given patch plan
+
+**Usage**:
+
+```console
+$ infrahub db patch apply [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `PATCH_PLAN_DIR`: Path to the directory containing a patch plan  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
 * `--help`: Show this message and exit.
 
 ### `infrahub db patch revert`
@@ -234,49 +275,8 @@ $ infrahub db patch revert [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
 **Arguments**:
 
 * `PATCH_PLAN_DIR`: Path to the directory containing a patch plan  [required]
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 
 **Options**:
 
-* `--help`: Show this message and exit.
-
-## `infrahub db selected-export`
-
-Export database structure of selected nodes from the database without any actual data
-
-**Usage**:
-
-```console
-$ infrahub db selected-export [OPTIONS] [CONFIG_FILE]
-```
-
-**Arguments**:
-
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
-
-**Options**:
-
-* `--kinds TEXT`: Node kinds to export
-* `--uuids TEXT`: UUIDs of nodes to export
-* `--query-limit INTEGER`: Maximum batch size of export query  [default: 1000]
-* `--export-dir PATH`: Path of directory to save exports  [default: infrahub-exports]
-* `--help`: Show this message and exit.
-
-## `infrahub db update-core-schema`
-
-Check the current format of the internal graph and apply the necessary migrations
-
-**Usage**:
-
-```console
-$ infrahub db update-core-schema [OPTIONS] [CONFIG_FILE]
-```
-
-**Arguments**:
-
-* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
-
-**Options**:
-
-* `--debug / --no-debug`: Enable advanced logging and troubleshooting  [default: no-debug]
 * `--help`: Show this message and exit.

@@ -3,7 +3,13 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import (
+    BranchSupportType,
+    DiffAction,
+    InfrahubKind,
+    MetadataOptions,
+    RelationshipCardinality,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -953,7 +959,7 @@ async def test_node_update_local_attrs_with_metadata(
     obj1.name.source = first_account
     await obj1.save(db=db)
 
-    obj2 = await NodeManager.get_one(id=obj1.id, include_source=True, db=db, branch=branch)
+    obj2 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.SOURCE, db=db, branch=branch)
     assert obj2.name.value == "low"
     assert obj2.name.source_id == first_account.id
     assert obj2.name.owner_id is None
@@ -969,7 +975,7 @@ async def test_node_update_local_attrs_with_metadata(
     obj2.name.is_protected = True
     await obj2.save(db=db)
 
-    obj3 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    obj3 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch)
     assert obj3.name.value == "low"
     assert obj3.name.source_id == second_account.id
     assert obj3.name.owner_id == first_account.id
@@ -981,7 +987,7 @@ async def test_node_update_local_attrs_with_metadata(
     obj3.name.clear_source()
     await obj3.save(db=db)
 
-    obj4 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    obj4 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch)
     assert obj4.name.value == "low"
     assert obj4.name.source_id is None
     assert obj4.name.owner_id == first_account.id

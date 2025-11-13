@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
+    MetadataOptions,
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
@@ -593,16 +594,15 @@ class NodeListGetAttributeQuery(Query):
         self,
         ids: list[str],
         fields: dict | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         account=None,
         **kwargs,
     ):
         self.account = account
         self.ids = ids
         self.fields = fields
-        self.include_source = include_source
-        self.include_owner = include_owner
+        self.include_source = MetadataOptions.SOURCE in include_metadata
+        self.include_owner = MetadataOptions.OWNER in include_metadata
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 

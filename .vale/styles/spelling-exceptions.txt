@@ -177,6 +177,7 @@ pseudocode
 psutil
 PyPI
 query_peers
+quiescing
 rebase
 rebased
 rebasing
@@ -197,6 +198,7 @@ sdk
 SLA
 SLAs
 Slurp'it
+snapshotting
 streamlit
 Streamlit
 subcommand

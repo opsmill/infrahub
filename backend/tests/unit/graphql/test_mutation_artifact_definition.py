@@ -5,7 +5,7 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -120,7 +120,7 @@ async def test_create_artifact_definition(
         assert result.data["CoreArtifactDefinitionCreate"]["ok"] is True
         ad_id = result.data["CoreArtifactDefinitionCreate"]["object"]["id"]
 
-        ad1 = await NodeManager.get_one(db=db, id=ad_id, include_owner=True, include_source=True, branch=branch)
+        ad1 = await NodeManager.get_one(db=db, id=ad_id, include_metadata=MetadataOptions.LINKED_NODES, branch=branch)
 
         assert ad1.name.value == "Artifact 01"
 
@@ -192,7 +192,7 @@ async def test_update_artifact_definition(
         assert result.data["CoreArtifactDefinitionUpdate"]["ok"] is True
 
         ad1_post = await NodeManager.get_one(
-            db=db, id=definition1.id, include_owner=True, include_source=True, branch=branch
+            db=db, id=definition1.id, include_metadata=MetadataOptions.LINKED_NODES, branch=branch
         )
 
         assert ad1_post.artifact_name.value == "myartifact2"

@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -244,8 +244,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             kind=self.schema.kind.value,
             branch=self.branch,
             at=self.at,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         self._node = node
         self._node_id = self._node.id
@@ -289,8 +288,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     raise_on_error=True,
                     at=self.at,
                     branch=self.branch,
-                    include_source=True,
-                    include_owner=True,
+                    include_metadata=MetadataOptions.LINKED_NODES,
                     prefetch_relationships=False,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
@@ -301,8 +299,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     kind=self.schema.peer,
                     branch=self.branch,
                     at=self.at,
-                    include_owner=True,
-                    include_source=True,
+                    include_metadata=MetadataOptions.LINKED_NODES,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
         except NodeNotFoundError:

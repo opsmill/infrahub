@@ -5,6 +5,7 @@ from aiodataloader import DataLoader
 
 from infrahub.auth import AccountSession
 from infrahub.core.branch.models import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
@@ -18,8 +19,7 @@ class GetManyParams:
     branch: Branch | str
     fields: dict | None = None
     at: Timestamp | str | None = None
-    include_source: bool = False
-    include_owner: bool = False
+    include_metadata: MetadataOptions = MetadataOptions.NONE
     prefetch_relationships: bool = False
     account: AccountSession | None = None
     branch_agnostic: bool = False
@@ -36,8 +36,7 @@ class GetManyParams:
                 str(hash(frozen_fields)),
                 timestamp.to_string(),
                 branch,
-                str(self.include_source),
-                str(self.include_owner),
+                str(self.include_metadata.value),
                 str(self.prefetch_relationships),
                 str(account_id),
                 str(self.branch_agnostic),
@@ -60,8 +59,7 @@ class NodeDataLoader(DataLoader[str, Node | None]):
                 fields=self.query_params.fields,
                 at=self.query_params.at,
                 branch=self.query_params.branch,
-                include_source=self.query_params.include_source,
-                include_owner=self.query_params.include_owner,
+                include_metadata=self.query_params.include_metadata,
                 prefetch_relationships=self.query_params.prefetch_relationships,
                 account=self.query_params.account,
                 branch_agnostic=self.query_params.branch_agnostic,
