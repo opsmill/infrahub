@@ -213,7 +213,10 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.testcontainers == 'true'
+      (
+        needs.files-changed.outputs.testcontainers == 'true' ||
+        needs.files-changed.outputs.github_workflows == 'true'
+      )
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     strategy:
       matrix:
@@ -222,6 +225,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
 
     runs-on: ubuntu-latest
     timeout-minutes: 30

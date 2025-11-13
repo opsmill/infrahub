@@ -142,7 +142,7 @@ export const router = createBrowserRouter([
                             lazy: () => import("@/pages/objects/object-items"),
                           },
                           {
-                            path: ":objectid",
+                            path: ":objectId",
                             children: [
                               {
                                 index: true,
@@ -245,7 +245,7 @@ export const router = createBrowserRouter([
                         lazy: () => import("@/pages/objects/layout"),
                         children: [
                           {
-                            path: ":objectid",
+                            path: ":objectId",
                             lazy: () => import("@/pages/objects/object-details"),
                           },
                         ],

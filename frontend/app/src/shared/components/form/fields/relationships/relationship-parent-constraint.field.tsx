@@ -13,7 +13,7 @@ export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
 
 // Select kind (select 2 steps) if needed
 const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps) => {
-  const { objectid, objectKind } = useParams();
+  const { objectId, objectKind } = useParams();
 
   const { schema } = useSchema(objectKind);
 
@@ -22,7 +22,7 @@ const RelationshipParentConstraintField = ({ ...props }: RelationshipFieldProps)
   });
 
   const { data, isPending } = useGetObject({
-    objectId: objectid,
+    objectId,
     objectSchema: schema,
     getRelationshipsVisible: (relationships: RelationshipSchema[]): RelationshipSchema[] => {
       return relationships.filter((relationship) => {

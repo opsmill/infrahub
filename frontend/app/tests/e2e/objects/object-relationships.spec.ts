@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
+test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
   test.describe.configure({ mode: "serial" });
   test.slow();
   const BRANCH_NAME = generateRandomBranchName("object-relationships");
