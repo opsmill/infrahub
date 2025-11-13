@@ -114,7 +114,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
             await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
             setShowEditModal(false);
           }}
-          objectid={objectDetailsData.id!}
+          objectId={objectDetailsData.id!}
           objectname={schema.kind!}
         />
       </SlideOver>

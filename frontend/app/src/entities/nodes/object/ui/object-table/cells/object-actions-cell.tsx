@@ -112,7 +112,7 @@ export function ObjectActionsCell({
               await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
               setShowEditForm(false);
             }}
-            objectid={objectId}
+            objectId={objectId}
             objectname={objectKind}
           />
         </SlideOver>

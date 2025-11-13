@@ -58,7 +58,7 @@ const ObjectEditSlideOverTrigger = ({
             onUpdateComplete?.();
             setIsEditDrawerOpen(false);
           }}
-          objectid={data.id}
+          objectId={data.id}
           objectname={schema.kind!}
         />
       </SlideOver>

@@ -13,7 +13,7 @@ type NodeLabelProps = {
 };
 
 export const NodeLabel = ({ id, kind = NODE_OBJECT, branch, className }: NodeLabelProps) => {
-  const { isPending, error, data } = useNodeLabel({ objectid: id, kind, enabled: !!id, branch });
+  const { isPending, error, data } = useNodeLabel({ objectId: id, kind, enabled: !!id, branch });
 
   if (isPending) {
     return <Skeleton className="h-3 w-14" />;

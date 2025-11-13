@@ -36,7 +36,7 @@ export function RelationshipsButtons({
   schema: parentSchema,
   objectDetailsData,
 }: RelationshipsButtonsProps) {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
@@ -90,7 +90,7 @@ export function RelationshipsButtons({
     if (relation?.id || relation?.from_pool) {
       await addRelationship({
         variables: {
-          objectId: objectid,
+          objectId,
           relationshipIds: [{ id: relation.id }],
           relationshipName: relationshipSchema?.name,
         },
