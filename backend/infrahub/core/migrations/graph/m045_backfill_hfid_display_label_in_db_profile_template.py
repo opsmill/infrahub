@@ -54,7 +54,11 @@ class Migration045(Migration044):
                     if node_schema_name in self.kinds_to_skip:
                         continue
 
-                    node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+                    if node_schema_name in main_schema_branch.profile_names:
+                        node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
+                    else:
+                        node_schema = main_schema_branch.get_template(name=node_schema_name, duplicate=False)
+
                     attribute_schema_map = {}
                     if node_schema.display_labels:
                         attribute_schema_map[display_labels_attribute_schema] = display_label_attribute_schema
@@ -92,8 +96,13 @@ class Migration045(Migration044):
                 if node_schema_name in self.kinds_to_skip:
                     continue
 
-                node_schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
-                default_node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+                if node_schema_name in main_schema_branch.profile_names:
+                    node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
+                    default_node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
+                else:
+                    node_schema = main_schema_branch.get_template(name=node_schema_name, duplicate=False)
+                    default_node_schema = main_schema_branch.get_template(name=node_schema_name, duplicate=False)
+
                 schemas_for_universal_update_map = {}
                 schemas_for_targeted_update_map = {}
                 if default_node_schema.display_label != node_schema.display_label:

@@ -13,13 +13,14 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, Relat
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.shared import MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
+from infrahub.core.schema import NodeSchema
 from infrahub.types import is_large_attribute_type
 
 from ..shared import MigrationRequiringRebase
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import AttributeSchema, NodeSchema
+    from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, TemplateSchema
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -621,7 +622,7 @@ class Migration044(MigrationRequiringRebase):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        schema: NodeSchema,
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
         schema_branch: SchemaBranch,
         attribute_schema_map: dict[AttributeSchema, AttributeSchema],
         progress: Progress | None = None,
@@ -755,7 +756,7 @@ class Migration044(MigrationRequiringRebase):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        schema: NodeSchema,
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
         schema_branch: SchemaBranch,
         source_attribute_schema: AttributeSchema,
         destination_attribute_schema: AttributeSchema,
