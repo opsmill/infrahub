@@ -1190,6 +1190,13 @@ class NodeManager:
                 "id": node_id,
             }
 
+            if not node.schema:
+                raise SchemaNotFoundError(
+                    branch_name=branch.name,
+                    identifier=node_id,
+                    message=f"Unable to find the Schema associated with {node_id}, {node.labels}",
+                )
+
             # --------------------------------------------------------
             # Attributes
             # --------------------------------------------------------
