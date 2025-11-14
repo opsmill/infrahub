@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
@@ -66,6 +67,103 @@ class InfrahubDatabaseMode(InfrahubStringEnum):
 class InfrahubDatabaseSessionMode(InfrahubStringEnum):
     READ = "read"
     WRITE = "write"
+
+
+DRIVER_REFRESH_INTERVAL_SECONDS = 60.0
+
+
+class DriverState:
+    """Track references and lifecycle management for an asynchronous driver."""
+
+    def __init__(self, driver: AsyncDriver, refresh_interval: float = DRIVER_REFRESH_INTERVAL_SECONDS) -> None:
+        self.driver: AsyncDriver = driver
+        self.refresh_interval = refresh_interval
+        self._usage_count: int = 0
+        self._usage_lock = asyncio.Lock()
+        self._refresh_lock = asyncio.Lock()
+        self._closed: bool = False
+        self._last_refresh: float = time.monotonic()
+
+    async def acquire(self) -> AsyncDriver:
+        """Mark the driver as in-use and return it."""
+
+        if self._closed:
+            raise RuntimeError("Cannot acquire a closed driver state.")
+
+        async with self._usage_lock:
+            if self._closed:
+                raise RuntimeError("Cannot acquire a closed driver state.")
+            self._usage_count += 1
+            return self.driver
+
+    async def release(self) -> None:
+        """Decrease the usage counter and refresh the driver if needed."""
+
+        if self._closed:
+            return
+
+        async with self._usage_lock:
+            if self._usage_count == 0:
+                log.warning("Attempted to release a driver with zero usage count.")
+                return
+            self._usage_count -= 1
+            usage_remaining = self._usage_count
+
+        if usage_remaining == 0:
+            await self._maybe_refresh()
+
+    async def close(self) -> None:
+        """Close the underlying driver and prevent further refreshes."""
+
+        if self._closed:
+            return
+
+        self._closed = True
+        async with self._refresh_lock:
+            async with self._usage_lock:
+                current_driver = self.driver
+                self._usage_count = 0
+        await current_driver.close()
+
+    async def _maybe_refresh(self) -> None:
+        if self._closed:
+            return
+
+        if time.monotonic() - self._last_refresh < self.refresh_interval:
+            return
+
+        old_driver: AsyncDriver | None = None
+        async with self._refresh_lock:
+            if self._closed:
+                return
+
+            async with self._usage_lock:
+                refresh_due = (
+                    not self._closed
+                    and self._usage_count == 0
+                    and time.monotonic() - self._last_refresh >= self.refresh_interval
+                )
+
+            if not refresh_due:
+                return
+
+            try:
+                new_driver = await _create_driver()
+            except Exception as exc:
+                log.exception("Failed to refresh Neo4j driver", error=str(exc))
+                return
+
+            async with self._usage_lock:
+                if self._usage_count != 0 or self._closed:
+                    await new_driver.close()
+                    return
+                old_driver = self.driver
+                self.driver = new_driver
+                self._last_refresh = time.monotonic()
+
+        if old_driver:
+            await old_driver.close()
+            log.info("Neo4j driver refreshed")
 
 
 def get_branch_name(branch: Branch | str | None = None) -> str:
@@ -143,7 +241,7 @@ class InfrahubDatabase:
 
     def __init__(
         self,
-        driver: AsyncDriver,
+        driver: AsyncDriver | None = None,
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         db_type: DatabaseType | None = None,
         default_neo4j_runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT,
@@ -152,9 +250,18 @@ class InfrahubDatabase:
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: AsyncTransaction | None = None,
         queries_names_to_config: dict[str, QueryConfig] | None = None,
+        driver_state: DriverState | None = None,
     ):
+        if driver_state is None:
+            if driver is None:
+                raise ValueError("A driver instance is required when driver_state is not provided.")
+            self._driver_state: DriverState = DriverState(driver=driver)
+        else:
+            self._driver_state = driver_state
+            if driver is not None and driver_state.driver is not driver:
+                self._driver_state.driver = driver
+
         self._mode: InfrahubDatabaseMode = mode
-        self._driver: AsyncDriver = driver
         self._session: AsyncSession | None = session
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
@@ -172,6 +279,10 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
+
+    @property
+    def driver(self) -> AsyncDriver:
+        return self._driver_state.driver
 
     @property
     def is_session(self) -> bool:
@@ -213,13 +324,14 @@ class InfrahubDatabase:
             session_mode = InfrahubDatabaseSessionMode.READ
 
         context = self.get_context()
+        schemas_to_use = list(schemas) if schemas is not None else list(self._schemas.values())
 
         return self.__class__(
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
-            schemas=schemas or self._schemas.values(),
-            driver=self._driver,
+            schemas=schemas_to_use,
+            driver_state=self._driver_state,
             session_mode=session_mode,
             queries_names_to_config=self.queries_names_to_config,
             **context,
@@ -227,13 +339,14 @@ class InfrahubDatabase:
 
     def start_transaction(self, schemas: list[SchemaBranch] | None = None) -> InfrahubDatabase:
         context = self.get_context()
+        schemas_to_use = list(schemas) if schemas is not None else list(self._schemas.values())
 
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
-            schemas=schemas or self._schemas.values(),
-            driver=self._driver,
+            schemas=schemas_to_use,
+            driver_state=self._driver_state,
             session=self._session,
             session_mode=self._session_mode,
             queries_names_to_config=self.queries_names_to_config,
@@ -244,14 +357,18 @@ class InfrahubDatabase:
         if self._session:
             return self._session
 
-        if self._session_mode == InfrahubDatabaseSessionMode.READ:
-            self._session = self._driver.session(
-                database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
+        await self._driver_state.acquire()
+
+        try:
+            default_access_mode = (
+                READ_ACCESS if self._session_mode == InfrahubDatabaseSessionMode.READ else WRITE_ACCESS
             )
-        else:
-            self._session = self._driver.session(
-                database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
+            self._session = self.driver.session(
+                database=config.SETTINGS.database.database_name, default_access_mode=default_access_mode
             )
+        except Exception:
+            await self._driver_state.release()
+            raise
 
         self._is_session_local = True
         return self._session
@@ -268,15 +385,7 @@ class InfrahubDatabase:
 
     async def __aenter__(self) -> Self:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            if self._session_mode == InfrahubDatabaseSessionMode.READ:
-                self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
-                )
-            else:
-                self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
-                )
-
+            await self.session()
         elif self._mode == InfrahubDatabaseMode.TRANSACTION:
             session = await self.session()
             self._transaction = await session.begin_transaction()
@@ -290,25 +399,41 @@ class InfrahubDatabase:
         traceback: TracebackType | None,
     ) -> None:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            await self._session.close()
+            if self._session and self._is_session_local:
+                await self._session.close()
+                self._session = None
+                self._is_session_local = False
+                await self._driver_state.release()
             return
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
-            if exc_type is not None:
-                await self._transaction.rollback()
-            else:
-                try:
-                    await self._transaction.commit()
-                except Neo4jError as exc:
-                    raise exc
-                finally:
-                    await self._transaction.close()
+            if self._transaction is not None:
+                if exc_type is not None:
+                    await self._transaction.rollback()
+                else:
+                    try:
+                        await self._transaction.commit()
+                    except Neo4jError as exc:
+                        raise exc
+                    finally:
+                        await self._transaction.close()
+                self._transaction = None
 
             if self._is_session_local:
-                await self._session.close()
+                if self._session:
+                    await self._session.close()
+                    self._session = None
+                self._is_session_local = False
+                await self._driver_state.release()
 
     async def close(self) -> None:
-        await self._driver.close()
+        if self._session and self._is_session_local:
+            await self._session.close()
+            self._session = None
+            self._is_session_local = False
+            await self._driver_state.release()
+
+        await self._driver_state.close()
 
     async def execute_query(
         self,
@@ -331,13 +456,14 @@ class InfrahubDatabase:
         context: dict[str, str] | None = None,
         type: QueryType | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
-        connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
-        CONNECTION_POOL_USAGE.labels(self._driver._pool.address).set(float(connpool_usage))
+        driver = self.driver
+        connpool_usage = driver._pool.in_use_connection_count(driver._pool.address)
+        CONNECTION_POOL_USAGE.labels(driver._pool.address).set(float(connpool_usage))
 
         if config.SETTINGS.database.max_concurrent_queries:
             while connpool_usage > config.SETTINGS.database.max_concurrent_queries:
                 await asyncio.sleep(config.SETTINGS.database.max_concurrent_queries_delay)
-                connpool_usage = self._driver._pool.in_use_connection_count(self._driver._pool.address)
+                connpool_usage = driver._pool.in_use_connection_count(driver._pool.address)
 
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
@@ -480,7 +606,7 @@ async def validate_database(
     return True
 
 
-async def get_db(retry: int = 0) -> AsyncDriver:
+async def _create_driver(retry: int = 0) -> AsyncDriver:
     trusted_certificates = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
         trusted_certificates = TrustAll()
@@ -504,6 +630,10 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         )
 
     return driver
+
+
+async def get_db(retry: int = 0) -> AsyncDriver:
+    return await _create_driver(retry=retry)
 
 
 def retry_db_transaction(
