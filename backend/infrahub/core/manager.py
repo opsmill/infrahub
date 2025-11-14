@@ -31,7 +31,7 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFoundError, ProcessingError
+from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
 from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
