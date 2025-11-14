@@ -19,7 +19,9 @@ class RemoveIsVisibleRelationshipQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         query = """
         MATCH ()-[rel:IS_VISIBLE]->()
-        DELETE rel
+        CALL (rel) {
+          DELETE rel
+        } IN TRANSACTIONS
         """
         self.add_to_query(query)
 
@@ -31,3 +33,6 @@ class Migration045(GraphMigration):
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
+
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        return await self.do_execute(db=db)

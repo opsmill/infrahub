@@ -5,17 +5,17 @@ from infrahub.database import InfrahubDatabase
 
 async def test_migration_045(db: InfrahubDatabase, default_branch, person_john_main, car_accord_main) -> None:
     count_is_visible_relationship_query = """
-    MATCH (n)-[rel:IS_VISIBLE]-()
-    RETURN count(DISTINCT n) AS visible_nodes_count;
+    MATCH ()-[rel:IS_VISIBLE]-()
+    RETURN count(*) AS is_visible_count;
     """
-    visible_nodes_count = await db.execute_query(query=count_is_visible_relationship_query)
-    assert visible_nodes_count[0].get("visible_nodes_count") == 0
+    is_visible_count = await db.execute_query(query=count_is_visible_relationship_query)
+    assert is_visible_count[0].get("is_visible_count") == 0
 
     car_name_attr = car_accord_main.get_attribute("name")
     person_name_attr = person_john_main.get_attribute("name")
 
     add_is_visible_relationship_query = """
-    CREATE (bool_true:Boolean { value: true })
+    MERGE (bool_true:Boolean { value: true })
 
     WITH bool_true
     MATCH (attr:Attribute {uuid: $car_name_attr_uuid})
@@ -45,13 +45,13 @@ async def test_migration_045(db: InfrahubDatabase, default_branch, person_john_m
         },
     )
 
-    visible_nodes_count = await db.execute_query(query=count_is_visible_relationship_query)
-    assert visible_nodes_count[0].get("visible_nodes_count") == 3
+    is_visible_count = await db.execute_query(query=count_is_visible_relationship_query)
+    assert is_visible_count[0].get("is_visible_count") == 4
 
     migration = Migration045()
     await migration.execute(db=db)
     result = await migration.validate_migration(db=db)
     assert result.success
 
-    visible_nodes_count = await db.execute_query(query=count_is_visible_relationship_query)
-    assert visible_nodes_count[0].get("visible_nodes_count") == 0
+    is_visible_count = await db.execute_query(query=count_is_visible_relationship_query)
+    assert is_visible_count[0].get("is_visible_count") == 0
