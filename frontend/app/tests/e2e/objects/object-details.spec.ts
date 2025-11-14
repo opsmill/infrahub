@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-test.describe("/objects/:objectKind/:objectid", () => {
+test.describe("/objects/:objectKind/:objectId", () => {
   const BRANCH_NAME = generateRandomBranchName("object-details");
 
   test.beforeAll(async ({ request }) => {

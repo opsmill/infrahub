@@ -30,7 +30,7 @@ interface TaskItemsProps {
 }
 
 export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) => {
-  const { objectid, proposedChangeId } = useParams();
+  const { objectId, proposedChangeId } = useParams();
   const location = useLocation();
   const [filters, setFilters] = useFilters();
 
@@ -41,7 +41,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
   const { pathname } = location;
 
-  const relatedNode = node || objectid || proposedChangeId;
+  const relatedNode = node || objectId || proposedChangeId;
 
   const {
     loading,
@@ -124,7 +124,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
   ].filter((v): v is tColumn => !!v);
 
   const getUrl = (id: string) => {
-    if (!objectid && !proposedChangeId) {
+    if (!objectId && !proposedChangeId) {
       return constructPath(`/tasks/${id}`);
     }
 

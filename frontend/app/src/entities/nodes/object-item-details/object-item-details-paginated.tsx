@@ -51,7 +51,7 @@ export default function ObjectItemDetails({
   permission,
   hideHeaders,
 }: ObjectDetailsProps) {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
 
   const [qspTab] = useQueryState(QSP.TAB);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
@@ -104,7 +104,7 @@ export default function ObjectItemDetails({
             <div className="flex grow gap-8 px-4" data-testid="object-details-tabs">
               <ObjectDetailsTab
                 isActive={!qspTab}
-                to={getObjectDetailsUrl(objectKind as string, objectid)}
+                to={getObjectDetailsUrl(objectKind as string, objectId)}
               >
                 {schema.label}
               </ObjectDetailsTab>
@@ -149,7 +149,7 @@ export default function ObjectItemDetails({
             <CardWithBorder.Title className="border-gray-200 border-b">
               Activities
             </CardWithBorder.Title>
-            <NodeEvents objectId={objectid} objectKind={objectKind} />
+            <NodeEvents objectId={objectId} objectKind={objectKind} />
           </Card>
         </div>
       )}
