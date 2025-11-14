@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
@@ -8,12 +9,20 @@ from graphql import (
     GraphQLNonNull,
     GraphQLSchema,
     GraphQLUnionType,
+    parse,
 )
 
 from infrahub.exceptions import GraphQLQueryError
 
 if TYPE_CHECKING:
     from graphql.execution import ExecutionResult
+    from graphql.language import Source
+    from graphql.language.ast import DocumentNode
+
+
+@lru_cache(maxsize=1024)
+def cached_parse(query: str | Source) -> DocumentNode:
+    return parse(query)
 
 
 def extract_data(query_name: str, result: ExecutionResult) -> dict:
