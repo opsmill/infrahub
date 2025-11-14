@@ -162,10 +162,7 @@ class TestWorker(TestWorkerInfrahubAsync):
             os.environ.pop("GIT_CONFIG_GLOBAL", None)
             assert os.getenv("GIT_CONFIG_GLOBAL") is None
 
-        try:
-            Path(tmp_git_config).unlink()
-        except FileNotFoundError:
-            pass
+        Path(tmp_git_config).unlink()
 
     async def test_worker_has_set_git_user_config(self, client, work_pool, git_global_user_config) -> None:
         assert os.getenv("GIT_CONFIG_GLOBAL") is not None

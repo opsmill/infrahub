@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -14,6 +15,7 @@ from prefect.flow_engine import run_flow_async
 from prefect.logging.handlers import APILogHandler
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
 from prometheus_client import start_http_server
+from pydantic import TypeAdapter
 
 from infrahub import __version__ as infrahub_version
 from infrahub import config
@@ -41,6 +43,9 @@ from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 WORKER_QUERY_SECONDS = "2"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
+DEFAULT_GIT_GLOBAL_CONFIG_DIRECTORY = "/opt/infrahub"
+DEFAULT_GIT_GLOBAL_CONFIG_FILE = f"{DEFAULT_GIT_GLOBAL_CONFIG_DIRECTORY}/git-config"
+INFRAHUB_PRODUCTION = TypeAdapter(bool).validate_python(os.environ.get("INFRAHUB_PRODUCTION", True))
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
@@ -208,6 +213,10 @@ class InfrahubWorkerAsync(BaseWorker):
         self.service = service
 
     async def set_git_global_config(self) -> None:
+        if INFRAHUB_PRODUCTION and not os.getenv("GIT_GLOBAL_CONFIG"):
+            Path(DEFAULT_GIT_GLOBAL_CONFIG_DIRECTORY).mkdir(parents=True, exist_ok=True)
+            os.environ["GIT_GLOBAL_CONFIG"] = DEFAULT_GIT_GLOBAL_CONFIG_FILE
+
         if config.SETTINGS.git.user_name:
             proc_name = await asyncio.create_subprocess_exec(
                 "git",

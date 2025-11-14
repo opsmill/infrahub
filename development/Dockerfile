@@ -78,6 +78,10 @@ FROM base AS backend
 # --------------------------------------------
 # Configure Git & Environment
 # --------------------------------------------
+ENV GIT_CONFIG_GLOBAL="/opt/infrahub/git-config"
+
+RUN mkdir -p /opt/infrahub
+
 RUN git config --global user.name "Infrahub" && \
     git config --global user.email "infrahub@opsmill.com" && \
     git config --global --add safe.directory '*' && \
