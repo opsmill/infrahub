@@ -46,6 +46,7 @@ from .m041_deleted_dup_edges import Migration041
 from .m042_profile_attrs_in_db import Migration042
 from .m043_create_hfid_display_label_in_db import Migration043
 from .m044_backfill_hfid_display_label_in_db import Migration044
+from .m045_backfill_hfid_display_label_in_db_profile_template import Migration045
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -96,6 +97,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration042,
     Migration043,
     Migration044,
+    Migration045,
 ]
 
 
