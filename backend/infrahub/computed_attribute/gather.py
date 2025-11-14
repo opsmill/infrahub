@@ -15,6 +15,7 @@ from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefec
 from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.utils import cached_parse
 
 from .models import (
     ComputedAttrJinja2TriggerDefinition,
@@ -75,6 +76,7 @@ async def gather_python_transform_attributes(
             branch=branch,
             schema_branch=schema_branch,
             schema=graphql_params.schema,
+            document=cached_parse(query.query.value),
         )
         for attribute in transform_attributes[transform.name.value]:
             python_transform_computed_attribute = PythonTransformComputedAttribute(
