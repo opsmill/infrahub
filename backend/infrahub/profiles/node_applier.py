@@ -34,8 +34,45 @@ class NodeProfilesApplier:
                 attr_names_for_profiles.append(attr_name)
         return attr_names_for_profiles
 
+    async def _get_rel_names_for_profiles(self, node: Node) -> list[str]:
+        node_schema = node.get_schema()
+
+        rel_names_for_profiles: list[str] = []
+        for rel_schema in node_schema.relationships:
+            if rel_schema.kind not in [RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE]:
+                continue
+
+            rel_name = rel_schema.name
+            node_rel = node.get_relationship(rel_name)
+
+            if node_rel.is_from_profile or len(await node_rel.get_relationships(db=self.db)) == 0:
+                rel_names_for_profiles.append(rel_name)
+
+        return rel_names_for_profiles
+
+    async def _get_rel_filters_for_profiles(self, node: Node, rel_names: list[str]) -> list[RelationshipFilter]:
+        node_schema = node.get_schema()
+
+        identifiers: list[RelationshipFilter] = []
+        for rel_name in rel_names:
+            rel_schema = node_schema.get_relationship(name=rel_name)
+
+            # We are past schema validation so we should have an identifier
+            if not rel_schema.identifier:
+                raise ValueError(f"Relationship {rel_name} has no identifier")
+
+            identifiers.append(
+                RelationshipFilter(
+                    relationship_identifier=f"profile_{rel_schema.identifier}", direction=rel_schema.direction
+                )
+            )
+        return identifiers
+
     async def _get_sorted_profile_data(
-        self, profile_ids: list[str], attr_names_for_profiles: list[str]
+        self,
+        profile_ids: list[str],
+        attr_names_for_profiles: list[str],
+        relationship_filters: list[RelationshipFilter] | None = None,
     ) -> list[ProfileData]:
         if not profile_ids:
             return []
@@ -44,11 +81,7 @@ class NodeProfilesApplier:
             branch=self.branch,
             profile_ids=profile_ids,
             attr_names=attr_names_for_profiles,
-            relationship_filters=[
-                RelationshipFilter(
-                    relationship_identifier="profile_testingchild__testingthing", direction=RelationshipDirection.BIDIR
-                )
-            ],
+            relationship_filters=relationship_filters,
         )
         await query.execute(db=self.db)
         profile_data_list = query.get_profile_data()
@@ -82,10 +115,16 @@ class NodeProfilesApplier:
 
         if not attr_names_for_profiles:
             return []
+        rel_names_for_profiles = await self._get_rel_names_for_profiles(node=node)
+        rel_filters_for_profiles = await self._get_rel_filters_for_profiles(node=node, rel_names=rel_names_for_profiles)
+        if not rel_filters_for_profiles:
+            return []
 
-        # get profiles priorities and attribute values on branch
+        # get profiles priorities, attribute values, and relationship peers on branch
         sorted_profile_data = await self._get_sorted_profile_data(
-            profile_ids=profile_ids, attr_names_for_profiles=attr_names_for_profiles
+            profile_ids=profile_ids,
+            attr_names_for_profiles=attr_names_for_profiles,
+            relationship_filters=rel_filters_for_profiles,
         )
 
         updated_field_names = []
