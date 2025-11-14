@@ -13,6 +13,7 @@ from infrahub.core.migrations.shared import MigrationResult, get_migration_conso
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import ProfileSchema, TemplateSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -54,6 +55,7 @@ class Migration045(Migration044):
                     if node_schema_name in self.kinds_to_skip:
                         continue
 
+                    node_schema: ProfileSchema | TemplateSchema
                     if node_schema_name in main_schema_branch.profile_names:
                         node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
                     else:
@@ -96,6 +98,8 @@ class Migration045(Migration044):
                 if node_schema_name in self.kinds_to_skip:
                     continue
 
+                node_schema: ProfileSchema | TemplateSchema
+                default_node_schema: ProfileSchema | TemplateSchema
                 if node_schema_name in main_schema_branch.profile_names:
                     node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
                     default_node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
