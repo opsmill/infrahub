@@ -117,18 +117,24 @@ class Migration045(Migration044):
 
                 schemas_for_universal_update_map = {}
                 schemas_for_targeted_update_map = {}
-                if default_node_schema is None or default_node_schema.display_label != node_schema.display_label:
-                    schemas_for_universal_update_map[display_labels_attribute_schema] = display_label_attribute_schema
-                elif node_schema.display_labels:
-                    schemas_for_targeted_update_map[display_labels_attribute_schema] = display_label_attribute_schema
+                if node_schema.display_labels:
+                    if default_node_schema is None or default_node_schema.display_label != node_schema.display_label:
+                        schemas_for_universal_update_map[display_labels_attribute_schema] = (
+                            display_label_attribute_schema
+                        )
+                    else:
+                        schemas_for_targeted_update_map[display_labels_attribute_schema] = (
+                            display_label_attribute_schema
+                        )
 
-                if (
-                    default_node_schema is None
-                    or default_node_schema.human_friendly_id != node_schema.human_friendly_id
-                ):
-                    schemas_for_universal_update_map[hfid_attribute_schema] = hfid_attribute_schema
-                elif node_schema.human_friendly_id:
-                    schemas_for_targeted_update_map[hfid_attribute_schema] = hfid_attribute_schema
+                if node_schema.human_friendly_id:
+                    if (
+                        default_node_schema is None
+                        or default_node_schema.human_friendly_id != node_schema.human_friendly_id
+                    ):
+                        schemas_for_universal_update_map[hfid_attribute_schema] = hfid_attribute_schema
+                    else:
+                        schemas_for_targeted_update_map[hfid_attribute_schema] = hfid_attribute_schema
 
                 if schemas_for_universal_update_map:
                     await self._do_one_schema_all(
