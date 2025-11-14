@@ -213,7 +213,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
     async def set_git_global_config(self) -> None:
         if INFRAHUB_PRODUCTION and not os.getenv("GIT_GLOBAL_CONFIG"):
-            os.makedirs(os.path.dirname(DEFAULT_GIT_GLOBAL_CONFIG_DIRECTORY), exist_ok=True)  # noqa: PTH120, PTH103
+            os.makedirs(DEFAULT_GIT_GLOBAL_CONFIG_DIRECTORY, exist_ok=True)  # noqa: PTH103
             os.environ["GIT_GLOBAL_CONFIG"] = DEFAULT_GIT_GLOBAL_CONFIG_FILE
             self._logger.info(f"Set git config file to {DEFAULT_GIT_GLOBAL_CONFIG_FILE}")
 
