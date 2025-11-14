@@ -1205,10 +1205,10 @@ class NodeManager:
             node_branch = await registry.get_branch(db=db, branch=node.branch)
             item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
             await item.load(**new_node_data, db=db)
-            item.set_created_at(node.created_at)
-            item.set_created_by(node.created_by)
-            item.set_updated_at(node.updated_at)
-            item.set_updated_by(node.updated_by)
+            item._set_created_at(node.created_at)
+            item._set_created_by(node.created_by)
+            item._set_updated_at(node.updated_at)
+            item._set_updated_by(node.updated_by)
 
             nodes[node_id] = item
 

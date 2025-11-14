@@ -23,7 +23,8 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.constants.schema import SchemaElementPathType
-from infrahub.core.metadata.base import MetadataBase
+from infrahub.core.metadata.interface import MetadataInterface
+from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery
 from infrahub.core.schema import (
@@ -69,7 +70,7 @@ SchemaProtocol = TypeVar("SchemaProtocol")
 log = get_logger()
 
 
-class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
+class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(
         cls, _meta: BaseNodeOptions | None = None, default_filter: None = None, **options: dict[str, Any]
@@ -86,6 +87,7 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
         self._branch: Branch = branch
         self._at: Timestamp = at
         self._existing: bool = False
+        self._metadata = MetadataInfo()
 
         self.id: str = None
         self.db_id: str = None
@@ -102,6 +104,30 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
+
+    def _set_created_at(self, value: Timestamp | None) -> None:
+        self._metadata.created_at = value
+
+    def _set_created_by(self, value: str | None) -> None:
+        self._metadata.created_by = value
+
+    def _set_updated_at(self, value: Timestamp | None) -> None:
+        self._metadata.updated_at = value
+
+    def _set_updated_by(self, value: str | None) -> None:
+        self._metadata.updated_by = value
+
+    def _get_created_at(self) -> Timestamp | None:
+        return self._metadata.created_at
+
+    def _get_created_by(self) -> str | None:
+        return self._metadata.created_by
+
+    def _get_updated_at(self) -> Timestamp | None:
+        return self._metadata.updated_at
+
+    def _get_updated_by(self) -> str | None:
+        return self._metadata.updated_by
 
     def get_schema(self) -> NonGenericSchemaTypes:
         return self._schema
@@ -804,10 +830,10 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
 
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
-        self.set_created_at(create_at)
-        self.set_created_by(user_id)
-        self.set_updated_at(create_at)
-        self.set_updated_by(user_id)
+        self._set_created_at(create_at)
+        self._set_created_by(user_id)
+        self._set_updated_at(create_at)
+        self._set_updated_by(user_id)
 
         if not self._schema.is_schema_node:
             await self.add_human_friendly_id(db=db)
@@ -907,8 +933,8 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
         node_changelog.display_label = await self.get_display_label(db=db)
 
         if node_changelog.has_changes:
-            self.set_updated_at(update_at)
-            self.set_updated_by(user_id)
+            self._set_updated_at(update_at)
+            self._set_updated_by(user_id)
 
         return node_changelog
 
@@ -1013,7 +1039,7 @@ class Node(BaseNode, MetadataBase, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "_updated_at":
-                if updated_at := self.get_updated_at():
+                if updated_at := self._get_updated_at():
                     response[field_name] = await updated_at.to_graphql()
                 else:
                     response[field_name] = None
