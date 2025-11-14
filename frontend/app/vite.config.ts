@@ -18,6 +18,9 @@ export default defineConfig({
   worker: {
     format: "es",
   },
+  optimizeDeps: {
+    exclude: ["monaco-editor/esm/vs/editor/editor.worker", "monaco-graphql/esm/GraphQLWorker"],
+  },
   plugins: [tailwindcss(), react(), svgr(), tsconfigPaths()],
   test: {
     browser: {

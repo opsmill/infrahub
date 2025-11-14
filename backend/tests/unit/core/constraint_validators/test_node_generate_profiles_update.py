@@ -18,7 +18,7 @@ from infrahub.database import InfrahubDatabase
 @pytest.mark.parametrize("generate_profile", [True, False])
 async def test_set_generate_profile_success(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, generate_profile
-):
+) -> None:
     branch = await create_branch(branch_name="branch", db=db)
     updated_schema = registry.schema.get_node_schema(name="TestCar")
     updated_schema.generate_profile = generate_profile
@@ -39,7 +39,7 @@ async def test_set_generate_profile_success(
 @pytest.mark.parametrize("generate_profile", [True, False])
 async def test_set_generate_profile_success_generics(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema, generate_profile
-):
+) -> None:
     branch = await create_branch(branch_name="branch", db=db)
     updated_schema = registry.schema.get(name="TestAnimal")
     updated_schema.generate_profile = generate_profile
@@ -57,7 +57,7 @@ async def test_set_generate_profile_success_generics(
     assert len(list(chain(*[gdp.get_all_data_paths() for gdp in grouped_data_paths]))) == 0
 
 
-async def test_set_generate_profile_false_fail(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_set_generate_profile_false_fail(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
     branch = await create_branch(branch_name="branch", db=db)
     profile_schema = registry.schema.get(name="ProfileTestCar", branch=branch)
     profile_node = await Node.init(db=db, schema=profile_schema, branch=branch)
@@ -85,7 +85,7 @@ async def test_set_generate_profile_false_fail(db: InfrahubDatabase, default_bra
 
 async def test_set_generate_profile_false_fail_generic(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema
-):
+) -> None:
     branch = await create_branch(branch_name="branch", db=db)
     profile_schema = registry.schema.get(name="ProfileTestAnimal", branch=branch)
     profile_node = await Node.init(db=db, schema=profile_schema, branch=branch)
@@ -113,7 +113,7 @@ async def test_set_generate_profile_false_fail_generic(
 
 async def test_set_generate_profile_false_branch_delete_profile_success(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema
-):
+) -> None:
     profile_schema = registry.schema.get(name="ProfileTestCar", branch=default_branch)
     profile_node = await Node.init(db=db, schema=profile_schema, branch=default_branch)
     await profile_node.new(db=db, profile_name="bus", nbr_seats=50)

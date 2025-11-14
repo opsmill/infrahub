@@ -3,6 +3,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
@@ -25,7 +26,7 @@ class TestBranchCreate(TestInfrahubApp):
         session_admin,
         client: InfrahubClient,
         service: InfrahubServices,
-    ):
+    ) -> None:
         query = """
             mutation {
                 BranchCreate(data: { name: "branch2", sync_with_git: false, origin_branch: "main" }) {
@@ -65,9 +66,9 @@ class TestBranchCreate(TestInfrahubApp):
         assert branch2.schema_hash == branch2_schema.get_hash_full()
 
         # Validate that we can't create a branch with a name that already exist
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -97,9 +98,9 @@ class TestBranchCreate(TestInfrahubApp):
             }
         }
         """
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -129,7 +130,7 @@ class TestBranchCreate(TestInfrahubApp):
         session_admin,
         client,
         service,
-    ):
+    ) -> None:
         query = """
         mutation($branch_name: String!) {
             BranchCreate(data: { name: $branch_name, sync_with_git: false }) {
@@ -142,9 +143,9 @@ class TestBranchCreate(TestInfrahubApp):
         }
         """
 
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -172,7 +173,7 @@ class TestBranchCreate(TestInfrahubApp):
         register_core_models_schema,
         session_admin,
         service,
-    ):
+    ) -> None:
         query = """
         mutation($branch_name: String!) {
             BranchCreate(data: { name: $branch_name, sync_with_git: false }) {
@@ -201,7 +202,7 @@ class TestBranchCreate(TestInfrahubApp):
         session_admin,
         client,
         service,
-    ):
+    ) -> None:
         query = """
         mutation {
             BranchCreate(data: { name: "branch5", sync_with_git: false }) {
@@ -218,9 +219,9 @@ class TestBranchCreate(TestInfrahubApp):
         }
         """
 
+        default_branch.update_schema_hash()
         gql_params = await prepare_graphql_params(
             db=db,
-            include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
             service=service,
@@ -246,7 +247,7 @@ class TestBranchCreate(TestInfrahubApp):
         default_branch: Branch,
         session_admin,
         service: InfrahubServices,
-    ):
+    ) -> None:
         query = """
         mutation AddBranch {
             BranchCreate(data: {
@@ -291,7 +292,7 @@ async def test_branch_delete(
     register_core_models_schema,
     session_admin,
     local_services: InfrahubServices,
-):
+) -> None:
     delete_query = """
     mutation {
         BranchDelete(data: { name: "branch3" }) {
@@ -309,7 +310,7 @@ async def test_branch_delete(
 
 async def test_branch_rebase_wrong_branch(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin, local_services: InfrahubServices
-):
+) -> None:
     query = """
     mutation {
         BranchRebase(data: { name: "branch2" }) {
@@ -321,9 +322,9 @@ async def test_branch_rebase_wrong_branch(
     }
     """
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
         db=db,
-        include_subscription=False,
         service=local_services,
         branch=default_branch,
         account_session=session_admin,
@@ -341,7 +342,9 @@ async def test_branch_rebase_wrong_branch(
     assert result.errors[0].message == "Branch: branch2 not found."
 
 
-async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02, local_services: InfrahubServices):
+async def test_branch_update_description(
+    db: InfrahubDatabase, base_dataset_02, local_services: InfrahubServices
+) -> None:
     branch4 = await create_branch(branch_name="branch4", db=db)
 
     query = """
@@ -357,7 +360,8 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02, 
     }
     """
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch4, service=local_services)
+    branch4.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch4, service=local_services)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -377,7 +381,7 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02, 
 
 async def test_branch_merge_wrong_branch(
     db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
-):
+) -> None:
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
@@ -391,8 +395,9 @@ async def test_branch_merge_wrong_branch(
     }
     """
 
+    branch1.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=local_services
+        db=db, branch=branch1, account_session=session_admin, service=local_services
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -407,9 +412,43 @@ async def test_branch_merge_wrong_branch(
     assert result.errors[0].message == "Branch: branch99 not found."
 
 
+async def test_branch_merge_need_upgrade_rebase(
+    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin, local_services: InfrahubServices
+):
+    branch = await create_branch(db=db, branch_name="branch_to_upgrade")
+    branch.status = BranchStatus.NEED_UPGRADE_REBASE
+    await branch.save(db=db)
+
+    query = """
+    mutation {
+        BranchMerge(data: { name: "branch_to_upgrade" }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    gql_params = await prepare_graphql_params(
+        db=db, branch=branch, account_session=session_admin, service=local_services
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Cannot merge branch 'branch_to_upgrade' with status 'NEED_UPGRADE_REBASE'"
+
+
 async def test_branch_merge_with_conflict_fails(
     db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin, local_services: InfrahubServices
-):
+) -> None:
     query = """
     mutation {
         BranchMerge(data: { name: "branch2" }) {
@@ -429,8 +468,9 @@ async def test_branch_merge_with_conflict_fails(
     car_branch.name.value += "-branch"
     await car_branch.save(db=db)
 
+    branch2.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=local_services
+        db=db, branch=branch2, account_session=session_admin, service=local_services
     )
     result = await graphql(
         schema=gql_params.schema,

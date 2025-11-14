@@ -31,7 +31,6 @@ const config: Config = {
 
   onBrokenLinks: "throw",
   onBrokenAnchors: "throw",
-  onBrokenMarkdownLinks: "throw",
   onDuplicateRoutes: "throw",
 
   // Even if you don't use internationalization, you can use this field to set
@@ -124,6 +123,9 @@ const config: Config = {
   markdown: {
     format: "mdx",
     mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: "throw",
+    },
     preprocessor: ({ filePath, fileContent }) => {
       console.log(`Processing ${filePath}`);
       const transformedContent = fileContent.replace(/\$\(\s*(\w+)\s*\)/g, (match, variableName) => {

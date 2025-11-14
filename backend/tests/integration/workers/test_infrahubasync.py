@@ -30,7 +30,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         prefect_worker: InfrahubWorkerAsync,
         dummy_flows_deployment,
         client,
-    ):
+    ) -> None:
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
             name=DUMMY_FLOW.full_name, parameters={"data": DummyInput(firstname="John", lastname="Doe")}, timeout=0
@@ -61,7 +61,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         prefect_worker: InfrahubWorkerAsync,
         dummy_flows_deployment,
         client,
-    ):
+    ) -> None:
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
             name=DUMMY_FLOW.full_name, parameters={"data": DummyInput(firstname="John", lastname="Doe")}, timeout=0
@@ -87,7 +87,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         prefect_worker: InfrahubWorkerAsync,
         dummy_flows_deployment,
         client,
-    ):
+    ) -> None:
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
             name=DUMMY_FLOW_BROKEN.full_name,

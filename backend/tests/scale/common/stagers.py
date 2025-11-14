@@ -14,7 +14,7 @@ def load_schema(
     branch: str | None = None,
     attributes: list[dict] | None = None,
     relationships: list[dict] | None = None,
-):
+) -> None:
     attributes = attributes or []
     relationships = relationships or []
     branch = branch or "main"

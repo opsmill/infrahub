@@ -11,6 +11,7 @@ import {
   REPOSITORY_KIND,
 } from "@/config/constants";
 
+import type { NumberAttribute } from "@/shared/api/graphql/generated/graphql";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
@@ -44,6 +45,7 @@ export type ProfileData = {
   display_label: string;
   id: string;
   __typename: string;
+  profile_priority: NumberAttribute;
 };
 
 const IpPrefixForm = lazy(() => import("@/entities/ipam/ip-prefixes/ui/ipam-creation-form"));

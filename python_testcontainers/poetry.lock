@@ -51,19 +51,6 @@ files = [
 sniffio = "*"
 
 [[package]]
-name = "async-timeout"
-version = "5.0.1"
-description = "Timeout context manager for asyncio programs"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-markers = "python_version < \"3.11\""
-files = [
-    {file = "async_timeout-5.0.1-py3-none-any.whl", hash = "sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c"},
-    {file = "async_timeout-5.0.1.tar.gz", hash = "sha256:d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3"},
-]
-
-[[package]]
 name = "attrs"
 version = "25.3.0"
 description = "Classes Without Boilerplate"
@@ -935,14 +922,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "prefect-client"
-version = "3.4.22"
+version = "3.5.0"
 description = "Workflow orchestration and management."
 optional = false
-python-versions = "<3.14,>=3.9"
+python-versions = "<3.15,>=3.10"
 groups = ["main"]
 files = [
-    {file = "prefect_client-3.4.22-py3-none-any.whl", hash = "sha256:d9232a19f6c43a1bac27ff2689975e3fa43a41977f113bf65d1a8cdbc5afbeaf"},
-    {file = "prefect_client-3.4.22.tar.gz", hash = "sha256:2eef32510aa37e78e74eeb056aff84124752412aa7b4acebbf86bbe90d00168e"},
+    {file = "prefect_client-3.5.0-py3-none-any.whl", hash = "sha256:70e2ab2d0e44534388e6daa052e0ee52c86b2263e0bdb450cf1101027504c191"},
+    {file = "prefect_client-3.5.0.tar.gz", hash = "sha256:10b9c700288ee1d7513fdfdb394eca0807e461f8bd8da9edf2433f276cc23a17"},
 ]
 
 [package.dependencies]
@@ -960,7 +947,6 @@ griffe = ">=0.49.0,<2.0.0"
 httpcore = ">=1.0.5,<2.0.0"
 httpx = {version = ">=0.23,<0.23.2 || >0.23.2", extras = ["http2"]}
 humanize = ">=4.9.0,<5.0.0"
-importlib-metadata = {version = ">=4.4", markers = "python_version < \"3.10\""}
 jsonpatch = ">=1.32,<2.0"
 jsonschema = ">=4.18.0,<5.0.0"
 opentelemetry-api = ">=1.27.0,<2.0.0"
@@ -975,7 +961,6 @@ pydantic-extra-types = ">=2.8.2,<3.0.0"
 pydantic-settings = ">2.2.1,<2.9.0 || >2.9.0,<3.0.0"
 python-dateutil = ">=2.8.2,<3.0.0"
 python-slugify = ">=5.0,<9.0"
-python-socks = {version = ">=2.5.3,<3.0", extras = ["asyncio"]}
 pytz = ">=2021.1,<2026"
 pyyaml = ">=5.4.1,<7.0.0"
 rfc3339-validator = ">=0.1.4,<0.2.0"
@@ -985,8 +970,8 @@ sniffio = ">=1.3.0,<2.0.0"
 toml = ">=0.10.0"
 typing-extensions = ">=4.10.0,<5.0.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
-websockets = ">=13.0,<16.0"
-whenever = {version = ">=0.7.3,<0.9.0", markers = "python_version >= \"3.13\""}
+websockets = ">=15.0.1,<16.0"
+whenever = {version = ">=0.7.3,<0.10.0", markers = "python_version >= \"3.13\""}
 
 [package.extras]
 notifications = ["apprise (>=1.1.0,<2.0.0)"]
@@ -1297,27 +1282,6 @@ text-unidecode = ">=1.3"
 
 [package.extras]
 unidecode = ["Unidecode (>=1.1.1)"]
-
-[[package]]
-name = "python-socks"
-version = "2.7.1"
-description = "Proxy (SOCKS4, SOCKS5, HTTP CONNECT) client for Python"
-optional = false
-python-versions = ">=3.8.0"
-groups = ["main"]
-files = [
-    {file = "python_socks-2.7.1-py3-none-any.whl", hash = "sha256:2603c6454eeaeb82b464ad705be188989e8cf1a4a16f0af3c921d6dd71a49cec"},
-    {file = "python_socks-2.7.1.tar.gz", hash = "sha256:f1a0bb603830fe81e332442eada96757b8f8dec02bd22d1d6f5c99a79704c550"},
-]
-
-[package.dependencies]
-async-timeout = {version = ">=4.0", optional = true, markers = "python_version < \"3.11\" and extra == \"asyncio\""}
-
-[package.extras]
-anyio = ["anyio (>=3.3.4,<5.0.0)"]
-asyncio = ["async-timeout (>=4.0) ; python_version < \"3.11\""]
-curio = ["curio (>=1.4)"]
-trio = ["trio (>=0.24)"]
 
 [[package]]
 name = "pytz"
@@ -1754,7 +1718,7 @@ description = "C version of reader, parser and emitter for ruamel.yaml derived f
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "platform_python_implementation == \"CPython\""
+markers = "platform_python_implementation == \"CPython\" and python_version < \"3.14\""
 files = [
     {file = "ruamel.yaml.clib-0.2.12-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:11f891336688faf5156a36293a9c362bdc7c88f03a8a027c2c1d8e0bcde998e5"},
     {file = "ruamel.yaml.clib-0.2.12-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:a606ef75a60ecf3d924613892cc603b154178ee25abb3055db5062da811fd969"},
@@ -1926,7 +1890,7 @@ description = "A lil' TOML parser"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_version < \"3.11\""
+markers = "python_version == \"3.10\""
 files = [
     {file = "tomli-2.2.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:678e4fa69e4575eb77d103de3df8a895e1591b48e740211bd1067378c69e8249"},
     {file = "tomli-2.2.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:023aa114dd824ade0100497eb2318602af309e5a55595f76b626d6d9f3b7b0a6"},
@@ -1973,7 +1937,7 @@ files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
     {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
 ]
-markers = {dev = "python_version < \"3.11\""}
+markers = {dev = "python_version == \"3.10\""}
 
 [[package]]
 name = "typing-inspection"
@@ -2145,7 +2109,7 @@ description = "Modern datetime library for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version == \"3.13\""
+markers = "python_version >= \"3.13\""
 files = [
     {file = "whenever-0.8.4-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:32ba28c4d62dc61f57346a000d84ecdf8966dfe03e77437a51329b47483dfc62"},
     {file = "whenever-0.8.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:3010ed1a307d33cfae4c8153f432459164424ee115e5928f75de551eab30fb6b"},
@@ -2320,5 +2284,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.9, < 3.14"
-content-hash = "106bfdd8f953f9f1ac7f0144365cfe0fba069a0f835b1583356242594a6c4e04"
+python-versions = "^3.10, < 3.15"
+content-hash = "8a0dcb7b1a92e24354b6fc3c9095e6c0fdf707ca4cd06d52832f4aba76ed7dc1"

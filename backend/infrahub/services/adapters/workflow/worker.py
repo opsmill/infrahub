@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, overload
 
 from prefect.client.schemas.objects import StateType
+from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
 
+from infrahub.services.adapters.http.httpx import HttpxAdapter
 from infrahub.workers.utils import inject_context_parameter
-from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
@@ -19,10 +21,18 @@ if TYPE_CHECKING:
 
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
+    # This is required to grab a cached SSLContext from the HttpAdapter.
+    # We cannot use the get_http() dependency since it introduces a circular dependency.
+    # We could remove this later on by introducing a cached SSLContext outside of this adapter.
+    _http_adapter = HttpxAdapter()
+
     @staticmethod
-    async def initialize(component_is_primary_server: bool) -> None:
+    async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
         if component_is_primary_server:
             await setup_task_manager()
+
+        if is_initial_setup:
+            await setup_task_manager_identifiers()
 
     @overload
     async def execute_workflow(
@@ -79,5 +89,6 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
-        flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
+        async with AsyncClientContext(httpx_settings={"verify": self._http_adapter.verify_tls()}):
+            flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

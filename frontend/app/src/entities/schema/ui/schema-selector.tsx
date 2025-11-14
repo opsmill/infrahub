@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import * as R from "ramda";
+import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
-import { ArrayParam, useQueryParam } from "use-query-params";
+import * as R from "remeda";
 
 import { QSP } from "@/config/qsp";
 
@@ -24,7 +24,7 @@ type SchemaSelectorProps = {
   className?: string;
 };
 export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
-  const [selectedKind, setKind] = useQueryParam(QSP.KIND, ArrayParam);
+  const [selectedKind, setKind] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
@@ -43,9 +43,10 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   );
 
   const schemasPerNamespace = R.pipe(
-    R.sortBy<ModelSchema>(R.prop("name")),
-    R.groupBy(R.prop("namespace"))
-  )(schemas);
+    schemas,
+    R.sortBy((schema) => schema.name),
+    R.groupBy((schema) => schema.namespace)
+  );
 
   return (
     <section className={classNames("space-y-2 bg-white p-4", className)}>

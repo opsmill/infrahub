@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, MetadataOptions
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.merger.serializer import DiffMergeSerializer
@@ -332,7 +332,7 @@ class TestMergeDiff:
         empty_diff_root: EnrichedDiffRoot,
         added_person_node_diff: EnrichedDiffNode,
         check_idempotent: bool,
-    ):
+    ) -> None:
         empty_diff_root.nodes = {added_person_node_diff}
         mock_diff_repository.get_roots_metadata.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
@@ -350,7 +350,7 @@ class TestMergeDiff:
         assert mock_diff_repository.get_one.await_args_list == expected_awaits
 
         retrieved_node = await NodeManager.get_one(
-            db=db, id=person_node_branch.id, branch=default_branch, include_owner=True, include_source=True
+            db=db, id=person_node_branch.id, branch=default_branch, include_metadata=MetadataOptions.LINKED_NODES
         )
         assert retrieved_node.get_updated_at() == at
         assert retrieved_node.height.value == person_node_branch.height.value
@@ -384,7 +384,7 @@ class TestMergeDiff:
         empty_diff_root: EnrichedDiffRoot,
         deleted_person_node_diff: EnrichedDiffNode,
         check_idempotent: bool,
-    ):
+    ) -> None:
         person_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
         await person_branch.delete(db=db)
         empty_diff_root.nodes = {deleted_person_node_diff}
@@ -430,7 +430,7 @@ class TestMergeDiff:
         empty_diff_root: EnrichedDiffRoot,
         conflict_selection: ConflictSelection,
         expect_deleted: bool,
-    ):
+    ) -> None:
         person_node_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
         await person_node_branch.delete(db=db)
         deleted_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.REMOVED)
@@ -631,7 +631,7 @@ class TestMergeDiff:
         updated_person_node_diff: EnrichedDiffNode,
         updated_car_diff: EnrichedDiffNode,
         check_idempotent: bool,
-    ):
+    ) -> None:
         car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_node_main.id)
         await car_main.owner.update(
             db=db,
@@ -679,7 +679,7 @@ class TestMergeDiff:
             expected_awaits *= 2
         assert mock_diff_repository.get_one.await_args_list == expected_awaits
         updated_person = await NodeManager.get_one(
-            db=db, branch=default_branch, id=person_node_main.id, include_owner=True
+            db=db, branch=default_branch, id=person_node_main.id, include_metadata=MetadataOptions.OWNER
         )
         assert updated_person.get_updated_at() < at
         assert updated_person.height.value == person_node_main.height.value + 1
@@ -689,7 +689,7 @@ class TestMergeDiff:
         car_rels = await updated_person.cars.get(db=db)
         assert len(car_rels) == 0
         updated_car = await NodeManager.get_one(
-            db=db, branch=default_branch, id=car_node_main.id, include_owner=True, include_source=True
+            db=db, branch=default_branch, id=car_node_main.id, include_metadata=MetadataOptions.LINKED_NODES
         )
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.is_protected is True
@@ -708,7 +708,7 @@ class TestMergeDiff:
         owner_attr = await rolled_back_person.height.get_owner(db=db)
         assert owner_attr is None
         rolled_back_car = await NodeManager.get_one(
-            db=db, branch=default_branch, id=car_node_main.id, include_owner=True, include_source=True
+            db=db, branch=default_branch, id=car_node_main.id, include_metadata=MetadataOptions.LINKED_NODES
         )
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_node_main.id

@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -14,7 +16,12 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    ValidatorConclusion,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
@@ -53,6 +60,7 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets
 
 
 @flow(
@@ -151,6 +159,39 @@ async def create_branch(branch: str, branch_id: str) -> None:
         pass
 
 
+@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
+async def sync_git_repo_with_origin_and_tag_on_failure(
+    client: InfrahubClient,
+    repository_id: str,
+    repository_name: str,
+    repository_location: str,
+    internal_status: str,
+    default_branch_name: str,
+    operational_status: str,
+    staging_branch: str | None = None,
+    infrahub_branch: str | None = None,
+) -> None:
+    repo = await InfrahubRepository.init(
+        id=repository_id,
+        name=repository_name,
+        location=repository_location,
+        client=client,
+        internal_status=internal_status,
+        default_branch_name=default_branch_name,
+    )
+
+    try:
+        await repo.sync(staging_branch=staging_branch)
+    except RepositoryError:
+        if operational_status == RepositoryOperationalStatus.ONLINE.value:
+            params: dict[str, Any] = {
+                "branches": [infrahub_branch] if infrahub_branch else [],
+                "nodes": [str(repository_id)],
+            }
+            await add_tags(**params)
+        raise
+
+
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
 async def sync_remote_repositories() -> None:
     log = get_run_logger()
@@ -203,7 +244,17 @@ async def sync_remote_repositories() -> None:
                     continue
 
             try:
-                await repo.sync(staging_branch=staging_branch)
+                await sync_git_repo_with_origin_and_tag_on_failure(
+                    client=client,
+                    repository_id=repository_data.repository.id,
+                    repository_name=repository_data.repository.name.value,
+                    repository_location=repository_data.repository.location.value,
+                    internal_status=active_internal_status,
+                    default_branch_name=repository_data.repository.default_branch.value,
+                    operational_status=repository_data.repository.operational_status.value,
+                    staging_branch=staging_branch,
+                    infrahub_branch=infrahub_branch,
+                )
                 # Tell workers to fetch to stay in sync
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
@@ -323,9 +374,8 @@ async def generate_request_artifact_definition(
         kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
     )
 
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
+    group = await fetch_artifact_definition_targets(client=client, branch=model.branch, definition=artifact_definition)
+
     current_members = [member.id for member in group.members.peers]
 
     artifacts_by_member = {}
@@ -356,6 +406,7 @@ async def generate_request_artifact_definition(
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
         convert_query_response = transform.convert_query_response.value
 
+    batch = await client.create_batch()
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
@@ -376,6 +427,7 @@ async def generate_request_artifact_definition(
             repository_kind=repository.get_kind(),
             branch_name=model.branch,
             query=query.name.value,
+            query_id=query.id,
             variables=await member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
@@ -385,9 +437,15 @@ async def generate_request_artifact_definition(
             context=context,
         )
 
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_ARTIFACT_GENERATE, context=context, parameters={"model": request_artifact_generate_model}
+        batch.add(
+            task=get_workflow().submit_workflow,
+            workflow=REQUEST_ARTIFACT_GENERATE,
+            context=context,
+            parameters={"model": request_artifact_generate_model},
         )
+
+    async for _, _ in batch.execute():
+        pass
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
@@ -569,9 +627,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
 
     if definition.targets.id:
         # Check against a group of targets
-        await definition.targets.fetch()
-        group = definition.targets.peer
-        await group.members.fetch()
+        group = await fetch_check_definition_targets(client=client, branch=model.branch_name, definition=definition)
         check_models = []
         for relationship in group.members.peers:
             member = relationship.peer

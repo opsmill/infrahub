@@ -50,7 +50,7 @@ async def test_migration_030(
     db: InfrahubDatabase,
     person_tag_schema,
     default_branch,
-):
+) -> None:
     create_before_branch = await Node.init(db=db, schema="BuiltinTag")
     await create_before_branch.new(db=db, name="create-before-branch")
     await create_before_branch.save(db=db)

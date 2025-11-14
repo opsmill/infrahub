@@ -5,17 +5,18 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
 
 
-async def test_input_type_registration():
+async def test_input_type_registration() -> None:
     assert registry.input_type is not {}  # noqa
 
 
-async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
+async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -26,7 +27,12 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
     assert sorted(result.reference._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
 
 
-async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_object(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    reset_graphql_schema_between_tests: None,
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -58,7 +64,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
 
 async def test_generate_graphql_object_with_interface(
     db: InfrahubDatabase, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
     gqlm.generate_interface_object(schema=generic_vehicule_schema, populate_cache=True)
@@ -78,7 +84,9 @@ async def test_generate_graphql_object_with_interface(
     ]
 
 
-async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_mutation_create(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -90,7 +98,9 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
     assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
-async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_mutation_update(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -102,7 +112,9 @@ async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_br
     assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
-async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema):
+async def test_generate_object_types(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -174,7 +186,9 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
     ]
 
 
-async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics):
+async def test_generate_filters(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -275,7 +289,7 @@ async def test_branch_caching_hit(
     car_person_schema_generics,
     schema_changed_at_null: bool,
     schema_hash_null: bool,
-):
+) -> None:
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
     if schema_changed_at_null:
@@ -295,7 +309,7 @@ async def test_branch_caching_miss(
     default_branch: Branch,
     data_schema,
     car_person_schema_generics,
-):
+) -> None:
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
     schema_branch = registry.schema.get_schema_branch(default_branch.name)

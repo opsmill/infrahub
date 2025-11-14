@@ -113,8 +113,8 @@ class Registry:
             return True
         return False
 
-    def get_node_schema(self, name: str, branch: Branch | str | None = None) -> NodeSchema:
-        return self.schema.get_node_schema(name=name, branch=branch)
+    def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = False) -> NodeSchema:
+        return self.schema.get_node_schema(name=name, branch=branch, duplicate=duplicate)
 
     def get_data_type(self, name: str) -> type[InfrahubDataType]:
         if name not in self.data_type:

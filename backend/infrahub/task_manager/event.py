@@ -160,6 +160,9 @@ class PrefectEventData(PrefectEventModel):
     def _return_branch_rebased(self) -> dict[str, Any]:
         return {"rebased_branch": self._get_branch_name_from_resource()}
 
+    def _return_branch_migrated(self) -> dict[str, Any]:
+        return {"migrated_branch": self._get_branch_name_from_resource()}
+
     def _return_group_event(self) -> dict[str, Any]:
         members = []
         ancestors = []
@@ -228,6 +231,8 @@ class PrefectEventData(PrefectEventModel):
                 event_specifics = self._return_branch_deleted()
             case "infrahub.branch.merged":
                 event_specifics = self._return_branch_merged()
+            case "infrahub.branch.migrated":
+                event_specifics = self._return_branch_migrated()
             case "infrahub.branch.rebased":
                 event_specifics = self._return_branch_rebased()
             case "infrahub.group.member_added" | "infrahub.group.member_removed":

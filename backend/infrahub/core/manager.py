@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
@@ -59,13 +59,16 @@ def identify_node_class(node: NodeToProcess) -> type[Node]:
     return Node
 
 
-def get_schema(
-    db: InfrahubDatabase, branch: Branch, node_schema: type[SchemaProtocol] | MainSchemaTypes | str
+def get_schema[SchemaProtocol](
+    db: InfrahubDatabase,
+    branch: Branch,
+    node_schema: type[SchemaProtocol] | MainSchemaTypes | str,
+    duplicate: bool = False,
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
-        return db.schema.get(name=node_schema, branch=branch.name)
+        return db.schema.get(name=node_schema, branch=branch.name, duplicate=duplicate)
     if hasattr(node_schema, "_is_runtime_protocol") and node_schema._is_runtime_protocol:
-        return db.schema.get(name=node_schema.__name__, branch=branch.name)
+        return db.schema.get(name=node_schema.__name__, branch=branch.name, duplicate=duplicate)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
 
@@ -85,8 +88,7 @@ class NodeManager:
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         partial_match: bool = ...,
@@ -106,8 +108,7 @@ class NodeManager:
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         partial_match: bool = ...,
@@ -126,8 +127,7 @@ class NodeManager:
         limit: int | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         partial_match: bool = False,
@@ -161,8 +161,7 @@ class NodeManager:
                 fields=fields,
                 at=at,
                 branch=branch,
-                include_source=include_source,
-                include_owner=include_owner,
+                include_metadata=include_metadata,
                 prefetch_relationships=prefetch_relationships,
                 account=account,
                 branch_agnostic=branch_agnostic,
@@ -203,8 +202,7 @@ class NodeManager:
             branch=branch,
             account=account,
             at=at,
-            include_source=include_source,
-            include_owner=include_owner,
+            include_metadata=include_metadata,
             db=db,
             prefetch_relationships=prefetch_relationships,
             branch_agnostic=branch_agnostic,
@@ -427,7 +425,7 @@ class NodeManager:
                 fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         return await cls.get_many(
-            db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
+            db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_metadata=MetadataOptions.LINKED_NODES
         )
 
     @overload
@@ -452,7 +450,7 @@ class NodeManager:
         branch: Branch | str | None = ...,
         id: str | None = ...,
         hfid: list[str] | None = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def find_object(
@@ -463,10 +461,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         id: str | None = None,
         hfid: list[str] | None = None,
-    ) -> Any:
-        if not id and not hfid:
-            raise ProcessingError(message="either id or hfid must be provided.")
-
+    ) -> Node | SchemaProtocol:
         if id and is_valid_uuid(id):
             return await cls.get_one(
                 db=db,
@@ -474,8 +469,7 @@ class NodeManager:
                 id=id,
                 branch=branch,
                 at=at,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
                 raise_on_error=True,
             )
 
@@ -486,21 +480,22 @@ class NodeManager:
                 hfid=hfid,
                 branch=branch,
                 at=at,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
                 raise_on_error=True,
             )
 
-        return await cls.get_one_by_default_filter(
-            db=db,
-            kind=kind,
-            id=id,
-            branch=branch,
-            at=at,
-            include_owner=True,
-            include_source=True,
-            raise_on_error=True,
-        )
+        if id:
+            return await cls.get_one_by_default_filter(
+                db=db,
+                kind=kind,
+                id=id,
+                branch=branch,
+                at=at,
+                include_metadata=MetadataOptions.LINKED_NODES,
+                raise_on_error=True,
+            )
+
+        raise ProcessingError(message="either id or hfid must be provided.")
 
     @overload
     @classmethod
@@ -513,8 +508,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -531,8 +525,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -549,12 +542,45 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> SchemaProtocol: ...
+    ) -> SchemaProtocol | None: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_metadata: MetadataOptions = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        kind: str,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_metadata: MetadataOptions = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
 
     @overload
     @classmethod
@@ -567,12 +593,11 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
 
     @classmethod
     async def get_one_by_default_filter(
@@ -584,12 +609,11 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -607,8 +631,7 @@ class NodeManager:
             filters={node_schema.default_filter: id},
             branch=branch,
             at=at,
-            include_owner=include_owner,
-            include_source=include_source,
+            include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
             account=account,
             branch_agnostic=branch_agnostic,
@@ -645,8 +668,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
     ) -> SchemaProtocol | None: ...
@@ -662,8 +684,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -680,12 +701,11 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> SchemaProtocol: ...
+    ) -> SchemaProtocol | None: ...
 
     @overload
     @classmethod
@@ -698,12 +718,28 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one_by_hfid(
+        cls,
+        db: InfrahubDatabase,
+        hfid: list[str],
+        kind: str,
+        raise_on_error: Literal[False],
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_metadata: MetadataOptions = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
 
     @overload
     @classmethod
@@ -716,12 +752,11 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
 
     @classmethod
     async def get_one_by_hfid(
@@ -733,12 +768,11 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -767,14 +801,14 @@ class NodeManager:
         for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
             path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
 
-            if path.is_type_relationship:
+            if path.is_type_relationship and path.related_schema:
                 rel_schema = path.related_schema
                 # Keep the relationship attribute path and parse it
                 path = rel_schema.parse_schema_path(
                     path=key.split("__", maxsplit=1)[1], schema=registry.schema.get_schema_branch(name=branch.name)
                 )
 
-            filters[key] = path.attribute_schema.get_class().deserialize_from_string(item)
+            filters[key] = path.active_attribute_schema.get_class().deserialize_from_string(item)
 
         items = await NodeManager.query(
             db=db,
@@ -784,8 +818,7 @@ class NodeManager:
             filters=filters,
             branch=branch,
             at=at,
-            include_owner=include_owner,
-            include_source=include_source,
+            include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
             account=account,
             branch_agnostic=branch_agnostic,
@@ -817,8 +850,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -834,8 +866,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -850,8 +881,7 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
@@ -864,8 +894,7 @@ class NodeManager:
             fields=fields,
             at=at,
             branch=branch,
-            include_owner=include_owner,
-            include_source=include_source,
+            include_metadata=include_metadata,
             db=db,
             prefetch_relationships=prefetch_relationships,
             account=account,
@@ -881,8 +910,7 @@ class NodeManager:
             fields=fields,
             at=at,
             branch=branch,
-            include_source=include_source,
-            include_owner=include_owner,
+            include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
             account=account,
             branch_agnostic=branch_agnostic,
@@ -902,8 +930,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -920,8 +947,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -938,8 +964,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -952,16 +977,83 @@ class NodeManager:
         id: str,
         db: InfrahubDatabase,
         kind: str,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_metadata: MetadataOptions = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: str,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_metadata: MetadataOptions = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: str,
         raise_on_error: bool = ...,
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: None = ...,
+        raise_on_error: Literal[True] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_metadata: MetadataOptions = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node: ...
+
+    @overload
+    @classmethod
+    async def get_one(
+        cls,
+        id: str,
+        db: InfrahubDatabase,
+        kind: None = ...,
+        raise_on_error: Literal[False] = ...,
+        fields: dict | None = ...,
+        at: Timestamp | str | None = ...,
+        branch: Branch | str | None = ...,
+        include_metadata: MetadataOptions = ...,
+        prefetch_relationships: bool = ...,
+        account=...,
+        branch_agnostic: bool = ...,
+    ) -> Node | None: ...
 
     @overload
     @classmethod
@@ -974,12 +1066,11 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_source: bool = ...,
-        include_owner: bool = ...,
+        include_metadata: MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node | None: ...
 
     @classmethod
     async def get_one(
@@ -991,12 +1082,11 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
-    ) -> Any | None:
+    ) -> Node | SchemaProtocol | None:
         """Return one node based on its ID."""
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -1005,8 +1095,7 @@ class NodeManager:
             fields=fields,
             at=at,
             branch=branch,
-            include_source=include_source,
-            include_owner=include_owner,
+            include_metadata=include_metadata,
             account=account,
             prefetch_relationships=prefetch_relationships,
             db=db,
@@ -1055,8 +1144,7 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
@@ -1079,8 +1167,7 @@ class NodeManager:
             ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
-            include_source=include_source,
-            include_owner=include_owner,
+            include_metadata=include_metadata,
             account=account,
             at=at,
             branch_agnostic=branch_agnostic,
@@ -1128,8 +1215,7 @@ class NodeManager:
             at=at,
             nodes_by_id=nodes,
             branch_agnostic=branch_agnostic,
-            include_owner=include_owner,
-            include_source=include_source,
+            include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
             fields=fields,
         )
@@ -1144,8 +1230,7 @@ class NodeManager:
         at: Timestamp,
         nodes_by_id: dict[str, Node],
         branch_agnostic: bool,
-        include_owner: bool,
-        include_source: bool,
+        include_metadata: MetadataOptions,
         prefetch_relationships: bool,
         fields: dict[str, Any] | None,
     ) -> None:
@@ -1197,8 +1282,7 @@ class NodeManager:
                 branch=branch,
                 at=at,
                 db=db,
-                include_owner=include_owner,
-                include_source=include_source,
+                include_metadata=include_metadata,
             )
 
         for node in nodes_by_id.values():
@@ -1261,7 +1345,7 @@ class NodeManager:
         db: InfrahubDatabase,
         nodes: list[Node],
         branch: Branch | str | None = None,
-        at: Timestamp | str | None = None,
+        at: Timestamp | None = None,
         cascade_delete: bool = True,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""

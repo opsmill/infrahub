@@ -1,36 +1,44 @@
-import { StringParam, useQueryParam } from "use-query-params";
+import { parseAsJson, useQueryState } from "nuqs";
+import * as z from "zod";
 
 import { QSP } from "@/config/qsp";
 
 import { uniqueItemsArray } from "@/shared/utils/array";
 
-import type { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
+import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 
-export type Filter = {
-  name: `${string}__${string}` | typeof AVAILABLE_IP_FILTER_NAME | "order";
-  value: any;
-  display_label?: string;
-};
+export const FilterSchema = z.array(
+  z.object({
+    name: z.union([
+      z.templateLiteral([z.string(), "__", z.string()]),
+      z.literal(AVAILABLE_IP_FILTER_NAME),
+      z.literal("order"),
+    ]),
+    value: z.any(),
+  })
+);
+
+export type Filter = z.infer<typeof FilterSchema>[number];
 
 const useFilters = (): [Array<Filter>, (filter: Array<Filter>) => void] => {
-  const [filtersInQueryString, setFiltersInQueryString] = useQueryParam(QSP.FILTER, StringParam);
-
-  const filters = filtersInQueryString ? JSON.parse(filtersInQueryString) : [];
+  const [filters, setFiltersInQueryString] = useQueryState(
+    QSP.FILTER,
+    parseAsJson(FilterSchema).withDefault([]).withOptions({ history: "push" })
+  );
 
   const setFilters = (newFilters: Filter[]) => {
     // Use unique filters
     const cleanedFilters = uniqueItemsArray(newFilters, "name");
 
     if (!cleanedFilters || !cleanedFilters?.length) {
-      // Set undefined to remove from QSP
-      setFiltersInQueryString(undefined);
+      // Set null to remove from QSP
+      setFiltersInQueryString(null);
     } else {
-      // Stringify parameters
-      setFiltersInQueryString(JSON.stringify(cleanedFilters));
+      setFiltersInQueryString(cleanedFilters);
     }
   };
 
-  return [filters ?? [], setFilters];
+  return [filters, setFilters];
 };
 
 export default useFilters;

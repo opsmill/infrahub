@@ -10,6 +10,7 @@ from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -81,7 +82,17 @@ class ConstraintValidatorDeterminer:
 
     async def _get_all_property_constraints(self) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
-        for schema in self.schema_branch.get_all().values():
+        schemas = list(self.schema_branch.get_all(duplicate=False).values())
+        # added here to check their uniqueness constraints
+        try:
+            schemas.append(self.schema_branch.get_node(name="SchemaAttribute", duplicate=False))
+        except SchemaNotFoundError:
+            pass
+        try:
+            schemas.append(self.schema_branch.get_node(name="SchemaRelationship", duplicate=False))
+        except SchemaNotFoundError:
+            pass
+        for schema in schemas:
             constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         return constraints
 

@@ -1,6 +1,6 @@
+import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { ReactElement } from "react";
 import { Tab, TabPanel, type TabPanelProps, type TabProps } from "react-aria-components";
-import { ArrayParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -75,7 +75,7 @@ export const PropertyRow = ({
       case "number":
         return value;
       case "boolean":
-        return <Badge variant={value ? "green-outline" : "red-outline"}>{value.toString()}</Badge>;
+        return <Badge variant={value ? "green" : "red"}>{value.toString()}</Badge>;
       case "object":
         if (Array.isArray(value)) {
           return (
@@ -146,7 +146,7 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
 export const NullDisplay = () => <div className="text-gray-500 text-xs">null</div>;
 
 export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
-  const [selectedKinds, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
+  const [selectedKinds, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   if (!kinds) return null;
   if (kinds.length === 0) return <span>empty</span>;
 

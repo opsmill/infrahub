@@ -122,15 +122,15 @@ async def test_get_proposed_change_schema_integrity_constraints(
     car_person_schema,
     schema_integrity_01,
     branch_diff_01_summary: list[NodeDiff],
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     constraints = await _get_proposed_change_schema_integrity_constraints(
         schema=schema, diff_summary=branch_diff_01_summary
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 219
-    assert len(non_generate_profile_constraints) == 132
+    assert len(constraints) == 230
+    assert len(non_generate_profile_constraints) == 140
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -275,7 +275,7 @@ async def test_schema_integrity(
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main: Node,
-):
+) -> None:
     cache = MemoryCache()
     with dependency_provider.scope(build_cache, lambda: cache):
         branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)

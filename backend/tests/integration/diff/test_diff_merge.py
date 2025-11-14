@@ -126,7 +126,7 @@ class TestDiffMerge(TestInfrahubApp):
         diff_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         delorean_id = initial_dataset["delorean"].get_id()
         marty_id = initial_dataset["marty"].get_id()
 
@@ -159,7 +159,7 @@ class TestDiffMerge(TestInfrahubApp):
         diff_coordinator: DiffCoordinator,
         diff_repository: DiffRepository,
         delete_on_branch: bool,
-    ):
+    ) -> None:
         new_person = await Node.init(db=db, schema=PERSON_KIND)
         await new_person.new(db=db, name="Chuck Berry")
         await new_person.save(db=db)

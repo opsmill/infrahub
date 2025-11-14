@@ -202,7 +202,11 @@ export const ObjectAttributeValue = ({
       );
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX:
-      return attributeValue ? <CheckIcon className="h-4 w-4" /> : <XMarkIcon className="h-4 w-4" />;
+      return attributeValue.value ? (
+        <CheckIcon className="size-4" />
+      ) : (
+        <XMarkIcon className="size-4" />
+      );
     case ATTRIBUTE_KIND.DATETIME:
       return <DateDisplay date={getTextValue(attributeValue)} />;
     case ATTRIBUTE_KIND.TEXTAREA:

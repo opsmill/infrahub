@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
@@ -11,6 +11,7 @@ from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.models import NodeChangelog, RelationshipChangelogGetter
 from infrahub.core.constants import (
     InfrahubKind,
+    MetadataOptions,
     PermissionAction,
     PermissionDecision,
     RelationshipCardinality,
@@ -48,7 +49,7 @@ if TYPE_CHECKING:
 RELATIONSHIP_PEERS_TO_IGNORE = [InfrahubKind.NODE]
 
 
-class GroupUpdateType(str, Enum):
+class GroupUpdateType(StrEnum):
     NONE = "none"
     MEMBERS = "members"
     MEMBER_OF_GROUPS = "member_of_groups"
@@ -91,7 +92,7 @@ class RelationshipAdd(Mutation):
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
-        display_label: str = await source.render_display_label(db=graphql_context.db)
+        display_label: str = await source.get_display_label(db=graphql_context.db) or ""
         node_changelog = NodeChangelog(
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
@@ -214,7 +215,7 @@ class RelationshipRemove(Mutation):
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
-        display_label: str = await source.render_display_label(db=graphql_context.db)
+        display_label: str = await source.get_display_label(db=graphql_context.db) or ""
         node_changelog = NodeChangelog(
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
@@ -318,8 +319,7 @@ async def _validate_node(info: GraphQLResolveInfo, data: RelationshipNodesInput)
             db=graphql_context.db,
             id=input_id,
             branch=graphql_context.branch,
-            include_owner=False,
-            include_source=False,
+            include_metadata=MetadataOptions.NONE,
         )
     ):
         raise NodeNotFoundError(node_type="node", identifier=input_id, branch_name=graphql_context.branch.name)

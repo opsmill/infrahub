@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import importlib
 import logging
 import os
 from collections import defaultdict
 from csv import DictReader, DictWriter
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
 
@@ -14,13 +13,17 @@ import typer
 import ujson
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.testing.utilities import prefect_test_harness
-from rich import print as rprint
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.table import Table
 
 from infrahub import config
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
+from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.tasks import rebase_branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -32,28 +35,25 @@ from infrahub.core.graph.schema import (
     GraphRelationshipIsPartOf,
     GraphRelationshipProperties,
 )
-from infrahub.core.initialization import (
-    first_time_initialization,
-    get_root_node,
-    initialization,
-    initialize_registry,
-)
+from infrahub.core.initialization import get_root_node, initialize_registry
+from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
+from infrahub.core.migrations.shared import get_migration_console
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
-from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
-from infrahub.log import get_logger
+from infrahub.exceptions import ValidationError
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
+from .db_commands.clean_duplicate_schema_fields import clean_duplicate_schema_fields
 from .patch import patch_app
 
 
@@ -64,7 +64,7 @@ def get_timestamp_string() -> str:
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
-    from infrahub.core.migrations.shared import ArbitraryMigration, GraphMigration, InternalSchemaMigration
+    from infrahub.core.migrations.shared import MigrationTypes
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
 
@@ -74,13 +74,13 @@ app.add_typer(patch_app, name="patch")
 PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 
-class ConstraintAction(str, Enum):
+class ConstraintAction(StrEnum):
     SHOW = "show"
     ADD = "add"
     DROP = "drop"
 
 
-class IndexAction(str, Enum):
+class IndexAction(StrEnum):
     SHOW = "show"
     ADD = "add"
     DROP = "drop"
@@ -91,67 +91,6 @@ def callback() -> None:
     """
     Manage the graph in the database.
     """
-
-
-@app.command()
-async def init(
-    ctx: typer.Context,
-    config_file: str = typer.Option(
-        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    ),
-) -> None:
-    """Erase the content of the database and initialize it with the core schema."""
-
-    log = get_logger()
-
-    # --------------------------------------------------
-    # CLEANUP
-    #  - For now we delete everything in the database
-    #   TODO, if possible try to implement this in an idempotent way
-    # --------------------------------------------------
-
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-    config.load_and_exit(config_file_name=config_file)
-
-    context: CliContext = ctx.obj
-    dbdriver = await context.init_db(retry=1)
-    async with dbdriver.start_transaction() as db:
-        log.info("Delete All Nodes")
-        await delete_all_nodes(db=db)
-        await first_time_initialization(db=db)
-
-    await dbdriver.close()
-
-
-@app.command()
-async def load_test_data(
-    ctx: typer.Context,
-    config_file: str = typer.Option(
-        "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    ),
-    dataset: str = "dataset01",
-) -> None:
-    """Load test data into the database from the `test_data` directory."""
-
-    logging.getLogger("neo4j").setLevel(logging.ERROR)
-    config.load_and_exit(config_file_name=config_file)
-
-    context: CliContext = ctx.obj
-    dbdriver = await context.init_db(retry=1)
-
-    async with dbdriver.start_session() as db:
-        await initialization(db=db)
-
-        log_level = "DEBUG"
-
-        FORMAT = "%(message)s"
-        logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-        logging.getLogger("infrahub")
-
-        dataset_module = importlib.import_module(f"infrahub.test_data.{dataset}")
-        await dataset_module.load_data(db=db)
-
-    await dbdriver.close()
 
 
 @app.command(name="migrate")
@@ -171,7 +110,15 @@ async def migrate_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    await migrate_database(db=dbdriver, initialize=True, check=check, migration_number=migration_number)
+    root_node = await get_root_node(db=dbdriver)
+    migrations = await detect_migration_to_run(
+        current_graph_version=root_node.graph_version, migration_number=migration_number
+    )
+
+    if check or not migrations:
+        return
+
+    await migrate_database(db=dbdriver, migrations=migrations, initialize=True)
 
     await dbdriver.close()
 
@@ -194,6 +141,29 @@ async def check_inheritance_cmd(
     await initialize_registry(db=dbdriver)
 
     success = await check_inheritance(db=dbdriver, fix=fix)
+    if not success:
+        raise typer.Exit(code=1)
+
+    await dbdriver.close()
+
+
+@app.command(name="check-duplicate-schema-fields")
+async def check_duplicate_schema_fields_cmd(
+    ctx: typer.Context,
+    fix: bool = typer.Option(False, help="Fix the duplicate schema fields on the default branch."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Check for any duplicate schema attributes or relationships on the default branch"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    success = await clean_duplicate_schema_fields(db=dbdriver, fix=fix)
     if not success:
         raise typer.Exit(code=1)
 
@@ -311,8 +281,38 @@ async def index(
     await dbdriver.close()
 
 
+async def detect_migration_to_run(
+    current_graph_version: int, migration_number: int | str | None = None
+) -> Sequence[MigrationTypes]:
+    """Return a sequence of migrations to apply to upgrade the database."""
+    get_migration_console().log("Checking current state of the database")
+    migrations: list[MigrationTypes] = []
+
+    if migration_number:
+        migration = get_migration_by_number(migration_number)
+        migrations.append(migration)
+        if current_graph_version > migration.minimum_version:
+            get_migration_console().log(
+                f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
+            )
+            return []
+        get_migration_console().log(
+            f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
+        )
+    else:
+        migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
+        if not migrations:
+            get_migration_console().log(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
+            return []
+
+    get_migration_console().log(
+        f"Database needs to be updated (v{current_graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
+    )
+    return migrations
+
+
 async def migrate_database(
-    db: InfrahubDatabase, initialize: bool = False, check: bool = False, migration_number: int | str | None = None
+    db: InfrahubDatabase, migrations: Sequence[MigrationTypes], initialize: bool = False
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
@@ -320,40 +320,16 @@ async def migrate_database(
 
     Args:
         db: The database object.
-        check: If True, the function will only check the status of the database and not apply the migrations. Defaults to False.
-        migration_number: If provided, the function will only apply the migration with the given number. Defaults to None.
+        migrations: Sequence of migrations to apply.
+        initialize: Whether to initialize the registry before running migrations.
     """
-    rprint("Checking current state of the Database")
+    if not migrations:
+        return True
 
     if initialize:
         await initialize_registry(db=db)
 
     root_node = await get_root_node(db=db)
-    if migration_number:
-        migration = get_migration_by_number(migration_number)
-        migrations: Sequence[GraphMigration | InternalSchemaMigration | ArbitraryMigration] = [migration]
-        if check:
-            if root_node.graph_version > migration.minimum_version:
-                rprint(
-                    f"Migration {migration_number} already applied. To apply again, run the command without the --check flag."
-                )
-                return True
-            rprint(
-                f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
-            )
-            return False
-    else:
-        migrations = await get_graph_migrations(root=root_node)
-        if not migrations:
-            rprint(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
-            return True
-
-        rprint(
-            f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
-        )
-
-    if check:
-        return True
 
     for migration in migrations:
         execution_result = await migration.execute(db=db)
@@ -362,20 +338,69 @@ async def migrate_database(
         if execution_result.success:
             validation_result = await migration.validate_migration(db=db)
             if validation_result.success:
-                rprint(f"Migration: {migration.name} {SUCCESS_BADGE}")
+                get_migration_console().log(f"Migration: {migration.name} {SUCCESS_BADGE}")
                 root_node.graph_version = migration.minimum_version + 1
                 await root_node.save(db=db)
 
         if not execution_result.success or (validation_result and not validation_result.success):
-            rprint(f"Migration: {migration.name} {FAILED_BADGE}")
+            get_migration_console().log(f"Migration: {migration.name} {FAILED_BADGE}")
             for error in execution_result.errors:
-                rprint(f"  {error}")
+                get_migration_console().log(f"  {error}")
             if validation_result and not validation_result.success:
                 for error in validation_result.errors:
-                    rprint(f"  {error}")
+                    get_migration_console().log(f"  {error}")
             return False
 
     return True
+
+
+async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
+    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    if not branches:
+        return []
+
+    branches_needing_rebase: list[Branch] = []
+    for branch in branches:
+        if branch.graph_version == GRAPH_VERSION:
+            continue
+
+        branch.status = BranchStatus.NEED_UPGRADE_REBASE
+        await branch.save(db=db)
+        branches_needing_rebase.append(branch)
+
+    return branches_needing_rebase
+
+
+async def trigger_rebase_branches(db: InfrahubDatabase, branches: Sequence[Branch]) -> None:
+    """Trigger rebase of non-default branches, also triggering migrations in the process."""
+    if not branches:
+        return
+
+    get_migration_console().log(
+        f"Planning rebase and migrations for {len(branches)} {'branches' if len(branches) != 1 else 'branch'}: "
+        f"{', '.join([b.name for b in branches])}"
+    )
+
+    for branch in branches:
+        if branch.graph_version == GRAPH_VERSION:
+            get_migration_console().log(
+                f"Ignoring branch rebase and migrations for '{branch.name}' (ID: {branch.uuid}), it is already up-to-date"
+            )
+            continue
+
+        get_migration_console().print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
+        try:
+            await registry.schema.load_schema(db=db, branch=branch)
+            await rebase_branch(
+                branch=branch.name,
+                context=InfrahubContext.init(
+                    branch=branch, account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id="")
+                ),
+                send_events=False,
+            )
+            get_migration_console().log(SUCCESS_BADGE)
+        except (ValidationError, MigrationFailureError):
+            get_migration_console().log(FAILED_BADGE)
 
 
 async def initialize_internal_schema() -> None:
@@ -412,16 +437,16 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     branch_schema.validate_node_deletions(diff=schema_diff)
     result = branch_schema.validate_update(other=candidate_schema, diff=schema_diff, enforce_update_support=False)
     if result.errors:
-        rprint(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
+        get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
         for error in result.errors:
-            rprint(error.to_string())
+            get_migration_console().log(error.to_string())
         raise typer.Exit(1)
 
     if not result.diff.all:
-        rprint("Core Schema Up to date, nothing to update")
+        get_migration_console().log("Core Schema Up to date, nothing to update")
         return
 
-    rprint("Core Schema has diff, will need to be updated")
+    get_migration_console().log("Core Schema has diff, will need to be updated")
     if debug:
         result.diff.print()
 
@@ -436,9 +461,9 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     responses = await schema_validate_migrations(message=validate_migration_data)
     error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
-        rprint(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
+        get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
         for message in error_messages:
-            rprint(message)
+            get_migration_console().log(message)
         raise typer.Exit(1)
 
     # ----------------------------------------------------------
@@ -461,9 +486,11 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
             update_db=True,
         )
         default_branch.update_schema_hash()
-        rprint("The Core Schema has been updated, make sure to rebase any open branches after the upgrade")
+        get_migration_console().log(
+            "The Core Schema has been updated, make sure to rebase any open branches after the upgrade"
+        )
         if debug:
-            rprint(f"New schema hash: {default_branch.active_schema_hash.main}")
+            get_migration_console().log(f"New schema hash: {default_branch.active_schema_hash.main}")
         await default_branch.save(db=dbt)
 
     # ----------------------------------------------------------
@@ -478,9 +505,9 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     migration_error_msgs = await schema_apply_migrations(message=apply_migration_data)
 
     if migration_error_msgs:
-        rprint(f"{ERROR_BADGE} | Some error(s) happened while running the schema migrations")
+        get_migration_console().log(f"{ERROR_BADGE} | Some error(s) happened while running the schema migrations")
         for message in migration_error_msgs:
-            rprint(message)
+            get_migration_console().log(message)
         raise typer.Exit(1)
 
 
@@ -604,16 +631,16 @@ RETURN vertices, edges
         edge_csv_writer.writeheader()
 
         while has_more_data:
-            rprint("Retrieving batch of vertices and edges...", end="")
+            get_migration_console().print("Retrieving batch of vertices and edges...", end="")
             results = await db.execute_query(
                 query=query,
                 params={"kinds": kinds, "uuids": uuids, "limit": limit, "offset": offset},
             )
-            rprint("done. ", end="")
+            get_migration_console().print("done. ", end="")
             has_more_data = len(results) >= limit
             offset += limit
 
-            rprint("Writing batch to export files...", end="")
+            get_migration_console().print("Writing batch to export files...", end="")
             for result in results:
                 vertices = result.get("vertices")
                 for vertex in vertices:
@@ -644,10 +671,10 @@ RETURN vertices, edges
                             serial_edge[property_name] = value
                     edge_csv_writer.writerow(serial_edge)
                     all_db_ids.add(edge.element_id)
-            rprint("done.")
+            get_migration_console().log("done.")
 
-    rprint(f"{SUCCESS_BADGE} Export complete")
-    rprint(f"Export directory is here: {export_dir.absolute()}")
+    get_migration_console().log(f"{SUCCESS_BADGE} Export complete")
+    get_migration_console().log(f"Export directory is here: {export_dir.absolute()}")
     return export_dir
 
 
@@ -685,9 +712,9 @@ UNWIND $vertices AS vertex
 CREATE (v:ImportNode:%(node_labels)s {db_id: vertex.db_id})
 SET v = vertex
     """ % {"node_labels": ":".join(vertex_labels)}
-    rprint(f"Loading {len(vertex_dicts)} {vertex_labels} nodes...", end="")
+    get_migration_console().print(f"Loading {len(vertex_dicts)} {vertex_labels} nodes...", end="")
     await db.execute_query(query=vertex_import_query, params={"vertices": vertex_dicts})
-    rprint("done")
+    get_migration_console().log("done")
 
 
 async def load_edges(
@@ -700,17 +727,17 @@ MATCH (b:ImportNode) WHERE b.db_id = toString(edge.end_node_id)
 CREATE (a)-[e:%(edge_type)s]->(b)
 SET e = edge.properties
     """ % {"edge_type": edge_type}
-    rprint(f"Loading {len(edge_dicts)} {edge_type} edges...", end="")
+    get_migration_console().print(f"Loading {len(edge_dicts)} {edge_type} edges...", end="")
     await db.execute_query(query=edges_import_query, params={"edges": edge_dicts})
-    rprint("done")
+    get_migration_console().log("done")
 
 
 async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int = 1000) -> None:
     if not export_dir.exists():
-        rprint(f"{ERROR_BADGE} {export_dir} does not exist")
+        get_migration_console().log(f"{ERROR_BADGE} {export_dir} does not exist")
         raise typer.Exit(1)
     if not export_dir.is_dir():
-        rprint(f"{ERROR_BADGE} {export_dir} is not a directory")
+        get_migration_console().log(f"{ERROR_BADGE} {export_dir} is not a directory")
         raise typer.Exit(1)
     vertex_file: Path | None = None
     edge_file: Path | None = None
@@ -721,17 +748,17 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
         elif export_file.name == "edges.csv":
             edge_file = export_file
     if not vertex_file or not vertex_file.exists() or not vertex_file.is_file():
-        rprint(f"{ERROR_BADGE} File 'vertices.csv' does not exist in the export directory")
+        get_migration_console().log(f"{ERROR_BADGE} File 'vertices.csv' does not exist in the export directory")
         raise typer.Exit(1)
     if not edge_file or not edge_file.exists() or not edge_file.is_file():
-        rprint(f"{ERROR_BADGE} File 'edges.csv' does not exist in the export directory")
+        get_migration_console().log(f"{ERROR_BADGE} File 'edges.csv' does not exist in the export directory")
         raise typer.Exit(1)
 
     # index massively improves time required to load a large export
     create_index_query = "CREATE RANGE INDEX import_node_db_id IF NOT EXISTS FOR (v:ImportNode) ON (v.db_id)"
     await db.execute_query(query=create_index_query)
 
-    rprint("Loading vertices...")
+    get_migration_console().log("Loading vertices...")
     vertices_by_labels_map: dict[frozenset[str], list[dict[str, Any]]] = defaultdict(list)
     with vertex_file.open() as file:
         csv_reader = DictReader(file)
@@ -746,9 +773,9 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
 
         for labels, vertex_rows in vertices_by_labels_map.items():
             await load_vertices(db=db, vertex_labels=list(labels), vertex_dicts=vertex_rows)
-    rprint("Vertices loaded")
+    get_migration_console().log("Vertices loaded")
 
-    rprint("Loading edges...")
+    get_migration_console().log("Loading edges...")
     edges_by_type_map: dict[str, list[dict[str, Any]]] = defaultdict(list)
     with edge_file.open() as file:
         csv_reader = DictReader(file)
@@ -773,8 +800,8 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
 
         for edge_type, edge_dicts in edges_by_type_map.items():
             await load_edges(db=db, edge_type=edge_type, edge_dicts=edge_dicts)
-    rprint("Edges loaded")
-    rprint(f"{SUCCESS_BADGE} Export loaded")
+    get_migration_console().log("Edges loaded")
+    get_migration_console().log(f"{SUCCESS_BADGE} Export loaded")
 
 
 @app.command(name="check")
@@ -817,10 +844,10 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
         db: The database object.
         output_dir: Directory to save detailed check results.
     """
-    rprint("Running database health checks...")
+    get_migration_console().log("Running database health checks...")
 
     # Check 1: Duplicate active relationships
-    rprint("\n[bold cyan]Check 1: Duplicate Active Relationships[/bold cyan]")
+    get_migration_console().log("\n[bold cyan]Check 1: Duplicate Active Relationships[/bold cyan]")
     duplicate_active_rels_query = """
     MATCH (a:Node)-[e1:IS_RELATED {status: "active"}]-(r:Relationship)-[e2:IS_RELATED {branch: e1.branch, status: "active"}]-(b:Node)
     WHERE a.uuid < b.uuid
@@ -844,7 +871,7 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
 
     results = await db.execute_query(query=duplicate_active_rels_query)
     if results:
-        rprint(f"[red]Found {len(results)} duplicate active relationships[/red]")
+        get_migration_console().log(f"[red]Found {len(results)} duplicate active relationships[/red]")
         # Write detailed results to file
         output_file = output_dir / "duplicate_active_relationships.csv"
         with output_file.open(mode="w", newline="") as f:
@@ -854,12 +881,12 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
             writer.writeheader()
             for result in results:
                 writer.writerow(dict(result))
-        rprint(f"  Detailed results written to: {output_file}")
+        get_migration_console().log(f"  Detailed results written to: {output_file}")
     else:
-        rprint(f"{SUCCESS_BADGE} No duplicate active relationships found")
+        get_migration_console().log(f"{SUCCESS_BADGE} No duplicate active relationships found")
 
     # Check 2: Duplicated relationship nodes
-    rprint("\n[bold cyan]Check 2: Duplicated Relationship Nodes[/bold cyan]")
+    get_migration_console().log("\n[bold cyan]Check 2: Duplicated Relationship Nodes[/bold cyan]")
     duplicate_rel_nodes_query = """
     MATCH (r:Relationship)
     WITH r.uuid AS r_uuid, COUNT(*) AS num_rels
@@ -872,7 +899,7 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
 
     results = await db.execute_query(query=duplicate_rel_nodes_query)
     if results:
-        rprint(f"[red]Found {len(results)} duplicated relationship nodes[/red]")
+        get_migration_console().log(f"[red]Found {len(results)} duplicated relationship nodes[/red]")
         # Write detailed results to file
         output_file = output_dir / "duplicated_relationship_nodes.csv"
         with output_file.open(mode="w", newline="") as f:
@@ -880,12 +907,12 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
             writer.writeheader()
             for result in results:
                 writer.writerow(dict(result))
-        rprint(f"  Detailed results written to: {output_file}")
+        get_migration_console().log(f"  Detailed results written to: {output_file}")
     else:
-        rprint(f"{SUCCESS_BADGE} No duplicated relationship nodes found")
+        get_migration_console().log(f"{SUCCESS_BADGE} No duplicated relationship nodes found")
 
     # Check 3: Duplicated edges
-    rprint("\n[bold cyan]Check 3: Duplicated Edges[/bold cyan]")
+    get_migration_console().log("\n[bold cyan]Check 3: Duplicated Edges[/bold cyan]")
     duplicate_edges_query = """
     MATCH (a)
     CALL (a) {
@@ -915,7 +942,7 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
 
     results = await db.execute_query(query=duplicate_edges_query)
     if results:
-        rprint(f"[red]Found {len(results)} sets of duplicated edges[/red]")
+        get_migration_console().log(f"[red]Found {len(results)} sets of duplicated edges[/red]")
         # Write detailed results to file
         output_file = output_dir / "duplicated_edges.csv"
         with output_file.open(mode="w", newline="") as f:
@@ -926,12 +953,12 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
             writer.writeheader()
             for result in results:
                 writer.writerow(dict(result))
-        rprint(f"  Detailed results written to: {output_file}")
+        get_migration_console().log(f"  Detailed results written to: {output_file}")
     else:
-        rprint(f"{SUCCESS_BADGE} No duplicated edges found")
+        get_migration_console().log(f"{SUCCESS_BADGE} No duplicated edges found")
 
     # Check 4: Orphaned Relationships
-    rprint("\n[bold cyan]Check 4: Orphaned Relationships[/bold cyan]")
+    get_migration_console().log("\n[bold cyan]Check 4: Orphaned Relationships[/bold cyan]")
     orphaned_rels_query = """
     MATCH (r:Relationship)-[:IS_RELATED]-(peer:Node)
     WITH DISTINCT r, peer
@@ -949,7 +976,7 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
     """
     results = await db.execute_query(query=orphaned_rels_query)
     if results:
-        rprint(f"[red]Found {len(results)} orphaned Relationships[/red]")
+        get_migration_console().log(f"[red]Found {len(results)} orphaned Relationships[/red]")
         # Write detailed results to file
         output_file = output_dir / "orphaned_relationships.csv"
         with output_file.open(mode="w", newline="") as f:
@@ -960,9 +987,9 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
             writer.writeheader()
             for result in results:
                 writer.writerow(dict(result))
-        rprint(f"  Detailed results written to: {output_file}")
+        get_migration_console().log(f"  Detailed results written to: {output_file}")
     else:
-        rprint(f"{SUCCESS_BADGE} No orphaned relationships found")
+        get_migration_console().log(f"{SUCCESS_BADGE} No orphaned relationships found")
 
-    rprint(f"\n{SUCCESS_BADGE} Database health checks completed")
-    rprint(f"Detailed results saved to: {output_dir.absolute()}")
+    get_migration_console().log(f"\n{SUCCESS_BADGE} Database health checks completed")
+    get_migration_console().log(f"Detailed results saved to: {output_dir.absolute()}")

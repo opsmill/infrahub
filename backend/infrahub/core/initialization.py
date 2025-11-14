@@ -50,7 +50,7 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
     roots = await Root.get_list(db=db)
     if len(roots) == 0 and not initialize:
         raise DatabaseError(
-            "The Database hasn't been initialized for Infrahub, please run 'infrahub db init' or 'infrahub server start' to initialize the database."
+            "The Database hasn't been initialized for Infrahub, please 'infrahub server start' to initialize the database."
         )
 
     if len(roots) == 0:
@@ -137,7 +137,8 @@ async def add_indexes(db: InfrahubDatabase) -> None:
     await index_manager.add()
 
 
-async def initialization(db: InfrahubDatabase, add_database_indexes: bool = False) -> None:
+async def initialization(db: InfrahubDatabase, add_database_indexes: bool = False) -> bool:
+    """Run initialization and setup, returns a boolean to indicate if it's the initial setup."""
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
         await session.run(query="SET DATABASE SETTING 'log.level' TO 'INFO'")
@@ -148,6 +149,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
     # Initialize the database and Load the Root node
     # ---------------------------------------------------
     async with lock.registry.initialization():
+        first_time_initialization = len(await Root.get_list(db=db)) == 0
         log.debug("Checking Root Node")
         await initialize_registry(db=db, initialize=True)
 
@@ -210,6 +212,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
     ip_namespace = await get_default_ipnamespace(db=db)
     if ip_namespace:
         registry.default_ipnamespace = ip_namespace.id
+    return first_time_initialization
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:

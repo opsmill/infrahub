@@ -20,6 +20,7 @@ test.describe("/profile?tab=tokens", () => {
         await page.getByTestId("authenticated-menu-trigger").click();
         await page.getByRole("menuitem", { name: "Account settings" }).click();
         await page.getByText("Tokens").click();
+        await expect(page.getByTestId("account-token-Created automatically")).toBeVisible();
         await page.getByRole("button", { name: "Add account token" }).click();
         await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
         await saveScreenshotForDocs(page, "profile_tokens");

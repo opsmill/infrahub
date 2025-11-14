@@ -1,22 +1,6 @@
-import { gql } from "@apollo/client";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-const GET_BRANCHES = gql`
-  query GetBranches {
-    Branch {
-      id
-      name
-      description
-      origin_branch
-      branched_from
-      created_at
-      sync_with_git
-      is_default
-      has_schema_changes
-    }
-  }
-`;
+import { GET_BRANCHES } from "@/entities/branches/api/query/get-branches-query";
 
 export const getBranchesFromApi = async () => {
   return graphqlClient.query({

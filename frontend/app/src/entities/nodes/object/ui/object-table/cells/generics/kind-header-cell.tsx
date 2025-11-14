@@ -14,6 +14,7 @@ export function KindHeaderCell({ schema, className, ...props }: KindHeaderCellPr
   return (
     <div
       className={classNames(cellsStyle, cellHeaderStyle, "hover:bg-white", className)}
+      data-testid="kind-header-cell"
       {...props}
     >
       <Icon icon="mdi:code-json" className="text-stone-400" />

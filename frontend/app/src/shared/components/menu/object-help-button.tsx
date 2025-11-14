@@ -2,15 +2,10 @@ import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
 
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
+import { QSP } from "@/config/qsp";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import {
-  Menu,
-  MenuItem,
-  MenuPopover,
-  MenuSection,
-  MenuTrigger,
-} from "@/shared/components/aria/menu";
+import { Menu, MenuItem, MenuPopover, MenuTrigger } from "@/shared/components/aria/menu";
 import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 
 interface ObjectHelpButtonProps extends ButtonProps {
@@ -36,26 +31,24 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
 
       <MenuPopover placement="bottom end">
         <Menu>
-          <MenuSection>
-            <MenuItem
-              isDisabled={!documentationUrl}
-              href={docFullUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Icon icon="mdi:book-open-variant-outline" className="text-lg" />
-              Documentation
-              <Icon icon="mdi:open-in-new" />
-            </MenuItem>
+          <MenuItem
+            isDisabled={!documentationUrl}
+            href={docFullUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Icon icon="mdi:book-open-variant-outline" className="text-lg" />
+            Documentation
+            <Icon icon="mdi:open-in-new" />
+          </MenuItem>
 
-            <MenuItem
-              isDisabled={!kind}
-              href={constructPath("/schema", [{ name: "kind", value: kind }])}
-            >
-              <Icon icon="mdi:code-json" className="text-lg" />
-              Schema
-            </MenuItem>
-          </MenuSection>
+          <MenuItem
+            isDisabled={!kind}
+            href={constructPath("/schema", [{ name: QSP.KIND, value: kind }])}
+          >
+            <Icon icon="mdi:code-json" className="text-lg" />
+            Schema
+          </MenuItem>
         </Menu>
       </MenuPopover>
     </MenuTrigger>

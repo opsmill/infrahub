@@ -9,7 +9,7 @@ from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeV
 
 
 class TestDiffInit:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.db = MagicMock()
         self.origin_branch = Branch(name="origin")
         self.created_at_str = "2023-11-01"
@@ -23,19 +23,19 @@ class TestDiffInit:
     async def __call_system_under_test(self, branch, **kwargs):
         return await BranchDiffer.init(self.db, branch, **kwargs)
 
-    async def test_diff_from_required_for_default_branch(self):
+    async def test_diff_from_required_for_default_branch(self) -> None:
         self.branch.is_default = True
 
         with pytest.raises(DiffFromRequiredOnDefaultBranchError):
             await self.__call_system_under_test(self.branch)
 
-    async def test_diff_to_cannot_precede_diff_from(self):
+    async def test_diff_to_cannot_precede_diff_from(self) -> None:
         bad_diff_to = "2023-10-31"
 
         with pytest.raises(DiffRangeValidationError):
             await self.__call_system_under_test(self.branch, diff_to=bad_diff_to)
 
-    async def test_diff_from_default_is_set(self):
+    async def test_diff_from_default_is_set(self) -> None:
         diff_to_str = "2023-11-15"
 
         diff = await self.__call_system_under_test(self.branch, diff_to=diff_to_str)

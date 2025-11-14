@@ -127,10 +127,11 @@ async def test_ipprefix_nextavailable(
     prefix,
     prefix_length,
     response,
-):
+) -> None:
     obj = ip_dataset_01[prefix]
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     query = """
     query($prefix: String!, $prefix_length: Int) {
@@ -168,10 +169,11 @@ async def test_ipaddress_nextavailable(
     prefix,
     prefix_length,
     response,
-):
+) -> None:
     obj = ip_dataset_02[prefix]
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     query = """
     query($prefix: String!, $prefix_length: Int) {
@@ -522,8 +524,9 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ip_dataset_ranges: dict[str, Node],
         prefix: str,
         result: list[str],
-    ):
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    ) -> None:
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
         query = """
         query($prefix: ID!) {
@@ -573,8 +576,9 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ip_dataset_range_various_kinds: dict[str, Node],
         limit: int,
         kinds: list[str],
-    ):
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    ) -> None:
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         query = """
         query($prefix: ID!, $limit: Int!, $kinds: [String!]) {
             BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, kinds: $kinds, limit: $limit) {
@@ -627,8 +631,9 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         default_ipnamespace: Node,
         register_ipam_schema: SchemaBranch,
         ip_dataset_range_various_kinds: dict[str, Node],
-    ):
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    ) -> None:
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         query = """
         query($prefix: ID!, $kinds: [String!]) {
             BuiltinIPAddress(ip_prefix__ids: [$prefix], include_available: true, kinds: $kinds) {
@@ -732,8 +737,9 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         limit: int,
         offset: int,
         result: list[str],
-    ):
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    ) -> None:
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
         query = """
         query($prefix: ID!, $limit: Int!, $offset: Int!) {
@@ -878,8 +884,9 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ip_dataset_available_prefixes: dict[str, Node],
         prefix: str,
         result: list[str],
-    ):
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    ) -> None:
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
         query = """
         query($prefix: ID!) {
@@ -1039,8 +1046,9 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         limit: int,
         offset: int,
         result: list[str],
-    ):
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    ) -> None:
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
         query = """
         query($prefix: ID!, $limit: Int!, $offset: Int!) {

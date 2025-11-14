@@ -36,7 +36,7 @@ async def schema_aware():
 
 
 @pytest.fixture
-async def init_database(db: InfrahubDatabase):
+async def init_database(db: InfrahubDatabase) -> None:
     params = {
         "nodes": [],
         "rel_props": {"branch": "main", "branch_level": "1", "status": "active", "from": Timestamp().to_string()},
@@ -62,7 +62,7 @@ async def init_database(db: InfrahubDatabase):
     await db.execute_query(query=query_init_root, params=params)
 
 
-async def test_query01(db: InfrahubDatabase, default_branch, init_database, schema_aware):
+async def test_query01(db: InfrahubDatabase, default_branch, init_database, schema_aware) -> None:
     node = schema_aware
 
     assert await count_nodes(db=db, label="TestCar") == 5
@@ -89,11 +89,11 @@ async def test_query01(db: InfrahubDatabase, default_branch, init_database, sche
     assert await count_nodes(db=db, label="Attribute") == 5
 
 
-async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
 
     assert await count_nodes(db=db, label="TestCar") == 2
-    assert await count_nodes(db=db, label="Attribute") == 14
+    assert await count_nodes(db=db, label="Attribute") == 22
 
     # ------------------------------------------
     # Delete the attribute Color
@@ -126,7 +126,7 @@ async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_
     assert query.get_nbr_migrations_executed() == 2
 
     assert await count_nodes(db=db, label="TestCar") == 2
-    assert await count_nodes(db=db, label="Attribute") == 16
+    assert await count_nodes(db=db, label="Attribute") == 24
 
     # Re-execute the query once to ensure that it won't recreate the attribute twice
     query = await NodeAttributeAddMigrationQuery01.init(db=db, branch=default_branch, migration=migration_add)
@@ -134,10 +134,10 @@ async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_
 
     assert query.get_nbr_migrations_executed() == 0
     assert await count_nodes(db=db, label="TestCar") == 2
-    assert await count_nodes(db=db, label="Attribute") == 16
+    assert await count_nodes(db=db, label="Attribute") == 24
 
 
-async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware):
+async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware) -> None:
     node = schema_aware
     migration = NodeAttributeAddMigration(
         new_node_schema=node,

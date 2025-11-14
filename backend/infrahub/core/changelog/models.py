@@ -560,7 +560,7 @@ class RelationshipChangelogGetter:
 
         for peer in relationship.peers:
             if peer.peer_status == DiffAction.ADDED:
-                peer_schema = schema_branch.get(name=peer.peer_kind)
+                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
                     self._process_added_peers(
                         peer_id=peer.peer_id,
@@ -572,7 +572,7 @@ class RelationshipChangelogGetter:
                 )
 
             elif peer.peer_status == DiffAction.REMOVED:
-                peer_schema = schema_branch.get(name=peer.peer_kind)
+                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
                     self._process_removed_peers(
                         peer_id=peer.peer_id,
@@ -596,11 +596,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(
-                node_id=peer_id,
-                node_kind=peer_kind,
-                display_label="n/a",
-            )
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
@@ -634,11 +630,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(
-                node_id=peer_id,
-                node_kind=peer_kind,
-                display_label="n/a",
-            )
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,

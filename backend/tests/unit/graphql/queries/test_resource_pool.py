@@ -183,11 +183,14 @@ query Resources($pool_ids: [ID]) {
 """
 
 
-async def test_create_ipv6_prefix_and_read_allocations(db: InfrahubDatabase, default_branch: Branch, prefix_pools_02):
+async def test_create_ipv6_prefix_and_read_allocations(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+) -> None:
     ipv6_prefix_resource = prefix_pools_02["ipv6_prefix_resource"]
     ipv6_prefix_pool = prefix_pools_02["ipv6_prefix_pool"]
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     site1_result = await graphql(
         schema=gql_params.schema,
@@ -257,7 +260,8 @@ async def test_create_ipv6_prefix_and_read_allocations(db: InfrahubDatabase, def
     # ------------------------------------------------------------
     # Validate the utilization query in the main Branch
     # ------------------------------------------------------------
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     utilization_result = await graphql(
         schema=gql_params.schema,
         source=POOL_UTILIZATION,
@@ -289,11 +293,14 @@ async def test_create_ipv6_prefix_and_read_allocations(db: InfrahubDatabase, def
     }
 
 
-async def test_create_ipv4_prefix_and_read_allocations(db: InfrahubDatabase, default_branch: Branch, prefix_pools_02):
+async def test_create_ipv4_prefix_and_read_allocations(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+) -> None:
     ipv4_prefix_resource = prefix_pools_02["ipv4_prefix_resource"]
     ipv4_prefix_pool = prefix_pools_02["ipv4_prefix_pool"]
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     site1_result = await graphql(
         schema=gql_params.schema,
@@ -360,11 +367,14 @@ async def test_create_ipv4_prefix_and_read_allocations(db: InfrahubDatabase, def
     assert site3_prefix in prefixes
 
 
-async def test_create_ipv4_address_and_read_allocations(db: InfrahubDatabase, default_branch: Branch, prefix_pools_02):
+async def test_create_ipv4_address_and_read_allocations(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+) -> None:
     ipv4_address_resource = prefix_pools_02["ipv4_address_resource"]
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     device1_result = await graphql(
         schema=gql_params.schema,
@@ -428,13 +438,16 @@ async def test_create_ipv4_address_and_read_allocations(db: InfrahubDatabase, de
     assert device3_address in addresses
 
 
-async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_branch: Branch, prefix_pools_02):
+async def test_read_resources_in_pool_with_branch(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
+) -> None:
     ns1 = prefix_pools_02["ns1"]
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
     peers = await ipv4_address_pool.resources.get_peers(db=db)
 
     # At first there should be 1 resource
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=RESOURCES,
@@ -464,7 +477,8 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
     branched_peer_ids = [peer.id for peer in branched_peers.values()]
 
     # In main there should be 1 resource
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=RESOURCES,
@@ -483,7 +497,8 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
     } == set(branched_peer_ids)
 
     # In branch there should be 2 resources
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch.name)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch.name)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=RESOURCES,
@@ -508,7 +523,7 @@ async def test_read_resources_in_pool_new_schema_in_branch(
     init_nodes_registry,
     default_ipnamespace,
     ipam_schema: SchemaRoot,
-):
+) -> None:
     branch2 = await create_branch(db=db, branch_name="branch2")
 
     schema_branch2 = registry.schema.get_schema_branch(name=branch2.name)
@@ -568,7 +583,8 @@ async def test_read_resources_in_pool_new_schema_in_branch(
         }
         """
     # At first there should be 1 resource
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+    branch2.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch2)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=IP_PREFIX_RESOURCES,
@@ -608,7 +624,8 @@ async def test_read_resources_in_pool_new_schema_in_branch(
     # ------------------------------------------------------------
     # Validate the utilization query in the main Branch
     # ------------------------------------------------------------
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     utilization_result = await graphql(
         schema=gql_params.schema,
         source=POOL_UTILIZATION,
@@ -631,7 +648,8 @@ async def test_read_resources_in_pool_new_schema_in_branch(
     # ------------------------------------------------------------
     # Validate the utilization query in Branch2
     # ------------------------------------------------------------
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+    branch2.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch2)
     utilization_result = await graphql(
         schema=gql_params.schema,
         source=POOL_UTILIZATION,
@@ -667,7 +685,7 @@ async def test_read_resources_in_pool_new_schema_in_branch(
 
 async def test_read_resources_in_pool_with_branch_with_mutations(
     db: InfrahubDatabase, default_branch: Branch, prefix_pools_02
-):
+) -> None:
     ns1 = prefix_pools_02["ns1"]
     ipv4_address_pool = prefix_pools_02["ipv4_address_pool"]
     peers = await ipv4_address_pool.resources.get_peers(db=db)
@@ -676,7 +694,8 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
     peer_id = peer_ids[0]
 
     # At first there should be 1 resource
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=RESOURCES,
@@ -693,7 +712,8 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
     branch = await create_branch(branch_name="issue-3579", db=db)
 
     # Create a prefix
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     prefix_result = await graphql(
         schema=gql_params.schema,
         source="""
@@ -730,7 +750,8 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
     )
 
     # In main there should be 1 resource
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=RESOURCES,
@@ -749,7 +770,8 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
     } == {peer_id, prefix_id}
 
     # In branch there should be 2 resources
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch.name)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch.name)
     resources_result = await graphql(
         schema=gql_params.schema,
         source=RESOURCES,
@@ -768,9 +790,12 @@ async def test_read_resources_in_pool_with_branch_with_mutations(
     } == {peer_id, prefix_id}
 
 
-async def test_number_pool_utilization(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_number_pool_utilization(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     await initialization(db=db)
     create_ok = await graphql(
         schema=gql_params.schema,

@@ -11,14 +11,16 @@ from opentelemetry import trace
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
-from infrahub.auth import get_groups_from_provider, signin_sso_account
-from infrahub.exceptions import GatewayError, ProcessingError
+from infrahub.auth import (
+    get_groups_from_provider,
+    signin_sso_account,
+    validate_auth_response,
+)
+from infrahub.exceptions import ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
 if TYPE_CHECKING:
-    import httpx
-
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -95,7 +97,7 @@ async def token(
     }
 
     token_response = await service.http.post(provider.token_url, data=token_data)
-    _validate_response(response=token_response)
+    validate_auth_response(response=token_response, provider_type="OAuth 2.0")
 
     with trace.get_tracer(__name__).start_as_current_span("sso_token_request") as span:
         span.set_attribute("token_request_data", ujson.dumps(token_response.json()))
@@ -107,10 +109,15 @@ async def token(
     else:
         userinfo_response = await service.http.post(provider.userinfo_url, headers=headers)
 
-    _validate_response(response=userinfo_response)
+    validate_auth_response(response=userinfo_response, provider_type="OAuth 2.0")
     user_info = userinfo_response.json()
     sso_groups = user_info.get("groups", []) or await get_groups_from_provider(
         provider=provider, service=service, payload=payload, user_info=user_info
+    )
+
+    log.info(
+        "SSO user authenticated",
+        body={"user_name": user_info.get("name"), "groups": sso_groups},
     )
 
     if not sso_groups and config.SETTINGS.security.sso_user_default_group:
@@ -134,16 +141,3 @@ async def token(
     return models.UserTokenWithUrl(
         access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=stored_final_url
     )
-
-
-def _validate_response(response: httpx.Response) -> None:
-    if 200 <= response.status_code <= 299:
-        return
-
-    log.error(
-        "Invalid response from the OAuth provider",
-        url=response.url,
-        status_code=response.status_code,
-        body=response.json(),
-    )
-    raise GatewayError(message="Invalid response from Authentication provider")

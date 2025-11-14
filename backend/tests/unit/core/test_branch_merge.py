@@ -35,7 +35,7 @@ async def _get_branch_merger(
     )
 
 
-async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema):
+async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     at = Timestamp()
     component_registry = get_component_registry()
@@ -79,7 +79,9 @@ async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02
     await diff_merger.merge_graph(at=at)
 
 
-async def test_merge_graph_delete(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema):
+async def test_merge_graph_delete(
+    db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema
+) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch1)
@@ -94,14 +96,15 @@ async def test_merge_graph_delete(db: InfrahubDatabase, default_branch, base_dat
     diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch1)
     await diff_merger.merge_graph(at=Timestamp())
 
-    # Query all cars in MAIN, AFTER the merge
+    # Query all persons in MAIN, AFTER the merge
     persons = sorted(await NodeManager.query(schema="TestPerson", db=db), key=lambda p: p.id)
     assert len(persons) == 2
+    assert {p.id for p in persons} == {"p1", "p2"}
 
 
 async def test_merge_relationship_many(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
-):
+) -> None:
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
     await blue.save(db=db)
@@ -145,7 +148,7 @@ async def test_merge_update_schema(
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     schema_main = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.update_schema_branch(
         db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True

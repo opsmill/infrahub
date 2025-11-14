@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { QSP } from "@/config/qsp";
 
@@ -40,7 +40,7 @@ export function RelationshipsButtons({
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
-  const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
+  const [relationshipTab] = useQueryState(QSP.TAB);
 
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);

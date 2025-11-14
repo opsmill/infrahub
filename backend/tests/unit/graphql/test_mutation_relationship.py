@@ -46,7 +46,7 @@ async def test_relationship_add(
     enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
-):
+) -> None:
     await define_permissions(
         account=first_account,
         db=db,
@@ -83,8 +83,9 @@ async def test_relationship_add(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+        db=db, branch=branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -140,8 +141,9 @@ async def test_relationship_add(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+        db=db, branch=branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -186,7 +188,7 @@ async def test_relationship_remove(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -203,7 +205,8 @@ async def test_relationship_remove(
         tag_black_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -241,7 +244,8 @@ async def test_relationship_remove(
         tag_red_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -265,7 +269,7 @@ async def test_relationship_wrong_name(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -281,7 +285,8 @@ async def test_relationship_wrong_name(
         tag_blue_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -309,7 +314,8 @@ async def test_relationship_wrong_name(
         tag_blue_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -329,7 +335,7 @@ async def test_relationship_wrong_node(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     # Non existing Node
     bad_uuid = str(UUIDT())
     query = """
@@ -347,7 +353,8 @@ async def test_relationship_wrong_node(
         bad_uuid,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -375,7 +382,8 @@ async def test_relationship_wrong_node(
         person_jack_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -398,7 +406,7 @@ async def test_relationship_groups_add(
     enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
-):
+) -> None:
     await define_permissions(
         account=first_account,
         db=db,
@@ -456,7 +464,7 @@ async def test_relationship_groups_add(
     service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -503,8 +511,9 @@ async def test_relationship_groups_add(
     )
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -547,7 +556,7 @@ async def test_relationship_groups_remove(
     enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
-):
+) -> None:
     await define_permissions(
         account=first_account,
         db=db,
@@ -606,7 +615,7 @@ async def test_relationship_groups_remove(
     service = await InfrahubServices.new(event=memory_event)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -649,8 +658,9 @@ async def test_relationship_groups_remove(
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
 
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
 
     result = await graphql(
@@ -683,7 +693,9 @@ async def test_relationship_groups_remove(
     assert group_event.ancestors == []
 
 
-async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_relationship_groups_add_remove(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data
+) -> None:
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -712,7 +724,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -747,7 +759,8 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -786,7 +799,8 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -821,7 +835,8 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -843,7 +858,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     assert len(members) == 1
 
 
-async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data) -> None:
     c1 = car_person_generics_data["c1"]
     p2 = car_person_generics_data["p2"]
 
@@ -863,7 +878,7 @@ async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branc
     )
 
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -881,7 +896,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
     register_internal_models_schema,
     car_person_schema: Node,
     person_alfred_main: Node,
-):
+) -> None:
     schema = SchemaRoot(generics=[core_group], nodes=[core_standard_group])
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     default_branch.update_schema_hash()
@@ -932,7 +947,8 @@ async def test_relationship_add_for_node_with_migrated_kind(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=add_members_query,
@@ -943,7 +959,8 @@ async def test_relationship_add_for_node_with_migrated_kind(
     assert not result.errors
 
     # add person to group on branch
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=add_members_query,
@@ -969,7 +986,8 @@ async def test_relationship_add_for_node_with_migrated_kind(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=group_members_query,
@@ -982,7 +1000,8 @@ async def test_relationship_add_for_node_with_migrated_kind(
     assert result.data["CoreStandardGroup"]["edges"][0]["node"]["members"]["count"] == 1
 
     # check relationship count on branch
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=group_members_query,
@@ -1065,7 +1084,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
 
 async def test_relationship_add_from_pool(
     db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: dict[str, Node]
-):
+) -> None:
     hugh = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await hugh.new(db=db, name="Hugh Jackman")
     await hugh.save(db=db)
@@ -1090,7 +1109,8 @@ async def test_relationship_add_from_pool(
     }
     """ % (hugh.id, "ip_prefixes", prefix_pool_01["prefix_pool"].id)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema, source=query, context_value=gql_params.context, root_value=None, variable_values={}
     )
@@ -1110,7 +1130,7 @@ async def test_add_generic_related_node_with_hfid(
     db: InfrahubDatabase,
     default_branch: Branch,
     generic_car_person_schema,
-):
+) -> None:
     electric_car = await Node.init(db=db, schema="TestElectricCar", branch=default_branch)
     await electric_car.new(db=db, name="testing-car", color="blue")
     await electric_car.save(db=db)
@@ -1143,7 +1163,8 @@ async def test_add_generic_related_node_with_hfid(
     }
     """ % (person.id)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -1165,7 +1186,7 @@ async def test_with_permissions(
     first_account: CoreAccount,
     person_jack_main: Node,
     tag_blue_main: Node,
-):
+) -> None:
     permissions = []
     for object_permission in [
         ObjectPermission(
@@ -1220,9 +1241,7 @@ async def test_with_permissions(
     """
 
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=first_session
-    )
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=first_session)
     result = await graphql(
         schema=gql_params.schema,
         source=query % (person_jack_main.id, tag_blue_main.id),
@@ -1242,7 +1261,7 @@ async def test_without_permissions(
     first_account: CoreAccount,
     person_jack_main: Node,
     tag_red_main: Node,
-):
+) -> None:
     first_session = AccountSession(
         authenticated=True, account_id=first_account.id, session_id=str(uuid4()), auth_type=AuthType.JWT
     )
@@ -1326,9 +1345,8 @@ async def test_relationship_read_only(
     await device1.new(db=db, name="device1", location=site1)
     await device1.save(db=db)
 
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=True, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     add_query = """
     mutation RelationshipAdd(

@@ -1,6 +1,6 @@
 import { gql, useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { StringParam, useQueryParam } from "use-query-params";
+import { useQueryState } from "nuqs";
 
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -53,7 +53,7 @@ const renderContent = (tab: string | null | undefined) => {
 };
 
 export function UserProfilePage() {
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
   const schemaList = useAtomValue(genericSchemasAtom);
   useTitle("Profile");
 

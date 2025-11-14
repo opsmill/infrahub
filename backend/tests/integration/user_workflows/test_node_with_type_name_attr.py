@@ -21,7 +21,7 @@ class TestNodeWithTypeNameAttr(TestInfrahubApp):
         default_branch,
         client,
         service,
-    ):
+    ) -> None:
         schema = {
             "version": "1.0",
             "nodes": [

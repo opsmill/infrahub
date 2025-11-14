@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
+    MetadataOptions,
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
@@ -142,9 +143,22 @@ class NodeCreateAllQuery(NodeQuery):
         attributes_ipnetwork: list[AttributeCreateData] = []
         attributes_indexed: list[AttributeCreateData] = []
 
+        if self.node.has_display_label():
+            attributes_indexed.append(
+                self.node._display_label.get_node_attribute(node=self.node, at=at).get_create_data(
+                    node_schema=self.node.get_schema()
+                )
+            )
+        if self.node.has_human_friendly_id():
+            attributes_indexed.append(
+                self.node._human_friendly_id.get_node_attribute(node=self.node, at=at).get_create_data(
+                    node_schema=self.node.get_schema()
+                )
+            )
+
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
-            attr_data = attr.get_create_data()
+            attr_data = attr.get_create_data(node_schema=self.node.get_schema())
             node_type = attr.get_db_node_type()
 
             if AttributeDBNodeType.IPHOST in node_type:
@@ -233,11 +247,15 @@ class NodeCreateAllQuery(NodeQuery):
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 
         attrs_nonindexed_query = """
-        WITH distinct n
+        WITH DISTINCT n
         UNWIND $attrs AS attr
         // Try to find a matching vertex
-        OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
-        WHERE NOT existing_av:AttributeValueIndexed
+        CALL (attr) {
+            OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
+            WHERE NOT existing_av:AttributeValueIndexed
+            RETURN existing_av
+            LIMIT 1
+        }
         CALL (attr, existing_av) {
             // If none found, create a new one
             WITH existing_av
@@ -591,16 +609,15 @@ class NodeListGetAttributeQuery(Query):
         self,
         ids: list[str],
         fields: dict | None = None,
-        include_source: bool = False,
-        include_owner: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         account=None,
         **kwargs,
     ):
         self.account = account
         self.ids = ids
         self.fields = fields
-        self.include_source = include_source
-        self.include_owner = include_owner
+        self.include_source = MetadataOptions.SOURCE in include_metadata
+        self.include_owner = MetadataOptions.OWNER in include_metadata
 
         super().__init__(order_by=["n.uuid", "a.name"], **kwargs)
 
@@ -625,53 +642,55 @@ class NodeListGetAttributeQuery(Query):
         self.add_to_query(query)
 
         query = """
-        CALL (n, a) {
-            MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
-            WHERE %(branch_filter)s
-            RETURN r AS r1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r1, a, might_use_profile
-        WHERE r1.status = "active"
-        WITH n, r1, a, might_use_profile
-        MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
-        WHERE %(branch_filter)s
-        CALL (a, might_use_profile) {
-            OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
-            WHERE might_use_profile = TRUE AND %(branch_filter)s
-            RETURN r.status = "active" AS has_active_profile
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH *, has_active_profile = TRUE AS is_from_profile
-        CALL (a, av) {
-            MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN a as a1, r as r2, av as av1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r1, a1 as a, r2, av1 as av, is_from_profile
-        WHERE r2.status = "active"
-        WITH n, a, av, r1, r2, is_from_profile
+CALL (n, a) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]-(a:Attribute)
+    WHERE %(branch_filter)s
+    RETURN r AS r1
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH n, r1, a, might_use_profile
+WHERE r1.status = "active"
+WITH n, r1, a, might_use_profile
+CALL (a, might_use_profile) {
+    OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
+    WHERE might_use_profile = TRUE AND %(branch_filter)s
+    RETURN r.status = "active" AS has_active_profile
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH *, has_active_profile = TRUE AS is_from_profile
+CALL (a) {
+    MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
+    WHERE %(branch_filter)s
+    RETURN r as r2, av
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH n, r1, a, r2, av, is_from_profile
+WHERE r2.status = "active"
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
         self.return_labels = ["n", "a", "av", "r1", "r2", "is_from_profile"]
 
         # Add Is_Protected and Is_visible
-        rel_isv_branch_filter, _ = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isv"
-        )
-        rel_isp_branch_filter, _ = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isp"
-        )
         query = """
-        MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
-        MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
-        WHERE (%(rel_isv_branch_filter)s) AND (%(rel_isp_branch_filter)s)
-        """ % {"rel_isv_branch_filter": rel_isv_branch_filter, "rel_isp_branch_filter": rel_isp_branch_filter}
+CALL (a) {
+    MATCH (a)-[r:IS_VISIBLE]-(isv:Boolean)
+    WHERE (%(branch_filter)s)
+    RETURN r AS rel_isv, isv
+    ORDER BY rel_isv.branch_level DESC, rel_isv.from DESC, rel_isv.status ASC
+    LIMIT 1
+}
+CALL (a) {
+    MATCH (a)-[r:IS_PROTECTED]-(isp:Boolean)
+    WHERE (%(branch_filter)s)
+    RETURN r AS rel_isp, isp
+    ORDER BY rel_isp.branch_level DESC, rel_isp.from DESC, rel_isp.status ASC
+    LIMIT 1
+}
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
@@ -902,6 +921,7 @@ class NodeListGetRelationshipsQuery(Query):
         RETURN DISTINCT n_uuid, rel_name, peer_uuid, direction
         """ % {"filters": rels_filter}
         self.add_to_query(query)
+        self.order_by = ["n_uuid", "rel_name", "peer_uuid", "direction"]
         self.return_labels = ["n_uuid", "rel_name", "peer_uuid", "direction"]
 
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
@@ -971,6 +991,7 @@ class NodeListGetInfoQuery(Query):
         )
         self.params.update(branch_params)
         self.params["ids"] = self.ids
+        self.order_by = ["n.uuid"]
 
         query = """
         MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)

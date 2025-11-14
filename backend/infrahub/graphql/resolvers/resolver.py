@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
@@ -166,6 +166,8 @@ async def default_paginated_list_resolver(
 
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
+        if "hfid" in node_fields:
+            node_fields["human_friendly_id"] = None
 
         permission_set: dict[str, Any] | None = None
         permissions = (
@@ -193,8 +195,7 @@ async def default_paginated_list_resolver(
                 limit=limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_source=True,
-                include_owner=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
                 partial_match=partial_match,
                 order=order,
             )

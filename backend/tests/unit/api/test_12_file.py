@@ -14,7 +14,7 @@ async def test_get_file(
     default_branch,
     rpc_bus,
     register_core_models_schema,
-):
+) -> None:
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
     await r1.save(db=db)
@@ -71,7 +71,7 @@ async def test_get_file(
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_get_file_anonymous_account(
     db: InfrahubDatabase, client, default_branch, rpc_bus, register_core_models_schema, allow_anonymous_access: bool
-):
+) -> None:
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(
         db=db, name="repo01", location="git@github.com:user/repo01.git", commit="1345754212345678iuytrewqwertyu"

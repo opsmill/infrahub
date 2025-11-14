@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -47,7 +48,7 @@ async def test_get_many_with_profile(
     criticality_low: Node,
     criticality_medium: Node,
     branch: Branch,
-):
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     crit_profile_1 = await Node.init(db=db, branch=branch, schema=profile_schema)
     await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
@@ -69,7 +70,7 @@ async def test_get_many_with_profile(
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     expected_profile_attrs = [
@@ -105,7 +106,7 @@ async def test_get_many_with_profile_generic(
     criticality_low: Node,
     criticality_medium: Node,
     branch: Branch,
-):
+) -> None:
     generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=branch)
     generic_profile = await Node.init(db=db, branch=branch, schema=generic_profile_schema)
     await generic_profile.new(
@@ -132,7 +133,7 @@ async def test_get_many_with_profile_generic(
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     expected_profile_attrs = [
@@ -170,7 +171,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
     criticality_low: Node,
     criticality_medium: Node,
     branch: Branch,
-):
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     crit_profiles = []
     for i in range(1, 10):
@@ -189,7 +190,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
 
     lowest_uuid_profile = sorted(crit_profiles, key=lambda p: p.id)[0]
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     updated_crit_low = node_map[criticality_low.id]

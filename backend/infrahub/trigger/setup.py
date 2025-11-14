@@ -6,6 +6,7 @@ from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 from prefect.events.schemas.automations import Automation
+from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub import lock
 from infrahub.database import InfrahubDatabase
@@ -51,7 +52,7 @@ async def setup_triggers_specific(
             )  # type: ignore[misc]
 
 
-@task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)  # type: ignore[arg-type]
+@task(name="trigger-setup", task_run_name="Setup triggers", cache_policy=NONE)
 async def setup_triggers(
     client: PrefectClient,
     triggers: list[TriggerDefinition],
@@ -83,7 +84,9 @@ async def setup_triggers(
     existing_automations: dict[str, Automation] = {}
     if trigger_type:
         existing_automations = {
-            item.name: item for item in await client.read_automations() if item.name.startswith(trigger_type.value)
+            item.name: item
+            for item in await client.read_automations()
+            if item.name.startswith(f"{trigger_type.value}::")
         }
     else:
         existing_automations = {item.name: item for item in await client.read_automations()}
@@ -133,8 +136,14 @@ async def setup_triggers(
             continue
 
         report.deleted.append(existing_automation)
-        await client.delete_automation(automation_id=existing_automation.id)
-        log.info(f"{item_to_delete} Deleted")
+        try:
+            await client.delete_automation(automation_id=existing_automation.id)
+            log.info(f"{item_to_delete} Deleted")
+        except PrefectHTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                log.info(f"{item_to_delete} was already deleted")
+            else:
+                raise
 
     if trigger_type:
         log.info(

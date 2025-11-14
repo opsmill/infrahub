@@ -5,7 +5,7 @@ from graphql.type.definition import GraphQLNonNull
 from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -158,8 +158,7 @@ class SingleRelationshipResolver:
             fields=node_fields,
             at=at,
             branch=branch,
-            include_source=True,
-            include_owner=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
             prefetch_relationships=False,
             account=None,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,

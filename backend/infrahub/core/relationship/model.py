@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -245,8 +245,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             kind=self.schema.kind.value,
             branch=self.branch,
             at=self.at,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         self._node = node
         self._node_id = self._node.id
@@ -290,8 +289,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     raise_on_error=True,
                     at=self.at,
                     branch=self.branch,
-                    include_source=True,
-                    include_owner=True,
+                    include_metadata=MetadataOptions.LINKED_NODES,
                     prefetch_relationships=False,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
@@ -302,8 +300,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     kind=self.schema.peer,
                     branch=self.branch,
                     at=self.at,
-                    include_owner=True,
-                    include_source=True,
+                    include_metadata=MetadataOptions.LINKED_NODES,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
         except NodeNotFoundError:
@@ -445,21 +442,26 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         )
         await delete_query.execute(db=db)
 
-    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
+    async def resolve(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> None:
         """Resolve the peer of the relationship."""
+
+        fields = fields or []
+        query_fields = dict.fromkeys(fields)
+        if "display_label" not in query_fields:
+            query_fields["display_label"] = None
 
         if self._peer is not None:
             return
 
         if self.peer_id and not is_valid_uuid(self.peer_id):
             peer = await registry.manager.get_one_by_default_filter(
-                db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+                db=db, id=self.peer_id, branch=self.branch, kind=self.schema.peer, fields=query_fields
             )
             if peer:
                 self.set_peer(value=peer)
 
         if not self.peer_id and self.peer_hfid:
-            peer_schema = db.schema.get(name=self.schema.peer, branch=self.branch)
+            peer_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
             kind = (
                 self.data["kind"]
                 if isinstance(self.data, dict) and "kind" in self.data and peer_schema.is_generic_schema
@@ -470,7 +472,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 hfid=self.peer_hfid,
                 branch=self.branch,
                 kind=kind,
-                fields={"display_label": None},
+                fields=query_fields,
                 raise_on_error=True,
             )
             self.set_peer(value=peer)
@@ -1142,9 +1144,9 @@ class RelationshipManager:
 
         return True
 
-    async def resolve(self, db: InfrahubDatabase) -> None:
+    async def resolve(self, db: InfrahubDatabase, fields: list[str] | None = None) -> None:
         for rel in self._relationships:
-            await rel.resolve(db=db)
+            await rel.resolve(db=db, fields=fields)
 
     async def remove_locally(
         self,

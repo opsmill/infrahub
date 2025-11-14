@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class TestSchemaConversionMapping(TestInfrahubApp):
     async def test_schema_conversion_mapping(
         self, db: InfrahubDatabase, client: InfrahubClient, branch, schemas_conversion
-    ):
+    ) -> None:
         res = await client.schema.load(schemas=[schemas_conversion], branch=branch.name)
         assert len(res.errors) == 0, res.errors
 

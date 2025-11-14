@@ -106,14 +106,11 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
         await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
       }}
       end={
-        objectDetailsData?.hfid &&
-        objectId && (
-          <ObjectHelpButton
-            kind={schema.kind}
-            documentationUrl={schema.documentation}
-            className="ml-auto"
-          />
-        )
+        <ObjectHelpButton
+          kind={schema.kind}
+          documentationUrl={schema.documentation}
+          className="ml-auto"
+        />
       }
       data-testid="object-header"
     />
@@ -147,14 +144,11 @@ const ObjectConvertHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
           : `Convert type ${objectDetailsData?.__typename && schemaKindLabel[objectDetailsData?.__typename]}`
       }
       end={
-        objectDetailsData?.hfid &&
-        objectId && (
-          <ObjectHelpButton
-            kind={schema.kind}
-            documentationUrl={schema.documentation}
-            className="ml-auto"
-          />
-        )
+        <ObjectHelpButton
+          kind={schema.kind}
+          documentationUrl={schema.documentation}
+          className="ml-auto"
+        />
       }
       data-testid="object-header"
     />

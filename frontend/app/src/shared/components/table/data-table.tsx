@@ -3,6 +3,7 @@ import {
   type ColumnOrderState,
   flexRender,
   getCoreRowModel,
+  type RowSelectionOptions,
   useReactTable,
 } from "@tanstack/react-table";
 import React from "react";
@@ -22,6 +23,7 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
+  enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
 }
 
 export function DataTable<T extends NodeCore>({
@@ -31,6 +33,7 @@ export function DataTable<T extends NodeCore>({
   isLoading,
   renderEmpty,
   toolbarActions,
+  enableRowSelection,
   ...props
 }: DataTableProps<T>) {
   const { isAuthenticated } = useAuth();
@@ -38,6 +41,7 @@ export function DataTable<T extends NodeCore>({
   const table = useReactTable({
     columns,
     data,
+    enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     getRowId: (row) => row.id,

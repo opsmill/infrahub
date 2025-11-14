@@ -22,6 +22,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config
 from infrahub.config import load_and_exit
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
@@ -74,11 +75,11 @@ pytest.register_assert_rewrite("tests.db_snapshot")
 graphql_registry.clear_cache()
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser) -> None:
     parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
 
 
-def pytest_configure(config):
+def pytest_configure(config) -> None:
     markexpr = getattr(config.option, "markexpr", "")
 
     if not markexpr:
@@ -100,7 +101,7 @@ def pytest_configure(config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def add_tracker():
+def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
@@ -167,6 +168,22 @@ async def do_default_branch(db: InfrahubDatabase) -> Branch:
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
     return branch
+
+
+@pytest.fixture
+def query_limit_of_one() -> Generator[None, None, None]:
+    original_query_size_limit = config.SETTINGS.database.query_size_limit
+    config.SETTINGS.database.query_size_limit = 1
+    yield
+    config.SETTINGS.database.query_size_limit = original_query_size_limit
+
+
+@pytest.fixture
+def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
+    original_neo4j_runtime = db.default_neo4j_runtime
+    db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
+    yield
+    db.default_neo4j_runtime = original_neo4j_runtime
 
 
 @pytest.fixture
@@ -282,7 +299,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
-    container = DockerContainer(image="redis:7.2.4").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image="redis:7.2.11").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
@@ -304,7 +321,7 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
     return None
 
 
-def wait_for_memgraph_ready(host, port, timeout=15):
+def wait_for_memgraph_ready(host, port, timeout=15) -> bool:
     # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
     URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
 
@@ -401,12 +418,12 @@ def prefect(prefect_container: dict[int, int] | None, reload_settings_before_eac
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_settings_before_session():
+def load_settings_before_session() -> None:
     load_and_exit()
 
 
 @pytest.fixture(scope="module", autouse=True)
-def reload_settings_before_each_module(tmpdir_factory):
+def reload_settings_before_each_module(tmpdir_factory) -> None:
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
     load_and_exit()
 
@@ -1043,7 +1060,7 @@ class BusRPCMock(InfrahubMessageBus):
     ) -> None:
         self.messages.append(message)
 
-    def add_mock_reply(self, response: InfrahubResponse):
+    def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:

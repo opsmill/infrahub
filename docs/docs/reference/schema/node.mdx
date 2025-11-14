@@ -18,7 +18,8 @@ Below is the list of all available options to define a Node in the schema
 | [**children**](#children) | Attribute | Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined. | False |
 | [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead) | False |
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
-| [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
+| [**display_label**](#display_label) | Attribute | Attribute or Jinja2 template to use to generate the display label | False |
+| [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label (deprecated) | False |
 | [**documentation**](#documentation) | Attribute | Link to a documentation associated with this object, can be internal or external. | False |
 | [**generate_profile**](#generate_profile) | Attribute | Indicate if a profile schema should be generated for this schema | False |
 | [**generate_template**](#generate_template) | Attribute | Indicate if an object template schema should be generated for this schema | False |
@@ -85,13 +86,24 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 128 |
 
+### display_label
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | display_label |
+| **Kind** | `Text` |
+| **Description** | Attribute or Jinja2 template to use to generate the display label |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
 ### display_labels
 
 | Key | Value |
 | ---- | --------------- |
 | **Name** | display_labels |
 | **Kind** | `List` |
-| **Description** | List of attributes to use to generate the display label |
+| **Description** | List of attributes to use to generate the display label (deprecated) |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |

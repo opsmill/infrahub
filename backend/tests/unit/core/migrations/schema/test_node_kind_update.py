@@ -15,7 +15,9 @@ from tests.helpers.db_validation import validate_node_relationships, verify_no_d
 from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
-async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_query_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
@@ -39,11 +41,11 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 2
 
-    # we expect 14 new relationships per TestCar, 28 TOTAL
-    # 2 x 5 attributes = 10
+    # we expect 14 new relationships per TestCar, 36 TOTAL
+    # 2 x 8 attributes = 16
     # 2 x 1 relationship = 2
     # 2 for the root node = 2
-    assert await count_relationships(db=db) == count_rels + 28
+    assert await count_relationships(db=db) == count_rels + 36
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2
 
@@ -51,14 +53,14 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
     query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 0
-    assert await count_relationships(db=db) == count_rels + 28
+    assert await count_relationships(db=db) == count_rels + 36
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2
 
 
 async def test_migration_aware_relationship(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
@@ -82,7 +84,7 @@ async def test_migration_aware_relationship(
     execution_result = await migration.execute(db=db, branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
-    assert await count_relationships(db=db) == count_rels + 28
+    assert await count_relationships(db=db) == count_rels + 36
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2
 
@@ -92,7 +94,7 @@ async def test_migration_aware_relationship(
 
 async def test_migration_agnostic_relationship(
     db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
-):
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
 
     person_john = await Node.init(db=db, schema="TestPerson")
@@ -131,7 +133,7 @@ async def test_migration_agnostic_relationship(
     await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())
 
 
-async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch):
+async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch) -> None:
     await load_schema(db=db, schema=LOCATION_SCHEMA)
 
     continent_europe = await Node.init(db=db, schema=TestKind.CONTINENT)
@@ -185,7 +187,7 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
 
 async def test_inheritance_migration_on_branch_and_main(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_alfred_main: Node
-):
+) -> None:
     # 0. add a deleted relationship
     accord_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
     await accord_main.owner.update(db=db, data=person_alfred_main.id)

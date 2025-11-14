@@ -45,7 +45,7 @@ class TestDiffCoordinator:
 
     async def test_node_deleted_after_branching(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         person_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
         await person_main.delete(db=db)
@@ -68,7 +68,7 @@ class TestDiffCoordinator:
         assert node_diff.action is DiffAction.REMOVED
         assert len(node_diff.relationships) == 0
         attributes_by_name = {a.name: a for a in node_diff.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "height"}
+        assert set(attributes_by_name.keys()) == {"name", "height", "human_friendly_id", "display_label"}
         for attr_diff in node_diff.attributes:
             assert attr_diff.action is DiffAction.REMOVED
             properties_by_type = {p.property_type: p for p in attr_diff.properties}
@@ -84,7 +84,7 @@ class TestDiffCoordinator:
 
     async def test_node_added_diff_updated_node_removed(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         main_person_2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
         await main_person_2.new(db=db, name="Rex", height=190)
         await main_person_2.save(db=db)
@@ -142,7 +142,9 @@ class TestDiffCoordinator:
         branch_john_diff = nodes_by_id[person_john_main.id]
         assert branch_john_diff.action is DiffAction.UPDATED
 
-    async def test_overlapping_diffs(self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node):
+    async def test_overlapping_diffs(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
@@ -210,7 +212,7 @@ class TestDiffCoordinator:
 
     async def test_no_changes_skips_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         wrapped_diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=branch)
         component_registry = get_component_registry()
@@ -248,7 +250,7 @@ class TestDiffCoordinator:
 
     async def test_unrelated_changes_skip_some_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         wrapped_diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=branch)
         component_registry = get_component_registry()

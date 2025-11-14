@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { ContextParams } from "@/shared/api/types";
+import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { getMenu } from "@/shared/components/menu/domain/get-menu";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
@@ -14,14 +14,15 @@ export function menuQueryOptions({ branchName, atDate }: ContextParams) {
   });
 }
 
-export function useMenu() {
+export function useMenu(config?: QueryConfig<typeof menuQueryOptions>) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  return useQuery(
-    menuQueryOptions({
+  return useQuery({
+    ...menuQueryOptions({
       branchName: currentBranch.name,
       atDate: timeMachineDate,
-    })
-  );
+    }),
+    ...config,
+  });
 }

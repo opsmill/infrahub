@@ -186,7 +186,7 @@ class TestIpamUtilization(TestIpam):
         step2_branch_addresses = step_02_dataset["branch_addresses"]
         await step2_branch_addresses[0].delete(db=db)
 
-    async def test_step01_main_utilization(self, db: InfrahubDatabase, default_branch: Branch, initial_dataset):
+    async def test_step01_main_utilization(self, db: InfrahubDatabase, default_branch: Branch, initial_dataset) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix2 = initial_dataset["prefix2"]
@@ -198,11 +198,11 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step01_graphql_prefix_pool_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         prefix_pool = initial_dataset["prefix_pool"]
         default_branch.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -221,7 +221,7 @@ class TestIpamUtilization(TestIpam):
                 "edges": [
                     {
                         "node": {
-                            "display_label": await container.render_display_label(db=db),
+                            "display_label": await container.get_display_label(db=db),
                             "id": container.id,
                             "kind": "IpamIPPrefix",
                             "utilization": 12.5,
@@ -234,7 +234,8 @@ class TestIpamUtilization(TestIpam):
             }
         }
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -260,10 +261,11 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step01_graphql_address_pool_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset
-    ):
+    ) -> None:
         prefix = initial_dataset["prefix"]
         address_pool = initial_dataset["address_pool"]
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -282,7 +284,7 @@ class TestIpamUtilization(TestIpam):
                 "edges": [
                     {
                         "node": {
-                            "display_label": await prefix.render_display_label(db=db),
+                            "display_label": await prefix.get_display_label(db=db),
                             "id": prefix.id,
                             "kind": "IpamIPPrefix",
                             "utilization": 50,
@@ -294,7 +296,7 @@ class TestIpamUtilization(TestIpam):
                 ],
             }
         }
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -320,7 +322,7 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step02_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
@@ -342,11 +344,12 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step02_graphql_prefix_pool_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
         prefix_pool = initial_dataset["prefix_pool"]
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -364,7 +367,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await container.render_display_label(db=db),
+                "display_label": await container.get_display_label(db=db),
                 "id": container.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 25.0,
@@ -375,7 +378,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await container_branch.render_display_label(db=db),
+                "display_label": await container_branch.get_display_label(db=db),
                 "id": container_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 0,
@@ -385,7 +388,8 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -414,11 +418,12 @@ class TestIpamUtilization(TestIpam):
 
     async def test_step02_graphql_address_pool_branch_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, branch2: Branch, initial_dataset, step_02_dataset
-    ):
+    ) -> None:
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
         address_pool = initial_dataset["address_pool"]
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -436,7 +441,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await prefix.render_display_label(db=db),
+                "display_label": await prefix.get_display_label(db=db),
                 "id": prefix.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 100,
@@ -447,7 +452,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await prefix_branch.render_display_label(db=db),
+                "display_label": await prefix_branch.get_display_label(db=db),
                 "id": prefix_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 100,
@@ -457,7 +462,8 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -492,7 +498,7 @@ class TestIpamUtilization(TestIpam):
         initial_dataset,
         step_02_dataset,
         step_03_dataset,
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
@@ -520,11 +526,12 @@ class TestIpamUtilization(TestIpam):
         initial_dataset,
         step_02_dataset,
         step_03_dataset,
-    ):
+    ) -> None:
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
         prefix_pool = initial_dataset["prefix_pool"]
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -542,7 +549,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await container.render_display_label(db=db),
+                "display_label": await container.get_display_label(db=db),
                 "id": container.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 12.5,
@@ -553,7 +560,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await container_branch.render_display_label(db=db),
+                "display_label": await container_branch.get_display_label(db=db),
                 "id": container_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": 0,
@@ -563,7 +570,8 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -598,11 +606,12 @@ class TestIpamUtilization(TestIpam):
         initial_dataset,
         step_02_dataset,
         step_03_dataset,
-    ):
+    ) -> None:
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
         address_pool = initial_dataset["address_pool"]
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        default_branch.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -620,7 +629,7 @@ class TestIpamUtilization(TestIpam):
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
-                "display_label": await prefix.render_display_label(db=db),
+                "display_label": await prefix.get_display_label(db=db),
                 "id": prefix.id,
                 "kind": "IpamIPPrefix",
                 "utilization": (12 / 14) * 100,
@@ -631,7 +640,7 @@ class TestIpamUtilization(TestIpam):
         } in prefix_details_list
         assert {
             "node": {
-                "display_label": await prefix_branch.render_display_label(db=db),
+                "display_label": await prefix_branch.get_display_label(db=db),
                 "id": prefix_branch.id,
                 "kind": "IpamIPPrefix",
                 "utilization": (13 / 14) * 100,
@@ -641,7 +650,8 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,

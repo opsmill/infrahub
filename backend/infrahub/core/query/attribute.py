@@ -184,6 +184,61 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         self.return_labels = ["a", "np", "r"]
 
 
+class AttributeClearNodePropertyQuery(AttributeQuery):
+    name = "attribute_clear_node_property"
+    type: QueryType = QueryType.WRITE
+    insert_return: bool = False
+
+    def __init__(
+        self,
+        prop_name: str,
+        prop_id: str | None = None,
+        **kwargs: Any,
+    ):
+        self.prop_name = prop_name
+        self.prop_id = prop_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        at = self.at or self.attr.at
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
+        self.params.update(branch_params)
+        self.params["attr_uuid"] = self.attr.id
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = at.to_string()
+        self.params["prop_name"] = self.prop_name
+        self.params["prop_id"] = self.prop_id
+
+        rel_label = f"HAS_{self.prop_name.upper()}"
+        query = """
+MATCH (a:Attribute { uuid: $attr_uuid })-[r:%(rel_label)s]->(np:Node { uuid: $prop_id })
+WITH DISTINCT a, np
+CALL (a, np) {
+    MATCH (a)-[r:%(rel_label)s]->(np)
+    WHERE %(branch_filter)s
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN r AS property_edge
+}
+WITH a, np, property_edge
+WHERE property_edge.status = "active"
+CALL (property_edge) {
+    WITH property_edge
+    WHERE property_edge.branch = $branch
+    SET property_edge.to = $at
+}
+CALL (a, np, property_edge) {
+    WITH property_edge
+    WHERE property_edge.branch_level < $branch_level
+    CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(np)
+}
+        """ % {"branch_filter": branch_filter, "rel_label": rel_label}
+        self.add_to_query(query)
+
+
 class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ

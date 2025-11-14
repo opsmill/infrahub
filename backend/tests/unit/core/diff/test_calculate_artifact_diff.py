@@ -193,7 +193,7 @@ async def car_person_data_artifact_diff(
 
 async def test_calculate_artifact_diff(
     db: InfrahubDatabase, default_branch: Branch, car_person_data_artifact_diff: dict[str, Node]
-):
+) -> None:
     source_branch = car_person_data_artifact_diff["branch3"]
     art1_main = car_person_data_artifact_diff["art1"]
     art1_branch = car_person_data_artifact_diff["art1_branch"]

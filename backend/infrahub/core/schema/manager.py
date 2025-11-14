@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from cachetools import LRUCache
+from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
+
 from infrahub import lock
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -40,6 +44,8 @@ class SchemaManager(NodeManager):
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
         self._branches: dict[str, SchemaBranch] = {}
+        self._branch_hash_by_name: dict[str, str] = {}
+        self._sdk_branches: LRUCache[str, SDKBranchSchema] = LRUCache(maxsize=10)
 
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
@@ -140,12 +146,26 @@ class SchemaManager(NodeManager):
         if name in self._branches:
             return self._branches[name]
 
-        self._branches[name] = SchemaBranch(cache=self._cache, name=name)
+        self.set_schema_branch(name, schema=SchemaBranch(cache=self._cache, name=name))
         return self._branches[name]
+
+    def get_sdk_schema_branch(self, name: str) -> SDKBranchSchema:
+        schema_hash = self._branch_hash_by_name[name]
+        branch_schema = self._sdk_branches.get(schema_hash)
+        if not branch_schema:
+            self._sdk_branches[schema_hash] = SDKBranchSchema.from_api_response(
+                data=self._branches[name].to_dict_api_schema_object()
+            )
+
+        return self._sdk_branches[schema_hash]
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
         schema.name = name
         self._branches[name] = schema
+        self._branch_hash_by_name[name] = schema.get_hash()
+
+    def has_schema_branch(self, name: str) -> bool:
+        return name in self._branches
 
     def process_schema_branch(self, name: str) -> None:
         schema_branch = self.get_schema_branch(name=name)
@@ -363,8 +383,7 @@ class SchemaManager(NodeManager):
             ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
             db=db,
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
 
         for item in node.local_attributes:
@@ -447,8 +466,7 @@ class SchemaManager(NodeManager):
                 ids=list(item_ids),
                 db=db,
                 branch=branch,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
         if missing_field_names:
             missing_attrs = await self.query(
@@ -456,16 +474,14 @@ class SchemaManager(NodeManager):
                 branch=branch,
                 schema=attribute_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             missing_rels = await self.query(
                 db=db,
                 branch=branch,
                 schema=relationship_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             items.update({field.id: field for field in missing_attrs + missing_rels})
 
@@ -764,6 +780,8 @@ class SchemaManager(NodeManager):
         for branch_name in list(self._branches.keys()):
             if branch_name not in active_branches:
                 del self._branches[branch_name]
+                if branch_name in self._branch_hash_by_name:
+                    del self._branch_hash_by_name[branch_name]
                 removed_branches.append(branch_name)
 
         for hash_key in list(self._cache.keys()):

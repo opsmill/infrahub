@@ -871,7 +871,7 @@ class RelationshipGetQuery(RelationshipQuery):
         self.params["branch"] = self.branch.name
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
+            rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )
 
         self.params.update(rels_params)
@@ -954,7 +954,7 @@ class RelationshipGetByIdentifierQuery(Query):
         self.params["at"] = self.at.to_string()
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1", "r2"], at=self.at.to_string(), include_outside_parentheses=True
+            rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )
         self.params.update(rels_params)
 
@@ -1036,6 +1036,7 @@ class RelationshipCountPerNodeQuery(Query):
         """ % {"branch_filter": branch_filter, "path": path}
 
         self.add_to_query(query)
+        self.order_by = ["peer_node.uuid"]
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
 
     async def get_count_per_peer(self) -> dict[str, int]:

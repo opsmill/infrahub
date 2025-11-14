@@ -58,9 +58,8 @@ class TestDiffUpdateMutation:
         criticality_schema,
         diff_branch: Branch,
     ) -> EnrichedDiffRootMetadata:
-        params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
-        )
+        default_branch.update_schema_hash()
+        params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
         result = await graphql(
             schema=params.schema,
             source=DIFF_UPDATE_MUTATION,
@@ -69,6 +68,7 @@ class TestDiffUpdateMutation:
             variable_values={"branch": diff_branch.name, "name": self.diff_name},
         )
         assert result.errors is None
+        assert result.data
         assert result.data["DiffUpdate"]["ok"] is True
 
         diff_repo = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
@@ -88,11 +88,10 @@ class TestDiffUpdateMutation:
         service_testing: InfrahubServices,
         criticality_schema,
         diff_branch: Branch,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
-        params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
-        )
+        default_branch.update_schema_hash()
+        params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
         result = await graphql(
             schema=params.schema,
             source=DIFF_UPDATE_MUTATION,
@@ -101,10 +100,11 @@ class TestDiffUpdateMutation:
             variable_values={
                 "branch": diff_branch.name,
                 "name": self.diff_name,
-                "from_time": branched_from_timestamp.add_delta(seconds=-1).to_string(),
+                "from_time": branched_from_timestamp.add(seconds=-1).to_string(),
             },
         )
         assert result.errors is None
+        assert result.data
         assert result.data["DiffUpdate"]["ok"] is True
 
     async def test_create_time_range_diff_without_name_fails(
@@ -115,11 +115,10 @@ class TestDiffUpdateMutation:
         service_testing: InfrahubServices,
         criticality_schema,
         diff_branch: Branch,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
-        params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
-        )
+        default_branch.update_schema_hash()
+        params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
         result = await graphql(
             schema=params.schema,
             source=DIFF_UPDATE_MUTATION,
@@ -144,10 +143,9 @@ class TestDiffUpdateMutation:
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
-    ):
-        params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
-        )
+    ) -> None:
+        default_branch.update_schema_hash()
+        params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
         result = await graphql(
             schema=params.schema,
             source=DIFF_UPDATE_MUTATION,
@@ -156,7 +154,7 @@ class TestDiffUpdateMutation:
             variable_values={
                 "branch": diff_branch.name,
                 "name": self.diff_name,
-                "from_time": named_diff.from_time.add_delta(microseconds=-1).to_string(),
+                "from_time": named_diff.from_time.add(microseconds=-1).to_string(),
             },
         )
         assert result.errors is not None
@@ -171,7 +169,7 @@ class TestDiffUpdateMutation:
             variable_values={
                 "branch": diff_branch.name,
                 "name": self.diff_name,
-                "to_time": named_diff.to_time.add_delta(seconds=-1).to_string(),
+                "to_time": named_diff.to_time.add(seconds=-1).to_string(),
             },
         )
         assert result.errors is not None
@@ -187,11 +185,10 @@ class TestDiffUpdateMutation:
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
-        params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
-        )
+        default_branch.update_schema_hash()
+        params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
         result = await graphql(
             schema=params.schema,
             source=DIFF_UPDATE_MUTATION,
@@ -216,11 +213,10 @@ class TestDiffUpdateMutation:
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
-    ):
+    ) -> None:
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
-        params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
-        )
+        default_branch.update_schema_hash()
+        params = await prepare_graphql_params(db=db, branch=default_branch, service=service_testing)
         result = await graphql(
             schema=params.schema,
             source=DIFF_UPDATE_MUTATION,

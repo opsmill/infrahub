@@ -18,7 +18,7 @@ This page is currently under development. Please use it as a reference checklist
 Before beginning your production deployment, ensure you have:
 
 - Selected your deployment technology (Docker or Kubernetes)
-- Verified your system meets the [hardware requirements](../topics/hardware-requirements)
+- Verified your system meets the [hardware requirements](../topics/hardware-requirements.mdx)
 - Administrative access to your deployment environment
 - Decided between Community or Enterprise edition based on your support and feature needs
 - Access to your organization's identity provider (for SSO configuration)
@@ -87,41 +87,6 @@ Implement regular database backups to prevent data loss in case of hardware fail
 Test your backup and restore process periodically to ensure it works as expected.
 :::
 
-## Step 5: Configure monitoring
-
-Set up monitoring to track the health and performance of your Infrahub deployment.
-
-### Using the built-in monitoring stack
-
-Infrahub provides a pre-configured monitoring stack with Prometheus and Grafana:
-
-1. Download the monitoring configuration:
-
-```shell
-curl -O https://raw.githubusercontent.com/opsmill/infrahub/stable/development/docker-compose-observability.yml
-```
-
-2. Start the monitoring services:
-
-```shell
-docker-compose -f docker-compose.yml -f docker-compose-observability.yml up -d
-```
-
-3. Access Grafana at `http://your-server-address:3000` with the default credentials (admin/admin)
-
-### Integrating with existing monitoring systems
-
-If you have an existing monitoring system, configure it to track:
-
-- API endpoints health (`/health` and `/readiness`)
-- Database metrics
-- Message broker metrics
-- Resource utilization (CPU, memory, disk)
-
-:::info
-Set up alerts for critical metrics like API availability, database connection issues, and high resource utilization.
-:::
-
 ## Operations and maintenance
 
 ### Upgrading Infrahub
@@ -157,6 +122,6 @@ Contact [support@opsmill.com](mailto:support@opsmill.com) for enterprise support
 
 ## Related resources
 
-- [Architecture Overview](../topics/architecture)
-- [Configuration Reference](../reference/configuration)
-- [API Server Reference](../reference/api-server)
+- [Architecture Overview](../topics/architecture.mdx)
+- [Configuration Reference](../reference/configuration.mdx)
+- [API Server Reference](../reference/api-server.mdx)

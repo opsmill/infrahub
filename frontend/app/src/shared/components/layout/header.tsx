@@ -7,12 +7,12 @@ import { TaskStatus } from "@/entities/tasks/ui/task-status";
 
 export default function Header() {
   return (
-    <Card className="flex items-center gap-2">
+    <Card className="flex h-12.5 items-center gap-2 p-2">
       <TimeFrameSelector />
 
       <BranchSelector />
 
-      <div className="flex-1">
+      <div className="flex-1" data-testid="breadcrumb-navigation">
         <BreadcrumbNavigation />
       </div>
 

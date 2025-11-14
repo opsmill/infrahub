@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { ContextParams } from "@/shared/api/types";
+import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -15,15 +15,19 @@ export function getObjectQueryOptions(params: GetObjectParams) {
   });
 }
 
-export function useGetObject(params: Omit<GetObjectParams, keyof ContextParams>) {
+export function useGetObject(
+  params: Omit<GetObjectParams, keyof ContextParams>,
+  config?: QueryConfig<typeof getObjectQueryOptions>
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  return useQuery(
-    getObjectQueryOptions({
+  return useQuery({
+    ...getObjectQueryOptions({
       ...params,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
-    })
-  );
+    }),
+    ...config,
+  });
 }

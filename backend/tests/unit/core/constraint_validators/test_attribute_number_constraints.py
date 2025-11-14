@@ -16,7 +16,7 @@ from infrahub.database import InfrahubDatabase
 @pytest.mark.parametrize("min_value,max_value", [(None, None), (None, 300), (1, None), (10, 300)])
 async def test_query_number_constraints_success(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, min_value, max_value
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = min_value
@@ -41,7 +41,7 @@ async def test_query_number_constraints_too_small(
     default_branch: Branch,
     person_john_main,
     person_jane_main,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = 300
@@ -88,7 +88,7 @@ async def test_query_number_too_large(
     default_branch: Branch,
     person_john_main,
     person_jane_main,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     height_attr = person_schema.get_attribute(name="height")
     height_attr.parameters.min_value = None
@@ -136,7 +136,7 @@ async def test_query_update_on_branch(
     default_branch: Branch,
     person_john_main,
     person_jane_main,
-):
+) -> None:
     person_john_main.height.value = 400
     await person_john_main.save(db=db)
 
@@ -170,7 +170,7 @@ async def test_query_delete_on_branch(
     default_branch: Branch,
     person_john_main,
     person_jane_main,
-):
+) -> None:
     person_john_main.height.value = 200
     await person_john_main.save(db=db)
 
@@ -214,7 +214,7 @@ async def test_validator_min_max(
     default_branch: Branch,
     person_john_main,
     person_jane_main,
-):
+) -> None:
     await branch.rebase(db=db)
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     height_attr = person_schema.get_attribute(name="height")
@@ -275,7 +275,7 @@ async def test_validator_excluded_values(
     person_john_main,
     person_jane_main,
     excluded_values: str,
-):
+) -> None:
     await branch.rebase(db=db)
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     height_attr = person_schema.get_attribute(name="height")
@@ -322,7 +322,7 @@ async def test_validator_excluded_values(
     )
 
 
-def test_get_excluded_values():
+def test_get_excluded_values() -> None:
     parameters = NumberAttributeParameters(excluded_values="100")
     assert parameters.get_excluded_single_values() == [100]
     assert parameters.get_excluded_ranges() == []

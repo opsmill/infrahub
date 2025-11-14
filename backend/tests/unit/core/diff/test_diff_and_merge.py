@@ -5,7 +5,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.constants import DiffAction, MetadataOptions, RelationshipHierarchyDirection, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -51,7 +51,7 @@ class TestDiffAndMerge:
 
     async def test_diff_and_merge_with_list_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
-    ):
+    ) -> None:
         new_node = await Node.init(db=db, schema=all_attribute_types_schema.kind)
         await new_node.new(db=db, mylist=["a", "b", 1, 2])
         await new_node.save(db=db)
@@ -74,7 +74,7 @@ class TestDiffAndMerge:
         default_branch: Branch,
         register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
-    ):
+    ) -> None:
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.update_schema_branch(
             db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
@@ -119,7 +119,10 @@ class TestDiffAndMerge:
 
     @pytest.mark.parametrize(
         "conflict_selection,expected_value",
-        [(ConflictSelection.BASE_BRANCH, "John-main"), (ConflictSelection.DIFF_BRANCH, "John-branch")],
+        [
+            (ConflictSelection.BASE_BRANCH, {"name": "John-main", "hfid": ["John-main"]}),
+            (ConflictSelection.DIFF_BRANCH, {"name": "John-branch", "hfid": ["John-branch"]}),
+        ],
     )
     async def test_diff_and_merge_with_attribute_value_conflict(
         self,
@@ -131,8 +134,8 @@ class TestDiffAndMerge:
         person_alfred_main: Node,
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
-        expected_value: Literal["John-main", "John-branch"],
-    ):
+        expected_value: dict[Literal["name", "hfid"], str | list[str]],
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.value = "John-main"
@@ -150,14 +153,15 @@ class TestDiffAndMerge:
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
-        assert len(conflicts_map) == 1
-        conflict = next(iter(conflicts_map.values()))
-        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        assert len(conflicts_map) == 3
+        for conflict in conflicts_map.values():
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
         updated_john = await NodeManager.get_one(db=db, id=person_john_main.id)
-        assert updated_john.name.value == expected_value
+        assert updated_john.name.value == expected_value["name"]
+        assert await updated_john.get_hfid(db=db) == expected_value["hfid"]
 
         await diff_merger.rollback(at=at)
 
@@ -180,7 +184,7 @@ class TestDiffAndMerge:
         car_accord_main: Node,
         car_camry_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data=person_alfred_main)
@@ -232,7 +236,7 @@ class TestDiffAndMerge:
         person_alfred_main: Node,
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.source = person_alfred_main
@@ -256,7 +260,7 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
-        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_source=True)
+        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE)
 
         attr_source = await updated_john.name.get_source(db=db)
         if conflict_selection is ConflictSelection.BASE_BRANCH:
@@ -266,7 +270,9 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_source=True)
+        rolled_back_john = await NodeManager.get_one(
+            db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE
+        )
         attr_source = await rolled_back_john.name.get_source(db=db)
         assert attr_source.id == person_alfred_main.id
         await verify_no_duplicate_paths(db=db)
@@ -286,7 +292,7 @@ class TestDiffAndMerge:
         car_accord_main: Node,
         car_camry_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         person_schema = db.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         branch2 = await create_branch(db=db, branch_name="branch2")
@@ -313,7 +319,7 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
-        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER)
         owner_rel = await updated_car.owner.get(db=db)
         owner_prop = await owner_rel.get_owner(db=db)
         if conflict_selection is ConflictSelection.BASE_BRANCH:
@@ -333,7 +339,9 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        rolled_back_car = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER
+        )
         owner_rel = await rolled_back_car.owner.get(db=db)
         owner_prop = await owner_rel.get_owner(db=db)
         assert owner_prop.id == person_alfred_main.id
@@ -348,7 +356,7 @@ class TestDiffAndMerge:
         person_john_main,
         person_jane_main,
         new_height,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_jane_main.id)
         person_branch.height.value = new_height
@@ -379,7 +387,7 @@ class TestDiffAndMerge:
         person_john_main,
         person_jane_main,
         car_camry_main,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         branch_car = await Node.init(db=db, schema="TestCar", branch=branch2)
         await branch_car.new(db=db, name="new camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
@@ -410,7 +418,7 @@ class TestDiffAndMerge:
 
     async def test_relationship_set_to_null(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, animal_person_schema
-    ):
+    ) -> None:
         person_main = await Node.init(db=db, schema="TestPerson")
         await person_main.new(db=db, name="Dude")
         await person_main.save(db=db)
@@ -455,7 +463,7 @@ class TestDiffAndMerge:
         default_branch: Branch,
         diff_repository: DiffRepository,
         car_person_schema_branch_local: SchemaBranch,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
         await person.new(db=db, name="Guy", height=180)
@@ -526,7 +534,7 @@ class TestDiffAndMerge:
 
     async def test_agnostic_and_aware_nodes_added_on_branch(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_person_schema_global
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
         await person.new(db=db, name="Guy", height=180)
@@ -612,7 +620,7 @@ class TestDiffAndMerge:
         person_jane_main,
         car_accord_main,
         car_camry_main,
-    ):
+    ) -> None:
         person_schema = db.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         branch2 = await create_branch(db=db, branch_name="branch2")
@@ -670,7 +678,7 @@ class TestDiffAndMerge:
         person_alfred_main,
         car_accord_main,
         car_camry_main,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data={"id": person_alfred_main.id, "_relation__is_protected": True})
@@ -720,7 +728,9 @@ class TestDiffAndMerge:
 
         await diff_merger.rollback(at=at)
 
-        rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        rolled_back_car = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER
+        )
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False
@@ -737,7 +747,7 @@ class TestDiffAndMerge:
         person_alfred_main,
         car_accord_main,
         car_camry_main,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
         await car_branch.owner.update(db=db, data={"id": person_alfred_main.id, "_relation__is_protected": True})
@@ -789,7 +799,7 @@ class TestDiffAndMerge:
 
     async def test_delete_with_many_relationship_added(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-    ):
+    ) -> None:
         # remove TestCar relationship to TestPerson
         car_schema = car_person_schema_unregistered.get(name="TestCar")
         car_schema.relationships = []
@@ -846,7 +856,7 @@ class TestDiffAndMerge:
         diff_repository: DiffRepository,
         person_john_main: Node,
         selection: ConflictSelection,
-    ):
+    ) -> None:
         main_value = 200
         branch_value = 150
         branch2 = await create_branch(db=db, branch_name="branch2")
@@ -945,7 +955,7 @@ class TestDiffAndMerge:
         car_camry_main: Node,
         person_jane_main: Node,
         person_john_main: Node,
-    ):
+    ) -> None:
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.update_schema_branch(db=db, branch=default_branch, schema=schema_main, update_db=True)
         original_car_owner = person_john_main
@@ -1055,7 +1065,7 @@ class TestDiffAndMerge:
         register_internal_models_schema: SchemaBranch,
         register_core_models_schema: SchemaBranch,
         car_person_schema_generics: SchemaBranch,
-    ):
+    ) -> None:
         # schema with multiple generics
         root_with_another_generic = SchemaRoot(
             generics=[
@@ -1207,3 +1217,111 @@ class TestDiffAndMerge:
         # get undeleted node
         undeleted_car = await NodeManager.get_one(db=db, branch=default_branch, id=e_car_2.id)
         assert undeleted_car.get_kind() == "TestElectricCar"
+
+    async def test_diff_and_merge_with_migrated_node_kind_peer(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_internal_models_schema: SchemaBranch,
+        register_core_models_schema: SchemaBranch,
+        car_person_schema: SchemaBranch,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        person_jane_main: Node,
+        person_john_main: Node,
+    ):
+        original_car_owner = person_john_main
+        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        await registry.schema.update_schema_branch(
+            db=db,
+            branch=default_branch,
+            schema=main_schema_branch,
+            limit=["TestCar", "Test2NewCar", "TestPerson"],
+            update_db=True,
+        )
+        main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        # migrate TestCar to Test2NewCar on default branch
+        original_car_schema = main_schema_branch.get(name="TestCar", duplicate=True)
+        new_car_schema = main_schema_branch.get(name="TestCar", duplicate=True)
+        new_car_schema.name = "NewCar"
+        new_car_schema.namespace = "Test2"
+        assert new_car_schema.kind == "Test2NewCar"
+        main_schema_branch.set(name="Test2NewCar", schema=new_car_schema)
+        person_schema_branch = main_schema_branch.get(name="TestPerson", duplicate=True)
+        cars_rel = person_schema_branch.get_relationship("cars")
+        cars_rel.peer = "Test2NewCar"
+        cars_driven_rel = person_schema_branch.get_relationship("cars_driven")
+        cars_driven_rel.peer = "Test2NewCar"
+        main_schema_branch.set(name="TestPerson", schema=person_schema_branch)
+        main_schema_branch.delete(name="TestCar")
+        main_schema_branch.process()
+        await registry.schema.update_schema_branch(
+            db=db,
+            branch=default_branch,
+            schema=main_schema_branch,
+            limit=["TestCar", "Test2NewCar", "TestPerson"],
+            update_db=True,
+        )
+        migration = NodeKindUpdateMigration(
+            previous_node_schema=original_car_schema,
+            new_node_schema=new_car_schema,
+            schema_path=SchemaPath(
+                path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"
+            ),
+        )
+        execution_result = await migration.execute(db=db, branch=default_branch)
+        assert not execution_result.errors
+
+        # create new branch
+        branch2 = await create_branch(db=db, branch_name="branch2")
+
+        # update car owner
+        migrated_car = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
+        await migrated_car.owner.update(db=db, data=person_jane_main.id)
+        new_color = "#654321"
+        migrated_car.color.value = new_color
+        await migrated_car.save(db=db)
+
+        # delete a car
+        migrated_car_to_delete = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+        await migrated_car_to_delete.delete(db=db)
+
+        at = Timestamp()
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=at)
+
+        updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
+        car_schema_main = updated_schema_branch.get(name="Test2NewCar", duplicate=False)
+
+        retrieved_migrated_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+        assert retrieved_migrated_car.get_kind() == "Test2NewCar"
+        for attr_name in car_schema_main.attribute_names:
+            if attr_name == "color":
+                assert retrieved_migrated_car.color.value == new_color
+            else:
+                assert getattr(retrieved_migrated_car, attr_name).value == getattr(car_accord_main, attr_name).value
+        retrieved_owner_rels = await retrieved_migrated_car.owner.get_relationships(db=db)
+        assert {r.get_peer_id() for r in retrieved_owner_rels} == {person_jane_main.id}
+        retrieved_driver_rels = await retrieved_migrated_car.driver.get_relationships(db=db)
+        assert not {r.get_peer_id() for r in retrieved_driver_rels}
+        with pytest.raises(SchemaNotFoundError):
+            await NodeManager.query(db=db, branch=default_branch, schema="TestCar")
+        # try to get deleted node
+        with pytest.raises(NodeNotFoundError):
+            await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id, raise_on_error=True)
+        await verify_no_duplicate_paths(db=db)
+
+        await diff_merger.rollback(at=at)
+
+        retrieved_still_migrated_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+        assert retrieved_still_migrated_car.get_kind() == "Test2NewCar"
+        assert retrieved_still_migrated_car.color.value == car_accord_main.color.value
+        retrieved_owner_rels = await retrieved_still_migrated_car.owner.get_relationships(db=db)
+        assert {r.get_peer_id() for r in retrieved_owner_rels} == {original_car_owner.id}
+        # get undeleted node
+        undeleted_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_camry_main.id)
+        assert undeleted_car.get_kind() == "Test2NewCar"

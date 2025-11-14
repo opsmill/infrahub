@@ -519,8 +519,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -639,8 +644,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -768,8 +778,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -870,8 +885,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1368,8 +1388,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1711,8 +1736,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1865,9 +1895,7 @@ export interface components {
         /** QueryPayload */
         QueryPayload: {
             /** Variables */
-            variables?: {
-                [key: string]: string;
-            };
+            variables?: Record<string, never>;
         };
         /**
          * RelationshipCardinality

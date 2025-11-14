@@ -16,7 +16,7 @@ from tests.helpers.graphql import graphql
 
 
 @pytest.fixture
-def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
+def criticality_schema(default_branch: Branch, data_schema, node_group_schema) -> None:
     GENERIC_SCHEMA = {
         "name": "GenericCriticality",
         "namespace": "Test",
@@ -56,7 +56,7 @@ def criticality_schema(default_branch: Branch, data_schema, node_group_schema):
     registry.schema.process_schema_branch(name=default_branch.name)
 
 
-async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
@@ -75,9 +75,8 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -87,11 +86,12 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     )
 
     assert result.errors is None
+    assert result.data
     assert len(result.data["ProfileTestCriticality"]["edges"]) == 1
     assert result.data["ProfileTestCriticality"]["edges"][0]["node"]["display_label"] == obj1.profile_name.value
 
 
-async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile = registry.schema.get("ProfileTestCriticality", branch=default_branch)
 
     obj1 = await Node.init(db=db, schema=profile)
@@ -116,7 +116,8 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     # gql mutation needs function workflow
     gql_params.context.service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
     result = await graphql(
@@ -128,6 +129,7 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["ProfileTestCriticalityUpsert"]["ok"] is True
     gql_object = result.data["ProfileTestCriticalityUpsert"]["object"]
     assert gql_object["profile_name"]["value"] == "prof1"
@@ -139,7 +141,7 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
     assert retrieved_object.profile_priority.value == 1234
 
 
-async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
@@ -182,9 +184,8 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -194,6 +195,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestCriticality"]["edges"]
     assert len(crits) == 2
     assert {
@@ -214,7 +216,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
     } in crits
 
 
-async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile_generic_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_generic_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
@@ -259,9 +261,8 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -271,6 +272,7 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestGenericCriticality"]["edges"]
     assert len(crits) == 2
     assert {
@@ -293,7 +295,9 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
     } in crits
 
 
-async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_setting_illegal_profiles_raises_error(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     profile_generic_schema = registry.schema.get(
         "ProfileTestGenericCriticality", branch=default_branch, duplicate=False
     )
@@ -327,9 +331,8 @@ async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, defau
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=True, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     crit_schema.generate_profile = False
     result = await graphql(
@@ -382,7 +385,7 @@ async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, defau
     }
 
 
-async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
@@ -424,9 +427,8 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -436,6 +438,7 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestCriticality"]["edges"]
     assert len(crits) == 3
     crits_by_id = {crit["node"]["id"]: crit["node"] for crit in crits}
@@ -464,7 +467,9 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
     assert crit_2_profile.id in gql_params.context.related_node_ids
 
 
-async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_is_profile_source_set_correctly(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
     prof_1 = await Node.init(db=db, schema=profile_schema)
     await prof_1.new(db=db, profile_name="prof1", profile_priority=1, level=8)
@@ -530,9 +535,8 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
         }
     }
     """
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -542,6 +546,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
     )
 
     assert result.errors is None
+    assert result.data
     crits = result.data["TestCriticality"]["edges"]
     assert len(crits) == 3
     crits_by_id = {crit["node"]["id"]: crit["node"] for crit in crits}
@@ -560,7 +565,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
             "is_from_profile": True,
             "source": {
                 "id": prof_1.id,
-                "display_label": await prof_1.render_display_label(db=db),
+                "display_label": await prof_1.get_display_label(db=db),
                 "__typename": "ProfileTestCriticality",
             },
         },
@@ -576,7 +581,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
             "is_from_profile": True,
             "source": {
                 "id": prof_2.id,
-                "display_label": await prof_2.render_display_label(db=db),
+                "display_label": await prof_2.get_display_label(db=db),
                 "__typename": "ProfileTestCriticality",
             },
         },

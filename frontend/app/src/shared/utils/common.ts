@@ -1,14 +1,20 @@
 import { type ClassValue, clsx } from "clsx";
-import * as R from "ramda";
+import * as R from "remeda";
 import { twMerge } from "tailwind-merge";
 
 export const classNames = (...classes: ClassValue[]) => {
   return twMerge(clsx(classes));
 };
 
-export const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+export const sortByName = <T extends { name: string }>(arr: T[]) =>
+  R.sortBy(arr, (x) => x.name.toLowerCase());
 
-export const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
+export const sortByOrderWeight = <T extends { order_weight?: number | null | undefined }>(
+  arr: T[]
+) => R.sortBy(arr, (x) => x.order_weight ?? 0);
+
+export const sortByCreatedAtDesc = <T extends { created_at: string }>(arr: T[]) =>
+  R.sortBy(arr, [(x) => x.created_at, "desc"]);
 
 export const parseJwt = (token: string | null) => {
   if (!token) {

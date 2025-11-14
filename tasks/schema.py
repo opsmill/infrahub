@@ -1,48 +1,77 @@
 import json
-from pathlib import Path
 
 from invoke.context import Context
 from invoke.tasks import task
 
-from .utils import REPO_BASE
+from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
 INFRAHUB_DIRECTORY = REPO_BASE / "generated" / "infrahub"
 
+REPOSITORY_CONFIG_DIRECTORY = SDK_DIRECTORY / "repository-config"
+INFRAHUB_SCHEMA_DIRECTORY = INFRAHUB_DIRECTORY / "schema"
+
+REPOSITORY_CONFIG_PATH = REPOSITORY_CONFIG_DIRECTORY / "develop.json"
+INFRAHUB_NODE_SCHEMA_PATH = INFRAHUB_SCHEMA_DIRECTORY / "develop.json"
+
+SCHEMA_PATH = REPO_BASE / "schema" / "schema.graphql"
+OPENAPI_PATH = REPO_BASE / "schema" / "openapi.json"
+
 
 @task
-def generate_jsonschema(context: Context) -> None:  # noqa: ARG001
-    """Generate JSON schemas into ./generated"""
-
-    generate_sdk_repository_config()
-    generate_infrahub_node_schema()
-
-
-def generate_infrahub_node_schema() -> None:
-    from infrahub.api.schema import SchemaLoadAPI
-
-    schema_dir = INFRAHUB_DIRECTORY / "schema"
-    schema_dir.mkdir(parents=True, exist_ok=True)
-
-    schema = SchemaLoadAPI.model_json_schema()
-
-    schema["title"] = "InfrahubSchema"
-
-    content = json.dumps(schema, indent=4)
-
-    write(file_path=schema_dir / "develop.json", content=content)
+def generate_graphqlschema(context: Context) -> None:
+    """Generate GraphQL schema into ./schema"""
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(f"poetry run infrahub dev export-graphql-schema --out {SCHEMA_PATH}")
+        print(f"Wrote to {SCHEMA_PATH}")
 
 
-def generate_sdk_repository_config() -> None:
+@task
+def generate_jsonschema(context: Context) -> None:
+    """Generate JSON schemas into ./schema and also run `generate_repositoryconfig`"""
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(f"poetry run infrahub dev export-json-schema --out {OPENAPI_PATH}")
+        print(f"Wrote to {OPENAPI_PATH}")
+
+    generate_repositoryconfig(context)
+    generate_infrahubnodeschema(context)
+
+
+@task
+def generate_repositoryconfig(context: Context) -> None:
+    """Generate repository config into generated/python-sdk/repository-config/develop.json"""
     from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
-    repository_dir = SDK_DIRECTORY / "repository-config"
-    repository_dir.mkdir(parents=True, exist_ok=True)
-    schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
+    with context.cd(ESCAPED_REPO_PATH):
+        schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
+        REPOSITORY_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        REPOSITORY_CONFIG_PATH.write_text(schema)
+        print(f"Wrote to {REPOSITORY_CONFIG_PATH}")
 
-    write(file_path=repository_dir / "develop.json", content=schema)
+
+@task
+def generate_infrahubnodeschema(context: Context) -> None:
+    """Generate infrahub node schema into generated/infrahub/schema/develop.json"""
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(f"poetry run infrahub dev export-node-schema --out {INFRAHUB_NODE_SCHEMA_PATH}")
+        print(f"Wrote to {INFRAHUB_NODE_SCHEMA_PATH}")
 
 
-def write(file_path: Path, content: str) -> None:
-    file_path.write_text(content, encoding="utf-8")
-    print(f"Wrote to {file_path}")
+@task
+def validate_graphqlschema(context: Context) -> None:
+    """Validate that the generated GraphQL schema is up to date."""
+    generate_graphqlschema(context)
+
+    exec_cmd = f"git diff --exit-code {SCHEMA_PATH}"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def validate_jsonschema(context: Context) -> None:
+    """Validate that the generated JSON schema is up to date."""
+    generate_jsonschema(context)
+
+    exec_cmd = f"git diff --exit-code {OPENAPI_PATH}"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)

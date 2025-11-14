@@ -7,7 +7,7 @@ from infrahub.services.component import InfrahubComponent, WorkerInfo
 from tests.adapters.cache import MemoryCache
 
 
-async def test_clean_up_deadlocks(default_branch):
+async def test_clean_up_deadlocks(default_branch) -> None:
     cache = MemoryCache()
     await cache.set(
         key="lock.repository.sample-infrahub", value="2025-09-18T12:07:24.654862Z::800b4a90-87cd-458f-8c68-b0b5ebb81046"

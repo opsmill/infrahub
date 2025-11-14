@@ -22,7 +22,7 @@ async def test_delete_succeeds(
     car_camry_main: Node,
     car_accord_main: Node,
     person_albert_main: Node,
-):
+) -> None:
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_albert_main])
 
     assert {d.id for d in deleted} == {person_albert_main.id}
@@ -32,7 +32,7 @@ async def test_delete_succeeds(
 
 async def test_delete_prevented(
     db, default_branch, car_camry_main, car_accord_main, person_albert_main, person_jane_main
-):
+) -> None:
     with pytest.raises(ValidationError) as exc:
         await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
 
@@ -51,7 +51,7 @@ async def test_one_sided_relationship(
     person_albert_main,
     person_jane_main,
     car_person_schema_unregistered,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.relationships.append(
@@ -80,7 +80,7 @@ async def test_one_sided_relationship(
 
 async def test_source_node_already_deleted(
     db, default_branch, car_camry_main, car_accord_main, person_albert_main, person_jane_main
-):
+) -> None:
     car = await NodeManager.get_one(db=db, id=car_camry_main.id)
     await car.delete(db=db)
 
@@ -98,7 +98,7 @@ async def test_cascade_delete_not_prevented(
     car_accord_main: Node,
     person_albert_main: Node,
     person_jane_main: Node,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
@@ -112,7 +112,7 @@ async def test_cascade_delete_not_prevented(
 
 async def test_delete_with_cascade_on_many_relationship(
     db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     person_schema = schema_branch.get(name="TestPerson", duplicate=False)
     person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
@@ -126,7 +126,7 @@ async def test_delete_with_cascade_on_many_relationship(
 
 async def test_delete_with_cascade_on_one_relationship(
     db, default_branch, car_camry_main, car_accord_main, person_john_main
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
@@ -140,7 +140,7 @@ async def test_delete_with_cascade_on_one_relationship(
 
 async def test_delete_with_cascade_multiple_input_nodes(
     db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
@@ -154,7 +154,7 @@ async def test_delete_with_cascade_multiple_input_nodes(
 
 async def test_delete_with_cascade_both_directions_succeeds(
     db, default_branch, car_camry_main, car_accord_main, car_prius_main, person_john_main, person_jane_main
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     car_schema = schema_branch.get(name="TestCar", duplicate=False)
     car_schema.get_relationship("owner").on_delete = RelationshipDeleteBehavior.CASCADE
@@ -168,7 +168,9 @@ async def test_delete_with_cascade_both_directions_succeeds(
     assert node_map == {}
 
 
-async def test_delete_with_required_on_generic_prevented(db, default_branch, dependent_generics_schema: SchemaBranch):
+async def test_delete_with_required_on_generic_prevented(
+    db, default_branch, dependent_generics_schema: SchemaBranch
+) -> None:
     human = await Node.init(db=db, schema="TestHuman", branch=default_branch)
     await human.new(db=db, name="Jane", height=180)
     await human.save(db=db)
@@ -186,7 +188,9 @@ async def test_delete_with_required_on_generic_prevented(db, default_branch, dep
     assert retrieved_human.id == human.id
 
 
-async def test_delete_with_cascade_on_generic_allowed(db, default_branch, dependent_generics_schema: SchemaBranch):
+async def test_delete_with_cascade_on_generic_allowed(
+    db, default_branch, dependent_generics_schema: SchemaBranch
+) -> None:
     # set TestPerson.animals to be cascade delete
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     for schema_kind in ("TestPerson", "TestHuman", "TestCylon"):
@@ -208,7 +212,7 @@ async def test_delete_with_cascade_on_generic_allowed(db, default_branch, depend
 
 
 class TestDeleteUnidirectionalRelationship(TestInfrahubApp):
-    async def test_delete_unidirectional_optional_relationship(self, db, client, default_branch):
+    async def test_delete_unidirectional_optional_relationship(self, db, client, default_branch) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
         owner = await Node.init(schema=TestKind.PERSON, db=db)

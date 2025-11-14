@@ -85,7 +85,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         repo_dir = fixture_dir / "repos" / repo_name / "initial__main"
         repo = GitRepo(name=repo_name, src_directory=repo_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(client=client, retries=20)
         assert in_sync
 
         repos = await client.all(kind=CoreGenericRepository)

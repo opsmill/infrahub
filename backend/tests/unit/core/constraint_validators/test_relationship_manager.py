@@ -9,7 +9,7 @@ from infrahub.exceptions import ValidationError
 
 async def test_node_validate_constraint_relationship_count_failure(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     constraint = RelationshipCountConstraint(db=db, branch=default_branch)
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="Alfred", height=160, cars=[car_accord_main.id])
@@ -22,7 +22,7 @@ async def test_node_validate_constraint_relationship_count_failure(
 
 async def test_node_validate_constraint_relationship_count_success(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     constraint = RelationshipCountConstraint(db=db, branch=default_branch)
 
     await constraint.check(relm=person_john_main.cars, node_schema=person_john_main.get_schema(), node=person_john_main)

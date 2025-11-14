@@ -8,7 +8,7 @@ from infrahub.message_bus.types import KVTTL
 from infrahub.services.adapters.cache.redis import RedisCache
 
 
-async def test_get(redis):
+async def test_get(redis) -> None:
     if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         pytest.skip("Must use Redis to run this test")
 
@@ -26,7 +26,7 @@ async def test_get(redis):
     assert after_expiry is None
 
 
-async def test_list_keys(redis):
+async def test_list_keys(redis) -> None:
     if config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         pytest.skip("Must use Redis to run this test")
 

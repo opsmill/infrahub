@@ -1,65 +1,35 @@
-import { useQuery } from "@apollo/client";
-import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
+import { parseAsString, useQueryState } from "nuqs";
 
 import { QSP } from "@/config/qsp";
 
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { classNames } from "@/shared/utils/common";
 
-import { DIFF_STATUS } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
+import { useGetDiffSummary } from "@/entities/diff/domain/get-diff-summary.query";
+import { DIFF_STATUS, type DiffStatus } from "@/entities/diff/node-diff/types";
+import { DiffSummarySkeleton } from "@/entities/proposed-changes/ui/diff-summary/diff-summary-skeleton";
 import {
-  CloseBadgeAdded,
-  CloseBadgeConflict,
-  CloseBadgeRemoved,
-  CloseBadgeUpdated,
-} from "@/entities/diff/ui/diff-badge";
-import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
+  DiffSummaryTag,
+  DiffSummaryTagGroup,
+} from "@/entities/proposed-changes/ui/diff-summary/diff-summary-tag-group";
 
-export type DiffFilter = {
-  namespace?: {
-    excludes?: string[];
-    includes?: string[];
+type DiffFilterProps = GetDiffSummaryParams;
+
+export function DiffFilter({ branch, filters }: DiffFilterProps) {
+  const [statusFilterQSP, setQsp] = useQueryState(
+    QSP.STATUS,
+    parseAsString.withOptions({ shallow: false })
+  );
+
+  const { error, data, isPending } = useGetDiffSummary({ branch, filters });
+
+  const handleFilter = (value: DiffStatus) => {
+    setQsp(value === statusFilterQSP ? null : value);
   };
-  status?: {
-    excludes?: string[];
-    includes?: string[];
-  };
-};
 
-type ProposedChangeDiffFilterProps = {
-  branch: string;
-  filters?: DiffFilter;
-};
-
-export const ProposedChangeDiffFilter = ({ branch, filters }: ProposedChangeDiffFilterProps) => {
-  const [qsp, setQsp] = useQueryParam(QSP.STATUS, StringParam);
-
-  const { error, data = {} } = useQuery(getProposedChangesDiffSummary, {
-    skip: !branch,
-    variables: { branch, filters },
-    context: {
-      processErrorMessage: (message: string) => {
-        // If the branch is not found, then do not display alert
-        if (message.includes("not found")) return;
-
-        toast(<Alert type={ALERT_TYPES.ERROR} message={message} />, {
-          toastId: "alert-error",
-        });
-      },
-    },
-  });
-
-  const handleFilter = (value: string) => {
-    // Removes filter
-    if (value === qsp) return setQsp(undefined);
-
-    // Set filter
-    setQsp(value);
-  };
+  if (isPending) {
+    return <DiffSummarySkeleton />;
+  }
 
   if (error) {
     return (
@@ -71,69 +41,40 @@ export const ProposedChangeDiffFilter = ({ branch, filters }: ProposedChangeDiff
     );
   }
 
-  return (
-    <div className="flex shrink-0 items-center gap-2">
-      <FilterButton
-        status={DIFF_STATUS.ADDED}
-        count={data?.DiffTreeSummary?.num_added}
-        currentFilter={qsp}
-        onFilter={handleFilter}
-      />
-      <FilterButton
-        status={DIFF_STATUS.REMOVED}
-        count={data?.DiffTreeSummary?.num_removed}
-        currentFilter={qsp}
-        onFilter={handleFilter}
-      />
-      <FilterButton
-        status={DIFF_STATUS.UPDATED}
-        count={data?.DiffTreeSummary?.num_updated}
-        currentFilter={qsp}
-        onFilter={handleFilter}
-      />
-      <FilterButton
-        status={DIFF_STATUS.CONFLICT}
-        count={data?.DiffTreeSummary?.num_conflicts}
-        currentFilter={qsp}
-        onFilter={handleFilter}
-      />
-    </div>
-  );
-};
+  if (!data) {
+    return null;
+  }
 
-interface FilterButtonProps extends ButtonProps {
-  status: string;
-  count: number;
-  currentFilter: string | null | undefined;
-  onFilter: (value: string) => void;
+  return (
+    <DiffSummaryTagGroup selectionMode="single">
+      <DiffSummaryTag
+        variant="added"
+        count={data.num_added}
+        isMuted={!!statusFilterQSP && statusFilterQSP !== DIFF_STATUS.ADDED}
+        isClosable={statusFilterQSP === DIFF_STATUS.ADDED}
+        onPress={() => handleFilter(DIFF_STATUS.ADDED)}
+      />
+      <DiffSummaryTag
+        variant="removed"
+        count={data.num_removed}
+        isMuted={!!statusFilterQSP && statusFilterQSP !== DIFF_STATUS.REMOVED}
+        isClosable={statusFilterQSP === DIFF_STATUS.REMOVED}
+        onPress={() => handleFilter(DIFF_STATUS.REMOVED)}
+      />
+      <DiffSummaryTag
+        variant="updated"
+        count={data.num_updated}
+        isMuted={!!statusFilterQSP && statusFilterQSP !== DIFF_STATUS.UPDATED}
+        isClosable={statusFilterQSP === DIFF_STATUS.UPDATED}
+        onPress={() => handleFilter(DIFF_STATUS.UPDATED)}
+      />
+      <DiffSummaryTag
+        variant="conflicts"
+        count={data.num_conflicts}
+        isMuted={!!statusFilterQSP && statusFilterQSP !== DIFF_STATUS.CONFLICT}
+        isClosable={statusFilterQSP === DIFF_STATUS.CONFLICT}
+        onPress={() => handleFilter(DIFF_STATUS.CONFLICT)}
+      />
+    </DiffSummaryTagGroup>
+  );
 }
-
-const FilterButton = ({ status, count, currentFilter, onFilter, ...props }: FilterButtonProps) => {
-  const isMuted = !!currentFilter && currentFilter !== status;
-  const isDisabled = !count && currentFilter !== status;
-
-  const CloseBadge =
-    status === DIFF_STATUS.ADDED
-      ? CloseBadgeAdded
-      : status === DIFF_STATUS.REMOVED
-        ? CloseBadgeRemoved
-        : status === DIFF_STATUS.UPDATED
-          ? CloseBadgeUpdated
-          : status === DIFF_STATUS.CONFLICT
-            ? CloseBadgeConflict
-            : null;
-
-  return (
-    <Button
-      {...props}
-      variant="ghost"
-      className={classNames("relative h-auto rounded-full p-0", isMuted && "opacity-60")}
-      onClick={() => onFilter(status)}
-      disabled={isDisabled}
-      data-testid={`diff-filters-button-${status.toLowerCase()}`}
-    >
-      <DiffBadge status={status}>{count}</DiffBadge>
-      {currentFilter === status && CloseBadge && <CloseBadge />}
-    </Button>
-  );
-};

@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useCallback } from "react";
 import { Navigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import {
   DEFAULT_BRANCH_NAME,
@@ -53,7 +53,7 @@ export default function ObjectItemDetails({
 }: ObjectDetailsProps) {
   const { objectKind, objectid } = useParams();
 
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
@@ -132,7 +132,7 @@ export default function ObjectItemDetails({
 
       {!qspTab && (
         <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
-          <Card className="grow overflow-x-hidden p-0 md:col-span-2">
+          <Card className="grow overflow-x-hidden p-0 md:col-span-2" data-testid="object-details">
             <CardWithBorder.Title className="border-gray-200 border-b">
               Details
             </CardWithBorder.Title>

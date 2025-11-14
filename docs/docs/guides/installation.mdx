@@ -22,11 +22,11 @@ import import_taskmanagerdbYaml from '!!raw-loader!../../../development/k8s/task
 
 This guide provides step-by-step instructions for installing Infrahub Community and Enterprise editions. The installation methods covered here are for non-resilient deployment architectures suitable for development, testing, and single-node production environments.
 
-For resilient, high-availability deployments, refer to the [high availability architecture](../topics/architecture#high-availability-deployment) documentation.
+For resilient, high-availability deployments, refer to the [high availability architecture](../topics/architecture.mdx#high-availability-deployment) documentation.
 
 ## Prerequisites
 
-- Ensure your system meets the [hardware requirements](../topics/hardware-requirements) before installing Infrahub
+- Ensure your system meets the [hardware requirements](../topics/hardware-requirements.mdx) before installing Infrahub
 - Each installation method has additional prerequisites listed in their respective sections
 
 :::info
@@ -352,15 +352,15 @@ You can also specify a specific version in the URL:
 
 You can also specify a sizing preset in the URL. This will automatically configure replica count for each component according to your sizing plan:
 
-- [https://infrahub.opsmill.io/enterprise?size=small](https://infrahub.opsmill.io/enterprise?size=small) (requires 8 GB of RAM)
-- [https://infrahub.opsmill.io/enterprise/1.3.5?size=medium](https://infrahub.opsmill.io/enterprise/1.3.5?size=medium) (requires 24 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise?size=small](https://infrahub.opsmill.io/enterprise?size=small) (requires 16 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise/1.3.5?size=medium](https://infrahub.opsmill.io/enterprise/1.3.5?size=medium) (requires 32 GB of RAM)
 - [https://infrahub.opsmill.io/enterprise/stable?size=large](https://infrahub.opsmill.io/enterprise/stable?size=large) (requires 64 GB of RAM)
 
 | Size   | Total required memory | API workers | Task workers | Task manager API workers | Task manager background workers | DB heap size | DB page cache size |
 | ----------- | ----- | - | - | - | - | --- | --- |
-| small       | 8 GB  | 4 | 2 | 1 | 1 | 8G  | 1G  |
-| medium      | 24 GB | 4 | 4 | 2 | 2 | 24G | 4G  |
-| medium-data | 24 GB | 4 | 2 | 1 | 1 | 24G | 4G  |
+| small       | 16 GB  | 4 | 2 | 1 | 1 | 8G  | 1G  |
+| medium      | 32 GB | 4 | 4 | 2 | 2 | 24G | 4G  |
+| medium-data | 32 GB | 4 | 2 | 1 | 1 | 24G | 4G  |
 | large       | 64 GB | 4 | 8 | 4 | 2 | 31G | 16G |
 | large-data  | 64 GB | 4 | 2 | 1 | 1 | 31G | 16G |
 
@@ -512,9 +512,9 @@ Be sure to replace the placeholder values with your actual values.
 You can also use the configuration preset values.yaml file. This will automatically configure replica count for each component according to your sizing plan.
 They are available here:
 
-<ReferenceLink title="Small size config preset (requires 8 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
-<ReferenceLink title="Medium size config preset (requires 24 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
-<ReferenceLink title="Medium (data) size config preset (requires 24 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
+<ReferenceLink title="Small size config preset (requires 16 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
+<ReferenceLink title="Medium size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
+<ReferenceLink title="Medium (data) size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
 <ReferenceLink title="Large size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
 <ReferenceLink title="Large (data) size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
 
@@ -595,9 +595,10 @@ These examples are for reference purposes and may require customization for your
   ```bash
   helm repo add neo4j https://helm.neo4j.com/neo4j/
   helm repo update
-  helm install database-0 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-1 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
-  helm install database-2 neo4j/neo4j --version 5.20.0 --namespace infrahub --values neo4j-values.yaml
+  kubectl create secret generic neo4j-user --namespace infrahub --from-literal=NEO4J_AUTH=neo4j/admin
+  helm install database-0 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-1 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
+  helm install database-2 neo4j/neo4j --version 2025.03.0 --namespace infrahub --values neo4j-values.yaml
   ```
 
   Once all instances are running, install the headless service:
@@ -605,7 +606,7 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="service-values.yaml">{import_serviceValuesYaml}</CodeBlock>
 
   ```bash
-  helm install database-service neo4j/neo4j-headless-service --version 5.20.0 --namespace infrahub --values service-values.yaml
+  helm install database-service neo4j/neo4j-headless-service --version 2025.03.0 --namespace infrahub --values service-values.yaml
   ```
 
   <CodeBlock language="yaml" title="minio-values.yaml">{import_minioValuesYaml}</CodeBlock>
@@ -630,19 +631,13 @@ These examples are for reference purposes and may require customization for your
   <CodeBlock language="yaml" title="prefect-values.yaml">{import_prefectValuesYaml}</CodeBlock>
 
   ```bash
-  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.2.21193831 --namespace infrahub --create-namespace --values prefect-values.yaml
-  ```
-
-  Deploy the Prefect Helm chart with a single replica initially to prevent concurrent database initialization issues. Wait for the first pod to become ready and complete database initialization. Once initialized, scale up to your desired number of replicas for high availability.
-
-  ```bash
-  kubectl scale deployment/prefect-server --replicas=3 --namespace infrahub
+  helm install taskmanager prefect-server --repo https://prefecthq.github.io/prefect-helm --version 2025.7.31204438 --namespace infrahub --create-namespace --values prefect-values.yaml
   ```
 
   <CodeBlock language="yaml" title="infrahub-values.yaml">{import_infrahubValuesYaml}</CodeBlock>
 
   ```bash
-  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.3.5 --namespace infrahub --create-namespace --values infrahub-values.yaml
+  helm install infrahub oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 3.9.4 --namespace infrahub --create-namespace --values infrahub-values.yaml
   ```
 
 </details>
@@ -793,7 +788,7 @@ server {
 
 ## Related resources
 
-- [Database backup and restore](./database-backup) - Learn how to backup and restore your Infrahub database
-- [High availability architecture](../topics/architecture#scalability-and-high-availability) - Understand resilient deployment architectures
-- [Local demo environment](../topics/local-demo-environment) - Explore the demo environment configuration
-- [Hardware requirements](../topics/hardware-requirements) - Review system requirements
+- [Database backup and restore](./database-backup.mdx) - Learn how to backup and restore your Infrahub database
+- [High availability architecture](../topics/architecture.mdx#scalability-and-high-availability) - Understand resilient deployment architectures
+- [Local demo environment](../topics/local-demo-environment.mdx) - Explore the demo environment configuration
+- [Hardware requirements](../topics/hardware-requirements.mdx) - Review system requirements

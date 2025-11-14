@@ -1,67 +1,58 @@
-import { StringParam, useQueryParam } from "use-query-params";
+import { parseAsJson, useQueryState } from "nuqs";
+import * as z from "zod";
 
 import { QSP } from "@/config/qsp";
-
-type tPagination = {
-  limit: number;
-  offset: number;
-};
 
 const DEFAULT_OFFSET = 0;
 const DEFAULT_LIMIT = 10;
 const AVAILABLE_LIMITS = [10, 20, 50];
 
-const getVerifiedLimit = (limit: number, config: any) => {
-  const availableLimits = config?.availableLimits ?? AVAILABLE_LIMITS;
-  const defaultLimit = config?.defaultLimit ?? DEFAULT_LIMIT;
+const Pagination = z.object({
+  limit: z.number().optional(),
+  offset: z.number().optional(),
+});
+type Pagination = z.infer<typeof Pagination>;
 
-  if (!availableLimits.includes(limit)) {
-    return defaultLimit;
+const getVerifiedLimit = (limit: number | undefined) => {
+  if (!limit || !AVAILABLE_LIMITS.includes(limit)) {
+    return DEFAULT_LIMIT;
   }
 
   return limit;
 };
 
-const getVerifiedOffset = (offset: number, config: any) => {
-  const defaultOffset = config?.defaultOffset ?? DEFAULT_OFFSET;
-
-  if (isNaN(offset)) {
-    return defaultOffset;
+const getVerifiedOffset = (offset: number | undefined) => {
+  if (!offset || isNaN(offset)) {
+    return DEFAULT_OFFSET;
   }
 
   return offset;
 };
 
-const usePagination = (): [tPagination, Function] => {
-  const [paginationInQueryString, setPaginationInQueryString] = useQueryParam(
+const usePagination = () => {
+  const [parsedPagination, setPaginationInQueryString] = useQueryState(
     QSP.PAGINATION,
-    StringParam
+    parseAsJson(Pagination).withDefault({ limit: DEFAULT_LIMIT, offset: DEFAULT_OFFSET })
   );
-
-  const parsedPagination = paginationInQueryString
-    ? JSON.parse(paginationInQueryString ?? "{}")
-    : {};
-
-  // Get the final pagination with verifyed values
   const pagination = {
-    limit: getVerifiedLimit(parsedPagination?.limit, null),
-    offset: getVerifiedOffset(parsedPagination?.offset, null),
+    limit: getVerifiedLimit(parsedPagination?.limit),
+    offset: getVerifiedOffset(parsedPagination?.offset),
   };
 
   // Set the pagination in the QSP
-  const setPagination = (newPagination: tPagination) => {
-    const newLimit = getVerifiedLimit(newPagination?.limit, null);
-    const newOffset = getVerifiedOffset(newPagination?.offset, null);
+  const setPagination = (newPagination: Pagination) => {
+    const newLimit = getVerifiedLimit(newPagination?.limit);
+    const newOffset = getVerifiedOffset(newPagination?.offset);
 
-    const newValidatedPagination = {
+    const newValidatedPagination: Pagination = {
       limit: newLimit,
       offset: newOffset,
     };
 
-    setPaginationInQueryString(JSON.stringify(newValidatedPagination));
+    setPaginationInQueryString(newValidatedPagination);
   };
 
-  return [pagination, setPagination];
+  return [pagination, setPagination] as const;
 };
 
 export default usePagination;

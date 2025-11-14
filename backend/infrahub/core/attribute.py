@@ -15,9 +15,16 @@ from pydantic import BaseModel, Field
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.changelog.models import AttributeChangelog
-from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
+from infrahub.core.constants import (
+    NULL_VALUE,
+    AttributeDBNodeType,
+    BranchSupportType,
+    MetadataOptions,
+    RelationshipStatus,
+)
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
+    AttributeClearNodePropertyQuery,
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -36,7 +43,7 @@ from .schema.attribute_parameters import NumberAttributeParameters
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import AttributeSchema
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
 
@@ -421,8 +428,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             fields={self.name: True},
             branch=self.branch,
             at=update_at,
-            include_source=True,
-            include_owner=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         await query.execute(db=db)
         current_attr_data, current_attr_result = query.get_result_by_id_and_name(self.node.id, self.name)
@@ -488,6 +494,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if needs_update:
                 query = await AttributeUpdateNodePropertyQuery.init(
                     db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=current_prop_id
+                )
+                await query.execute(db=db)
+
+            if needs_clear:
+                query = await AttributeClearNodePropertyQuery.init(
+                    db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=database_prop_id
                 )
                 await query.execute(db=db)
 
@@ -581,7 +593,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return value
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
+    async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update attr from GraphQL payload"""
 
         changed = False
@@ -595,7 +607,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 changed = True
         elif "from_pool" in data:
             self.from_pool = data["from_pool"]
-            await self.node.handle_pool(db=db, attribute=self, errors=[])
+            if process_pools:
+                await self.node.handle_pool(db=db, attribute=self, errors=[])
             changed = True
 
         if changed and self.is_from_profile:
@@ -630,7 +643,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 
-    def get_create_data(self) -> AttributeCreateData:
+    def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
@@ -645,7 +658,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch=branch.name,
             status="active",
             branch_level=hierarchy_level,
-            branch_support=self.schema.branch.value,
+            branch_support=self.schema.branch.value if self.schema.branch is not None else node_schema.branch,
             content=self.to_db(),
             is_default=self.is_default,
             is_protected=self.is_protected,

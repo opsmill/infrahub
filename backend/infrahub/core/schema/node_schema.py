@@ -90,6 +90,7 @@ class NodeSchema(GeneratedNodeSchema):
 
         properties_to_inherit = [
             "human_friendly_id",
+            "display_label",
             "display_labels",
             "default_filter",
             "menu_placement",
@@ -129,10 +130,12 @@ class NodeSchema(GeneratedNodeSchema):
                 item_idx = existing_inherited_relationships[relationship.name]
                 self.relationships[item_idx].update_from_generic(other=new_relationship)
 
-    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Branch | str | None = None) -> GenericSchema:
+    def get_hierarchy_schema(
+        self, db: InfrahubDatabase, branch: Branch | str | None = None, duplicate: bool = False
+    ) -> GenericSchema:
         if not self.hierarchy:
             raise ValueError("The node is not part of a hierarchy")
-        schema = db.schema.get(name=self.hierarchy, branch=branch)
+        schema = db.schema.get(name=self.hierarchy, branch=branch, duplicate=duplicate)
         if not isinstance(schema, GenericSchema):
             raise TypeError
         return schema

@@ -33,6 +33,7 @@ export function convertObjectFromApi({
     mutation,
     context: {
       branch: branchName,
+      processErrorMessage: () => {},
     },
     variables: {
       nodeId,

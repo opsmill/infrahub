@@ -92,10 +92,6 @@ export const ProfilesSelector = ({
 
   const { data, error, loading } = useQuery(query);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
-
-  if (error) return <ErrorScreen message={error.message} />;
-
   // Get all profiles name to retrieve the information from the result
   const profilesNameList: string[] = profilesList
     .map((profile) => profile?.name ?? "")
@@ -113,6 +109,25 @@ export const ProfilesSelector = ({
   if (!value && defaultValue) {
     onChange(profiles.filter((profile) => defaultValue.some((def) => def.id === profile.id)));
   }
+  useEffect(() => {
+    if (!value && defaultValue && profiles.length && !loading) {
+      const defaultProfiles = defaultValue
+        .map((defaultProfile) => {
+          return profiles.find((profile) => {
+            return profile.id === defaultProfile.id;
+          });
+        })
+        .filter((profile): profile is ProfileData => {
+          return !!profile?.id;
+        });
+
+      onChange(defaultProfiles);
+    }
+  }, [defaultValue, loading, profiles]);
+
+  if (loading) return <LoadingIndicator className="p-4" />;
+
+  if (error) return <ErrorScreen message={error.message} />;
 
   if (!profiles || profiles.length === 0) return null;
 

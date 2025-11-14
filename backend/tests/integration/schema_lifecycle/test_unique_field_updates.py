@@ -145,6 +145,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         updated_schema.pop("uniqueness_constraints", None)
         updated_schema.pop("order_by", None)
         updated_schema.pop("display_labels", None)
+        updated_schema["display_label"] = "{{ tax_id__value }}"
         return updated_schema
 
     @pytest.fixture(scope="class")
@@ -223,7 +224,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             "generics": [schema_generic_06_delete_unique_field],
         }
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset, branch_1: Branch):
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset, branch_1: Branch) -> None:
         # Check schema properties
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
         # check that unique attribute is correctly synced to uniqueness constraints
@@ -237,7 +238,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step02_check_more_fields(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_02
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_02], branch=branch_1.name)
         assert success, response.get("errors") if response else None
         assert response == {
@@ -259,6 +260,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                             },
                             "uniqueness_constraints": None,
                             "order_by": None,
+                            "display_label": None,
                             "display_labels": None,
                         },
                         "removed": {},
@@ -266,11 +268,18 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingPerson", "field": None}],
+                    "message": "display_labels are deprecated, use display_label instead",
+                }
+            ],
         }
 
     async def test_step02_load_more_fields(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_02
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_02], branch=branch_1.name)
         assert not response.errors
@@ -299,7 +308,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step03_check_unique_fields(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_03
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_03], branch=branch_1.name)
         assert success, response.get("errors") if response else None
         assert response == {
@@ -345,11 +354,18 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingPerson", "field": None}],
+                    "message": "display_labels are deprecated, use display_label instead",
+                }
+            ],
         }
 
     async def test_step03_load_unique_fields(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_03
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_03], branch=branch_1.name)
         assert not response.errors
@@ -381,7 +397,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step04_check_rename_name(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_04
-    ):
+    ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
         attr = person_schema.get_attribute(name="name")
 
@@ -389,6 +405,9 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         for attr_dict in schema_step_04["nodes"][0]["attributes"]:
             if attr_dict["name"] == "real_name":
                 attr_dict["id"] = attr.id
+
+        # Update the display label since the old one is invalid now
+        schema_step_04["nodes"][0]["display_label"] = "real_name__value"
 
         success, response = await client.schema.check(schemas=[schema_step_04], branch=branch_1.name)
         assert success, response.get("errors") if response else None
@@ -414,6 +433,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                             },
                             "human_friendly_id": None,
                             "uniqueness_constraints": None,
+                            "display_label": None,
                             "display_labels": None,
                             "order_by": None,
                         },
@@ -422,11 +442,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step04_load_renamed_fields(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_04
-    ):
+    ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND, branch=branch_1)
         attr = person_schema.get_attribute(name="name")
 
@@ -462,7 +483,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step05_check_remove_original_unique(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_05
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_05], branch=branch_1.name)
         assert success, response.get("errors") if response else None
         assert response == {
@@ -487,6 +508,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                             },
                             "human_friendly_id": None,
                             "uniqueness_constraints": None,
+                            "display_label": None,
                             "display_labels": None,
                             "order_by": None,
                         },
@@ -495,11 +517,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step05_load_remove_original_unique(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_05
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_05], branch=branch_1.name)
         assert not response.errors
@@ -525,7 +548,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     async def test_step06_check_remove_unique_attr_from_generic(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_06
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_06], branch=branch_1.name)
         assert success, response.get("errors") if response else None
         assert response == {
@@ -562,11 +585,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
+            "warnings": [],
         }
 
     async def test_step06_load_remove_unique_attr_from_generic(
         self, db: InfrahubDatabase, branch_1: Branch, client: InfrahubClient, initial_dataset, schema_step_06
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_06], branch=branch_1.name)
         assert not response.errors

@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
@@ -37,7 +37,7 @@ import { DRAFT_STATE, OPEN_STATE } from "../constants";
 import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {
-  const [sourceBranch] = useQueryParam(QSP.SOURCE_BRANCH, StringParam);
+  const [sourceBranch] = useQueryState(QSP.SOURCE_BRANCH);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);

@@ -8,7 +8,7 @@ from infrahub.permissions import LocalPermissionBackend
 
 async def test_load_permissions(
     db: InfrahubDatabase, default_branch: Branch, session_admin: AccountSession, session_first_account: AccountSession
-):
+) -> None:
     backend = LocalPermissionBackend()
 
     permissions = await backend.load_permissions(db=db, account_session=session_admin, branch=default_branch)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.protocols import CoreTransformPython
 from infrahub_sdk.template import Jinja2Template
 from prefect import flow
@@ -104,7 +105,7 @@ async def process_transform(
         )  # type: ignore[misc]
 
         data = await client.query_gql_query(
-            name=transform.query.peer.name.value,
+            name=transform.query.id,
             branch_name=branch_name,
             variables={"id": object_id},
             update_group=True,
@@ -177,12 +178,17 @@ async def computed_attribute_jinja2_update_value(
         log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
         return
 
-    await client.execute_graphql(
-        query=UPDATE_ATTRIBUTE,
-        variables={"id": obj.node_id, "kind": node_kind, "attribute": attribute_name, "value": value},
-        branch_name=branch_name,
-    )
-    log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
+    try:
+        await client.execute_graphql(
+            query=UPDATE_ATTRIBUTE,
+            variables={"id": obj.node_id, "kind": node_kind, "attribute": attribute_name, "value": value},
+            branch_name=branch_name,
+        )
+        log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
+    except URLNotFoundError:
+        log.warning(
+            f"Update of computed attribute {node_kind}.{attribute_name} failed for branch {branch_name} (not found)"
+        )
 
 
 @flow(
@@ -229,7 +235,13 @@ async def process_jinja2(
 
         for id_filter in computed_macro.node_filters:
             query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
-            response = await client.execute_graphql(query=query, branch_name=branch_name)
+            try:
+                response = await client.execute_graphql(query=query, branch_name=branch_name)
+            except URLNotFoundError:
+                log.warning(
+                    f"Process computed attributes for {computed_attribute_kind}.{computed_attribute_name} failed for branch {branch_name} (not found)"
+                )
+                return
             output = attribute_graphql.parse_response(response=response)
             found.extend(output)
 

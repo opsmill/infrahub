@@ -8,7 +8,7 @@ from infrahub.graphql.manager import GraphQLSchemaManager
 
 def test_graphql_generate_schema(
     benchmark, db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
     schema = benchmark(gqlm.generate)

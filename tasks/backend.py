@@ -182,7 +182,7 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
         context.run(exec_cmd)
 
     _generate_protocols(context=context)
-    exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py"
+    exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py backend/tests/protocols.py"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -279,9 +279,17 @@ def _sort_and_filter_models(
 
 
 def _generate_protocols(context: Context) -> None:
+    import sys
+
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.schema.definitions.core import core_models
+
+    # We need to insert this folder in the search order to ensure
+    # that it appears before the python_sdk folder since that folder also has
+    # a 'tests' module and the sys.path seems to be random between runs.
+    sys.path.insert(0, f"{ESCAPED_REPO_PATH}/backend")
+    from tests.helpers.schema import test_models
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
     env.filters["inheritance"] = _jinja2_filter_inheritance
@@ -293,6 +301,20 @@ def _generate_protocols(context: Context) -> None:
 
     protocols_rendered = template.render(
         generics=_sort_and_filter_models(core_models["generics"]), models=_sort_and_filter_models(core_models["nodes"])
+    )
+    protocols_output = f"{generated}/protocols.py"
+    Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
+
+    execute_command(context=context, command=f"ruff format {protocols_output}")
+    execute_command(context=context, command=f"ruff check --fix {protocols_output}")
+
+    # Export test protocols for backend code use
+    generated = f"{ESCAPED_REPO_PATH}/backend/tests/"
+
+    test_models["nodes"].extend(core_models["nodes"])
+    test_models["generics"].extend(core_models["generics"])
+    protocols_rendered = template.render(
+        generics=_sort_and_filter_models(test_models["generics"]), models=_sort_and_filter_models(test_models["nodes"])
     )
     protocols_output = f"{generated}/protocols.py"
     Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")

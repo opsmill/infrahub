@@ -8,6 +8,7 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
 from prefect import settings as prefect_settings
 from prefect.client.schemas.objects import FlowRun
+from prefect.context import AsyncClientContext
 from prefect.flow_engine import run_flow_async
 from prefect.logging.handlers import APILogHandler
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
@@ -18,6 +19,7 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.initialization import initialization
+from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
@@ -27,6 +29,7 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_http,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -129,6 +132,9 @@ class InfrahubWorkerAsync(BaseWorker):
 
             await self.service.component.refresh_schema_hash()
 
+        async with self.service.database.start_session() as dbs:
+            await validate_graph_version(db=dbs)
+
         initialize_repositories_directory()
         build_component_registry()
         await self.service.scheduler.start_schedule()
@@ -138,7 +144,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         flow_run: FlowRun,
         configuration: BaseJobConfiguration,
-        task_status: TaskStatus | None = None,
+        task_status: TaskStatus[int] | None = None,
     ) -> BaseWorkerResult:
         flow_run_logger = self.get_flow_run_logger(flow_run)
 
@@ -154,7 +160,9 @@ class InfrahubWorkerAsync(BaseWorker):
         if task_status:
             task_status.started(True)
 
-        await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
+        async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
+            ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
+            await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 
