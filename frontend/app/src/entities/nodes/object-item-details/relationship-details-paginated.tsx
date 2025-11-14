@@ -57,7 +57,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     onDeleteRelationship,
   } = props;
 
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
 
   const schemaList = useAtomValue(nodeSchemasAtom);
   const branch = useAtomValue(currentBranchAtom);
@@ -77,7 +77,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       const relatedObject = relationship.node[column.name]?.node;
       if (!relatedObject) return true;
 
-      return relatedObject.id !== objectid;
+      return relatedObject.id !== objectId;
     });
   });
 
@@ -126,7 +126,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     const mutationString = updateObjectWithId({
       kind: parentSchema?.kind,
       data: stringifyWithoutQuotes({
-        id: objectid,
+        id: objectId,
         [relationshipSchema.name]: newList,
       }),
     });
@@ -399,7 +399,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 refetch();
               }
             }}
-            objectid={relatedObjectToEdit.id}
+            objectId={relatedObjectToEdit.id}
             objectname={relatedObjectToEdit.__typename}
           />
         </SlideOver>

@@ -11,14 +11,14 @@ import { RequireObjectPermissions } from "@/entities/permission/ui/require-objec
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 function ObjectDetailsPage() {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
   const { schema } = useSchema(objectKind);
 
   if (!schema) {
     return <ErrorScreen message={`Schema ${objectKind} not found.`} />;
   }
 
-  if (!objectid) {
+  if (!objectId) {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
   }
 
@@ -32,13 +32,13 @@ function ObjectDetailsPage() {
           return (
             <GraphqlQueryDetails
               graphqlQuerySchema={schema}
-              graphqlQueryId={objectid}
+              graphqlQueryId={objectId}
               permission={permission}
             />
           );
         }
 
-        return <ObjectDetails objectSchema={schema} objectId={objectid} permission={permission} />;
+        return <ObjectDetails objectSchema={schema} objectId={objectId} permission={permission} />;
       }}
     </RequireObjectPermissions>
   );
