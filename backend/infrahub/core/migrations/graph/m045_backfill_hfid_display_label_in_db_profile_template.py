@@ -9,6 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import DefaultBranchNodeCount, Migration044
 from infrahub.core.migrations.shared import MigrationResult, get_migration_console
+from infrahub.exceptions import SchemaNotFoundError
 
 from .load_schema_branch import get_or_load_schema_branch
 
@@ -35,8 +36,9 @@ class Migration045(Migration044):
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
 
         main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
+        kinds_to_skip = self.kinds_to_skip + main_schema_branch.node_names
 
-        total_nodes_query = await DefaultBranchNodeCount.init(db=db, kinds_to_skip=self.kinds_to_skip)
+        total_nodes_query = await DefaultBranchNodeCount.init(db=db, kinds_to_skip=kinds_to_skip)
         await total_nodes_query.execute(db=db)
         total_nodes_count = total_nodes_query.get_num_nodes()
 
@@ -99,22 +101,31 @@ class Migration045(Migration044):
                     continue
 
                 node_schema: ProfileSchema | TemplateSchema
-                default_node_schema: ProfileSchema | TemplateSchema
-                if node_schema_name in main_schema_branch.profile_names:
-                    node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
-                    default_node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
+                default_node_schema: ProfileSchema | TemplateSchema | None
+                if node_schema_name in schema_branch.profile_names:
+                    node_schema = schema_branch.get_profile(name=node_schema_name, duplicate=False)
+                    try:
+                        default_node_schema = main_schema_branch.get_profile(name=node_schema_name, duplicate=False)
+                    except SchemaNotFoundError:
+                        default_node_schema = None
                 else:
-                    node_schema = main_schema_branch.get_template(name=node_schema_name, duplicate=False)
-                    default_node_schema = main_schema_branch.get_template(name=node_schema_name, duplicate=False)
+                    node_schema = schema_branch.get_template(name=node_schema_name, duplicate=False)
+                    try:
+                        default_node_schema = main_schema_branch.get_template(name=node_schema_name, duplicate=False)
+                    except SchemaNotFoundError:
+                        default_node_schema = None
 
                 schemas_for_universal_update_map = {}
                 schemas_for_targeted_update_map = {}
-                if default_node_schema.display_label != node_schema.display_label:
+                if default_node_schema is None or default_node_schema.display_label != node_schema.display_label:
                     schemas_for_universal_update_map[display_labels_attribute_schema] = display_label_attribute_schema
                 elif node_schema.display_labels:
                     schemas_for_targeted_update_map[display_labels_attribute_schema] = display_label_attribute_schema
 
-                if default_node_schema.human_friendly_id != node_schema.human_friendly_id:
+                if (
+                    default_node_schema is None
+                    or default_node_schema.human_friendly_id != node_schema.human_friendly_id
+                ):
                     schemas_for_universal_update_map[hfid_attribute_schema] = hfid_attribute_schema
                 elif node_schema.human_friendly_id:
                     schemas_for_targeted_update_map[hfid_attribute_schema] = hfid_attribute_schema
