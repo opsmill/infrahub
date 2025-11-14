@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-from pathlib import Path
 from typing import Any
 
 import typer
@@ -214,8 +213,9 @@ class InfrahubWorkerAsync(BaseWorker):
 
     async def set_git_global_config(self) -> None:
         if INFRAHUB_PRODUCTION and not os.getenv("GIT_GLOBAL_CONFIG"):
-            Path(DEFAULT_GIT_GLOBAL_CONFIG_DIRECTORY).mkdir(parents=True, exist_ok=True)
+            os.makedirs(os.path.dirname(DEFAULT_GIT_GLOBAL_CONFIG_DIRECTORY), exist_ok=True)  # noqa: PTH120, PTH103
             os.environ["GIT_GLOBAL_CONFIG"] = DEFAULT_GIT_GLOBAL_CONFIG_FILE
+            self._logger.info(f"Set git config file to {DEFAULT_GIT_GLOBAL_CONFIG_FILE}")
 
         if config.SETTINGS.git.user_name:
             proc_name = await asyncio.create_subprocess_exec(
