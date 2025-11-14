@@ -3,7 +3,7 @@ import type { GetTasksParams } from "./get-tasks/get-tasks.query";
 export const tasksQueryKeys = {
   all: ["tasks"] as const,
   filters: (filters: GetTasksParams) => [
-    tasksQueryKeys.all,
+    ...tasksQueryKeys.all,
     filters?.branchName,
     filters?.states,
     filters?.search,
