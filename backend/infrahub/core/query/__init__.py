@@ -4,8 +4,10 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
+from io import StringIO
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
 
+from cachetools import LFUCache, cached
 import ujson
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
@@ -412,6 +414,11 @@ class Query(ABC):
         Right now it's mainly used to add more labels to the metrics."""
         return {}
 
+    @staticmethod
+    @cached(LFUCache(maxsize=1024))
+    def _split_query_lines(query: str) -> list[str]:
+        return [line.strip() for line in query.split("\n") if line.strip()]
+
     def add_to_query(self, query: str | list[str]) -> None:
         """Add a new section at the end of the query.
 
@@ -422,7 +429,7 @@ class Query(ABC):
             for item in query:
                 self.add_to_query(query=item)
         else:
-            self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
+            self.query_lines.extend(self._split_query_lines(query=query))
 
     def add_subquery(self, subquery: str, node_alias: str, with_clause: str | None = None) -> None:
         self.add_to_query(f"CALL ({node_alias}) {{")
