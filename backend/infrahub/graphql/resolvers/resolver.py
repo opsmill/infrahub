@@ -5,10 +5,11 @@ from typing import TYPE_CHECKING, Any
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
-from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.metadata_determiner import MetadataDeterminer
 
 from ..models import OrderModel
 from ..parser import extract_selection
@@ -17,7 +18,7 @@ from ..permissions import get_permissions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -149,7 +150,7 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: NodeSchema = (
+    schema: MainSchemaTypes = (
         info.return_type.of_type.graphene_type._meta.schema
         if isinstance(info.return_type, GraphQLNonNull)
         else info.return_type.graphene_type._meta.schema
@@ -169,10 +170,6 @@ async def default_paginated_list_resolver(
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
 
-        include_metadata = MetadataOptions.LINKED_NODES
-        if "_updated_at" in node_fields:
-            include_metadata |= MetadataOptions.UPDATED_AT
-
         permission_set: dict[str, Any] | None = None
         permissions = (
             await get_permissions(schema=schema, graphql_context=graphql_context)
@@ -189,6 +186,14 @@ async def default_paginated_list_resolver(
 
         objs = []
         if edges or "hfid" in filters:
+            metadata_determiner = MetadataDeterminer(
+                schema_branch=db.schema.get_schema_branch(name=graphql_context.branch.name)
+            )
+            include_metadata = await metadata_determiner.determine_metadata(
+                schema=schema,
+                node_fields=node_fields,
+            )
+
             objs = await NodeManager.query(
                 db=db,
                 schema=schema,
@@ -312,6 +317,8 @@ async def hierarchy_resolver(
 
         if not node_fields:
             return response
+
+        # TODO: determine metadata options from fields
 
         objs = await NodeManager.query_hierarchy(
             db=db,

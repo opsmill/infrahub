@@ -20,7 +20,7 @@ from infrahub.core.attribute import (
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
-from infrahub.core.manager import NodeManager
+from infrahub.core.manager import MetadataQueryOptions, NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp, current_timestamp
@@ -499,7 +499,9 @@ async def test_attribute_properties_and_metadata_on_branch(
     # Retrieve the object from the database and validate that the source and owner properties are correct
     refreshed_crit_low = await NodeManager.get_one(
         id=crit_low.id,
-        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
         db=db,
         branch=default_branch,
     )
@@ -517,7 +519,9 @@ async def test_attribute_properties_and_metadata_on_branch(
     # Update the source and owner properties on the branch
     crit_low_branch = await NodeManager.get_one(
         id=crit_low.id,
-        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
         db=db,
         branch=branch1,
     )
@@ -537,7 +541,9 @@ async def test_attribute_properties_and_metadata_on_branch(
     # Retrieve the object on the branch and validate the source and owner properties
     refreshed_crit_low_branch = await NodeManager.get_one(
         id=crit_low.id,
-        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
         db=db,
         branch=branch1,
     )
@@ -552,7 +558,9 @@ async def test_attribute_properties_and_metadata_on_branch(
     # retrieve and verify the properties and metadata on the default branch
     refreshed_crit_low = await NodeManager.get_one(
         id=crit_low.id,
-        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
         db=db,
         branch=default_branch,
     )
@@ -589,7 +597,9 @@ async def test_attribute_properties_and_metadata_on_branch(
     # retrieve and verify the properties and metadata on the default branch
     refreshed_crit_low = await NodeManager.get_one(
         id=crit_low.id,
-        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
         db=db,
         branch=default_branch,
     )
@@ -603,7 +613,12 @@ async def test_attribute_properties_and_metadata_on_branch(
 
     # Delete the source and owner properties on the object on the default branch
     refreshed_crit_low = await NodeManager.get_one(
-        id=crit_low.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=default_branch
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
     )
     refreshed_crit_low.name.clear_source()
     refreshed_crit_low.name.clear_owner()
@@ -614,7 +629,9 @@ async def test_attribute_properties_and_metadata_on_branch(
     # Retrieve the object on the default branch and validate the source and owner properties
     refreshed_crit_low = await NodeManager.get_one(
         id=crit_low.id,
-        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
         db=db,
         branch=default_branch,
     )
