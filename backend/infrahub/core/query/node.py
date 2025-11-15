@@ -693,7 +693,7 @@ CALL (a) {
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
-        self.return_labels.extend(["isv", "isp"])
+        self.return_labels.extend(["isv", "isp", "rel_isp"])
 
         if self.include_source:
             query = """
