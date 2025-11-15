@@ -672,7 +672,7 @@ WHERE r2.status = "active"
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
-        self.return_labels = ["n", "a", "av", "r1", "r2", "is_from_profile"]
+        self.return_labels = ["n", "a", "av", "r2", "is_from_profile"]
 
         # Add Is_Protected and Is_visible
         query = """
@@ -693,7 +693,7 @@ CALL (a) {
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
-        self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
+        self.return_labels.extend(["isv", "isp"])
 
         if self.include_source:
             query = """
@@ -709,7 +709,7 @@ CALL (a) {
                 CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
             """ % {"branch_filter": branch_filter}
             self.add_to_query(query)
-            self.return_labels.extend(["source", "rel_source"])
+            self.return_labels.extend(["source"])
 
         if self.include_owner:
             query = """
@@ -725,7 +725,7 @@ CALL (a) {
                 CASE WHEN rel_owner.status = "active" THEN rel_owner ELSE NULL END AS rel_owner
             """ % {"branch_filter": branch_filter}
             self.add_to_query(query)
-            self.return_labels.extend(["owner", "rel_owner"])
+            self.return_labels.extend(["owner"])
 
     def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
         attrs_by_node: dict[str, NodeAttributesFromDB] = {}
