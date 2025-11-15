@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
@@ -77,20 +77,22 @@ export const ArtifactsDiff = forwardRef((_, ref) => {
   }
 
   // Sort artifacts by action type (ADDED, UPDATED, REMOVED) then alphabetically by display_label
-  const sortedArtifacts = Object.values(artifactsDiff).sort((a, b) => {
-    // Define action priority order
-    const actionPriority = { ADDED: 1, UPDATED: 2, REMOVED: 3 };
+  const sortedArtifacts = useMemo(() => {
+    return Object.values(artifactsDiff).sort((a, b) => {
+      // Define action priority order
+      const actionPriority = { ADDED: 1, UPDATED: 2, REMOVED: 3 };
 
-    // Sort by action first
-    const actionDiff = (actionPriority[a.action] || 99) - (actionPriority[b.action] || 99);
-    if (actionDiff !== 0) return actionDiff;
+      // Sort by action first
+      const actionDiff = (actionPriority[a.action] || 99) - (actionPriority[b.action] || 99);
+      if (actionDiff !== 0) return actionDiff;
 
-    // Then sort alphabetically (case-insensitive) by display_label
-    // Normalize to empty string if display_label is null/undefined
-    const labelA = (a.display_label ?? "").toLowerCase();
-    const labelB = (b.display_label ?? "").toLowerCase();
-    return labelA.localeCompare(labelB);
-  });
+      // Then sort alphabetically (case-insensitive) by display_label
+      // Normalize to empty string if display_label is null/undefined
+      const labelA = (a.display_label ?? "").toLowerCase();
+      const labelB = (b.display_label ?? "").toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
+  }, [artifactsDiff]);
 
   return (
     <div className="text-sm">
