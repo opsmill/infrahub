@@ -748,12 +748,15 @@ class RelationshipValidatorList:
 
 
 class RelationshipManager:
-    def __init__(self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node) -> None:
+    def __init__(
+        self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node, is_from_profile: bool = False
+    ) -> None:
         self.schema: RelationshipSchema = schema
         self.name: str = schema.name
         self.node: Node = node
         self.branch: Branch = branch
         self.at = at
+        self.is_from_profile = is_from_profile
 
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
