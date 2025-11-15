@@ -10,11 +10,13 @@ from graphql import (
     GraphQLSchema,
     GraphQLUnionType,
     parse,
+    validate,
 )
 
 from infrahub.exceptions import GraphQLQueryError
 
 if TYPE_CHECKING:
+    from graphql.error import GraphQLError
     from graphql.execution import ExecutionResult
     from graphql.language import Source
     from graphql.language.ast import DocumentNode
@@ -23,6 +25,11 @@ if TYPE_CHECKING:
 @lru_cache(maxsize=1024)
 def cached_parse(query: str | Source) -> DocumentNode:
     return parse(query)
+
+
+@lru_cache(maxsize=1024)
+def cached_validate(schema: GraphQLSchema, document_ast: DocumentNode) -> list[GraphQLError]:
+    return validate(schema, document_ast)
 
 
 def extract_data(query_name: str, result: ExecutionResult) -> dict:
