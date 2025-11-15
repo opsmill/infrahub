@@ -57,7 +57,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   test("3. Update an organization", async ({ page }) => {
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
-      await expect(page.getByTestId("cr1234")).toContainText("main");
+      await expect(page.getByTestId("cr1234")).toContainText("cr1234");
 
       await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
       await page.getByRole("menuitem", { name: "Tenant" }).click();
