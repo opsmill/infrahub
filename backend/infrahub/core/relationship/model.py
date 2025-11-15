@@ -97,7 +97,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         node_id: str | None = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
         if not node and not node_id:
             raise ValueError("Either node or node_id must be provided.")
 

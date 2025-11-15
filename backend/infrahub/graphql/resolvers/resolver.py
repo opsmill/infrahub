@@ -318,8 +318,6 @@ async def hierarchy_resolver(
         if not node_fields:
             return response
 
-        # TODO: determine metadata options from fields
-
         objs = await NodeManager.query_hierarchy(
             db=db,
             id=parent["id"],
