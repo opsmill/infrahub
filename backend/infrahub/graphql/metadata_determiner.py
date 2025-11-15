@@ -49,6 +49,10 @@ class MetadataDeterminer:
                 attribute_metadata_options |= MetadataOptions.CREATED_AT
             if not (attribute_metadata_options & MetadataOptions.CREATED_BY) and "created_by" in attr_fields:
                 attribute_metadata_options |= MetadataOptions.CREATED_BY
+            if not (attribute_metadata_options & MetadataOptions.SOURCE) and "source" in attr_fields:
+                attribute_metadata_options |= MetadataOptions.SOURCE
+            if not (attribute_metadata_options & MetadataOptions.OWNER) and "owner" in attr_fields:
+                attribute_metadata_options |= MetadataOptions.OWNER
 
         return MetadataQueryOptions(
             node_level=node_metadata_options,
