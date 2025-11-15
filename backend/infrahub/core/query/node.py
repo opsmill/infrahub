@@ -709,7 +709,7 @@ CALL (a) {
                 CASE WHEN rel_source.status = "active" THEN rel_source ELSE NULL END AS rel_source
             """ % {"branch_filter": branch_filter}
             self.add_to_query(query)
-            self.return_labels.extend(["source"])
+            self.return_labels.extend(["source", "rel_source"])
 
         if self.include_owner:
             query = """
