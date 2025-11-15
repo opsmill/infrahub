@@ -86,13 +86,16 @@ export const ArtifactsDiff = forwardRef((_, ref) => {
     if (actionDiff !== 0) return actionDiff;
 
     // Then sort alphabetically (case-insensitive) by display_label
-    return a.display_label.toLowerCase().localeCompare(b.display_label.toLowerCase());
+    // Normalize to empty string if display_label is null/undefined
+    const labelA = (a.display_label ?? "").toLowerCase();
+    const labelB = (b.display_label ?? "").toLowerCase();
+    return labelA.localeCompare(labelB);
   });
 
   return (
     <div className="text-sm">
-      {sortedArtifacts.map((diff, index) => (
-        <ArtifactRepoDiff key={index} diff={diff} />
+      {sortedArtifacts.map((diff) => (
+        <ArtifactRepoDiff key={diff.id} diff={diff} />
       ))}
     </div>
   );
