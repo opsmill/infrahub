@@ -2,7 +2,7 @@ from typing import Any
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
