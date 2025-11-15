@@ -2,8 +2,10 @@ from typing import Any
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipKind
+from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.node import Node
+from infrahub.core.relationship import RelationshipManager
+from infrahub.core.relationship.model import Relationship
 from infrahub.database import InfrahubDatabase
 
 from .queries.get_profile_data import GetProfileDataQuery, ProfileData, RelationshipFilter
@@ -109,10 +111,68 @@ class NodeProfilesApplier:
         node_attr.is_default = True
         node_attr.is_from_profile = False
 
+    async def _apply_profile_to_relationship(
+        self, node: Node, node_rel: RelationshipManager, peer_ids: list[str], profile_id: str
+    ) -> bool:
+        """Apply profile relationship peers to a node relationship.
+
+        Profile relationships are only applied if the node has no existing peers for this relationship.
+        If any peers exist, profile relationships are not applied.
+        """
+        is_changed = False
+        rel_schema = node_rel.schema
+
+        current_rels = await node_rel.get_relationships(db=self.db)
+        current_peer_ids = {rel.peer_id for rel in current_rels if rel.peer_id}
+
+        if current_peer_ids:
+            return is_changed
+
+        # if current_peer_ids:
+        #     # Node already has peers for this relationship, don't apply profile relationships
+        #     # But we should still remove any existing profile relationships that are no longer valid
+        #     for rel in list(current_rels):
+        #         if node_rel.is_from_profile and rel.source_id == profile_id:  # type: ignore[attr-defined]
+        #             if rel.peer_id:
+        #                 await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
+        #                 is_changed = True
+        #     return is_changed
+
+        if rel_schema.cardinality == RelationshipCardinality.ONE:
+            target_peer_ids = {peer_ids[0]} if peer_ids else set()
+        else:
+            target_peer_ids = set(peer_ids)
+
+        # Remove relationships that are from this profile but not in target
+        for rel in list(current_rels):
+            source = await rel.get_source(db=self.db)
+            if node_rel.is_from_profile and source and source.id == profile_id:
+                if rel.peer_id and rel.peer_id not in target_peer_ids:
+                    await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
+                    node_rel.is_from_profile = True
+                    is_changed = True
+
+        # Add relationships that are in target but not present
+        for peer_id in target_peer_ids:
+            if peer_id not in current_peer_ids:
+                new_rel = Relationship(schema=rel_schema, branch=self.branch, node=node)
+                await new_rel.new(db=self.db, data=peer_id)
+                new_rel.set_source(value=profile_id)
+                node_rel._relationships.append(new_rel)
+            node_rel.is_from_profile = True
+            is_changed = True
+
+        await node_rel.save(db=self.db)
+
+        return is_changed
+
+    async def _remove_profile_from_relationship(self, relationship_manager: RelationshipManager) -> None:
+        relationship_manager.is_from_profile = False
+        await relationship_manager.delete(db=self.db)
+
     async def apply_profiles(self, node: Node) -> list[str]:
         profile_ids = await self._get_profile_ids(node=node)
         attr_names_for_profiles = await self._get_attr_names_for_profiles(node=node)
-
         if not attr_names_for_profiles:
             return []
         rel_names_for_profiles = await self._get_rel_names_for_profiles(node=node)
@@ -146,4 +206,24 @@ class NodeProfilesApplier:
             if not has_profile_data and node_attr.is_from_profile:
                 self._remove_profile_from_attribute(node_attr=node_attr)
                 updated_field_names.append(attr_name)
+
+        for rel_filter in rel_filters_for_profiles:
+            has_profile_data = False
+            node_rel = node.get_relationship_by_identifier(rel_filter.relationship_identifier.removeprefix("profile_"))
+
+            for profile_data in sorted_profile_data:
+                profile_peers = profile_data.relationship_peers.get(rel_filter)
+                if profile_peers:
+                    has_profile_data = True
+                    is_changed = await self._apply_profile_to_relationship(
+                        node=node, node_rel=node_rel, peer_ids=profile_peers, profile_id=profile_data.uuid
+                    )
+                    if is_changed:
+                        updated_field_names.append(node_rel.name)
+                    break
+
+            if not has_profile_data and node_rel.is_from_profile:
+                await self._remove_profile_from_relationship(relationship_manager=node_rel)
+
+                updated_field_names.append(node_rel.name)
         return updated_field_names

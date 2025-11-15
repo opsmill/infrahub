@@ -135,6 +135,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
 
+    def get_relationship_by_identifier(self, identifier: str) -> RelationshipManager:
+        for rel_schema in self._schema.relationships:
+            if rel_schema.identifier == identifier:
+                return self.get_relationship(rel_schema.name)
+        raise ValueError(f"Unable to find the relationship with the identifier {identifier} for {self.get_kind()}")
+
     def uses_profiles(self) -> bool:
         for attr_name in self.get_schema().attribute_names:
             try:
