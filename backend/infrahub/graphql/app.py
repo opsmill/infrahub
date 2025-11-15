@@ -59,7 +59,7 @@ from .metrics import (
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
 from .middleware import raise_on_mutation_on_branch_needing_rebase
-from .utils import cached_parse
+from .utils import cached_parse, cached_validate
 
 if TYPE_CHECKING:
     import graphene
@@ -119,7 +119,7 @@ async def graphql_impl(
     except GraphQLError as error:
         return ExecutionResult(data=None, errors=[error])
 
-    validation_errors = validate(schema, document)
+    validation_errors = cached_validate(schema, document)
     if validation_errors:
         return ExecutionResult(data=None, errors=validation_errors)
 
@@ -321,6 +321,7 @@ class InfrahubGraphQLApp:
 
         response: dict[str, Any] = {"data": result.data}
         if result.errors:
+            GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(result.errors))
             for error in result.errors:
                 if error.original_error:
                     self._log_error(error=error.original_error)
@@ -338,10 +339,6 @@ class InfrahubGraphQLApp:
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
         GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
         GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(impacted_models))
-
-        _, errors = analyzed_query.is_valid
-        if errors:
-            GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
 
         return json_response
 
