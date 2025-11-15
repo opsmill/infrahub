@@ -76,9 +76,22 @@ export const ArtifactsDiff = forwardRef((_, ref) => {
     return <NoDataFound message="No artifact found." />;
   }
 
+  // Sort artifacts by action type (ADDED, UPDATED, REMOVED) then alphabetically by display_label
+  const sortedArtifacts = Object.values(artifactsDiff).sort((a, b) => {
+    // Define action priority order
+    const actionPriority = { ADDED: 1, UPDATED: 2, REMOVED: 3 };
+
+    // Sort by action first
+    const actionDiff = (actionPriority[a.action] || 99) - (actionPriority[b.action] || 99);
+    if (actionDiff !== 0) return actionDiff;
+
+    // Then sort alphabetically (case-insensitive) by display_label
+    return a.display_label.toLowerCase().localeCompare(b.display_label.toLowerCase());
+  });
+
   return (
     <div className="text-sm">
-      {Object.values(artifactsDiff).map((diff, index) => (
+      {sortedArtifacts.map((diff, index) => (
         <ArtifactRepoDiff key={index} diff={diff} />
       ))}
     </div>
