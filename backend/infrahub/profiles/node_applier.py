@@ -10,6 +10,15 @@ from .queries.get_profile_data import GetProfileDataQuery, ProfileData
 
 
 class NodeProfilesApplier:
+    """Applies profile values to nodes and templates.
+    
+    Profile values take precedence over both default values and template-sourced values.
+    When a template has profiles assigned:
+    1. Profile values are applied to the template itself
+    2. Nodes created from that template inherit the profile values (not the template's own values)
+    3. Profile priority determines which profile wins when multiple profiles set the same attribute
+    """
+    
     def __init__(self, db: InfrahubDatabase, branch: Branch):
         self.db = db
         self.branch = branch
@@ -23,6 +32,15 @@ class NodeProfilesApplier:
         return [pr.peer_id for pr in profile_rels if pr.peer_id]
 
     async def _get_attr_names_for_profiles(self, node: Node) -> list[str]:
+        """Get the names of attributes that can be affected by profile changes.
+        
+        Returns attributes that are:
+        - Currently set from a profile (is_from_profile=True)
+        - Currently using default values (is_default=True)  
+        - Currently set from a template (source is a TemplateSchema)
+        
+        This allows profiles to override both default values and template-sourced values.
+        """
         node_schema = node.get_schema()
 
         # get the names of attributes that could be affected by profile changes
