@@ -209,13 +209,14 @@ class InfrahubWorkerAsync(BaseWorker):
         self.service = service
 
     async def set_git_global_config(self) -> None:
-        if not os.getenv("GIT_GLOBAL_CONFIG"):
+        global_config_file = config.SETTINGS.git.global_config_file
+        if not os.getenv("GIT_GLOBAL_CONFIG") and global_config_file:
             try:
-                Path(config.SETTINGS.git.global_config_file).mkdir(exist_ok=True, parents=True, mode=0o777)
+                Path(global_config_file).mkdir(exist_ok=True, parents=True, mode=0o777)
             except FileExistsError:
                 ...
-            os.environ["GIT_GLOBAL_CONFIG"] = config.SETTINGS.git.global_config_file
-            self._logger.info(f"Set git config file to {config.SETTINGS.git.global_config_file}")
+            os.environ["GIT_GLOBAL_CONFIG"] = global_config_file
+            self._logger.info(f"Set git config file to {global_config_file}")
 
         if config.SETTINGS.git.user_name:
             proc_name = await asyncio.create_subprocess_exec(
