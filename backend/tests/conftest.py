@@ -1637,7 +1637,7 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
 
 
 @pytest.fixture(scope="class")
-def git_global_config_env_setting() -> Generator[None, None, None]:
+def git_global_config_env_setting() -> Generator[Any, None, None]:
     previous_git_config_global = os.getenv("GIT_CONFIG_GLOBAL")
     previous_git_global_config_file = config.SETTINGS.git.global_config_file
 
