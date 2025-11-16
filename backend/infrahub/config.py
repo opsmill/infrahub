@@ -454,8 +454,26 @@ class GitSettings(BaseSettings):
             "Note: other branches created with sync with git will be imported also"
         ),
     )
-    user_name: str | None = Field(default=None, description="User name of the git user")
-    user_email: EmailStr | None = Field(default=None, description="Email of the git user")
+    user_name: str | None = Field(
+        default=None,
+        description=(
+            "User name of the git user. This will be used as the user name when Infrahub commits code to a repository"
+        ),
+    )
+    user_email: EmailStr | None = Field(
+        default=None,
+        description=(
+            "Email of the git user. This will be used as the user email when Infrahub commits code to a repository"
+        ),
+    )
+    global_config_file: str | None = Field(
+        default="/opt/infrahub/.gitconfig",
+        description=(
+            "The location of the git config file. "
+            "This will be set as the system `GIT_GLOBAL_CONFIG` environment variable "
+            "if the environment variable is not initially set"
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:

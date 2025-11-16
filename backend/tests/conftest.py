@@ -3,6 +3,7 @@ import importlib
 import logging
 import os
 import sys
+import tempfile
 import time
 from contextlib import ExitStack
 from copy import deepcopy
@@ -1633,3 +1634,28 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
     }
 
     return schema
+
+
+@pytest.fixture(scope="class")
+def git_global_config_env_setting() -> Generator[None, None, None]:
+    previous_git_config_global = os.getenv("GIT_CONFIG_GLOBAL")
+    previous_git_global_config_file = config.SETTINGS.git.global_config_file
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+        tmp_git_config = tmpfile.name
+
+    os.environ["GIT_CONFIG_GLOBAL"] = tmp_git_config
+    assert os.getenv("GIT_CONFIG_GLOBAL") is not None and os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
+    config.SETTINGS.git.global_config_file = tmp_git_config
+
+    yield tmp_git_config
+
+    if previous_git_config_global:
+        os.environ["GIT_CONFIG_GLOBAL"] = previous_git_config_global
+        assert os.getenv("GIT_CONFIG_GLOBAL") and os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
+    else:
+        os.environ.pop("GIT_CONFIG_GLOBAL", None)
+        assert os.getenv("GIT_CONFIG_GLOBAL") is None
+
+    config.SETTINGS.git.global_config_file = previous_git_global_config_file
+    Path(tmp_git_config).unlink()
