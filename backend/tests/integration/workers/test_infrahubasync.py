@@ -121,7 +121,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         return stdout.decode().strip() if proc.returncode == 0 else None
 
     @pytest.fixture
-    def git_user_settings(self, git_global_config_env_setting) -> Generator[None, None]:
+    def git_user_settings(self, git_global_config_env_setting) -> Generator[None, None, None]:
         initial_user_name = config.SETTINGS.git.user_name
         initial_user_email = config.SETTINGS.git.user_email
 
