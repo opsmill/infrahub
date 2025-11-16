@@ -137,6 +137,113 @@ class IPPrefixSubnetFetch(Query):
         return subnets
 
 
+class IPPrefixSubnetFetchFree(Query):
+    name = "ipprefix_subnet_fetch_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        target_prefixlen: int,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ):
+        self.obj = obj
+        self.target_prefixlen = target_prefixlen
+        self.namespace_id = _get_namespace_id(namespace)
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+        self.params["parent_start"] = int(self.obj.network_address)
+        self.params["parent_end"] = int(self.obj.broadcast_address)
+        self.params["block_size"] = 1 << (32 - self.target_prefixlen)
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN ns AS ns1, r AS r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r1 AS r
+        WHERE r.status = "active"
+        WITH ns
+        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
+        WHERE ns_rel.name = "ip_namespace__ip_prefix"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen > $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
+        WITH
+            collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw,
+            $block_size AS block_size,
+            $parent_start AS parent_start,
+            $parent_end AS parent_end
+        WITH block_size, parent_start, parent_end,
+            [r IN ranges_raw |
+                {
+                    start: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)),
+                    end: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)) + toInteger(2 ^ (32 - r.prefixlen)) - 1
+                }
+            ] AS ranges
+        UNWIND CASE WHEN size(ranges) = 0 THEN [{start: null, end: null}] ELSE ranges END AS r
+        WITH block_size, parent_start, parent_end, r
+        ORDER BY r.start ASC
+        WITH block_size, parent_start, parent_end, collect(r) AS ranges_sorted_raw
+        WITH block_size, parent_start, parent_end,
+            [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
+        WITH block_size, parent_start, parent_end,
+            reduce(acc = {cursor: parent_start, found: null}, r IN ranges_sorted |
+                CASE
+                    WHEN acc.found IS NOT NULL THEN acc
+                    WHEN r.end < acc.cursor THEN acc
+                    WHEN acc.cursor + block_size - 1 < r.start THEN {cursor: acc.cursor, found: acc.cursor}
+                    ELSE
+                        {
+                            cursor: CASE
+                                WHEN toInteger((r.end + 1 + block_size - 1) / block_size) * block_size > parent_end + 1
+                                THEN parent_end + 1
+                                ELSE toInteger((r.end + 1 + block_size - 1) / block_size) * block_size
+                            END,
+                            found: null
+                        }
+                END
+            ) AS res
+        WITH res, block_size, parent_end
+        WITH CASE
+            WHEN res.found IS NOT NULL THEN res.found
+            WHEN res.cursor + block_size - 1 <= parent_end THEN res.cursor
+            ELSE NULL
+        END AS free_start
+        WHERE free_start IS NOT NULL
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPPREFIX,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_start"]
+        self.limit = 1
+
+
 class IPPrefixIPAddressFetch(Query):
     name = "ipprefix_ipaddress_fetch"
     type = QueryType.READ
@@ -359,6 +466,42 @@ async def get_next_free_ip_address(
     )
     await query.execute(db=db)
     return query.get_address()
+
+
+async def get_next_free_prefix(
+    db: InfrahubDatabase,
+    ip_prefix: IPNetworkType,
+    target_prefix_length: int,
+    namespace: Node | str | None = None,
+    branch: Branch | str | None = None,
+    at: Timestamp | str | None = None,
+    branch_agnostic: bool = False,
+) -> IPNetworkType | None:
+    if ip_prefix.version != 4:
+        return None
+    if target_prefix_length < 0 or target_prefix_length > 32:
+        return None
+    if target_prefix_length < ip_prefix.prefixlen:
+        return None
+
+    branch = await registry.get_branch(db=db, branch=branch)
+    query = await IPPrefixSubnetFetchFree.init(
+        db=db,
+        branch=branch,
+        obj=ip_prefix,
+        target_prefixlen=target_prefix_length,
+        namespace=namespace,
+        at=at,
+        branch_agnostic=branch_agnostic,
+    )
+    await query.execute(db=db)
+    result = query.get_result()
+    if not result:
+        return None
+
+    start_value = result.get_as_type("free_start", return_type=int)
+    network_address = ipaddress.IPv4Address(start_value)
+    return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
 
 
 class IPPrefixUtilization(Query):

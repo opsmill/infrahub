@@ -8,7 +8,7 @@ from netaddr import IPSet
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.query.ipam import get_subnets
+from infrahub.core.query.ipam import get_next_free_prefix, get_subnets
 from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
@@ -103,9 +103,24 @@ class CoreIPPrefixPool(Node):
             weighted_resources = list(resources.values())
 
         for resource in weighted_resources:
+            resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
+
+            if resource_prefix.version == 4:
+                next_available = await get_next_free_prefix(
+                    db=db,
+                    ip_prefix=resource_prefix,
+                    target_prefix_length=prefixlen,
+                    namespace=ip_namespace,
+                    branch=self._branch,
+                    branch_agnostic=True,
+                )
+                if next_available:
+                    return next_available
+                continue
+
             subnets = await get_subnets(
                 db=db,
-                ip_prefix=ipaddress.ip_network(resource.prefix.value),  # type: ignore[attr-defined]
+                ip_prefix=resource_prefix,
                 namespace=ip_namespace,
                 branch=self._branch,
                 branch_agnostic=True,
@@ -116,8 +131,9 @@ class CoreIPPrefixPool(Node):
                 pool.remove(addr=str(subnet.prefix))
 
             try:
-                prefix_ver = ipaddress.ip_network(resource.prefix.value).version
-                next_available = get_next_available_prefix(pool=pool, prefix_length=prefixlen, prefix_ver=prefix_ver)
+                next_available = get_next_available_prefix(
+                    pool=pool, prefix_length=prefixlen, prefix_ver=resource_prefix.version
+                )
                 return next_available
             except ValueError:
                 continue
