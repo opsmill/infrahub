@@ -5,6 +5,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 
+import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -24,7 +25,7 @@ export const getObject: GetObject = async ({
   atDate,
   objectSchema,
   objectId,
-  getAttributesVisible = (attributes) => attributes, // all attributes are visible by default on detailed view
+  getAttributesVisible = getAttributesVisibleInDetailedView,
   getRelationshipsVisible = getRelationshipsVisibleInDetailedView,
   relationshipFragment,
 }) => {

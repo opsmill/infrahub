@@ -12,6 +12,8 @@ ENV PATH="${PATH}:/root/.local/bin" \
     INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend/app" \
     INFRAHUB_DOCS_DIRECTORY="/opt/infrahub/docs"
 
+RUN groupadd -r -g 1000 infrahub && useradd --no-log-init -u 1000 --home-dir /opt/infrahub -r -g infrahub infrahub
+
 RUN mkdir /prom_shared /remote
 
 RUN apt-get update && \
@@ -75,6 +77,9 @@ RUN npm run build && npm cache clean --force
 # ****************************************************************
 FROM base AS backend
 
+RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow && \
+    chown -R infrahub:infrahub /opt/infrahub
+
 # --------------------------------------------
 # Configure Git & Environment
 # --------------------------------------------
@@ -83,8 +88,6 @@ RUN git config --global user.name "Infrahub" && \
     git config --global --add safe.directory '*' && \
     git config --global credential.usehttppath true && \
     git config --global credential.helper /usr/local/bin/infrahub-git-credential
-
-RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
 
 WORKDIR /source
 

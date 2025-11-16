@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -208,6 +209,14 @@ class InfrahubWorkerAsync(BaseWorker):
         self.service = service
 
     async def set_git_global_config(self) -> None:
+        if not os.getenv("GIT_GLOBAL_CONFIG"):
+            try:
+                Path(config.SETTINGS.git.global_config_file).mkdir(exist_ok=True, parents=True, mode=0o777)
+            except FileExistsError:
+                ...
+            os.environ["GIT_GLOBAL_CONFIG"] = config.SETTINGS.git.global_config_file
+            self._logger.info(f"Set git config file to {config.SETTINGS.git.global_config_file}")
+
         if config.SETTINGS.git.user_name:
             proc_name = await asyncio.create_subprocess_exec(
                 "git",
@@ -218,8 +227,12 @@ class InfrahubWorkerAsync(BaseWorker):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            await proc_name.wait()
-            self._logger.info("Git user name set")
+            _, stderr_name = await proc_name.communicate()
+            if proc_name.returncode != 0:
+                error_msg = stderr_name.decode("utf-8", errors="ignore").strip() or "unknown error"
+                self._logger.error("Failed to set git user.name: %s", error_msg)
+            else:
+                self._logger.info("Git user name set")
 
         if config.SETTINGS.git.user_email:
             proc_email = await asyncio.create_subprocess_exec(
@@ -231,5 +244,9 @@ class InfrahubWorkerAsync(BaseWorker):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            await proc_email.wait()
-            self._logger.info("Git user email set")
+            _, stderr_name = await proc_email.communicate()
+            if proc_email.returncode != 0:
+                error_msg = stderr_name.decode("utf-8", errors="ignore").strip() or "unknown error"
+                self._logger.error("Failed to set git user.email: %s", error_msg)
+            else:
+                self._logger.info("Git user email set")

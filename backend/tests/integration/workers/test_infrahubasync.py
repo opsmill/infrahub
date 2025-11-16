@@ -1,8 +1,5 @@
 import asyncio
-import os
-import tempfile
-from pathlib import Path
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING, Generator
 
 import pytest
 from prefect.client.orchestration import PrefectClient
@@ -124,51 +121,19 @@ class TestWorker(TestWorkerInfrahubAsync):
         return stdout.decode().strip() if proc.returncode == 0 else None
 
     @pytest.fixture
-    async def git_global_user_config(self) -> AsyncGenerator[None, None]:
-        async def set_git_config(key: str, value: str | None) -> None:
-            if value is not None:
-                proc = await asyncio.create_subprocess_exec("git", "config", "--global", key, value)
-            else:
-                proc = await asyncio.create_subprocess_exec("git", "config", "--global", "--unset", key)
-            await proc.wait()
-
-        with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
-            tmp_git_config = tmpfile.name
-
-        previous_git_config_global = os.getenv("GIT_CONFIG_GLOBAL")
-        os.environ["GIT_CONFIG_GLOBAL"] = tmp_git_config
-        assert os.getenv("GIT_CONFIG_GLOBAL") and os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
-
+    async def git_user_settings(self, git_global_config_env_setting) -> Generator[None, None, None]:
         initial_user_name = config.SETTINGS.git.user_name
         initial_user_email = config.SETTINGS.git.user_email
 
-        user_name = "Test User"
-        user_email = "test@email.com"
-
-        await set_git_config("user.name", user_name)
-        await set_git_config("user.email", user_email)
-        config.SETTINGS.git.user_name = user_name
-        config.SETTINGS.git.user_email = user_email
+        config.SETTINGS.git.user_name = "Test User"
+        config.SETTINGS.git.user_email = "test@email.com"
 
         yield
 
         config.SETTINGS.git.user_name = initial_user_name
         config.SETTINGS.git.user_email = initial_user_email
 
-        if previous_git_config_global:
-            os.environ["GIT_CONFIG_GLOBAL"] = previous_git_config_global
-            assert os.getenv("GIT_CONFIG_GLOBAL") and os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
-        else:
-            os.environ.pop("GIT_CONFIG_GLOBAL", None)
-            assert os.getenv("GIT_CONFIG_GLOBAL") is None
-
-        try:
-            Path(tmp_git_config).unlink()
-        except FileNotFoundError:
-            pass
-
-    async def test_worker_has_set_git_user_config(self, client, work_pool, git_global_user_config) -> None:
-        assert os.getenv("GIT_CONFIG_GLOBAL") is not None
+    async def test_worker_has_set_git_user_config(self, client, work_pool, git_user_settings) -> None:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
         await worker.setup(client=client, metric_port=0)
         user_name = await self._run_git_command("config", "--global", "--get", "user.name")

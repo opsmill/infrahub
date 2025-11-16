@@ -108,7 +108,12 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def prefect_worker(
-        self, client: InfrahubClient, block_storage: Any, prefect_client: PrefectClient, work_pool: WorkPool
+        self,
+        client: InfrahubClient,
+        block_storage: Any,
+        prefect_client: PrefectClient,
+        work_pool: WorkPool,
+        git_global_config_env_setting,
     ) -> InfrahubWorkerAsync:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
 
