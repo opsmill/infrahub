@@ -210,12 +210,13 @@ class InfrahubWorkerAsync(BaseWorker):
 
     async def set_git_global_config(self) -> None:
         global_config_file = config.SETTINGS.git.global_config_file
-        if not os.getenv("GIT_GLOBAL_CONFIG") and global_config_file:
+        if not os.getenv("GIT_CONFIG_GLOBAL") and global_config_file:
+            config_dir = Path(global_config_file).parent
             try:
-                Path(global_config_file).mkdir(exist_ok=True, parents=True, mode=0o777)
+                config_dir.mkdir(exist_ok=True, parents=True)
             except FileExistsError:
-                ...
-            os.environ["GIT_GLOBAL_CONFIG"] = global_config_file
+                pass
+            os.environ["GIT_CONFIG_GLOBAL"] = global_config_file
             self._logger.info(f"Set git config file to {global_config_file}")
 
         if config.SETTINGS.git.user_name:
@@ -245,9 +246,9 @@ class InfrahubWorkerAsync(BaseWorker):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            _, stderr_name = await proc_email.communicate()
+            _, stderr_email = await proc_email.communicate()
             if proc_email.returncode != 0:
-                error_msg = stderr_name.decode("utf-8", errors="ignore").strip() or "unknown error"
+                error_msg = stderr_email.decode("utf-8", errors="ignore").strip() or "unknown error"
                 self._logger.error("Failed to set git user.email: %s", error_msg)
             else:
                 self._logger.info("Git user email set")
