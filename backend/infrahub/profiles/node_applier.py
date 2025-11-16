@@ -32,15 +32,6 @@ class NodeProfilesApplier:
         return [pr.peer_id for pr in profile_rels if pr.peer_id]
 
     async def _get_attr_names_for_profiles(self, node: Node) -> list[str]:
-        """Get the names of attributes that can be affected by profile changes.
-        
-        Returns attributes that are:
-        - Currently set from a profile (is_from_profile=True)
-        - Currently using default values (is_default=True)  
-        - Currently set from a template (source is a TemplateSchema)
-        
-        This allows profiles to override both default values and template-sourced values.
-        """
         node_schema = node.get_schema()
 
         # get the names of attributes that could be affected by profile changes
@@ -48,12 +39,7 @@ class NodeProfilesApplier:
         for attr_schema in node_schema.attributes:
             attr_name = attr_schema.name
             node_attr: BaseAttribute = getattr(node, attr_name)
-            is_template = None
-            if node_attr.source_id:
-                await node_attr.get_source(db=self.db)
-                if isinstance(node_attr.source.get_schema(), TemplateSchema):
-                    is_template = True
-            if node_attr.is_from_profile or node_attr.is_default or is_template:
+            if node_attr.is_from_profile or node_attr.is_default:
                 attr_names_for_profiles.append(attr_name)
         return attr_names_for_profiles
 
