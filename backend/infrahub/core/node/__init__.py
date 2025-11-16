@@ -470,7 +470,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(template, attribute_name)
             attr_value = attr.value
             if attr_value is not None:
-                fields[attribute_name] = {"value": attr_value, "source": attr.source_id or template.id}
+                # Preserve is_from_profile flag when copying from template
+                field_data = {"value": attr_value, "source": attr.source_id or template.id}
+                if attr.is_from_profile:
+                    field_data["is_from_profile"] = True
+                fields[attribute_name] = field_data
 
         for relationship_name in template._relationships:
             relationship_schema = template._schema.get_relationship(name=relationship_name)
