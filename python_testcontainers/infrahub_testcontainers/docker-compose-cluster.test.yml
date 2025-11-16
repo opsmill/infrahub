@@ -281,6 +281,7 @@ services:
       INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
       INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
       OTEL_RESOURCE_ATTRIBUTES:
+      INFRAHUB_DB_PROFILE_MEMORY: ${INFRAHUB_DB_PROFILE_MEMORY:-false}
     depends_on:
       database:
         condition: service_healthy
@@ -333,6 +334,7 @@ services:
       INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
       INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
       OTEL_RESOURCE_ATTRIBUTES:
+      INFRAHUB_DB_PROFILE_MEMORY: ${INFRAHUB_DB_PROFILE_MEMORY:-false}
     depends_on:
       - infrahub-server
     volumes:

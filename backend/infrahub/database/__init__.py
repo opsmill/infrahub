@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import tracemalloc
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
@@ -382,11 +383,20 @@ class InfrahubDatabase:
                 )
 
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
+                if config.SETTINGS.database.profile_memory:
+                    tracemalloc.start()
                 response = await self.run_query(query=query, params=params, name=name)
                 if response is None:
+                    if config.SETTINGS.database.profile_memory:
+                        tracemalloc.stop()
                     span.set_attribute("rows", "empty")
                     return [], {}
                 results = [item async for item in response]
+                if config.SETTINGS.database.profile_memory:
+                    current, peak = tracemalloc.get_traced_memory()
+                    tracemalloc.stop()
+                    span.set_attribute("memory_current_bytes", current)
+                    span.set_attribute("memory_peak_bytes", peak)
                 span.set_attribute("rows", len(results))
                 return results, response._metadata or {}
 

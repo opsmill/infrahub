@@ -297,6 +297,7 @@ class DatabaseSettings(BaseSettings):
     max_concurrent_queries_delay: float = Field(
         default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
     )
+    profile_memory: bool = Field(default=False, description="Enable client-side memory profiling for database queries.")
 
     @property
     def database_uri(self) -> str:
