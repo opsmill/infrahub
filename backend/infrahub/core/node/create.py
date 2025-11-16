@@ -58,7 +58,10 @@ async def extract_peer_data(
             except ValueError:
                 pass
 
-        obj_peer_data[attr_name] = {"value": template_attr.value, "source": template_peer.id}
+        # If the template attribute comes from a profile, preserve the profile as the source
+        # Otherwise, use the template itself as the source
+        source_id = template_attr.source_id if template_attr.source_id else template_peer.id
+        obj_peer_data[attr_name] = {"value": template_attr.value, "source": source_id}
 
     for rel in template_peer.get_schema().relationship_names:
         rel_manager: RelationshipManager = getattr(template_peer, rel)
