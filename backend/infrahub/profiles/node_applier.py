@@ -144,7 +144,7 @@ class NodeProfilesApplier:
             target_peer_ids = set(peer_ids)
 
         # Remove relationships that are from this profile but not in target
-        for rel in list(current_rels):
+        for rel in current_rels:
             source = await rel.get_source(db=self.db)
             if node_rel.is_from_profile and source and source.id == profile_id:
                 if rel.peer_id and rel.peer_id not in target_peer_ids:

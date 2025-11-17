@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 import pytest
 
@@ -223,7 +223,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
 @dataclass
 class ExpectedProfileRelationship:
     name: str
-    peers: Sequence[Node]
+    peers: list[Node]
     source_uuid: str
 
 
@@ -248,13 +248,11 @@ async def _validate_node_profile_relationships(
         expected_profile_relationship = expected_profile_relationships_by_name.get(rel_name)
 
         if expected_profile_relationship:
-            assert updated_peers.sort(key=lambda p: p.id) == list(expected_profile_relationship.peers).sort(
-                key=lambda p: p.id
-            )
+            assert {p.id for p in updated_peers} == {p.id for p in expected_profile_relationship.peers}
             # assert updated_source == {expected_profile_relationship.source_uuid}
         else:
-            assert updated_peers.sort(key=lambda p: p.id) == list(original_peers).sort(key=lambda p: p.id)
-            # assert updated_source == set()
+            assert {p.id for p in updated_peers} == {p.id for p in original_peers}
+            # assert updated_source is None
 
 
 @dataclass
@@ -321,7 +319,6 @@ async def test_get_many_with_profile_relationships_empty(
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
 
-    # Apply profile a first time
     updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
     assert updated_field_names == []
     await child_and_thing_nodes.child_nodes[0].save(db=db)
@@ -336,7 +333,7 @@ async def test_get_many_with_profile_relationships_empty(
         schema=child_and_thing_nodes.child_node_schema,
         original_node=child_and_thing_nodes.child_nodes[0],
         updated_node=updated_child_one,
-        expected_profile_relationships=[],
+        expected_profile_relationships=[ExpectedProfileRelationship(name="things", peers=[], source_uuid="")],
     )
 
 
@@ -457,7 +454,13 @@ async def test_get_many_with_profile_relationships_existing_peers(
         schema=child_and_thing_nodes.child_node_schema,
         original_node=child_one,
         updated_node=updated_child_one,
-        expected_profile_relationships=[],
+        expected_profile_relationships=[
+            ExpectedProfileRelationship(
+                name="things",
+                peers=[child_and_thing_nodes.thing_nodes[0]],
+                source_uuid="",
+            )
+        ],
     )
 
 
@@ -479,15 +482,12 @@ async def test_get_many_with_profile_relationships_clear(
     )
     await missing_child_profile.save(db=db)
 
+    # Set profile for child one
     await child_and_thing_nodes.child_nodes[0].profiles.update(db=db, data=[augmented_child_profile])
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
-    await child_and_thing_nodes.child_nodes[1].profiles.update(db=db, data=[missing_child_profile])
-    await child_and_thing_nodes.child_nodes[1].save(db=db)
-
     node_applier = NodeProfilesApplier(db=db, branch=branch)
 
-    # Apply profile a first time
     updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
     assert updated_field_names == ["things"]
     await child_and_thing_nodes.child_nodes[0].save(db=db)
@@ -514,6 +514,16 @@ async def test_get_many_with_profile_relationships_clear(
     # Clear profile for child one
     await updated_child_one.profiles.delete(db=db)
     await updated_child_one.save(db=db)
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+    )
+    assert len(node_map) == 1
+    updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
+    assert not len(await updated_child_one.profiles.get_relationships(db=db))
+
+    node_applier = NodeProfilesApplier(db=db, branch=branch)
+
     updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
     assert updated_field_names == []
     await updated_child_one.save(db=db)
@@ -528,5 +538,5 @@ async def test_get_many_with_profile_relationships_clear(
         schema=child_and_thing_nodes.child_node_schema,
         original_node=child_and_thing_nodes.child_nodes[0],
         updated_node=updated_child_one,
-        expected_profile_relationships=[],
+        expected_profile_relationships=[ExpectedProfileRelationship(name="things", peers=[], source_uuid="")],
     )
