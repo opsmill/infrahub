@@ -26,7 +26,7 @@ export default defineConfig({
       customWorkers: [
         {
           label: "graphql",
-          entry: "monaco-graphql/esm/graphql.worker.js",
+          entry: "monaco-graphql/esm/graphql.worker",
         },
       ],
     }),
