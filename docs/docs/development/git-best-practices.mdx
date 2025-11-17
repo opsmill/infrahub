@@ -228,15 +228,18 @@ Follow these practices to ensure smooth code review and integration.
 4. **Test your changes**:
 
    ```bash
+   # Install dependencies
+   uv sync --all-groups
+
    # Run the full test suite
-   poetry run invoke test
+   uv run invoke test
    
    # Run linting and formatting
-   poetry run invoke lint
-   poetry run invoke format
+   uv run invoke lint
+   uv run invoke format
    
    # Test with submodules
-   poetry run invoke backend.test
+   uv run invoke backend.test
    ```
 
 ### Creating the pull request

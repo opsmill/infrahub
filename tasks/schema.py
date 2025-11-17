@@ -22,7 +22,7 @@ OPENAPI_PATH = REPO_BASE / "schema" / "openapi.json"
 def generate_graphqlschema(context: Context) -> None:
     """Generate GraphQL schema into ./schema"""
     with context.cd(ESCAPED_REPO_PATH):
-        context.run(f"poetry run infrahub dev export-graphql-schema --out {SCHEMA_PATH}")
+        context.run(f"uv run infrahub dev export-graphql-schema --out {SCHEMA_PATH}")
         print(f"Wrote to {SCHEMA_PATH}")
 
 
@@ -30,7 +30,7 @@ def generate_graphqlschema(context: Context) -> None:
 def generate_jsonschema(context: Context) -> None:
     """Generate JSON schemas into ./schema and also run `generate_repositoryconfig`"""
     with context.cd(ESCAPED_REPO_PATH):
-        context.run(f"poetry run infrahub dev export-json-schema --out {OPENAPI_PATH}")
+        context.run(f"uv run infrahub dev export-json-schema --out {OPENAPI_PATH}")
         print(f"Wrote to {OPENAPI_PATH}")
 
     generate_repositoryconfig(context)
@@ -53,7 +53,7 @@ def generate_repositoryconfig(context: Context) -> None:
 def generate_infrahubnodeschema(context: Context) -> None:
     """Generate infrahub node schema into generated/infrahub/schema/develop.json"""
     with context.cd(ESCAPED_REPO_PATH):
-        context.run(f"poetry run infrahub dev export-node-schema --out {INFRAHUB_NODE_SCHEMA_PATH}")
+        context.run(f"uv run infrahub dev export-node-schema --out {INFRAHUB_NODE_SCHEMA_PATH}")
         print(f"Wrote to {INFRAHUB_NODE_SCHEMA_PATH}")
 
 
