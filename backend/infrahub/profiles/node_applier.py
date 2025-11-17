@@ -173,11 +173,9 @@ class NodeProfilesApplier:
     async def apply_profiles(self, node: Node) -> list[str]:
         profile_ids = await self._get_profile_ids(node=node)
         attr_names_for_profiles = await self._get_attr_names_for_profiles(node=node)
-        if not attr_names_for_profiles:
-            return []
         rel_names_for_profiles = await self._get_rel_names_for_profiles(node=node)
         rel_filters_for_profiles = await self._get_rel_filters_for_profiles(node=node, rel_names=rel_names_for_profiles)
-        if not rel_filters_for_profiles:
+        if not attr_names_for_profiles and not rel_filters_for_profiles:
             return []
 
         # get profiles priorities, attribute values, and relationship peers on branch
