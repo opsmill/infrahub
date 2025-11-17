@@ -107,7 +107,7 @@ services:
 
       WEB_CONCURRENCY: ${INFRAHUB_TESTING_TASKMGR_API_WORKERS:-1}
     healthcheck:
-      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
