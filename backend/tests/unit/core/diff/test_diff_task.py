@@ -28,10 +28,14 @@ def wrapped_component_registry() -> ComponentDependencyRegistry:
 
 
 async def test_diff_update_for_deleted_branch(
-    db: InfrahubDatabase, default_branch: Branch, wrapped_component_registry: ComponentDependencyRegistry
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    wrapped_component_registry: ComponentDependencyRegistry,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     diff_update = RequestDiffUpdate(branch_name="pretend_branch", name="diff")
 
     await update_diff(diff_update)
 
     wrapped_component_registry.get_component.assert_not_awaited()
+    assert "Branch pretend_branch not found, skipping diff update" in caplog.text
