@@ -805,15 +805,30 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         interface_profile: Node,
     ) -> Node:
         """Test creating component templates (interfaces) with profiles."""
+
+        # Create device template with component interface templates
+        device_template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDeviceWithInterfaces", branch=default_branch, duplicate=False
+        )
+
+        device_template = await Node.init(db=db, schema=device_template_schema)
+        await device_template.new(
+            db=db,
+            template_name="spine_switch_template",
+            manufacturer="Arista",
+            model="7280R"
+        )
+        await device_template.save(db=db)
         # Create interface templates with profile via GraphQL
         # This ensures profiles are applied through the same flow as production
         mutation = """
-        mutation($profile_id: String!) {
+        mutation($profile_id: String!, $device_template: String!) {
             TemplateTestingInterfaceCreate(data: {
                 template_name: {value: "eth0_template"},
                 name: {value: "eth0"},
                 description: {value: "Management Interface"},
-                profiles: [{id: $profile_id}]
+                profiles: [{id: $profile_id}],
+                device: {id: $device_template}
             }) {
                 ok
                 object {
@@ -834,6 +849,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             root_value=None,
             variable_values={
                 "profile_id": interface_profile.id,
+                "device_template": device_template.id,
             },
         )
 
@@ -870,6 +886,21 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         device_component_profile: Node,
     ) -> dict[str, str]:
         """Test creating a device template that references component templates."""
+
+        # Create device template with component interface templates
+        device_template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDeviceWithInterfaces", branch=default_branch, duplicate=False
+        )
+
+        device_template = await Node.init(db=db, schema=device_template_schema)
+        await device_template.new(
+            db=db,
+            template_name="spine_switch_template",
+            manufacturer="Arista",
+            model="7280R"
+        )
+        await device_template.save(db=db)
+
         # Create interface templates with profiles
         interface_template_schema = registry.schema.get_template_schema(
             name="TemplateTestingInterface", branch=default_branch, duplicate=False
@@ -881,6 +912,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             template_name="mgmt_eth0",
             name="eth0",
             description="Management Interface",
+            device=device_template.id
         )
         await eth0_template.save(db=db)
 
@@ -915,6 +947,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             template_name="uplink_eth1",
             name="eth1",
             description="Uplink Interface",
+            device=device_template.id
         )
         await eth1_template.save(db=db)
 
@@ -929,21 +962,6 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             },
         )
         assert result.errors is None
-
-        # Create device template with component interface templates
-        device_template_schema = registry.schema.get_template_schema(
-            name="TemplateTestingDeviceWithInterfaces", branch=default_branch, duplicate=False
-        )
-
-        device_template = await Node.init(db=db, schema=device_template_schema)
-        await device_template.new(
-            db=db,
-            template_name="spine_switch_template",
-            manufacturer="Arista",
-            model="7280R",
-            interfaces=[eth0_template.id, eth1_template.id],
-        )
-        await device_template.save(db=db)
 
         # Assign profile to device template
         mutation_assign_device_profile = """
