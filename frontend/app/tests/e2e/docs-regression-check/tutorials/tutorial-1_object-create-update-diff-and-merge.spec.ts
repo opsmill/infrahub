@@ -54,7 +54,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await expect(page).toHaveURL(/.*?branch=cr1234/);
   });
 
-  test.fixme("3. Update an organization", async ({ page }) => {
+  test("3. Update an organization", async ({ page }) => {
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
       await expect(page.getByTestId("cr1234")).toContainText("cr1234");
@@ -93,7 +93,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
   });
 
-  test.fixme("4. View the Diff and Merge the branch cr1234 into main", async ({ page }) => {
+  test("4. View the Diff and Merge the branch cr1234 into main", async ({ page }) => {
     await test.step("Go to branch cr1234 page", async () => {
       await page.goto("/?branch=cr1234");
       await page.getByTestId("branch-selector-trigger").click();
@@ -140,7 +140,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
   });
 
-  test.fixme("5. Browse historical data", async ({ page }) => {
+  test("5. Browse historical data", async ({ page }) => {
     await page.goto("/objects/OrganizationTenant");
 
     await test.step("Row my-first-tenant is visible at current time", async () => {
