@@ -606,8 +606,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
+    runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
         uses: "actions/checkout@v5"
@@ -638,8 +637,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
+    runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
         uses: "actions/checkout@v5"
