@@ -1107,6 +1107,7 @@ dependencies = [
     { name = "cachetools-async" },
     { name = "click" },
     { name = "copier" },
+    { name = "deepdiff" },
     { name = "dulwich" },
     { name = "email-validator" },
     { name = "fast-depends" },
@@ -1148,7 +1149,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "deepdiff" },
     { name = "docker" },
     { name = "invoke" },
     { name = "ipython" },
@@ -1192,6 +1192,7 @@ requires-dist = [
     { name = "cachetools-async", specifier = "==0.0.5" },
     { name = "click", specifier = "==8.1.7" },
     { name = "copier", specifier = "==9.8.0" },
+    { name = "deepdiff", specifier = "==8.6.1" },
     { name = "dulwich", specifier = "==0.22.7" },
     { name = "email-validator", specifier = ">=2.1,<2.2" },
     { name = "fast-depends", specifier = "==2.4.12" },
@@ -1234,7 +1235,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "deepdiff", specifier = "==8.6.1" },
     { name = "docker", specifier = "==7.1.0" },
     { name = "invoke", specifier = "==2.2.0" },
     { name = "ipython", specifier = ">=8,<9" },
