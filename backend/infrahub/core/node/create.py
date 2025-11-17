@@ -60,7 +60,7 @@ async def extract_peer_data(
 
         # If the template attribute comes from a profile, preserve the profile as the source
         # Otherwise, use the template itself as the source
-        source_id = template_attr.source_id if template_attr.source_id else template_peer.id
+        source_id = template_attr.source_id or template_peer.id
         attr_data = {"value": template_attr.value, "source": source_id}
         if template_attr.is_from_profile:
             attr_data["is_from_profile"] = True

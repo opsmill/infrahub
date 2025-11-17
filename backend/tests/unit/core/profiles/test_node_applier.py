@@ -365,7 +365,9 @@ async def test_node_from_template_with_profile_precedence(
 
     # Create a profile
     crit_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
-    await crit_profile.new(db=db, profile_name="node_profile", color="yellow", description="From profile", profile_priority=1001)
+    await crit_profile.new(
+        db=db, profile_name="node_profile", color="yellow", description="From profile", profile_priority=1001
+    )
     await crit_profile.save(db=db)
 
     # Create template with profile
@@ -375,7 +377,7 @@ async def test_node_from_template_with_profile_precedence(
         template_name="template_for_node",
         name="template_name",
         level=5,
-        color="#000000"  # Template has its own color
+        color="#000000",  # Template has its own color
     )
     await crit_template.save(db=db)
 

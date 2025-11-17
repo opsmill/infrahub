@@ -552,7 +552,7 @@ class TestProfiles(TestInfrahubApp):
         branch: BranchData,
     ) -> None:
         """Test creating a template with a profile assigned via SDK.
-        
+
         This test creates a template with explicit values for manufacturer and weight,
         and a profile assigned. The profile should provide values for attributes that
         are using defaults (height, airflow, part_number).
@@ -782,7 +782,7 @@ class TestProfiles(TestInfrahubApp):
         branch: BranchData,
     ) -> None:
         """Test creating a node from a template that has a profile assigned.
-        
+
         When a node is created from a template with profiles:
         - Template's explicit values should come from template
         - Profile values (inherited from template) should come from profile

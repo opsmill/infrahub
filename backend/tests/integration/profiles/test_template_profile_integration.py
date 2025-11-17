@@ -57,7 +57,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def device_profile(self, db: InfrahubDatabase, schema_root_01, default_branch: Branch) -> Node:
         """Create a device profile."""
-        profile_schema = registry.schema.get_profile_schema(name="ProfileTestingDevice", branch=default_branch, duplicate=False)
+        profile_schema = registry.schema.get_profile_schema(
+            name="ProfileTestingDevice", branch=default_branch, duplicate=False
+        )
         device_profile = await Node.init(db=db, schema=profile_schema)
         await device_profile.new(
             db=db,
@@ -72,7 +74,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def device_template(self, db: InfrahubDatabase, schema_root_01, default_branch: Branch) -> Node:
         """Create a device template."""
-        template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch, duplicate=False)
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch, duplicate=False
+        )
         device_template = await Node.init(db=db, schema=template_schema)
         await device_template.new(
             db=db,
@@ -85,9 +89,13 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         return device_template
 
     @pytest.fixture(scope="class")
-    async def device_template_with_profile(self, db: InfrahubDatabase, schema_root_01, default_branch: Branch, device_profile: Node) -> Node:
+    async def device_template_with_profile(
+        self, db: InfrahubDatabase, schema_root_01, default_branch: Branch, device_profile: Node
+    ) -> Node:
         """Create a device template with an assigned profile."""
-        template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch, duplicate=False)
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch, duplicate=False
+        )
         device_template = await Node.init(db=db, schema=template_schema)
         await device_template.new(
             db=db,
@@ -312,7 +320,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         Logic: If value explicitly set on template → Use template value (even if profile has different value).
         """
         # Create a new template with its own airflow value explicitly set
-        template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch, duplicate=False)
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch, duplicate=False
+        )
         template_with_value = await Node.init(db=db, schema=template_schema)
         await template_with_value.new(
             db=db,
@@ -401,7 +411,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
     ) -> None:
         """Test template with multiple profiles respects priority (lowest number = highest priority)."""
         # Create a second profile with lower priority (higher number)
-        profile_schema = registry.schema.get_profile_schema(name="ProfileTestingDevice", branch=default_branch, duplicate=False)
+        profile_schema = registry.schema.get_profile_schema(
+            name="ProfileTestingDevice", branch=default_branch, duplicate=False
+        )
         device_profile_2 = await Node.init(db=db, schema=profile_schema)
         await device_profile_2.new(
             db=db,
@@ -413,7 +425,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         await device_profile_2.save(db=db)
 
         # Create template without explicit values
-        template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch, duplicate=False)
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch, duplicate=False
+        )
         template = await Node.init(db=db, schema=template_schema)
         await template.new(
             db=db,
@@ -501,7 +515,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         the explicit value should override the profile.
         """
         # Create profile
-        profile_schema = registry.schema.get_profile_schema(name="ProfileTestingDevice", branch=default_branch, duplicate=False)
+        profile_schema = registry.schema.get_profile_schema(
+            name="ProfileTestingDevice", branch=default_branch, duplicate=False
+        )
         test_profile = await Node.init(db=db, schema=profile_schema)
         await test_profile.new(
             db=db,
@@ -513,7 +529,9 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         await test_profile.save(db=db)
 
         # Create template without explicit airflow/height values
-        template_schema = registry.schema.get_template_schema(name="TemplateTestingDevice", branch=default_branch, duplicate=False)
+        template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDevice", branch=default_branch, duplicate=False
+        )
         test_template = await Node.init(db=db, schema=template_schema)
         await test_template.new(
             db=db,
@@ -761,9 +779,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         await load_schema(db=db, schema=schema_root, branch_name=default_branch.name, update_db=True)
 
     @pytest.fixture(scope="class")
-    async def interface_profile(
-        self, db: InfrahubDatabase, component_schema_root, default_branch: Branch
-    ) -> Node:
+    async def interface_profile(self, db: InfrahubDatabase, component_schema_root, default_branch: Branch) -> Node:
         """Create an interface profile."""
         profile_schema = registry.schema.get_profile_schema(
             name="ProfileTestingInterface", branch=default_branch, duplicate=False
@@ -812,12 +828,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         )
 
         device_template = await Node.init(db=db, schema=device_template_schema)
-        await device_template.new(
-            db=db,
-            template_name="spine_switch_template",
-            manufacturer="Arista",
-            model="7280R"
-        )
+        await device_template.new(db=db, template_name="spine_switch_template", manufacturer="Arista", model="7280R")
         await device_template.save(db=db)
         # Create interface templates with profile via GraphQL
         # This ensures profiles are applied through the same flow as production
@@ -868,9 +879,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via database retrieval
         template_id = obj["id"]
-        retrieved = await NodeManager.get_one(
-            db=db, id=template_id, include_metadata=MetadataOptions.SOURCE
-        )
+        retrieved = await NodeManager.get_one(db=db, id=template_id, include_metadata=MetadataOptions.SOURCE)
         assert retrieved.mtu.value == 9000
         assert retrieved.mtu.is_from_profile is True
         assert retrieved.mtu.source_id == interface_profile.id
@@ -893,12 +902,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         )
 
         device_template = await Node.init(db=db, schema=device_template_schema)
-        await device_template.new(
-            db=db,
-            template_name="spine_switch_template",
-            manufacturer="Arista",
-            model="7280R"
-        )
+        await device_template.new(db=db, template_name="spine_switch_template", manufacturer="Arista", model="7280R")
         await device_template.save(db=db)
 
         # Create interface templates with profiles
@@ -908,11 +912,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         eth0_template = await Node.init(db=db, schema=interface_template_schema)
         await eth0_template.new(
-            db=db,
-            template_name="mgmt_eth0",
-            name="eth0",
-            description="Management Interface",
-            device=device_template.id
+            db=db, template_name="mgmt_eth0", name="eth0", description="Management Interface", device=device_template.id
         )
         await eth0_template.save(db=db)
 
@@ -943,11 +943,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         eth1_template = await Node.init(db=db, schema=interface_template_schema)
         await eth1_template.new(
-            db=db,
-            template_name="uplink_eth1",
-            name="eth1",
-            description="Uplink Interface",
-            device=device_template.id
+            db=db, template_name="uplink_eth1", name="eth1", description="Uplink Interface", device=device_template.id
         )
         await eth1_template.save(db=db)
 
@@ -1040,7 +1036,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             template_name="component_eth0",
             name="eth0",
             description="Component Management",
-            device=device_template
+            device=device_template,
         )
         await eth0_template.save(db=db)
 
@@ -1071,11 +1067,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         eth1_template = await Node.init(db=db, schema=interface_template_schema)
         await eth1_template.new(
-            db=db,
-            template_name="component_eth1",
-            name="eth1",
-            description="Component Uplink",
-            device=device_template
+            db=db, template_name="component_eth1", name="eth1", description="Component Uplink", device=device_template
         )
         await eth1_template.save(db=db)
 
@@ -1205,9 +1197,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via direct database query
         device_id = obj["id"]
-        retrieved_device = await NodeManager.get_one(
-            db=db, id=device_id, include_metadata=MetadataOptions.SOURCE
-        )
+        retrieved_device = await NodeManager.get_one(db=db, id=device_id, include_metadata=MetadataOptions.SOURCE)
 
         assert retrieved_device.role.value == "spine"
         assert retrieved_device.role.is_from_profile is True
