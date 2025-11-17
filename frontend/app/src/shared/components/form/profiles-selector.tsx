@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import { useId } from "react";
+import { useAtomValue } from "jotai";
+import { useEffect, useId } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -113,6 +113,26 @@ export const ProfilesSelector = ({
   if (!value && defaultValue) {
     onChange(profiles.filter((profile) => defaultValue.some((def) => def.id === profile.id)));
   }
+
+  useEffect(() => {
+    if (!value && defaultValue && profiles.length && !loading) {
+      const defaultProfiles = defaultValue
+        .map((defaultProfile) => {
+          return profiles.find((profile) => {
+            return profile.id === defaultProfile.id;
+          });
+        })
+        .filter((profile): profile is ProfileData => {
+          return !!profile?.id;
+        });
+
+      onChange(defaultProfiles);
+    }
+  }, [defaultValue, loading, profiles]);
+
+  if (loading) return <LoadingIndicator className="p-4" />;
+
+  if (error) return <ErrorScreen message={error.message} />;
 
   if (!profiles || profiles.length === 0) return null;
 
