@@ -39,11 +39,14 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   const navigate = useNavigate();
 
   useEffect(() => {
+    // biome-ignore lint/suspicious/noConsole: <trying to fix flaky tests>
     console.log("branches: ", branches);
     if (!branches) return;
 
+    // biome-ignore lint/suspicious/noConsole: <trying to fix flaky tests>
     console.log("branchInQueryString: ", branchInQueryString);
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
+    // biome-ignore lint/suspicious/noConsole: <trying to fix flaky tests>
     console.log("selectedBranch: ", selectedBranch);
     if (selectedBranch) {
       setCurrentBranch(selectedBranch);
