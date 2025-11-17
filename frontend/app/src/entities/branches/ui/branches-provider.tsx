@@ -39,9 +39,12 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("branches: ", branches);
     if (!branches) return;
 
+    console.log("branchInQueryString: ", branchInQueryString);
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
+    console.log("selectedBranch: ", selectedBranch);
     if (selectedBranch) {
       setCurrentBranch(selectedBranch);
       return;
