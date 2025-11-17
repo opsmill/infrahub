@@ -33,7 +33,8 @@ jobs:
 
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
