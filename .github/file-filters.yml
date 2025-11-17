@@ -19,9 +19,9 @@ sdk_files: &sdk_files
 testcontainers_files:
   - "python_testcontainers/**"
 
-infrahub_poetry_files: &infrahub_poetry_files
+infrahub_uv_files: &infrahub_uv_files
   - "**/pyproject.toml"
-  - "**/poetry.lock"
+  - "**/uv.lock"
 
 frontend_files: &frontend_files
   - "frontend/app/**"
@@ -68,7 +68,7 @@ backend_all:
   - *backend_files
   - *ci_config
   - *development_files
-  - *infrahub_poetry_files
+  - *infrahub_uv_files
   - *sdk_files
 
 documentation_all:
@@ -94,4 +94,4 @@ e2e_all:
   - *demo_files
   - *ci_config
   - *development_files
-  - *infrahub_poetry_files
+  - *infrahub_uv_files

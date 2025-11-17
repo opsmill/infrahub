@@ -49,28 +49,21 @@ jobs:
         with:
           submodules: true
 
-      - name: "Setup Python environment"
-        run: |
-          python -m pip install --user pipx
-          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-
-      - name: "Install Dependencies"
-        run: "poetry install"
-        working-directory: ${{ matrix.package_dir }}
-      - name: "Add PyPI secret"
-        run: "poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}"
-        working-directory: ${{ matrix.package_dir }}
-      - name: "Poetry build"
-        run: "poetry build"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install Dependencies
+        run: uv sync --all-groups --all-extras
+      - name: "Build package"
+        run: "uv build"
         working-directory: ${{ matrix.package_dir }}
       - name: "show output"
         run: "ls -la dist/"
         working-directory: ${{ matrix.package_dir }}
-      - name: "Poetry push PyPI"
+      - name: "Publish to PyPI"
         if: ${{ inputs.publish }}
-        run: "poetry publish"
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: "uv publish"
         working-directory: ${{ matrix.package_dir }}
