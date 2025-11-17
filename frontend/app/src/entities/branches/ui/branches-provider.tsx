@@ -40,7 +40,10 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
 
   useEffect(() => {
     // biome-ignore lint/suspicious/noConsole: <trying to fix flaky tests>
-    console.log("branches: ", branches);
+    console.log(
+      "branches: ",
+      branches?.map((branch) => branch.name)
+    );
     if (!branches) return;
 
     // biome-ignore lint/suspicious/noConsole: <trying to fix flaky tests>
