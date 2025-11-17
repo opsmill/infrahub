@@ -1,0 +1,21 @@
+import { expect, test } from "@playwright/test";
+
+test("/graphql - GraphiQL", async ({ page }) => {
+  await test.step("navigate to GraphiQL and open new tab", async () => {
+    await page.goto("/graphql");
+    await page.waitForLoadState("networkidle") // required for autocompletion to load
+    await page.getByRole("button", { name: "New tab" }).click();
+  });
+
+  if (await (page.getByText('# Welcome to GraphiQL')).isVisible()) {
+    await page.getByRole('region', { name: 'Operation Editor' }).getByLabel('Editor content').selectText()
+  }
+
+  await test.step("type query with partial match to trigger autocomplete", async () => {
+    await page.getByRole('region', { name: 'Operation Editor' }).getByLabel('Editor content').fill('query {\n  Built');
+  });
+
+  await test.step("verify BuiltinTag appears in autocomplete suggestions", async () => {
+    await expect(page.getByRole("option", { name: "BuiltinTag", exact: true })).toBeVisible();
+  });
+});
