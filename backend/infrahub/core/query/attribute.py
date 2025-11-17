@@ -80,8 +80,9 @@ MATCH (a:Attribute { uuid: $attr_uuid })
 MERGE (av:%(labels)s { %(props)s } )
 WITH av, a
 LIMIT 1
-OPTIONAL MATCH (a)-[existing_active_r:%(rel_label)s { branch: $branch, status: "active" }]->(av)
+OPTIONAL MATCH (a)-[existing_active_r:%(rel_label)s { branch: $branch, status: "active" }]->()
 WHERE existing_active_r.to IS NULL
+LIMIT 1
 CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(av)
 WITH a, existing_active_r
 CALL (a) {
@@ -333,28 +334,17 @@ CALL (property_edge) {
     AND property_edge.to IS NULL
     SET property_edge.to = $at, property_edge.to_user_id = $user_id
 }
-WITH a, property_edge, property_type, attr_peer, direction, CASE
-    WHEN property_edge.status = "active"
-        AND (
-            property_edge.to IS NULL
-            OR property_edge.to > $branched_from
-        )
-        AND property_edge.branch_level < $branch_level
-    THEN TRUE
-    ELSE FALSE
-END AS needs_delete_edge
-CALL (a, property_type, attr_peer, direction, needs_delete_edge) {
-    WITH direction, needs_delete_edge
+WITH a, property_edge, property_type, attr_peer, direction
+CALL (a, property_type, attr_peer, direction) {
+    WITH direction
     WHERE direction = "out"
-    AND needs_delete_edge = TRUE
     CREATE (a)
         -[r:$(property_type) { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, from_user_id: $user_id }]
         ->(attr_peer)
 }
-CALL (a, property_type, attr_peer, direction, needs_delete_edge) {
-    WITH direction, needs_delete_edge
+CALL (a, property_type, attr_peer, direction) {
+    WITH direction
     WHERE direction = "in"
-    AND needs_delete_edge = TRUE
     CREATE (a)
         <-[r:$(property_type) { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, from_user_id: $user_id }]
         -(attr_peer)
