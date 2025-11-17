@@ -7,7 +7,6 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
@@ -25,6 +24,7 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
@@ -1254,6 +1254,5 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert owner_of_property.get_id() == cardinality_many_property_conflict.expected_value
 
         # validate diff not updated for deleted branch
-        deleted_branch = await Branch.get_by_name(db=db, name=DELETED_BRANCH_NAME, ignore_deleting=False)
         fresh_deleted_branch_diff = await self.get_branch_diff(db=db, branch=deleted_branch)
         assert fresh_deleted_branch_diff.to_time == diff_on_deleted_branch.to_time
