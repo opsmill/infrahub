@@ -108,7 +108,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         device_profile: Node,
     ) -> None:
         """Test assigning a profile to a template via GraphQL.
-        
+
         Logic: Template has manufacturer=Juniper, model=MX204, weight=8 explicitly set.
         Profile has airflow and height set.
         Expected: Profile values used for airflow/height (were default), template values remain for explicitly set attributes.
@@ -215,7 +215,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         device_profile: Node,
     ) -> None:
         """Test creating a node from a template that has a profile assigned.
-        
+
         Logic: When node is created from template with profiles, the profiles are inherited.
         - Explicitly set template values → source is template
         - Profile values → source is profile (profiles inherited from template)
@@ -308,7 +308,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         device_profile: Node,
     ) -> None:
         """Test that explicitly set template values are NOT overridden by profile values.
-        
+
         Logic: If value explicitly set on template → Use template value (even if profile has different value).
         """
         # Create a new template with its own airflow value explicitly set
@@ -387,7 +387,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert retrieved_template.airflow.is_from_profile is False
         assert retrieved_template.airflow.is_default is False
         assert retrieved_template.airflow.source_id is None
-        
+
         assert retrieved_template.height.value == 1
         assert retrieved_template.height.is_from_profile is True
         assert retrieved_template.height.is_default is False
@@ -496,7 +496,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         default_branch: Branch,
     ) -> None:
         """Test that updating a template attribute explicitly overrides profile value.
-        
+
         Logic: When template updates an attribute that was using profile value,
         the explicit value should override the profile.
         """
@@ -714,10 +714,10 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             relationships=[
                 RelationshipSchema(
                     name="device",
-                    kind=RelationshipKind.ATTRIBUTE,
+                    kind=RelationshipKind.PARENT,
                     peer="TestingDeviceWithInterfaces",
                     cardinality=RelationshipCardinality.ONE,
-                    optional=True,
+                    optional=False,
                 )
             ],
         )
@@ -997,6 +997,20 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         2. Component interfaces are created from interface templates
         3. Component interfaces get values from their template's profiles
         """
+        # Create device template with component templates
+        device_template_schema = registry.schema.get_template_schema(
+            name="TemplateTestingDeviceWithInterfaces", branch=default_branch, duplicate=False
+        )
+
+        device_template = await Node.init(db=db, schema=device_template_schema)
+        await device_template.new(
+            db=db,
+            template_name="full_device_template",
+            manufacturer="Cisco",
+            model="Nexus 9000",
+        )
+        await device_template.save(db=db)
+
         # Create interface templates with profiles
         interface_template_schema = registry.schema.get_template_schema(
             name="TemplateTestingInterface", branch=default_branch, duplicate=False
@@ -1008,6 +1022,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             template_name="component_eth0",
             name="eth0",
             description="Component Management",
+            device=device_template
         )
         await eth0_template.save(db=db)
 
@@ -1042,6 +1057,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             template_name="component_eth1",
             name="eth1",
             description="Component Uplink",
+            device=device_template
         )
         await eth1_template.save(db=db)
 
@@ -1056,21 +1072,6 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
             },
         )
         assert result.errors is None
-
-        # Create device template with component templates
-        device_template_schema = registry.schema.get_template_schema(
-            name="TemplateTestingDeviceWithInterfaces", branch=default_branch, duplicate=False
-        )
-
-        device_template = await Node.init(db=db, schema=device_template_schema)
-        await device_template.new(
-            db=db,
-            template_name="full_device_template",
-            manufacturer="Cisco",
-            model="Nexus 9000",
-            interfaces=[eth0_template.id, eth1_template.id],
-        )
-        await device_template.save(db=db)
 
         # Assign device profile
         mutation_assign_device_profile = """
@@ -1195,16 +1196,19 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         assert retrieved_device.role.source_id == device_component_profile.id
 
         # Get and verify interfaces
-        interfaces_rel = await retrieved_device.interfaces.get_peers(db=db)
+        interfaces_rel = await retrieved_device.interfaces.get_peers(db=db, include_metadata=MetadataOptions.SOURCE)
         assert len(interfaces_rel) == 2
 
         for interface in interfaces_rel.values():
+            await interface.mtu.get_source(db=db)
             assert interface.mtu.value == 9000
             assert interface.mtu.is_from_profile is True
             assert interface.mtu.source_id == interface_profile.id
+            await interface.speed.get_source(db=db)
             assert interface.speed.value == "10G"
             assert interface.speed.is_from_profile is True
             assert interface.speed.source_id == interface_profile.id
+            await interface.enabled.get_source(db=db)
             assert interface.enabled.value is True
             assert interface.enabled.is_from_profile is True
             assert interface.enabled.source_id == interface_profile.id

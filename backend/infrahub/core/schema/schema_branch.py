@@ -2428,7 +2428,7 @@ class SchemaBranch:
                 template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
 
-        if getattr(node, "generate_profile", False) and getattr(node, "generate_template", False):
+        if getattr(node, "generate_profile", False):
             if "profiles" not in [r.name for r in template_schema.relationships]:
                 settings = dict(profiles_rel_settings)
                 settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
