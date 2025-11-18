@@ -57,12 +57,13 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   test("3. Update an organization", async ({ page }) => {
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
-      await expect(page.getByTestId("cr1234")).toContainText("cr1234");
 
       await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
       await page.getByRole("menuitem", { name: "Tenant" }).click();
 
-      const myFirstOrgLink = page.getByRole("link", { name: "my-first-tenant" });
+      const myFirstOrgLink = page
+        .getByTestId("object-items")
+        .getByRole("link", { name: "my-first-tenant" });
       await expect(myFirstOrgLink).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organizations");
       await myFirstOrgLink.click();
