@@ -1,10 +1,9 @@
 import { Icon } from "@iconify-icon/react";
-import { useSetAtom } from "jotai";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Pressable } from "react-aria-components";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -21,7 +20,6 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
-import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -46,8 +44,6 @@ export function ObjectDetailsMenu({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const nodeLabel = getNodeLabel(objectData);
 
@@ -195,14 +191,8 @@ export function ObjectDetailsMenu({
             navigate(
               getObjectDetailsUrl(objectData.parent.node.__typename, objectData.parent.node.id)
             );
-            if (location.pathname.startsWith("/ipam")) {
-              reloadIpamTree(objectData.parent.node.id);
-            }
           } else {
             navigate(getObjectDetailsUrl(objectSchema.kind as string));
-            if (location.pathname.startsWith("/ipam")) {
-              reloadIpamTree();
-            }
           }
         }}
       />

@@ -1,10 +1,6 @@
-import { useSetAtom } from "jotai";
-import { useLocation, useParams } from "react-router";
-
 import { queryClient } from "@/shared/api/rest/client";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 
-import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
@@ -13,10 +9,6 @@ import { ObjectTableSchemaSelector } from "@/entities/nodes/object/ui/object-tab
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export function ObjectsManagerToolbar() {
-  const { objectId } = useParams();
-
-  const location = useLocation();
-  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const { selectedSchema, baseSchema, permission } = useObjectTableContext();
 
   return (
@@ -35,10 +27,6 @@ export function ObjectsManagerToolbar() {
           queryClient.invalidateQueries({
             queryKey: objectQueryKeys.all,
           });
-
-          if (location.pathname.startsWith("/ipam")) {
-            reloadIpamTree(objectId);
-          }
         }}
         permission={permission}
         className="ml-auto"

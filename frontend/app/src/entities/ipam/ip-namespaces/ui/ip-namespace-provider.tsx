@@ -1,4 +1,3 @@
-import { atom, useAtom } from "jotai";
 import { CornerDownLeftIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
@@ -16,8 +15,6 @@ import { constructPathForIpam } from "@/entities/ipam/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
-export const currentIpNamespaceAtom = atom<IpNamespace>(undefined as unknown as IpNamespace);
-
 type IpNamespaceContext = {
   currentIpNamespace: IpNamespace;
   setCurrentIpNamespace: (newIpNamespace: IpNamespace) => void;
@@ -28,7 +25,6 @@ export const IpNamespaceContext = React.createContext<IpNamespaceContext | null>
 export function IpNamespaceProvider({ children }: { children: React.ReactNode }) {
   const { objectKind } = useParams();
   const navigate = useNavigate();
-  const [currentIpNamespace, setCurrentIpNamespace] = useAtom(currentIpNamespaceAtom);
   const [namespaceQSP] = useQueryState(IPAM_QSP.NAMESPACE);
   const { data, error, isPending } = useGetIpNamespaceList();
 
@@ -63,10 +59,6 @@ export function IpNamespaceProvider({ children }: { children: React.ReactNode })
         }
       />
     );
-  }
-
-  if (selectedNamespace.id !== currentIpNamespace?.id) {
-    setCurrentIpNamespace(selectedNamespace);
   }
 
   return (
