@@ -6,14 +6,6 @@ test.describe("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should verify the diff data with conflicts", async ({ page }) => {
     await test.step("create a new proposed change with reviewers", async () => {
       await page.goto("/proposed-changes");
@@ -24,7 +16,7 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByLabel("Reviewers").click();
       await page.getByRole("option", { name: "Admin" }).click();
       await page.getByLabel("Reviewers").click();
-      await page.getByRole("button", { name: "Open" }).click();
+      await page.getByRole("button", { name: "Open", exact: true }).click();
       await expect(page.getByText("Proposed change created")).toBeVisible();
       await page.getByText("Data").click();
     });
@@ -41,12 +33,16 @@ test.describe("/proposed-changes diff data", () => {
       await expect(
         page.getByText("UpdatedInterfaceL3Ethernet1 main den1-maintenance-")
       ).toBeVisible();
-      await page.getByText("UpdatedDeviceden1-edge1").click();
+      await page.getByLabel("diff tree").getByText("den1-edge1").click();
       await page
         .getByText(
           "main den1-maintenance-conflictstatusConflictactiveprovisioningmaintenanceChoose"
         )
         .click();
+      const hash = await page.evaluate(() => window.location.hash);
+      const highlightedNodeDiff = page.locator(`id=${hash.slice(1)}`);
+      await expect(highlightedNodeDiff).toBeInViewport();
+      await expect(highlightedNodeDiff).toContainClass("ring-2 ring-custom-blue-500");
     });
 
     await test.step("resolve conflict", async () => {

@@ -1,12 +1,12 @@
-import { ComponentProps } from "react";
+import type { ComponentProps } from "react";
 
-import { DropdownOption } from "@/shared/components/inputs/dropdown";
-import { SelectOption } from "@/shared/components/inputs/select-old";
-import { FormField } from "@/shared/components/ui/form";
+import type { DropdownOption } from "@/shared/components/inputs/dropdown";
+import type { SelectOption } from "@/shared/components/inputs/select-old";
+import type { FormField } from "@/shared/components/ui/form";
 
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NumberPool } from "@/entities/resource-manager/domain/type";
-import {
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NumberPool } from "@/entities/resource-manager/domain/type";
+import type {
   AttributeKind,
   AttributeSchema,
   ModelSchema,
@@ -139,6 +139,7 @@ export type FormFieldProps = {
     kind: string;
     defaultAllocatedObjectKind: string;
   };
+  shouldUnregister?: boolean;
 };
 
 export type DynamicInputFieldProps = FormFieldProps & {

@@ -1,11 +1,11 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.4.12"
+version = "1.5.1"
 requires-python = ">=3.9"
 
 [tool.poetry]
 name = "infrahub-testcontainers"
-version = "1.4.12"
+version = "1.5.1"
 description = "Testcontainers instance for Infrahub to easily build integration tests"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -39,7 +39,13 @@ psutil = "*"
 pytest = "*"
 httpx = "^0.28.1"
 pydantic = "^2.10.6"
-prefect-client = "3.4.13"
+prefect-client = "3.4.23"
 
 [tool.poetry.group.dev.dependencies]
 rich = "^13.9.4"
+pytest-cov = "7.0.0"
+pytest-xdist = "~3.4"
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"

@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +10,7 @@ from .models import EdgeToAdd, EdgeToDelete, EdgeToUpdate, PatchPlan, VertexToAd
 
 class PatchPlanWriter:
     def write(self, patches_directory: Path, patch_plan: PatchPlan) -> Path:
-        timestamp_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+        timestamp_str = datetime.now(tz=UTC).strftime("%Y%m%d-%H%M%S")
         patch_name = f"patch-{patch_plan.name}-{timestamp_str}"
         patch_plan_directory = patches_directory / Path(patch_name)
         if not patch_plan_directory.exists():

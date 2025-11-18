@@ -1,0 +1,33 @@
+---
+title: Release 1.5.1
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.5.1</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 13th, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.5.1](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.5.1)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+<!-- vale off -->
+- Updated FastAPI and vulnerable version of starlette
+<!-- vale on -->
+
+### Fixed
+
+- Disabled scroll on number input fields to prevent accidental value changes. ([#7602](https://github.com/opsmill/infrahub/issues/7602))
+- Backend database sessions are now handled consistently avoiding resource leakage.
+
+### Housekeeping
+
+- Bump SDK to fix issue with object file range expansion.

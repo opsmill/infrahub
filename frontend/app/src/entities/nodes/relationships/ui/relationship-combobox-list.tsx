@@ -5,13 +5,13 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
-  ComboboxListProps,
+  type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
 import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export interface RelationshipComboboxListProps

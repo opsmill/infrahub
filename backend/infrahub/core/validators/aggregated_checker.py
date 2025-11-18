@@ -49,7 +49,7 @@ class AggregatedConstraintChecker:
                 node_display_label = None
                 display_label = None
                 if node:
-                    node_display_label = await node.render_display_label(db=self.db)
+                    node_display_label = await node.get_display_label(db=self.db)
                 if node_display_label:
                     if request.node_schema.display_labels and node:
                         display_label = f"Node {node_display_label} ({node.get_kind()}: {path.node_id})"

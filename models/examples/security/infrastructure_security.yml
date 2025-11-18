@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 generics:
   - name: Address
     namespace: Security
@@ -9,8 +9,7 @@ generics:
     human_friendly_id: ["name__value"]
     order_by:
       - "name__value"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -27,8 +26,7 @@ nodes:
     human_friendly_id: ["address__value"]
     order_by:
       - "address__value"
-    display_labels:
-      - address__value
+    display_label: "{{ address__value }}"
     inherit_from:
       - "SecurityAddress"
     attributes:
@@ -54,8 +52,7 @@ nodes:
     human_friendly_id: ["prefix__value"]
     order_by:
       - "prefix__value"
-    display_labels:
-      - prefix__value
+    display_label: "{{ prefix__value }}"
     inherit_from:
       - "SecurityAddress"
     attributes:
@@ -78,8 +75,7 @@ nodes:
     namespace: Security
     description: "Security IP Range"
     label: "IP Range"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     inherit_from:
       - "SecurityAddress"
     order_by:
@@ -105,8 +101,7 @@ nodes:
     namespace: Security
     description: "Security FQDN"
     label: "FQDN"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     inherit_from:
       - "SecurityAddress"
     order_by:
@@ -121,8 +116,7 @@ nodes:
   - name: Protocol
     namespace: Security
     description: "Security Protocol"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:
@@ -141,8 +135,7 @@ nodes:
   - name: Service
     namespace: Security
     description: "Security Service"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:
@@ -171,8 +164,7 @@ nodes:
   - name: Application
     namespace: Security
     description: "Security Application"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:
@@ -192,8 +184,7 @@ nodes:
   - name: Rule
     namespace: Security
     description: "Security Rule"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:

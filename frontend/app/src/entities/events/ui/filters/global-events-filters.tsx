@@ -1,9 +1,6 @@
-import { useAtomValue } from "jotai";
 import { TagGroup, TagList } from "react-aria-components";
 
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-
-import { branchesState } from "@/entities/branches/stores";
 
 import { EVENT_TYPE_CHOICES } from "../../constants";
 import { GlobalBranchFilter } from "./global-branch-filter";
@@ -11,25 +8,11 @@ import { GlobalFilter } from "./global-filter";
 import { GlobalKindFilter } from "./global-kind-filter";
 
 export const GlobalEventsFilters = () => {
-  const branches = useAtomValue(branchesState);
-
   return (
     <ScrollArea scrollX>
       <TagGroup className="flex" selectionMode="single" aria-label="Filter group">
         <TagList className="flex items-center gap-2">
-          <GlobalBranchFilter
-            name="branches"
-            label="Branch"
-            fieldSchema={{
-              kind: "Dropdown",
-              choices: branches.map((branch) => {
-                return {
-                  label: branch.name,
-                  name: branch.name,
-                };
-              }),
-            }}
-          />
+          <GlobalBranchFilter />
 
           <GlobalFilter
             name="eventType"

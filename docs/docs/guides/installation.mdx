@@ -352,15 +352,15 @@ You can also specify a specific version in the URL:
 
 You can also specify a sizing preset in the URL. This will automatically configure replica count for each component according to your sizing plan:
 
-- [https://infrahub.opsmill.io/enterprise?size=small](https://infrahub.opsmill.io/enterprise?size=small) (requires 8 GB of RAM)
-- [https://infrahub.opsmill.io/enterprise/1.3.5?size=medium](https://infrahub.opsmill.io/enterprise/1.3.5?size=medium) (requires 24 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise?size=small](https://infrahub.opsmill.io/enterprise?size=small) (requires 16 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise/1.3.5?size=medium](https://infrahub.opsmill.io/enterprise/1.3.5?size=medium) (requires 32 GB of RAM)
 - [https://infrahub.opsmill.io/enterprise/stable?size=large](https://infrahub.opsmill.io/enterprise/stable?size=large) (requires 64 GB of RAM)
 
 | Size   | Total required memory | API workers | Task workers | Task manager API workers | Task manager background workers | DB heap size | DB page cache size |
 | ----------- | ----- | - | - | - | - | --- | --- |
-| small       | 8 GB  | 4 | 2 | 1 | 1 | 8G  | 1G  |
-| medium      | 24 GB | 4 | 4 | 2 | 2 | 24G | 4G  |
-| medium-data | 24 GB | 4 | 2 | 1 | 1 | 24G | 4G  |
+| small       | 16 GB  | 4 | 2 | 1 | 1 | 8G  | 1G  |
+| medium      | 32 GB | 4 | 4 | 2 | 2 | 24G | 4G  |
+| medium-data | 32 GB | 4 | 2 | 1 | 1 | 24G | 4G  |
 | large       | 64 GB | 4 | 8 | 4 | 2 | 31G | 16G |
 | large-data  | 64 GB | 4 | 2 | 1 | 1 | 31G | 16G |
 
@@ -512,9 +512,9 @@ Be sure to replace the placeholder values with your actual values.
 You can also use the configuration preset values.yaml file. This will automatically configure replica count for each component according to your sizing plan.
 They are available here:
 
-<ReferenceLink title="Small size config preset (requires 8 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
-<ReferenceLink title="Medium size config preset (requires 24 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
-<ReferenceLink title="Medium (data) size config preset (requires 24 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
+<ReferenceLink title="Small size config preset (requires 16 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
+<ReferenceLink title="Medium size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
+<ReferenceLink title="Medium (data) size config preset (requires 32 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
 <ReferenceLink title="Large size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
 <ReferenceLink title="Large (data) size config preset (requires 64 GB of RAM)" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
 

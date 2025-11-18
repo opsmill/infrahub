@@ -1,8 +1,8 @@
 import {
   getRelationshipsFromApi,
-  getRelationshipsFromApiParams,
+  type getRelationshipsFromApiParams,
 } from "@/entities/nodes/relationships/api/get-relationships-from-api";
-import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
+import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

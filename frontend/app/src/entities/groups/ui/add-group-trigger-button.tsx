@@ -5,11 +5,11 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 
-import { GroupDataFromAPI } from "@/entities/groups/api/types";
+import type { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupForm from "@/entities/groups/ui/add-group-form";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { Permission } from "@/entities/permission/types";
-import { NodeSchema } from "@/entities/schema/types";
+import type { Permission } from "@/entities/permission/types";
+import type { NodeSchema } from "@/entities/schema/types";
 
 type AddGroupTriggerButtonProps = {
   schema: NodeSchema;

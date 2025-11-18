@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { components } from "@/shared/api/rest/types.generated";
+import type { components } from "@/shared/api/rest/types.generated";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import Modal, { ModalTitle } from "@/shared/components/modals/modal";

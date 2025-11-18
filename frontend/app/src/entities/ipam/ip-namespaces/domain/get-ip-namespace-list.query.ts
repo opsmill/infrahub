@@ -1,13 +1,13 @@
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import { ContextParams, PaginationParams } from "@/shared/api/types";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import {
-  GetIpNamespaceListParams,
+  type GetIpNamespaceListParams,
   getIpNamespaceList,
 } from "@/entities/ipam/ip-namespaces/domain/get-ip-namespace-list";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";

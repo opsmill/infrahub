@@ -1,5 +1,5 @@
 import MultipleProgressBar, {
-  MultipleProgressBarProps,
+  type MultipleProgressBarProps,
 } from "@/shared/components/stats/multiple-progress-bar";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";

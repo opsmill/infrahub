@@ -1,4 +1,4 @@
-import { NodeSchema } from "@/entities/schema/types";
+import type { NodeSchema } from "@/entities/schema/types";
 
 const metadataFields = ["source", "owner", "is_visible", "is_protected"];
 

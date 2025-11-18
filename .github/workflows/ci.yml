@@ -185,7 +185,8 @@ jobs:
 
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -207,6 +208,44 @@ jobs:
             echo "The version of infrahub-testcontainers must match the version of infrahub"
             exit 1
           fi
+
+  backend-testcontainers-unit:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.testcontainers == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    strategy:
+      matrix:
+        python-version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ./python_testcontainers
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v5"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: "Setup environment"
+        run: |
+          python -m pip install --user pipx
+          python -m pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }} --python python${{ matrix.python-version }}
+          poetry config virtualenvs.create true --local
+      - name: "Install Package"
+        run: "poetry install --all-extras"
+      - name: "Unit Tests"
+        run: "poetry run pytest --rootdir=. -vs tests"
 
   infrahub-testcontainers-poetry-check:
     if: |
@@ -250,7 +289,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -307,7 +347,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -357,7 +398,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -420,12 +462,13 @@ jobs:
           echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_IMAGE="opsmill/infrahub" >> $GITHUB_ENV
       - name: Install Invoke
-        run: pip install invoke toml
+        run: pip install invoke
       - name: "Build container"
         run: "invoke dev.build"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -510,7 +553,8 @@ jobs:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -559,6 +603,39 @@ jobs:
           parallel: true
           file: frontend/app/coverage/lcov.info
 
+  graphql-schema:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: "actions/checkout@v5"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.12
+      - name: "Setup environment"
+        run: |
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+        env:
+          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
+      - name: "Install Package"
+        run: "poetry install"
+
+      - name: Run validation
+        run: poetry run invoke schema.validate-graphqlschema
+
   documentation:
     defaults:
       run:
@@ -589,7 +666,8 @@ jobs:
           python-version: 3.12
       - name: "Setup python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -629,7 +707,8 @@ jobs:
           python-version: "3.12"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -747,7 +826,7 @@ jobs:
           python-version: 3.12
 
       - name: Install Invoke
-        run: pip install invoke toml
+        run: pip install invoke
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
@@ -854,27 +933,27 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1" || true
 
       - name: Display task worker 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1" || true
 
       - name: Display task worker 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2" || true
 
       - name: Display task manager logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1" || true
 
       - name: Display database logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1" || true
 
       - name: Display message-queue logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1" || true
 
       - name: Display server status
         if: always()
@@ -921,7 +1000,7 @@ jobs:
 
       - name: Install Invoke
         run: |
-          pip install invoke toml
+          pip install invoke
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
@@ -1019,7 +1098,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:

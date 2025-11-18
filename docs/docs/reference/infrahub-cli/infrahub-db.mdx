@@ -21,9 +21,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `check-inheritance`: Check the database for any vertices with...
 * `constraint`: Manage Database Constraints
 * `index`: Manage Database Indexes
-* `init`: Erase the content of the database and...
 * `load-export`: Cannot be used for backup/restore...
-* `load-test-data`: Load test data into the database from the...
 * `migrate`: Check the current format of the internal...
 * `patch`: Commands for planning, applying, and...
 * `selected-export`: Export database structure of selected...
@@ -121,21 +119,6 @@ $ infrahub db index [OPTIONS] [ACTION]:[show|add|drop] [CONFIG_FILE]
 
 * `--help`: Show this message and exit.
 
-## `infrahub db init`
-
-Erase the content of the database and initialize it with the core schema.
-
-**Usage**:
-
-```console
-$ infrahub db init [OPTIONS]
-```
-
-**Options**:
-
-* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
-* `--help`: Show this message and exit.
-
 ## `infrahub db load-export`
 
 Cannot be used for backup/restore functionality.
@@ -156,22 +139,6 @@ $ infrahub db load-export [OPTIONS] EXPORT_DIR [CONFIG_FILE]
 **Options**:
 
 * `--query-limit INTEGER`: Maximum batch size of import query  [default: 1000]
-* `--help`: Show this message and exit.
-
-## `infrahub db load-test-data`
-
-Load test data into the database from the `test_data` directory.
-
-**Usage**:
-
-```console
-$ infrahub db load-test-data [OPTIONS]
-```
-
-**Options**:
-
-* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
-* `--dataset TEXT`: [default: dataset01]
 * `--help`: Show this message and exit.
 
 ## `infrahub db migrate`

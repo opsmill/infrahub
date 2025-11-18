@@ -6,7 +6,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { removeRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 export interface ToolBarRemoveFromGroupActionProps {
   selectedRows: Array<NodeCore>;

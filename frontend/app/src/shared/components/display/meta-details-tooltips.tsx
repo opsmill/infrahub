@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import React from "react";
+import type React from "react";
 
-import { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
+import type { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";

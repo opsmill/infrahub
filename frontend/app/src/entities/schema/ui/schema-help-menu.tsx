@@ -14,7 +14,7 @@ import {
 import { Button } from "@/shared/components/buttons/button-primitive";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 type SchemaHelpMenuProps = {
   schema: ModelSchema;

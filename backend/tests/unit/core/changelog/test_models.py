@@ -30,6 +30,24 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
         node_kind="TestPerson",
         display_label="Jack",
         attributes={
+            "human_friendly_id": AttributeChangelog(
+                name="human_friendly_id",
+                value=["Jack"],
+                value_previous=None,
+                properties={
+                    "is_protected": PropertyChangelog(
+                        name="is_protected",
+                        value=False,
+                        value_previous=None,
+                    ),
+                    "is_visible": PropertyChangelog(
+                        name="is_visible",
+                        value=True,
+                        value_previous=None,
+                    ),
+                },
+                kind="List",
+            ),
             "name": AttributeChangelog(
                 name="name",
                 value="Jack",
@@ -38,6 +56,24 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                     "is_protected": PropertyChangelog(
                         name="is_protected",
                         value=True,
+                        value_previous=None,
+                    ),
+                    "is_visible": PropertyChangelog(
+                        name="is_visible",
+                        value=True,
+                        value_previous=None,
+                    ),
+                },
+                kind="Text",
+            ),
+            "display_label": AttributeChangelog(
+                name="display_label",
+                value="Jack",
+                value_previous=None,
+                properties={
+                    "is_protected": PropertyChangelog(
+                        name="is_protected",
+                        value=False,
                         value_previous=None,
                     ),
                     "is_visible": PropertyChangelog(
@@ -87,6 +123,16 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
         node_kind="TestDog",
         display_label="Rocky Labrador",
         attributes={
+            "human_friendly_id": AttributeChangelog(
+                name="human_friendly_id",
+                value=["Jack", "Rocky"],
+                value_previous=None,
+                properties={
+                    "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
+                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
+                },
+                kind="List",
+            ),
             "breed": AttributeChangelog(
                 name="breed",
                 value="Labrador",
@@ -113,6 +159,16 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
                 value_previous=None,
                 properties={
                     "owner": PropertyChangelog(name="owner", value=person1.id, value_previous=None),
+                    "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
+                    "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
+                },
+                kind="Text",
+            ),
+            "display_label": AttributeChangelog(
+                name="display_label",
+                value="Rocky Labrador",
+                value_previous=None,
+                properties={
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
                     "is_visible": PropertyChangelog(name="is_visible", value=True, value_previous=None),
                 },
@@ -191,6 +247,13 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
                 value_previous="Rocky",
                 properties={"is_protected": PropertyChangelog(name="is_protected", value=True, value_previous=False)},
                 kind="Text",
+            ),
+            "human_friendly_id": AttributeChangelog(
+                name="human_friendly_id",
+                value='["Jill","Rocky"]',
+                value_previous='["Jack","Rocky"]',
+                properties={},
+                kind="List",
             ),
         },
         relationships={
@@ -348,7 +411,7 @@ async def test_node_changelog_parent(db: InfrahubDatabase, default_branch, car_p
     car1_update1 = await NodeManager.get_one(id=car1.id, db=db)
     car1_update1.color.value = "Blue"
     await car1_update1.save(db=db)
-    assert sorted(car1_update1.node_changelog.attributes.keys()) == ["color"]
+    assert sorted(car1_update1.node_changelog.attributes.keys()) == ["color", "display_label"]
     assert not car1_update1.node_changelog.relationships
     assert car1_update1.node_changelog.parent
     assert car1_update1.node_changelog.parent.node_id == person1.id

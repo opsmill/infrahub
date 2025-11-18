@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 
-import {
+import type {
   Get_Check_DetailsQueryVariables,
   Get_Core_ValidatorsQuery,
 } from "@/shared/api/graphql/generated/graphql";

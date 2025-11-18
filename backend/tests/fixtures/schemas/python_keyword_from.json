@@ -26,7 +26,6 @@
                     "label": "From",
                     "description": "Specifies the match conditions for the policy term.",
                     "kind": "Dropdown",
-                    "state": "absent",
                     "choices": [
                         {
                             "name": "default",

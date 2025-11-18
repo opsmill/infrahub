@@ -1,14 +1,12 @@
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 
-import { Filter } from "@/shared/hooks/useFilters";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 export const IP_NAMESPACE_GENERIC = "BuiltinIPNamespace";
 export const IP_ADDRESS_GENERIC = "BuiltinIPAddress";
 export const IP_ADDRESS_AVAILABLE_KIND = "InternalIPRangeAvailable" as const;
 export const IP_PREFIX_GENERIC = "BuiltinIPPrefix";
 export const IP_PREFIX_AVAILABLE_KIND = "InternalIPPrefixAvailable";
-
-export const POOLS_PEER = [IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC];
 
 export const TREE_ROOT_ID = "root" as const;
 

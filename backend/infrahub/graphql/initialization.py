@@ -9,11 +9,10 @@ from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 from infrahub.permissions import PermissionManager
-
-from .manager import GraphQLSchemaManager
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
@@ -91,7 +90,7 @@ async def prepare_graphql_params(
 ) -> GraphqlParams:
     branch = registry.get_branch_from_registry(branch=branch)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
+    gqlm = graphql_registry.get_manager_for_branch(branch=branch, schema_branch=schema_branch)
     gql_schema = gqlm.get_graphql_schema(
         include_query=include_query,
         include_mutation=include_mutation,

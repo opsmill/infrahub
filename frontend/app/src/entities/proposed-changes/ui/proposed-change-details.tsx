@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { TASK_OBJECT } from "@/config/constants";
@@ -11,21 +11,21 @@ import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-actions-button";
+import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
+import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
 import { Overview } from "@/entities/proposed-changes/ui/overview";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
 import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
-
-import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
-import { TaskDisplay } from "../../tasks/ui/task-display";
+import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
@@ -139,14 +139,6 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       name: "Updated",
       value: <DateDisplay date={proposedChangesDetails?._updated_at} />,
     },
-    {
-      name: "Actions",
-      value: (
-        <div className="flex flex-wrap gap-2">
-          <PcActionButton />
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -202,6 +194,11 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           </CardWithBorder.Title>
 
           <PropertyList properties={proposedChangeProperties} />
+
+          <div className="flex flex-grow gap-2 p-2">
+            <PcReviewButton />
+            <PcActionButton />
+          </div>
         </CardWithBorder>
       </div>
     </div>

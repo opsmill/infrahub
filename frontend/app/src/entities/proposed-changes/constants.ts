@@ -1,4 +1,4 @@
-import { StateItem } from "@/entities/proposed-changes/ui/action-button/types";
+import type { StateItem } from "@/entities/proposed-changes/ui/action-button/types";
 
 export const APPROVE_DECISION = "APPROVE";
 export const CANCEL_APPROVE_DECISION = "CANCEL_APPROVE";

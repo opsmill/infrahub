@@ -161,6 +161,8 @@ class SearchResultAPI(BaseModel):
 async def search_docs(
     query: str, limit: int | None = None, _: AccountSession = Depends(get_current_user)
 ) -> list[SearchResultAPI]:
+    if not query:
+        return []
     smart_query = smart_queries(query)
     search_results = search_docs_loader.heading_index.search(smart_query)
     heading_results = [

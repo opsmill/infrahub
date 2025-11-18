@@ -1,5 +1,5 @@
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 
 export function isPoolSchema(schema: ModelSchema): boolean {

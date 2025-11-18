@@ -1,6 +1,6 @@
 import { DownloadIcon } from "lucide-react";
 
-import { Download, DownloadProps } from "@/shared/components/download";
+import { Download, type DownloadProps } from "@/shared/components/download";
 
 import { ArtifactFileButton } from "@/entities/artifacts/ui/artifact-file-button";
 

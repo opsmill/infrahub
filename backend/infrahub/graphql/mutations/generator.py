@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGeneratorDefinition, CoreGenericRepository, CoreGraphQLQuery, CoreStandardGroup
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
@@ -44,11 +45,18 @@ class GeneratorDefinitionRequestRun(Mutation):
         db = graphql_context.db
         await apply_external_context(graphql_context=graphql_context, context_input=context)
         generator_definition = await NodeManager.get_one(
-            id=str(data.id), db=db, branch=graphql_context.branch, prefetch_relationships=True, raise_on_error=True
+            id=str(data.id),
+            kind=CoreGeneratorDefinition,
+            db=db,
+            branch=graphql_context.branch,
+            prefetch_relationships=True,
+            raise_on_error=True,
         )
-        query = await generator_definition.query.get_peer(db=db)
-        repository = await generator_definition.repository.get_peer(db=db)
-        group = await generator_definition.targets.get_peer(db=db)
+        query = await generator_definition.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+        repository = await generator_definition.repository.get_peer(
+            db=db, peer_type=CoreGenericRepository, raise_on_error=True
+        )
+        group = await generator_definition.targets.get_peer(db=db, peer_type=CoreStandardGroup, raise_on_error=True)
 
         request_model = RequestGeneratorDefinitionRun(
             generator_definition=ProposedChangeGeneratorDefinition(
@@ -57,11 +65,21 @@ class GeneratorDefinitionRequestRun(Mutation):
                 class_name=generator_definition.class_name.value,
                 file_path=generator_definition.file_path.value,
                 query_name=query.name.value,
-                query_models=query.models.value,
+                query_models=query.models.value or [],
                 repository_id=repository.id,
-                parameters=generator_definition.parameters.value,
+                parameters=generator_definition.parameters.value
+                if isinstance(generator_definition.parameters.value, dict)
+                else {},
                 group_id=group.id,
-                convert_query_response=generator_definition.convert_query_response.value or False,
+                convert_query_response=generator_definition.convert_query_response.value
+                if generator_definition.convert_query_response.value is not None
+                else False,
+                execute_in_proposed_change=generator_definition.execute_in_proposed_change.value
+                if generator_definition.execute_in_proposed_change.value is not None
+                else True,
+                execute_after_merge=generator_definition.execute_after_merge.value
+                if generator_definition.execute_after_merge.value is not None
+                else True,
             ),
             branch=graphql_context.branch.name,
             target_members=data.get("nodes", []),

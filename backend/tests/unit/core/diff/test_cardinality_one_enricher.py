@@ -66,12 +66,12 @@ class TestDiffCardinalityOneEnricher:
             conflict=None,
             previous_value=None,
             new_value=peer_id_2,
-            changed_at=is_related_prop_1.changed_at.add_delta(minutes=2),
+            changed_at=is_related_prop_1.changed_at.add(minutes=2),
         )
         diff_rel_element_2 = EnrichedRelationshipElementFactory.build(
             properties={has_source_prop_2, is_related_prop_2},
             peer_id=peer_id_2,
-            changed_at=diff_rel_element_1.changed_at.add_delta(minutes=2),
+            changed_at=diff_rel_element_1.changed_at.add(minutes=2),
             action=DiffAction.UPDATED,
         )
 
@@ -239,12 +239,12 @@ class TestDiffCardinalityOneEnricher:
             conflict=None,
             previous_value=None,
             new_value=peer_id,
-            changed_at=is_related_prop_1.changed_at.add_delta(minutes=2),
+            changed_at=is_related_prop_1.changed_at.add(minutes=2),
         )
         diff_rel_element_2 = EnrichedRelationshipElementFactory.build(
             properties={has_source_prop_2, is_related_prop_2},
             peer_id=peer_id,
-            changed_at=diff_rel_element_1.changed_at.add_delta(minutes=2),
+            changed_at=diff_rel_element_1.changed_at.add(minutes=2),
             action=DiffAction.UPDATED,
         )
 

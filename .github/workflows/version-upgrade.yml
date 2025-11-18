@@ -8,7 +8,7 @@ on:
       commit:
         type: string
         description: commit sha or branch name
-        default: ''
+        default: ""
         required: false
 
 env:
@@ -62,9 +62,10 @@ jobs:
           python-version: 3.12
       - name: "Setup python environment"
         run: |
-          pipx install -f poetry==${{ env.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ env.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
-          pip install invoke toml
+          pip install invoke
       - name: "Install Package"
         run: "poetry install"
       - name: "Set environment variables"
@@ -76,7 +77,7 @@ jobs:
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
-    # Initialize the demo environment with the Source Version
+      # Initialize the demo environment with the Source Version
       - name: Pull External Docker Images
         run: invoke demo.pull
         env:
@@ -117,7 +118,7 @@ jobs:
       - name: Stop Demo
         run: invoke demo.stop
 
-    # Build the local version and run the migrations
+      # Build the local version and run the migrations
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
@@ -126,7 +127,7 @@ jobs:
         run: invoke dev.build
 
       - name: Upgrade Infrahub and apply the latest database migrations
-        run: invoke dev.upgrade
+        run: invoke dev.upgrade --rebase-branches
 
       - name: Start Demo
         run: invoke dev.start
@@ -136,8 +137,8 @@ jobs:
           PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
-      - name: Test branch rebase
-        run: poetry run invoke dev.test-branch-rebase --branch atl1-delete-upstream --data-to-check $DATA_NAME
+      - name: Verify branch graph version
+        run: poetry run invoke dev.test-branch-graph-version --branch atl1-delete-upstream
 
       - name: Containers after tests
         if: always()
@@ -145,23 +146,23 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1" || true
 
       - name: Display git 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1" || true
 
       - name: Display git 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2" || true
 
       - name: Display database logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1" || true
 
       - name: Display task-manager logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1" || true
 
       - name: Display server status
         if: always()

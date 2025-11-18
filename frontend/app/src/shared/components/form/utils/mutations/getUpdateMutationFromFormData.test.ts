@@ -1,6 +1,6 @@
 import { describe, expect } from "vitest";
 
-import {
+import type {
   DynamicFieldProps,
   FormAttributeValue,
   FormRelationshipValue,

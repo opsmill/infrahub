@@ -5,7 +5,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { pluralize } from "@/shared/utils/string";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
+import type { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
 import { UPDATE_OBJECT_MUTATION_KEY } from "@/entities/nodes/object/domain/update-object.mutation";
 import {
   GroupCard,
@@ -13,7 +13,7 @@ import {
   GroupPanelHeader,
 } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/group-panel";
 import { ProcessingMutateObject } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/processing-mutate-object";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 interface ProcessingBulkEditObjectsProps {
   selectedRows: Array<NodeCore>;

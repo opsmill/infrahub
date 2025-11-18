@@ -1,8 +1,9 @@
 import {
-  ColumnDef,
-  ColumnOrderState,
+  type ColumnDef,
+  type ColumnOrderState,
   flexRender,
   getCoreRowModel,
+  type RowSelectionOptions,
   useReactTable,
 } from "@tanstack/react-table";
 import React from "react";
@@ -10,10 +11,10 @@ import React from "react";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 import {
-  ObjectTableSelectionToolbarProps,
+  type ObjectTableSelectionToolbarProps,
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
-import { NodeCore } from "@/entities/nodes/types";
+import type { NodeCore } from "@/entities/nodes/types";
 
 export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;
@@ -22,6 +23,7 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
+  enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
 }
 
 export function DataTable<T extends NodeCore>({
@@ -31,6 +33,7 @@ export function DataTable<T extends NodeCore>({
   isLoading,
   renderEmpty,
   toolbarActions,
+  enableRowSelection,
   ...props
 }: DataTableProps<T>) {
   const { isAuthenticated } = useAuth();
@@ -38,6 +41,7 @@ export function DataTable<T extends NodeCore>({
   const table = useReactTable({
     columns,
     data,
+    enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     getRowId: (row) => row.id,

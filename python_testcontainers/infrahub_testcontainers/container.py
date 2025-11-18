@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 import time
@@ -72,7 +74,10 @@ class InfrahubDockerCompose(DockerCompose):
 
     @classmethod
     def init(
-        cls, directory: Path | None = None, version: str | None = None, deployment_type: str | None = None
+        cls,
+        directory: Path | None = None,
+        version: str | None = None,
+        deployment_type: str | None = None,
     ) -> Self:
         if not directory:
             directory = Path.cwd()
@@ -84,7 +89,11 @@ class InfrahubDockerCompose(DockerCompose):
         if version == "local" and infrahub_image_version:
             version = infrahub_image_version
 
-        compose = cls(project_name=cls.generate_project_name(), context=directory, deployment_type=deployment_type)
+        compose = cls(
+            project_name=cls.generate_project_name(),
+            context=directory,
+            deployment_type=deployment_type,
+        )
         compose.create_docker_file(directory=directory)
         compose.create_env_file(directory=directory, version=version)
 
@@ -152,6 +161,8 @@ class InfrahubDockerCompose(DockerCompose):
                     "INFRAHUB_TESTING_TASKMGR_BACKGROUND_SVC_REPLICAS": "1",
                     "PREFECT_MESSAGING_BROKER": "prefect_redis.messaging",
                     "PREFECT_MESSAGING_CACHE": "prefect_redis.messaging",
+                    "PREFECT_SERVER_EVENTS_CAUSAL_ORDERING": "prefect_redis.ordering",
+                    "PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE": "prefect_redis.lease_storage",
                     "PREFECT__SERVER_WEBSERVER_ONLY": "true",
                     "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
                     "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
@@ -237,7 +248,12 @@ class InfrahubDockerCompose(DockerCompose):
             for service_name, service_data in INFRAHUB_SERVICES.items()
         }
 
-    def database_create_backup(self, backup_name: str = "neo4j_database.backup", dest_dir: Path | None = None) -> None:
+    def database_create_backup(
+        self,
+        backup_name: str = "neo4j_database.backup",
+        dest_dir: Path | None = None,
+        compress: bool = False,
+    ) -> None:
         assert self.use_neo4j_enterprise
 
         self.exec_in_container(
@@ -245,7 +261,7 @@ class InfrahubDockerCompose(DockerCompose):
                 "neo4j-admin",
                 "database",
                 "backup",
-                "--compress=false",
+                f"--compress={'true' if compress else 'false'}",
                 "--to-path",
                 str(self.internal_backup_dir),
             ],
@@ -279,7 +295,14 @@ class InfrahubDockerCompose(DockerCompose):
                 self.start_container(service_name=service_name)
 
             self.exec_in_container(
-                command=["cypher-shell", "-u", "neo4j", "-p", "admin", "STOP DATABASE neo4j;"],
+                command=[
+                    "cypher-shell",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "STOP DATABASE neo4j;",
+                ],
                 service_name=service_name,
             )
 
@@ -364,7 +387,14 @@ class InfrahubDockerCompose(DockerCompose):
             time.sleep(10)
 
             self.exec_in_container(
-                command=["cypher-shell", "-u", "neo4j", "-p", "admin", "DROP DATABASE neo4j;"],
+                command=[
+                    "cypher-shell",
+                    "-u",
+                    "neo4j",
+                    "-p",
+                    "admin",
+                    "DROP DATABASE neo4j;",
+                ],
                 service_name=service_name,
             )
 
@@ -513,3 +543,111 @@ class InfrahubDockerCompose(DockerCompose):
                 )
             self.start()
             print("Database restored successfully")
+
+    def task_manager_create_backup(self, backup_name: str = "prefect.dump", dest_dir: Path | None = None) -> Path:
+        """Create a backup of the task manager PostgreSQL database using ``pg_dump``.
+
+        Args:
+            backup_name: Name of the archive file to create. Defaults to ``prefect.dump``.
+            dest_dir: Optional host directory where the backup should be copied after it is
+                produced. When omitted, the backup remains in ``external_backup_dir``.
+
+        Returns:
+            Path to the backup archive on the host filesystem.
+
+        Raises:
+            FileNotFoundError: If the pg_dump command completes but no archive is produced.
+        """
+
+        service_name = "task-manager-db"
+
+        try:
+            self.get_container(service_name=service_name)
+        except ContainerIsNotRunning:
+            self.start_container(service_name=service_name)
+
+        self.external_backup_dir.mkdir(parents=True, exist_ok=True)
+
+        internal_backup_path = self.internal_backup_dir / backup_name
+        dump_command = [
+            "pg_dump",
+            "--format=custom",
+            "--blobs",
+            "--no-owner",
+            "--no-privileges",
+            "--dbname=postgresql://postgres:postgres@localhost:5432/prefect",
+            f"--file={internal_backup_path}",
+        ]
+        self.exec_in_container(command=dump_command, service_name=service_name)
+
+        source_path = self.external_backup_dir / backup_name
+        if not source_path.exists():
+            raise FileNotFoundError(f"Backup file {source_path} was not created")
+
+        final_path = source_path
+        if dest_dir:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            if dest_dir.resolve() != self.external_backup_dir.resolve():
+                final_path = dest_dir / backup_name
+                shutil.copy(source_path, final_path)
+
+        return final_path
+
+    def task_manager_restore_backup(self, backup_file: Path) -> None:
+        """Restore the task manager PostgreSQL database from a ``pg_restore`` archive.
+
+        Args:
+            backup_file: Path to the backup archive on the host filesystem.
+
+        Raises:
+            FileNotFoundError: If the provided backup archive does not exist.
+        """
+
+        if not backup_file.exists():
+            raise FileNotFoundError(f"Backup file {backup_file} does not exist")
+
+        service_name = "task-manager-db"
+
+        try:
+            self.get_container(service_name=service_name)
+        except ContainerIsNotRunning:
+            self.start_container(service_name=service_name)
+
+        self.external_backup_dir.mkdir(parents=True, exist_ok=True)
+        target_path = self.external_backup_dir / backup_file.name
+        shutil.copy(backup_file, target_path)
+
+        admin_dsn = "postgresql://postgres:postgres@localhost:5432/postgres"
+        prefect_dsn = "postgresql://postgres:postgres@localhost:5432/prefect"
+        internal_backup_path = self.internal_backup_dir / backup_file.name
+
+        terminate_sessions_command = [
+            "psql",
+            f"--dbname={admin_dsn}",
+            "--command",
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'prefect';",
+        ]
+        drop_database_command = [
+            "psql",
+            f"--dbname={admin_dsn}",
+            "--command",
+            "DROP DATABASE IF EXISTS prefect WITH (FORCE);",
+        ]
+        create_database_command = [
+            "psql",
+            f"--dbname={admin_dsn}",
+            "--command",
+            "CREATE DATABASE prefect OWNER postgres;",
+        ]
+        restore_command = [
+            "pg_restore",
+            "--no-owner",
+            "--role=postgres",
+            f"--dbname={prefect_dsn}",
+            str(internal_backup_path),
+        ]
+
+        self.exec_in_container(command=terminate_sessions_command, service_name=service_name)
+        self.exec_in_container(command=drop_database_command, service_name=service_name)
+        self.exec_in_container(command=create_database_command, service_name=service_name)
+        self.exec_in_container(command=restore_command, service_name=service_name)

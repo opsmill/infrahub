@@ -116,7 +116,7 @@ async def create_validators(
                 )
                 # Mark as complete if in final state
                 if is_final_state(state):
-                    create_data.update({"completed_at": started_at.add_delta(seconds=30).to_string()})
+                    create_data.update({"completed_at": started_at.add(seconds=30).to_string()})
 
                 v = await client.create(validator_kind, data=create_data)
                 await v.save()

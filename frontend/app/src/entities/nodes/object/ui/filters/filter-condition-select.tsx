@@ -1,4 +1,4 @@
-import { SelectProps } from "react-aria-components";
+import type { SelectProps } from "react-aria-components";
 
 import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 

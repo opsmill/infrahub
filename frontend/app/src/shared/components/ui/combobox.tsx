@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
+import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
 import {

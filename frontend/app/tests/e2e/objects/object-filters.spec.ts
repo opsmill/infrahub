@@ -49,6 +49,8 @@ test.describe("Object filters", () => {
 
       await page.getByRole("button", { name: "Site" }).click();
       await expect(page.getByTestId("relationship-filter-form")).toContainText("atl1×");
+      await page.getByText("Filter by Site").press("Escape");
+      await expect(page.getByTestId("relationship-filter-form")).not.toBeVisible();
     });
 
     await test.step("remove an attribute filter", async () => {
@@ -99,6 +101,7 @@ test.describe("Object filters", () => {
 
     await test.step("filter target kind", async () => {
       await page.getByTestId("object-schema-schema-selector").click();
+      await expect(page.getByTestId("object-schema-schema-selector-popover")).toBeVisible();
       await expect(
         page.getByRole("option", { name: "Interface L2 Infra", exact: true })
       ).toBeVisible();
@@ -116,6 +119,7 @@ test.describe("Object filters", () => {
 
     await test.step("filter using kind", async () => {
       await page.getByRole("option", { name: "Interface L3 Infra", exact: true }).click();
+      await expect(page.getByTestId("object-schema-schema-selector-popover")).not.toBeVisible();
 
       await expect(page.getByTestId("object-schema-schema-selector")).toContainText(
         "Interface L3Infra"

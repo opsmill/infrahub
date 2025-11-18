@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { ProfileData } from "@/shared/components/form/object-form";
+import type { ProfileData } from "@/shared/components/form/object-form";
 import {
-  GetFieldDefaultValue,
+  type GetFieldDefaultValue,
   getFieldDefaultValue,
 } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { store } from "@/shared/stores";
 
-import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject } from "@/entities/nodes/types";
+import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeObject } from "@/entities/nodes/types";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,

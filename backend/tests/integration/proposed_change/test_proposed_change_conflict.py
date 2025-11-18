@@ -342,8 +342,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             query=QUERY_EVENT,
             variables={"related_node__ids": [proposed_change_after.id], "event_type": ["infrahub.validator.passed"]},
         )
-        assert validator_started_events["InfrahubEvent"]["count"] == 10
-        assert validator_passed_events["InfrahubEvent"]["count"] == 10
+        assert validator_started_events["InfrahubEvent"]["count"] == 11
+        assert validator_passed_events["InfrahubEvent"]["count"] == 11
         started_validators = [
             event["node"]["primary_node"]["kind"] for event in validator_started_events["InfrahubEvent"]["edges"]
         ]

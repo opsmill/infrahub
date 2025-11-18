@@ -6,7 +6,7 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { resolveSchema, SchemaResult } from "@/entities/schema/utils/resolve-schema";
+import { resolveSchema, type SchemaResult } from "@/entities/schema/utils/resolve-schema";
 
 export const useSchema = (kind: string | null | undefined): SchemaResult => {
   const nodeSchemas = useAtomValue(nodeSchemasAtom);
