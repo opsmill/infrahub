@@ -238,9 +238,10 @@ async def _validate_node_profile_relationships(
     for rel_name in schema.relationship_names:
         updated_node_rel_manager = updated_node.get_relationship(name=rel_name)
         updated_source = set()
-        updated_peers = list((await updated_node_rel_manager.get_peers(db=db)).values())
-        for peer in updated_peers:
-            if source := peer._source:
+        updated_relationships = await updated_node_rel_manager.get_relationships(db=db)
+        updated_peers = [await rel.get_peer(db=db) for rel in updated_relationships]
+        for peer in updated_relationships:
+            if source := await peer.get_source(db=db):
                 updated_source.add(source.id)
 
         original_node_rel_manager = original_node.get_relationship(name=rel_name)
@@ -249,10 +250,11 @@ async def _validate_node_profile_relationships(
 
         if expected_profile_relationship:
             assert {p.id for p in updated_peers} == {p.id for p in expected_profile_relationship.peers}
-            # assert updated_source == {expected_profile_relationship.source_uuid}
+            if expected_profile_relationship.source_uuid:
+                assert updated_source == {expected_profile_relationship.source_uuid}
         else:
             assert {p.id for p in updated_peers} == {p.id for p in original_peers}
-            # assert updated_source is None
+            assert updated_source == set()
 
 
 @dataclass
