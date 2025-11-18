@@ -20,7 +20,7 @@ test.describe("/ipam/ip_addresses - IP Address list", () => {
     await page.goto("/ipam");
 
     await test.step("select a prefix to view all ip addresses", async () => {
-      await page.getByRole("treeitem", { name: "172.16.0.0/16" }).click();
+      await page.getByLabel("IPAM tree").getByText("172.16.0.0/16").click();
       await expect(page.getByRole("heading", { name: "172.16.0.0/16" })).toBeVisible();
       await page.getByRole("link", { name: "IP Addresses" }).click();
     });
