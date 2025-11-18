@@ -1,5 +1,6 @@
 ---
 # https://github.com/SethCohen/github-releases-to-discord
+# yamllint disable rule:truthy
 on:
   release:
     types: [published]
