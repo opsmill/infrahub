@@ -27,7 +27,10 @@ export function getIpamTreeNodesByParentInfiniteQueryOptions(
   params: GetIpamTreeNodesByParentQueryOptionsParams & ContextParams
 ) {
   return infiniteQueryOptions({
-    queryKey: objectQueryKeys.tree({ objectKind: IP_PREFIX_GENERIC, ...params }),
+    queryKey: [
+      ...objectQueryKeys.tree({ objectKind: IP_PREFIX_GENERIC, ...params }),
+      params.namespaceId,
+    ],
     queryFn: async ({ pageParam }) => {
       return getIpamTreeNodesByParent({
         ...params,
