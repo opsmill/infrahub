@@ -7265,6 +7265,10 @@ type InfrahubBranchEdge {
 type InfrahubBranchType {
   """Total number of items"""
   count: Int
+  """
+  The default branch of the Infrahub instance, provides a direct way to access the default branch regardless of filters.
+  """
+  default_branch: InfrahubBranch!
   edges: [InfrahubBranchEdge!]!
 }
 
@@ -10794,7 +10798,7 @@ type Query {
   IPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.")
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
   """Retrieve paginated information about active branches."""
-  InfrahubBranch(limit: Int, offset: Int): InfrahubBranchType!
+  InfrahubBranch(ids: [ID], limit: Int, name__value: String, offset: Int): InfrahubBranchType!
   InfrahubEvent(
     """Filter the query to specific accounts"""
     account__ids: [String!]
