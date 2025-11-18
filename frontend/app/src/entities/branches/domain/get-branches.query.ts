@@ -8,7 +8,6 @@ export function getBranchesQueryOptions() {
   return queryOptions({
     queryKey: branchesQueryKeys.all,
     queryFn: getBranches,
-    refetchOnMount: "always",
   });
 }
 
