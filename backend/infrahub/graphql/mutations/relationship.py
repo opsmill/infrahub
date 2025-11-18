@@ -32,6 +32,7 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.groups.ancestors import collect_ancestors
 from infrahub.permissions import get_global_permission_for_kind
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ..types import RelatedNodeInput
 
@@ -91,7 +92,7 @@ class RelationshipAdd(Mutation):
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
-        display_label: str = await source.get_display_label(db=graphql_context.db) or ""
+        display_label = await source.get_display_label(db=graphql_context.db)
         node_changelog = NodeChangelog(
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
@@ -116,6 +117,11 @@ class RelationshipAdd(Mutation):
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
                     await rel.save(db=db)
+
+            if relationship_name == "profiles":
+                node_profiles_applier = NodeProfilesApplier(db=db, branch=graphql_context.branch)
+                await node_profiles_applier.apply_profiles(node=source)
+                await source.save(db=db)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
@@ -238,6 +244,11 @@ class RelationshipRemove(Mutation):
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.delete_relationship(relationship=rel)
                     await rel.delete(db=db)
+
+            if relationship_name == "profiles":
+                node_profiles_applier = NodeProfilesApplier(db=db, branch=graphql_context.branch)
+                await node_profiles_applier.apply_profiles(node=source)
+                await source.save(db=db)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
