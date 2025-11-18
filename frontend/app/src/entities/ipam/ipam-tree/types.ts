@@ -5,4 +5,3 @@ export interface IpamTreeNode extends NodeCore {
     count: number;
   };
 }
-
