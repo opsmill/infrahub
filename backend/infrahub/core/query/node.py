@@ -12,6 +12,7 @@ from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
     MetadataOptions,
     RelationshipDirection,
@@ -623,7 +624,8 @@ class NodeListGetAttributeQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
-        self.params["profile_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
+        self.params["profile_node_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
+        self.params["profile_template_relationship_name"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
@@ -632,7 +634,10 @@ class NodeListGetAttributeQuery(Query):
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        WITH n, exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_relationship_name})) AS might_use_profile
+        WITH n, (
+            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_node_relationship_name})) OR
+            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_template_relationship_name}))
+        ) AS might_use_profile
         MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
         """
         if self.fields:

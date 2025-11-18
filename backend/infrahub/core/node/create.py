@@ -58,7 +58,13 @@ async def extract_peer_data(
             except ValueError:
                 pass
 
-        obj_peer_data[attr_name] = {"value": template_attr.value, "source": template_peer.id}
+        # If the template attribute comes from a profile, preserve the profile as the source
+        # Otherwise, use the template itself as the source
+        source_id = template_attr.source_id or template_peer.id
+        attr_data = {"value": template_attr.value, "source": source_id}
+        if template_attr.is_from_profile:
+            attr_data["is_from_profile"] = True
+        obj_peer_data[attr_name] = attr_data
 
     for rel in template_peer.get_schema().relationship_names:
         rel_manager: RelationshipManager = getattr(template_peer, rel)
@@ -153,7 +159,7 @@ async def handle_template_relationships(
             )
 
 
-async def get_profile_ids(db: InfrahubDatabase, obj: Node) -> set[str]:
+async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) -> set[str]:
     if not hasattr(obj, "profiles"):
         return set()
     profile_rels = await obj.profiles.get_relationships(db=db)

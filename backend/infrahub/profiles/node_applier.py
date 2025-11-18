@@ -3,13 +3,21 @@ from typing import Any
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
-from infrahub.core.schema import TemplateSchema
 from infrahub.database import InfrahubDatabase
 
 from .queries.get_profile_data import GetProfileDataQuery, ProfileData
 
 
 class NodeProfilesApplier:
+    """Applies profile values to nodes and templates.
+
+    Profile values take precedence over both default values and template-sourced values.
+    When a template has profiles assigned:
+    1. Profile values are applied to the template itself
+    2. Nodes created from that template inherit the profile values (not the template's own values)
+    3. Profile priority determines which profile wins when multiple profiles set the same attribute
+    """
+
     def __init__(self, db: InfrahubDatabase, branch: Branch):
         self.db = db
         self.branch = branch
@@ -30,12 +38,7 @@ class NodeProfilesApplier:
         for attr_schema in node_schema.attributes:
             attr_name = attr_schema.name
             node_attr: BaseAttribute = getattr(node, attr_name)
-            is_template = None
-            if node_attr.source_id:
-                await node_attr.get_source(db=self.db)
-                if isinstance(node_attr.source.get_schema(), TemplateSchema):
-                    is_template = True
-            if node_attr.is_from_profile or node_attr.is_default or is_template:
+            if node_attr.is_from_profile or node_attr.is_default:
                 attr_names_for_profiles.append(attr_name)
         return attr_names_for_profiles
 
