@@ -20,7 +20,6 @@ test.describe("/ipam - Ipam Tree", () => {
     await test.step("view children of a children prefix", async () => {
       await ipamTree.getByRole("button", { name: "Expand 10.1.0.0/16" }).click();
       await expect(ipamTree.getByText("10.0.0.0/8")).toBeVisible();
-      await expect(ipamTree.getByText("10.0.0.0/8")).toBeVisible();
       await expect(ipamTree.getByText("10.1.0.0/16")).toBeVisible();
       await expect(ipamTree.getByText("10.1.0.12/31")).toBeVisible();
     });
