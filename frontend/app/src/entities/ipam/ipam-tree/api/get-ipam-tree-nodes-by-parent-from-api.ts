@@ -8,9 +8,23 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 export const GET_IPAM_TREE_NODES = gql`
-  query GET_IPAM_TREE_NODES($isTopLevel: Boolean, $parentIds: [ID!], $search: String, $ipNamespaceIds: [ID!],     $limit: Int
-    $offset: Int) {
-    BuiltinIPPrefix(is_top_level__value: $isTopLevel, parent__ids: $parentIds, any__value: $search, partial_match: true, ip_namespace__ids: $ipNamespaceIds, offset: $offset,limit: $limit ) {
+  query GET_IPAM_TREE_NODES(
+    $isTopLevel: Boolean
+    $parentIds: [ID!]
+    $search: String
+    $ipNamespaceIds: [ID!]
+    $limit: Int
+    $offset: Int
+  ) {
+    BuiltinIPPrefix(
+      is_top_level__value: $isTopLevel
+      parent__ids: $parentIds
+      any__value: $search
+      partial_match: true
+      ip_namespace__ids: $ipNamespaceIds
+      offset: $offset
+      limit: $limit
+    ) {
       edges {
         node {
           id
