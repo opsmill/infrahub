@@ -9,8 +9,9 @@ export function getBranchesQueryOptions(id: string) {
   // biome-ignore lint/suspicious/noConsole: <trying to fix flaky tests>
   console.log("id: ", id);
   return queryOptions({
-    queryKey: [...branchesQueryKeys.all, id],
+    queryKey: branchesQueryKeys.all,
     queryFn: getBranches,
+    refetchOnMount: "always",
   });
 }
 
