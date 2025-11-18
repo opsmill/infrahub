@@ -20,6 +20,7 @@ export function IpamTreeWithSearch() {
           className="border-transparent"
           value={search}
           onChange={setSearch}
+          aria-label="IPAM Tree search"
         />
       </div>
 

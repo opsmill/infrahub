@@ -18,7 +18,7 @@ test.describe("/ipam - Ipam Tree", () => {
     });
 
     await test.step("view children of a children prefix", async () => {
-      await page.getByRole("button", { name: "Expand 10.1.0.0/16" }).click();
+      await ipamTree.getByRole("button", { name: "Expand 10.1.0.0/16" }).click();
       await expect(ipamTree.getByText("10.0.0.0/8")).toBeVisible();
       await expect(ipamTree.getByText("10.0.0.0/8")).toBeVisible();
       await expect(ipamTree.getByText("10.1.0.0/16")).toBeVisible();
@@ -51,7 +51,7 @@ test.describe("/ipam - Ipam Tree", () => {
 
     await test.step("search on IPAM tree", async () => {
       await expect(ipamTree.getByText("10.0.0.0/8")).toBeVisible();
-      await page.getByPlaceholder("Filter...").fill("10.2");
+      await page.getByRole("searchbox", { name: "IPAM Tree search" }).fill("10.2");
       await expect(ipamTree.getByText("10.2.0.0/16")).toBeVisible();
       expect(await ipamTree.getByRole("row").count()).toEqual(1);
     });
@@ -64,7 +64,7 @@ test.describe("/ipam - Ipam Tree", () => {
     });
 
     await test.step("reset IPAM search", async () => {
-      await page.getByPlaceholder("Filter...").fill("");
+      await page.getByRole("searchbox", { name: "IPAM Tree search" }).fill("");
       await expect(ipamTree.getByText("10.0.0.0/8")).toBeVisible();
     });
   });
