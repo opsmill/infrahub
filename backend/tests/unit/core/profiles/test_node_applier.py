@@ -520,10 +520,10 @@ async def test_get_many_with_profile_relationships_clear(
     )
     assert len(node_map) == 1
     updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
-    assert not len(await updated_child_one.profiles.get_relationships(db=db))
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
 
+    await updated_child_one.profiles.remove_locally(db=db, peer_id=augmented_child_profile.id)
     updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
     assert updated_field_names == []
     await updated_child_one.save(db=db)

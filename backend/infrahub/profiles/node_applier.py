@@ -47,7 +47,8 @@ class NodeProfilesApplier:
             rel_name = rel_schema.name
             node_rel = node.get_relationship(rel_name)
 
-            if node_rel.is_from_profile or len(await node_rel.get_relationships(db=self.db)) == 0:
+            current_rels = await node_rel.get_relationships(db=self.db)
+            if node_rel.is_from_profile or len(current_rels) == 0:
                 rel_names_for_profiles.append(rel_name)
 
         return rel_names_for_profiles
@@ -185,15 +186,15 @@ class NodeProfilesApplier:
             relationship_filters=rel_filters_for_profiles,
         )
 
-        updated_field_names = []
+        updated_field_names: list[str] = []
         # set attribute values/is_default/is_from_profile on nodes
         for attr_name in attr_names_for_profiles:
-            has_profile_data = False
+            has_profile_attr_data = False
             node_attr = node.get_attribute(attr_name)
             for profile_data in sorted_profile_data:
                 profile_value = profile_data.attribute_values.get(attr_name)
                 if profile_value is not None:
-                    has_profile_data = True
+                    has_profile_attr_data = True
                     is_changed = False
                     is_changed = self._apply_profile_to_attribute(
                         node_attr=node_attr, profile_value=profile_value, profile_id=profile_data.uuid
@@ -201,18 +202,18 @@ class NodeProfilesApplier:
                     if is_changed:
                         updated_field_names.append(attr_name)
                     break
-            if not has_profile_data and node_attr.is_from_profile:
+            if not has_profile_attr_data and node_attr.is_from_profile:
                 self._remove_profile_from_attribute(node_attr=node_attr)
                 updated_field_names.append(attr_name)
 
         for rel_filter in rel_filters_for_profiles:
-            has_profile_data = False
+            has_profile_rel_data = False
             node_rel = node.get_relationship_by_identifier(rel_filter.relationship_identifier.removeprefix("profile_"))
 
             for profile_data in sorted_profile_data:
                 profile_peers = profile_data.relationship_peers.get(rel_filter)
                 if profile_peers:
-                    has_profile_data = True
+                    has_profile_rel_data = True
                     is_changed = await self._apply_profile_to_relationship(
                         node=node, node_rel=node_rel, peer_ids=profile_peers, profile_id=profile_data.uuid
                     )
@@ -220,7 +221,7 @@ class NodeProfilesApplier:
                         updated_field_names.append(node_rel.name)
                     break
 
-            if not has_profile_data and node_rel.is_from_profile:
+            if not has_profile_rel_data and node_rel.is_from_profile:
                 await self._remove_profile_from_relationship(relationship_manager=node_rel)
 
                 updated_field_names.append(node_rel.name)

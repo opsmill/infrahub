@@ -1027,6 +1027,14 @@ class RelationshipManager:
         for peer_id in details.peer_ids_present_local_only:
             await self.remove_locally(peer_id=peer_id, db=db)
 
+        has_profile_source = False
+        for rel in self._relationships:
+            source_node = await rel.get_source(db=db)
+            if source_node and source_node.get_schema().is_profile_schema:
+                has_profile_source = True
+                break
+        self.is_from_profile = has_profile_source
+
     async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)
 
