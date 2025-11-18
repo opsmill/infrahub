@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
-import {Link, useLocation, useParams} from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 
 import { QSP } from "@/config/qsp";
 

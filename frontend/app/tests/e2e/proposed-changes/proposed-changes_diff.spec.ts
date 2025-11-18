@@ -28,7 +28,7 @@ test.describe("/proposed-changes diff data", () => {
 
     await test.step("check diff data", async () => {
       await expect(page.getByText("UpdatedInterfaceL3Ethernet1")).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Ethernet1' })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Ethernet1" })).toBeVisible();
       await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
       await page.getByText("UpdatedInterfaceL3Ethernet1").click();
