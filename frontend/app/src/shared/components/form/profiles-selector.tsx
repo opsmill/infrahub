@@ -110,10 +110,6 @@ export const ProfilesSelector = ({
     []
   );
 
-if (!value && defaultValue) {
-  onChange(profiles.filter((profile) => defaultValue.some((def) => def.id === profile.id)));
-}
-
 
   if (!profiles || profiles.length === 0) return null;
 
