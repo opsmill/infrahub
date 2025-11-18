@@ -276,7 +276,7 @@ async def process_jinja2(
         if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
     ]
 
-    tasks: dict[UUID, str] = {}
+    tasks = []
     nbr_nodes_updated = 0
 
     for computed_macro in computed_macros:
@@ -319,10 +319,11 @@ async def process_jinja2(
             f"Found {len(found)} nodes that requires updates for {computed_macro.kind}::{computed_macro.attribute.name}, processing {processing}"
         )
 
+        batch = await client.create_batch()
         if processing == "remotely":
             for node in found:
-                # Ideally we should use a batch here but it wouldn't be possible to track which node is associated with a given task
-                task = await get_workflow().submit_workflow(
+                batch.add(
+                    task=get_workflow().submit_workflow,
                     workflow=COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
                     parameters={
                         "branch_name": branch_name,
@@ -333,9 +334,9 @@ async def process_jinja2(
                     },
                     context=context,
                 )
-                tasks[task.id] = node.node_id
+
+            tasks = [task.id async for _, task in batch.execute()]
         else:
-            batch = await client.create_batch()
             for node in found:
                 batch.add(
                     task=computed_attribute_jinja2_update_value,
@@ -351,12 +352,11 @@ async def process_jinja2(
         # Wait for all tasks to complete and report on the overall success or failure of the task
         # Calculate a timeout based on the number of nodes to update
         timeout = len(tasks) * 3 if len(tasks) > 50 else len(tasks) * 10
-        failed_flow_run_ids = await wait_until_flow_runs_are_completed(list(tasks.keys()), interval=2, timeout=timeout)
-        failed_nodes: list[str] = [tasks[flow_run_id] for flow_run_id in failed_flow_run_ids]
+        failed_flow_run_ids = await wait_until_flow_runs_are_completed(tasks, interval=2, timeout=timeout)
 
         if failed_flow_run_ids:
             return Failed(
-                message=f"Failed to update computed attribute {computed_attribute_kind}.{computed_attribute_name} on {branch_name}: {failed_nodes}"
+                message=f"Failed to update computed attribute {computed_attribute_kind}.{computed_attribute_name} on {branch_name}: {failed_flow_run_ids}"  # noqa: E501
             )
 
     message = "Nothing to update"
