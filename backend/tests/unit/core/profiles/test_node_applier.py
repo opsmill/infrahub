@@ -511,10 +511,6 @@ async def test_get_many_with_profile_relationships_clear(
         ],
     )
 
-    # Clear profile for child one
-    await updated_child_one.profiles.delete(db=db)
-    await updated_child_one.save(db=db)
-
     node_map = await NodeManager.get_many(
         db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
     )
@@ -523,6 +519,7 @@ async def test_get_many_with_profile_relationships_clear(
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
 
+    # Clear profile for child one
     await updated_child_one.profiles.remove_locally(db=db, peer_id=augmented_child_profile.id)
     updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
     assert updated_field_names == []
