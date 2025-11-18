@@ -19,7 +19,7 @@ test("/graphql - GraphiQL", async ({ page }) => {
     await page
       .getByRole("region", { name: "Operation Editor" })
       .getByLabel("Editor content")
-      .pressSequentially("query {\n  Built", { delay: 100 });
+      .pressSequentially("query {\n  Built", { delay: 1000 });
   });
 
   await test.step("verify BuiltinTag appears in autocomplete suggestions", async () => {
