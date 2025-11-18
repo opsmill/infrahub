@@ -83,9 +83,7 @@ export default function ObjectTemplateForm({
     return (
       <ObjectForm
         {...props}
-        currentProfiles={
-          selectedObjectTemplate?.profiles?.edges?.map((edge: any) => edge?.node) ?? []
-        }
+        currentProfiles={selectedObjectTemplate?.profiles?.edges?.map((edge: any) => edge?.node)}
         objectTemplate={selectedObjectTemplate}
       />
     );
