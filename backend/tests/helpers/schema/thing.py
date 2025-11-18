@@ -1,6 +1,8 @@
 from infrahub.core.constants import ComputedAttributeKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.schema_branch import profiles_rel_settings
+
 from tests.constants import TestKind
 
 THING = NodeSchema(
@@ -29,6 +31,7 @@ THING = NodeSchema(
             optional=False,
             peer=TestKind.CHILD,
             cardinality=RelationshipCardinality.ONE,
-        )
+        ),
+        RelationshipSchema(**profiles_rel_settings),
     ],
 )
