@@ -80,20 +80,25 @@ MATCH (a:Attribute { uuid: $attr_uuid })
 MERGE (av:%(labels)s { %(props)s } )
 WITH av, a
 LIMIT 1
+// ----------
+// find the existing HAS_VALUE edge, if it exists, and set the to time and user_id
+// ---------
 OPTIONAL MATCH (a)-[existing_active_r:%(rel_label)s { branch: $branch, status: "active" }]->()
 WHERE existing_active_r.to IS NULL
-LIMIT 1
-CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(av)
-WITH a, existing_active_r
-CALL (a) {
-    WITH a
-    WHERE $branch_level = 1
-    LIMIT 1
-    SET a.updated_at = $at, a.updated_by = $user_id
-}
-WITH existing_active_r
-WHERE existing_active_r IS NOT NULL
 SET existing_active_r.to = $at, existing_active_r.to_user_id = $user_id
+WITH av, a
+LIMIT 1
+// ----------
+// create the new HAS_VALUE edge
+// ---------
+CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(av)
+// ----------
+// update the Attribute node with the new timestamp and user id if we are on the default or global branch
+// ---------
+WITH a
+WHERE $branch_level = 1
+LIMIT 1
+SET a.updated_at = $at, a.updated_by = $user_id
         """ % {"rel_label": self.attr._rel_to_value_label, "labels": ":".join(labels), "props": ", ".join(prop_list)}
 
         self.add_to_query(query)
@@ -135,19 +140,24 @@ MATCH (a:Attribute { uuid: $attr_uuid })
 MERGE (flag:Boolean { value: $flag_value })
 WITH flag, a
 LIMIT 1
+// ----------
+// find the existing property edge, if it exists, and set the to time and user_id
+// ---------
 OPTIONAL MATCH (a)-[existing_active_r:%(flag_type)s { branch: $branch, status: "active" }]->()
 WHERE existing_active_r.to IS NULL
-CREATE (a)-[r:%(flag_type)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(flag)
-WITH a, existing_active_r
-CALL (a) {
-    WITH a
-    WHERE $branch_level = 1
-    LIMIT 1
-    SET a.updated_at = $at, a.updated_by = $user_id
-}
-WITH existing_active_r
-WHERE existing_active_r IS NOT NULL
 SET existing_active_r.to = $at, existing_active_r.to_user_id = $user_id
+// ----------
+// create the new property edge
+// ---------
+WITH a, flag
+CREATE (a)-[r:%(flag_type)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(flag)
+// ----------
+// update the Attribute node with the new timestamp and user id if we are on the default or global branch
+// ---------
+WITH a
+WHERE $branch_level = 1
+LIMIT 1
+SET a.updated_at = $at, a.updated_by = $user_id
         """ % {"flag_type": self.flag_name.upper()}
         self.add_to_query(query)
 
@@ -206,19 +216,25 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         attr_query = """
 MATCH (a:Attribute { uuid: $attr_uuid })
+// ----------
+// find the existing property edge, if it exists, and set the to time and user_id
+// ---------
 OPTIONAL MATCH (a)-[existing_active_r:%(rel_label)s { branch: $branch, status: "active" }]->()
 WHERE existing_active_r.to IS NULL
-CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(np)
-WITH a, existing_active_r
-CALL (a) {
-    WITH a
-    WHERE $branch_level = 1
-    LIMIT 1
-    SET a.updated_at = $at, a.updated_by = $user_id
-}
-WITH existing_active_r
-WHERE existing_active_r IS NOT NULL
 SET existing_active_r.to = $at, existing_active_r.to_user_id = $user_id
+// ----------
+// create the new property edge
+// ---------
+WITH a, np
+LIMIT 1
+CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(np)
+// ----------
+// update the Attribute node with the new timestamp and user id if we are on the default or global branch
+// ---------
+WITH a
+WHERE $branch_level = 1
+LIMIT 1
+SET a.updated_at = $at, a.updated_by = $user_id
         """ % {"rel_label": rel_label}
         self.add_to_query(attr_query)
 
