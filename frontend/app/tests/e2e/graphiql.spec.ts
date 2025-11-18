@@ -3,8 +3,8 @@ import { expect, test } from "@playwright/test";
 test("/graphql - GraphiQL", async ({ page }) => {
   await test.step("navigate to GraphiQL and open new tab", async () => {
     await page.goto("/graphql");
-    await expect(page.getByRole("button", { name: "Re-fetch GraphQL schema" })).toBeEnabled(); // required for autocompletion to load
     await page.getByRole("button", { name: "New tab" }).click();
+    await expect(page.getByRole("button", { name: "Re-fetch GraphQL schema" })).toBeEnabled(); // required for autocompletion to load
   });
 
   if (await page.getByText("# Welcome to GraphiQL").isVisible()) {
@@ -18,7 +18,7 @@ test("/graphql - GraphiQL", async ({ page }) => {
     await page
       .getByRole("region", { name: "Operation Editor" })
       .getByLabel("Editor content")
-      .pressSequentially("query {\n  Built");
+      .pressSequentially("query {\n  Built", { delay: 100 });
   });
 
   await test.step("verify BuiltinTag appears in autocomplete suggestions", async () => {
