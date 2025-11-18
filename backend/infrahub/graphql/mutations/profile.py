@@ -84,10 +84,10 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     async def _get_profile_related_node_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
         related_nodes = []
-        related_nodes.extend(await obj.related_nodes.get_relationships(db=db))
+        related_nodes.extend(await obj.related_nodes.get_relationships(db=db))  # type: ignore[attr-defined]
 
         if hasattr(obj, "related_templates"):
-            related_nodes.extend(await obj.related_templates.get_relationships(db=db))
+            related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
 
         if related_nodes:
             related_node_ids = {rel.peer_id for rel in related_nodes}

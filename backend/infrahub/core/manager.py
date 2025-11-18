@@ -300,6 +300,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -341,7 +342,13 @@ class NodeManager:
         if fetch_peers:
             peer_ids = [peer.peer_id for peer in peers_info]
             peer_nodes = await cls.get_many(
-                db=db, ids=peer_ids, fields=fields, at=at, branch=branch, branch_agnostic=branch_agnostic
+                db=db,
+                ids=peer_ids,
+                fields=fields,
+                at=at,
+                branch=branch,
+                branch_agnostic=branch_agnostic,
+                include_metadata=include_metadata,
             )
 
         results = []
