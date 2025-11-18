@@ -9,11 +9,11 @@ import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 import { ProposedChangesTableHomepage } from "@/entities/proposed-changes/ui/proposed-changes-table-homepage";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-interface ProposedChangesProps {
+interface ProposedChangesWidgetProps {
   className?: string;
 }
 
-export const ProposedChanges = ({ className }: ProposedChangesProps) => {
+export const ProposedChangesWidget = ({ className }: ProposedChangesWidgetProps) => {
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGE_OBJECT);
 
   return (
