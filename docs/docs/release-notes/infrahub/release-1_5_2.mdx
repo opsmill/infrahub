@@ -1,0 +1,27 @@
+---
+title: Release 1.5.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.5.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 18th, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.5.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.5.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+<!-- vale off -->
+- Fix migration that backfills display labels and human-friendly IDs to account for schema that only exist on the branch being migrated.
+  Add new migration to add display labels and human-friendly IDs to existing instances of templates and profiles. ([#7655](https://github.com/opsmill/infrahub/issues/7655))
+- Prevent attempting diff update on a deleted branch. Log a warning instead. ([#7666](https://github.com/opsmill/infrahub/issues/7666))
+<!-- vale on -->
