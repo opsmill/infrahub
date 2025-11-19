@@ -26,6 +26,65 @@ query actions($proposed_change_id: String!) {
 """
 
 
+PROPOSED_CHANGE_META_DATA_QUERY = """
+    query {
+        CoreProposedChange {
+            edges {
+                node {
+                    meta {
+                        created_by
+                        created_at
+                        updated_by
+                        updated_at
+                    }
+                    id
+                    name {
+                        value
+                        meta {
+                            updated_by
+                            updated_at
+                        }
+                    }
+                    description {
+                        value
+                        meta {
+                            updated_by
+                            updated_at
+                        }
+                    }
+                    reviewers {
+                        meta {
+                            created_at
+                            updated_at
+                            created_by
+                            updated_by
+                        }
+                        edges {
+                            node {
+                                name {
+                                    meta {
+                                        updated_at
+                                        updated_by
+                                    }
+                                    value
+                                }
+                                description {
+                                    meta {
+                                        updated_at
+                                        updated_by
+                                    }
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
+
 async def test_proposed_change_open(
     db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
 ) -> None:
@@ -239,3 +298,41 @@ async def test_proposed_change_draft(
         "You do not have the permission to perform this action",
         "The proposed change is a draft",
     ]
+
+
+async def test_proposed_change_query_meta_data(
+    db: InfrahubDatabase, register_core_models_schema: None, session_admin: AccountSession
+) -> None:
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    branch_name = "test-pc"
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db,
+        name="pc-1",
+        destination_branch="main",
+        source_branch=branch_name,
+        state="open",
+        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
+    )
+    await proposed_change.save(db=db)
+
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
+    response = await graphql_query(
+        query=PROPOSED_CHANGE_META_DATA_QUERY,
+        db=db,
+        service=service,
+        account_session=session_admin,
+    )
+
+    assert not response.errors
+    assert response.data
+
+    for prc in response.data["CoreProposedChange"]["edges"]:
+        assert prc["node"]["meta"]["created_by"]
+        assert prc["node"]["name"]["meta"]["updated_at"]
+        assert prc["node"]["description"]["meta"]["updated_at"]
