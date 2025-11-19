@@ -12,6 +12,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary/proposed-change-diff-summary";
 import { ProposedChangesActionCell } from "@/entities/proposed-changes/ui/proposed-changes-actions-cell";
@@ -30,7 +31,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
-          author={node.created_by.node?.display_label}
+          author={node.created_by.node ? getNodeLabel(node.created_by.node) : undefined}
           state={node.state?.value}
           isDraft={!!node.is_draft?.value}
           isApproved={!!node.approved_by.edges.length}
@@ -48,7 +49,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
 
       <ProposedChangesActionCell
         objectId={node.id}
-        objectLabel={node.display_label}
+        objectLabel={getNodeLabel(node)}
         permission={permission}
       />
     </ListBoxItem>
