@@ -24,6 +24,7 @@ import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Link } from "@/shared/components/ui/link";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -34,6 +35,7 @@ const getTextValue = (data: any) => {
   }
 
   return (
+    getNodeLabel(data) ??
     data?.label ??
     data?.display_label ??
     data?.value ??
