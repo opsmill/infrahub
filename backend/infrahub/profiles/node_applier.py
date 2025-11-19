@@ -121,25 +121,23 @@ class NodeProfilesApplier:
         If any peers exist, profile relationships are not applied.
         """
         is_changed = False
-        rel_schema = node_rel.schema
 
         current_rels = await node_rel.get_relationships(db=self.db)
         current_peer_ids = {rel.peer_id for rel in current_rels if rel.peer_id}
 
-        if current_peer_ids:
+        # We have peers to override the ones from the profile, so remove those ones
+        if current_peer_ids and peer_ids:
+            for peer_id in peer_ids:
+                if peer_id in current_peer_ids:
+                    await node_rel.remove_locally(db=self.db, peer_id=peer_id)
+                    is_changed = True
+
+            if is_changed:
+                node_rel.is_from_profile = False
+                await node_rel.save(db=self.db)
             return is_changed
 
-        # if current_peer_ids:
-        #     # Node already has peers for this relationship, don't apply profile relationships
-        #     # But we should still remove any existing profile relationships that are no longer valid
-        #     for rel in list(current_rels):
-        #         if node_rel.is_from_profile and rel.source_id == profile_id:  # type: ignore[attr-defined]
-        #             if rel.peer_id:
-        #                 await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
-        #                 is_changed = True
-        #     return is_changed
-
-        if rel_schema.cardinality == RelationshipCardinality.ONE:
+        if node_rel.schema.cardinality == RelationshipCardinality.ONE:
             target_peer_ids = {peer_ids[0]} if peer_ids else set()
         else:
             target_peer_ids = set(peer_ids)
@@ -156,7 +154,7 @@ class NodeProfilesApplier:
         # Add relationships that are in target but not present
         for peer_id in target_peer_ids:
             if peer_id not in current_peer_ids:
-                new_rel = Relationship(schema=rel_schema, branch=self.branch, node=node)
+                new_rel = Relationship(schema=node_rel.schema, branch=self.branch, node=node)
                 await new_rel.new(db=self.db, data=peer_id)
                 new_rel.set_source(value=profile_id)
                 node_rel._relationships.append(new_rel)

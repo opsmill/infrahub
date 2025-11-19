@@ -533,3 +533,74 @@ async def test_get_many_with_profile_relationships_clear(
         updated_node=second_updated_child_one,
         expected_profile_relationships=[ExpectedProfileRelationship(name="things", peers=[], source_uuid="")],
     )
+
+
+async def test_get_many_with_profile_relationships_override(
+    db: InfrahubDatabase, branch: Branch, child_and_thing_nodes: ChildThingFixtures
+) -> None:
+    profile_schema = registry.schema.get_profile_schema(name=f"Profile{CHILD.kind}", branch=branch, duplicate=False)
+    augmented_child_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await augmented_child_profile.new(
+        db=db,
+        profile_name="mechanically_augmented",
+        things=[child_and_thing_nodes.thing_nodes[0], child_and_thing_nodes.thing_nodes[1]],
+        profile_priority=100,
+    )
+    await augmented_child_profile.save(db=db)
+    missing_child_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await missing_child_profile.new(
+        db=db, profile_name="missing", things=[child_and_thing_nodes.thing_nodes[2]], profile_priority=200
+    )
+    await missing_child_profile.save(db=db)
+
+    # Set profile for child one
+    await child_and_thing_nodes.child_nodes[0].profiles.update(db=db, data=[augmented_child_profile])
+    await child_and_thing_nodes.child_nodes[0].save(db=db)
+
+    node_applier = NodeProfilesApplier(db=db, branch=branch)
+
+    updated_field_names = await node_applier.apply_profiles(node=child_and_thing_nodes.child_nodes[0])
+    assert updated_field_names == ["things"]
+    await child_and_thing_nodes.child_nodes[0].save(db=db)
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+    )
+    assert len(node_map) == 1
+    updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
+    await _validate_node_profile_relationships(
+        db=db,
+        schema=child_and_thing_nodes.child_node_schema,
+        original_node=child_and_thing_nodes.child_nodes[0],
+        updated_node=updated_child_one,
+        expected_profile_relationships=[
+            ExpectedProfileRelationship(
+                name="things",
+                peers=[child_and_thing_nodes.thing_nodes[0], child_and_thing_nodes.thing_nodes[1]],
+                source_uuid=augmented_child_profile.id,
+            ),
+        ],
+    )
+
+    node_applier = NodeProfilesApplier(db=db, branch=branch)
+
+    # Override the relationship profile
+    await updated_child_one.things.add(db=db, data=child_and_thing_nodes.thing_nodes[2])
+    updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
+    # assert updated_field_names == ["things"]
+    await updated_child_one.save(db=db)
+
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+    )
+    assert len(node_map) == 1
+    second_updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
+    await _validate_node_profile_relationships(
+        db=db,
+        schema=child_and_thing_nodes.child_node_schema,
+        original_node=updated_child_one,
+        updated_node=second_updated_child_one,
+        expected_profile_relationships=[
+            ExpectedProfileRelationship(name="things", peers=[child_and_thing_nodes.thing_nodes[2]], source_uuid="")
+        ],
+    )
