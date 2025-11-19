@@ -64,7 +64,12 @@ async def extract_peer_data(
         rel_manager: RelationshipManager = getattr(template_peer, rel)
         if (
             rel_manager.schema.kind
-            not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT, RelationshipKind.PROFILE]
+            not in [
+                RelationshipKind.COMPONENT,
+                RelationshipKind.PARENT,
+                RelationshipKind.PROFILE,
+                RelationshipKind.ATTRIBUTE,
+            ]
             or rel_manager.schema.name not in obj_peer_schema.relationship_names
         ):
             continue
