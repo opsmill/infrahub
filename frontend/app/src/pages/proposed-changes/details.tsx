@@ -46,9 +46,7 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
   const [qspTaskId] = useQueryState(QSP.TASK_ID);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
   useTitle(
-    `${
-      proposedChange ? `${getNodeLabel(proposedChange)} - ` : ""
-    }Proposed change - Infrahub`
+    `${proposedChange ? `${getNodeLabel(proposedChange)} - ` : ""}Proposed change - Infrahub`
   );
 
   if (proposedChangeData) setProposedChange(proposedChangeData);
@@ -192,7 +190,9 @@ export function Component() {
               )}
               className="font-semibold text-custom-blue-green"
             >
-              {proposedChangeData?.created_by?.node ? getNodeLabel(proposedChangeData.created_by.node) : ""}
+              {proposedChangeData?.created_by?.node
+                ? getNodeLabel(proposedChangeData.created_by.node)
+                : ""}
             </Link>
             wants to merge
             <Link to={constructPath(`/branches/${proposedChangeData.source_branch?.value}`)}>

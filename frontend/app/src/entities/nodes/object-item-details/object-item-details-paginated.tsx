@@ -88,9 +88,7 @@ export default function ObjectItemDetails({
   const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
-    objectDetailsData
-      ? `${getNodeLabel(objectDetailsData)} details`
-      : `${schema.label} details`
+    objectDetailsData ? `${getNodeLabel(objectDetailsData)} details` : `${schema.label} details`
   );
 
   if (!objectDetailsData) {

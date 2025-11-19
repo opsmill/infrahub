@@ -91,10 +91,21 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Created by",
       value: (
-        <Tooltip content={proposedChangesDetails?.created_by?.node ? getNodeLabel(proposedChangesDetails.created_by.node) : ""} enabled>
+        <Tooltip
+          content={
+            proposedChangesDetails?.created_by?.node
+              ? getNodeLabel(proposedChangesDetails.created_by.node)
+              : ""
+          }
+          enabled
+        >
           <Avatar
             size={"sm"}
-            name={proposedChangesDetails?.created_by?.node ? getNodeLabel(proposedChangesDetails.created_by.node) : ""}
+            name={
+              proposedChangesDetails?.created_by?.node
+                ? getNodeLabel(proposedChangesDetails.created_by.node)
+                : ""
+            }
             className="bg-custom-blue-green"
           />
         </Tooltip>
@@ -162,9 +173,18 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           {proposedChangesDetails?.description?.value && (
             <CardWithBorder contentClassName="" data-testid="pc-description">
               <CardWithBorder.Title className="flex items-center gap-2">
-                <Avatar name={proposedChangesDetails?.created_by?.node ? getNodeLabel(proposedChangesDetails.created_by.node) : ""} size="sm" />
+                <Avatar
+                  name={
+                    proposedChangesDetails?.created_by?.node
+                      ? getNodeLabel(proposedChangesDetails.created_by.node)
+                      : ""
+                  }
+                  size="sm"
+                />
 
-                {proposedChangesDetails?.created_by?.node ? getNodeLabel(proposedChangesDetails.created_by.node) : ""}
+                {proposedChangesDetails?.created_by?.node
+                  ? getNodeLabel(proposedChangesDetails.created_by.node)
+                  : ""}
 
                 <DateDisplay
                   date={proposedChangesDetails.description.updated_at}
