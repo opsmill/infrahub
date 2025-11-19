@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -69,7 +70,7 @@ async def test_get_many_with_profile(
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     expected_profile_attrs = [
@@ -132,7 +133,7 @@ async def test_get_many_with_profile_generic(
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     expected_profile_attrs = [
@@ -189,7 +190,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
 
     lowest_uuid_profile = sorted(crit_profiles, key=lambda p: p.id)[0]
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     updated_crit_low = node_map[criticality_low.id]
@@ -245,7 +246,7 @@ async def test_template_profile_application(
     assert updated_template_field_names == ["color"]
     await crit_template.save(db=db)
 
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
     assert node.id == crit_template.id
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="green", source_uuid=crit_profile_1.id),
@@ -261,3 +262,148 @@ async def test_template_profile_application(
     # make sure field names returned by apply_profiles is idempotent for templates
     updated_field_names = await node_applier.apply_profiles(node=crit_template)
     assert updated_field_names == []
+
+
+async def test_template_with_multiple_profiles(
+    db: InfrahubDatabase,
+    criticality_schema: NodeSchema,
+    branch: Branch,
+):
+    """Test that templates can have multiple profiles with correct priority handling."""
+    profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
+    template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
+
+    # Create two profiles with different priorities
+    crit_profile_high_priority = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await crit_profile_high_priority.new(
+        db=db, profile_name="high_priority_profile", color="red", description="High priority", profile_priority=100
+    )
+    await crit_profile_high_priority.save(db=db)
+
+    crit_profile_low_priority = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await crit_profile_low_priority.new(
+        db=db, profile_name="low_priority_profile", color="blue", is_true=False, profile_priority=200
+    )
+    await crit_profile_low_priority.save(db=db)
+
+    # Create template and assign both profiles
+    crit_template = await Node.init(db=db, branch=branch, schema=template_schema)
+    await crit_template.new(db=db, template_name="multi_profile_template", name="template_name")
+    await crit_template.save(db=db)
+
+    await crit_template.profiles.update(db=db, data=[crit_profile_high_priority, crit_profile_low_priority])
+
+    node_applier = NodeProfilesApplier(db=db, branch=branch)
+
+    updated_field_names = await node_applier.apply_profiles(node=crit_template)
+    # Should update color (from high priority), description (from high priority), and is_true (from low priority)
+    assert set(updated_field_names) == {"color", "description", "is_true"}
+    await crit_template.save(db=db)
+
+    # Verify the values - high priority profile should win for color
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
+    expected_profile_attrs = [
+        ExpectedProfileAttr(name="color", value="red", source_uuid=crit_profile_high_priority.id),
+        ExpectedProfileAttr(name="description", value="High priority", source_uuid=crit_profile_high_priority.id),
+        ExpectedProfileAttr(name="is_true", value=False, source_uuid=crit_profile_low_priority.id),
+    ]
+    await _validate_node_profile_attrs(
+        db=db,
+        schema=criticality_schema,
+        original_node=crit_template,
+        updated_node=node,
+        expected_profile_attrs=expected_profile_attrs,
+    )
+
+
+async def test_template_profile_precedence_over_template_values(
+    db: InfrahubDatabase,
+    criticality_schema: NodeSchema,
+    branch: Branch,
+):
+    """Test that profile values take precedence over template's own values."""
+    profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
+    template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
+
+    # Create a profile
+    crit_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await crit_profile.new(db=db, profile_name="override_profile", color="green", profile_priority=1001)
+    await crit_profile.save(db=db)
+
+    # Create template with its own color value
+    crit_template = await Node.init(db=db, branch=branch, schema=template_schema)
+    await crit_template.new(db=db, template_name="template_with_values", color="#FF0000")
+    await crit_template.save(db=db)
+
+    # Verify template has its own color initially
+    assert crit_template.color.value == "#FF0000"
+
+    # Now add profile to template
+    await crit_template.profiles.update(db=db, data=[crit_profile])
+
+    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    updated_field_names = await node_applier.apply_profiles(node=crit_template)
+    assert "color" in updated_field_names
+    await crit_template.save(db=db)
+
+    # Profile value should override template's own value
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
+    assert node.color.value == "green"
+    assert node.color.source_id == crit_profile.id
+    assert node.color.is_from_profile is True
+
+
+async def test_node_from_template_with_profile_precedence(
+    db: InfrahubDatabase,
+    criticality_schema: NodeSchema,
+    branch: Branch,
+):
+    """Test that when creating a node from a template with profiles,
+    profile values are correctly applied to the new node."""
+    profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
+    template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
+
+    # Create a profile
+    crit_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await crit_profile.new(
+        db=db, profile_name="node_profile", color="yellow", description="From profile", profile_priority=1001
+    )
+    await crit_profile.save(db=db)
+
+    # Create template with profile
+    crit_template = await Node.init(db=db, branch=branch, schema=template_schema)
+    await crit_template.new(
+        db=db,
+        template_name="template_for_node",
+        level=5,
+        color="#000000",  # Template has its own color
+    )
+    await crit_template.save(db=db)
+
+    # Assign profile to template
+    await crit_template.profiles.update(db=db, data=[crit_profile])
+
+    # Apply profiles to template
+    node_applier = NodeProfilesApplier(db=db, branch=branch)
+    await node_applier.apply_profiles(node=crit_template)
+    await crit_template.save(db=db)
+
+    # Create a node from this template
+    node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+    await node.new(db=db, name="test_node", object_template={"id": crit_template.id})
+    await node.save(db=db)
+
+    # Reload node with source information
+    node = await NodeManager.get_one(db=db, branch=branch, id=node.id, include_metadata=MetadataOptions.SOURCE)
+
+    # Node should get level from template
+    assert node.level.value == 5
+    assert node.level.source_id == crit_template.id
+
+    # Node should get color from profile (not from template's own color value)
+    assert node.color.value == "yellow"
+    assert node.color.source_id == crit_profile.id
+
+    # Node should get description from profile
+    assert node.description.value == "From profile"
+    assert node.description.source_id == crit_profile.id
