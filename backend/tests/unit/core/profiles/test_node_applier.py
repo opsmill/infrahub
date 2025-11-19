@@ -246,7 +246,7 @@ async def test_template_profile_application(
     assert updated_template_field_names == ["color"]
     await crit_template.save(db=db)
 
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
     assert node.id == crit_template.id
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="green", source_uuid=crit_profile_1.id),
@@ -301,7 +301,7 @@ async def test_template_with_multiple_profiles(
     await crit_template.save(db=db)
 
     # Verify the values - high priority profile should win for color
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="red", source_uuid=crit_profile_high_priority.id),
         ExpectedProfileAttr(name="description", value="High priority", source_uuid=crit_profile_high_priority.id),
@@ -332,7 +332,7 @@ async def test_template_profile_precedence_over_template_values(
 
     # Create template with its own color value
     crit_template = await Node.init(db=db, branch=branch, schema=template_schema)
-    await crit_template.new(db=db, template_name="template_with_values", name="template_name", color="#FF0000")
+    await crit_template.new(db=db, template_name="template_with_values", color="#FF0000")
     await crit_template.save(db=db)
 
     # Verify template has its own color initially
@@ -347,7 +347,7 @@ async def test_template_profile_precedence_over_template_values(
     await crit_template.save(db=db)
 
     # Profile value should override template's own value
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
     assert node.color.value == "green"
     assert node.color.source_id == crit_profile.id
     assert node.color.is_from_profile is True
@@ -375,7 +375,6 @@ async def test_node_from_template_with_profile_precedence(
     await crit_template.new(
         db=db,
         template_name="template_for_node",
-        name="template_name",
         level=5,
         color="#000000",  # Template has its own color
     )
@@ -395,7 +394,7 @@ async def test_node_from_template_with_profile_precedence(
     await node.save(db=db)
 
     # Reload node with source information
-    node = await NodeManager.get_one(db=db, branch=branch, id=node.id, include_source=True)
+    node = await NodeManager.get_one(db=db, branch=branch, id=node.id, include_metadata=MetadataOptions.SOURCE)
 
     # Node should get level from template
     assert node.level.value == 5
