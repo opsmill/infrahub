@@ -324,6 +324,56 @@ describe("getObjectAncestors", () => {
     });
 
     // THEN: Should filter out null nodes and still maintain order
+    expect(result[1]!.id).toBe("child-id");
+  });
+
+  it("should return partial ancestors chain when root is missing from response", async () => {
+    // GIVEN
+    const child: NodeCoreWithParent = {
+      id: "child-id",
+      __typename: "LocationCity",
+      display_label: "Los Angeles",
+      parent: {
+        node: { id: "parent-id", __typename: "LocationState", display_label: "California" },
+      },
+    };
+    const parent: NodeCoreWithParent = {
+      id: "parent-id",
+      __typename: "LocationState",
+      display_label: "California",
+      parent: {
+        node: { id: "grandparent-id", __typename: "LocationCountry", display_label: "USA" },
+      },
+    };
+    const mockApiResponse = {
+      data: {
+        [objectKind]: {
+          edges: [
+            {
+              node: {
+                ...child,
+                ancestors: {
+                  edges: [{ node: parent }],
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    vi.mocked(getObjectAncestorsFromApiModule.getObjectAncestorsFromApi).mockResolvedValue(
+      mockApiResponse as any
+    );
+
+    // WHEN
+    const result = await getObjectAncestors({
+      branchName,
+      objectKind,
+      objectId,
+    });
+
+    // THEN
     expect(result).toHaveLength(2);
     expect(result[0]!.id).toBe("parent-id");
     expect(result[1]!.id).toBe("child-id");
