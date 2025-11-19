@@ -454,19 +454,19 @@ class GitSettings(BaseSettings):
             "Note: other branches created with sync with git will be imported also"
         ),
     )
-    user_name: str | None = Field(
-        default=None,
+    user_name: str = Field(
+        default="Infrahub",
         description=(
             "User name of the git user. This will be used as the user name when Infrahub commits code to a repository"
         ),
     )
-    user_email: EmailStr | None = Field(
-        default=None,
+    user_email: EmailStr = Field(
+        default="infrahub@opsmill.com",
         description=(
             "Email of the git user. This will be used as the user email when Infrahub commits code to a repository"
         ),
     )
-    global_config_file: str | None = Field(
+    global_config_file: str = Field(
         default="/opt/infrahub/.gitconfig",
         description=(
             "The location of the git config file. "

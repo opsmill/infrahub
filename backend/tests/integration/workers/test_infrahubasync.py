@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING
 
 import pytest
 from prefect.client.orchestration import PrefectClient
@@ -8,7 +8,6 @@ from prefect.deployments import run_deployment
 from pydantic import ValidationError
 
 from infrahub import __version__ as infrahub_version
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN, DummyInput, DummyOutput
@@ -120,24 +119,11 @@ class TestWorker(TestWorkerInfrahubAsync):
         stdout, _ = await proc.communicate()
         return stdout.decode().strip() if proc.returncode == 0 else None
 
-    @pytest.fixture
-    def git_user_settings(self, git_global_config_env_setting) -> Generator[None, None, None]:
-        initial_user_name = config.SETTINGS.git.user_name
-        initial_user_email = config.SETTINGS.git.user_email
-
-        config.SETTINGS.git.user_name = "Test User"
-        config.SETTINGS.git.user_email = "test@email.com"
-
-        yield
-
-        config.SETTINGS.git.user_name = initial_user_name
-        config.SETTINGS.git.user_email = initial_user_email
-
-    async def test_worker_has_set_git_user_config(self, client, work_pool, git_user_settings) -> None:
+    async def test_worker_has_set_git_user_config(self, client, work_pool, git_global_config_env_setting) -> None:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
         await worker.setup(client=client, metric_port=0)
         user_name = await self._run_git_command("config", "--global", "--get", "user.name")
-        assert user_name == "Test User"
+        assert user_name == "Infrahub"
 
         user_email = await self._run_git_command("config", "--global", "--get", "user.email")
-        assert user_email == "test@email.com"
+        assert user_email == "infrahub@opsmill.com"
