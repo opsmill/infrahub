@@ -474,7 +474,7 @@ class GitSettings(BaseSettings):
             "if the environment variable is not initially set"
         ),
     )
-    allow_explicit_merge_commit: bool = Field(
+    use_explicit_merge_commit: bool = Field(
         default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
     )
 

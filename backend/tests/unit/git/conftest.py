@@ -1374,8 +1374,8 @@ async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: B
 
 
 @pytest.fixture
-def git_allow_explicit_merge_commit_config():
-    initial_allow_explicit_merge_commit = config.SETTINGS.git.allow_explicit_merge_commit
-    config.SETTINGS.git.allow_explicit_merge_commit = True
+def git_use_explicit_merge_commit_config():
+    initial_use_explicit_merge_commit = config.SETTINGS.git.use_explicit_merge_commit
+    config.SETTINGS.git.use_explicit_merge_commit = True
     yield
-    config.SETTINGS.git.allow_explicit_merge_commit = initial_allow_explicit_merge_commit
+    config.SETTINGS.git.use_explicit_merge_commit = initial_use_explicit_merge_commit
