@@ -9,6 +9,7 @@ from infrahub.core.constants import (
     InfrahubKind,
     MetadataOptions,
     RelationshipCardinality,
+    RelationshipKind,
 )
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -1015,6 +1016,203 @@ async def test_node_create_with_object_template_with_profile(
     assert (
         device.airflow.source_id == device.node_changelog.attributes["airflow"].properties["source"].value == profile.id
     )
+
+
+async def test_node_create_with_object_template_with_profile_and_components(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Test creating a node with a template that has a profile and component relationships.
+
+    This test demonstrates that:
+    - Device has a component relationship to interfaces
+    - Interface templates can have profiles
+    - Profiles are applied correctly to interface templates
+    """
+    INTERFACE = NodeSchema(
+        name="Interface",
+        namespace="Testing",
+        generate_template=True,
+        generate_profile=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=False, order_weight=500),
+            AttributeSchema(name="speed", kind="Number", order_weight=400, optional=True),
+            AttributeSchema(name="mtu", kind="Number", order_weight=300, optional=True),
+            AttributeSchema(name="enabled", kind="Boolean", default_value=True, optional=True),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="device",
+                peer="TestingDevice",
+                kind=RelationshipKind.PARENT,
+                cardinality=RelationshipCardinality.ONE,
+                optional=False,
+            ),
+        ],
+    )
+
+    DEVICE = NodeSchema(
+        name="Device",
+        namespace="Testing",
+        generate_template=True,
+        generate_profile=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, order_weight=500),
+            AttributeSchema(name="manufacturer", kind="Text", order_weight=500, optional=True),
+            AttributeSchema(name="model", kind="Text", order_weight=400, optional=True),
+            AttributeSchema(name="height", kind="Number", order_weight=300, optional=True),
+            AttributeSchema(name="weight", kind="Number", order_weight=1000, optional=True),
+            AttributeSchema(
+                name="airflow",
+                kind="Text",
+                enum=["Front to rear", "Rear to front"],
+                optional=True,
+            ),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="interfaces",
+                peer="TestingInterface",
+                kind=RelationshipKind.COMPONENT,
+                cardinality=RelationshipCardinality.MANY,
+                optional=True,
+            ),
+        ],
+    )
+
+    registry.schema.set(name=INTERFACE.kind, schema=INTERFACE, branch=default_branch.name)
+    registry.schema.set(name=DEVICE.kind, schema=DEVICE, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    # Get schemas
+    interface_template_schema = registry.schema.get(name=f"Template{INTERFACE.kind}", branch=default_branch.name)
+    interface_profile_schema = registry.schema.get(name=f"Profile{INTERFACE.kind}", branch=default_branch.name)
+    device_template_schema = registry.schema.get(name=f"Template{DEVICE.kind}", branch=default_branch.name)
+    device_profile_schema = registry.schema.get(name=f"Profile{DEVICE.kind}", branch=default_branch.name)
+
+    # Create an interface profile
+    interface_profile = await Node.init(db=db, branch=default_branch.name, schema=interface_profile_schema)
+    await interface_profile.new(
+        db=db,
+        profile_name="Standard Interface Profile",
+        speed=10000,
+        mtu=9000,
+    )
+    await interface_profile.save(db=db)
+
+    # Create a device profile
+    device_profile = await Node.init(db=db, branch=default_branch.name, schema=device_profile_schema)
+    await device_profile.new(
+        db=db,
+        profile_name="High Density Profile",
+        airflow="Rear to front",
+        height=1,
+    )
+    await device_profile.save(db=db)
+
+    from infrahub.profiles.node_applier import NodeProfilesApplier
+
+    # Create device template first (required for interface templates with parent relationship)
+    device_template = await Node.init(db=db, schema=device_template_schema)
+    await device_template.new(
+        db=db,
+        template_name="Juniper MX204",
+        manufacturer="Juniper",
+        model="MX204",
+        weight=8,
+    )
+    await device_template.save(db=db)
+
+    # Apply profile to device template
+    await device_template.profiles.update(db=db, data=[device_profile])
+    device_template_profiles = await device_template.profiles.get_peers(db=db)
+    assert len(device_template_profiles) == 1
+
+    device_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await device_applier.apply_profiles(node=device_template)
+    await device_template.save(db=db)
+    assert device_template.airflow.value == "Rear to front"
+    assert device_template.airflow.source_id == device_profile.id
+    assert device_template.height.value == 1
+    assert device_template.height.source_id == device_profile.id
+
+    # Create interface template with profile
+    interface_template = await Node.init(db=db, schema=interface_template_schema)
+    await interface_template.new(
+        db=db,
+        template_name="10G Interface",
+        name="eth-generic",
+        enabled=True,
+        device=device_template,
+    )
+    await interface_template.save(db=db)
+
+    # Apply profile to interface template
+    await interface_template.profiles.update(db=db, data=[interface_profile])
+    interface_template_profiles = await interface_template.profiles.get_peers(db=db)
+    assert len(interface_template_profiles) == 1
+
+    interface_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await interface_applier.apply_profiles(node=interface_template)
+    await interface_template.save(db=db)
+    assert interface_template.speed.value == 10000
+    assert interface_template.speed.source_id == interface_profile.id
+    assert interface_template.mtu.value == 9000
+    assert interface_template.mtu.source_id == interface_profile.id
+
+    # Create additional interface templates with profiles
+    interface_template_eth0 = await Node.init(db=db, schema=interface_template_schema)
+    await interface_template_eth0.new(
+        db=db,
+        template_name="eth0",
+        name="eth0",
+        enabled=True,
+        device=device_template,
+    )
+    await interface_template_eth0.save(db=db)
+
+    # Apply profile to eth0 interface template
+    await interface_template_eth0.profiles.update(db=db, data=[interface_profile])
+    await interface_applier.apply_profiles(node=interface_template_eth0)
+    await interface_template_eth0.save(db=db)
+    assert interface_template_eth0.speed.value == 10000
+    assert interface_template_eth0.mtu.value == 9000
+
+    interface_template_eth1 = await Node.init(db=db, schema=interface_template_schema)
+    await interface_template_eth1.new(
+        db=db,
+        template_name="eth1",
+        name="eth1",
+        enabled=True,
+        device=device_template,
+    )
+    await interface_template_eth1.save(db=db)
+
+    # Apply profile to eth1 interface template
+    await interface_template_eth1.profiles.update(db=db, data=[interface_profile])
+    await interface_applier.apply_profiles(node=interface_template_eth1)
+    await interface_template_eth1.save(db=db)
+    assert interface_template_eth1.speed.value == 10000
+    assert interface_template_eth1.mtu.value == 9000
+
+    # Reload device template to see component relationships
+    from infrahub.core.manager import NodeManager
+
+    device_template = await NodeManager.get_one(id=device_template.id, db=db)
+
+    # Verify device template has interface components
+    device_template_interfaces = await device_template.interfaces.get_peers(db=db)
+    assert len(device_template_interfaces) == 3
+
+    # Verify the interfaces are templates
+    for iface in device_template_interfaces.values():
+        assert iface.get_kind().startswith("Template")
+
+    # Verify interface templates have correct profile values applied
+    for iface in device_template_interfaces.values():
+        if iface.speed.value is not None:
+            assert iface.speed.value == 10000
+        if iface.mtu.value is not None:
+            assert iface.mtu.value == 9000
 
 
 # --------------------------------------------------------------------------
