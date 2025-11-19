@@ -48,30 +48,28 @@ export function BreadcrumbObjectDetailsHierarchy({
   return (
     <>
       {!hasTopLevelNode && (
-        <BreadcrumbItem>
-          <Tooltip
-            enabled
-            content={
-              <div className="max-w-xs">
-                <p className="mb-2 font-semibold">Hierarchy depth limit reached</p>
-                <p>
-                  The complete hierarchy cannot be displayed because the maximum search depth has
-                  been reached. Click to learn more about configuring{" "}
-                  <code className="bg-gray-700">INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY</code>.
-                </p>
-              </div>
-            }
+        <Tooltip
+          enabled
+          content={
+            <div className="max-w-xs">
+              <p className="mb-2 font-semibold">Hierarchy depth limit reached</p>
+              <p>
+                The complete hierarchy cannot be displayed because the maximum search depth has
+                been reached. Click to learn more about configuring{" "}
+                <code className="bg-gray-700">INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY</code>.
+              </p>
+            </div>
+          }
+        >
+          <BreadcrumbItem
+            href={`${INFRAHUB_DOC_LOCAL}/reference/configuration#database`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-600"
           >
-            <a
-              href={`${INFRAHUB_DOC_LOCAL}/reference/configuration#database`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-amber-600 hover:underline"
-            >
-              <TriangleAlertIcon className="size-4" /> Depth limit reached
-            </a>
-          </Tooltip>
-        </BreadcrumbItem>
+            <TriangleAlertIcon className="size-4" /> Depth limit reached
+          </BreadcrumbItem>
+        </Tooltip>
       )}
 
       {data.map((ancestor) => (
