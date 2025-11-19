@@ -54,8 +54,8 @@ export function BreadcrumbObjectDetailsHierarchy({
             <div className="max-w-xs">
               <p className="mb-2 font-semibold">Hierarchy depth limit reached</p>
               <p>
-                The complete hierarchy cannot be displayed because the maximum search depth has
-                been reached. Click to learn more about configuring{" "}
+                The complete hierarchy cannot be displayed because the maximum search depth has been
+                reached. Click to learn more about configuring{" "}
                 <code className="bg-gray-700">INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY</code>.
               </p>
             </div>
