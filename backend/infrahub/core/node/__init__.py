@@ -1004,10 +1004,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
-        if fields and isinstance(fields, dict):
-            field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
-        else:
-            field_names = self._schema.attribute_names + ["__typename", "display_label"]
+        field_names = (
+            [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+            if fields and isinstance(fields, dict)
+            else self._schema.attribute_names + ["__typename", "display_label"]
+        )
 
         for field_name in field_names:
             if field_name == "__typename":
@@ -1028,6 +1029,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     response[field_name] = await self._updated_at.to_graphql()
                 else:
                     response[field_name] = None
+                continue
+
+            if field_name == "meta" and isinstance(fields.get("meta"), dict):
+                response[field_name] = await self._build_meta_response(db, field_name, fields)
                 continue
 
             field: BaseAttribute | None = getattr(self, field_name, None)
@@ -1075,6 +1080,23 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
         return response
+
+    async def _build_meta_response(self, db: InfrahubDatabase, field_name: str, fields: dict) -> dict:
+        data = {}
+        for meta_field in fields.get(field_name).keys():
+            meta_field_data: RelationshipManager | str | None = getattr(self, meta_field, None)
+
+            if meta_field_data is not None and isinstance(meta_field_data, RelationshipManager):
+                peer = await meta_field_data.get_peer(db=db)
+                data[meta_field] = peer.id if peer else None
+                continue
+
+            if meta_field_data is not None and isinstance(meta_field_data, str):
+                data[meta_field] = meta_field_data
+                continue
+
+            data[meta_field] = None
+        return data
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""

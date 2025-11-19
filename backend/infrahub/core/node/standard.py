@@ -77,10 +77,28 @@ class StandardNode(BaseModel):
             if field_name == "__typename":
                 response[field_name] = self.get_type()
                 continue
-            field = getattr(self, field_name)
+            if field_name == "meta" and isinstance(fields.get("meta"), dict):
+                response[field_name] = {
+                    meta_field: getattr(self, meta_field, None) for meta_field in fields.get(field_name).keys()
+                }
+                continue
+            field = getattr(self, field_name, None)
             if field is None:
                 response[field_name] = None
                 continue
+            if isinstance(fields.get(field_name), dict):
+                result = {}
+                for nested_field in fields.get(field_name).keys():
+                    if nested_field == "value":
+                        result[nested_field] = field
+                        continue
+                    if nested_field == "meta":
+                        result[nested_field] = dict.fromkeys(fields.get(field_name).get("meta").keys())
+                        continue
+                    result[nested_field] = field
+                response[field_name] = result
+                continue
+
             response[field_name] = field
 
         return response

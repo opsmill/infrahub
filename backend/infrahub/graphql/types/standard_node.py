@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ObjectType
+from graphene import Field, ObjectType, String
 from graphene.types.objecttype import ObjectTypeOptions
 
 from infrahub import config
@@ -15,7 +15,24 @@ class InfrahubObjectTypeOptions(ObjectTypeOptions):
     model = None
 
 
-class InfrahubObjectType(ObjectType):
+class InfrahubNodeMetaObject(ObjectType):
+    created_at = String(required=False, description="Date/Time the object has been created")
+    created_by = String(
+        required=False, description="UUID of the user that created the object, even if the user is later deleted"
+    )
+    updated_by = String(
+        required=False, description="UUID of the user that last modified the object, even if the user is later deleted"
+    )
+    updated_at = String(
+        required=False, description="Date/Time when the object was last modified by a user or a system task"
+    )
+
+
+class InfrahubNodeMeta(ObjectType):
+    meta = Field(InfrahubNodeMetaObject, required=False)
+
+
+class InfrahubObjectType(InfrahubNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(cls, model=None, interfaces=(), _meta=None, **options) -> None:
         if not _meta:
