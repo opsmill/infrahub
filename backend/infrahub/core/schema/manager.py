@@ -774,10 +774,15 @@ class SchemaManager(NodeManager):
         """Return non active branches that were purged."""
 
         hashes_to_keep: set[str] = set()
+        branch_processed: set[str] = set()
         for active_branch in active_branches:
-            if branch := self._branches.get(active_branch):
-                nodes = branch.get_all(include_internal=True, duplicate=False)
-                hashes_to_keep.update([node.get_hash() for node in nodes.values()])
+            branch_hash = self._branch_hash_by_name.get(active_branch)
+            if not branch_hash or branch_hash not in branch_processed:
+                if branch_hash:
+                    branch_processed.add(branch_hash)
+                if branch := self._branches.get(active_branch):
+                    nodes = branch.get_all(include_internal=True, duplicate=False)
+                    hashes_to_keep.update([node.get_hash() for node in nodes.values()])
 
         removed_branches: list[str] = []
         for branch_name in list(self._branches.keys()):
