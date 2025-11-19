@@ -65,7 +65,7 @@ export function BreadcrumbObjectDetailsHierarchy({
             href={`${INFRAHUB_DOC_LOCAL}/reference/configuration#database`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-amber-600 gap-1"
+            className="gap-1 text-amber-600"
           >
             <TriangleAlertIcon className="size-4" /> Depth limit reached
           </BreadcrumbItem>
