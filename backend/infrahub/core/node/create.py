@@ -70,7 +70,12 @@ async def extract_peer_data(
         rel_manager: RelationshipManager = getattr(template_peer, rel)
         if (
             rel_manager.schema.kind
-            not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT, RelationshipKind.PROFILE]
+            not in [
+                RelationshipKind.COMPONENT,
+                RelationshipKind.PARENT,
+                RelationshipKind.PROFILE,
+                RelationshipKind.ATTRIBUTE,
+            ]
             or rel_manager.schema.name not in obj_peer_schema.relationship_names
         ):
             continue
@@ -89,7 +94,9 @@ async def extract_peer_data(
                 continue
             rel_peer_ids.append({"id": peer_id})
 
-        obj_peer_data[rel] = rel_peer_ids
+        # Only set the relationship data if there are actual peers to set
+        if rel_peer_ids:
+            obj_peer_data[rel] = rel_peer_ids
 
         if rel_manager.schema.kind == RelationshipKind.PROFILE:
             profiles = list(await rel_manager.get_peers(db=db))
