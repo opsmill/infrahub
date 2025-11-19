@@ -54,7 +54,7 @@ describe("getNodeLabel", () => {
     expect(result).toBe("test-id");
   });
 
-  it("should prefer hfid over display_label when both are available", () => {
+  it("should prefer display_label over hfid when both are available", () => {
     // GIVEN
     const node: NodeCore = {
       ...baseNode,
@@ -66,7 +66,34 @@ describe("getNodeLabel", () => {
     const result = getNodeLabel(node);
 
     // THEN
+    expect(result).toBe("Display Label");
+  });
+
+  it("should prefer hfid when display_label is not available", () => {
+    // GIVEN
+    const node: NodeCore = {
+      ...baseNode,
+      hfid: ["hfid-1"],
+    };
+
+    // WHEN
+    const result = getNodeLabel(node);
+
+    // THEN
     expect(result).toBe("hfid-1");
+  });
+
+  it("should prefer id when hfid is not available", () => {
+    // GIVEN
+    const node: NodeCore = {
+      ...baseNode,
+    };
+
+    // WHEN
+    const result = getNodeLabel(node);
+
+    // THEN
+    expect(result).toBe("test-id");
   });
 
   it("should fallback to node.id when special labels are null", () => {
