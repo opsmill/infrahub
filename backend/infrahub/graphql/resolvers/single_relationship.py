@@ -160,7 +160,6 @@ class SingleRelationshipResolver:
             branch=branch,
             include_metadata=MetadataOptions.LINKED_NODES,
             prefetch_relationships=False,
-            account=None,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
         )
         if query_params in self._data_loader_instances:

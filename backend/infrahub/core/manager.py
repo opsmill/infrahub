@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
@@ -39,6 +40,13 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
+
+
+@dataclass
+class MetadataQueryOptions:
+    node_level: MetadataOptions = MetadataOptions.NONE
+    attribute_level: MetadataOptions = MetadataOptions.NONE
+    relationship_level: MetadataOptions = MetadataOptions.NONE
 
 
 def identify_node_class(node: NodeToProcess) -> type[Node]:
@@ -88,7 +96,7 @@ class NodeManager:
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         partial_match: bool = ...,
@@ -108,7 +116,7 @@ class NodeManager:
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         partial_match: bool = ...,
@@ -127,7 +135,7 @@ class NodeManager:
         limit: int | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         partial_match: bool = False,
@@ -200,7 +208,6 @@ class NodeManager:
             ids=node_ids,
             fields=fields,
             branch=branch,
-            account=account,
             at=at,
             include_metadata=include_metadata,
             db=db,
@@ -508,7 +515,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -525,7 +532,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -542,7 +549,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -559,7 +566,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -576,7 +583,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -593,7 +600,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -609,7 +616,7 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
@@ -668,7 +675,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
     ) -> SchemaProtocol | None: ...
@@ -684,7 +691,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -701,7 +708,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -718,7 +725,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -735,7 +742,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -752,7 +759,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -768,14 +775,13 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
-
         node_schema = get_schema(db=db, branch=branch, node_schema=kind)
         kind_str = node_schema.kind
 
@@ -850,7 +856,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -866,7 +872,7 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         account=...,
         branch_agnostic: bool = ...,
@@ -881,7 +887,7 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         account=None,
         branch_agnostic: bool = False,
@@ -897,7 +903,6 @@ class NodeManager:
             include_metadata=include_metadata,
             db=db,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
         )
         if node:
@@ -930,9 +935,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -947,9 +951,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -964,9 +967,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -981,9 +983,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -998,9 +999,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1015,9 +1015,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1032,9 +1031,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -1049,9 +1047,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1066,9 +1063,8 @@ class NodeManager:
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        include_metadata: MetadataOptions = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -1082,9 +1078,8 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
         """Return one node based on its ID."""
@@ -1096,7 +1091,6 @@ class NodeManager:
             at=at,
             branch=branch,
             include_metadata=include_metadata,
-            account=account,
             prefetch_relationships=prefetch_relationships,
             db=db,
             branch_agnostic=branch_agnostic,
@@ -1144,9 +1138,8 @@ class NodeManager:
         fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
@@ -1155,20 +1148,30 @@ class NodeManager:
         at = Timestamp(at)
 
         # Query all nodes
+        node_metadata_options = (
+            include_metadata.node_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
+        )
         query = await NodeListGetInfoQuery.init(
-            db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic, include_metadata=include_metadata
+            db=db,
+            ids=ids,
+            branch=branch,
+            at=at,
+            branch_agnostic=branch_agnostic,
+            include_metadata=node_metadata_options,
         )
         await query.execute(db=db)
         nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
 
         # Query list of all Attributes
+        attribute_metadata_options = (
+            include_metadata.attribute_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
+        )
         query = await NodeListGetAttributeQuery.init(
             db=db,
             ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
-            include_metadata=include_metadata,
-            account=account,
+            include_metadata=attribute_metadata_options,
             at=at,
             branch_agnostic=branch_agnostic,
         )

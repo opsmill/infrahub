@@ -749,6 +749,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             source=self._source,
             owner=self._owner,
         )
+        if isinstance(data, dict):
+            attr._set_created_at(data.pop("created_at", None))
+            attr._set_created_by(data.pop("created_by", None))
+            attr._set_updated_at(data.pop("updated_at", None))
+            attr._set_updated_by(data.pop("updated_by", None))
+
         return attr
 
     async def process_label(self, db: InfrahubDatabase | None = None) -> None:  # noqa: ARG002
@@ -861,6 +867,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             attr: BaseAttribute = getattr(self, name)
             attr.id, attr.db_id = new_ids[name]
             attr.at = create_at
+            attr._set_created_at(create_at)
+            attr._set_created_by(user_id)
+            attr._set_updated_at(create_at)
+            attr._set_updated_by(user_id)
             node_changelog.create_attribute(attribute=attr)
 
         # Go over the list of relationships and assign the new IDs one by one
