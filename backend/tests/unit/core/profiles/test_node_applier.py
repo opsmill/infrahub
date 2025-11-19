@@ -322,7 +322,7 @@ async def test_template_profile_manual_values_precedence(
     branch: Branch,
 ):
     """Test that template's own values take precedence over profile values.
-    
+
     When a template has a manually configured value, profile values should not override it.
     This ensures explicit template configuration is preserved.
     """
