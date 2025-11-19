@@ -552,6 +552,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                     )
                 continue
 
+            if field_name == "meta" and isinstance(fields.get("meta"), dict):
+                response[field_name] = {
+                    meta_field: getattr(self, meta_field, None) for meta_field in fields.get(field_name).keys()
+                }
+                continue
+
             if field_name.startswith("_"):
                 field = getattr(self, field_name[1:])
             else:

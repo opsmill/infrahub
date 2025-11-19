@@ -67,6 +67,7 @@ from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
 from .types.context import ContextInput
 from .types.event import EVENT_TYPES
+from .types.node import InfrahubObjectWithoutMeta
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
@@ -994,7 +995,7 @@ class GraphQLSchemaManager:
 
         graphql_edged_object = registry.get_edge_type(reference_hash=edge_hash, schema_hash=self.schema_hash)
         if not graphql_edged_object:
-            graphql_edged_object = type(object_name, (InfrahubObject,), main_attrs)
+            graphql_edged_object = type(object_name, (InfrahubObjectWithoutMeta,), main_attrs)
             registry.set_edge_type(
                 reference=graphql_edged_object, reference_hash=edge_hash, schema_hash=self.schema_hash
             )
@@ -1038,7 +1039,7 @@ class GraphQLSchemaManager:
         )
         if not graphql_paginated_object:
             main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
-            graphql_paginated_object = type(object_name, (InfrahubObject,), main_attrs)
+            graphql_paginated_object = type(object_name, (InfrahubObjectWithoutMeta,), main_attrs)
             registry.set_paginated_type(
                 reference=graphql_paginated_object, reference_hash=paginated_hash, schema_hash=self.schema_hash
             )

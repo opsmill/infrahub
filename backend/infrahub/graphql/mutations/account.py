@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
@@ -36,7 +36,7 @@ class InfrahubAccountUpdateSelfInput(InputObjectType):
     description = InputField(String(required=False), description="Description to use instead of the current one")
 
 
-class ValueType(InfrahubObjectType):
+class ValueType(ObjectType):
     value = String(required=True)
 
 

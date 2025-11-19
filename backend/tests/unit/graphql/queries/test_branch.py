@@ -342,3 +342,56 @@ class TestBranchQuery(TestInfrahubApp):
         assert all_branches.errors
         assert len(all_branches.errors)
         assert all_branches.errors[0].message == "limit must be >= 1"
+
+    async def test_paginated_branch_query_meta_data(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema,
+        session_admin,
+        client,
+        service,
+    ) -> None:
+        query = """
+            query {
+                InfrahubBranch {
+                    edges {
+                        node {
+                            meta {
+                                created_by
+                                created_at
+                                updated_by
+                                updated_at
+                            }
+                            id
+                            name {
+                                value
+                                meta {
+                                    updated_by
+                                    updated_at
+                                }
+                            }
+                            description {
+                                value
+                                meta {
+                                    updated_by
+                                    updated_at
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+        assert all_branches.errors is None
+        assert all_branches.data
+
+        for branch in all_branches.data["InfrahubBranch"]["edges"]:
+            assert branch["node"]["meta"]["created_at"]

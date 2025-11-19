@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, Int, List, NonNull, String
+from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
 from ...exceptions import BranchNotFoundError
 from .enums import InfrahubBranchStatus
@@ -67,23 +66,35 @@ class BranchType(InfrahubObjectType):
         raise BranchNotFoundError(f"Branch with name '{name}' not found")
 
 
-class RequiredStringValueField(InfrahubObjectType):
+class InfrahubBranchMetaObject(ObjectType):
+    updated_by = String(required=False, description="UUID of the user that last modified the attribute or relationship")
+    updated_at = String(
+        required=False,
+        description="Date/Time when the attribute or relationship was last modified by a user or a system task",
+    )
+
+
+class InfrahubBranchMeta(ObjectType):
+    meta = Field(InfrahubBranchMetaObject, required=False)
+
+
+class RequiredStringValueField(InfrahubBranchMeta):
     value = String(required=True)
 
 
-class NonRequiredStringValueField(InfrahubObjectType):
+class NonRequiredStringValueField(InfrahubBranchMeta):
     value = String(required=False)
 
 
-class NonRequiredIntValueField(InfrahubObjectType):
+class NonRequiredIntValueField(InfrahubBranchMeta):
     value = Int(required=False)
 
 
-class NonRequiredBooleanValueField(InfrahubObjectType):
+class NonRequiredBooleanValueField(InfrahubBranchMeta):
     value = Boolean(required=False)
 
 
-class StatusField(InfrahubObjectType):
+class StatusField(InfrahubBranchMeta):
     value = InfrahubBranchStatus(required=True)
 
 
@@ -105,32 +116,12 @@ class InfrahubBranch(BranchType):
         description = "InfrahubBranch"
         name = "InfrahubBranch"
 
-    @staticmethod
-    async def _map_fields_to_graphql(objs: list[Branch], fields: dict) -> list[dict[str, Any]]:
-        field_keys = fields.keys()
-        result: list[dict[str, Any]] = []
-        for obj in objs:
-            if obj.name == GLOBAL_BRANCH_NAME:
-                continue
-            data: dict[str, Any] = {}
-            for field in field_keys:
-                if field == "id":
-                    data["id"] = obj.uuid
-                    continue
-                value = getattr(obj, field, None)
-                if isinstance(fields.get(field), dict):
-                    data[field] = {"value": value}
-                else:
-                    data[field] = value
-            result.append(data)
-        return result
 
-
-class InfrahubBranchEdge(InfrahubObjectType):
+class InfrahubBranchEdge(ObjectType):
     node = Field(InfrahubBranch, required=True)
 
 
-class InfrahubBranchType(InfrahubObjectType):
+class InfrahubBranchType(ObjectType):
     count = Field(Int, description="Total number of items")
     edges = Field(NonNull(List(of_type=NonNull(InfrahubBranchEdge))))
     default_branch = Field(
