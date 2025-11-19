@@ -90,7 +90,7 @@ export const getDisplayValue = (
 
   if (row[attribute?.name]?.edges) {
     const items = row[attribute?.name]?.edges
-      .map((edge: any) => edge?.node?.display_label ?? edge?.node?.value ?? "-")
+      .map((edge: any) => (edge?.node ? getNodeLabel(edge.node) : edge?.node?.value ?? "-"))
       .slice(0, 5);
 
     const rest = row[attribute?.name]?.edges?.slice(5)?.length;
