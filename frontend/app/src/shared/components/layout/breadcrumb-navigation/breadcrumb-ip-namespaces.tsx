@@ -8,13 +8,13 @@ import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbIpNamespaces() {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
   const { schema } = useSchema(objectKind);
 
   return (
     <BreadcrumbIpamBase>
       <BreadcrumbItemSchema kind={IP_NAMESPACE_GENERIC} />
-      {schema && objectid && <BreadcrumbObjectDetails objectSchema={schema} objectId={objectid} />}
+      {schema && objectId && <BreadcrumbObjectDetails objectSchema={schema} objectId={objectId} />}
     </BreadcrumbIpamBase>
   );
 }

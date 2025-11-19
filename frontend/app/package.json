@@ -71,7 +71,6 @@
     "openapi-fetch": "^0.14.1",
     "prismjs": "^1.29.0",
     "react": "^19.2.0",
-    "react-accessible-treeview": "^2.11.2",
     "react-aria-components": "^1.13.0",
     "react-datepicker": "^8.1.0",
     "react-diff-view": "^3.3.2",

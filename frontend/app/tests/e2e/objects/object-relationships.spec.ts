@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
+test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
   test.describe.configure({ mode: "serial" });
   test.slow();
   const BRANCH_NAME = generateRandomBranchName("object-relationships");
@@ -69,6 +69,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
         await page.goto(`/objects/InfraPlatform?branch=${BRANCH_NAME}`);
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
         await page.getByRole("link", { name: "Devices 9" }).click();
+        await expect(page.getByRole("link", { name: "atl1-leaf2" })).toBeVisible();
       });
 
       await test.step("Add a new relationship", async () => {

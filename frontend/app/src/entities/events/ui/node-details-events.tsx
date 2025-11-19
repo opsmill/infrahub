@@ -39,7 +39,7 @@ export const NodeEvents = ({
     error: displayLabelError,
     data: displayLabelData,
   } = useNodeLabel({
-    objectid: objectId,
+    objectId,
     kind: objectKind as string,
     enabled: !parentId && !!objectKind,
   });

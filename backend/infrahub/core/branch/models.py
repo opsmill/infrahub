@@ -179,7 +179,7 @@ class Branch(StandardNode):
         **kwargs: Any,
     ) -> int:
         query: Query = await BranchNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, exclude_global=True, **kwargs
         )
         return await query.count(db=db)
 

@@ -122,7 +122,8 @@ class UniquenessChecker(ConstraintCheckerInterface):
             db=self.db, branch=await self.get_branch(), query_request=query_request
         )
         async with self.semaphore:
-            query_results = await query.execute(db=self.db.start_session(read_only=True))
+            async with self.db.start_session(read_only=True) as db:
+                query_results = await query.execute(db=db)
 
         return await self._parse_results(schema=schema, query_results=query_results.results)
 
