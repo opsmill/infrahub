@@ -587,7 +587,7 @@ async def test_get_many_with_profile_relationships_override(
     # Override the relationship profile
     await updated_child_one.things.add(db=db, data=child_and_thing_nodes.thing_nodes[2])
     updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
-    # assert updated_field_names == ["things"]
+    assert updated_field_names == ["things"]
     await updated_child_one.save(db=db)
 
     node_map = await NodeManager.get_many(
