@@ -1,0 +1,1 @@
+Display node labels using the following priority: display_label, then hfid, then id.
