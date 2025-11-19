@@ -316,12 +316,16 @@ async def test_template_with_multiple_profiles(
     )
 
 
-async def test_template_profile_precedence_over_template_values(
+async def test_template_profile_manual_values_precedence(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
     branch: Branch,
 ):
-    """Test that profile values take precedence over template's own values."""
+    """Test that template's own values take precedence over profile values.
+    
+    When a template has a manually configured value, profile values should not override it.
+    This ensures explicit template configuration is preserved.
+    """
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
 
@@ -343,14 +347,16 @@ async def test_template_profile_precedence_over_template_values(
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
     updated_field_names = await node_applier.apply_profiles(node=crit_template)
-    assert "color" in updated_field_names
+    # Template's own value should take precedence, so color should NOT be updated
+    assert "color" not in updated_field_names
     await crit_template.save(db=db)
 
-    # Profile value should override template's own value
+    # Template's own value should be preserved, not overridden by profile
     node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
-    assert node.color.value == "green"
-    assert node.color.source_id == crit_profile.id
-    assert node.color.is_from_profile is True
+    assert node.color.value == "#FF0000"
+    # Source should be None since it's the template's own value
+    color_source = await node.color.get_source(db=db)
+    assert color_source is None
 
 
 async def test_node_from_template_with_profile_precedence(
