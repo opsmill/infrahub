@@ -17,6 +17,7 @@ import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 import { BreadcrumbObjectDetails } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -77,7 +78,7 @@ function ResourceSelector({
             to={constructPath(`/resource-manager/${resourcePoolId}/resources/${resourceId}`)}
             className="truncate font-medium text-sm leading-4 hover:underline"
           >
-            {currentResource.display_label}
+            {getNodeLabel(currentResource)}
           </Link>
         </Col>
 
@@ -97,7 +98,7 @@ function ResourceSelector({
                           `/resource-manager/${resourcePoolId}/resources/${resource.id}`
                         )}
                       >
-                        {resource.display_label}
+                        {getNodeLabel(resource)}
                       </ListBoxItem>
                     )}
                   </ListBox>
