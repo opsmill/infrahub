@@ -365,24 +365,25 @@ async def test_node_from_template_with_profile_precedence(
     branch: Branch,
 ):
     """Test that when creating a node from a template with profiles,
-    profile values are correctly applied to the new node."""
+    template's manually defined values take precedence over profile values,
+    while profile values are used for attributes not set on the template."""
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)
 
-    # Create a profile
+    # Create a profile with both color and description
     crit_profile = await Node.init(db=db, branch=branch, schema=profile_schema)
     await crit_profile.new(
         db=db, profile_name="node_profile", color="yellow", description="From profile", profile_priority=1001
     )
     await crit_profile.save(db=db)
 
-    # Create template with profile
+    # Create template with only level and color (description not set, so it should come from profile)
     crit_template = await Node.init(db=db, branch=branch, schema=template_schema)
     await crit_template.new(
         db=db,
         template_name="template_for_node",
         level=5,
-        color="#000000",  # Template has its own color
+        color="#000000",  # Template has its own color - should take precedence over profile
     )
     await crit_template.save(db=db)
 
@@ -402,14 +403,14 @@ async def test_node_from_template_with_profile_precedence(
     # Reload node with source information
     node = await NodeManager.get_one(db=db, branch=branch, id=node.id, include_metadata=MetadataOptions.SOURCE)
 
-    # Node should get level from template
+    # Node should get level from template's manually defined value
     assert node.level.value == 5
     assert node.level.source_id == crit_template.id
 
-    # Node should get color from profile (not from template's own color value)
-    assert node.color.value == "yellow"
-    assert node.color.source_id == crit_profile.id
+    # Node should get color from template's manually defined value (not from profile)
+    assert node.color.value == "#000000"
+    assert node.color.source_id == crit_template.id
 
-    # Node should get description from profile
+    # Node should get description from profile (template didn't define it)
     assert node.description.value == "From profile"
     assert node.description.source_id == crit_profile.id
