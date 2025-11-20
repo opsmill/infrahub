@@ -994,7 +994,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         branch = self.get_branch_based_on_support_type()
 
         delete_query = await RelationshipDeleteAllQuery.init(
-            db=db, node_id=self.get_id(), branch=branch, at=delete_at, branch_agnostic=branch.name == GLOBAL_BRANCH_NAME
+            db=db,
+            node_id=self.get_id(),
+            branch=branch,
+            user_id=user_id,
+            at=delete_at,
+            branch_agnostic=branch.name == GLOBAL_BRANCH_NAME,
         )
         await delete_query.execute(db=db)
 

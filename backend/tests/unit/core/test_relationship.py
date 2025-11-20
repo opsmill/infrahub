@@ -513,11 +513,10 @@ async def test_relationship_second_delete_is_ignored(
 
     # verify that only 1 delete path exists
     query = """
-MATCH (s:Node {uuid: $source_id})-[r1:IS_RELATED {status: "deleted", branch: $branch}]-(:Relationship {name: $rel_name})
-    -[r2:IS_RELATED {status: "deleted", branch: $branch}]-(d:Node {uuid: $dest_id})
-RETURN count(*) AS num_paths
+MATCH (s:Node {uuid: $source_id})-[r1:IS_RELATED]-(:Relationship {name: $rel_name})-[r2:IS_RELATED]-(d:Node {uuid: $dest_id})
+RETURN r1, r2
     """
-    result = await db.execute_query(
+    results = await db.execute_query(
         query=query,
         params={
             "source_id": person_jack_main.id,
@@ -526,7 +525,11 @@ RETURN count(*) AS num_paths
             "dest_id": tag_blue_main.id,
         },
     )
-    assert result[0].get("num_paths") == 1
+    assert len(results) == 1
+    r1 = results[0].get("r1")
+    r2 = results[0].get("r2")
+    assert r1.get("status") == "active" and r1.get("branch") == branch.name and r1.get("to") is not None
+    assert r2.get("status") == "active" and r2.get("branch") == branch.name and r2.get("to") is not None
 
 
 async def test_can_create_relationship_with_min_count_only(

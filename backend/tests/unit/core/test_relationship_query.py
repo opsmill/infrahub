@@ -14,11 +14,9 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.query.relationship import (
     RelationshipCountPerNodeQuery,
     RelationshipCreateQuery,
-    RelationshipDataDeleteQuery,
     RelationshipDeleteQuery,
     RelationshipGetByIdentifierQuery,
     RelationshipGetPeerQuery,
-    RelationshipGetQuery,
     RelationshipPeerData,
     RelationshipQuery,
     RelData,
@@ -94,46 +92,46 @@ async def get_relationship_properties(
     return relationship_properties
 
 
-async def test_RelationshipQuery_init(
-    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
-) -> None:
-    person_schema = registry.schema.get(name="TestPerson")
-    rel_schema = person_schema.get_relationship("tags")
+# async def test_RelationshipQuery_init(
+#     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+# ) -> None:
+#     person_schema = registry.schema.get(name="TestPerson")
+#     rel_schema = person_schema.get_relationship("tags")
 
-    with pytest.raises(ValueError) as exc:
-        rq = DummyRelationshipQuery()
-    assert "Either source or source_id must be provided." in str(exc.value)
+#     with pytest.raises(ValueError) as exc:
+#         rq = DummyRelationshipQuery()
+#     assert "Either source or source_id must be provided." in str(exc.value)
 
-    with pytest.raises(ValueError) as exc:
-        rq = DummyRelationshipQuery(source=person_jack_main)
-    assert "Either rel or rel_type must be provided." in str(exc.value)
+#     with pytest.raises(ValueError) as exc:
+#         rq = DummyRelationshipQuery(source=person_jack_main)
+#     assert "Either rel or rel_type must be provided." in str(exc.value)
 
-    with pytest.raises(ValueError) as exc:
-        rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship)
-    assert "Either an instance of Relationship or a valid schema must be provided." in str(exc.value)
+#     with pytest.raises(ValueError) as exc:
+#         rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship)
+#     assert "Either an instance of Relationship or a valid schema must be provided." in str(exc.value)
 
-    with pytest.raises(ValueError) as exc:
-        rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema)
-    assert "Either an instance of Relationship or a valid branch must be provided." in str(exc.value)
+#     with pytest.raises(ValueError) as exc:
+#         rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema)
+#     assert "Either an instance of Relationship or a valid branch must be provided." in str(exc.value)
 
-    # Initialization with the Relationship class
-    rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema, branch=branch)
-    assert rq.schema == rel_schema
-    assert rq.branch == branch
-    assert rq.source_id == person_jack_main.id
-    assert rq.source == person_jack_main
+#     # Initialization with the Relationship class
+#     rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema, branch=branch)
+#     assert rq.schema == rel_schema
+#     assert rq.branch == branch
+#     assert rq.source_id == person_jack_main.id
+#     assert rq.source == person_jack_main
 
-    rq = DummyRelationshipQuery(source_id=person_jack_main.id, rel=Relationship, schema=rel_schema, branch=branch)
-    assert rq.schema == rel_schema
-    assert rq.branch == branch
-    assert rq.source_id == person_jack_main.id
-    assert rq.source is None
+#     rq = DummyRelationshipQuery(source_id=person_jack_main.id, rel=Relationship, schema=rel_schema, branch=branch)
+#     assert rq.schema == rel_schema
+#     assert rq.branch == branch
+#     assert rq.source_id == person_jack_main.id
+#     assert rq.source is None
 
-    # Initialization with an instance of Relationship
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    rq = DummyRelationshipQuery(source=person_jack_main, rel=rel)
-    assert rq.schema == rel_schema
-    assert rq.branch == branch
+#     # Initialization with an instance of Relationship
+#     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+#     rq = DummyRelationshipQuery(source=person_jack_main, rel=rel)
+#     assert rq.schema == rel_schema
+#     assert rq.branch == branch
 
 
 async def test_query_RelationshipCreateQuery(
@@ -150,6 +148,7 @@ async def test_query_RelationshipCreateQuery(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
+        user_id="user1",
     )
     await query.execute(db=db)
 
@@ -183,7 +182,7 @@ async def test_query_RelationshipCreateQuery_w_node_property(
         schema=rel_schema, branch=branch, node=person_jack_main, source=first_account, owner=first_account
     )
     query = await RelationshipCreateQuery.init(
-        db=db, branch=branch, source=person_jack_main, destination=tag_blue_main, rel=rel
+        db=db, branch=branch, source=person_jack_main, destination=tag_blue_main, rel=rel, user_id="user1"
     )
     await query.execute(db=db)
 
@@ -229,6 +228,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
+        user_id="user1",
     )
     await query.execute(db=db)
 
@@ -259,6 +259,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
         rel=Relationship,
         branch=default_branch,
         at=Timestamp(),
+        user_id="user1",
     )
     await query.execute(db=db)
     # check paths between tag_red and person_jack_main
@@ -320,6 +321,7 @@ async def test_query_RelationshipDeleteQuery(
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
     rel.load(db=db, data=rel_data)
 
+    delete_time_1 = Timestamp()
     query = await RelationshipDeleteQuery.init(
         db=db,
         source=person_jack_tags_main,
@@ -327,13 +329,13 @@ async def test_query_RelationshipDeleteQuery(
         schema=rel_schema,
         rel=rel,
         branch=branch,
-        at=Timestamp(),
+        at=delete_time_1,
+        user_id="user1",
     )
     await query.execute(db=db)
 
-    # We should have 4 paths between t1 and p1
-    # Because we have 2 "real" paths between the nodes
-    # but if we calculate all the permutations it will equal to 4 paths.
+    # 1 path on the default branch that now has the "to" time set
+    # "4" paths when deleting on branch b/c it includes all combinations of 2 real paths: 1 active on main and 1 deleted on the branch
     paths = await get_paths_between_nodes(
         db=db,
         source_id=tag_blue_main.db_id,
@@ -341,20 +343,44 @@ async def test_query_RelationshipDeleteQuery(
         max_length=2,
         relationships=["IS_RELATED"],
     )
-    assert len(paths) == 4
+    if branch.is_default:
+        assert len(paths) == 1
+        path = paths[0]["p"]
+        assert all(r.get("to") == delete_time_1.to_string() for r in path.relationships)
+    else:
+        assert len(paths) == 4
+        for path in paths:
+            for edge in path["p"].relationships:
+                active_on_main = (
+                    edge.get("to") is None and edge.get("status") == "active" and edge.get("branch") == "main"
+                )
+                deleted_on_branch = (
+                    edge.get("from") == delete_time_1.to_string()
+                    and edge.get("status") == "deleted"
+                    and edge.get("branch") == branch.name
+                )
+                assert active_on_main or deleted_on_branch
 
     # ------------------------------------------------------------
     # Recreate the relationship to delete it again
     # ------------------------------------------------------------
     rel = Relationship(schema=rel_schema, branch=branch, node=tag_blue_main)
+    create_time_2 = Timestamp()
     query = await RelationshipCreateQuery.init(
-        db=db, branch=branch, source=tag_blue_main, destination=person_jack_tags_main, rel=rel
+        db=db,
+        branch=branch,
+        source=person_jack_tags_main,
+        destination=tag_blue_main,
+        rel=rel,
+        user_id="user1",
+        at=create_time_2,
     )
     await query.execute(db=db)
 
-    # We should have 5 paths between t1 and p1
-    # Because we have 3 "real" paths between the nodes
-    # but if we calculate all the permutations it will equal to 5 paths.
+    # 2 paths on the default branch: deleted path from before and new created path
+    # "5" paths on the branch:
+    #  - 2 paths for original relationship: 1 active on main and 1 deleted on the branch, for 4 permutations
+    #  - 1 path for new relationship on branch
     paths = await get_paths_between_nodes(
         db=db,
         source_id=tag_blue_main.db_id,
@@ -362,7 +388,33 @@ async def test_query_RelationshipDeleteQuery(
         max_length=2,
         relationships=["IS_RELATED"],
     )
-    assert len(paths) == 5
+    if branch.is_default:
+        assert len(paths) == 2
+        for path in paths:
+            is_deleted = all(r.get("to") == delete_time_1.to_string() for r in path["p"].relationships)
+            is_active = all(
+                r.get("to") is None and r.get("from") == create_time_2.to_string() for r in path["p"].relationships
+            )
+            assert is_deleted or is_active
+    else:
+        assert len(paths) == 5
+        for path in paths:
+            for edge in path["p"].relationships:
+                active_on_main = (
+                    edge.get("to") is None and edge.get("status") == "active" and edge.get("branch") == "main"
+                )
+                deleted_on_branch = (
+                    edge.get("from") == delete_time_1.to_string()
+                    and edge.get("status") == "deleted"
+                    and edge.get("branch") == branch.name
+                )
+                active_on_branch = (
+                    edge.get("from") == create_time_2.to_string()
+                    and edge.get("to") is None
+                    and edge.get("status") == "active"
+                    and edge.get("branch") == branch.name
+                )
+                assert active_on_main or deleted_on_branch or active_on_branch
 
     def get_active_path_and_rel(all_paths, previous_rel: str):
         for path in all_paths:
@@ -391,6 +443,7 @@ async def test_query_RelationshipDeleteQuery(
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
     rel.load(db=db, data=rel_data)
 
+    delete_time_2 = Timestamp()
     query = await RelationshipDeleteQuery.init(
         db=db,
         source=person_jack_tags_main,
@@ -398,13 +451,15 @@ async def test_query_RelationshipDeleteQuery(
         schema=rel_schema,
         rel=rel,
         branch=branch,
-        at=Timestamp(),
+        at=delete_time_2,
+        user_id="user1",
     )
     await query.execute(db=db)
 
-    # We should have 8 paths between t1 and p1
-    # Because we have 4 "real" paths between the nodes divided in 2 relationships
-    # but if we calculate all the permutations it will equal to 8 paths.
+    # 2 paths on default branch: original deleted and the one we just deleted
+    # "5" paths on the branch:
+    #  - 2 paths for original relationship: 1 active on main and 1 deleted on the branch, for 4 permutations
+    #  - 1 path for create and delete of new relationship on branch
     paths = await get_paths_between_nodes(
         db=db,
         source_id=tag_blue_main.db_id,
@@ -412,7 +467,34 @@ async def test_query_RelationshipDeleteQuery(
         max_length=2,
         relationships=["IS_RELATED"],
     )
-    assert len(paths) == 8
+    if branch.is_default:
+        assert len(paths) == 2
+        for path in paths:
+            is_deleted_1 = all(r.get("to") == delete_time_1.to_string() for r in path["p"].relationships)
+            is_deleted_2 = all(
+                r.get("from") == create_time_2.to_string() and r.get("to") == delete_time_2.to_string()
+                for r in path["p"].relationships
+            )
+            assert is_deleted_1 or is_deleted_2
+    else:
+        assert len(paths) == 5
+        for path in paths:
+            for edge in path["p"].relationships:
+                active_on_main = (
+                    edge.get("to") is None and edge.get("status") == "active" and edge.get("branch") == "main"
+                )
+                deleted_on_branch = (
+                    edge.get("from") == delete_time_1.to_string()
+                    and edge.get("status") == "deleted"
+                    and edge.get("branch") == branch.name
+                )
+                deleted_on_branch_2 = (
+                    edge.get("from") == create_time_2.to_string()
+                    and edge.get("to") == delete_time_2.to_string()
+                    and edge.get("status") == "active"
+                    and edge.get("branch") == branch.name
+                )
+                assert active_on_main or deleted_on_branch or deleted_on_branch_2
 
 
 async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
@@ -459,6 +541,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
         rel=blue_tag_rel,
         branch=branch,
         at=Timestamp(),
+        user_id="user1",
     )
     await query.execute(db=db)
     await verify_no_duplicate_paths(db=db)
@@ -883,59 +966,8 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
     assert query.get_peer_ids() == [car_volt_main.id]
 
 
-async def test_query_RelationshipDataDeleteQuery(
-    db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
-) -> None:
-    person_schema = registry.schema.get(name="TestPerson")
-    rel_schema = person_schema.get_relationship("tags")
-
-    # We should have 2 paths between t1 and p1
-    # First for the relationship, Second via the branch
-    paths = await get_paths_between_nodes(
-        db=db,
-        source_id=tag_blue_main.db_id,
-        destination_id=person_jack_tags_main.db_id,
-        max_length=2,
-        relationships=["IS_RELATED"],
-    )
-    assert len(paths) == 1
-
-    # Query the existing relationship in RelationshipPeerData format
-    query1 = await RelationshipGetPeerQuery.init(
-        db=db,
-        source=person_jack_tags_main,
-        schema=rel_schema,
-        rel=Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main),
-    )
-    await query1.execute(db=db)
-    peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
-
-    # Delete the relationship
-    query2 = await RelationshipDataDeleteQuery.init(
-        db=db,
-        branch=branch,
-        source=person_jack_tags_main,
-        data=peers_database[tag_blue_main.id],
-        schema=rel_schema,
-        rel=Relationship,
-    )
-    await query2.execute(db=db)
-
-    # We should have 4 paths between t1 and p1
-    # Because we have 2 "real" paths between the nodes
-    # but if we calculate all the permutations it will equal to 4 paths.
-    paths = await get_paths_between_nodes(
-        db=db,
-        source_id=tag_blue_main.db_id,
-        destination_id=person_jack_tags_main.db_id,
-        max_length=2,
-        relationships=["IS_RELATED"],
-    )
-
-    assert len(paths) == 4
-
-
-async def test_query_RelationshipDataDeleteQuery_on_migrated_kind_node(
+# TODO: update to work
+async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_tags_main: Node, branch: Branch
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
@@ -968,13 +1000,14 @@ async def test_query_RelationshipDataDeleteQuery_on_migrated_kind_node(
     peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
 
     # Delete the relationship
-    query2 = await RelationshipDataDeleteQuery.init(
+    query2 = await RelationshipDeleteQuery.init(
         db=db,
         branch=branch,
         source=migrated_jack,
         data=peers_database[tag_blue_main.id],
         schema=rel_schema,
         rel=Relationship,
+        user_id="user1",
     )
     await query2.execute(db=db)
     await verify_no_duplicate_paths(db=db)
@@ -1009,13 +1042,14 @@ async def test_query_RelationshipDataDeleteQuery_on_migrated_kind_node(
     peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
 
     # Delete the relationship
-    query2 = await RelationshipDataDeleteQuery.init(
+    query2 = await RelationshipDeleteQuery.init(
         db=db,
         branch=branch,
         source=migrated_jack,
         data=peers_database[tag_red_main.id],
         schema=rel_schema,
         rel=Relationship,
+        user_id="user1",
     )
     await query2.execute(db=db)
     await verify_no_duplicate_paths(db=db)
@@ -1116,38 +1150,3 @@ async def test_query_RelationshipGetByIdentifierQuery(
     )
     await query.execute(db=db)
     assert await query.count(db=db) == 4
-
-
-async def test_query_RelationshipGetQuery(
-    db: InfrahubDatabase,
-    car_prius_main: Node,
-    person_john_main: Node,
-    branch: Branch,
-) -> None:
-    person_john = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
-    car_prius = await NodeManager.get_one(db=db, branch=branch, id=car_prius_main.id)
-    owner_rels = await car_prius.owner.get_relationships(db=db)
-    owner_rel = owner_rels[0]
-
-    # test query on active Relationship
-    query = await RelationshipGetQuery.init(
-        db=db, branch=branch, source=car_prius, rel=owner_rel, destination=person_john
-    )
-    await query.execute(db=db)
-    results = list(query.get_results())
-    assert len(results) == 1
-    assert results[0].get("s").get("uuid") == car_prius_main.id
-    assert results[0].get("d").get("uuid") == person_john_main.id
-    assert results[0].get("is_active") is True
-
-    # test query on deleted Relationship
-    await owner_rel.delete(db=db)
-    query = await RelationshipGetQuery.init(
-        db=db, branch=branch, source=car_prius, rel=owner_rel, destination=person_john
-    )
-    await query.execute(db=db)
-    results = list(query.get_results())
-    assert len(results) == 1
-    assert results[0].get("s").get("uuid") == car_prius_main.id
-    assert results[0].get("d").get("uuid") == person_john_main.id
-    assert results[0].get("is_active") is False

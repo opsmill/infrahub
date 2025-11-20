@@ -231,7 +231,7 @@ class RelationshipRemove(Mutation):
             for node_data in data.get("nodes"):
                 if node_data.get("id") in existing_peers.keys():
                     # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
-                    # we should use RelationshipDataDeleteQuery to delete the relationship
+                    # we should use RelationshipDeleteQuery to delete the relationship
                     # it would be more query efficient
                     rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
                     rel.load(db=db, data=existing_peers[node_data.get("id")])

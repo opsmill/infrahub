@@ -352,7 +352,6 @@ class NodeManager:
                 db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
-                updated_at=peer.updated_at,
                 data=peer,
             )
             if fetch_peers:
