@@ -1104,3 +1104,13 @@ async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_rep
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
     assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
+
+
+async def test_repo_merge_use_explicit_merge_commit(
+    git_repo_01: InfrahubRepository, branch02: BranchData, git_user_config, git_use_explicit_merge_commit_config
+):
+    repo = git_repo_01
+    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
+    response = await repo.merge(source_branch=branch02.name, dest_branch="main")
+    commit = repo.get_git_repo_main().commit(response)
+    assert commit.message.strip() == "Merged by Infrahub"

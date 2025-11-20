@@ -11,6 +11,7 @@ from prefect import task
 from prefect.cache_policies import NONE
 from pydantic import Field
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
@@ -170,7 +171,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
 
         try:
-            repo.git.merge(commit)
+            if config.SETTINGS.git.use_explicit_merge_commit:
+                repo.git.merge(commit, "--no-ff", m="Merged by Infrahub")
+            else:
+                repo.git.merge(commit)
         except GitCommandError as exc:
             repo.git.merge("--abort")
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
