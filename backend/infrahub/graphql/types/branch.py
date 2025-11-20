@@ -36,7 +36,7 @@ class BranchType(InfrahubObjectType):
 
     @staticmethod
     async def _map_fields_to_graphql(objs: list[Branch], fields: dict) -> list[dict[str, Any]]:
-        return [await obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
+        return [await obj.to_graphql(fields=fields) for obj in objs]
 
     @classmethod
     async def get_list(
@@ -52,6 +52,19 @@ class BranchType(InfrahubObjectType):
                 return []
 
             return await cls._map_fields_to_graphql(objs=objs, fields=fields)
+
+    @classmethod
+    async def get_by_name(
+        cls,
+        fields: dict,
+        graphql_context: GraphqlContext,
+        name: str,
+    ) -> dict[str, Any]:
+        branch_responses = await cls.get_list(fields=fields, graphql_context=graphql_context, name=name)
+
+        if branch_responses:
+            return branch_responses[0]
+        raise BranchNotFoundError(f"Branch with name '{name}' not found")
 
 
 class RequiredStringValueField(InfrahubObjectType):
@@ -120,13 +133,13 @@ class InfrahubBranchEdge(InfrahubObjectType):
 class InfrahubBranchType(InfrahubObjectType):
     count = Field(Int, description="Total number of items")
     edges = Field(NonNull(List(of_type=NonNull(InfrahubBranchEdge))))
+    default_branch = Field(
+        InfrahubBranch,
+        required=True,
+        description="The default branch of the Infrahub instance, provides a direct way to access the default branch regardless of filters.",
+    )
 
     @classmethod
     async def get_list_count(cls, graphql_context: GraphqlContext, **kwargs: Any) -> int:
         async with graphql_context.db.start_session(read_only=True) as db:
-            count = await Branch.get_list_count(db=db, **kwargs)
-            try:
-                await Branch.get_by_name(name=GLOBAL_BRANCH_NAME, db=db)
-                return count - 1
-            except BranchNotFoundError:
-                return count
+            return await Branch.get_list_count(db=db, **kwargs)

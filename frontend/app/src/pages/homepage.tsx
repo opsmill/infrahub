@@ -1,10 +1,11 @@
 import Content from "@/shared/components/layout/content";
 
-import { Branches } from "@/entities/homepage/ui/branches";
-import { Events } from "@/entities/homepage/ui/events";
+import { BranchesWidget } from "@/entities/homepage/ui/branches-widget";
+import { EventsWidget } from "@/entities/homepage/ui/events-widget";
 import { GettingStarted } from "@/entities/homepage/ui/getting-started";
-import { GitRepositories } from "@/entities/homepage/ui/git-repositories";
-import { ProposedChanges } from "@/entities/homepage/ui/proposed-changes";
+import { GitRepositoriesWidget } from "@/entities/homepage/ui/git-repositories-widget";
+import { ProposedChangesWidget } from "@/entities/homepage/ui/proposed-changes-widget";
+import { TasksWidget } from "@/entities/homepage/ui/tasks-widget";
 
 const Homepage = () => {
   return (
@@ -13,17 +14,19 @@ const Homepage = () => {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="col-span-2 flex flex-col gap-4">
-          <ProposedChanges className="min-h-80" />
+          <ProposedChangesWidget className="min-h-80" />
 
-          <Branches className="min-h-80" />
+          <BranchesWidget className="min-h-80" />
         </div>
 
         <div className="space-y-4">
-          <GitRepositories className="h-44" />
+          <GitRepositoriesWidget className="h-44" />
 
-          <Events />
+          <EventsWidget />
         </div>
       </div>
+
+      <TasksWidget />
 
       <GettingStarted />
     </Content>

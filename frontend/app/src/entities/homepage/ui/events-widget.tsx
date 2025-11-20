@@ -7,11 +7,11 @@ import { classNames } from "@/shared/utils/common";
 
 import { HomeEvents } from "@/entities/events/ui/node-details-events-homepage";
 
-interface EventsProps {
+interface EventsWidgetProps {
   className?: string;
 }
 
-export const Events = ({ className }: EventsProps) => {
+export const EventsWidget = ({ className }: EventsWidgetProps) => {
   return (
     <HomeCard className={classNames("flex flex-col", className)}>
       <HomeCard.Title className="flex items-center justify-between">

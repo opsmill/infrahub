@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from tests.adapters.message_bus import BusSimulator
 
 BRANCH_NAME = "branch1"
+DELETED_BRANCH_NAME = "deleted_branch"
 PROPOSED_CHANGE_NAME = "branch1-pc"
 DIFF_UPDATE_QUERY = """
 mutation DiffUpdate($branch_name: String!, $wait_for_completion: Boolean = true) {
@@ -195,6 +196,27 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
 
+    @pytest.fixture(scope="class")
+    async def deleted_branch(self, db: InfrahubDatabase) -> Branch:
+        return await create_branch(db=db, branch_name=DELETED_BRANCH_NAME)
+
+    @pytest.fixture(scope="class")
+    async def diff_on_deleted_branch(
+        self, db: InfrahubDatabase, initial_dataset, client: InfrahubClient, deleted_branch: Branch
+    ) -> EnrichedDiffRoot:
+        kara = await NodeManager.get_one(db=db, branch=deleted_branch, id=initial_dataset["kara"].id)
+        kara.description.value = "I think she's an angel now"
+        await kara.save(db=db)
+
+        result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": DELETED_BRANCH_NAME})
+        assert result["DiffUpdate"]["ok"]
+
+        diff = await self.get_branch_diff(db=db, branch=deleted_branch)
+        assert len(diff.nodes) == 1
+
+        await deleted_branch.delete(db=db)
+        return diff
+
     @staticmethod
     async def get_branch_diff(db: InfrahubDatabase, branch: Branch) -> EnrichedDiffRoot:
         # Validate if the diff has been updated properly
@@ -202,8 +224,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch)
 
         return await diff_repo.get_one(
-            tracking_id=BranchTrackingId(name=BRANCH_NAME),
-            diff_branch_name=BRANCH_NAME,
+            tracking_id=BranchTrackingId(name=branch.name),
+            diff_branch_name=branch.name,
         )
 
     async def _get_proposed_change_and_data_validator(self, db) -> tuple[Node, Node]:
@@ -222,7 +244,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         return (pc, data_validator)
 
     async def test_diff_first_update(
-        self, db: InfrahubDatabase, initial_dataset, create_diff, client: InfrahubClient
+        self, db: InfrahubDatabase, initial_dataset, create_diff, diff_on_deleted_branch, client: InfrahubClient
     ) -> None:
         """Validate if the diff is properly created the first time"""
 
@@ -1147,7 +1169,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(core_data_checks) == len(data_checks_by_conflict_id)
 
     async def test_merge_proposed_change(
-        self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch,
+        diff_on_deleted_branch: EnrichedDiffRoot,
+        deleted_branch: Branch,
+        client: InfrahubClient,
     ) -> None:
         pc, _ = await self._get_proposed_change_and_data_validator(db=db)
         result = await client.execute_graphql(
@@ -1224,3 +1252,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         murphy_customer_rel = omnicorp_customers_rels_by_peer_id[murphy_id]
         owner_of_property = await murphy_customer_rel.get_owner(db=db)
         assert owner_of_property.get_id() == cardinality_many_property_conflict.expected_value
+
+        # validate diff not updated for deleted branch
+        fresh_deleted_branch_diff = await self.get_branch_diff(db=db, branch=deleted_branch)
+        assert fresh_deleted_branch_diff.to_time == diff_on_deleted_branch.to_time

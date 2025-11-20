@@ -12,8 +12,6 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 
-import "@/shared/libs/graphiql/setup-worker";
-
 import "graphiql/style.css";
 import "@graphiql/plugin-explorer/style.css";
 
