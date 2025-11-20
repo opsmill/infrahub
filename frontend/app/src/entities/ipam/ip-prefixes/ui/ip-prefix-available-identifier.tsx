@@ -29,6 +29,7 @@ export function IpPrefixAvailableIdentifier({
   const parentNode = ipPrefixNode.parent?.node;
   const ancestorsCount: number = (parentNode?.ancestors?.count ?? 0) + 1;
   const isCreationAllowed = permission.create.isAllowed;
+  console.log("ipPrefixNode: ", ipPrefixNode);
 
   return (
     <>
@@ -56,7 +57,7 @@ export function IpPrefixAvailableIdentifier({
             {[...Array(ancestorsCount)].map((_, i) => (
               <div className="size-1 rounded-full bg-gray-300" key={i} />
             ))}
-            {getNodeLabel(ipPrefixNode)}
+            {ipPrefixNode.display_label}
           </Row>
         </Button>
       </Tooltip>
