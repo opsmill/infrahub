@@ -98,7 +98,7 @@ test.describe("when searching an object", () => {
 
     await page.getByTestId("search-anywhere-input").fill(uuid);
     await expect(
-      page.getByRole("option", { name: "AS174, 174 Infra Autonomous System" })
+      page.getByRole("option", { name: "AS174 174 Infra Autonomous System" })
     ).toBeVisible();
   });
 });
