@@ -1113,4 +1113,4 @@ async def test_repo_merge_use_explicit_merge_commit(
     await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
     response = await repo.merge(source_branch=branch02.name, dest_branch="main")
     commit = repo.get_git_repo_main().commit(response)
-    assert commit.message.strip() == "Merged by Infrahub by Infrahub"
+    assert commit.message.strip() == "Merged by Infrahub"

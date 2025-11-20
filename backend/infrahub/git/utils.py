@@ -2,7 +2,6 @@ import re
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
-from git import Repo
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.node import RelationshipManager
 from infrahub_sdk.protocols import CoreArtifactDefinition, CoreCheckDefinition, CoreGroup
@@ -178,15 +177,3 @@ def branch_name_in_import_sync_branches(branch_short_name: str) -> bool:
         if re.fullmatch(branch_filter, branch_short_name) or branch_filter == branch_short_name:
             return True
     return False
-
-
-def get_git_user_config(repo: Repo) -> tuple[str, str]:
-    """
-    Checks for the git configuration of the user on the global level
-    Returns the git (username, email,)
-    """
-    with repo.config_reader(config_level="global") as git_config:
-        return (
-            str(git_config.get_value("user", "name")),
-            str(git_config.get_value("user", "email")),
-        )

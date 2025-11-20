@@ -172,7 +172,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         try:
             if config.SETTINGS.git.use_explicit_merge_commit:
-                repo.git.merge(commit, "--no-ff", m="Merged by Infrahub by Infrahub")
+                repo.git.merge(commit, "--no-ff", m="Merged by Infrahub")
             else:
                 repo.git.merge(commit)
         except GitCommandError as exc:
