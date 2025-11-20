@@ -104,7 +104,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("Verify relationship update", async () => {
         await expect(page.getByText("InterfaceL3 updated")).toBeVisible();
-        await expect(page.getByText("Loopback0-update", { exact: true })).toBeVisible();
+        await expect(page.getByText("NameLoopback0-update", { exact: true })).toBeVisible();
       });
     });
 
