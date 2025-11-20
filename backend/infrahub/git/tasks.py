@@ -31,6 +31,7 @@ from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import get_client, get_database, get_event_service, get_message_bus, get_workflow
 
+from ..core.enums import RepositoryTypes
 from ..core.timestamp import Timestamp
 from ..core.validators.checks_runner import run_checks_and_update_validator
 from ..log import get_log_data, get_logger
@@ -511,8 +512,11 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         id=model.repository_id, name=model.repository_name, client=client, default_branch_name=model.default_branch
     )
 
-    if model.internal_status == RepositoryInternalStatus.STAGING.value:
-        log.info(f"Merging {InfrahubKind.GENERICREPOSITORY}")
+    if (
+        model.internal_status == RepositoryInternalStatus.STAGING.value
+        and model.repository_type == RepositoryTypes.CoreRepository
+    ):
+        log.info(f"Merging {model.repository_type}")
         repo_source = await client.get(
             kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch
         )
@@ -524,9 +528,9 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         repo_main.commit.value = commit
 
         await repo_main.save()
-        log.info(f"Finished merging {InfrahubKind.GENERICREPOSITORY}")
+        log.info(f"Finished merging {model.repository_type}")
 
-    elif not model.default_branch:
+    elif model.repository_type == RepositoryTypes.CoreReadOnlyRepository:
         repo_source = await client.get(
             kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.source_branch
         )
@@ -538,13 +542,13 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
             repo_destination.ref.value != repo_source.ref.value
             or repo_destination.commit.value != repo_source.commit.value
         ):
-            log.info(f"Merging {InfrahubKind.READONLYREPOSITORY}")
+            log.info(f"Merging {model.repository_type}")
 
             repo_destination.ref.value = repo_source.ref.value
             repo_destination.commit.value = repo_source.commit.value
             await repo_destination.save()
 
-            log.info(f"Finished merging {InfrahubKind.READONLYREPOSITORY}")
+            log.info(f"Finished merging {model.repository_type}")
 
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):

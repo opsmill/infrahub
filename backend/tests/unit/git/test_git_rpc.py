@@ -11,6 +11,7 @@ from typing_extensions import Self
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.enums import RepositoryTypes
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.models import (
@@ -143,6 +144,7 @@ async def test_git_rpc_merge(
         destination_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         default_branch="main",
+        repository_type=RepositoryTypes.CoreRepository,
     )
 
     client = InfrahubClient(config=Config(requester=dummy_async_request))
