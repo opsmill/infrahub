@@ -12,7 +12,7 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
 )
-from infrahub.core.constants import RelationshipDirection, RelationshipStatus
+from infrahub.core.constants import InfrahubKind, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
@@ -101,6 +101,9 @@ class RelationshipPeerData:
     """Both relationships pointing at this Relationship Node."""
 
     updated_at: str | None = None
+
+    is_from_profile: bool = False
+    profile_id: UUID | None = None
 
     def rel_ids_per_branch(self) -> dict[str, list[str | int]]:
         response = defaultdict(list)
@@ -850,6 +853,9 @@ class RelationshipGetPeerQuery(Query):
 
             if hasattr(self.rel, "_node_properties"):
                 for prop in self.rel._node_properties:
+                    if prop == "source" and (source := result.get("source")):
+                        data.is_from_profile = InfrahubKind.PROFILE in source.labels
+                        data.profile_id = source._properties["uuid"]
                     if prop_node := result.get(prop):
                         data.properties[prop] = NodePropertyData(
                             name=prop,

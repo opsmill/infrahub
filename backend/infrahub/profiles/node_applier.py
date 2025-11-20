@@ -137,14 +137,13 @@ class NodeProfilesApplier:
 
         # Remove relationships that are from this profile but not in target
         for rel in current_rels:
-            if not node_rel.is_from_profile:
+            if not rel.is_from_profile:
                 continue
-            source = await rel.get_source(db=self.db)
-            if source and source.id == profile_id:
-                if rel.peer_id and rel.peer_id not in target_peer_ids:
-                    await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
-                    node_rel.is_from_profile = True
-                    is_changed = True
+
+            if rel.profile_id == profile_id and rel.peer_id and rel.peer_id not in target_peer_ids:
+                await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
+                node_rel.is_from_profile = True
+                is_changed = True
 
         # Add relationships that are in target but not present
         for peer_id in target_peer_ids:
@@ -215,7 +214,7 @@ class NodeProfilesApplier:
                     break
 
             # Refresh the relationship manager to update the is_from_profile property
-            await node_rel._fetch_relationships(db=self.db)
+            await node_rel.fetch_relationship_ids(db=self.db)
             if not has_profile_rel_data and node_rel.is_from_profile:
                 await self._remove_profile_from_relationship(relationship_manager=node_rel)
                 updated_field_names.append(node_rel.name)

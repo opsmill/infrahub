@@ -95,6 +95,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         at: Timestamp | None = None,
         node: Node | None = None,
         node_id: str | None = None,
+        is_from_profile: bool = False,
+        profile_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         if not node and not node_id:
@@ -112,6 +114,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.id: UUID | None = None
         self.db_id: str | None = None
         self.updated_at: Timestamp | None = None
+        self.is_from_profile: bool = is_from_profile
+        self.profile_id: UUID | None = profile_id
 
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
@@ -983,7 +987,9 @@ class RelationshipManager:
 
         peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
 
-        peers_database: dict = {str(peer.peer_id): peer for peer in peers}
+        self.is_from_profile = any(peer.is_from_profile for peer in peers)
+
+        peers_database = {str(peer.peer_id): peer for peer in peers}
         peer_ids = list(peers_database.keys())
 
         # Calculate which peer should be added or removed
@@ -1019,6 +1025,8 @@ class RelationshipManager:
                     branch=self.branch,
                     at=at or self.at,
                     node=self.node,
+                    is_from_profile=details.peers_database[peer_id].is_from_profile,
+                    profile_id=details.peers_database[peer_id].profile_id,
                 ).load(db=db, data=details.peers_database[peer_id])
             )
 
@@ -1026,14 +1034,6 @@ class RelationshipManager:
 
         for peer_id in details.peer_ids_present_local_only:
             await self.remove_locally(peer_id=peer_id, db=db)
-
-        has_profile_source = False
-        for rel in self._relationships:
-            source_node = await rel.get_source(db=db)
-            if source_node and source_node.get_schema().is_profile_schema:
-                has_profile_source = True
-                break
-        self.is_from_profile = has_profile_source
 
     async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)
