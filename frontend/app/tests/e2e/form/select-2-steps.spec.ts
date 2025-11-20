@@ -63,7 +63,7 @@ test.describe("Verifies the object creation", () => {
       await page
         .getByTestId("identifier-cell")
         .getByRole("link", { name: "Ethernet1", exact: true })
-        .nth(2)
+        .first()
         .click();
       await page.getByTestId("edit-button").click();
     });
@@ -71,7 +71,7 @@ test.describe("Verifies the object creation", () => {
     await test.step("check inputs values", async () => {
       await expect(page.getByLabel("Kind")).toContainText("Interface L3 Infra");
       await expect(page.locator('button[name="connected_endpoint_parent"]')).toContainText(
-        "dfw1-edge2"
+        "atl1-edge2"
       );
       await expect(
         page.getByTestId("side-panel-container").getByLabel("Interface L3")
