@@ -35,7 +35,7 @@ test.describe("Verifies the object creation", () => {
     });
 
     await test.step("verify object details", async () => {
-      await page.getByRole("link", { name: "vlan-test," }).click();
+      await page.getByRole("link", { name: "vlan-test" }).click();
       await expect(page.getByText("Namevlan-test")).toBeVisible();
       await expect(page.getByText("Vlan Id600")).toBeVisible();
       await expect(page.getByText("L3 GatewayMGMT")).toBeVisible();
