@@ -12,7 +12,6 @@ import { classNames } from "@/shared/utils/common";
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 export interface IpPrefixAvailableIdentifierProps extends ButtonProps {
   ipPrefixNode: IpPrefixNode;
@@ -78,7 +77,7 @@ export function IpPrefixAvailableIdentifier({
             setIsCreateFormOpen(false);
             queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
           }}
-          currentObject={{ prefix: { value: getNodeLabel(ipPrefixNode) } }}
+          currentObject={{ prefix: { value: ipPrefixNode.display_label } }}
           onCancel={() => setIsCreateFormOpen(false)}
           kind={selectedSchema.kind!}
         />
