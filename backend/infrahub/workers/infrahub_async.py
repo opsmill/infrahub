@@ -221,7 +221,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         await self._run_git_config_global(config.SETTINGS.git.user_name, setting_name="user.name")
         await self._run_git_config_global(config.SETTINGS.git.user_email, setting_name="user.email")
-        await self._run_git_config_global("*", "--add", setting_name="safe.directory")
+        await self._run_git_config_global("'*'", "--add", setting_name="safe.directory")
         await self._run_git_config_global("true", setting_name="credential.usehttppath")
         await self._run_git_config_global(config.SETTINGS.dev.git_credential_helper, setting_name="credential.helper")
 
