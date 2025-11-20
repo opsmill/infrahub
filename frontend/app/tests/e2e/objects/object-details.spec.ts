@@ -74,7 +74,7 @@ test.describe("/objects/:objectKind/:objectId", () => {
       await expect(kindSelector).toContainText("Circuit Endpoint");
 
       const nodeSelector = page.getByLabel("Circuit Endpoint").getByTestId("select-value");
-      await expect(nodeSelector).not.toBeEmpty();
+      await expect(nodeSelector).not.toBeEmpty(); // ID is in the input but it's dynamic
     });
   });
 });
