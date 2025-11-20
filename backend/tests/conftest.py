@@ -1659,3 +1659,14 @@ def git_global_config_env_setting() -> Generator[Any, None, None]:
 
     config.SETTINGS.git.global_config_file = previous_git_global_config_file
     Path(tmp_git_config).unlink()
+
+
+@pytest.fixture
+def git_user_config():
+    initial_user_name = config.SETTINGS.git.user_name
+    initial_user_email = config.SETTINGS.git.user_email
+    config.SETTINGS.git.user_email = "test@email.com"
+    config.SETTINGS.git.user_name = "Test User"
+    yield
+    config.SETTINGS.git.user_email = initial_user_email
+    config.SETTINGS.git.user_name = initial_user_name

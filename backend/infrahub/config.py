@@ -478,6 +478,9 @@ class GitSettings(BaseSettings):
             "if the environment variable is not initially set"
         ),
     )
+    use_explicit_merge_commit: bool = Field(
+        default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
+    )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
