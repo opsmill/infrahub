@@ -90,7 +90,7 @@ const TopLevelMenuItem: React.FC<{
     return (
       <Link
         to={constructPath(item.path)}
-        className={classNames(menuNavigationItemStyle, "w-[224px]")}
+        className={classNames(menuNavigationItemStyle, isCollapsed ? "p-2" : "w-[224px]")}
       >
         <MenuItemIcon item={item} />
         <span className={classNames("text-sm", isCollapsed && "hidden")}>{item.label}</span>
