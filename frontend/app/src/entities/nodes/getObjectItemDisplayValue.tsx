@@ -35,7 +35,6 @@ const getTextValue = (data: any) => {
   }
 
   return (
-    getNodeLabel(data) ??
     data?.label ??
     data?.display_label ??
     data?.value ??
