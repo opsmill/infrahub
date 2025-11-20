@@ -88,7 +88,7 @@ test.describe("when searching an object", () => {
   test("display result when searching by uuid", async ({ page }) => {
     await page.goto("/objects/InfraAutonomousSystem");
 
-    await page.getByRole("link", { name: "AS174, 174" }).click();
+    await page.getByRole("link", { name: "AS174 174" }).click();
     const uuid = (await page.locator("dd").first().textContent()) as string;
 
     await test.step("open search anywhere modal", async () => {
