@@ -2,7 +2,7 @@ from typing import Any
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import RelationshipKind
 from infrahub.core.node import Node
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.relationship.model import Relationship
@@ -137,10 +137,7 @@ class NodeProfilesApplier:
                 await node_rel.save(db=self.db)
             return is_changed
 
-        if node_rel.schema.cardinality == RelationshipCardinality.ONE:
-            target_peer_ids = {peer_ids[0]} if peer_ids else set()
-        else:
-            target_peer_ids = set(peer_ids)
+        target_peer_ids = set(peer_ids)
 
         # Remove relationships that are from this profile but not in target
         for rel in current_rels:
