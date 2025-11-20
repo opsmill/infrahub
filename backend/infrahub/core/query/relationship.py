@@ -427,12 +427,13 @@ class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
             self.node_properties_to_update.keys()
         )
         set_to_time_on_current_property_query = """
-MATCH (rl)-[r]->()
+OPTIONAL MATCH (rl)-[r]->()
 WHERE type(r) IN $property_types_to_update
 AND r.branch = $branch
 AND r.status = "active"
 AND r.to IS NULL
 SET r.to = $at, r.to_user_id = $user_id
+WITH rl
         """
         self.add_to_query(set_to_time_on_current_property_query)
 
