@@ -62,7 +62,8 @@ test.describe("Verifies the object creation", () => {
       await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
       await page
         .getByTestId("identifier-cell")
-        .getByRole("link", { name: "dfw1-edge1, Ethernet1", exact: true })
+        .getByRole("link", { name: "Ethernet1", exact: true })
+        .first()
         .click();
       await page.getByTestId("edit-button").click();
     });
