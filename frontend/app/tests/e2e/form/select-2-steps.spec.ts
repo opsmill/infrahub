@@ -63,7 +63,7 @@ test.describe("Verifies the object creation", () => {
       await page
         .getByTestId("identifier-cell")
         .getByRole("link", { name: "Ethernet1", exact: true })
-        .first()
+        .nth(2)
         .click();
       await page.getByTestId("edit-button").click();
     });
