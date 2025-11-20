@@ -59,16 +59,12 @@ class NodeProfilesApplier:
         identifiers: list[RelationshipFilter] = []
         for rel_name in rel_names:
             rel_schema = node_schema.get_relationship(name=rel_name)
-
-            # We are past schema validation so we should have an identifier
-            if not rel_schema.identifier:
-                raise ValueError(f"Relationship {rel_name} has no identifier")
-
             identifiers.append(
                 RelationshipFilter(
-                    relationship_identifier=f"profile_{rel_schema.identifier}", direction=rel_schema.direction
+                    relationship_identifier=f"profile_{rel_schema.get_identifier()}", direction=rel_schema.direction
                 )
             )
+
         return identifiers
 
     async def _get_sorted_profile_data(
@@ -141,8 +137,10 @@ class NodeProfilesApplier:
 
         # Remove relationships that are from this profile but not in target
         for rel in current_rels:
+            if not node_rel.is_from_profile:
+                continue
             source = await rel.get_source(db=self.db)
-            if node_rel.is_from_profile and source and source.id == profile_id:
+            if source and source.id == profile_id:
                 if rel.peer_id and rel.peer_id not in target_peer_ids:
                     await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
                     node_rel.is_from_profile = True
