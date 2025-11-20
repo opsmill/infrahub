@@ -132,7 +132,8 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
       await page
         .getByTestId("identifier-cell")
-        .getByRole("link", { name: "den1-edge2, Ethernet1", exact: true })
+        .getByRole("link", { name: "Ethernet1", exact: true })
+        .nth(2)
         .click();
       await page.getByText("Ip Addresses1").click();
       await page.getByTestId("open-relationship-form-button").click();
