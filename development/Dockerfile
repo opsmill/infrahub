@@ -12,8 +12,6 @@ ENV PATH="${PATH}:/root/.local/bin" \
     INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend/app" \
     INFRAHUB_DOCS_DIRECTORY="/opt/infrahub/docs"
 
-RUN groupadd -r -g 1000 infrahub && useradd --no-log-init -u 1000 --home-dir /opt/infrahub -r -g infrahub infrahub
-
 RUN mkdir /prom_shared /remote
 
 RUN apt-get update && \
