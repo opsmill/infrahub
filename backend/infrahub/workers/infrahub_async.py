@@ -219,85 +219,25 @@ class InfrahubWorkerAsync(BaseWorker):
             os.environ["GIT_CONFIG_GLOBAL"] = global_config_file
             self._logger.info(f"Set git config file to {global_config_file}")
 
-        if config.SETTINGS.git.user_name:
-            proc_name = await asyncio.create_subprocess_exec(
-                "git",
-                "config",
-                "--global",
-                "user.name",
-                config.SETTINGS.git.user_name,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr_name = await proc_name.communicate()
-            if proc_name.returncode != 0:
-                error_msg = stderr_name.decode("utf-8", errors="ignore").strip() or "unknown error"
-                self._logger.error("Failed to set git user.name: %s", error_msg)
-            else:
-                self._logger.info("Git user name set")
+        await self._run_git_config_global(config.SETTINGS.git.user_name, setting_name="user.name")
+        await self._run_git_config_global(config.SETTINGS.git.user_email, setting_name="user.email")
+        await self._run_git_config_global("*", "--add", setting_name="safe.directory")
+        await self._run_git_config_global("true", setting_name="credential.usehttppath")
+        await self._run_git_config_global(config.SETTINGS.dev.git_credential_helper, setting_name="credential.helper")
 
-        if config.SETTINGS.git.user_email:
-            proc_email = await asyncio.create_subprocess_exec(
-                "git",
-                "config",
-                "--global",
-                "user.email",
-                config.SETTINGS.git.user_email,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr_email = await proc_email.communicate()
-            if proc_email.returncode != 0:
-                error_msg = stderr_email.decode("utf-8", errors="ignore").strip() or "unknown error"
-                self._logger.error("Failed to set git user.email: %s", error_msg)
-            else:
-                self._logger.info("Git user email set")
-
+    async def _run_git_config_global(self, *args: list[str], setting_name: str) -> None:
         proc = await asyncio.create_subprocess_exec(
             "git",
             "config",
             "--global",
-            "--add",
-            "safe.directory",
-            "'*'",
+            setting_name,
+            *args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         _, stderr = await proc.communicate()
         if proc.returncode != 0:
             error_msg = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
-            self._logger.error("Failed to set git safe.directory: %s", error_msg)
+            self._logger.error(f"Failed to set git {setting_name}: %s", error_msg)
         else:
-            self._logger.info("Git safe.directory set")
-
-        proc = await asyncio.create_subprocess_exec(
-            "git",
-            "config",
-            "--global",
-            "credential.usehttppath",
-            "true",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            error_msg = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
-            self._logger.error("Failed to set git credential.usehttppath: %s", error_msg)
-        else:
-            self._logger.info("Git credential.usehttppath set")
-
-        proc = await asyncio.create_subprocess_exec(
-            "git",
-            "config",
-            "--global",
-            "credential.helper",
-            "/usr/local/bin/infrahub-git-credential",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            error_msg = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
-            self._logger.error("Failed to set git credential.helper: %s", error_msg)
-        else:
-            self._logger.info("Git credential.helper set")
+            self._logger.info(f"Git {setting_name} set")

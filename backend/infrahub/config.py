@@ -326,6 +326,10 @@ class DevelopmentSettings(BaseSettings):
         default=False,
         description="Allow enterprise configuration in development mode, this will not enable the features just allow the configuration.",
     )
+    git_credential_helper: str = Field(
+        default="/usr/local/bin/infrahub-git-credential",
+        description="Location of git credential helper",
+    )
 
 
 class BrokerSettings(BaseSettings):
@@ -470,7 +474,7 @@ class GitSettings(BaseSettings):
         default="/opt/infrahub/.gitconfig",
         description=(
             "The location of the git config file. "
-            "This will be set as the system `GIT_GLOBAL_CONFIG` environment variable "
+            "This will be set as the system `GIT_CONFIG_GLOBAL` environment variable "
             "if the environment variable is not initially set"
         ),
     )
