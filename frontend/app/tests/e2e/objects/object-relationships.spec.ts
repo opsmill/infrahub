@@ -136,7 +136,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
         .getByRole("link", { name: "Ethernet1", exact: true })
         .nth(2)
         .click();
-      await page.getByText("Ip Addresses1").click();
+      await page.getByText("Ip Addresses0").click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByTestId("select-open-pool-option-button").click();
       await expect(page.getByRole("option", { name: "Loopbacks pool" })).toBeVisible();
