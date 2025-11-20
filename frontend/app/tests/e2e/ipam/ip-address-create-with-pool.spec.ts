@@ -29,7 +29,10 @@ test.describe("/ipam - Allocate an ip address with pool", () => {
     await page.getByRole("button", { name: "Save" }).click();
 
     await expect(page.getByText("IP Address 172.16.0.31/16 created")).toBeVisible();
-    await page.getByRole("searchbox", { name: "Search" }).fill("172.16.0.31/16");
+    await page
+      .getByTestId("object-list-search-bar")
+      .getByRole("searchbox", { name: "Search" })
+      .fill("172.16.0.31/16");
     await expect(page.getByText("address from pool")).toBeVisible();
   });
 });

@@ -19,7 +19,7 @@ export function ProposedChangesManager({
         return (
           <ObjectTableProvider schema={proposedChangeSchema}>
             <ProposedChangesManagerToolbar permission={permission} schema={proposedChangeSchema} />
-            <ProposedChangesTable permission={permission} schema={proposedChangeSchema} />
+            <ProposedChangesTable schema={proposedChangeSchema} />
           </ObjectTableProvider>
         );
       }}

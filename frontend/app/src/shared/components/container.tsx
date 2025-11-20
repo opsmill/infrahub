@@ -8,6 +8,8 @@ export function Row({ className, ...props }: RowProps) {
   return <div className={classNames("flex items-center gap-2", className)} {...props} />;
 }
 
-export function Col({ className, ...props }: RowProps) {
+export interface ColProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+export function Col({ className, ...props }: ColProps) {
   return <div className={classNames("flex flex-col items-stretch gap-2", className)} {...props} />;
 }

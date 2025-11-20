@@ -16,12 +16,11 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 
 import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";
 import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
-import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
+import { IpamTreeWithSearch } from "@/entities/ipam/ipam-tree/ui/ipam-tree-with-search";
 
 const ipamTreeCollapsedAtom = atomWithStorage(IPAM_TREE_KEY, false);
 
@@ -47,9 +46,7 @@ export const Component = () => {
                 <ErrorBoundary
                   fallbackRender={({ error }) => <ErrorScreen message={error.message} />}
                 >
-                  <ScrollArea scrollX>
-                    <IpamTree className="w-full px-2" />
-                  </ScrollArea>
+                  <IpamTreeWithSearch />
                 </ErrorBoundary>
               </Content.Card>
             </ResizablePanel>

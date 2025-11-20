@@ -163,10 +163,7 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "type": "null",
-                                    "title": "Response Generate Artifact Api Artifact Generate  Artifact Definition Id  Post"
-                                }
+                                "schema": {}
                             }
                         }
                     },
@@ -253,10 +250,7 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "type": "null",
-                                    "title": "Response Logout Api Auth Logout Post"
-                                }
+                                "schema": {}
                             }
                         }
                     }

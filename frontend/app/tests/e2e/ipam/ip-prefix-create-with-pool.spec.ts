@@ -29,7 +29,10 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
     await page.getByRole("button", { name: "Save" }).click();
 
     await expect(page.getByText("IP Prefix 203.111.0.248/29 created")).toBeVisible();
-    await page.getByRole("searchbox", { name: "Search" }).fill("203.111.0.248/29");
+    await page
+      .getByTestId("object-list-search-bar")
+      .getByRole("searchbox", { name: "Search" })
+      .fill("203.111.0.248/29");
     await expect(page.getByText("prefix from pool")).toBeVisible();
   });
 });
