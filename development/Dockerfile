@@ -75,8 +75,7 @@ RUN npm run build && npm cache clean --force
 # ****************************************************************
 FROM base AS backend
 
-RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow && \
-    chown -R infrahub:infrahub /opt/infrahub
+RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
 
 WORKDIR /source
 
