@@ -250,7 +250,7 @@ async def _validate_node_profile_relationships(
 
         if expected_profile_relationship:
             assert {p.id for p in updated_peers} == {p.id for p in expected_profile_relationship.peers}
-            if expected_profile_relationship.source_uuid:
+            if expected_profile_relationship.source_uuid or updated_source:
                 assert updated_source == {expected_profile_relationship.source_uuid}
         else:
             assert {p.id for p in updated_peers} == {p.id for p in original_peers}
@@ -465,6 +465,23 @@ async def test_get_many_with_profile_relationships_existing_peers(
         ],
     )
 
+    node_map = await NodeManager.get_many(db=db, branch=branch, ids=[child_two.id], include_source=True)
+    assert len(node_map) == 1
+    updated_child_two = node_map[child_two.id]
+    await _validate_node_profile_relationships(
+        db=db,
+        schema=child_and_thing_nodes.child_node_schema,
+        original_node=child_two,
+        updated_node=updated_child_two,
+        expected_profile_relationships=[
+            ExpectedProfileRelationship(
+                name="things",
+                peers=[child_and_thing_nodes.thing_nodes[2]],
+                source_uuid="",
+            )
+        ],
+    )
+
 
 async def test_get_many_with_profile_relationships_clear(
     db: InfrahubDatabase, branch: Branch, child_and_thing_nodes: ChildThingFixtures
@@ -525,12 +542,12 @@ async def test_get_many_with_profile_relationships_clear(
         db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
     )
     assert len(node_map) == 1
-    second_updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
+    final_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
     await _validate_node_profile_relationships(
         db=db,
         schema=child_and_thing_nodes.child_node_schema,
         original_node=updated_child_one,
-        updated_node=second_updated_child_one,
+        updated_node=final_child_one,
         expected_profile_relationships=[ExpectedProfileRelationship(name="things", peers=[], source_uuid="")],
     )
 
@@ -594,12 +611,12 @@ async def test_get_many_with_profile_relationships_override(
         db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
     )
     assert len(node_map) == 1
-    second_updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
+    final_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
     await _validate_node_profile_relationships(
         db=db,
         schema=child_and_thing_nodes.child_node_schema,
         original_node=updated_child_one,
-        updated_node=second_updated_child_one,
+        updated_node=final_child_one,
         expected_profile_relationships=[
             ExpectedProfileRelationship(name="things", peers=[child_and_thing_nodes.thing_nodes[2]], source_uuid="")
         ],
