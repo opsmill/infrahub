@@ -30,8 +30,9 @@ import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
-  if (typeof data === "string" || typeof data === "number") {
-    return data;
+  // If data.node is a node object, use getNodeLabel
+  if (data?.node && "__typename" in data.node && "id" in data.node) {
+    return data?.label ?? getNodeLabel(data.node) ?? data?.value ?? "-";
   }
 
   return (
