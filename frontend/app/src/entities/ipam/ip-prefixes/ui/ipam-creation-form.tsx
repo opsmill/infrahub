@@ -54,7 +54,7 @@ function IpamCreationForm(props: IpamCreationFormProps) {
       () => (
         <Alert
           type={ALERT_TYPES.SUCCESS}
-          message={`${props.schema.label} ${newNode.display_label} created`}
+          message={`${props.schema.label} ${getNodeLabel(newNode)} created`}
         />
       ),
       {

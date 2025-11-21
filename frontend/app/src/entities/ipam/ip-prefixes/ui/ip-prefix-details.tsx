@@ -7,6 +7,7 @@ import { Link } from "@/shared/components/ui/link";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import type {
   NodeAttribute,
@@ -91,7 +92,7 @@ export function IpPrefixDetails({ prefixSchema, prefixId }: IpPrefixDetailsProps
             name,
             value: relationshipData ? (
               <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
-                {relationshipData?.display_label}
+                {getNodeLabel(relationshipData)}
               </Link>
             ) : null,
           };
@@ -117,7 +118,7 @@ export function IpPrefixDetails({ prefixSchema, prefixId }: IpPrefixDetailsProps
 
                 return (
                   <Link key={node?.id} to={getObjectDetailsUrl(node.__typename, node.id)}>
-                    {node.display_label}
+                    {getNodeLabel(node)}
                   </Link>
                 );
               })}
