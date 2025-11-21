@@ -96,7 +96,9 @@ function GlobalPermissions() {
           roles: {
             display: (
               <InlineDisplay
-                items={edge?.node?.roles?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
+                items={edge?.node?.roles?.edges?.map((edge) =>
+                  edge?.node ? getNodeLabel(edge.node) : ""
+                )}
                 render={(item) => <Badge>{item}</Badge>}
               />
             ),
