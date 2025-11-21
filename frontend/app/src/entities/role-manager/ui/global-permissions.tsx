@@ -85,7 +85,7 @@ function GlobalPermissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: { value: edge?.node?.display_label },
+          display_label: { value: edge?.node ? getNodeLabel(edge.node) : undefined },
           action: { value: edge?.node?.action?.value },
           decision: {
             display: globalDecisionOptions.find(
@@ -96,7 +96,7 @@ function GlobalPermissions() {
           roles: {
             display: (
               <InlineDisplay
-                items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+                items={edge?.node?.roles?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
                 render={(item) => <Badge>{item}</Badge>}
               />
             ),

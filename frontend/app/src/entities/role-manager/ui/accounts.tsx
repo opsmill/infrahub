@@ -105,7 +105,7 @@ function Accounts() {
           value: { edges: edge?.node?.member_of_groups?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.member_of_groups?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.member_of_groups?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

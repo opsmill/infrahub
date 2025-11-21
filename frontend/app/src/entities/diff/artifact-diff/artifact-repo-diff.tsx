@@ -8,6 +8,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 
 import { getArtifactDetails } from "@/entities/artifacts/api/getArtifacts";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
@@ -48,11 +49,11 @@ export const ArtifactRepoDiff = (props: any) => {
     return <NoDataFound message="No artifact diff" />;
   }
 
-  const artifact = data?.CoreArtifact?.edges[0]?.node?.object?.node?.display_label;
+  const artifactNode = data?.CoreArtifact?.edges[0]?.node?.object?.node;
 
   const title = (
     <div className="flex">
-      {artifact && <Badge className="mr-2">{artifact?.object?.node?.display_label}</Badge>}
+      {artifactNode && <Badge className="mr-2">{getNodeLabel(artifactNode)}</Badge>}
 
       {diff?.display_label}
     </div>

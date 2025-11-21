@@ -13,6 +13,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Tabs } from "@/shared/components/tabs";
 import { useTitle } from "@/shared/hooks/useTitle";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 
@@ -98,7 +99,7 @@ export function UserProfilePage() {
             <Avatar name={profile?.name?.value} />
 
             <div className="ml-2">
-              <h3>{profile?.display_label}</h3>
+              <h3>{profile ? getNodeLabel(profile) : ""}</h3>
 
               <p className="text-gray-500 text-sm">{profile?.description?.value ?? "-"}</p>
             </div>

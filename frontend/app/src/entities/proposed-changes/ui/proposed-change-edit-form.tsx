@@ -87,14 +87,14 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
           initialData?.reviewers?.edges
             .map((edge: any) => ({
               id: edge?.node?.id,
-              display_label: edge?.node?.display_label,
+              display_label: edge?.node ? getNodeLabel(edge.node) : undefined,
               __typename: edge?.node?.__typename,
             }))
             .filter(Boolean) ?? [],
       },
       options: initialData?.reviewers?.edges.map(({ node }) => ({
         id: node?.id,
-        name: node?.display_label,
+        name: node ? getNodeLabel(node) : undefined,
       })),
     },
   ];
