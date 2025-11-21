@@ -1,5 +1,6 @@
 import asyncio
-import uuid
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -27,11 +28,14 @@ from prefect.client.schemas.sorting import (
     FlowRunSort,
 )
 
+from infrahub import config
 from infrahub.core.constants import TaskConclusion
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
+from infrahub.message_bus.types import KVTTL
 from infrahub.utils import get_nested_dict
+from infrahub.workers.dependencies import get_cache
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 
 from .constants import CONCLUSION_STATE_MAPPING
@@ -44,6 +48,12 @@ PREFECT_MAX_LOGS_PER_CALL = 200
 
 
 class PrefectTask:
+    @staticmethod
+    def _build_flow_run_count_cache_key(body: dict[str, Any]) -> str:
+        serialized = json.dumps(body, sort_keys=True, separators=(",", ":"))
+        hashed = hashlib.sha256(serialized.encode()).hexdigest()
+        return f"task_manager:flow_run_count:{hashed}"
+
     @classmethod
     async def count_flow_runs(
         cls,
@@ -59,10 +69,24 @@ class PrefectTask:
             "flows": flow_filter.model_dump(mode="json") if flow_filter else None,
             "flow_runs": (flow_run_filter.model_dump(mode="json", exclude_unset=True) if flow_run_filter else None),
         }
+        cache_key = cls._build_flow_run_count_cache_key(body)
+
+        cache = await get_cache()
+        cached_value_raw = await cache.get(key=cache_key)
+        if cached_value_raw is not None:
+            try:
+                return int(cached_value_raw)
+            except (TypeError, ValueError):
+                await cache.delete(key=cache_key)
 
         response = await client._client.post("/flow_runs/count", json=body)
         response.raise_for_status()
-        return response.json()
+        count_value = int(response.json())
+
+        if count_value >= config.SETTINGS.workflow.flow_run_count_cache_threshold:
+            await cache.set(key=cache_key, value=str(count_value), expires=KVTTL.ONE_MINUTE)
+
+        return count_value
 
     @classmethod
     async def _get_related_nodes(cls, db: InfrahubDatabase, flows: list[FlowRun]) -> RelatedNodesInfo:
@@ -204,7 +228,7 @@ class PrefectTask:
             tags=FlowRunFilterTags(all_=filter_tags),
         )
         if ids:
-            flow_run_filter.id = FlowRunFilterId(any_=[uuid.UUID(id) for id in ids])
+            flow_run_filter.id = FlowRunFilterId(any_=[UUID(id) for id in ids])
 
         if statuses:
             flow_run_filter.state = FlowRunFilterState(type=FlowRunFilterStateType(any_=statuses))

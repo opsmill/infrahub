@@ -143,6 +143,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_WORKFLOW_EXTRA_LOGGERS` | A list of additional logger that will be captured during task execution. | array[string] | None |
 | `INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL` | Log level applied to all extra loggers. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | INFO |
 | `INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL` | Specify how often the worker should poll the server for tasks (sec) | integer | 2 |
+| `INFRAHUB_WORKFLOW_FLOW_RUN_COUNT_CACHE_THRESHOLD` | Threshold for caching flow run counts (0 to always cache, higher values to disable) | integer | 100000 |
 
 ## Miscellaneous
 
