@@ -361,12 +361,14 @@ WHERE NOT exists((%(var_name)s)-[:IS_PART_OF {branch: $branch, status: "deleted"
             """ % {"var_name": name}
         else:
             match_property_peer_query = """
-MATCH (%(var_name)s:Node { uuid: $prop_%(var_name)s_id })-[r:IS_PART_OF]->(:Root)
-WHERE %(branch_filter)s
-WITH *, %(var_name)s, r.status = "active" AS %(var_name)s_is_active
-ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-LIMIT 1
-WITH *, %(var_name)s_is_active
+CALL () {
+    MATCH (%(var_name)s:Node { uuid: $prop_%(var_name)s_id })-[r:IS_PART_OF]->(:Root)
+    WHERE %(branch_filter)s
+    RETURN %(var_name)s, r.status = "active" AS %(var_name)s_is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH *
 WHERE %(var_name)s_is_active = TRUE
             """ % {"var_name": name, "branch_filter": branch_filter}
         self.add_to_query(match_property_peer_query)
