@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import RepositoryInternalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateValidationResult
@@ -14,7 +14,6 @@ from infrahub.log import get_logger
 
 from ..git.models import GitRepositoryMerge
 from ..workflows.catalogue import GIT_REPOSITORIES_MERGE
-from .enums import RepositoryTypes
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -245,7 +244,7 @@ class BranchMerger:
                 destination_branch=self.destination_branch.name,
                 destination_branch_id=str(self.destination_branch.get_uuid()),
                 internal_status=repo.internal_status.value,
-                repository_type=RepositoryTypes.CoreReadOnlyRepository,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
             )
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 
@@ -272,6 +271,6 @@ class BranchMerger:
                     destination_branch=self.destination_branch.name,
                     destination_branch_id=str(self.destination_branch.get_uuid()),
                     default_branch=repo.default_branch.value,
-                    repository_type=RepositoryTypes.CoreRepository,
+                    repository_kind=InfrahubKind.REPOSITORY,
                 )
                 await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})

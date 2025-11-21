@@ -1,7 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.context import InfrahubContext
-from infrahub.core.enums import RepositoryTypes
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 
 
@@ -94,7 +93,7 @@ class GitRepositoryMerge(BaseModel):
     destination_branch: str = Field(..., description="The destination branch")
     destination_branch_id: str = Field(..., description="The ID of the destination branch")
     default_branch: str | None = Field(default=None, description="The default branch in Git")
-    repository_type: RepositoryTypes = Field(..., description="The type of the repository.")
+    repository_kind: str = Field(..., description="The kind of the repository.")
 
 
 class GitRepositoryImportObjects(BaseModel):

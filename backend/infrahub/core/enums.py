@@ -15,8 +15,3 @@ def generate_python_enum(name: str, options: list[Any]) -> type[enum.Enum]:
 
         main_attrs[enum_name] = option
     return enum.Enum(name, main_attrs)  # type: ignore[return-value]
-
-
-class RepositoryTypes(enum.StrEnum):
-    CoreRepository = "core_repository"
-    CoreReadOnlyRepository = "core_read_only_repository"
