@@ -24,6 +24,7 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -139,7 +140,9 @@ function Permissions() {
             value: { edges: edge?.node?.roles?.edges },
             display: (
               <InlineDisplay
-                items={edge?.node?.roles?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
+                items={edge?.node?.roles?.edges?.map((edge) =>
+                  edge?.node ? getNodeLabel(edge.node) : ""
+                )}
                 render={(item) => <Badge>{item}</Badge>}
               />
             ),

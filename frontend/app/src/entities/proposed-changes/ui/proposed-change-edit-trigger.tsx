@@ -54,7 +54,9 @@ export const ProposedChangeEditTrigger = ({
               <div className="flex grow items-center gap-2 truncate whitespace-nowrap text-sm">
                 <span>Proposed changes</span>
                 <Icon icon="mdi:chevron-right" />
-                <span className="truncate">{proposedChangesDetails ? getNodeLabel(proposedChangesDetails) : ""}</span>
+                <span className="truncate">
+                  {proposedChangesDetails ? getNodeLabel(proposedChangesDetails) : ""}
+                </span>
               </div>
 
               <ObjectHelpButton

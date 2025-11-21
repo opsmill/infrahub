@@ -22,6 +22,7 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/entities/role-manager/api/getAccounts";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -105,7 +106,9 @@ function Accounts() {
           value: { edges: edge?.node?.member_of_groups?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.member_of_groups?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
+              items={edge?.node?.member_of_groups?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

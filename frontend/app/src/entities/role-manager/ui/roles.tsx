@@ -21,6 +21,7 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -84,7 +85,9 @@ function Roles() {
           value: { edges: edge?.node?.groups?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.groups?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
+              items={edge?.node?.groups?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),
