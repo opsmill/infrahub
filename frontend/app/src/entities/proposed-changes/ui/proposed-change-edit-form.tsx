@@ -16,6 +16,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ProposedChangeEditFormProps = {
