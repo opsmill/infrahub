@@ -92,7 +92,8 @@ class GitRepositoryMerge(BaseModel):
     source_branch: str = Field(..., description="The source branch")
     destination_branch: str = Field(..., description="The destination branch")
     destination_branch_id: str = Field(..., description="The ID of the destination branch")
-    default_branch: str = Field(..., description="The default branch in Git")
+    default_branch: str | None = Field(default=None, description="The default branch in Git")
+    repository_kind: str = Field(..., description="The kind of the repository.")
 
 
 class GitRepositoryImportObjects(BaseModel):
