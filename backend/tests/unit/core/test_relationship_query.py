@@ -1004,9 +1004,9 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         db=db,
         branch=branch,
         source=migrated_jack,
-        data=peers_database[tag_blue_main.id],
+        destination=tag_blue_main,
         schema=rel_schema,
-        rel=Relationship,
+        rel_id=peers_database[tag_blue_main.id].rel_node_id,
         user_id="user1",
     )
     await query2.execute(db=db)
@@ -1046,9 +1046,9 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         db=db,
         branch=branch,
         source=migrated_jack,
-        data=peers_database[tag_red_main.id],
+        destination_id=tag_red_main.id,
         schema=rel_schema,
-        rel=Relationship,
+        rel_id=peers_database[tag_red_main.id].rel_node_id,
         user_id="user1",
     )
     await query2.execute(db=db)
