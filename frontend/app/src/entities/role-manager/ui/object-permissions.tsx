@@ -111,12 +111,12 @@ function Permissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: edge?.node?.display_label,
+          display_label: edge?.node ? getNodeLabel(edge.node) : undefined,
           display: {
-            value: edge?.node?.display_label,
+            value: edge?.node ? getNodeLabel(edge.node) : undefined,
             display: (
               <div className="flex items-center gap-2">
-                {icon} {edge?.node?.display_label}
+                {icon} {edge?.node ? getNodeLabel(edge.node) : ""}
               </div>
             ),
           },
@@ -139,7 +139,7 @@ function Permissions() {
             value: { edges: edge?.node?.roles?.edges },
             display: (
               <InlineDisplay
-                items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+                items={edge?.node?.roles?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
                 render={(item) => <Badge>{item}</Badge>}
               />
             ),

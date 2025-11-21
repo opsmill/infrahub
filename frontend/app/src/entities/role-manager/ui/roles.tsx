@@ -84,7 +84,7 @@ function Roles() {
           value: { edges: edge?.node?.groups?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.groups?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.groups?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

@@ -100,7 +100,7 @@ function Groups() {
           value: { edges: edge?.node?.members?.edges },
           display: (
             <GroupMembers
-              members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
+              members={edge?.node?.members?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "") ?? []}
             />
           ),
         },
@@ -108,7 +108,7 @@ function Groups() {
           value: { edges: edge?.node?.roles?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.roles?.edges?.map((edge) => edge?.node ? getNodeLabel(edge.node) : "")}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

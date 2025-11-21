@@ -119,7 +119,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
           {displayIpNamespace && (
             <NodeAttribute
               title={"IP Namespace"}
-              value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}
+              value={{ node: objectDetailsData?.ip_namespace?.node ?? undefined }}
             />
           )}
 
