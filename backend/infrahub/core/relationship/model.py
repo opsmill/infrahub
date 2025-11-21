@@ -1195,9 +1195,10 @@ class RelationshipManager:
         """Create or Update the Relationship in the database."""
 
         await self.resolve(db=db)
+        branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
         save_at = Timestamp(at)
-        details = await self.fetch_relationship_ids(db=db, force_refresh=True)
+        details = await self.fetch_relationship_ids(db=db, branch_agnostic=branch_agnostic, force_refresh=True)
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         # If we have previously fetched the relationships from the database
@@ -1209,7 +1210,7 @@ class RelationshipManager:
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
-        for rel in await self.get_relationships(db=db):
+        for rel in await self.get_relationships(db=db, branch_agnostic=branch_agnostic):
             if rel.peer_id in details.peer_ids_present_local_only:
                 await rel.save(db=db, user_id=user_id, at=save_at)
 
