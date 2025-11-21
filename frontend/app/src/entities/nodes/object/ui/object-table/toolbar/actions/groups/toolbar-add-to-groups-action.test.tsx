@@ -34,7 +34,7 @@ describe("ToolbarAddToGroupsAction Component", () => {
 
   test("opens the popover when clicking the button", async () => {
     // GIVEN
-    const component = render(<ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />);
+    const component = await render(<ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />);
 
     // WHEN
     await component.getByRole("button", { name: "Add to groups" }).click();

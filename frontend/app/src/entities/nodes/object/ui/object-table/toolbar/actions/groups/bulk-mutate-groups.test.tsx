@@ -30,7 +30,7 @@ describe("BulkMutateGroups Component", () => {
 
   test("renders the group selector", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
     );
 
@@ -40,7 +40,7 @@ describe("BulkMutateGroups Component", () => {
 
   test("adds a group to the selected groups panel when a group is selected", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
     );
 
@@ -60,7 +60,7 @@ describe("BulkMutateGroups Component", () => {
 
   test("removes a group when clicking the remove button", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
     );
 
@@ -74,7 +74,7 @@ describe("BulkMutateGroups Component", () => {
 
   test("filters out already selected groups", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
     );
 
@@ -99,7 +99,7 @@ describe("BulkMutateGroups Component", () => {
 
   test("transitions to processing state when validate button is clicked", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
     );
 
@@ -114,7 +114,7 @@ describe("BulkMutateGroups Component", () => {
 
   test("calls mutation function when processing", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <BulkMutateGroups mutationFn={(group) => mockMutationFn(group)} onSuccess={mockOnSuccess} />
     );
 
@@ -128,7 +128,7 @@ describe("BulkMutateGroups Component", () => {
 
   test("handles multiple group selections", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <BulkMutateGroups mutationFn={mockMutationFn} onSuccess={mockOnSuccess} />
     );
 

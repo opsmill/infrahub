@@ -26,7 +26,7 @@ describe("TaskStatus", () => {
     });
 
     // WHEN
-    const component = render(<TaskStatus />);
+    const component = await render(<TaskStatus />);
 
     // THEN
     const taskButton = component.getByRole("link");
@@ -57,7 +57,7 @@ describe("TaskStatus", () => {
     });
 
     // WHEN
-    const component = render(<TaskStatus />);
+    const component = await render(<TaskStatus />);
 
     // THEN
     const taskButton = component.getByRole("link", { name: "View branch tasks" });
@@ -83,7 +83,7 @@ describe("TaskStatus", () => {
     });
 
     // WHEN
-    const component = render(<TaskStatus />);
+    const component = await render(<TaskStatus />);
 
     // THEN
     await expect

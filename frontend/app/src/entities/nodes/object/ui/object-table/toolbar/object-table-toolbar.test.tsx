@@ -19,7 +19,7 @@ describe("ObjectTableToolbar Component", () => {
 
   test("renders correctly with selected rows", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />
     );
 
@@ -30,7 +30,7 @@ describe("ObjectTableToolbar Component", () => {
 
   test("calls onClose when close button is clicked", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />
     );
 
