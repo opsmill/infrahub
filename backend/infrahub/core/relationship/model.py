@@ -349,7 +349,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 memory_value = getattr(self, f"{property_name}_id", None)
                 database_prop = data.properties.get(property_name)
                 database_value = database_prop.value if database_prop else None
-                if memory_value != database_value:
+                if memory_value != database_value or self.is_clear(property_name):
                     different_properties.append(property_name)
 
         return different_properties
@@ -405,8 +405,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         for prop_name in self._node_properties:
             if prop_name not in properties_to_update:
                 continue
-            if value := getattr(self, f"{prop_name}_id"):
-                node_properties_to_update[prop_name] = value
+            value = getattr(self, f"{prop_name}_id")
+            needs_clear = self.is_clear(prop_name)
+            if value or needs_clear:
+                node_properties_to_update[prop_name] = getattr(self, f"{prop_name}_id")
 
         if not flag_properties_to_update and not node_properties_to_update:
             return

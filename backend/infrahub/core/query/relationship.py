@@ -423,8 +423,11 @@ class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
             """
         self.add_to_query(rel_query)
 
-        self.params["property_types_to_update"] = list(self.flag_properties_to_update.keys()) + list(
-            self.node_properties_to_update.keys()
+        self.params["property_types_to_update"] = sorted(
+            [flag.upper() for flag in self.flag_properties_to_update.keys()]
+        )
+        self.params["property_types_to_update"] += sorted(
+            [f"HAS_{prop.upper()}" for prop in self.node_properties_to_update.keys()]
         )
         set_to_time_on_current_property_query = """
 OPTIONAL MATCH (rl)-[r]->()
@@ -437,10 +440,13 @@ WITH rl
         """
         self.add_to_query(set_to_time_on_current_property_query)
 
-        self.query_add_all_node_property_merge()
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+
+        self.query_add_all_node_property_merge(branch_filter=branch_filter)
         self.query_add_all_flag_property_merge()
 
-        self.query_add_all_node_property_create()
+        self.query_add_all_node_property_create(branch_filter=branch_filter)
         self.query_add_all_flag_property_create()
 
     def query_add_all_flag_property_merge(self) -> None:
@@ -452,29 +458,27 @@ WITH rl
         self.params[f"prop_{name}"] = value
         self.return_labels.append(f"prop_{name}")
 
-    def query_add_all_node_property_merge(self) -> None:
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
-        self.params.update(branch_params)
-
+    def query_add_all_node_property_merge(self, branch_filter: str) -> None:
         for prop_name, prop_value in self.node_properties_to_update.items():
             self.params[f"prop_{prop_name}"] = prop_value
             if self.branch.is_default or self.branch.is_global:
                 node_query = """
-            MATCH (prop_%(prop_name)s:Node {uuid: $prop_%(prop_name)s })-[r_%(prop_name)s:IS_PART_OF]->(:Root)
+            OPTIONAL MATCH (prop_%(prop_name)s:Node {uuid: $prop_%(prop_name)s })-[r_%(prop_name)s:IS_PART_OF]->(:Root)
             WHERE r_%(prop_name)s.branch IN $branch0
             AND r_%(prop_name)s.status = "active"
             AND r_%(prop_name)s.from <= $at AND (r_%(prop_name)s.to IS NULL OR r_%(prop_name)s.to > $at)
             WITH *
+            WHERE $prop_%(prop_name)s IS NULL OR prop_%(prop_name)s IS NOT NULL
             LIMIT 1
                 """ % {"prop_name": prop_name}
             else:
                 node_query = """
-            MATCH (prop_%(prop_name)s:Node {uuid: $prop_%(prop_name)s })-[r_%(prop_name)s:IS_PART_OF]->(:Root)
+            OPTIONAL MATCH (prop_%(prop_name)s:Node {uuid: $prop_%(prop_name)s })-[r_%(prop_name)s:IS_PART_OF]->(:Root)
             WHERE all(r in [r_%(prop_name)s] WHERE %(branch_filter)s)
             ORDER BY r_%(prop_name)s.branch_level DESC, r_%(prop_name)s.from DESC, r_%(prop_name)s.status ASC
             LIMIT 1
             WITH *
-            WHERE r_%(prop_name)s.status = "active"
+            WHERE $prop_%(prop_name)s IS NULL OR r_%(prop_name)s.status = "active"
                 """ % {"branch_filter": branch_filter, "prop_name": prop_name}
             self.add_to_query(node_query)
             self.return_labels.append(f"prop_{prop_name}")
@@ -492,17 +496,33 @@ WITH rl
         )
         self.add_to_query(query)
 
-    def query_add_all_node_property_create(self) -> None:
+    def query_add_all_node_property_create(self, branch_filter: str) -> None:
         for prop_name in self.node_properties_to_update:
-            self.query_add_node_property_create(name=prop_name)
+            self.query_add_node_property_create(name=prop_name, branch_filter=branch_filter)
 
-    def query_add_node_property_create(self, name: str) -> None:
+    def query_add_node_property_create(self, name: str, branch_filter: str) -> None:
         query = """
-        CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(prop_%s)
-        """ % (
-            "HAS_" + name.upper(),
-            name,
-        )
+WITH *
+CALL (rl, prop_%(var_name)s) {
+    WITH rl, prop_%(var_name)s
+    WHERE $prop_%(var_name)s IS NOT NULL
+    CREATE (rl)
+        -[:%(edge_type)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]
+        ->(prop_%(var_name)s)
+}
+CALL (rl) {
+    WITH rl
+    WHERE $prop_%(var_name)s IS NULL
+    AND $branch_level > 1
+    MATCH (rl)-[r:%(edge_type)s]->(current_prop)
+    WHERE %(branch_filter)s
+    AND r.branch_level = 1
+    AND r.status = "active"
+    CREATE (rl)
+        -[:%(edge_type)s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, from_user_id: $user_id }]
+        ->(current_prop)
+}
+        """ % {"edge_type": "HAS_" + name.upper(), "var_name": name, "branch_filter": branch_filter}
         self.add_to_query(query)
 
 
