@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
@@ -300,7 +300,8 @@ class NodeManager:
         branch: Branch | str | None = None,
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_source: bool = False,
+        include_owner: bool = False,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -348,7 +349,8 @@ class NodeManager:
                 at=at,
                 branch=branch,
                 branch_agnostic=branch_agnostic,
-                include_metadata=include_metadata,
+                include_source=include_source,
+                include_owner=include_owner,
             )
 
         results = []

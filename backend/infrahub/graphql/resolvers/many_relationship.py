@@ -4,7 +4,7 @@ from graphql import GraphQLResolveInfo
 from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import BranchSupportType, MetadataOptions, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.schema.node_schema import NodeSchema
@@ -209,7 +209,8 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
-                include_metadata=MetadataOptions.LINKED_NODES,
+                include_source=True,
+                include_owner=True,
             )
             if not objs:
                 return None
@@ -247,7 +248,8 @@ class ManyRelationshipResolver:
             fields=node_fields,
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_source=True,
+            include_owner=True,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]

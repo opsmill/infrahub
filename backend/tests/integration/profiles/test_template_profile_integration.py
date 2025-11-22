@@ -5,7 +5,7 @@ from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -391,7 +391,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
 
         # Verify via direct database query
         retrieved_template = await NodeManager.get_one(
-            db=db, id=template_with_value.id, include_metadata=MetadataOptions.SOURCE
+            db=db, id=template_with_value.id, include_source=True
         )
         assert retrieved_template.airflow.value == "Rear to front"
         assert retrieved_template.airflow.is_from_profile is False
@@ -642,7 +642,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert obj["height"]["source"]["id"] == test_profile.id
 
         # Verify via database
-        retrieved = await NodeManager.get_one(db=db, id=test_template.id, include_metadata=MetadataOptions.SOURCE)
+        retrieved = await NodeManager.get_one(db=db, id=test_template.id, include_source=True)
         assert retrieved.airflow.value == "Explicitly set airflow"
         assert retrieved.airflow.is_from_profile is False
         assert retrieved.airflow.source_id is None
@@ -879,7 +879,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via database retrieval
         template_id = obj["id"]
-        retrieved = await NodeManager.get_one(db=db, id=template_id, include_metadata=MetadataOptions.SOURCE)
+        retrieved = await NodeManager.get_one(db=db, id=template_id, include_source=True)
         assert retrieved.mtu.value == 9000
         assert retrieved.mtu.is_from_profile is True
         assert retrieved.mtu.source_id == interface_profile.id
@@ -985,7 +985,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify device template has profile applied
         retrieved_device_template = await NodeManager.get_one(
-            db=db, id=device_template.id, include_metadata=MetadataOptions.SOURCE
+            db=db, id=device_template.id, include_source=True
         )
         assert retrieved_device_template.role.value == "spine"
         assert retrieved_device_template.role.is_from_profile is True
@@ -1197,14 +1197,14 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
 
         # Verify via direct database query
         device_id = obj["id"]
-        retrieved_device = await NodeManager.get_one(db=db, id=device_id, include_metadata=MetadataOptions.SOURCE)
+        retrieved_device = await NodeManager.get_one(db=db, id=device_id, include_source=True)
 
         assert retrieved_device.role.value == "spine"
         assert retrieved_device.role.is_from_profile is True
         assert retrieved_device.role.source_id == device_component_profile.id
 
         # Get and verify interfaces
-        interfaces_rel = await retrieved_device.interfaces.get_peers(db=db, include_metadata=MetadataOptions.SOURCE)
+        interfaces_rel = await retrieved_device.interfaces.get_peers(db=db, include_source=True)
         assert len(interfaces_rel) == 2
 
         for interface in interfaces_rel.values():

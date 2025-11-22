@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -912,7 +912,8 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: type[PeerType],
         branch_agnostic: bool = ...,
-        include_metadata: MetadataOptions = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
     ) -> Mapping[str, PeerType]: ...
 
     @overload
@@ -921,7 +922,8 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = None,
         branch_agnostic: bool = ...,
-        include_metadata: MetadataOptions = ...,
+        include_source: bool = ...,
+        include_owner: bool = ...,
     ) -> Mapping[str, Node]: ...
 
     async def get_peers(
@@ -929,12 +931,18 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: type[PeerType] | None = None,  # noqa: ARG002
         branch_agnostic: bool = False,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_source: bool = False,
+        include_owner: bool = False,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
         nodes = await registry.manager.get_many(
-            db=db, ids=peer_ids, branch=self.branch, branch_agnostic=branch_agnostic, include_metadata=include_metadata
+            db=db,
+            ids=peer_ids,
+            branch=self.branch,
+            branch_agnostic=branch_agnostic,
+            include_source=include_source,
+            include_owner=include_owner,
         )
         return nodes
 
