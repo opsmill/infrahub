@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { useEffect, useId } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -64,7 +64,9 @@ export const ProfilesSelector = ({
   const profilesList = kindList
     .map((profile) => {
       // Get the profile schema for the current kind
-      const profileSchema = profileSchemas.find((profileSchema) => profileSchema.name === profile);
+      const profileSchema = profileSchemas.find(
+        (profileSchema) => profileSchema.name === profile?.replace("Template", "")
+      );
 
       // Get attributes for query + form data
       const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
@@ -90,6 +92,10 @@ export const ProfilesSelector = ({
 
   const { data, error, loading } = useQuery(query);
 
+  if (loading) return <LoadingIndicator className="p-4" />;
+
+  if (error) return <ErrorScreen message={error.message} />;
+
   // Get all profiles name to retrieve the information from the result
   const profilesNameList: string[] = profilesList
     .map((profile) => profile?.name ?? "")
@@ -104,25 +110,10 @@ export const ProfilesSelector = ({
     []
   );
 
-  useEffect(() => {
-    if (!value && defaultValue && profiles.length && !loading) {
-      const defaultProfiles = defaultValue
-        .map((defaultProfile) => {
-          return profiles.find((profile) => {
-            return profile.id === defaultProfile.id;
-          });
-        })
-        .filter((profile): profile is ProfileData => {
-          return !!profile?.id;
-        });
+if (!value && defaultValue) {
+  onChange(profiles.filter((profile) => defaultValue.some((def) => def.id === profile.id)));
+}
 
-      onChange(defaultProfiles);
-    }
-  }, [defaultValue, loading, profiles]);
-
-  if (loading) return <LoadingIndicator className="p-4" />;
-
-  if (error) return <ErrorScreen message={error.message} />;
 
   if (!profiles || profiles.length === 0) return null;
 

@@ -3,7 +3,9 @@ from typing import Any
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.schema import TemplateSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.core.schema import TemplateSchema
 
 from .queries.get_profile_data import GetProfileDataQuery, ProfileData
 
@@ -29,7 +31,12 @@ class NodeProfilesApplier:
         for attr_schema in node_schema.attributes:
             attr_name = attr_schema.name
             node_attr: BaseAttribute = getattr(node, attr_name)
-            if node_attr.is_from_profile or node_attr.is_default:
+            is_template = None
+            if node_attr.source_id:
+                await node_attr.get_source(db=self.db)
+                if isinstance(node_attr.source.get_schema(), TemplateSchema):
+                    is_template = True
+            if node_attr.is_from_profile or node_attr.is_default or is_template:
                 attr_names_for_profiles.append(attr_name)
         return attr_names_for_profiles
 
