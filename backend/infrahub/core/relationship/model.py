@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,

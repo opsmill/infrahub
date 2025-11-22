@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
