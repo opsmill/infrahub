@@ -75,9 +75,11 @@ async def extract_peer_data(
             continue
 
         peers_map = await rel_manager.get_peers(db=db)
-        if rel_manager.schema.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT, RelationshipKind.PROFILE] and list(
-            peers_map.keys()
-        ) == [current_template.id]:
+        if rel_manager.schema.kind in [
+            RelationshipKind.COMPONENT,
+            RelationshipKind.PARENT,
+            RelationshipKind.PROFILE,
+        ] and list(peers_map.keys()) == [current_template.id]:
             obj_peer_data[rel] = {"id": parent_obj.id}
             continue
 

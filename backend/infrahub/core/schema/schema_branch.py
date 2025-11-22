@@ -72,14 +72,6 @@ from .schema_branch_hfid import HFIDs
 
 log = get_logger()
 
-profiles_rel_settings: dict[str, Any] = {
-    "name": "profiles",
-    "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
-    "peer": InfrahubKind.PROFILE,
-    "kind": RelationshipKind.PROFILE,
-    "cardinality": RelationshipCardinality.MANY,
-    "branch": BranchSupportType.AWARE,
-}
 
 profiles_rel_settings: dict[str, Any] = {
     "name": "profiles",
@@ -89,6 +81,7 @@ profiles_rel_settings: dict[str, Any] = {
     "cardinality": RelationshipCardinality.MANY,
     "branch": BranchSupportType.AWARE,
 }
+
 
 class SchemaBranch:
     def __init__(
