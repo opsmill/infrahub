@@ -237,7 +237,6 @@ async def test_template_profile_application(
     await crit_template.new(db=db, template_name="crit_template", name="crit_template")
     await crit_template.save(db=db)
 
-    # TODO: Fix profile assignment to template
     await crit_template.profiles.update(db=db, data=[crit_profile_1])
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
