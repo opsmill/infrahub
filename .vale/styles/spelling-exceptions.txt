@@ -208,6 +208,7 @@ subtyping
 Subtyping
 Telecom
 template_path
+templated
 toml
 toolchain
 Tooltips
