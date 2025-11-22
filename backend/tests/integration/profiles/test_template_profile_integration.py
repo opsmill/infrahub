@@ -390,9 +390,7 @@ class TestTemplateProfileIntegration(TestInfrahubApp):
         assert obj["height"]["source"]["id"] == device_profile.id
 
         # Verify via direct database query
-        retrieved_template = await NodeManager.get_one(
-            db=db, id=template_with_value.id, include_source=True
-        )
+        retrieved_template = await NodeManager.get_one(db=db, id=template_with_value.id, include_source=True)
         assert retrieved_template.airflow.value == "Rear to front"
         assert retrieved_template.airflow.is_from_profile is False
         assert retrieved_template.airflow.is_default is False
@@ -984,9 +982,7 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         assert result.errors is None
 
         # Verify device template has profile applied
-        retrieved_device_template = await NodeManager.get_one(
-            db=db, id=device_template.id, include_source=True
-        )
+        retrieved_device_template = await NodeManager.get_one(db=db, id=device_template.id, include_source=True)
         assert retrieved_device_template.role.value == "spine"
         assert retrieved_device_template.role.is_from_profile is True
         assert retrieved_device_template.role.source_id == device_component_profile.id
