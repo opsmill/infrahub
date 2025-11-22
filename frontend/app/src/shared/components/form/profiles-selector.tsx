@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useEffect, useId } from "react";
+import { useId } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -34,12 +34,7 @@ type ProfilesSelectorProps = {
   onChange: (item: ProfileData[]) => void;
 };
 
-export const ProfilesSelector = ({
-  schema,
-  value,
-  defaultValue,
-  onChange,
-}: ProfilesSelectorProps) => {
+export const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
   const id = useId();
 
   const genericSchemas = useAtomValue(genericSchemasAtom);
@@ -109,7 +104,6 @@ export const ProfilesSelector = ({
     ],
     []
   );
-
 
   if (!profiles || profiles.length === 0) return null;
 
