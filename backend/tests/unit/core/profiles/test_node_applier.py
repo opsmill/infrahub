@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -245,7 +244,7 @@ async def test_template_profile_application(
     assert updated_template_field_names == ["color"]
     await crit_template.save(db=db)
 
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
     assert node.id == crit_template.id
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="green", source_uuid=crit_profile_1.id),
@@ -300,7 +299,7 @@ async def test_template_with_multiple_profiles(
     await crit_template.save(db=db)
 
     # Verify the values - high priority profile should win for color
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="red", source_uuid=crit_profile_high_priority.id),
         ExpectedProfileAttr(name="description", value="High priority", source_uuid=crit_profile_high_priority.id),
@@ -351,7 +350,7 @@ async def test_template_profile_manual_values_precedence(
     await crit_template.save(db=db)
 
     # Template's own value should be preserved, not overridden by profile
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_metadata=MetadataOptions.SOURCE)
+    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
     assert node.color.value == "#FF0000"
     # Source should be None since it's the template's own value
     color_source = await node.color.get_source(db=db)
@@ -400,7 +399,7 @@ async def test_node_from_template_with_profile_precedence(
     await node.save(db=db)
 
     # Reload node with source information
-    node = await NodeManager.get_one(db=db, branch=branch, id=node.id, include_metadata=MetadataOptions.SOURCE)
+    node = await NodeManager.get_one(db=db, branch=branch, id=node.id, include_source=True)
 
     # Node should get level from template's manually defined value
     assert node.level.value == 5
