@@ -7,7 +7,6 @@ from infrahub.core.constants import (
     BranchSupportType,
     DiffAction,
     InfrahubKind,
-    MetadataOptions,
     RelationshipCardinality,
     RelationshipKind,
 )
