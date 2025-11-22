@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
