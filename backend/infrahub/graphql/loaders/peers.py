@@ -4,7 +4,6 @@ from typing import Any
 from aiodataloader import DataLoader
 
 from infrahub.core.branch.models import Branch
-
 from infrahub.core.manager import NodeManager
 from infrahub.core.relationship.model import Relationship
 from infrahub.core.schema.relationship_schema import RelationshipSchema
