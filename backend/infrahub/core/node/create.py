@@ -96,10 +96,6 @@ async def extract_peer_data(
             profiles = list(await rel_manager.get_peers(db=db))
             obj_peer_data[rel] = profiles
 
-        if rel_manager.schema.kind == RelationshipKind.PROFILE:
-            profiles = list(await rel_manager.get_peers(db=db))
-            obj_peer_data[rel] = profiles
-
     return obj_peer_data
 
 
