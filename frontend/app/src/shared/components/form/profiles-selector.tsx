@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useId } from "react";
+import { useEffect, useId } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -34,7 +34,12 @@ type ProfilesSelectorProps = {
   onChange: (item: ProfileData[]) => void;
 };
 
-export const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorProps) => {
+export const ProfilesSelector = ({
+  schema,
+  value,
+  defaultValue,
+  onChange,
+}: ProfilesSelectorProps) => {
   const id = useId();
 
   const genericSchemas = useAtomValue(genericSchemasAtom);
@@ -87,10 +92,6 @@ export const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorPr
 
   const { data, error, loading } = useQuery(query);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
-
-  if (error) return <ErrorScreen message={error.message} />;
-
   // Get all profiles name to retrieve the information from the result
   const profilesNameList: string[] = profilesList
     .map((profile) => profile?.name ?? "")
@@ -104,6 +105,26 @@ export const ProfilesSelector = ({ schema, value, onChange }: ProfilesSelectorPr
     ],
     []
   );
+
+  useEffect(() => {
+    if (!value && defaultValue && profiles.length && !loading) {
+      const defaultProfiles = defaultValue
+        .map((defaultProfile) => {
+          return profiles.find((profile) => {
+            return profile.id === defaultProfile.id;
+          });
+        })
+        .filter((profile): profile is ProfileData => {
+          return !!profile?.id;
+        });
+
+      onChange(defaultProfiles);
+    }
+  }, [defaultValue, loading, profiles, value, onChange]);
+
+  if (loading) return <LoadingIndicator className="p-4" />;
+
+  if (error) return <ErrorScreen message={error.message} />;
 
   if (!profiles || profiles.length === 0) return null;
 
