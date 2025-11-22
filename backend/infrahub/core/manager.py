@@ -273,15 +273,13 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
-
         query = await RelationshipGetPeerQuery.init(
             db=db,
             source_ids=ids,
             source_kind=source_kind,
             schema=schema,
             filters=filters,
-            rel=rel,
+            rel=Relationship,
             at=at,
             branch_agnostic=branch_agnostic,
         )
@@ -306,15 +304,13 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
-
         query = await RelationshipGetPeerQuery.init(
             db=db,
             source_ids=ids,
             source_kind=source_kind,
             schema=schema,
             filters=filters,
-            rel=rel,
+            rel=Relationship,
             offset=offset,
             limit=limit,
             at=at,
@@ -348,7 +344,9 @@ class NodeManager:
 
         results = []
         for peer in peers_info:
-            result = Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
+            result = Relationship(
+                schema=schema, branch=branch, source_kind=peer.source_kind, at=at, node_id=peer.source_id
+            ).load(
                 db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,

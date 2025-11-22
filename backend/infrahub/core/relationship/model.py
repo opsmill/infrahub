@@ -91,6 +91,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self,
         schema: RelationshipSchema,
         branch: Branch,
+        source_kind: str,
         at: Timestamp | None = None,
         node: Node | None = None,
         node_id: str | None = None,
@@ -103,6 +104,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.name = schema.name
 
         self.branch = branch
+        self.source_kind = source_kind
         self.at = Timestamp(at)
 
         self._node = node
@@ -437,11 +439,24 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         branch = self.get_branch_based_on_support_type()
 
+        source_schema = db.schema.get(name=self.source_kind, branch=self.branch, duplicate=False)
+        if source_schema.branch is BranchSupportType.AGNOSTIC:
+            source_branch = registry.get_global_branch()
+        else:
+            source_branch = branch
+        destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
+        if destination_schema.branch is BranchSupportType.AGNOSTIC:
+            destination_branch = registry.get_global_branch()
+        else:
+            destination_branch = branch
+
         delete_query = await RelationshipDeleteQuery.init(
             db=db,
             rel=self,
             source_id=self.node_id,
+            source_branch=source_branch,
             destination_id=peer_id,
+            destination_branch=destination_branch,
             branch=branch,
             user_id=user_id,
             at=delete_at,
@@ -804,7 +819,9 @@ class RelationshipManager:
             if not isinstance(item, rm.rel_class | str | dict) and not hasattr(item, "_schema"):
                 raise ValidationError({rm.name: f"Invalid data provided to form a relationship {item}"})
 
-            rel = rm.rel_class(schema=rm.schema, branch=rm.branch, at=rm.at, node=rm.node)
+            rel = rm.rel_class(
+                schema=rm.schema, branch=rm.branch, source_kind=rm.node.get_kind(), at=rm.at, node=rm.node
+            )
             await rel.new(db=db, data=item)
 
             rm._relationships.append(rel)
@@ -955,7 +972,9 @@ class RelationshipManager:
             db=db,
             source=self.node,
             at=at or self.at,
-            rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
+            rel=self.rel_class(
+                schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), node=self.node
+            ),
             branch_agnostic=branch_agnostic,
         )
         await query.execute(db=db)
@@ -1014,6 +1033,7 @@ class RelationshipManager:
                 Relationship(
                     schema=self.schema,
                     branch=self.branch,
+                    source_kind=self.node.get_kind(),
                     at=at or self.at,
                     node=self.node,
                 ).load(db=db, data=details.peers_database[peer_id])
@@ -1107,9 +1127,9 @@ class RelationshipManager:
 
             # If the item is not present in the previous list of relationship, we create a new one.
             self._relationships.append(
-                await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
-                    db=db, data=item
-                )
+                await self.rel_class(
+                    schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), at=self.at, node=self.node
+                ).new(db=db, data=item)
             )
             changed = True
 
@@ -1140,9 +1160,9 @@ class RelationshipManager:
 
         # If the item ID is not present in the previous set of relationships, create a new one
         self._relationships.append(
-            await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
-                db=db, data=data
-            )
+            await self.rel_class(
+                schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), at=self.at, node=self.node
+            ).new(db=db, data=data)
         )
 
         return True
@@ -1177,12 +1197,25 @@ class RelationshipManager:
         remove_at = Timestamp(at)
         branch = self.get_branch_based_on_support_type()
 
+        source_schema = db.schema.get(name=self.node.get_kind(), branch=self.branch, duplicate=False)
+        if source_schema.branch is BranchSupportType.AGNOSTIC:
+            source_branch = registry.get_global_branch()
+        else:
+            source_branch = branch
+        destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
+        if destination_schema.branch is BranchSupportType.AGNOSTIC:
+            destination_branch = registry.get_global_branch()
+        else:
+            destination_branch = branch
+
         delete_query = await RelationshipDeleteQuery.init(
             db=db,
             rel_id=peer_data.rel_node_id,
             schema=self.schema,
             source_id=peer_data.source_id,
             destination_id=peer_data.peer_id,
+            source_branch=source_branch,
+            destination_branch=destination_branch,
             branch=branch,
             user_id=user_id,
             at=remove_at,
