@@ -853,8 +853,8 @@ class RelationshipGetPeerQuery(Query):
 
             if hasattr(self.rel, "_node_properties"):
                 for prop in self.rel._node_properties:
-                    if prop == "source" and (source := result.get("source")):
-                        data.is_from_profile = InfrahubKind.PROFILE in source.labels
+                    if prop == "source" and (source := result.get("source")) and InfrahubKind.PROFILE in source.labels:
+                        data.is_from_profile = True
                         data.profile_id = source._properties["uuid"]
                     if prop_node := result.get(prop):
                         data.properties[prop] = NodePropertyData(
