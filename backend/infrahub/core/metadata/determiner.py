@@ -97,29 +97,24 @@ class MetadataDeterminer:
         for field_properties_dict in node_fields.values():
             if not field_properties_dict or not isinstance(field_properties_dict, dict):
                 continue
-            try:
-                # try the cardinality-one relationship structure
-                field_properties_dict = field_properties_dict["properties"]
-            except (KeyError, TypeError):
-                pass
-            try:
+            # try the cardinality-one relationship structure
+            properties_dict = field_properties_dict.get("properties")
+            if not properties_dict:
                 # try the cardinality-many relationship structure
-                field_properties_dict = field_properties_dict["edges"]["properties"]
-            except (KeyError, TypeError):
-                pass
+                properties_dict = field_properties_dict.get("edges", {}).get("properties", {})
             if not (field_metadata_options & MetadataOptions.UPDATED_AT) and (
-                "updated_at" in field_properties_dict or "_updated_at" in field_properties_dict
+                "updated_at" in properties_dict or "_updated_at" in properties_dict
             ):
                 field_metadata_options |= MetadataOptions.UPDATED_AT
-            if not (field_metadata_options & MetadataOptions.UPDATED_BY) and "updated_by" in field_properties_dict:
+            if not (field_metadata_options & MetadataOptions.UPDATED_BY) and "updated_by" in properties_dict:
                 field_metadata_options |= MetadataOptions.UPDATED_BY
-            if not (field_metadata_options & MetadataOptions.CREATED_AT) and "created_at" in field_properties_dict:
+            if not (field_metadata_options & MetadataOptions.CREATED_AT) and "created_at" in properties_dict:
                 field_metadata_options |= MetadataOptions.CREATED_AT
-            if not (field_metadata_options & MetadataOptions.CREATED_BY) and "created_by" in field_properties_dict:
+            if not (field_metadata_options & MetadataOptions.CREATED_BY) and "created_by" in properties_dict:
                 field_metadata_options |= MetadataOptions.CREATED_BY
-            if not (field_metadata_options & MetadataOptions.SOURCE) and "source" in field_properties_dict:
+            if not (field_metadata_options & MetadataOptions.SOURCE) and "source" in properties_dict:
                 field_metadata_options |= MetadataOptions.SOURCE
-            if not (field_metadata_options & MetadataOptions.OWNER) and "owner" in field_properties_dict:
+            if not (field_metadata_options & MetadataOptions.OWNER) and "owner" in properties_dict:
                 field_metadata_options |= MetadataOptions.OWNER
 
         return MetadataQueryOptions(
