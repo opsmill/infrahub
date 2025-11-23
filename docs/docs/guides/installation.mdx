@@ -129,7 +129,7 @@ This method is suitable for local development and demo environments. It is not r
 
 #### Prerequisites
 
-- [Poetry](https://python-poetry.org/)
+- [uv](https://docs.astral.sh/uv/)
 - [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
 
 #### Step 1: clone the repository
@@ -181,15 +181,15 @@ Navigate to the cloned Infrahub directory:
 cd infrahub
 ```
 
-Install the poetry dependencies by running:
+Install the Python dependencies by running:
 
 ```bash
-poetry install
+uv sync --all-groups
 ```
 
 :::success
 
-You should see Poetry installing the required dependencies. When complete, you'll be returned to the command prompt without errors.
+You should see uv installing the required dependencies. When complete, you'll be returned to the command prompt without errors.
 
 :::
 
@@ -198,7 +198,7 @@ You should see Poetry installing the required dependencies. When complete, you'l
 Start and initialize Infrahub:
 
 ```bash
-poetry run invoke demo.start
+uv run invoke demo.start
 ```
 
 <ReferenceLink title="Explore additional Invoke commands for development" url="../topics/local-demo-environment" />

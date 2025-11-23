@@ -80,7 +80,7 @@ def build_changelog(context: Context) -> None:
     # Ensure local environment is up to date
     print(" - [release] Update local environment")
     with context.cd(ESCAPED_REPO_PATH):
-        context.run("poetry install --sync")
+        context.run("uv sync --all-groups")
 
     print(" - [release] Build changelog")
     exec_cmd = "towncrier build --draft 2> /dev/null"

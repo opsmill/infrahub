@@ -118,7 +118,7 @@ services:
       context: ../
       args:
         CI_ARG: ${CI:-0}
-        POETRY_VER: ${POETRY_VERSION:-2.1.0}
+        UV_VER: ${UV_VERSION:-0.9.9}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"
@@ -175,7 +175,7 @@ services:
       context: ../
       args:
         CI_ARG: ${CI:-0}
-        POETRY_VER: ${POETRY_VERSION:-2.1.0}
+        UV_VER: ${UV_VERSION:-0.9.9}
       dockerfile: development/Dockerfile
       target: backend
     image: "${IMAGE_NAME}:${IMAGE_VER}"

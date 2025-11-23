@@ -20,7 +20,7 @@ export const ArtifactRepoDiff = (props: any) => {
 
   const [schemaList] = useAtom(nodeSchemasAtom);
 
-  const schemaData = schemaList.filter((s) => s.kind === "Artifact")[0];
+  const schemaData = schemaList.find((s) => s.kind === "Artifact");
 
   const queryString = schemaData
     ? getArtifactDetails({

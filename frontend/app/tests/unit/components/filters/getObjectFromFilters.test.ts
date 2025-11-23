@@ -1,4 +1,4 @@
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import type { Filter } from "@/shared/hooks/useFilters";

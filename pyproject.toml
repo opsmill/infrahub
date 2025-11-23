@@ -1,129 +1,135 @@
-[tool.poetry]
+[project]
 name = "infrahub-server"
-version = "1.5.1"
+version = "1.5.2"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
-authors = ["OpsMill <info@opsmill.com>"]
+authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
+requires-python = ">=3.12,<3.13"
 readme = "README.md"
 license = "Apache-2.0"
-homepage = "https://opsmill.com"
-repository = "https://github.com/opsmill/infrahub"
-documentation = "https://docs.infrahub.app/"
+
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
 ]
 
-packages = [
-    { include = "infrahub", from = "backend" },
-    { include = "infrahub_sdk", from = "python_sdk" },
-    { include = "infrahub_testcontainers", from = "python_testcontainers" },
+dependencies = [
+    "neo4j>=5.28,<5.29",
+    "neo4j-rust-ext>=5.28,<5.29",
+    "pydantic>=2.10,<2.11",
+    "pydantic-settings>=2.8,<2.9",
+    "pytest>=7.4,<7.5",
+    "aio-pika>=9.4,<9.5",
+    "structlog==24.1.0",
+    "boto3==1.34.129",
+    "email-validator>=2.1,<2.2",
+    "redis[hiredis]==6.0.0",
+    "typer==0.19.2",
+    "click==8.1.7",
+    "prefect==3.5.0",
+    "prefect-redis==0.2.6",
+    "ujson>=5,<6",
+    "Jinja2>=3,<4",
+    "gitpython>=3,<4",
+    "pyyaml>=6,<7",
+    "tomli>=1.1.0; python_version<='3.11'",
+    "deepdiff==8.6.1",
+
+    # Dependencies specific to the API Server
+    "fastapi==0.121.1",
+    "fastapi-storages>=0.3,<0.4",
+    "graphene>=3.4,<3.5",
+    "gunicorn>=23.0.0,<24",
+    "lunr>=0.7.0.post1,<0.8",
+    "starlette-exporter>=0.23,<0.24",
+    "python-multipart==0.0.18",                            # Required by FastAPI to upload large files
+    "asgi-correlation-id==4.2.0",                          # Middleware for FastAPI to generate ID per request
+    "bcrypt>=4.1,<4.2",                                    # Used to hash and validate password
+    "pyjwt>=2.8,<2.9",                                     # Used to manage JWT tokens
+    "uvicorn[standard]>=0.32,<0.33",
+    "opentelemetry-instrumentation-aio-pika==0.49b1",
+    "opentelemetry-instrumentation-fastapi==0.49b1",
+    "opentelemetry-exporter-otlp-proto-grpc==1.28.1",
+    "opentelemetry-exporter-otlp-proto-http==1.28.1",
+    "nats-py==2.7.2",
+    "netaddr==1.3.0",
+    "authlib==1.6.5",
+    "aiodataloader==0.4.0",
+    "fast-depends==2.4.12",
+    "cachetools-async==0.0.5",
+
+    # Dependencies specific to the SDK
+    "rich>=13,<14",
+    "pyarrow>=14,<15",
+    "numpy==1.26.2",
+    "dulwich==0.22.7",
+    "whenever==0.7.3",
+    "netutils==1.12.0",
+    "copier==9.8.0",
+    "ariadne-codegen==0.15.3",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.12, < 3.13"
-neo4j = "~5.28"
-neo4j-rust-ext = "~5.28"
-pydantic = "~2.10"
-pydantic-settings = "~2.8"
-pytest = "~7.4"
-aio-pika = "~9.4"
-structlog = "24.1.0"
-boto3 = "1.34.129"
-email-validator = "~2.1"
-redis = { version = "^6.0.0", extras = ["hiredis"] }
-typer = "0.19.2"
-click = "8.1.7"
-prefect = "3.5.0"
-prefect-redis = "0.2.6"
-ujson = "^5"
-Jinja2 = "^3"
-gitpython = "^3"
-pyyaml = "^6"
-tomli = { version = ">=1.1.0", python = "<3.11" }
+[project.urls]
+Homepage = "https://opsmill.com"
+Repository = "https://github.com/opsmill/infrahub"
+Documentation = "https://docs.infrahub.app/"
 
-# Dependencies specific to the API Server
-fastapi = "0.121.1"
-fastapi-storages = "~0.3"
-graphene = "~3.4"
-gunicorn = "^23.0.0"
-lunr = "^0.7.0.post1"
-starlette-exporter = "~0.23"
-python-multipart = "0.0.18"                            # Required by FastAPI to upload large files
-asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
-bcrypt = "~4.1"                                        # Used to hash and validate password
-pyjwt = "~2.8"                                         # Used to manage JWT tokens
-uvicorn = { version = "~0.32", extras = ["standard"] }
-opentelemetry-instrumentation-aio-pika = "0.49b1"
-opentelemetry-instrumentation-fastapi = "0.49b1"
-opentelemetry-exporter-otlp-proto-grpc = "1.28.1"
-opentelemetry-exporter-otlp-proto-http = "1.28.1"
-nats-py = "^2.7.2"
-netaddr = "1.3.0"
-authlib = "1.6.5"
-aiodataloader = "0.4.0"
-fast-depends = "^2.4.12"
-cachetools-async = "^0.0.5"
+[tool.uv.sources]
+infrahub-server = { workspace = true }
+infrahub-sdk = { path = "python_sdk", editable = true }
+infrahub-testcontainers = { path = "python_testcontainers", editable = true }
 
-# Dependencies specific to the SDK
-rich = "^13"
-pyarrow = ">=14"
-numpy = "^1.26.2"
-dulwich = "^0.22.7"
-whenever = "0.7.3"
-netutils = "1.12.0"
-copier = "^9.8.0"
-ariadne-codegen = "0.15.3"
+[dependency-groups]
+dev = [
+    "yamllint",
+    "mypy>=1.15,<1.16",
+    "ipython>=8,<9",
+    "pytest-asyncio>=0.21.1,<0.22",
+    "pytest-clarity>=1.0,<1.1",
+    "pytest-cov==7.0.0",
+    "pytest-xdist>=3.4,<3.5",
+    "types-python-slugify>=8.0.0.3,<9",
+    "pre-commit>=2.20.0,<3",
+    "types-ujson",
+    "types-pyyaml",
+    "types-cachetools==6.2.0.20250827",
+    "ruff==0.11.9",
+    "invoke==2.2.0",
+    "pytest-benchmark>=4.0.0,<5",
+    "pytest-codspeed>=2.2.0,<3",
+    "polyfactory==2.16.2",
+    "towncrier>=24.8,<25",
+    "pytest-env>=1.1.3,<2",
+    "testcontainers==4.8.1",
+    "pytest-timeout==2.3.1",
+    "matplotlib==3.9.2",
+    "pandas==2.2.3",
+    "semver>=3.0.2,<4",
+    "ruamel-yaml==0.18.6",
+    "pytest-httpx>=0.30",
+    "docker==7.1.0",
+    "psutil==6.1.0",
+    "jwcrypto==1.5.6",
+]
 
-[tool.poetry.group.dev.dependencies]
-yamllint = "*"
-mypy = "*"
-ipython = "~8"
-pytest-asyncio = "^0.21.1"
-pytest-clarity = "~1.0"
-pytest-cov = "7.0.0"
-pytest-xdist = "~3.4"
-types-python-slugify = "^8.0.0.3"
-pre-commit = "^2.20.0"
-types-ujson = "*"
-types-pyyaml = "*"
-types-cachetools = "^6.2.0.20250827"
-ruff = "0.11.9"
-invoke = "2.2.0"
-pytest-benchmark = "^4.0.0"
-pytest-codspeed = "^2.2.0"
-deepdiff = "8.6.1"
-polyfactory = "^2.16.2"
-towncrier = "^24.8"
-pytest-env = "^1.1.3"
-testcontainers = "^4.8.1"
-pytest-timeout = "^2.3.1"
-matplotlib = "^3.9.2"
-pandas = "^2.2.3"
-semver = "^3.0.2"
-ruamel-yaml = "^0.18.6"
+# test-scale = [
+# "locust==2.20.1",
+# "docker==7.0.0",
+# "matplotlib>=3.8,<4",
+# "pandas>=2.2,<3",
+# ]
 
-# [tool.poetry.group.test-scale.dependencies]
-# locust = "^2.20.1"
-# docker = "^7.0.0"
-# matplotlib = "^3.8"
-# pandas = "^2.2"
-pytest-httpx = ">=0.30"
-docker = "^7.1.0"
-psutil = "^6.1.0"
-jwcrypto = "1.5.6"
-
-[tool.poetry.scripts]
+[project.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahubctl = "infrahub_sdk.ctl.cli:app"
 
-[tool.poetry.plugins."pytest11"]
+[project.entry-points.pytest11]
 "pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
 "pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 
-[tool.poetry.plugins."prefect.collections"]
+[project.entry-points."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"
 
 [tool.coverage.run]
@@ -457,7 +463,6 @@ module = "infrahub.lock"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "no-untyped-def",
     "operator",
     "return-value",
 ]
@@ -857,6 +862,25 @@ directory = "housekeeping"
 name = "Housekeeping"
 showcontent = true
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "backend/infrahub",
+    "python_sdk/infrahub_sdk",
+    "python_testcontainers/infrahub_testcontainers",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "backend/infrahub",
+    "python_sdk/infrahub_sdk",
+    "python_testcontainers/infrahub_testcontainers",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"backend/infrahub" = "infrahub"
+"python_sdk/infrahub_sdk" = "infrahub_sdk"
+"python_testcontainers/infrahub_testcontainers" = "infrahub_testcontainers"
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
