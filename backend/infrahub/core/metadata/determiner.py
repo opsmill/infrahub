@@ -94,16 +94,19 @@ class MetadataDeterminer:
             node_metadata_options |= MetadataOptions.CREATED_BY
 
         field_metadata_options = MetadataOptions.NONE
-        for field_dict in node_fields.values():
-            if not field_dict:
-                continue
-            # try attribute and cardinality-one relationship structure first
-            field_properties_dict = field_dict.get("properties", {})
-            # then try cardinality-many relationship structure
-            if not field_properties_dict:
-                field_properties_dict = field_dict.get("edges", {}).get("properties", {})
+        for field_properties_dict in node_fields.values():
             if not field_properties_dict or not isinstance(field_properties_dict, dict):
                 continue
+            try:
+                # try the cardinality-one relationship structure
+                field_properties_dict = field_properties_dict["properties"]
+            except (KeyError, TypeError):
+                pass
+            try:
+                # try the cardinality-many relationship structure
+                field_properties_dict = field_properties_dict["edges"]["properties"]
+            except (KeyError, TypeError):
+                pass
             if not (field_metadata_options & MetadataOptions.UPDATED_AT) and (
                 "updated_at" in field_properties_dict or "_updated_at" in field_properties_dict
             ):

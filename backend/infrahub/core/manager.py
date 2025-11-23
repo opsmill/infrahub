@@ -1142,6 +1142,9 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
+        if not ids:
+            return {}
+
         if fields:
             metadata_determiner = MetadataDeterminer(schema_branch=db.schema.get_schema_branch(name=branch.name))
             include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(node_fields=fields)

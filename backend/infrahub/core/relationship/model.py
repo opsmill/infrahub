@@ -999,7 +999,7 @@ class RelationshipManager:
                 schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), node=self.node
             ),
             branch_agnostic=branch_agnostic,
-            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
+            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.LINKED_NODES,
         )
         await query.execute(db=db)
         return list(query.get_peers())

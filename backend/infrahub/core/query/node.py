@@ -193,7 +193,7 @@ class NodeCreateAllQuery(NodeQuery):
                         pass
                     except ValueError:
                         # Relationship has not been initialized yet, it means the peer does not exist in db yet
-                        # typically because it will be allocated from a ressource pool. In that case, the peer
+                        # typically because it will be allocated from a resource pool. In that case, the peer
                         # will be fetched using `rel.resolve` later.
                         pass
 
