@@ -214,6 +214,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
                     setattr(self, prop_name, prop.value)
 
+            self._set_created_at(value=data.created_at)
+            self._set_created_by(value=data.created_by)
+            self._set_updated_at(value=data.updated_at)
+            self._set_updated_by(value=data.updated_by)
+
         elif isinstance(data, dict):
             for key, value in data.items():
                 if key in ["peer", "id"]:
@@ -226,6 +231,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                     setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
                 elif key == "from_pool":
                     self.from_pool = value
+                elif key == "created_at" and value:
+                    self._set_created_at(value)
+                elif key == "created_by" and value:
+                    self._set_created_by(value)
+                elif key == "updated_at" and value:
+                    self._set_updated_at(value)
+                elif key == "updated_by" and value:
+                    self._set_updated_by(value)
 
         else:
             self.set_peer(value=data)
@@ -565,6 +578,16 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                     )
             if field_name in self._flag_properties:
                 response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)
+            if field_name == "created_at":
+                created_at = self._get_created_at()
+                response[f"{PREFIX_PROPERTY}{field_name}"] = await created_at.to_graphql() if created_at else None
+            elif field_name == "created_by":
+                response[f"{PREFIX_PROPERTY}{field_name}"] = self._get_created_by()
+            elif field_name in ["_updated_at", "updated_at"]:
+                updated_at = self._get_updated_at()
+                response[f"{PREFIX_PROPERTY}{field_name}"] = await updated_at.to_graphql() if updated_at else None
+            elif field_name == "updated_by":
+                response[f"{PREFIX_PROPERTY}{field_name}"] = self._get_updated_by()
 
         if fields and "__typename" in fields:
             response["__typename"] = f"Related{peer.get_kind()}"
@@ -976,6 +999,7 @@ class RelationshipManager:
                 schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), node=self.node
             ),
             branch_agnostic=branch_agnostic,
+            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
         )
         await query.execute(db=db)
         return list(query.get_peers())
@@ -1081,7 +1105,9 @@ class RelationshipManager:
 
         return self._relationships.as_list()
 
-    async def update(self, data: list[str | Node] | dict[str, Any] | str | Node | None, db: InfrahubDatabase) -> bool:
+    async def update(
+        self, data: list[str | Node | dict[str, Any]] | dict[str, Any] | str | Node | None, db: InfrahubDatabase
+    ) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
             list_data: Sequence[str | Node | dict[str, Any] | None] = [data]

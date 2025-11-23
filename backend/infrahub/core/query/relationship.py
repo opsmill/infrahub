@@ -12,7 +12,7 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
 )
-from infrahub.core.constants import RelationshipDirection, RelationshipStatus
+from infrahub.core.constants import MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
@@ -100,7 +100,10 @@ class RelationshipPeerData:
     rels: list[RelData] | None = None
     """Both relationships pointing at this Relationship Node."""
 
-    updated_at: str | None = None
+    created_at: Timestamp | None = None
+    created_by: str | None = None
+    updated_at: Timestamp | None = None
+    updated_by: str | None = None
 
     def rel_ids_per_branch(self) -> dict[str, list[str | int]]:
         response = defaultdict(list)
@@ -532,7 +535,9 @@ class RelationshipDeleteQuery(RelationshipWriteQuery):
     insert_return = False
     raise_error_if_empty = False
 
-    def __init__(self, **kwargs):
+    def __init__(self, source_branch: Branch, destination_branch: Branch, **kwargs):
+        self.source_branch = source_branch
+        self.destination_branch = destination_branch
         super().__init__(**kwargs)
 
         if inspect.isclass(self.rel) and not self.rel_id:
@@ -555,11 +560,9 @@ class RelationshipDeleteQuery(RelationshipWriteQuery):
         r1 = f"{arrows.left.start}[r1:IS_RELATED $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:IS_RELATED $rel_prop ]{arrows.right.end}"
 
-        self.add_source_match_to_query(
-            source_branch=self.source.get_branch_based_on_support_type() if self.source else self.branch
-        )
+        self.add_source_match_to_query(source_branch=self.source_branch)
         self.add_dest_match_to_query(
-            destination_branch=self.destination.get_branch_based_on_support_type() if self.destination else self.branch,
+            destination_branch=self.destination_branch,
             destination_id=self.destination_id or self.destination.get_id(),
         )
 
@@ -661,6 +664,7 @@ class RelationshipGetPeerQuery(Query):
         schema: RelationshipSchema | None = None,
         branch: Branch | None = None,
         at: Timestamp | str | None = None,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         **kwargs,
     ):
         if not source and not source_ids:
@@ -683,6 +687,7 @@ class RelationshipGetPeerQuery(Query):
         self.rel = rel
         self.rel_type = rel_type or self.rel.rel_type
         self.schema = schema or self.rel.schema
+        self.include_metadata = include_metadata
 
         if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
             raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
@@ -695,6 +700,106 @@ class RelationshipGetPeerQuery(Query):
             self.at = Timestamp(at)
 
         super().__init__(**kwargs)
+
+    def _add_is_visible_query(self, branch_filter: str) -> None:
+        query = """
+CALL (rl) {
+    MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
+    WHERE %(branch_filter)s
+    RETURN r AS rel_is_visible, is_visible
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        self.update_return_labels(["rel_is_visible", "is_visible"])
+
+    def _add_is_protected_query(self, branch_filter: str) -> None:
+        query = """
+CALL (rl) {
+    MATCH (rl)-[r:IS_PROTECTED]-(is_protected)
+    WHERE %(branch_filter)s
+    RETURN r AS rel_is_protected, is_protected
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        self.update_return_labels(["rel_is_protected", "is_protected"])
+
+    def _add_node_property_query(self, node_prop: str, branch_filter: str) -> None:
+        query = """
+CALL (rl) {
+    OPTIONAL MATCH (rl)-[r:HAS_%(node_prop_type)s]-(%(node_prop)s)
+    WHERE %(branch_filter)s
+    RETURN r AS rel_%(node_prop)s, %(node_prop)s
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+        """ % {
+            "node_prop": node_prop,
+            "node_prop_type": node_prop.upper(),
+            "branch_filter": branch_filter,
+        }
+        self.add_to_query(query)
+        self.update_return_labels([f"rel_{node_prop}", node_prop])
+
+    def _add_has_owner_query(self, branch_filter: str) -> None:
+        self._add_node_property_query(node_prop="owner", branch_filter=branch_filter)
+
+    def _add_has_source_query(self, branch_filter: str) -> None:
+        self._add_node_property_query(node_prop="source", branch_filter=branch_filter)
+
+    def _add_created_metadata_to_query(self) -> None:
+        if self.branch.is_default or self.branch.is_global:
+            last_created_query = """
+WITH *, rl.created_at AS created_at, rl.created_by AS created_by
+            """
+        else:
+            last_created_query = """
+CALL (rels) {
+    UNWIND rels AS rel
+    RETURN rel.from AS created_at, rel.from_user_id AS created_by
+    LIMIT 1
+    ORDER BY rel.from ASC
+}
+            """
+        self.add_to_query(last_created_query)
+        self.update_return_labels(["created_at", "created_by"])
+
+    def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
+        if self.branch.is_default or self.branch.is_global:
+            last_updated_query = """
+WITH *, rl.updated_at AS updated_at, rl.updated_by AS updated_by
+            """
+        else:
+            last_updated_query = """
+CALL (rl) {
+    MATCH (rl)-[r]-(property)
+    WHERE %(branch_filter)s
+    WITH CASE
+        WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
+        WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
+        ELSE [NULL, NULL]
+    END AS from_details,
+    CASE
+        WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to, r.to_user_id]
+        WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
+        ELSE [NULL, NULL]
+    END AS to_details
+    WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
+    WITH from_details_list + to_details_list AS details_list
+    UNWIND details_list AS one_details
+    WITH one_details[0] AS updated_at, one_details[1] AS updated_by
+    WHERE updated_at IS NOT NULL
+    WITH updated_at, updated_by
+    ORDER BY updated_at DESC
+    LIMIT 1
+    RETURN updated_at, updated_by
+}
+            """ % {"branch_filter": branch_filter_str}
+        self.add_to_query(last_updated_query)
+        self.update_return_labels(["updated_at", "updated_by"])
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -790,47 +895,20 @@ class RelationshipGetPeerQuery(Query):
             )
             self.add_subquery(subquery=subquery, node_alias="peer", with_clause=with_str)
         # ----------------------------------------------------------------------------
-        # QUERY Properties
+        # add metadata
         # ----------------------------------------------------------------------------
-        query = """
-        CALL (rl) {
-            MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
-            WHERE %(branch_filter)s
-            RETURN r AS rel_is_visible, is_visible
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        CALL (rl) {
-            MATCH (rl)-[r:IS_PROTECTED]-(is_protected)
-            WHERE %(branch_filter)s
-            RETURN r AS rel_is_protected, is_protected
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        """ % {"branch_filter": branch_filter}
-
-        self.add_to_query(query)
-
-        self.update_return_labels(["rel_is_visible", "rel_is_protected", "is_visible", "is_protected"])
-
-        # Add Node Properties
-        # We must query them one by one otherwise the second one won't return
-        for node_prop in ["source", "owner"]:
-            query = """
-        CALL (rl) {
-            OPTIONAL MATCH (rl)-[r:HAS_%(node_prop_type)s]-(%(node_prop)s)
-            WHERE %(branch_filter)s
-            RETURN r AS rel_%(node_prop)s, %(node_prop)s
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-            """ % {
-                "node_prop": node_prop,
-                "node_prop_type": node_prop.upper(),
-                "branch_filter": branch_filter,
-            }
-            self.add_to_query(query)
-            self.update_return_labels([f"rel_{node_prop}", node_prop])
+        if self.include_metadata & MetadataOptions.IS_PROTECTED:
+            self._add_is_protected_query(branch_filter)
+        if self.include_metadata & MetadataOptions.IS_VISIBLE:
+            self._add_is_visible_query(branch_filter)
+        if self.include_metadata & MetadataOptions.OWNER:
+            self._add_has_owner_query(branch_filter)
+        if self.include_metadata & MetadataOptions.SOURCE:
+            self._add_has_source_query(branch_filter)
+        if self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY):
+            self._add_created_metadata_to_query()
+        if self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY):
+            self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
         self.add_to_query("WITH " + ",".join(self.return_labels))
 
@@ -875,6 +953,17 @@ class RelationshipGetPeerQuery(Query):
             rels = result.get("rels")
             source_node = result.get_node("source_node")
             peer_node = result.get_node("peer")
+
+            if self.include_metadata & MetadataOptions.CREATED_AT:
+                created_at_str = result.get("created_at")
+                created_at = Timestamp(created_at_str) if created_at_str else None
+            else:
+                created_at = None
+            if self.include_metadata & MetadataOptions.UPDATED_AT:
+                updated_at_str = result.get("updated_at")
+                updated_at = Timestamp(updated_at_str) if updated_at_str else None
+            else:
+                updated_at = None
             data = RelationshipPeerData(
                 source_id=source_node.get("uuid"),
                 source_db_id=source_node.element_id,
@@ -884,31 +973,43 @@ class RelationshipGetPeerQuery(Query):
                 peer_kind=peer_node.get("kind"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
-                updated_at=rels[0]["from"],
                 rels=[RelData.from_db(rel) for rel in rels],
                 branch=self.branch.name,
+                created_at=created_at,
+                created_by=result.get("created_by") if self.include_metadata & MetadataOptions.CREATED_BY else None,
+                updated_at=updated_at,
+                updated_by=result.get("updated_by") if self.include_metadata & MetadataOptions.UPDATED_BY else None,
                 properties={},
             )
 
-            if hasattr(self.rel, "_flag_properties"):
-                for prop in self.rel._flag_properties:
-                    if prop_node := result.get(prop):
-                        data.properties[prop] = FlagPropertyData(
-                            name=prop,
-                            prop_db_id=prop_node.element_id,
-                            rel=RelData.from_db(result.get(f"rel_{prop}")),
-                            value=prop_node.get("value"),
-                        )
+            for prop, metadata_option in [
+                ("is_protected", MetadataOptions.IS_PROTECTED),
+                ("is_visible", MetadataOptions.IS_VISIBLE),
+            ]:
+                if not self.include_metadata & metadata_option:
+                    continue
+                prop_node = result.get(prop)
+                if not prop_node:
+                    continue
+                data.properties[prop] = FlagPropertyData(
+                    name=prop,
+                    prop_db_id=prop_node.element_id,
+                    rel=RelData.from_db(result.get(f"rel_{prop}")),
+                    value=prop_node.get("value"),
+                )
 
-            if hasattr(self.rel, "_node_properties"):
-                for prop in self.rel._node_properties:
-                    if prop_node := result.get(prop):
-                        data.properties[prop] = NodePropertyData(
-                            name=prop,
-                            prop_db_id=prop_node.element_id,
-                            rel=RelData.from_db(result.get(f"rel_{prop}")),
-                            value=prop_node.get("uuid"),
-                        )
+            for prop, metadata_option in [("owner", MetadataOptions.OWNER), ("source", MetadataOptions.SOURCE)]:
+                if not self.include_metadata & metadata_option:
+                    continue
+                prop_node = result.get(prop)
+                if not prop_node:
+                    continue
+                data.properties[prop] = NodePropertyData(
+                    name=prop,
+                    prop_db_id=prop_node.element_id,
+                    rel=RelData.from_db(result.get(f"rel_{prop}")),
+                    value=prop_node.get("uuid"),
+                )
 
             yield data
 

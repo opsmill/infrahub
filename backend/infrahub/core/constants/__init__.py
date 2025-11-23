@@ -367,6 +367,7 @@ class MetadataOptions(Flag):
     OWNER = auto()
     LINKED_NODES = SOURCE | OWNER
     IS_PROTECTED = auto()
+    IS_VISIBLE = auto()
     CREATED_BY = auto()
     CREATED_AT = auto()
     UPDATED_BY = auto()

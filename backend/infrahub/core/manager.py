@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from copy import copy
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
 from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipDirection
+from infrahub.core.metadata.determiner import MetadataDeterminer
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
@@ -40,13 +41,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
-
-
-@dataclass
-class MetadataQueryOptions:
-    node_level: MetadataOptions = MetadataOptions.NONE
-    attribute_level: MetadataOptions = MetadataOptions.NONE
-    relationship_level: MetadataOptions = MetadataOptions.NONE
 
 
 def identify_node_class(node: NodeToProcess) -> type[Node]:
@@ -275,6 +269,7 @@ class NodeManager:
 
         query = await RelationshipGetPeerQuery.init(
             db=db,
+            branch=branch,
             source_ids=ids,
             source_kind=source_kind,
             schema=schema,
@@ -300,12 +295,14 @@ class NodeManager:
         branch: Branch | str | None = None,
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         query = await RelationshipGetPeerQuery.init(
             db=db,
+            branch=branch,
             source_ids=ids,
             source_kind=source_kind,
             schema=schema,
@@ -315,6 +312,7 @@ class NodeManager:
             limit=limit,
             at=at,
             branch_agnostic=branch_agnostic,
+            include_metadata=include_metadata,
         )
         await query.execute(db=db)
 
@@ -1144,6 +1142,15 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
+        if fields:
+            metadata_determiner = MetadataDeterminer(schema_branch=db.schema.get_schema_branch(name=branch.name))
+            include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(node_fields=fields)
+            if isinstance(include_metadata, MetadataQueryOptions):
+                include_metadata |= include_metadata_for_fields
+            else:
+                include_metadata_for_fields.node_level |= include_metadata
+            include_metadata = include_metadata_for_fields
+
         # Query all nodes
         node_metadata_options = (
             include_metadata.node_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
@@ -1212,13 +1219,19 @@ class NodeManager:
 
             nodes[node_id] = item
 
+        relationships_metadata_options = (
+            include_metadata.relationship_level
+            if isinstance(include_metadata, MetadataQueryOptions)
+            else include_metadata
+        )
+
         await cls._enrich_node_dicts_with_relationships(
             db=db,
             branch=branch,
             at=at,
             nodes_by_id=nodes,
             branch_agnostic=branch_agnostic,
-            include_metadata=include_metadata,
+            include_metadata=relationships_metadata_options,
             prefetch_relationships=prefetch_relationships,
             fields=fields,
         )
@@ -1268,6 +1281,7 @@ class NodeManager:
             branch=branch,
             at=at,
             branch_agnostic=branch_agnostic,
+            include_metadata=include_metadata,
         )
         await query.execute(db=db)
         grouped_peer_nodes = query.get_peers_group_by_node()
@@ -1339,8 +1353,33 @@ class NodeManager:
             if rel_schema.cardinality is RelationshipCardinality.ONE and len(rel_peers) > 1:
                 raise ValueError("At most, one relationship expected")
 
+            rel_peers_with_metadata: list[Node | dict[str, str | Timestamp | None]] = []
+            for peer in rel_peers:
+                metadata_map = grouped_peer_nodes.get_metadata_map(
+                    node_id=node.get_id(), rel_name=rel_schema.get_identifier(), direction=rel_schema.direction
+                )
+                if not metadata_map:
+                    rel_peers_with_metadata.append(peer)
+                    continue
+                if isinstance(peer, Node):
+                    peer._set_created_at(metadata_map.get(MetadataOptions.CREATED_AT))
+                    peer._set_created_by(metadata_map.get(MetadataOptions.CREATED_BY))
+                    peer._set_updated_at(metadata_map.get(MetadataOptions.UPDATED_AT))
+                    peer._set_updated_by(metadata_map.get(MetadataOptions.UPDATED_BY))
+                    rel_peers_with_metadata.append(peer)
+                    continue
+                rel_peers_with_metadata.append(
+                    {
+                        "id": peer.get_id(),
+                        "created_at": metadata_map.get(MetadataOptions.CREATED_AT),
+                        "created_by": metadata_map.get(MetadataOptions.CREATED_BY),
+                        "updated_at": metadata_map.get(MetadataOptions.UPDATED_AT),
+                        "updated_by": metadata_map.get(MetadataOptions.UPDATED_BY),
+                    }
+                )
+
             rel_manager.has_fetched_relationships = True
-            await rel_manager.update(db=db, data=rel_peers)
+            await rel_manager.update(db=db, data=rel_peers_with_metadata)
 
     @classmethod
     async def delete(

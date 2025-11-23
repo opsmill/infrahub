@@ -5,7 +5,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipDirection, SchemaPathType
+from infrahub.core.constants import MetadataOptions, RelationshipDirection, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
@@ -92,46 +92,46 @@ async def get_relationship_properties(
     return relationship_properties
 
 
-# async def test_RelationshipQuery_init(
-#     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
-# ) -> None:
-#     person_schema = registry.schema.get(name="TestPerson")
-#     rel_schema = person_schema.get_relationship("tags")
+async def test_RelationshipQuery_init(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+) -> None:
+    person_schema = registry.schema.get(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
 
-#     with pytest.raises(ValueError) as exc:
-#         rq = DummyRelationshipQuery()
-#     assert "Either source or source_id must be provided." in str(exc.value)
+    with pytest.raises(ValueError) as exc:
+        rq = DummyRelationshipQuery()
+    assert "Either source or source_id must be provided." in str(exc.value)
 
-#     with pytest.raises(ValueError) as exc:
-#         rq = DummyRelationshipQuery(source=person_jack_main)
-#     assert "Either rel or rel_type must be provided." in str(exc.value)
+    with pytest.raises(ValueError) as exc:
+        rq = DummyRelationshipQuery(source=person_jack_main)
+    assert "rel or rel_id must be provided." in str(exc.value)
 
-#     with pytest.raises(ValueError) as exc:
-#         rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship)
-#     assert "Either an instance of Relationship or a valid schema must be provided." in str(exc.value)
+    with pytest.raises(ValueError) as exc:
+        rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship)
+    assert "Either an instance of Relationship or a valid schema must be provided." in str(exc.value)
 
-#     with pytest.raises(ValueError) as exc:
-#         rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema)
-#     assert "Either an instance of Relationship or a valid branch must be provided." in str(exc.value)
+    with pytest.raises(ValueError) as exc:
+        rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema)
+    assert "Either an instance of Relationship or a valid branch must be provided." in str(exc.value)
 
-#     # Initialization with the Relationship class
-#     rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema, branch=branch)
-#     assert rq.schema == rel_schema
-#     assert rq.branch == branch
-#     assert rq.source_id == person_jack_main.id
-#     assert rq.source == person_jack_main
+    # Initialization with the Relationship class
+    rq = DummyRelationshipQuery(source=person_jack_main, rel=Relationship, schema=rel_schema, branch=branch)
+    assert rq.schema == rel_schema
+    assert rq.branch == branch
+    assert rq.source_id == person_jack_main.id
+    assert rq.source == person_jack_main
 
-#     rq = DummyRelationshipQuery(source_id=person_jack_main.id, rel=Relationship, schema=rel_schema, branch=branch)
-#     assert rq.schema == rel_schema
-#     assert rq.branch == branch
-#     assert rq.source_id == person_jack_main.id
-#     assert rq.source is None
+    rq = DummyRelationshipQuery(source_id=person_jack_main.id, rel=Relationship, schema=rel_schema, branch=branch)
+    assert rq.schema == rel_schema
+    assert rq.branch == branch
+    assert rq.source_id == person_jack_main.id
+    assert rq.source is None
 
-#     # Initialization with an instance of Relationship
-#     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-#     rq = DummyRelationshipQuery(source=person_jack_main, rel=rel)
-#     assert rq.schema == rel_schema
-#     assert rq.branch == branch
+    # Initialization with an instance of Relationship
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
+    rq = DummyRelationshipQuery(source=person_jack_main, rel=rel)
+    assert rq.schema == rel_schema
+    assert rq.branch == branch
 
 
 async def test_query_RelationshipCreateQuery(
@@ -179,7 +179,12 @@ async def test_query_RelationshipCreateQuery_w_node_property(
     assert len(paths) == 0
 
     rel = Relationship(
-        schema=rel_schema, branch=branch, node=person_jack_main, source=first_account, owner=first_account
+        schema=rel_schema,
+        branch=branch,
+        source_kind=person_jack_main.get_kind(),
+        node=person_jack_main,
+        source=first_account,
+        owner=first_account,
     )
     query = await RelationshipCreateQuery.init(
         db=db, branch=branch, source=person_jack_main, destination=tag_blue_main, rel=rel, user_id="user1"
@@ -318,7 +323,9 @@ async def test_query_RelationshipDeleteQuery(
         properties={},
     )
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
+    rel = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_tags_main.get_kind(), node=person_jack_tags_main
+    )
     rel.load(db=db, data=rel_data)
 
     delete_time_1 = Timestamp()
@@ -329,6 +336,8 @@ async def test_query_RelationshipDeleteQuery(
         schema=rel_schema,
         rel=rel,
         branch=branch,
+        source_branch=branch,
+        destination_branch=branch,
         at=delete_time_1,
         user_id="user1",
     )
@@ -364,7 +373,7 @@ async def test_query_RelationshipDeleteQuery(
     # ------------------------------------------------------------
     # Recreate the relationship to delete it again
     # ------------------------------------------------------------
-    rel = Relationship(schema=rel_schema, branch=branch, node=tag_blue_main)
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=tag_blue_main.get_kind(), node=tag_blue_main)
     create_time_2 = Timestamp()
     query = await RelationshipCreateQuery.init(
         db=db,
@@ -440,7 +449,9 @@ async def test_query_RelationshipDeleteQuery(
         properties={},
     )
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main)
+    rel = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_tags_main.get_kind(), node=person_jack_tags_main
+    )
     rel.load(db=db, data=rel_data)
 
     delete_time_2 = Timestamp()
@@ -451,6 +462,8 @@ async def test_query_RelationshipDeleteQuery(
         schema=rel_schema,
         rel=rel,
         branch=branch,
+        source_branch=branch,
+        destination_branch=branch,
         at=delete_time_2,
         user_id="user1",
     )
@@ -540,6 +553,8 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
         schema=rel_schema,
         rel=blue_tag_rel,
         branch=branch,
+        source_branch=branch,
+        destination_branch=branch,
         at=Timestamp(),
         user_id="user1",
     )
@@ -736,6 +751,7 @@ async def test_query_RelationshipGetPeerQuery(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
     )
     await query.execute(db=db)
 
@@ -744,7 +760,7 @@ async def test_query_RelationshipGetPeerQuery(
     assert len(peers[0].rels) == 2
     assert isinstance(peers[0].rel_node_db_id, str)
     assert isinstance(peers[0].rel_node_id, str)
-    assert list(peers[0].properties.keys()) == ["is_visible", "is_protected"]
+    assert set(peers[0].properties.keys()) == {"is_visible", "is_protected"}
     assert peers[0].properties["is_visible"].value is True
     assert peers[0].properties["is_protected"].value is False
     assert peers[0].properties["is_protected"].prop_db_id == peers[1].properties["is_protected"].prop_db_id
@@ -994,7 +1010,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         db=db,
         source=migrated_jack,
         schema=rel_schema,
-        rel=Relationship(schema=rel_schema, branch=branch, node=migrated_jack),
+        rel=Relationship(schema=rel_schema, branch=branch, source_kind=migrated_jack.get_kind(), node=migrated_jack),
     )
     await query1.execute(db=db)
     peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
@@ -1007,6 +1023,8 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         destination=tag_blue_main,
         schema=rel_schema,
         rel_id=peers_database[tag_blue_main.id].rel_node_id,
+        source_branch=branch,
+        destination_branch=branch,
         user_id="user1",
     )
     await query2.execute(db=db)
@@ -1036,7 +1054,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         db=db,
         source=migrated_jack,
         schema=rel_schema,
-        rel=Relationship(schema=rel_schema, branch=branch, node=migrated_jack),
+        rel=Relationship(schema=rel_schema, branch=branch, source_kind=migrated_jack.get_kind(), node=migrated_jack),
     )
     await query1.execute(db=db)
     peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
@@ -1049,6 +1067,8 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
         destination_id=tag_red_main.id,
         schema=rel_schema,
         rel_id=peers_database[tag_red_main.id].rel_node_id,
+        source_branch=branch,
+        destination_branch=branch,
         user_id="user1",
     )
     await query2.execute(db=db)

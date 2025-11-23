@@ -9,7 +9,6 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind, Relationshi
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.graphql.metadata_determiner import MetadataDeterminer
 
 from ..models import OrderModel
 from ..parser import extract_selection
@@ -186,14 +185,6 @@ async def default_paginated_list_resolver(
 
         objs = []
         if edges or "hfid" in filters:
-            metadata_determiner = MetadataDeterminer(
-                schema_branch=db.schema.get_schema_branch(name=graphql_context.branch.name)
-            )
-            include_metadata = await metadata_determiner.determine_metadata(
-                schema=schema,
-                node_fields=node_fields,
-            )
-
             objs = await NodeManager.query(
                 db=db,
                 schema=schema,
@@ -204,7 +195,6 @@ async def default_paginated_list_resolver(
                 limit=limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_metadata=include_metadata,
                 partial_match=partial_match,
                 order=order,
             )
