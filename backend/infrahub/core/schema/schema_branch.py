@@ -2167,6 +2167,15 @@ class SchemaBranch:
             if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]:
                 continue
 
+            # Ignore relationship if it is part of a uniqueness constraint
+            ignore_relationship = False
+            for constraint in node.uniqueness_constraints or []:
+                if relationship.name in constraint:
+                    ignore_relationship = True
+                    break
+            if ignore_relationship:
+                continue
+
             identifier = (
                 f"profile_{relationship.identifier}"
                 if relationship.identifier
