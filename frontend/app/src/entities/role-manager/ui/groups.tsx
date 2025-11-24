@@ -21,6 +21,7 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_GROUPS } from "@/entities/role-manager/api/getGroups";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -92,6 +93,8 @@ function Groups() {
       id: edge?.node?.id,
       values: {
         id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
         name: { value: edge?.node?.name?.value },
         description: { value: edge?.node?.description?.value },
         label: { value: edge?.node?.label?.value },
@@ -100,7 +103,11 @@ function Groups() {
           value: { edges: edge?.node?.members?.edges },
           display: (
             <GroupMembers
-              members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
+              members={
+                edge?.node?.members?.edges?.map((edge) =>
+                  edge?.node ? getNodeLabel(edge.node) : ""
+                ) ?? []
+              }
             />
           ),
         },
@@ -108,7 +115,9 @@ function Groups() {
           value: { edges: edge?.node?.roles?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.roles?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

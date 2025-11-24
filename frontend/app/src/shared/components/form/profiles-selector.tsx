@@ -23,6 +23,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { getProfiles } from "@/entities/nodes/api/getProfiles";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { NodeSchema } from "@/entities/schema/types";
@@ -154,7 +155,7 @@ export const ProfilesSelector = ({
             <div className="flex grow flex-wrap gap-2">
               {selectedValues?.map((profile) => (
                 <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                  {profile.display_label}
+                  {getNodeLabel(profile)}
 
                   <Button
                     size="icon"
@@ -189,10 +190,10 @@ export const ProfilesSelector = ({
               .map((item) => (
                 <ComboboxItem
                   key={item.id}
-                  value={item.display_label}
+                  value={getNodeLabel(item)}
                   onSelect={() => handleChange(item)}
                 >
-                  {item.display_label}
+                  {getNodeLabel(item)}
                 </ComboboxItem>
               ))}
           </ComboboxList>

@@ -20,7 +20,7 @@ test.describe("Verify multi select behaviour", () => {
   test("select, remove and create tags using multi-select", async ({ page }) => {
     await test.step("Navigate to Ethernet11", async () => {
       await page.goto(`/objects/InfraInterfaceL2?branch=${BRANCH_NAME}`);
-      await page.getByRole("link", { name: "atl1-edge1, Ethernet11", exact: true }).click();
+      await page.getByRole("link", { name: "Ethernet11", exact: true }).first().click();
     });
 
     await page.getByTestId("edit-button").click();

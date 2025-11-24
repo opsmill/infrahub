@@ -23,6 +23,7 @@ import { currentBranchAtom } from "@/entities/branches/stores";
 import { getThreadTitle } from "@/entities/diff/utils";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 
@@ -200,7 +201,7 @@ export const Thread = (props: tThread) => {
       {sortedComments.map((comment: any, index: number) => (
         <Comment
           key={index}
-          author={comment?.created_by?.node?.display_label ?? "Anonymous"}
+          author={comment?.created_by?.node ? getNodeLabel(comment.created_by.node) : "Anonymous"}
           createdAt={comment?.created_at?.value}
           content={comment?.text?.value ?? ""}
           className={"border border-gray-200"}

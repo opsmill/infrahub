@@ -17,6 +17,7 @@ import { BreadcrumbSelectorTrigger } from "@/shared/components/layout/breadcrumb
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbProposedChanges() {
@@ -59,7 +60,7 @@ function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChange
   return (
     <Breadcrumb>
       <MenuTrigger>
-        <BreadcrumbSelectorTrigger>{data.display_label}</BreadcrumbSelectorTrigger>
+        <BreadcrumbSelectorTrigger>{getNodeLabel(data)}</BreadcrumbSelectorTrigger>
 
         <Popover className="bg-stone-100/50 backdrop-blur">
           <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGES_OBJECT} />

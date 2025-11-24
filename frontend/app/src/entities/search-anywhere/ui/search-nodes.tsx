@@ -11,6 +11,7 @@ import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -118,7 +119,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
           {displayIpNamespace && (
             <NodeAttribute
               title={"IP Namespace"}
-              value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}
+              value={{ node: objectDetailsData?.ip_namespace?.node ?? undefined }}
             />
           )}
 
@@ -144,18 +145,18 @@ type NodeAttributeProps = {
   value:
     | { value: string | number | boolean | null }
     | { value: string | null; label: string; color: string }
-    | { node: { display_label?: string } }
-    | { edges: Array<{ node: { display_label?: string } }> };
+    | { node: NodeCore }
+    | { edges: Array<{ node: NodeCore }> };
 };
 
 const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   const formatValue = (): string | number | boolean | ReactElement | null => {
     if ("node" in value && value.node) {
-      return value.node.display_label ?? null;
+      return value.node ? getNodeLabel(value.node) : null;
     }
 
     if ("edges" in value && value.edges?.length > 0) {
-      return value.edges.map(({ node }) => node?.display_label).join(", ");
+      return value.edges.map(({ node }) => (node ? getNodeLabel(node) : "")).join(", ");
     }
 
     if ("value" in value && value.value) {

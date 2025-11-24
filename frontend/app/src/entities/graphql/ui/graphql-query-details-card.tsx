@@ -16,6 +16,7 @@ import {
   type AttributeType,
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -64,7 +65,7 @@ const GraphqlQueryDetailsTitle = ({
         <Badge variant="blue">{schema.namespace}</Badge>
 
         <span>
-          {schema.name} - {data.display_label}
+          {schema.name} - {getNodeLabel(data)}
         </span>
 
         <ObjectEditSlideOverTrigger
@@ -144,7 +145,7 @@ const GraphqlQueryPropertyList = ({
             value: relationshipData?.map(({ node, properties }: any) => (
               <div key={node.id} className="flex items-center justify-between">
                 <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
-                  {node?.display_label}
+                  {node ? getNodeLabel(node) : ""}
                 </Link>
 
                 {properties.is_protected && <ProtectedIcon />}
@@ -173,7 +174,7 @@ const GraphqlQueryPropertyList = ({
           value: relationshipData && (
             <div className="flex items-center justify-between">
               <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
-                {relationshipData?.display_label}
+                {relationshipData ? getNodeLabel(relationshipData) : ""}
               </Link>
 
               <div className="flex items-center">

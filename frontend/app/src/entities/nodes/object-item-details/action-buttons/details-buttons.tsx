@@ -19,6 +19,7 @@ import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
@@ -100,8 +101,8 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
         title={
           <SlideOverTitle
             schema={schema}
-            currentObjectLabel={objectDetailsData.display_label}
-            title={`Edit ${objectDetailsData.display_label}`}
+            currentObjectLabel={getNodeLabel(objectDetailsData)}
+            title={`Edit ${getNodeLabel(objectDetailsData)}`}
             subtitle={schema.description}
           />
         }

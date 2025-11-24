@@ -8,6 +8,7 @@ import { Popover } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { RelationshipSchema } from "@/entities/schema/types";
@@ -59,7 +60,7 @@ export function BreadcrumbItemObject({
             to={getObjectDetailsUrl(node.__typename, node.id)}
             className="truncate font-medium text-sm leading-4 hover:underline"
           >
-            {node.display_label}
+            {getNodeLabel(node)}
           </Link>
         </Col>
 

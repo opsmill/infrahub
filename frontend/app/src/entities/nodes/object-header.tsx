@@ -9,6 +9,7 @@ import useFilters from "@/shared/hooks/useFilters";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -69,7 +70,7 @@ export function ObjectDetailsHeader({ schema, objectId }: ObjectDetailsHeaderPro
     <Skeleton className="h-6 w-60" />
   ) : (
     <div className="flex items-center gap-3">
-      {objectDetailsData?.display_label ?? `${schema.label} not found`}
+      {objectDetailsData ? getNodeLabel(objectDetailsData) : `${schema.label} not found`}
 
       <ObjectDetailsButton
         id={objectId}
