@@ -426,21 +426,33 @@ class TestBranchQuery(TestInfrahubApp):
         assert update_branch.data
         assert update_branch.data["BranchUpdate"]["ok"]
 
-        all_branches = await graphql(
+        updated_branch_query = """
+            query {
+                InfrahubBranch(name__value: "sample-branch-4") {
+                    edges {
+                        node {
+                            meta {
+                                updated_by
+                                updated_at
+                            }
+                            description {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        updated_branch = await graphql(
             schema=gql_params.schema,
-            source=all_branches_query,
+            source=updated_branch_query,
             context_value=gql_params.context,
             root_value=None,
         )
-        assert all_branches.errors is None
-        assert all_branches.data
+        assert updated_branch.errors is None
+        assert updated_branch.data
 
-        branch_found = False
-        for branch in all_branches.data["InfrahubBranch"]["edges"]:
-            if branch["node"]["name"]["value"] == "sample-branch-4":
-                assert branch["node"]["description"]["value"] == "updated description"
-                assert branch["node"]["meta"]["updated_by"] is not None
-                assert branch["node"]["meta"]["updated_at"] is not None
-                branch_found = True
-                break
-        assert branch_found, "Updated branch 'sample-branch-4' not found in results"
+        data = updated_branch.data["InfrahubBranch"]["edges"][0]["node"]
+        assert data["description"]["value"] == "updated description"
+        assert data["meta"]["updated_by"] is not None
+        assert data["meta"]["updated_at"] is not None
