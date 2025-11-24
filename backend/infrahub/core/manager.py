@@ -23,6 +23,7 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship, RelationshipManager
+from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import (
     GenericSchema,
     MainSchemaTypes,
@@ -1356,30 +1357,20 @@ class NodeManager:
             if rel_schema.cardinality is RelationshipCardinality.ONE and len(rel_peers) > 1:
                 raise ValueError("At most, one relationship expected")
 
-            rel_peers_with_metadata: list[Node | dict[str, str | Timestamp | None]] = []
+            rel_peers_with_metadata: list[PeerWithRelationshipMetadata] = []
             for peer in rel_peers:
                 metadata_map = grouped_peer_nodes.get_metadata_map(
                     node_id=node.get_id(), rel_name=rel_schema.get_identifier(), direction=rel_schema.direction
                 )
+                peer_with_metadata = PeerWithRelationshipMetadata(peer=peer)
                 if not metadata_map:
-                    rel_peers_with_metadata.append(peer)
+                    rel_peers_with_metadata.append(peer_with_metadata)
                     continue
-                if isinstance(peer, Node):
-                    peer._set_created_at(metadata_map.get(MetadataOptions.CREATED_AT))
-                    peer._set_created_by(metadata_map.get(MetadataOptions.CREATED_BY))
-                    peer._set_updated_at(metadata_map.get(MetadataOptions.UPDATED_AT))
-                    peer._set_updated_by(metadata_map.get(MetadataOptions.UPDATED_BY))
-                    rel_peers_with_metadata.append(peer)
-                    continue
-                rel_peers_with_metadata.append(
-                    {
-                        "id": peer,
-                        "created_at": metadata_map.get(MetadataOptions.CREATED_AT),
-                        "created_by": metadata_map.get(MetadataOptions.CREATED_BY),
-                        "updated_at": metadata_map.get(MetadataOptions.UPDATED_AT),
-                        "updated_by": metadata_map.get(MetadataOptions.UPDATED_BY),
-                    }
-                )
+                peer_with_metadata.created_at = metadata_map.get(MetadataOptions.CREATED_AT)
+                peer_with_metadata.created_by = metadata_map.get(MetadataOptions.CREATED_BY)
+                peer_with_metadata.updated_at = metadata_map.get(MetadataOptions.UPDATED_AT)
+                peer_with_metadata.updated_by = metadata_map.get(MetadataOptions.UPDATED_BY)
+                rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
             await rel_manager.update(db=db, data=rel_peers_with_metadata)

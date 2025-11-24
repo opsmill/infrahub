@@ -84,6 +84,19 @@ class RelationshipUpdateDetails:
     peer_ids_present_database_only: list[str]
 
 
+@dataclass
+class PeerWithRelationshipMetadata:
+    peer: Node | str
+    created_at: Timestamp | None = None
+    created_by: str | None = None
+    updated_at: Timestamp | None = None
+    updated_by: str | None = None
+    owner_id: str | None = None
+    source_id: str | None = None
+    is_protected: bool | None = None
+    is_visible: bool | None = None
+
+
 class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     rel_type: str = "IS_RELATED"
 
@@ -116,7 +129,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
         self.peer_hfid: list[str] | None = None
-        self.data: dict | RelationshipPeerData | str | None = None
+        self.data: dict | RelationshipPeerData | str | Node | None = None
 
         self.from_pool: dict[str, Any] | None = None
         self._metadata = MetadataInfo(
@@ -196,57 +209,80 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     def _get_updated_by(self) -> str | None:
         return self._metadata.updated_by
 
-    def _process_data(self, data: dict | RelationshipPeerData | str) -> None:
-        self.data = data
+    def _process_relationship_peer_data(self, data: RelationshipPeerData) -> None:
+        self.set_peer(value=str(data.peer_id))
+
+        if not self.id and data.rel_node_id:
+            self.id = data.rel_node_id
+        if not self.db_id and data.rel_node_db_id:
+            self.db_id = data.rel_node_db_id
+
+        # Extract the properties
+        for prop_name, prop in data.properties.items():
+            if hasattr(self, "_flag_properties") and prop_name in self._flag_properties:
+                setattr(self, prop_name, prop.value)
+            elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
+                setattr(self, prop_name, prop.value)
+        self._set_created_at(data.created_at)
+        self._set_created_by(data.created_by)
+        self._set_updated_at(data.updated_at)
+        self._set_updated_by(data.updated_by)
+
+    def _process_dict_data(self, data: dict) -> None:
+        for key, value in data.items():
+            if key in ["peer", "id"]:
+                self.set_peer(value=value)
+            elif key == "hfid" and self.peer_id is None:
+                self.peer_hfid = value
+            elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
+                setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
+            elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
+                setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
+            elif key == "from_pool":
+                self.from_pool = value
+            elif key == "created_at" and value:
+                self._set_created_at(Timestamp(value))
+            elif key == "created_by" and value:
+                self._set_created_by(value)
+            elif key == "updated_at" and value:
+                self._set_updated_at(Timestamp(value))
+            elif key == "updated_by" and value:
+                self._set_updated_by(value)
+
+    def _process_peer_with_relationship_metadata(self, data: PeerWithRelationshipMetadata) -> None:
+        self.set_peer(value=data.peer)
+        self._set_created_at(data.created_at)
+        self._set_created_by(data.created_by)
+        self._set_updated_at(data.updated_at)
+        self._set_updated_by(data.updated_by)
+        if data.is_protected is not None:
+            self.is_protected = data.is_protected
+        if data.is_visible is not None:
+            self.is_visible = data.is_visible
+        if data.owner_id is not None:
+            self.set_owner(value=data.owner_id)
+        if data.source_id is not None:
+            self.set_source(value=data.source_id)
+
+    def _process_data(self, data: dict | RelationshipPeerData | str | Node | PeerWithRelationshipMetadata) -> None:
+        if isinstance(data, PeerWithRelationshipMetadata):
+            self.data = data.peer
+        else:
+            self.data = data
 
         if isinstance(data, RelationshipPeerData):
-            self.set_peer(value=str(data.peer_id))
-
-            if not self.id and data.rel_node_id:
-                self.id = data.rel_node_id
-            if not self.db_id and data.rel_node_db_id:
-                self.db_id = data.rel_node_db_id
-
-            # Extract the properties
-            for prop_name, prop in data.properties.items():
-                if hasattr(self, "_flag_properties") and prop_name in self._flag_properties:
-                    setattr(self, prop_name, prop.value)
-                elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
-                    setattr(self, prop_name, prop.value)
-
-            self._set_created_at(value=data.created_at)
-            self._set_created_by(value=data.created_by)
-            self._set_updated_at(value=data.updated_at)
-            self._set_updated_by(value=data.updated_by)
-
+            self._process_relationship_peer_data(data=data)
         elif isinstance(data, dict):
-            for key, value in data.items():
-                if key in ["peer", "id"]:
-                    self.set_peer(value=data.get(key, None))
-                elif key == "hfid" and self.peer_id is None:
-                    self.peer_hfid = value
-                elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
-                    setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
-                elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
-                    setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
-                elif key == "from_pool":
-                    self.from_pool = value
-                elif key == "created_at" and value:
-                    self._set_created_at(value)
-                elif key == "created_by" and value:
-                    self._set_created_by(value)
-                elif key == "updated_at" and value:
-                    self._set_updated_at(value)
-                elif key == "updated_by" and value:
-                    self._set_updated_by(value)
-
+            self._process_dict_data(data=data)
+        elif isinstance(data, PeerWithRelationshipMetadata):
+            self._process_peer_with_relationship_metadata(data=data)
         else:
             self.set_peer(value=data)
 
     async def new(
         self,
         db: InfrahubDatabase,  # noqa: ARG002
-        data: dict | RelationshipPeerData | Any = None,
+        data: dict | RelationshipPeerData | PeerWithRelationshipMetadata | Any = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> Relationship:
         self._process_data(data=data)
@@ -1106,11 +1142,18 @@ class RelationshipManager:
         return self._relationships.as_list()
 
     async def update(
-        self, data: list[str | Node | dict[str, Any]] | dict[str, Any] | str | Node | None, db: InfrahubDatabase
+        self,
+        data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
+        | dict[str, Any]
+        | str
+        | Node
+        | PeerWithRelationshipMetadata
+        | None,
+        db: InfrahubDatabase,
     ) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
-            list_data: Sequence[str | Node | dict[str, Any] | None] = [data]
+            list_data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None] = [data]
         else:
             list_data = data
 
@@ -1122,7 +1165,9 @@ class RelationshipManager:
         changed = False
 
         for item in list_data:
-            if not isinstance(item, self.rel_class | str | dict | type(None)) and not hasattr(item, "_schema"):
+            if not isinstance(
+                item, self.rel_class | str | dict | type(None) | PeerWithRelationshipMetadata
+            ) and not hasattr(item, "_schema"):
                 raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
 
             if hasattr(item, "_schema"):
