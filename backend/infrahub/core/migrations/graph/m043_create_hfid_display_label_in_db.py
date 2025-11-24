@@ -6,7 +6,7 @@ from rich.progress import Progress
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import BranchSupportType, SchemaPathType
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import MigrationRequiringRebase, MigrationResult, get_migration_console
@@ -78,6 +78,8 @@ class Migration043(MigrationRequiringRebase):
 
         for node_schema_kind in main_schema_branch.node_names:
             schema = main_schema_branch.get(name=node_schema_kind, duplicate=False)
+            if schema.branch is not BranchSupportType.AWARE:
+                continue
             migrations.extend(
                 [
                     NodeAttributeAddMigration(
@@ -123,6 +125,8 @@ class Migration043(MigrationRequiringRebase):
 
         for node_kind, node_ids in node_ids_by_kind.items():
             schema = schema_branch.get(name=node_kind, duplicate=False)
+            if schema.branch not in (BranchSupportType.AWARE, BranchSupportType.LOCAL):
+                continue
             migrations.extend(
                 [
                     NodeAttributeAddMigration(
