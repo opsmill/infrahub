@@ -10,6 +10,7 @@ from prefect.events.actions import RunDeployment
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.trigger.setup import gather_all_automations
 from infrahub.webhook.models import EventContext, WebhookTriggerDefinition
 from infrahub.webhook.tasks import (
     configure_webhook_all,
@@ -209,7 +210,7 @@ class TestWebhookTasks(TestInfrahubApp):
     ) -> None:
         await configure_webhook_all()
 
-        automations = await prefect_client.read_automations()
+        automations = await gather_all_automations(client=prefect_client)
         automations_by_name = {automation.name: automation for automation in automations}
 
         assert f"webhook::{webhook1.id}" in automations_by_name.keys()
