@@ -119,6 +119,12 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
     type: TriggerType = TriggerType.COMPUTED_ATTR_JINJA2
     computed_attribute: ComputedAttributeTarget
     template_hash: str
+    trigger_kind: str
+
+    @property
+    def targets_self(self) -> bool:
+        """Determine if the specific trigger definition targets the actual node kind of the computed attribute."""
+        return self.trigger_kind == self.computed_attribute.kind
 
     def get_description(self) -> str:
         return f"{super().get_description()} | hash:{self.template_hash}"
@@ -190,6 +196,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         definition = cls(
             name=f"{computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{trigger_node.kind}",
             template_hash=template_hash,
+            trigger_kind=trigger_node.kind,
             branch=branch,
             computed_attribute=computed_attribute,
             trigger=event_trigger,
