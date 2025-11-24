@@ -1072,6 +1072,12 @@ class RelationshipManager:
 
         return self._relationships.as_list()
 
+    async def get_relationship(self, db: InfrahubDatabase, peer_id: str) -> Relationship | None:
+        for rel in await self.get_relationships(db=db):
+            if rel.peer_id == peer_id:
+                return rel
+        return None
+
     async def update(self, data: list[str | Node] | dict[str, Any] | str | Node | None, db: InfrahubDatabase) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):

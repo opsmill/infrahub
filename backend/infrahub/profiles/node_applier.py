@@ -120,12 +120,17 @@ class NodeProfilesApplier:
 
         current_rels = await node_rel.get_relationships(db=self.db)
         current_peer_ids = {rel.peer_id for rel in current_rels if rel.peer_id}
+        profile_peer_ids = set(peer_ids)
 
-        # We have peers to override the ones from the profile, so remove those ones
-        if current_peer_ids and peer_ids:
-            for peer_id in peer_ids:
+        # We have peers to override the ones from the profile, so we need to remove the profile peers while keeping the ones that are in the override
+        # (even if they overlap)
+        if current_peer_ids and profile_peer_ids:
+            for peer_id in profile_peer_ids:
                 if peer_id in current_peer_ids:
-                    await node_rel.remove_locally(db=self.db, peer_id=peer_id)
+                    if profile_peer_ids.issubset(current_peer_ids):
+                        await node_rel.remove_locally(peer_id=peer_id, db=self.db)
+                    elif peer_rel := await node_rel.get_relationship(db=self.db, peer_id=peer_id):
+                        peer_rel.clear_source()
                     is_changed = True
 
             if is_changed:
@@ -133,20 +138,18 @@ class NodeProfilesApplier:
                 await node_rel.save(db=self.db)
             return is_changed
 
-        target_peer_ids = set(peer_ids)
-
-        # Remove relationships that are from this profile but not in target
+        # Remove relationships that are from this profile but not in profile
         for rel in current_rels:
             if not rel.is_from_profile:
                 continue
 
-            if rel.profile_id == profile_id and rel.peer_id and rel.peer_id not in target_peer_ids:
+            if rel.profile_id == profile_id and rel.peer_id and rel.peer_id not in profile_peer_ids:
                 await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
                 node_rel.is_from_profile = True
                 is_changed = True
 
-        # Add relationships that are in target but not present
-        for peer_id in target_peer_ids:
+        # Add relationships that are in profile but not present
+        for peer_id in profile_peer_ids:
             if peer_id not in current_peer_ids:
                 new_rel = Relationship(schema=node_rel.schema, branch=self.branch, node=node)
                 await new_rel.new(db=self.db, data=peer_id)
@@ -187,7 +190,6 @@ class NodeProfilesApplier:
                 profile_value = profile_data.attribute_values.get(attr_name)
                 if profile_value is not None:
                     has_profile_attr_data = True
-                    is_changed = False
                     is_changed = self._apply_profile_to_attribute(
                         node_attr=node_attr, profile_value=profile_value, profile_id=profile_data.uuid
                     )

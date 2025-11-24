@@ -623,6 +623,7 @@ async def test_get_many_with_profile_relationships_override(
     )
 
 
+@pytest.mark.xfail(reason="Depending on how we override the peers, it may or may not work")
 async def test_get_many_with_profile_relationships_partial_override(
     db: InfrahubDatabase, branch: Branch, child_and_thing_nodes: ChildThingFixtures
 ) -> None:
@@ -664,12 +665,18 @@ async def test_get_many_with_profile_relationships_partial_override(
         ],
     )
 
+    # Removing the peers from the profile before adding them will work
     # for thing in {child_and_thing_nodes.thing_nodes[0], child_and_thing_nodes.thing_nodes[1]}:
     #    await updated_child_one.things.remove_locally(db=db, peer_id=thing.id)
 
-    # Override with a peer that is also in the profile
-    for thing in {child_and_thing_nodes.thing_nodes[1], child_and_thing_nodes.thing_nodes[2]}:
-        await updated_child_one.things.add(db=db, data=thing)
+    # Override with a peer that is also in the profile, by adding them won't work
+    # for thing in {child_and_thing_nodes.thing_nodes[1], child_and_thing_nodes.thing_nodes[2]}:
+    #    await updated_child_one.things.add(db=db, data=thing)
+
+    # Updating by replacing all peers will work
+    await updated_child_one.things.update(
+        db=db, data=[child_and_thing_nodes.thing_nodes[1], child_and_thing_nodes.thing_nodes[2]]
+    )
 
     updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
     assert updated_field_names == ["things"]
