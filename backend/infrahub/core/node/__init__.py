@@ -1125,15 +1125,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def _build_meta_response(self, db: InfrahubDatabase, field_name: str, fields: dict) -> dict:
         data = {}
-        for meta_field in fields.get(field_name).keys():
+        for meta_field in fields.get(field_name, {}).keys():
             meta_field_data: RelationshipManager | str | None = getattr(self, meta_field, None)
 
-            if meta_field_data is not None and isinstance(meta_field_data, RelationshipManager):
+            if isinstance(meta_field_data, RelationshipManager):
                 peer = await meta_field_data.get_peer(db=db)
                 data[meta_field] = peer.id if peer else None
                 continue
 
-            if meta_field_data is not None and isinstance(meta_field_data, str):
+            if isinstance(meta_field_data, str):
                 data[meta_field] = meta_field_data
                 continue
 
