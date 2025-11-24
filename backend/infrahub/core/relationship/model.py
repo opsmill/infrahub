@@ -1281,6 +1281,7 @@ class RelationshipManager:
                 ):
                     await rel.update(
                         at=save_at,
+                        user_id=user_id,
                         properties_to_update=properties_not_matching,
                         data=details.peers_database[rel.peer_id],
                         db=db,

@@ -1146,7 +1146,7 @@ class NodeManager:
             return {}
 
         if fields:
-            metadata_determiner = MetadataDeterminer(schema_branch=db.schema.get_schema_branch(name=branch.name))
+            metadata_determiner = MetadataDeterminer()
             include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(node_fields=fields)
             if isinstance(include_metadata, MetadataQueryOptions):
                 include_metadata |= include_metadata_for_fields

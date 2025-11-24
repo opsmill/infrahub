@@ -896,7 +896,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         for name in self._attributes:
             if (fields and name in fields) or not fields:
                 attr = self.get_attribute(name=name)
-                updated_attribute = await attr.save(db=db, at=update_at)
+                updated_attribute = await attr.save(db=db, user_id=user_id, at=update_at)
                 if updated_attribute:
                     node_changelog.add_attribute(attribute=updated_attribute)
 
@@ -906,7 +906,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if (fields and name in fields) or not fields:
                 processed_relationships.append(name)
                 rel = self.get_relationship(name=name)
-                updated_relationship = await rel.save(db=db, at=update_at)
+                updated_relationship = await rel.save(db=db, user_id=user_id, at=update_at)
                 node_changelog.add_relationship(relationship_changelog=updated_relationship)
 
         if len(processed_relationships) != len(self._relationships):

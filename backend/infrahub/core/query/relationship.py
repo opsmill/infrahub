@@ -732,9 +732,17 @@ CALL (rl) {
 CALL (rl) {
     OPTIONAL MATCH (rl)-[r:HAS_%(node_prop_type)s]-(%(node_prop)s)
     WHERE %(branch_filter)s
-    RETURN r AS rel_%(node_prop)s, %(node_prop)s
+    WITH r, %(node_prop)s
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
+    RETURN CASE
+        WHEN r.status = "active" THEN %(node_prop)s
+        ELSE NULL
+    END AS %(node_prop)s,
+    CASE
+        WHEN r.status = "active" THEN r
+        ELSE NULL
+    END AS rel_%(node_prop)s
 }
         """ % {
             "node_prop": node_prop,
