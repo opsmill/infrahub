@@ -67,24 +67,23 @@ export const EventCard = (props: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex flex-col grow gap-3 rounded-md border border-gray-200 bg-white p-2 shadow-xs min-w-0 text-sm">
-          <EventContent {...props} />
+      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border border-gray-200 bg-white p-2 text-sm shadow-xs">
+        <EventContent {...props} />
 
-          <div className="flex justify-between text-gray-500">
-            <DateDisplay date={props.occurred_at} />
+        <div className="flex justify-between text-gray-500">
+          <DateDisplay date={props.occurred_at} />
 
-            <div className="flex items-center gap-4">
-              {!PROPOSED_CHANGE_EVENTS.includes(props.event) && props.branch && (
-                <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-500 text-xs">
-                  <Icon icon={"mdi:source-branch"} />
+          <div className="flex items-center gap-4">
+            {!PROPOSED_CHANGE_EVENTS.includes(props.event) && props.branch && (
+              <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-500 text-xs">
+                <Icon icon={"mdi:source-branch"} />
 
-                  {props.branch}
-                </div>
-              )}
+                {props.branch}
+              </div>
+            )}
 
-              {pathname !== "/" && <EventDetailsPopover {...props} />}
-            </div>
-
+            {pathname !== "/" && <EventDetailsPopover {...props} />}
+          </div>
         </div>
       </div>
     </div>
