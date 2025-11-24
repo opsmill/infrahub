@@ -27,6 +27,7 @@ from prefect.client.orchestration import PrefectClient
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.trigger.constants import NAME_SEPARATOR
+from infrahub.trigger.setup import gather_all_automations
 from tests.helpers.fixtures import get_fixtures_dir
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
@@ -97,7 +98,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
         retry = 0
 
         while continue_waiting:
-            automations = await client.read_automations()
+            automations = await gather_all_automations(client=client)
             observed_automation_names = [automation.name.split(NAME_SEPARATOR)[-1] for automation in automations]
             if set(automation_names).issubset(observed_automation_names):
                 continue_waiting = False

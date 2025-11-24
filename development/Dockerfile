@@ -85,7 +85,8 @@ RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/i
 WORKDIR /source
 
 ENV PREFECT_WORKER_QUERY_SECONDS="2" \
-    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500
+    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500 \
+    PREFECT_API_DATABASE_TIMEOUT=60
 
 # --------------------------------------------
 # Import Frontend Build
