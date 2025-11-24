@@ -768,8 +768,8 @@ WITH *, rl.created_at AS created_at, rl.created_by AS created_by
 CALL (rels) {
     UNWIND rels AS rel
     RETURN rel.from AS created_at, rel.from_user_id AS created_by
+    ORDER BY created_at ASC
     LIMIT 1
-    ORDER BY rel.from ASC
 }
             """
         self.add_to_query(last_created_query)
