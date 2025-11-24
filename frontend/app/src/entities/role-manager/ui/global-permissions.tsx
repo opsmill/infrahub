@@ -86,7 +86,8 @@ function GlobalPermissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: { value: edge?.node ? getNodeLabel(edge.node) : undefined },
+          display_label: edge?.node?.display_label,
+          hfid: edge?.node?.hfid,
           action: { value: edge?.node?.action?.value },
           decision: {
             display: globalDecisionOptions.find(

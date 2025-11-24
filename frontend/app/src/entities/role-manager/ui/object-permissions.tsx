@@ -112,7 +112,8 @@ function Permissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: edge?.node ? getNodeLabel(edge.node) : undefined,
+          display_label: edge?.node?.display_label,
+          hfid: edge?.node?.hfid,
           display: {
             value: edge?.node ? getNodeLabel(edge.node) : undefined,
             display: (

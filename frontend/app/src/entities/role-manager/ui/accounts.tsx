@@ -89,6 +89,8 @@ function Accounts() {
     data[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
         name: { value: edge?.node?.name?.value },
         description: { value: edge?.node?.description?.value },
         account_type: { value: edge?.node?.account_type?.value },

@@ -93,6 +93,8 @@ function Groups() {
       id: edge?.node?.id,
       values: {
         id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
         name: { value: edge?.node?.name?.value },
         description: { value: edge?.node?.description?.value },
         label: { value: edge?.node?.label?.value },
