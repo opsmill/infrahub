@@ -1373,7 +1373,7 @@ class NodeManager:
                     continue
                 rel_peers_with_metadata.append(
                     {
-                        "id": peer.get_id(),
+                        "id": peer,
                         "created_at": metadata_map.get(MetadataOptions.CREATED_AT),
                         "created_by": metadata_map.get(MetadataOptions.CREATED_BY),
                         "updated_at": metadata_map.get(MetadataOptions.UPDATED_AT),
