@@ -67,8 +67,7 @@ export const EventCard = (props: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex grow gap-3 rounded-md border border-gray-200 bg-white p-2 shadow-xs">
-        <div className="flex grow flex-col gap-2 text-sm">
+      <div className="flex flex-col grow gap-3 rounded-md border border-gray-200 bg-white p-2 shadow-xs min-w-0 text-sm">
           <EventContent {...props} />
 
           <div className="flex justify-between text-gray-500">
@@ -85,7 +84,7 @@ export const EventCard = (props: EventType) => {
 
               {pathname !== "/" && <EventDetailsPopover {...props} />}
             </div>
-          </div>
+
         </div>
       </div>
     </div>
