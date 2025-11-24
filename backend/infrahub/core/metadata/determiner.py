@@ -6,6 +6,10 @@ from infrahub.core.metadata.model import MetadataQueryOptions
 
 class MetadataDeterminer:
     async def determine_metadata_for_fields(self, node_fields: dict[str, Any]) -> MetadataQueryOptions:
+        """Determine metadata required based on fields requested
+
+        All attribute-level metadata is combined and all relationship-level metadata is combined
+        """
         node_metadata_options = MetadataOptions.NONE
         if "_updated_at" in node_fields or "updated_at" in node_fields:
             node_metadata_options |= MetadataOptions.UPDATED_AT
