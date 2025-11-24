@@ -9,7 +9,7 @@ from tests.helpers.test_app import TestInfrahubApp
 
 
 def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
-    exempted_fields = ("id", "created_at")
+    exempted_fields = ("id", "created_at", "meta")
     for field_name, field_value in BranchType._meta.fields.items():
         if field_name in exempted_fields:
             continue
@@ -352,7 +352,7 @@ class TestBranchQuery(TestInfrahubApp):
         client,
         service,
     ) -> None:
-        query = """
+        all_branches_query = """
             query {
                 InfrahubBranch {
                     edges {
@@ -383,10 +383,12 @@ class TestBranchQuery(TestInfrahubApp):
                 }
             }
         """
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        gql_params = await prepare_graphql_params(
+            db=db, branch=default_branch, service=service, account_session=session_admin
+        )
         all_branches = await graphql(
             schema=gql_params.schema,
-            source=query,
+            source=all_branches_query,
             context_value=gql_params.context,
             root_value=None,
         )
@@ -394,4 +396,51 @@ class TestBranchQuery(TestInfrahubApp):
         assert all_branches.data
 
         for branch in all_branches.data["InfrahubBranch"]["edges"]:
-            assert branch["node"]["meta"]["created_at"]
+            if branch["node"]["name"]["value"] == "main":
+                assert branch["node"]["meta"]["created_by"] is None
+                continue
+            assert branch["node"]["meta"]["created_at"] is not None
+            assert branch["node"]["meta"]["created_by"] is not None
+            assert branch["node"]["meta"]["updated_at"] is None
+            assert branch["node"]["meta"]["updated_by"] is None
+
+        update_query = """
+            mutation {
+                BranchUpdate(
+                    data: {
+                        name: "sample-branch-4",
+                        description: "updated description"
+                    }
+                )   {
+                    ok
+                }
+            }
+        """
+        update_branch = await graphql(
+            schema=gql_params.schema,
+            source=update_query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+        assert update_branch.errors is None
+        assert update_branch.data
+        assert update_branch.data["BranchUpdate"]["ok"]
+
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=all_branches_query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+        assert all_branches.errors is None
+        assert all_branches.data
+
+        branch_found = False
+        for branch in all_branches.data["InfrahubBranch"]["edges"]:
+            if branch["node"]["name"]["value"] == "sample-branch-4":
+                assert branch["node"]["description"]["value"] == "updated description"
+                assert branch["node"]["meta"]["updated_by"] is not None
+                assert branch["node"]["meta"]["updated_at"] is not None
+                branch_found = True
+                break
+        assert branch_found, "Updated branch 'sample-branch-4' not found in results"

@@ -37,6 +37,9 @@ class Branch(StandardNode):
     branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
     created_at: Optional[str] = Field(default=None, validate_default=True)
+    created_by: Optional[str] = Field(default=None, validate_default=True)
+    updated_at: Optional[str] = Field(default=None, validate_default=True)
+    updated_by: Optional[str] = Field(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False

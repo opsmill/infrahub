@@ -9,3 +9,8 @@ class BranchCreateModel(BaseModel):
     branched_from: str | None = None
     sync_with_git: bool = True
     is_isolated: bool = True
+
+
+class BranchCreateModelWithMetaFields(BranchCreateModel):
+    created_at: str | None = None
+    created_by: str | None = None

@@ -10,6 +10,7 @@ from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
@@ -26,7 +27,7 @@ from infrahub.workflows.catalogue import (
 
 from ..types import BranchType
 from ..types.task import TaskInfo
-from .models import BranchCreateModel
+from .models import BranchCreateModel, BranchCreateModelWithMetaFields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -75,8 +76,8 @@ class BranchCreate(Mutation):
         graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
-        model = BranchCreateModel(**data)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
+        model = BranchCreateModel(**data)
 
         try:
             await Branch.get_by_name(db=graphql_context.db, name=model.name)
@@ -84,19 +85,25 @@ class BranchCreate(Mutation):
         except BranchNotFoundError:
             pass
 
+        model_to_create = BranchCreateModelWithMetaFields(
+            **model.dict(),
+            created_at=Timestamp().to_string(),
+            created_by=graphql_context.active_account_session.account_id,
+        )
+
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
+                workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model_to_create}
             )
             task = {"id": workflow.id}
             return cls(ok=True, task=task)
 
         await graphql_context.active_service.workflow.execute_workflow(
-            workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
+            workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model_to_create}
         )
 
         # Retrieve created branch
-        obj = await Branch.get_by_name(db=graphql_context.db, name=model.name)
+        obj = await Branch.get_by_name(db=graphql_context.db, name=model_to_create.name)
         fields = extract_graphql_fields(info=info)
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
 
@@ -162,9 +169,11 @@ class BranchUpdate(Mutation):
         context: ContextInput | None = None,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         obj = await Branch.get_by_name(db=graphql_context.db, name=data["name"])
-        await apply_external_context(graphql_context=graphql_context, context_input=context)
+        obj.updated_by = graphql_context.active_account_session.account_id
+        obj.updated_at = Timestamp().to_string()
 
         to_extract = ["description"]
         for field_name in to_extract:
