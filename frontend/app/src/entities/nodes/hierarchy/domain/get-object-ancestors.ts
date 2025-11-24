@@ -38,21 +38,17 @@ export const getObjectAncestors: GetObjectAncestors = async ({
   const { ancestors, ...currentObject } = result;
   const ancestorNodes = ancestors?.edges?.map((edge) => edge.node).filter((n) => !!n) ?? [];
 
-  // Build an ordered list from root (parent = null) to current object
+  // Build an ordered list from current object to root (or as far up as we can go)
   const allNodes = [...ancestorNodes, currentObject] as Array<NodeCoreWithParent>;
   const nodeMap = new Map(allNodes.map((node) => [node.id, node]));
 
-  // Start from the root (parent is null) and build the ordered chain
   const orderedNodes: Array<NodeCoreWithParent> = [];
-  const root = allNodes.find((node) => !node.parent?.node?.id);
+  let current: NodeCoreWithParent | undefined = currentObject;
 
-  if (root) {
-    let current: NodeCoreWithParent | undefined = root;
-    while (current) {
-      orderedNodes.push(current);
-      const nextId = allNodes.find((node) => node.parent?.node?.id === current?.id)?.id;
-      current = nextId ? nodeMap.get(nextId) : undefined;
-    }
+  while (current) {
+    orderedNodes.unshift(current);
+    const parentId: string | undefined = current.parent?.node?.id;
+    current = parentId ? nodeMap.get(parentId) : undefined;
   }
 
   return orderedNodes;

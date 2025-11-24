@@ -1,5 +1,5 @@
 import { NetworkStatus } from "@apollo/client";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
@@ -26,7 +26,7 @@ describe("TaskStatus", () => {
     });
 
     // WHEN
-    const component = render(<TaskStatus />);
+    const component = await render(<TaskStatus />);
 
     // THEN
     const taskButton = component.getByRole("link");
@@ -57,7 +57,7 @@ describe("TaskStatus", () => {
     });
 
     // WHEN
-    const component = render(<TaskStatus />);
+    const component = await render(<TaskStatus />);
 
     // THEN
     const taskButton = component.getByRole("link", { name: "View branch tasks" });
@@ -83,7 +83,7 @@ describe("TaskStatus", () => {
     });
 
     // WHEN
-    const component = render(<TaskStatus />);
+    const component = await render(<TaskStatus />);
 
     // THEN
     await expect

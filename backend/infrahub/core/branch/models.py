@@ -143,8 +143,9 @@ class Branch(StandardNode):
         """
 
         params: dict[str, Any] = {"name": name}
+        params["ignore_statuses"] = []
         if ignore_deleting:
-            params["ignore_statuses"] = [BranchStatus.DELETING.value]
+            params["ignore_statuses"].append(BranchStatus.DELETING.value)
 
         results = await db.execute_query(query=query, params=params, name="branch_get_by_name", type=QueryType.READ)
 

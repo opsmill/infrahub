@@ -2,10 +2,8 @@
 
 cat /proc/cpuinfo /proc/meminfo
 
-poetry config virtualenvs.create true
-poetry config virtualenvs.in-project true
-poetry install --no-interaction --no-ansi
-
 git submodule update --init
 
-poetry run invoke demo.pull
+uv sync --all-groups
+
+uv run invoke demo.pull
