@@ -21,7 +21,7 @@ jobs:
       latest_tag: ${{ steps.release.outputs.latest_tag }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
