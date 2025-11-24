@@ -114,6 +114,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         at: Timestamp | None = None,
         node: Node | None = None,
         node_id: str | None = None,
+        is_from_profile: bool = False,
+        profile_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         if not node and not node_id:
@@ -131,6 +133,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         self.id: UUID | None = None
         self.db_id: str | None = None
+        self.is_from_profile: bool = is_from_profile
+        self.profile_id: UUID | None = profile_id
 
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
@@ -828,12 +832,15 @@ class RelationshipValidatorList:
 
 
 class RelationshipManager:
-    def __init__(self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node) -> None:
+    def __init__(
+        self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node, is_from_profile: bool = False
+    ) -> None:
         self.schema: RelationshipSchema = schema
         self.name: str = schema.name
         self.node: Node = node
         self.branch: Branch = branch
         self.at = at
+        self.is_from_profile = is_from_profile
 
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
@@ -1072,7 +1079,9 @@ class RelationshipManager:
 
         peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
 
-        peers_database: dict = {str(peer.peer_id): peer for peer in peers}
+        self.is_from_profile = any(peer.is_from_profile for peer in peers)
+
+        peers_database = {str(peer.peer_id): peer for peer in peers}
         peer_ids = list(peers_database.keys())
 
         # Calculate which peer should be added or removed
@@ -1109,6 +1118,8 @@ class RelationshipManager:
                     source_kind=self.node.get_kind(),
                     at=at or self.at,
                     node=self.node,
+                    is_from_profile=details.peers_database[peer_id].is_from_profile,
+                    profile_id=details.peers_database[peer_id].profile_id,
                 ).load(db=db, data=details.peers_database[peer_id])
             )
 
@@ -1153,6 +1164,12 @@ class RelationshipManager:
                 await self._fetch_relationships(db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh)
 
         return self._relationships.as_list()
+
+    async def get_relationship(self, db: InfrahubDatabase, peer_id: str) -> Relationship | None:
+        for rel in await self.get_relationships(db=db):
+            if rel.peer_id == peer_id:
+                return rel
+        return None
 
     async def update(
         self,
