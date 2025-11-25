@@ -93,7 +93,7 @@ dev = [
     "types-ujson",
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
-    "ruff==0.11.9",
+    "ruff==0.14.5",
     "invoke==2.2.0",
     "pytest-benchmark>=4.0.0,<5",
     "pytest-codspeed>=2.2.0,<3",
@@ -529,6 +529,8 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
+    "ASYNC240", # Async functions should not use pathlib.Path methods, use trio.Path or anyio.path
+    "F401",    # [*] `common.events` imported but unused
     "FURB113", # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB118", # Use `operator.itemgetter(1)` instead of defining a lambda
     "FURB140", # Use `itertools.starmap` instead of the generator
@@ -556,6 +558,7 @@ ignore = [
     "PLR6301", # Method could be a function, class method, or static method
     "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508", # Invalid type for environment variable default; expected `str` or `None`
+    "PLW1514", # `pathlib.Path(...).open` in text mode without explicit `encoding` argument
     "RET504",  # Unnecessary assignment before `return` statement
     "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
     "RUF010",  # Use explicit conversion flag
@@ -575,10 +578,12 @@ ignore = [
     "SIM103",  # Return the condition `identifier in self.sub_by_id.keys()` directly
     "SIM105",  # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
     "SIM110",  # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
+    "SIM113",  # Use `enumerate()` for index variable `color` in `for` loop
     "SIM114",  # Combine `if` branches using logical `or` operator
     "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
+    "SIM910",  # [*] Use `dict.get()` without default value
     "TC006",   # [*] Add quotes to type expression in `typing.cast()`
     "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
