@@ -1272,12 +1272,12 @@ class RelationshipManager:
         if source_schema.branch is BranchSupportType.AGNOSTIC:
             source_branch = registry.get_global_branch()
         else:
-            source_branch = branch
+            source_branch = self.branch
         destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
         if destination_schema.branch is BranchSupportType.AGNOSTIC:
             destination_branch = registry.get_global_branch()
         else:
-            destination_branch = branch
+            destination_branch = self.branch
 
         delete_query = await RelationshipDeleteQuery.init(
             db=db,
