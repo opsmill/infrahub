@@ -698,6 +698,8 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
 
     def _add_source_to_query(self, branch_filter_str: str) -> None:
+        if not self._include_source:
+            return
         source_query = """
 CALL (a) {
     OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
@@ -714,6 +716,8 @@ WITH *,
         self.return_labels.extend(["source", "rel_source"])
 
     def _add_owner_to_query(self, branch_filter_str: str) -> None:
+        if not self._include_owner:
+            return
         owner_query = """
 CALL (a) {
     OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
@@ -730,6 +734,8 @@ WITH *,
         self.return_labels.extend(["owner", "rel_owner"])
 
     def _add_created_metadata_to_query(self) -> None:
+        if not self._include_created_metadata:
+            return
         if self.branch.is_default or self.branch.is_global:
             last_created_query = """
 WITH *, a.created_at AS created_at, a.created_by AS created_by
@@ -742,6 +748,8 @@ WITH *, r1.from AS created_at, r1.from_user_id AS created_by
         self.return_labels.extend(["created_at", "created_by"])
 
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
+        if not self._include_updated_metadata:
+            return
         if self.branch.is_default or self.branch.is_global:
             last_updated_query = """
 WITH *, a.updated_at AS updated_at, a.updated_by AS updated_by
@@ -848,14 +856,10 @@ CALL (a) {
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
 
-        if self._include_source:
-            self._add_source_to_query(branch_filter_str=branch_filter)
-        if self._include_owner:
-            self._add_owner_to_query(branch_filter_str=branch_filter)
-        if self._include_created_metadata:
-            self._add_created_metadata_to_query()
-        if self._include_updated_metadata:
-            self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
+        self._add_source_to_query(branch_filter_str=branch_filter)
+        self._add_owner_to_query(branch_filter_str=branch_filter)
+        self._add_created_metadata_to_query()
+        self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
     def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
         attrs_by_node: dict[str, NodeAttributesFromDB] = {}

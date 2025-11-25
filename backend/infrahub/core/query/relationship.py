@@ -702,6 +702,8 @@ class RelationshipGetPeerQuery(Query):
         super().__init__(**kwargs)
 
     def _add_is_visible_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.IS_VISIBLE):
+            return
         query = """
 CALL (rl) {
     MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
@@ -715,6 +717,8 @@ CALL (rl) {
         self.update_return_labels(["rel_is_visible", "is_visible"])
 
     def _add_is_protected_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.IS_PROTECTED):
+            return
         query = """
 CALL (rl) {
     MATCH (rl)-[r:IS_PROTECTED]-(is_protected)
@@ -753,12 +757,18 @@ CALL (rl) {
         self.update_return_labels([f"rel_{node_prop}", node_prop])
 
     def _add_has_owner_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.OWNER):
+            return
         self._add_node_property_query(node_prop="owner", branch_filter=branch_filter)
 
     def _add_has_source_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.SOURCE):
+            return
         self._add_node_property_query(node_prop="source", branch_filter=branch_filter)
 
     def _add_created_metadata_to_query(self) -> None:
+        if not (self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY)):
+            return
         if self.branch.is_default or self.branch.is_global:
             last_created_query = """
 WITH *, rl.created_at AS created_at, rl.created_by AS created_by
@@ -776,6 +786,8 @@ CALL (rels) {
         self.update_return_labels(["created_at", "created_by"])
 
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
+        if not (self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY)):
+            return
         if self.branch.is_default or self.branch.is_global:
             last_updated_query = """
 WITH *, rl.updated_at AS updated_at, rl.updated_by AS updated_by
@@ -905,18 +917,12 @@ CALL (rl) {
         # ----------------------------------------------------------------------------
         # add metadata
         # ----------------------------------------------------------------------------
-        if self.include_metadata & MetadataOptions.IS_PROTECTED:
-            self._add_is_protected_query(branch_filter)
-        if self.include_metadata & MetadataOptions.IS_VISIBLE:
-            self._add_is_visible_query(branch_filter)
-        if self.include_metadata & MetadataOptions.OWNER:
-            self._add_has_owner_query(branch_filter)
-        if self.include_metadata & MetadataOptions.SOURCE:
-            self._add_has_source_query(branch_filter)
-        if self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY):
-            self._add_created_metadata_to_query()
-        if self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY):
-            self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
+        self._add_is_protected_query(branch_filter)
+        self._add_is_visible_query(branch_filter)
+        self._add_has_owner_query(branch_filter)
+        self._add_has_source_query(branch_filter)
+        self._add_created_metadata_to_query()
+        self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
         self.add_to_query("WITH " + ",".join(self.return_labels))
 
