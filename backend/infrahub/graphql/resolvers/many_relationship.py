@@ -70,19 +70,19 @@ class ManyRelationshipResolver:
 
     def _get_metadata_to_include(self, property_fields: dict[str, Any]) -> MetadataOptions:
         include_metadata = MetadataOptions.NONE
-        if property_fields and "created_at" in property_fields:
+        if "created_at" in property_fields:
             include_metadata |= MetadataOptions.CREATED_AT
-        if property_fields and "created_by" in property_fields:
+        if "created_by" in property_fields:
             include_metadata |= MetadataOptions.CREATED_BY
-        if property_fields and "updated_at" in property_fields:
+        if "updated_at" in property_fields:
             include_metadata |= MetadataOptions.UPDATED_AT
-        if property_fields and "updated_by" in property_fields:
+        if "updated_by" in property_fields:
             include_metadata |= MetadataOptions.UPDATED_BY
-        if property_fields and "source" in property_fields:
+        if "source" in property_fields:
             include_metadata |= MetadataOptions.SOURCE
-        if property_fields and "owner" in property_fields:
+        if "owner" in property_fields:
             include_metadata |= MetadataOptions.OWNER
-        if property_fields and "is_protected" in property_fields:
+        if "is_protected" in property_fields:
             include_metadata |= MetadataOptions.IS_PROTECTED
         return include_metadata
 
