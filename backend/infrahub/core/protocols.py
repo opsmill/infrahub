@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional, Protocol, runtime_checkable
 
 from infrahub.core.protocols_base import CoreNode
 
@@ -16,16 +16,22 @@ if TYPE_CHECKING:
         DateTime,
         DateTimeOptional,
         Dropdown,
+        DropdownOptional,
         HashedPassword,
+        HashedPasswordOptional,
         Integer,
         IntegerOptional,
         IPHost,
+        IPHostOptional,
         IPNetwork,
+        IPNetworkOptional,
         JSONAttribute,
         JSONAttributeOptional,
+        ListAttribute,
         ListAttributeOptional,
         String,
         StringOptional,
+        URLOptional,
     )
     from infrahub.core.relationship import RelationshipManager
 
