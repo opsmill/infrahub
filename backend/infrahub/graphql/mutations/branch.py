@@ -8,7 +8,7 @@ from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch import Branch, InfrahubBranch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
@@ -175,13 +175,21 @@ class BranchUpdate(Mutation):
         obj.updated_by = graphql_context.active_account_session.account_id
         obj.updated_at = Timestamp().to_string()
 
+        infrahub_branch = await InfrahubBranch.get_by_name(db=graphql_context.db, name=data["name"])
+
         to_extract = ["description"]
         for field_name in to_extract:
             if field_name in data and data.get(field_name) is not None:
                 setattr(obj, field_name, data[field_name])
+                setattr(
+                    infrahub_branch,
+                    field_name,
+                    {"value": data[field_name], "updated_at": obj.updated_at, "updated_by": obj.updated_by},
+                )
 
         async with graphql_context.db.start_transaction() as db:
             await obj.save(db=db)
+            await infrahub_branch.save(db=db)
 
         return cls(ok=True)
 

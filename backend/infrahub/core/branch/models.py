@@ -4,7 +4,7 @@ import re
 from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 
 from neo4j.graph import Node as Neo4jNode
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -16,6 +16,7 @@ from infrahub.core.query.branch import (
     BranchNodeGetListQuery,
     DeleteBranchRelationshipsQuery,
     GetAllBranchInternalRelationshipQuery,
+    InfrahubBranchNodeGetListQuery,
     RebaseBranchDeleteRelationshipQuery,
     RebaseBranchUpdateRelationshipQuery,
 )
@@ -283,9 +284,10 @@ class Branch(StandardNode):
 
         return start, end
 
-    async def create(self, db: InfrahubDatabase) -> bool:
-        self.graph_version = GRAPH_VERSION
-        return await super().create(db=db)
+    @field_validator("graph_version", mode="before")
+    @classmethod
+    def set_graph_version(cls, value: int) -> int:  # noqa: ARG003
+        return GRAPH_VERSION
 
     async def delete(self, db: InfrahubDatabase) -> None:
         if self.is_default:
@@ -554,6 +556,184 @@ class Branch(StandardNode):
 
         delete_query = await RebaseBranchDeleteRelationshipQuery.init(db=db, ids=rels_to_delete, at=at)
         await delete_query.execute(db=db)
+
+
+class FieldMetadata(BaseModel):
+    updated_at: str | None = None
+    updated_by: str | None = None
+
+
+class NameValueField(FieldMetadata):
+    value: str = Field(
+        max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
+    )
+
+
+class DescriptionValueField(FieldMetadata):
+    value: str = ""
+
+
+class StatusValueField(FieldMetadata):
+    value: BranchStatus = BranchStatus.OPEN
+
+
+class OriginBranchValueField(FieldMetadata):
+    value: str = "main"
+
+
+class BranchedFromValueField(FieldMetadata):
+    value: str | None = Field(default=None, validate_default=True)
+
+
+class HierarchyLevelValueField(FieldMetadata):
+    value: int = 2
+
+
+class TimestampValueField(FieldMetadata):
+    value: str | None = Field(default=None, validate_default=True)
+
+
+class BooleanValueField(FieldMetadata):
+    value: bool = False
+
+
+class SyncWithGitValueField(BooleanValueField):
+    value: bool = Field(
+        default=True,
+        description="Indicate if the branch should be extended to Git and if Infrahub should merge the branch in Git as part of a proposed change",
+    )
+
+
+class TrueBooleanValueField(BooleanValueField):
+    value: bool = True
+
+
+class OptionalStringValueField(FieldMetadata):
+    value: str | None = None
+
+
+class SchemaBranchHashValueField(FieldMetadata):
+    value: SchemaBranchHash | None = None
+
+
+class OptionalIntValueField(FieldMetadata):
+    value: int | None = None
+
+
+class InfrahubBranch(Branch):
+    name: NameValueField
+    description: DescriptionValueField
+    status: StatusValueField
+    origin_branch: OriginBranchValueField
+    branched_from: BranchedFromValueField
+    hierarchy_level: HierarchyLevelValueField
+    created_at: TimestampValueField
+    created_by: TimestampValueField
+    updated_at: TimestampValueField
+    updated_by: TimestampValueField
+    is_default: BooleanValueField
+    is_global: BooleanValueField
+    is_protected: BooleanValueField
+    sync_with_git: SyncWithGitValueField
+    is_isolated: TrueBooleanValueField
+    schema_changed_at: OptionalStringValueField
+    schema_hash: SchemaBranchHashValueField
+    graph_version: OptionalIntValueField
+
+    @classmethod
+    def from_branch(cls, branch: Branch) -> Self:
+        return cls(
+            name={"value": branch.name},
+            description={"value": branch.description},
+            status={"value": branch.status},
+            origin_branch={"value": branch.origin_branch},
+            branched_from={"value": branch.branched_from},
+            hierarchy_level={"value": branch.hierarchy_level},
+            created_at={"value": branch.created_at},
+            created_by={"value": branch.created_by},
+            updated_at={"value": branch.updated_at},
+            updated_by={"value": branch.updated_by},
+            is_default={"value": branch.is_default},
+            is_global={"value": branch.is_global},
+            is_protected={"value": branch.is_protected},
+            sync_with_git={"value": branch.sync_with_git},
+            is_isolated={"value": branch.is_isolated},
+            schema_changed_at={"value": branch.schema_changed_at},
+            schema_hash={"value": branch.schema_hash},
+            graph_version={"value": branch.graph_version},
+        )
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def validate_branch_name(cls, value: dict) -> dict:
+        super().validate_branch_name(value.get("value"))
+        return value
+
+    @field_validator("branched_from", mode="before")
+    @classmethod
+    def set_branched_from(cls, value: dict) -> dict:
+        return {"value": super().set_branched_from(value.get("value"))}
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def set_created_at(cls, value: dict) -> dict:
+        return {"value": super().set_created_at(value.get("value"))}
+
+    @field_validator("graph_version", mode="before")
+    @classmethod
+    def set_graph_version(cls, value: dict) -> dict:  # noqa: ARG003
+        return {"value": GRAPH_VERSION}
+
+    @classmethod
+    async def get_list(
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: Any,
+    ) -> list[Self]:
+        query: Query = await InfrahubBranchNodeGetListQuery.init(
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+        )
+        await query.execute(db=db)
+
+        return [cls.from_db(node=cast(Neo4jNode, result.get("n"))) for result in query.get_results()]
+
+    @classmethod
+    async def get_list_count(
+        cls,
+        db: InfrahubDatabase,
+        limit: int = 1000,
+        ids: list[str] | None = None,
+        name: str | None = None,
+        **kwargs: Any,
+    ) -> int:
+        query: Query = await InfrahubBranchNodeGetListQuery.init(
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, exclude_global=True, **kwargs
+        )
+        return await query.count(db=db)
+
+    @classmethod
+    async def get_by_name(cls, name: str, db: InfrahubDatabase, ignore_deleting: bool = True) -> Branch:
+        query = """
+        MATCH (n:InfrahubBranch)
+        WHERE n.name__value = $name
+        AND NOT n.status__value IN $ignore_statuses
+        RETURN n
+        """
+
+        params: dict[str, Any] = {"name": name}
+        params["ignore_statuses"] = []
+        if ignore_deleting:
+            params["ignore_statuses"].append(BranchStatus.DELETING.value)
+
+        results = await db.execute_query(query=query, params=params, name="branch_get_by_name", type=QueryType.READ)
+
+        if len(results) == 0:
+            raise BranchNotFoundError(identifier=name)
+
+        return cls.from_db(results[0].values()[0])
 
 
 registry.branch_object = Branch

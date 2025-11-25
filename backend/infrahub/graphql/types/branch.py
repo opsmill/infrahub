@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch import InfrahubBranch as InfrahubBranchModel
 
 from ...exceptions import BranchNotFoundError
 from .enums import InfrahubBranchStatus
@@ -74,27 +75,23 @@ class InfrahubBranchMetaObject(ObjectType):
     )
 
 
-class InfrahubBranchMeta(ObjectType):
-    meta = Field(InfrahubBranchMetaObject, required=False)
-
-
-class RequiredStringValueField(InfrahubBranchMeta):
+class RequiredStringValueField(InfrahubBranchMetaObject):
     value = String(required=True)
 
 
-class NonRequiredStringValueField(InfrahubBranchMeta):
+class NonRequiredStringValueField(InfrahubBranchMetaObject):
     value = String(required=False)
 
 
-class NonRequiredIntValueField(InfrahubBranchMeta):
+class NonRequiredIntValueField(InfrahubBranchMetaObject):
     value = Int(required=False)
 
 
-class NonRequiredBooleanValueField(InfrahubBranchMeta):
+class NonRequiredBooleanValueField(InfrahubBranchMetaObject):
     value = Boolean(required=False)
 
 
-class StatusField(InfrahubBranchMeta):
+class StatusField(InfrahubBranchMetaObject):
     value = InfrahubBranchStatus(required=True)
 
 
@@ -115,6 +112,22 @@ class InfrahubBranch(BranchType):
     class Meta:
         description = "InfrahubBranch"
         name = "InfrahubBranch"
+        model = InfrahubBranchModel
+
+    @classmethod
+    async def get_list(
+        cls,
+        fields: dict,
+        graphql_context: GraphqlContext,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        async with graphql_context.db.start_session(read_only=True) as db:
+            objs = await InfrahubBranchModel.get_list(db=db, **kwargs)
+
+            if not objs:
+                return []
+
+            return await cls._map_fields_to_graphql(objs=objs, fields=fields)
 
 
 class InfrahubBranchEdge(ObjectType):
@@ -133,4 +146,4 @@ class InfrahubBranchType(ObjectType):
     @classmethod
     async def get_list_count(cls, graphql_context: GraphqlContext, **kwargs: Any) -> int:
         async with graphql_context.db.start_session(read_only=True) as db:
-            return await Branch.get_list_count(db=db, **kwargs)
+            return await InfrahubBranchModel.get_list_count(db=db, **kwargs)

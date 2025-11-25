@@ -11,7 +11,7 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch import Branch, InfrahubBranch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
@@ -426,7 +426,9 @@ async def create_branch(model: BranchCreateModelWithMetaFields, context: Infrahu
             new_schema = origin_schema.duplicate(name=obj.name)
             registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
             obj.update_schema_hash()
+            infrahub_branch = InfrahubBranch.from_branch(obj)
             await obj.save(db=db)
+            await infrahub_branch.save(db=db)
 
             # Add Branch to registry
             registry.branch[obj.name] = obj

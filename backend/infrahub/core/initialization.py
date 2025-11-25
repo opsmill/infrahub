@@ -6,7 +6,7 @@ from uuid import uuid4
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch import Branch, InfrahubBranch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     DEFAULT_IP_NAMESPACE,
@@ -236,6 +236,8 @@ async def create_default_branch(db: InfrahubDatabase) -> Branch:
         sync_with_git=True,
     )
     await branch.save(db=db)
+    infrahub_branch = InfrahubBranch.from_branch(branch=branch)
+    await infrahub_branch.save(db=db)
     registry.branch[branch.name] = branch
 
     log.info("Created default branch", branch=branch.name)
@@ -253,6 +255,8 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
         sync_with_git=False,
     )
     await branch.save(db=db)
+    infrahub_branch = InfrahubBranch.from_branch(branch=branch)
+    await infrahub_branch.save(db=db)
     registry.branch[branch.name] = branch
 
     log.info("Created global branch", branch=branch.name)

@@ -1,3 +1,3 @@
-from .models import Branch
+from .models import Branch, InfrahubBranch
 
-__all__ = ["Branch"]
+__all__ = ["Branch", "InfrahubBranch"]

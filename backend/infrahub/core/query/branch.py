@@ -6,7 +6,7 @@ from infrahub import config
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.standard_node import StandardNodeGetListQuery
+from infrahub.core.query.standard_node import InfrahubBranchNodeGetListQueryBase, StandardNodeGetListQuery
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -155,5 +155,14 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
         self.raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
         if exclude_global:
             self.raw_filter += f" AND n.name <> '{GLOBAL_BRANCH_NAME}'"
+
+        super().__init__(**kwargs)
+
+
+class InfrahubBranchNodeGetListQuery(InfrahubBranchNodeGetListQueryBase):
+    def __init__(self, exclude_global: bool = False, **kwargs: Any) -> None:
+        self.raw_filter = f"n.status__value <> '{BranchStatus.DELETING.value}'"
+        if exclude_global:
+            self.raw_filter += f" AND n.name__value <> '{GLOBAL_BRANCH_NAME}'"
 
         super().__init__(**kwargs)

@@ -77,26 +77,9 @@ class StandardNode(BaseModel):
             if field_name == "__typename":
                 response[field_name] = self.get_type()
                 continue
-            if field_name == "meta" and isinstance(fields.get("meta"), dict):
-                response[field_name] = {
-                    meta_field: getattr(self, meta_field, None) for meta_field in fields.get(field_name).keys()
-                }
-                continue
             field = getattr(self, field_name, None)
             if field is None:
                 response[field_name] = None
-                continue
-            if isinstance(fields.get(field_name), dict):
-                result = {}
-                for nested_field in fields.get(field_name).keys():
-                    if nested_field == "value":
-                        result[nested_field] = field
-                        continue
-                    if nested_field == "meta":
-                        result[nested_field] = dict.fromkeys(fields.get(field_name).get("meta").keys())
-                        continue
-                    result[nested_field] = field
-                response[field_name] = result
                 continue
 
             response[field_name] = field
@@ -195,6 +178,46 @@ class StandardNode(BaseModel):
             elif isinstance(value, str | bytes):
                 attrs[key] = ujson.loads(value)
 
+        # Handle flattened properties (e.g. name__value -> name: {value: ...})
+        # Group by prefix
+        grouped_attrs = {}
+        for key, value in node_data.items():
+            if "__" in key:
+                prefix, subkey = key.split("__", 1)
+                if prefix not in attrs:  # Only if not already handled (though it shouldn't be)
+                    if prefix not in grouped_attrs:
+                        grouped_attrs[prefix] = {}
+
+                    if isinstance(value, str):
+                        try:
+                            value = ujson.loads(value)  # noqa: PLW2901
+                        except (ValueError, TypeError):
+                            pass
+                    grouped_attrs[prefix][subkey] = value
+
+        # Process grouped attributes
+        for prefix in grouped_attrs.keys():
+            if prefix in cls.model_fields:
+                field = cls.model_fields[prefix]
+                field_type = field.annotation or field.type_
+        # Process grouped attributes
+        for prefix, data in grouped_attrs.items():
+            if prefix in cls.model_fields:
+                field = cls.model_fields[prefix]
+                field_type = field.annotation or field.type_
+                if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+                    attrs[prefix] = data
+
+        # Handle missing nested models that are required but have defaults in their definition
+        for field_name, field in cls.model_fields.items():
+            if field_name in attrs:
+                continue
+
+            field_type = field.annotation or field.type_
+            if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+                if field.is_required():
+                    attrs[field_name] = {}
+
         return cls(**attrs)
 
     def to_db(self) -> dict[str, Any]:
@@ -222,7 +245,13 @@ class StandardNode(BaseModel):
                     clean_value = [item.model_dump() for item in attr_value]
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
-                    data[attr_name] = attr_value.model_dump_json()
+                    # Flatten the dictionary
+                    model_dict = attr_value.model_dump()
+                    for sub_key, sub_value in model_dict.items():
+                        if isinstance(sub_value, list | dict):
+                            data[f"{attr_name}__{sub_key}"] = ujson.dumps(sub_value)
+                        else:
+                            data[f"{attr_name}__{sub_key}"] = sub_value
             elif issubclass(field_type, int | float | bool | str | UUID):
                 data[attr_name] = attr_value
             else:

@@ -366,17 +366,13 @@ class TestBranchQuery(TestInfrahubApp):
                             id
                             name {
                                 value
-                                meta {
-                                    updated_by
-                                    updated_at
-                                }
+                                updated_by
+                                updated_at
                             }
                             description {
                                 value
-                                meta {
-                                    updated_by
-                                    updated_at
-                                }
+                                updated_by
+                                updated_at
                             }
                         }
                     }
@@ -437,6 +433,8 @@ class TestBranchQuery(TestInfrahubApp):
                             }
                             description {
                                 value
+                                updated_by
+                                updated_at
                             }
                         }
                     }
@@ -454,5 +452,7 @@ class TestBranchQuery(TestInfrahubApp):
 
         data = updated_branch.data["InfrahubBranch"]["edges"][0]["node"]
         assert data["description"]["value"] == "updated description"
+        assert data["description"]["updated_by"] is not None
+        assert data["description"]["updated_at"] is not None
         assert data["meta"]["updated_by"] is not None
         assert data["meta"]["updated_at"] is not None

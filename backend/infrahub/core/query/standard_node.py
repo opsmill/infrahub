@@ -143,7 +143,7 @@ class StandardNodeGetListQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+    def _build_filters(self) -> list[str]:
         filters = []
         if self.ids:
             filters.append("n.uuid in $ids_value")
@@ -153,6 +153,10 @@ class StandardNodeGetListQuery(Query):
             self.params["name"] = self.node_name
         if self.raw_filter:
             filters.append(self.raw_filter)
+        return filters
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        filters = self._build_filters()
 
         where = ""
         if filters:
@@ -170,3 +174,15 @@ class StandardNodeGetListQuery(Query):
 
         self.return_labels = ["n"]
         self.order_by = [f"{db.get_id_function_name()}(n)"]
+
+
+class InfrahubBranchNodeGetListQueryBase(StandardNodeGetListQuery):
+    name = "infrahub_branch_node_list"
+
+    def _build_filters(self) -> list[str]:
+        filters = super()._build_filters()
+        if self.node_name:
+            filters.pop(filters.index("n.name = $name"))
+            filters.append("n.name__value = $name")
+            self.params["name"] = self.node_name
+        return filters
