@@ -164,7 +164,7 @@ async def handle_template_relationships(
             )
 
 
-async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) -> set[str]:
+async def get_profile_ids(db: InfrahubDatabase, obj: Node) -> set[str]:
     if not hasattr(obj, "profiles"):
         return set()
     profile_rels = await obj.profiles.get_relationships(db=db)
