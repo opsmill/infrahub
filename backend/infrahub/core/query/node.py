@@ -1162,24 +1162,25 @@ CALL (rel) {
             rel_name = result.get("rel_name")
             peer_id = result.get("peer_uuid")
             direction = str(result.get("direction"))
+
+            created_at = None
             if self.include_metadata & MetadataOptions.CREATED_AT:
                 created_at_str = result.get("created_at")
                 created_at = Timestamp(created_at_str) if created_at_str else None
-            else:
-                created_at = None
+
+            created_by_str = None
             if self.include_metadata & MetadataOptions.CREATED_BY:
                 created_by_str = result.get("created_by")
-            else:
-                created_by_str = None
+
+            updated_at = None
             if self.include_metadata & MetadataOptions.UPDATED_AT:
                 updated_at_str = result.get("updated_at")
                 updated_at = Timestamp(updated_at_str) if updated_at_str else None
-            else:
-                updated_at = None
+
+            updated_by_str = None
             if self.include_metadata & MetadataOptions.UPDATED_BY:
                 updated_by_str = result.get("updated_by")
-            else:
-                updated_by_str = None
+
             direction_enum = {
                 "inbound": RelationshipDirection.INBOUND,
                 "outbound": RelationshipDirection.OUTBOUND,
