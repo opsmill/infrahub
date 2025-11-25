@@ -97,6 +97,12 @@ class PeerWithRelationshipMetadata:
     is_visible: bool | None = None
 
 
+def _use_global_branch(schema: MainSchemaTypes) -> bool:
+    # only use the global branch alone if the schema is branch agnostic and it is a node schema
+    # if the schema is a generic, then its used_by schemas could be branch-aware
+    return bool(schema.branch is BranchSupportType.AGNOSTIC and schema.is_node_schema)
+
+
 class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     rel_type: str = "IS_RELATED"
 
@@ -489,15 +495,15 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         branch = self.get_branch_based_on_support_type()
 
         source_schema = db.schema.get(name=self.source_kind, branch=self.branch, duplicate=False)
-        if source_schema.branch is BranchSupportType.AGNOSTIC:
+        if _use_global_branch(schema=source_schema):
             source_branch = registry.get_global_branch()
         else:
-            source_branch = branch
+            source_branch = self.branch
         destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
-        if destination_schema.branch is BranchSupportType.AGNOSTIC:
+        if _use_global_branch(schema=destination_schema):
             destination_branch = registry.get_global_branch()
         else:
-            destination_branch = branch
+            destination_branch = self.branch
 
         delete_query = await RelationshipDeleteQuery.init(
             db=db,
@@ -1269,12 +1275,12 @@ class RelationshipManager:
         branch = self.get_branch_based_on_support_type()
 
         source_schema = db.schema.get(name=self.node.get_kind(), branch=self.branch, duplicate=False)
-        if source_schema.branch is BranchSupportType.AGNOSTIC:
+        if _use_global_branch(schema=source_schema):
             source_branch = registry.get_global_branch()
         else:
             source_branch = self.branch
         destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
-        if destination_schema.branch is BranchSupportType.AGNOSTIC:
+        if _use_global_branch(schema=destination_schema):
             destination_branch = registry.get_global_branch()
         else:
             destination_branch = self.branch
