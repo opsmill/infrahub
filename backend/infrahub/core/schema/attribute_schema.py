@@ -136,7 +136,7 @@ class AttributeSchema(GeneratedAttributeSchema):
         if isinstance(self.parameters, NumberPoolParameters) and not self.kind == "NumberPool":
             raise ValueError(f"NumberPoolParameters can't be used as parameters for {self.kind}")
 
-        if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea"]:
+        if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea", "List"]:
             raise ValueError(f"TextAttributeParameters can't be used as parameters for {self.kind}")
 
         if isinstance(self.parameters, ListAttributeParameters) and self.kind != "List":
