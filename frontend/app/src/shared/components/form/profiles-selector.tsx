@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { useEffect, useId } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -65,7 +65,9 @@ export const ProfilesSelector = ({
   const profilesList = kindList
     .map((profile) => {
       // Get the profile schema for the current kind
-      const profileSchema = profileSchemas.find((profileSchema) => profileSchema.name === profile);
+      const profileSchema = profileSchemas.find(
+        (profileSchema) => profileSchema.name === profile?.replace("Template", "")
+      );
 
       // Get attributes for query + form data
       const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
@@ -119,7 +121,7 @@ export const ProfilesSelector = ({
 
       onChange(defaultProfiles);
     }
-  }, [defaultValue, loading, profiles]);
+  }, [defaultValue, loading, profiles, value, onChange]);
 
   if (loading) return <LoadingIndicator className="p-4" />;
 
