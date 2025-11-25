@@ -32,7 +32,8 @@ export function ObjectHierarchyTreeLite({
   }
 
   const currentSelectedNode = data?.at(-1);
-  const parentNode = data?.find((node) => node.id === currentSelectedNode?.parent.node?.id);
+  const parentId = currentSelectedNode?.parent?.node?.id;
+  const parentNode = parentId && data ? data.find((node) => node.id === parentId) : undefined;
 
   // Fall back to full tree if there's an error (e.g., initial node was deleted),
   // no parent node found, or user requested full tree
