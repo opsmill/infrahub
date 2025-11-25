@@ -193,7 +193,7 @@ class NodeCreateAllQuery(NodeQuery):
                         pass
                     except ValueError:
                         # Relationship has not been initialized yet, it means the peer does not exist in db yet
-                        # typically because it will be allocated from a ressource pool. In that case, the peer
+                        # typically because it will be allocated from a resource pool. In that case, the peer
                         # will be fetched using `rel.resolve` later.
                         pass
 
@@ -698,6 +698,8 @@ class NodeListGetAttributeQuery(Query):
         return bool(self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY))
 
     def _add_source_to_query(self, branch_filter_str: str) -> None:
+        if not self._include_source:
+            return
         source_query = """
 CALL (a) {
     OPTIONAL MATCH (a)-[rel_source:HAS_SOURCE]-(source)
@@ -714,6 +716,8 @@ WITH *,
         self.return_labels.extend(["source", "rel_source"])
 
     def _add_owner_to_query(self, branch_filter_str: str) -> None:
+        if not self._include_owner:
+            return
         owner_query = """
 CALL (a) {
     OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
@@ -730,6 +734,8 @@ WITH *,
         self.return_labels.extend(["owner", "rel_owner"])
 
     def _add_created_metadata_to_query(self) -> None:
+        if not self._include_created_metadata:
+            return
         if self.branch.is_default or self.branch.is_global:
             last_created_query = """
 WITH *, a.created_at AS created_at, a.created_by AS created_by
@@ -742,6 +748,8 @@ WITH *, r1.from AS created_at, r1.from_user_id AS created_by
         self.return_labels.extend(["created_at", "created_by"])
 
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
+        if not self._include_updated_metadata:
+            return
         if self.branch.is_default or self.branch.is_global:
             last_updated_query = """
 WITH *, a.updated_at AS updated_at, a.updated_by AS updated_by
@@ -848,14 +856,10 @@ CALL (a) {
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
 
-        if self._include_source:
-            self._add_source_to_query(branch_filter_str=branch_filter)
-        if self._include_owner:
-            self._add_owner_to_query(branch_filter_str=branch_filter)
-        if self._include_created_metadata:
-            self._add_created_metadata_to_query()
-        if self._include_updated_metadata:
-            self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
+        self._add_source_to_query(branch_filter_str=branch_filter)
+        self._add_owner_to_query(branch_filter_str=branch_filter)
+        self._add_created_metadata_to_query()
+        self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
 
     def get_attributes_group_by_node(self) -> dict[str, NodeAttributesFromDB]:
         attrs_by_node: dict[str, NodeAttributesFromDB] = {}
@@ -933,12 +937,36 @@ class GroupedPeerNodes:
         self._rel_names_by_node_id: dict[str, set[str]] = defaultdict(set)
         # {(node_id, rel_name): {RelationshipDirection: {peer_id, ...}}}
         self._rel_directions_map: dict[tuple[str, str], dict[RelationshipDirection, set[str]]] = defaultdict(dict)
+        # {(node_id, rel_name, direction): {MetadataOptions: value}}
+        self._metadata_map: dict[
+            tuple[str, str, RelationshipDirection], dict[MetadataOptions, Timestamp | str | None]
+        ] = {}
 
-    def add_peer(self, node_id: str, rel_name: str, peer_id: str, direction: RelationshipDirection) -> None:
+    def add_peer(
+        self,
+        node_id: str,
+        rel_name: str,
+        peer_id: str,
+        direction: RelationshipDirection,
+        created_at: Timestamp | None = None,
+        created_by: str | None = None,
+        updated_at: Timestamp | None = None,
+        updated_by: str | None = None,
+    ) -> None:
         self._rel_names_by_node_id[node_id].add(rel_name)
         if direction not in self._rel_directions_map[node_id, rel_name]:
             self._rel_directions_map[node_id, rel_name][direction] = set()
         self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
+        if created_at is not None or created_by is not None or updated_at is not None or updated_by is not None:
+            self._metadata_map[node_id, rel_name, direction] = {}
+        if created_at is not None:
+            self._metadata_map[node_id, rel_name, direction][MetadataOptions.CREATED_AT] = created_at
+        if created_by is not None:
+            self._metadata_map[node_id, rel_name, direction][MetadataOptions.CREATED_BY] = created_by
+        if updated_at is not None:
+            self._metadata_map[node_id, rel_name, direction][MetadataOptions.UPDATED_AT] = updated_at
+        if updated_by is not None:
+            self._metadata_map[node_id, rel_name, direction][MetadataOptions.UPDATED_BY] = updated_by
 
     def get_peer_ids(self, node_id: str, rel_name: str, direction: RelationshipDirection) -> set[str]:
         if (node_id, rel_name) not in self._rel_directions_map:
@@ -955,11 +983,15 @@ class GroupedPeerNodes:
     def has_node(self, node_id: str) -> bool:
         return node_id in self._rel_names_by_node_id
 
+    def get_metadata_map(
+        self, node_id: str, rel_name: str, direction: RelationshipDirection
+    ) -> dict[MetadataOptions, Timestamp | str | None]:
+        return self._metadata_map.get((node_id, rel_name, direction), {})
+
 
 class NodeListGetRelationshipsQuery(Query):
     name: str = "node_list_get_relationship"
     type: QueryType = QueryType.READ
-    insert_return: bool = False
 
     def __init__(
         self,
@@ -967,13 +999,65 @@ class NodeListGetRelationshipsQuery(Query):
         outbound_identifiers: list[str] | None = None,
         inbound_identifiers: list[str] | None = None,
         bidirectional_identifiers: list[str] | None = None,
+        include_metadata: MetadataOptions = MetadataOptions.NONE,
         **kwargs,
     ):
         self.ids = ids
         self.outbound_identifiers = outbound_identifiers
         self.inbound_identifiers = inbound_identifiers
         self.bidirectional_identifiers = bidirectional_identifiers
+        self.include_metadata = include_metadata
         super().__init__(**kwargs)
+
+    def _add_created_metadata_to_query(self) -> None:
+        if self.branch.is_default or self.branch.is_global:
+            last_created_query = """
+WITH *, rel.created_at AS created_at, rel.created_by AS created_by
+            """
+        else:
+            last_created_query = """
+WITH *, CASE
+    WHEN r1.from < r2.from THEN [r1.from, r1.from_user_id]
+    ELSE [r2.from, r2.from_user_id]
+END AS created_details
+WITH *, created_details[0] AS created_at, created_details[1] AS created_by
+            """
+        self.add_to_query(last_created_query)
+        self.return_labels.extend(["created_at", "created_by"])
+
+    def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
+        if self.branch.is_default or self.branch.is_global:
+            last_updated_query = """
+WITH *, rel.updated_at AS updated_at, rel.updated_by AS updated_by
+            """
+        else:
+            last_updated_query = """
+CALL (rel) {
+    MATCH (rel)-[r]-(property)
+    WHERE %(branch_filter)s
+    WITH CASE
+        WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
+        WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
+        ELSE [NULL, NULL]
+    END AS from_details,
+    CASE
+        WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to, r.to_user_id]
+        WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
+        ELSE [NULL, NULL]
+    END AS to_details
+    WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
+    WITH from_details_list + to_details_list AS details_list
+    UNWIND details_list AS one_details
+    WITH one_details[0] AS updated_at, one_details[1] AS updated_by
+    WHERE updated_at IS NOT NULL
+    WITH updated_at, updated_by
+    ORDER BY updated_at DESC
+    LIMIT 1
+    RETURN updated_at, updated_by
+}
+            """ % {"branch_filter": branch_filter_str}
+        self.add_to_query(last_updated_query)
+        self.return_labels.extend(["updated_at", "updated_by"])
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
@@ -1006,9 +1090,9 @@ class NodeListGetRelationshipsQuery(Query):
                 LIMIT 1
                 WITH r1, r AS r2
                 WHERE r2.status = "active"
-                RETURN 1 AS is_active
+                RETURN r1, r2
             }
-            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "inbound" as direction
+            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, "inbound" as direction, r1, r2
             UNION
             WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)-[:IS_RELATED]->(peer)
@@ -1030,9 +1114,9 @@ class NodeListGetRelationshipsQuery(Query):
                 LIMIT 1
                 WITH r1, r AS r2
                 WHERE r2.status = "active"
-                RETURN 1 AS is_active
+                RETURN r1, r2
             }
-            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "outbound" as direction
+            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, "outbound" as direction, r1, r2
             UNION
             WITH n
             MATCH (n)-[:IS_RELATED]->(rel:Relationship)<-[:IS_RELATED]-(peer)
@@ -1054,15 +1138,22 @@ class NodeListGetRelationshipsQuery(Query):
                 LIMIT 1
                 WITH r1, r AS r2
                 WHERE r2.status = "active"
-                RETURN 1 AS is_active
+                RETURN r1, r2
             }
-            RETURN n.uuid AS n_uuid, rel.name AS rel_name, peer.uuid AS peer_uuid, "bidirectional" as direction
+            RETURN n.uuid AS n_uuid, rel, peer.uuid AS peer_uuid, "bidirectional" as direction, r1, r2
         }
-        RETURN DISTINCT n_uuid, rel_name, peer_uuid, direction
         """ % {"filters": rels_filter}
         self.add_to_query(query)
+
+        self.add_to_query("WITH DISTINCT n_uuid, rel, peer_uuid, direction")
         self.order_by = ["n_uuid", "rel_name", "peer_uuid", "direction"]
         self.return_labels = ["n_uuid", "rel_name", "peer_uuid", "direction"]
+
+        if self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY):
+            self._add_created_metadata_to_query()
+        if self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY):
+            self._add_updated_metadata_to_query(branch_filter_str=rels_filter)
+        self.add_to_query("WITH *, rel.name AS rel_name")
 
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
         gpn = GroupedPeerNodes()
@@ -1071,12 +1162,40 @@ class NodeListGetRelationshipsQuery(Query):
             rel_name = result.get("rel_name")
             peer_id = result.get("peer_uuid")
             direction = str(result.get("direction"))
+
+            created_at = None
+            if self.include_metadata & MetadataOptions.CREATED_AT:
+                created_at_str = result.get("created_at")
+                created_at = Timestamp(created_at_str) if created_at_str else None
+
+            created_by_str = None
+            if self.include_metadata & MetadataOptions.CREATED_BY:
+                created_by_str = result.get("created_by")
+
+            updated_at = None
+            if self.include_metadata & MetadataOptions.UPDATED_AT:
+                updated_at_str = result.get("updated_at")
+                updated_at = Timestamp(updated_at_str) if updated_at_str else None
+
+            updated_by_str = None
+            if self.include_metadata & MetadataOptions.UPDATED_BY:
+                updated_by_str = result.get("updated_by")
+
             direction_enum = {
                 "inbound": RelationshipDirection.INBOUND,
                 "outbound": RelationshipDirection.OUTBOUND,
                 "bidirectional": RelationshipDirection.BIDIR,
             }.get(direction)
-            gpn.add_peer(node_id=node_id, rel_name=rel_name, peer_id=peer_id, direction=direction_enum)
+            gpn.add_peer(
+                node_id=node_id,
+                rel_name=rel_name,
+                peer_id=peer_id,
+                direction=direction_enum,
+                created_at=created_at,
+                created_by=created_by_str,
+                updated_at=updated_at,
+                updated_by=updated_by_str,
+            )
 
         return gpn
 
