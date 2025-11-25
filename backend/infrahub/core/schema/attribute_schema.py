@@ -135,7 +135,7 @@ class AttributeSchema(GeneratedAttributeSchema):
         if isinstance(self.parameters, NumberPoolParameters) and not self.kind == "NumberPool":
             raise ValueError(f"NumberPoolParameters can't be used as parameters for {self.kind}")
 
-        if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea"]:
+        if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea", "List"]:
             raise ValueError(f"TextAttributeParameters can't be used as parameters for {self.kind}")
 
         return self
@@ -263,9 +263,28 @@ class NumberAttributeSchema(AttributeSchema):
     )
 
 
+class ListAttributeSchema(AttributeSchema):
+    parameters: TextAttributeParameters = Field(
+        default_factory=TextAttributeParameters,
+        description="Extra parameters specific to list attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    @model_validator(mode="after")
+    def reconcile_parameters(self) -> Self:
+        if self.regex != self.parameters.regex:
+            final_regex = self.parameters.regex if self.parameters.regex is not None else self.regex
+            self.regex = self.parameters.regex = final_regex
+        return self
+
+    def get_regex(self) -> str | None:
+        return self.parameters.regex
+
+
 attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
     "NumberPool": NumberPoolSchema,
     "Text": TextAttributeSchema,
     "TextArea": TextAttributeSchema,
+    "List": ListAttributeSchema,
     "Number": NumberAttributeSchema,
 }

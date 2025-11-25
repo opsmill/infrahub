@@ -378,3 +378,47 @@ def test_attribute_schema_kind_change_with_parameters_object() -> None:
 
     assert number_attr.kind == "Number"
     assert isinstance(number_attr.parameters, NumberAttributeParameters)
+
+def test_list_attribute_with_regex_parameter() -> None:
+    node_schema: dict[str, Any] = {
+        "name": "Node",
+        "namespace": "Testing",
+        "attributes": [
+            {"name": "name", "kind": "Text"},
+            {
+                "name": "protocols",
+                "kind": "List",
+                "optional": True,
+                "parameters": {"regex": "ssh|ping|telnet"},
+            },
+        ],
+    }
+
+    node = NodeSchema(**node_schema)
+    protocols_attribute = node.get_attribute("protocols")
+    assert isinstance(protocols_attribute.parameters, TextAttributeParameters)
+    assert protocols_attribute.parameters.regex == "ssh|ping|telnet"
+    assert protocols_attribute.get_regex() == "ssh|ping|telnet"
+
+
+def test_list_attribute_regex_reconciliation() -> None:
+    """Test that regex in parameters and at schema level are reconciled."""
+    node_schema: dict[str, Any] = {
+        "name": "Node",
+        "namespace": "Testing",
+        "attributes": [
+            {
+                "name": "protocols",
+                "kind": "List",
+                "optional": True,
+                "parameters": {"regex": "ssh|ping|telnet"},
+                "regex": None,
+            },
+        ],
+    }
+
+    node = NodeSchema(**node_schema)
+    protocols_attribute = node.get_attribute("protocols")
+    assert isinstance(protocols_attribute.parameters, TextAttributeParameters)
+    assert protocols_attribute.regex == "ssh|ping|telnet"
+    assert protocols_attribute.parameters.regex == "ssh|ping|telnet"

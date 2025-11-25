@@ -16,6 +16,7 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
         "NumberPool": NumberPoolParameters,
         "Text": TextAttributeParameters,
         "TextArea": TextAttributeParameters,
+        "List": TextAttributeParameters,
         "Number": NumberAttributeParameters,
     }
     return param_classes.get(kind, AttributeParameters)
