@@ -8,9 +8,6 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.log import get_logger
 
-# flake8: noqa
-
-
 log = get_logger()
 
 TAGS = [
@@ -53,28 +50,12 @@ QUERY_MERGE = ["MERGE (bool_true:Boolean { value: true })", "MERGE (bool_false:B
 QUERY_END = ["RETURN root"]
 
 
-async def execute_query(db: InfrahubDatabase, query: List[str], deps: List[Node] = None):
-    deps_query = []
-
-    if deps:
-        deps_query = [obj._query_bulk_get() for obj in deps]
-
-    start_time = time.time()
-    query_str = "\n".join(QUERY_START + deps_query + QUERY_MERGE + query + QUERY_END)
-    result = await db.execute_query(query=query_str)
-    duration = time.time() - start_time
-    log.info(f"Executed query in {duration:.3f} sec")
-
-    return result
-
-
 async def load_data(
     db: InfrahubDatabase,
     nbr_repository: int = 10,
     nbr_query: int = 1000,
     batch_size: int = 5,
-    concurrent_execution: int = 2,
-):
+) -> None:
     """Generate a large number of GraphQLQuery associated with some Tags and some Repositories
     All the Tags and the repositories will be created at once but the GraphQLQuery will be created in batch.
     The size of the batch and the number of concurrent session can be controlled with "batch_size" and "concurrent_execution"
@@ -89,9 +70,9 @@ async def load_data(
     repository = {}
     gqlquery = {}
 
-    tag_schema = registry.schema.get(name=InfrahubKind.TAG, branch=default_branch)
-    repository_schema = registry.schema.get(name=InfrahubKind.REPOSITORY, branch=default_branch)
-    gqlquery_schema = registry.schema.get(name=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
+    tag_schema = registry.schema.get_node_schema(name=InfrahubKind.TAG, branch=default_branch)
+    repository_schema = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    gqlquery_schema = registry.schema.get_node_schema(name=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
 
     # -------------------------------------------------------------------------------------
     # TAG
@@ -120,7 +101,7 @@ async def load_data(
     if nbr_query % batch_size:
         nbr_tasks += 1
 
-    for idx in range(0, nbr_query):
+    for _idx in range(nbr_query):
         random_tags = [tags[tag] for tag in random.choices(TAGS, k=3)]
         random_repo = repository[random.choice(list(repository.keys()))]
 

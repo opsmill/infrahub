@@ -165,7 +165,7 @@ exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
     "^backend/tests/unit",
-    "^backend/tests/test_data",
+    "^backend/tests/test_data/dataset03.py",
     "^backend/tests/query_benchmark"
 ]
 
