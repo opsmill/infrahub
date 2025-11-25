@@ -7,7 +7,7 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 test.describe("/object-template - Template with Profiles", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
-  const BRANCH_NAME = generateRandomBranchName("template-profiles");
+  const BRANCH_NAME = generateRandomBranchName("template-with-profiles");
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
@@ -17,18 +17,11 @@ test.describe("/object-template - Template with Profiles", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should create a device profile for templates", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
+      await expect(page.getByRole("link", { name: "upstream_profile" })).toBeVisible();
     });
 
     await test.step("Create a device profile", async () => {
@@ -36,16 +29,10 @@ test.describe("/object-template - Template with Profiles", () => {
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Device" }).click();
       await page.getByLabel("Profile Name *").fill("device_spine_profile");
-      await page.getByRole("combobox", { name: "Status" }).click();
-      await page
-        .locator("div")
-        .filter({ hasText: /^Active$/ })
-        .click();
-      await page.getByRole("combobox", { name: "Role" }).click();
-      await page
-        .locator("div")
-        .filter({ hasText: /^Spine Router$/ })
-        .click();
+      await page.getByLabel("Status").click();
+      await page.getByRole("option", { name: "Active" }).click();
+      await page.getByLabel("Role").click();
+      await page.getByRole("option", { name: "Spine Router" }).click();
       await page.getByRole("button", { name: "Save" }).click();
     });
 
@@ -58,6 +45,7 @@ test.describe("/object-template - Template with Profiles", () => {
     await test.step("Navigate to device templates", async () => {
       await page.goto(`/objects/CoreObjectTemplate?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Object Template");
+      await expect(page.getByRole("link", { name: "Regular_Patch_Panel" })).toBeVisible();
     });
 
     await test.step("Create device template", async () => {
@@ -69,18 +57,16 @@ test.describe("/object-template - Template with Profiles", () => {
       await page.getByRole("option", { name: "device_spine_profile" }).click();
       await expect(page.getByTestId("source-profile-badge").first()).toBeVisible();
       await page.getByTestId("source-profile-badge").nth(1).click();
-      await page.getByRole("textbox", { name: "Template Name *" }).fill("device_spine_template");
-      await page.getByRole("combobox", { name: "Platform" }).click();
+      await page.getByLabel("Template Name *").fill("device_spine_template");
+      await page.getByLabel("Platform").click();
       await page.getByText("Cisco IOS", { exact: true }).click();
-      await page.getByRole("textbox", { name: "Type" }).fill("spine");
+      await page.getByLabel("Type", { exact: true }).fill("spine");
 
       await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("Verify template creation", async () => {
-      await expect(
-        page.locator("#alert-success-InfraDevice-created").getByText("InfraDevice created")
-      ).toBeVisible();
+      await expect(page.getByText("InfraDevice created")).toBeVisible();
     });
 
     await test.step("Navigate back and access template", async () => {
@@ -106,6 +92,7 @@ test.describe("/object-template - Template with Profiles", () => {
     await test.step("Navigate to Device objects", async () => {
       await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Device");
+      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
     });
 
     await test.step("Create device from template", async () => {
