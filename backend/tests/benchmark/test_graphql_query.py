@@ -96,7 +96,9 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
     )
 
 
-def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04) -> None:
+def test_query_rel_many(
+    exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04: None
+) -> None:
     query = """
     query {
         CoreGraphQLQuery {
