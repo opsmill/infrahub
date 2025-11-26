@@ -115,6 +115,47 @@ class TestRelationshipMetadata:
             None,
         )
 
+        # validate with get_many as well
+        person = await NodeManager.get_one(
+            db=db,
+            branch=branch,
+            id=self.person_id,
+            prefetch_relationships=True,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
+        )
+        updated_primary_tag_rel = await person.primary_tag.get(db=db)
+        self._validate_rel_metadata(
+            updated_primary_tag_rel,
+            update_time_range,
+            updated_by,
+            # get_many does not support source and owner on rels
+            None,
+            None,
+        )
+        # Validate tags relationships metadata
+        updated_tags_rels = await person.tags.get(db=db)
+        assert len(updated_tags_rels) == 2
+        # Find the black and red tag relationships
+        updated_black_tag_rel = [r for r in updated_tags_rels if r.get_peer_id() == self.black_tag_id][0]
+        updated_red_tag_rel = [r for r in updated_tags_rels if r.get_peer_id() == self.red_tag_id][0]
+        # validate black tag updates
+        self._validate_rel_metadata(
+            updated_black_tag_rel,
+            update_time_range,
+            updated_by,
+            # get_many does not support source and owner on rels
+            None,
+            None,
+        )
+        # validate red tag has no updates
+        self._validate_rel_metadata(
+            updated_red_tag_rel,
+            create_time_range,
+            SYSTEM_USER_ID,
+            None,
+            None,
+        )
+
     async def test_relationship_properties_and_metadata_on_branch(
         self,
         db: InfrahubDatabase,

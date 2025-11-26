@@ -937,9 +937,9 @@ class GroupedPeerNodes:
         self._rel_names_by_node_id: dict[str, set[str]] = defaultdict(set)
         # {(node_id, rel_name): {RelationshipDirection: {peer_id, ...}}}
         self._rel_directions_map: dict[tuple[str, str], dict[RelationshipDirection, set[str]]] = defaultdict(dict)
-        # {(node_id, rel_name, direction): {MetadataOptions: value}}
+        # {(node_id, rel_name, direction, peer_Id): {MetadataOptions: value}}
         self._metadata_map: dict[
-            tuple[str, str, RelationshipDirection], dict[MetadataOptions, Timestamp | str | None]
+            tuple[str, str, RelationshipDirection, str], dict[MetadataOptions, Timestamp | str | None]
         ] = {}
 
     def add_peer(
@@ -957,16 +957,17 @@ class GroupedPeerNodes:
         if direction not in self._rel_directions_map[node_id, rel_name]:
             self._rel_directions_map[node_id, rel_name][direction] = set()
         self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
+        key = (node_id, rel_name, direction, peer_id)
         if created_at is not None or created_by is not None or updated_at is not None or updated_by is not None:
-            self._metadata_map[node_id, rel_name, direction] = {}
+            self._metadata_map[key] = {}
         if created_at is not None:
-            self._metadata_map[node_id, rel_name, direction][MetadataOptions.CREATED_AT] = created_at
+            self._metadata_map[key][MetadataOptions.CREATED_AT] = created_at
         if created_by is not None:
-            self._metadata_map[node_id, rel_name, direction][MetadataOptions.CREATED_BY] = created_by
+            self._metadata_map[key][MetadataOptions.CREATED_BY] = created_by
         if updated_at is not None:
-            self._metadata_map[node_id, rel_name, direction][MetadataOptions.UPDATED_AT] = updated_at
+            self._metadata_map[key][MetadataOptions.UPDATED_AT] = updated_at
         if updated_by is not None:
-            self._metadata_map[node_id, rel_name, direction][MetadataOptions.UPDATED_BY] = updated_by
+            self._metadata_map[key][MetadataOptions.UPDATED_BY] = updated_by
 
     def get_peer_ids(self, node_id: str, rel_name: str, direction: RelationshipDirection) -> set[str]:
         if (node_id, rel_name) not in self._rel_directions_map:
@@ -984,9 +985,9 @@ class GroupedPeerNodes:
         return node_id in self._rel_names_by_node_id
 
     def get_metadata_map(
-        self, node_id: str, rel_name: str, direction: RelationshipDirection
+        self, node_id: str, rel_name: str, direction: RelationshipDirection, peer_id: str
     ) -> dict[MetadataOptions, Timestamp | str | None]:
-        return self._metadata_map.get((node_id, rel_name, direction), {})
+        return self._metadata_map.get((node_id, rel_name, direction, peer_id), {})
 
 
 class NodeListGetRelationshipsQuery(Query):
@@ -1010,6 +1011,8 @@ class NodeListGetRelationshipsQuery(Query):
         super().__init__(**kwargs)
 
     def _add_created_metadata_to_query(self) -> None:
+        if not (self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY)):
+            return
         if self.branch.is_default or self.branch.is_global:
             last_created_query = """
 WITH *, rel.created_at AS created_at, rel.created_by AS created_by
@@ -1026,6 +1029,8 @@ WITH *, created_details[0] AS created_at, created_details[1] AS created_by
         self.return_labels.extend(["created_at", "created_by"])
 
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
+        if not (self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY)):
+            return
         if self.branch.is_default or self.branch.is_global:
             last_updated_query = """
 WITH *, rel.updated_at AS updated_at, rel.updated_by AS updated_by
@@ -1145,15 +1150,14 @@ CALL (rel) {
         """ % {"filters": rels_filter}
         self.add_to_query(query)
 
-        self.add_to_query("WITH DISTINCT n_uuid, rel, peer_uuid, direction")
         self.order_by = ["n_uuid", "rel_name", "peer_uuid", "direction"]
-        self.return_labels = ["n_uuid", "rel_name", "peer_uuid", "direction"]
+        self.return_labels = ["n_uuid", "peer_uuid", "direction"]
 
-        if self.include_metadata & (MetadataOptions.CREATED_AT | MetadataOptions.CREATED_BY):
-            self._add_created_metadata_to_query()
-        if self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY):
-            self._add_updated_metadata_to_query(branch_filter_str=rels_filter)
-        self.add_to_query("WITH *, rel.name AS rel_name")
+        self._add_created_metadata_to_query()
+        self._add_updated_metadata_to_query(branch_filter_str=rels_filter)
+        return_labels_str = ", ".join(sorted(self.return_labels))
+        self.add_to_query(f"WITH DISTINCT {return_labels_str}, rel.name AS rel_name")
+        self.return_labels.append("rel_name")
 
     def get_peers_group_by_node(self) -> GroupedPeerNodes:
         gpn = GroupedPeerNodes()

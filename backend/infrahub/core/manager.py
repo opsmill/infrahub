@@ -1359,8 +1359,12 @@ class NodeManager:
 
             rel_peers_with_metadata: list[PeerWithRelationshipMetadata] = []
             for peer in rel_peers:
+                peer_id = peer.get_id() if isinstance(peer, Node) else peer
                 metadata_map = grouped_peer_nodes.get_metadata_map(
-                    node_id=node.get_id(), rel_name=rel_schema.get_identifier(), direction=rel_schema.direction
+                    node_id=node.get_id(),
+                    rel_name=rel_schema.get_identifier(),
+                    direction=rel_schema.direction,
+                    peer_id=peer_id,
                 )
                 peer_with_metadata = PeerWithRelationshipMetadata(peer=peer)
                 if not metadata_map:
