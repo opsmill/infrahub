@@ -9,6 +9,8 @@ import { classNames } from "@/shared/utils/common";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export const TaskHomepageItem = ({ id, title, branch, updated_at, related_nodes }: TaskNode) => {
   return (
@@ -25,21 +27,26 @@ export const TaskHomepageItem = ({ id, title, branch, updated_at, related_nodes 
 
       {related_nodes && related_nodes.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
-          <Icon icon="mdi:cube-outline" className="shrink-0 text-gray-500" />
-          {related_nodes.map((node) =>
-            node ? (
+          {related_nodes.map((node) => {
+            if (!node) return null;
+
+            const { schema } = getSchema(node.kind);
+            const icon = getSchemaIcon(schema);
+
+            return (
               <Link
                 key={node.id}
                 className={classNames(
                   focusVisibleStyle,
-                  "rounded px-1 py-0.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-custom-blue-700"
+                  "flex items-center gap-1 rounded px-1 py-0.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-custom-blue-700"
                 )}
                 to={getObjectDetailsUrl(node.kind, node.id)}
               >
+                <Icon icon={icon} className="shrink-0" />
                 <NodeLabel id={node.id} kind={node.kind} branch={branch} />
               </Link>
-            ) : null
-          )}
+            );
+          })}
         </div>
       )}
 
