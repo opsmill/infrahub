@@ -17,11 +17,11 @@ import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
 import { REPOSITORY_SYNC_STATUS_ATTRIBUTE_NAME } from "@/entities/repository/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-interface GitRepositoriesProps {
+interface GitRepositoriesWidgetProps {
   className?: string;
 }
 
-export const GitRepositories = ({ className }: GitRepositoriesProps) => {
+export const GitRepositoriesWidget = ({ className }: GitRepositoriesWidgetProps) => {
   const { schema } = useSchema(GENERIC_REPOSITORY_KIND);
 
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({

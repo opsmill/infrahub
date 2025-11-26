@@ -94,7 +94,7 @@ Today, in some places in the UI, we are using the HFID of objects to display the
 ## Refactor profiles
 
 Profiles have been reworked for performance and future flexibility.
-Previously, attribute values derived from profiles were resolved dynamically at read time, which could impact performance at scale. With 1.5.0b0:
+Previously, attribute values derived from profiles were resolved dynamically at read time, which could impact performance at scale. With 1.5.0:
 
 - Attribute values influenced by profiles are now computed and stored at write time (create/update object or profile).
 - Reads no longer have to compute derived values, improving query performance and predictability.

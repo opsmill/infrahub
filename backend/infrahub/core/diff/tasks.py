@@ -8,6 +8,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.models import RequestDiffUpdate  # noqa: TC001  needed for prefect flow
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import BranchNotFoundError
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_database, get_workflow
 from infrahub.workflows.catalogue import DIFF_REFRESH
@@ -24,7 +25,11 @@ async def update_diff(model: RequestDiffUpdate) -> None:
     async with database.start_session(read_only=False) as db:
         component_registry = get_component_registry()
         base_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=db, branch=model.branch_name)
+        try:
+            diff_branch = await registry.get_branch(db=db, branch=model.branch_name)
+        except BranchNotFoundError:
+            log.warn(f"Branch {model.branch_name} not found, skipping diff update")
+            return
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
 

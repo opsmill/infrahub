@@ -2,4 +2,4 @@
 
 git pull
 git submodule update
-poetry run invoke demo.start --wait
+uv run invoke demo.start --wait

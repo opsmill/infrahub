@@ -22,14 +22,14 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface Props {
   objectname: string;
-  objectid: string;
+  objectId: string;
   closeDrawer: () => void;
   onUpdateComplete?: () => void;
   formStructure?: DynamicFieldData[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const { objectname, objectid, closeDrawer, onUpdateComplete } = props;
+  const { objectname, objectId, closeDrawer, onUpdateComplete } = props;
 
   const { schema } = useSchema(objectname);
 
@@ -40,7 +40,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const query = gql(
     generateObjectEditFormQuery({
       schema,
-      objectId: objectid,
+      objectId,
     })
   );
 
@@ -78,7 +78,7 @@ export default function ObjectItemEditComponent(props: Props) {
         const mutationString = updateObjectWithId({
           kind: schema?.kind,
           data: stringifyWithoutQuotes({
-            id: objectid,
+            id: objectId,
             ...updatedObject,
             ...(areProfilesUpdated ? { profiles: profilesId } : {}),
           }),

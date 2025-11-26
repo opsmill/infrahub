@@ -28,7 +28,7 @@ export const useObjectDetails = (schema: ModelSchema, objectId: string) => {
           taskKind: TASK_OBJECT,
           columns,
           relationshipsTabs,
-          objectid: objectId,
+          objectId,
           // Do not query profiles on profiles nodes
           queryProfiles:
             !profileGenericSchema?.used_by?.includes(schema?.kind!) &&

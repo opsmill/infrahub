@@ -141,7 +141,7 @@ export function RelationshipActionsCell({
               await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
               setShowEditForm(false);
             }}
-            objectid={relationshipId}
+            objectId={relationshipId}
             objectname={relationshipKind}
           />
         </SlideOver>

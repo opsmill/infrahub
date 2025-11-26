@@ -151,4 +151,9 @@ class RebaseBranchDeleteRelationshipQuery(Query):
 
 
 class BranchNodeGetListQuery(StandardNodeGetListQuery):
-    raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
+    def __init__(self, exclude_global: bool = False, **kwargs: Any) -> None:
+        self.raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
+        if exclude_global:
+            self.raw_filter += f" AND n.name <> '{GLOBAL_BRANCH_NAME}'"
+
+        super().__init__(**kwargs)
