@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { BookOpen, ExternalLink, FileText } from "lucide-react";
+import { BookOpen, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Separator } from "@/shared/components/aria/separator";
@@ -21,16 +21,6 @@ export const GettingStarted = () => {
             rel="noopener noreferrer"
           >
             <BookOpen className="size-4 text-gray-400" /> Documentation
-            <ExternalLink className="size-4 text-gray-400" />
-          </LinkButton>
-          <LinkButton
-            variant={"outline"}
-            className="flex items-center gap-2"
-            to={"https://docs.infrahub.app/tutorials/getting-started/"}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <FileText className="size-4 text-gray-400" /> Tutorials
             <ExternalLink className="size-4 text-gray-400" />
           </LinkButton>
         </div>
