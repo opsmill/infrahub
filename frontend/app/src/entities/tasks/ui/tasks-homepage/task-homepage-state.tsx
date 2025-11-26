@@ -7,9 +7,15 @@ const TASK_LIMIT = 5;
 
 interface TaskHomepageStateProps {
   states: string[];
+  emptyTitle?: string;
+  emptySubtitle?: string;
 }
 
-export const TaskHomepageState = ({ states }: TaskHomepageStateProps) => {
+export const TaskHomepageState = ({
+  states,
+  emptyTitle = "No tasks",
+  emptySubtitle = "Nothing to display",
+}: TaskHomepageStateProps) => {
   const { data, error, isPending } = useGetTasksHomepage({ states, limit: TASK_LIMIT });
 
   if (isPending) {
@@ -29,8 +35,8 @@ export const TaskHomepageState = ({ states }: TaskHomepageStateProps) => {
   if (!data.length) {
     return (
       <EmptyHomeCard
-        title="No tasks"
-        subtitle="Tasks will appear here after you start a migration or assign a workflow"
+        title={emptyTitle}
+        subtitle={emptySubtitle}
         className="w-full text-center text-gray-400"
       />
     );

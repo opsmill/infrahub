@@ -37,27 +37,47 @@ export const TasksWidget = ({ className }: TasksWidgetProps) => {
       <HomeCard.Content className="grid grid-cols-1 gap-2 lg:grid-cols-5">
         <TaskHomepageColumn>
           <TaskHomepageColumnHeader variant={"green"}>COMPLETED</TaskHomepageColumnHeader>
-          <TaskHomepageState states={[TASK_STATE_COMPLETED]} />
+          <TaskHomepageState
+            states={[TASK_STATE_COMPLETED]}
+            emptyTitle="No completed tasks"
+            emptySubtitle="Finished tasks will appear here"
+          />
         </TaskHomepageColumn>
 
         <TaskHomepageColumn>
           <TaskHomepageColumnHeader variant={"blue"}>RUNNING</TaskHomepageColumnHeader>
-          <TaskHomepageState states={[TASK_STATE_RUNNING]} />
+          <TaskHomepageState
+            states={[TASK_STATE_RUNNING]}
+            emptyTitle="All clear"
+            emptySubtitle="No tasks are currently running"
+          />
         </TaskHomepageColumn>
 
         <TaskHomepageColumn>
           <TaskHomepageColumnHeader variant={"yellow"}>PENDING</TaskHomepageColumnHeader>
-          <TaskHomepageState states={[TASK_STATE_PENDING]} />
+          <TaskHomepageState
+            states={[TASK_STATE_PENDING]}
+            emptyTitle="Queue is empty"
+            emptySubtitle="No tasks waiting to be processed"
+          />
         </TaskHomepageColumn>
 
         <TaskHomepageColumn>
           <TaskHomepageColumnHeader variant={"red"}>FAILED</TaskHomepageColumnHeader>
-          <TaskHomepageState states={[TASK_STATE_FAILED]} />
+          <TaskHomepageState
+            states={[TASK_STATE_FAILED]}
+            emptyTitle="No failures"
+            emptySubtitle="All tasks completed successfully"
+          />
         </TaskHomepageColumn>
 
         <TaskHomepageColumn>
           <TaskHomepageColumnHeader variant={"gray"}>MORE</TaskHomepageColumnHeader>
-          <TaskHomepageState states={MORE_TASKS_STATES} />
+          <TaskHomepageState
+            states={MORE_TASKS_STATES}
+            emptyTitle="Nothing else"
+            emptySubtitle="No other tasks to display"
+          />
         </TaskHomepageColumn>
       </HomeCard.Content>
     </HomeCard>
