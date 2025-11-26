@@ -23,7 +23,6 @@ const buildRelationshipOneData = (override: Partial<RelationshipOneType>): Relat
   properties: {
     updated_at: "2024-07-17T17:59:05.309135+00:00",
     is_protected: null,
-    is_visible: true,
     source: null,
     owner: null,
     __typename: "RelationshipProperty",

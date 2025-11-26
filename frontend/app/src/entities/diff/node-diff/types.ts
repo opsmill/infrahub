@@ -14,7 +14,6 @@ export type PropertyType =
   | "HAS_VALUE"
   | "HAS_OWNER"
   | "HAS_SOURCE"
-  | "IS_VISIBLE"
   | "IS_PROTECTED"
   | "IS_RELATED";
 

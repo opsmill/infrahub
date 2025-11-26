@@ -1,6 +1,6 @@
 import type { NodeSchema } from "@/entities/schema/types";
 
-const metadataFields = ["source", "owner", "is_visible", "is_protected"];
+const metadataFields = ["source", "owner", "is_protected"];
 
 const isValueValid = (value: any) => {
   if (value === undefined) {

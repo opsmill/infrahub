@@ -35,7 +35,6 @@ export const addAttributesToRequest = (
         is_default: true,
         is_from_profile: true,
         is_protected: true,
-        is_visible: true,
         source: {
           id: true,
           hfid: true,
@@ -80,7 +79,6 @@ export const addRelationshipsToRequest = (
     },
     ...(withMetadata && {
       properties: {
-        is_visible: true,
         is_protected: true,
         updated_at: true,
         source: {
