@@ -24,7 +24,7 @@ const NodeEventTitleContent = ({ primary_node, event, branch }: NodeMutatedEvent
       to={getObjectDetailsUrl(primary_node.kind, primary_node.id, [
         { name: QSP.BRANCH, value: branch },
       ])}
-      className="min-w-0 flex-1 cursor-pointer overflow-hidden truncate rounded-md"
+      className="min-w-0 flex-1 cursor-pointer truncate rounded-md"
     >
       <NodeLabel id={primary_node.id} kind={primary_node.kind} branch={branch} />
     </Link>
@@ -38,7 +38,13 @@ export const NodeEventTitle = (props: NodeMutatedEvent) => {
 
   return (
     <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
-      {account_id ? <NodeLabel id={account_id} kind="CoreAccount" branch={branch} /> : "-"}
+      {account_id ? (
+        <span className="max-w-[200px] shrink-0 truncate">
+          <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
+        </span>
+      ) : (
+        "-"
+      )}
 
       <span className="whitespace-nowrap text-gray-600">{NODE_EVENTS_MAPPING[event] ?? event}</span>
 
