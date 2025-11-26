@@ -12,8 +12,8 @@ import { BreadcrumbItemObject } from "@/shared/components/layout/breadcrumb-navi
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
-import type { NodeCoreWithParent } from "@/entities/nodes/types";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+import type { NodeCoreWithParent } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

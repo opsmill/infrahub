@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
-test.describe.only("/ipam - IP Namespace", () => {
+test.describe("/ipam - IP Namespace", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
@@ -148,10 +148,10 @@ test.describe.only("/ipam - IP Namespace", () => {
 
       // validate breadcrumb
       const breadcrumb = page.getByTestId("breadcrumb-navigation");
-      await expect(breadcrumb.getByRole('link', { name: '11.0.0.0/8' })).toBeVisible();
-      await breadcrumb.getByRole('button', { name: 'Select a different IP Prefix' }).click();
+      await expect(breadcrumb.getByRole("link", { name: "11.0.0.0/8" })).toBeVisible();
+      await breadcrumb.getByRole("button", { name: "Select a different IP Prefix" }).click();
       await expect(page.getByRole("option")).toHaveCount(2);
-      await page.getByPlaceholder('Search...').press('Escape');
+      await page.getByPlaceholder("Search...").press("Escape");
 
       await page.getByRole("link", { name: "Children" }).click();
       await page.getByTestId("create-object-button").click();
@@ -174,10 +174,10 @@ test.describe.only("/ipam - IP Namespace", () => {
 
       // validate breadcrumb
       const breadcrumb = page.getByTestId("breadcrumb-navigation");
-      await expect(breadcrumb.getByRole('link', { name: '11.0.0.0/10' })).toBeVisible();
-      await breadcrumb.getByRole('button', { name: 'Select a different IP Prefix' }).last().click();
+      await expect(breadcrumb.getByRole("link", { name: "11.0.0.0/10" })).toBeVisible();
+      await breadcrumb.getByRole("button", { name: "Select a different IP Prefix" }).last().click();
       await expect(page.getByRole("option")).toHaveCount(1);
-      await page.getByPlaceholder('Search...').press('Escape');
+      await page.getByPlaceholder("Search...").press("Escape");
 
       await page.getByTestId("object-details-menu").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();

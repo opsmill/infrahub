@@ -9,8 +9,8 @@ import { Col, Row } from "@/shared/components/container";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { NodeCore } from "@/entities/nodes/types";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -89,7 +89,7 @@ export function BreadcrumbItemObject({
                   }
                 : {
                     objectKind: autocompleteObjectKind ?? node.__typename,
-                    filterQuery: filterQuery,
+                    filterQuery,
                   })}
             />
           </Popover>
