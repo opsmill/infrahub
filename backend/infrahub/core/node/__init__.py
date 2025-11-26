@@ -467,15 +467,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for attribute_name in template._attributes:
             if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
                 continue
-            attr_value = getattr(template, attribute_name).value
+            attr = getattr(template, attribute_name)
+            attr_value = attr.value
             if attr_value is not None:
-                fields[attribute_name] = {"value": attr_value, "source": template.id}
+                # Preserve is_from_profile flag when copying from template
+                field_data = {"value": attr_value, "source": attr.source_id or template.id}
+                if attr.is_from_profile:
+                    field_data["is_from_profile"] = True
+                fields[attribute_name] = field_data
 
         for relationship_name in template._relationships:
             relationship_schema = template._schema.get_relationship(name=relationship_name)
             if (
                 relationship_name in list(fields)
-                or relationship_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                or relationship_schema.kind
+                not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE]
                 or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
             ):
                 continue
