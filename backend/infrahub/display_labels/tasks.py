@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 from infrahub_sdk.exceptions import URLNotFoundError
 from infrahub_sdk.template import Jinja2Template
 from prefect import flow
@@ -139,11 +137,32 @@ async def display_labels_setup_jinja2(
         )  # type: ignore[misc]
 
         # Configure all DisplayLabelTriggerDefinitions in Prefect
-        display_reports = [cast(DisplayLabelTriggerDefinition, entry) for entry in report.updated + report.created]
-        direct_target_triggers = [display_report for display_report in display_reports if display_report.target_kind]
+        all_triggers = report.triggers_with_type(trigger_type=DisplayLabelTriggerDefinition)
+        direct_target_triggers = [
+            display_report
+            for display_report in report.modified_triggers_with_type(trigger_type=DisplayLabelTriggerDefinition)
+            if display_report.target_kind
+        ]
 
         for display_report in direct_target_triggers:
             if event_name != BranchDeletedEvent.event_name and display_report.branch == branch_name:
+                if branch_name != registry.default_branch:
+                    default_branch_triggers = [
+                        trigger
+                        for trigger in all_triggers
+                        if trigger.branch == registry.default_branch
+                        and trigger.target_kind == display_report.target_kind
+                    ]
+                    if (
+                        default_branch_triggers
+                        and len(default_branch_triggers) == 1
+                        and default_branch_triggers[0].template_hash == display_report.template_hash
+                    ):
+                        log.debug(
+                            f"Skipping display label updates for {display_report.target_kind} [{branch_name}], schema is identical to default branch"
+                        )
+                        continue
+
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_DISPLAY_LABELS,
                     context=context,

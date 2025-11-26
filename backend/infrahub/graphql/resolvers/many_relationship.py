@@ -209,6 +209,8 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
+                include_source=True,
+                include_owner=True,
             )
             if not objs:
                 return None
@@ -246,6 +248,8 @@ class ManyRelationshipResolver:
             fields=node_fields,
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
+            include_source=True,
+            include_owner=True,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]

@@ -1,10 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 
+import { queryClient } from "@/shared/api/rest/client";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type CreateObjectParams,
   createObject,
 } from "@/entities/nodes/object/domain/create-object";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 export function useCreateObjectMutation() {
   const { currentBranch } = useCurrentBranch();
@@ -15,6 +18,9 @@ export function useCreateObjectMutation() {
         branchName: currentBranch.name,
         ...params,
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
   });
 }

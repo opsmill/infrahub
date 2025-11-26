@@ -30,6 +30,7 @@ test.describe("object dropdown creation", () => {
 
     // Open creation form
     await page.getByTestId("create-object-button").click();
+    await page.getByRole("button", { name: "Start from scratch" }).click();
 
     // Open tags options
     await page.getByLabel("Tags").click();

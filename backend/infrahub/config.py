@@ -408,6 +408,11 @@ class WorkflowSettings(BaseSettings):
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
     )
+    flow_run_count_cache_threshold: int = Field(
+        default=100_000,
+        ge=0,
+        description="Threshold for caching flow run counts (0 to always cache, higher values to disable)",
+    )
 
     @property
     def api_endpoint(self) -> str:
