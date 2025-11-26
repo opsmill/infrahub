@@ -77,7 +77,7 @@ class DiffCountChanges(Query):
         AND diff_rel.branch in $branch_names
         AND (
             (diff_rel.from >= $from_time AND diff_rel.from < $to_time)
-            OR (diff_rel.to >= $to_time AND diff_rel.to < $to_time)
+            OR (diff_rel.to >= $from_time AND diff_rel.to < $to_time)
         )
         AND (p.branch_support = "aware" OR q.branch_support = "aware")
         WITH diff_rel.branch AS branch_name, count(*) AS num_changes

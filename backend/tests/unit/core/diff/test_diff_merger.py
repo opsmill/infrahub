@@ -350,9 +350,12 @@ class TestMergeDiff:
         assert mock_diff_repository.get_one.await_args_list == expected_awaits
 
         retrieved_node = await NodeManager.get_one(
-            db=db, id=person_node_branch.id, branch=default_branch, include_metadata=MetadataOptions.LINKED_NODES
+            db=db,
+            id=person_node_branch.id,
+            branch=default_branch,
+            include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.UPDATED_AT,
         )
-        assert retrieved_node.get_updated_at() == at
+        assert retrieved_node._get_updated_at() == at
         assert retrieved_node.height.value == person_node_branch.height.value
         owner_node = await retrieved_node.height.get_owner(db=db)
         assert owner_node.id == retrieved_node.id
@@ -454,9 +457,11 @@ class TestMergeDiff:
             with pytest.raises(NodeNotFoundError):
                 await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id, raise_on_error=True)
         else:
-            target_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_branch.id)
+            target_person = await NodeManager.get_one(
+                db=db, branch=default_branch, id=person_node_branch.id, include_metadata=MetadataOptions.UPDATED_AT
+            )
             assert target_person.id == person_node_branch.id
-            assert target_person.get_updated_at() < at
+            assert target_person._get_updated_at() < at
 
         await diff_merger.rollback(at=at)
 
@@ -679,9 +684,12 @@ class TestMergeDiff:
             expected_awaits *= 2
         assert mock_diff_repository.get_one.await_args_list == expected_awaits
         updated_person = await NodeManager.get_one(
-            db=db, branch=default_branch, id=person_node_main.id, include_metadata=MetadataOptions.OWNER
+            db=db,
+            branch=default_branch,
+            id=person_node_main.id,
+            include_metadata=MetadataOptions.OWNER | MetadataOptions.UPDATED_AT,
         )
-        assert updated_person.get_updated_at() < at
+        assert updated_person._get_updated_at() < at
         assert updated_person.height.value == person_node_main.height.value + 1
         owner_node = await updated_person.height.get_owner(db=db)
         assert owner_node.id == person_node_main.id
