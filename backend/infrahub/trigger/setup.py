@@ -171,19 +171,16 @@ async def gather_all_automations(client: PrefectClient) -> list[Automation]:
     retrieves them all by paginating through the results. The default within Prefect is 200 items,
     and client.read_automations() doesn't support pagination parameters.
     """
-    automation_count_response = await client.request("POST", "/automations/count")
-    automation_count_response.raise_for_status()
-    automation_count: int = automation_count_response.json()
     offset = 0
     limit = 200
-    missing_automations = True
     automations: list[Automation] = []
-    while missing_automations:
+    while True:
         response = await client.request("POST", "/automations/filter", json={"limit": limit, "offset": offset})
         response.raise_for_status()
-        automations.extend(Automation.model_validate_list(response.json()))
-        if len(automations) >= automation_count:
-            missing_automations = False
+        batch = Automation.model_validate_list(response.json())
+        automations.extend(batch)
+        if len(batch) < limit:
+            break
         offset += limit
 
     return automations
