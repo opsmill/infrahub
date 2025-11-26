@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.attribute import ListAttribute
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.exceptions import ValidationError
@@ -65,6 +66,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         infrahub_attribute_class = infrahub_data_type.get_infrahub_class()
         for result in self.get_results():
             value = result.get("attribute_value")
+
             if value in (None, NULL_VALUE):
                 continue
             try:
@@ -72,6 +74,9 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
                 infrahub_attribute_class.validate_format(
                     value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
                 )
+
+                if issubclass(infrahub_attribute_class, ListAttribute) and isinstance(attr_value, str):
+                    attr_value = infrahub_attribute_class.deserialize_from_string(attr_value)
                 infrahub_attribute_class.validate_content(
                     value=attr_value, name=self.attribute_schema.name, schema=self.attribute_schema
                 )
