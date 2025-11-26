@@ -12,7 +12,7 @@ export function EmptyHomeCard({ title, subtitle, className }: EmptyHomeCardProps
   return (
     <div
       className={classNames(
-        "flex h-full flex-col items-center justify-center text-gray-500",
+        "flex h-full flex-col items-center justify-center text-gray-400",
         className
       )}
     >
