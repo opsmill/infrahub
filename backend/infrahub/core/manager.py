@@ -3,9 +3,9 @@ from __future__ import annotations
 from copy import copy
 from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
-from infrahub_sdk.utils import is_valid_uuid
+from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
@@ -187,6 +187,17 @@ class NodeManager:
         )
         await query.execute(db=db)
         node_ids = query.get_node_ids()
+
+        if node_schema.kind in [InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS]:
+            if fields and "display_label" in fields:
+                schema_branch = db.schema.get_schema_branch(name=branch.name)
+                display_label_fields = schema_branch.generate_fields_for_display_label(name=node_schema.kind)
+                if display_label_fields:
+                    fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
+            if fields and "hfid" in fields and node_schema.human_friendly_id:
+                hfid_fields = node_schema.generate_fields_for_hfid()
+                if hfid_fields:
+                    fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
 
         response = await cls.get_many(
             ids=node_ids,
