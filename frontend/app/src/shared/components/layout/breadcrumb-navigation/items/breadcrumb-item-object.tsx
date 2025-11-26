@@ -65,7 +65,11 @@ export function BreadcrumbItemObject({
         </Col>
 
         <MenuTrigger>
-          <Button variant="ghost" className="size-5 p-0">
+          <Button
+            variant="ghost"
+            className="size-5 p-0"
+            aria-label={`Select a different ${schema?.label ?? "object"}`}
+          >
             <ChevronsUpDownIcon className="size-3.5" />
           </Button>
 
