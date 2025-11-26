@@ -12,6 +12,7 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.utils import has_any_key
 
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -195,6 +196,9 @@ class ManyRelationshipResolver:
         offset: int | None = None,
         limit: int | None = None,
     ) -> list[dict[str, Any]] | None:
+        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
+        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
+
         async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,
@@ -209,8 +213,8 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
-                include_source=True,
-                include_owner=True,
+                include_source=include_source,
+                include_owner=include_owner,
             )
             if not objs:
                 return None
@@ -240,6 +244,9 @@ class ManyRelationshipResolver:
             if hfid_fields:
                 node_fields = deep_merge_dict(dicta=node_fields, dictb=hfid_fields)
 
+        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
+        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
+
         query_params = QueryPeerParams(
             branch=branch,
             source_kind=source_kind,
@@ -248,8 +255,8 @@ class ManyRelationshipResolver:
             fields=node_fields,
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
-            include_source=True,
-            include_owner=True,
+            include_source=include_source,
+            include_owner=include_owner,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]
