@@ -10,6 +10,7 @@ import { Col, Row } from "@/shared/components/container";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
+import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -19,11 +20,13 @@ export function BreadcrumbItemObject({
   autocompleteObjectKind,
   parentRelationshipSchema,
   parentId,
+  filterQuery,
 }: {
   node: NodeCore;
   autocompleteObjectKind?: string;
   parentId?: string;
   parentRelationshipSchema?: RelationshipSchema;
+  filterQuery?: GetRelationshipsParams["filterQuery"];
 }) {
   const { schema } = useSchema(node.__typename);
 
@@ -81,9 +84,13 @@ export function BreadcrumbItemObject({
                     objectKind: parentToChildRelationshipSchema.peer,
                     filterQuery: {
                       [`${parentRelationshipSchema.name}__ids`]: [parentId],
+                      ...filterQuery,
                     },
                   }
-                : { objectKind: autocompleteObjectKind ?? node.__typename })}
+                : {
+                    objectKind: autocompleteObjectKind ?? node.__typename,
+                    filterQuery: filterQuery,
+                  })}
             />
           </Popover>
         </MenuTrigger>

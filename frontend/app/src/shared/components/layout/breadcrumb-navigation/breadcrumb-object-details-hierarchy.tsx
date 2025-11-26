@@ -13,17 +13,20 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import type { NodeCoreWithParent } from "@/entities/nodes/types";
+import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface BreadcrumbObjectDetailsHierarchyProps {
   objectSchema: ModelSchema;
   objectId: string;
+  filterQuery?: GetRelationshipsParams["filterQuery"];
 }
 
 export function BreadcrumbObjectDetailsHierarchy({
   objectSchema,
   objectId,
+  filterQuery,
 }: BreadcrumbObjectDetailsHierarchyProps) {
   const { data, isPending, error } = useGetObjectAncestors(
     {
@@ -73,13 +76,23 @@ export function BreadcrumbObjectDetailsHierarchy({
       )}
 
       {data.map((ancestor) => (
-        <BreadcrumbItemObjectHierarchy key={ancestor.id} node={ancestor} />
+        <BreadcrumbItemObjectHierarchy
+          key={ancestor.id}
+          node={ancestor}
+          filterQuery={filterQuery}
+        />
       ))}
     </>
   );
 }
 
-function BreadcrumbItemObjectHierarchy({ node }: { node: NodeCoreWithParent }) {
+function BreadcrumbItemObjectHierarchy({
+  node,
+  filterQuery,
+}: {
+  node: NodeCoreWithParent;
+  filterQuery?: GetRelationshipsParams["filterQuery"];
+}) {
   const { schema } = useSchema(node.__typename);
   const parentRelationshipSchema = schema?.relationships?.find(
     (rel) => rel.kind === "Hierarchy" && rel.name === "parent"
@@ -90,6 +103,7 @@ function BreadcrumbItemObjectHierarchy({ node }: { node: NodeCoreWithParent }) {
       node={node}
       parentId={node.parent.node?.id}
       parentRelationshipSchema={parentRelationshipSchema}
+      filterQuery={filterQuery}
     />
   );
 }
