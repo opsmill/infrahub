@@ -10,12 +10,7 @@ export const DIFF_STATUS = {
 
 export type DiffStatus = (typeof DIFF_STATUS)[keyof typeof DIFF_STATUS];
 
-export type PropertyType =
-  | "HAS_VALUE"
-  | "HAS_OWNER"
-  | "HAS_SOURCE"
-  | "IS_PROTECTED"
-  | "IS_RELATED";
+export type PropertyType = "HAS_VALUE" | "HAS_OWNER" | "HAS_SOURCE" | "IS_PROTECTED" | "IS_RELATED";
 
 export type DiffConflict = {
   base_branch_action: DiffStatus;
