@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLResolveInfo
 from graphql.type.definition import GraphQLNonNull
-from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType
@@ -143,16 +142,10 @@ class SingleRelationshipResolver:
             return None
 
         if node_fields and "display_label" in node_fields:
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=rel_schema.peer)
-            if display_label_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
+            node_fields["display_label"] = None
 
         if node_fields and "hfid" in node_fields:
-            peer_schema = db.schema.get(name=rel_schema.peer, branch=branch, duplicate=False)
-            hfid_fields = peer_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=hfid_fields)
+            node_fields["human_friendly_id"] = None
 
         query_params = GetManyParams(
             fields=node_fields,
