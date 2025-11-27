@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import anyio
@@ -498,11 +498,8 @@ async def test_sync_new_branch(
         method="POST", json=commit_response, match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"}
     )
     admin_response = {"data": {"CoreGenericRepositoryUpdate": {"ok": True}}}
-    httpx_mock.add_response(
-        method="POST",
-        json=admin_response,
-        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-admin-status"},
-    )
+    # Note: The admin-status endpoint is only called from within import_objects_from_files,
+    # which we're mocking below, so we don't need to mock it here.
     httpx_mock.add_response(
         method="POST",
         json=admin_response,
@@ -510,7 +507,11 @@ async def test_sync_new_branch(
     )
 
     repo.client = client
-    await repo.sync()
+    # Mock import_objects_from_files since we're testing git sync, not import functionality
+    with patch(
+        "infrahub.git.repository.InfrahubRepository.import_objects_from_files", new_callable=AsyncMock
+    ):
+        await repo.sync()
     worktrees = repo.get_worktrees()
 
     assert repo.get_commit_value(branch_name=branch.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
@@ -526,7 +527,11 @@ async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRe
     # Mock update_commit_value query
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
-    await repo.sync()
+    # Mock import_objects_from_files since we're testing git sync, not import functionality
+    with patch(
+        "infrahub.git.repository.InfrahubRepository.import_objects_from_files", new_callable=AsyncMock
+    ):
+        await repo.sync()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 

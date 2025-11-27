@@ -47,7 +47,12 @@ from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
-from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
+from infrahub.exceptions import (
+    CheckError,
+    RepositoryConfigurationError,
+    RepositoryInvalidFileSystemError,
+    TransformError,
+)
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_event_service
@@ -180,31 +185,29 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self.create_commit_worktree(commit)
         await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
 
-        config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[misc]
-        sync_status = RepositorySyncStatus.IN_SYNC if config_file else RepositorySyncStatus.ERROR_IMPORT
-
+        sync_status = RepositorySyncStatus.IN_SYNC
         error: Exception | None = None
 
         try:
-            if config_file:
-                await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
-                await self.import_all_graphql_query(
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
-                await self.import_objects(
-                    branch_name=infrahub_branch_name,
-                    commit=commit,
-                    config_file=config_file,
-                )  # type: ignore[misc]
-                await self.import_all_python_files(  # type: ignore[call-overload]
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
-                await self.import_jinja2_transforms(
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
-                await self.import_artifact_definitions(
-                    branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
+            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[misc]
+            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
+            await self.import_all_graphql_query(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[misc]
+            await self.import_objects(
+                branch_name=infrahub_branch_name,
+                commit=commit,
+                config_file=config_file,
+            )  # type: ignore[misc]
+            await self.import_all_python_files(  # type: ignore[call-overload]
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[misc]
+            await self.import_jinja2_transforms(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[misc]
+            await self.import_artifact_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )  # type: ignore[misc]
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
@@ -433,7 +436,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await existing_artifact_definition.save()
 
     @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)
-    async def get_repository_config(self, branch_name: str, commit: str) -> InfrahubRepositoryConfig | None:
+    async def get_repository_config(self, branch_name: str, commit: str) -> InfrahubRepositoryConfig:
+        """Load and parse the repository configuration file.
+
+        Args:
+            branch_name: The name of the branch to load the config from.
+            commit: The commit hash to load the config from.
+
+        Returns:
+            The parsed repository configuration.
+
+        Raises:
+            RepositoryConfigurationError: If the configuration file is missing,
+                cannot be parsed as YAML, or has an invalid format.
+        """
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
 
@@ -448,15 +464,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             config_file = config_file_yaml
             config_file_name = ".infrahub.yaml"
         else:
-            log.debug("Unable to find the configuration file (.infrahub.yml or .infrahub.yaml), skipping")
-            return None
+            log.error(
+                f"Repository '{self.name}' is missing a configuration file. "
+                "Expected '.infrahub.yml' or '.infrahub.yaml' in the repository root."
+            )
+            raise RepositoryConfigurationError(
+                identifier=self.name,
+                message=f"Repository '{self.name}' is missing a configuration file. "
+                f"Please add a '.infrahub.yml' or '.infrahub.yaml' file to the repository root. "
+                f"See https://docs.infrahub.app/topics/repository for more information.",
+            )
 
         config_file_content = config_file.read_text(encoding="utf-8")
         try:
             data = yaml.safe_load(config_file_content)
         except yaml.YAMLError as exc:
-            log.error(f"Unable to load the configuration file in YAML format {config_file_name} : {exc}")
-            return None
+            log.error(f"Unable to load the configuration file in YAML format {config_file_name}: {exc}")
+            raise RepositoryConfigurationError(
+                identifier=self.name,
+                message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
+                f"The file could not be parsed as valid YAML: {exc}",
+            ) from exc
 
         # Convert data to a dictionary to avoid it being `None` if the yaml file is just an empty document
         data = data or {}
@@ -466,8 +494,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"Successfully parsed {config_file_name}")
             return configuration
         except PydanticValidationError as exc:
-            log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}")
-            return None
+            log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid: {exc}")
+            raise RepositoryConfigurationError(
+                identifier=self.name,
+                message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
+                f"The file format is not valid: {exc}",
+            ) from exc
 
     @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
