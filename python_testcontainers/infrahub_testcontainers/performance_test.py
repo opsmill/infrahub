@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from types import TracebackType
 from typing import Any
 
@@ -37,7 +37,7 @@ class InfrahubPerformanceTest:
         self.env_vars = {}
         self.project_name = ""
         self.test_info = {}
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         self.end_time: datetime | None = None
         self.results_url = results_url
         self.scraper_endpoint = ""
@@ -59,7 +59,7 @@ class InfrahubPerformanceTest:
 
     def finalize(self, session: pytest.Session) -> None:
         if self.initialized:
-            self.end_time = datetime.now(timezone.utc)
+            self.end_time = datetime.now(UTC)
             self.extract_test_session_information(session)
             self.send_results()
 
@@ -131,7 +131,7 @@ class InfrahubPerformanceTest:
         if not exc_type and self.active_measurements:
             self.add_measurement(
                 definition=self.active_measurements.definition,
-                value=(datetime.now(timezone.utc) - self.active_measurements.start_time).total_seconds() * 1000,
+                value=(datetime.now(UTC) - self.active_measurements.start_time).total_seconds() * 1000,
                 context=self.active_measurements.context,
             )
 
