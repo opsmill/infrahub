@@ -8,26 +8,25 @@ import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-sm border border-transparent font-medium text-sm disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-sm border border-transparent font-medium text-sm disabled:cursor-not-allowed disabled:cursor-not-allowed disabled:opacity-60 disabled:opacity-60",
   {
     variants: {
       variant: {
         primary:
-          "bg-custom-blue-700 text-white shadow-sm hover:bg-custom-blue-700/90 aria-disabled:pointer-events-none",
+          "bg-custom-blue-700 text-white shadow-sm hover:bg-custom-blue-700/90 disabled:pointer-events-none",
         "primary-outline":
-          "border-custom-blue-700 bg-white text-custom-blue-700 shadow-xs hover:bg-gray-100 aria-disabled:pointer-events-none",
-        danger:
-          "bg-red-500 text-white shadow-sm hover:bg-red-500/90 aria-disabled:pointer-events-none",
+          "border-custom-blue-700 bg-white text-custom-blue-700 shadow-xs hover:bg-gray-100 disabled:pointer-events-none",
+        danger: "bg-red-500 text-white shadow-sm hover:bg-red-500/90 disabled:pointer-events-none",
         warning:
-          "bg-yellow-500 text-white shadow-sm hover:bg-yellow-500/90 aria-disabled:pointer-events-none",
+          "bg-yellow-500 text-white shadow-sm hover:bg-yellow-500/90 disabled:pointer-events-none",
         active:
-          "bg-green-600 text-white shadow-sm hover:bg-green-600/90 aria-disabled:pointer-events-none",
+          "bg-green-600 text-white shadow-sm hover:bg-green-600/90 disabled:pointer-events-none",
         "active-outline":
-          "border-green-600 bg-white shadow-xs hover:bg-gray-100 aria-disabled:pointer-events-none",
+          "border-green-600 bg-white shadow-xs hover:bg-gray-100 disabled:pointer-events-none",
         outline:
-          "border-gray-200 bg-white shadow-xs hover:bg-gray-100 aria-disabled:pointer-events-none",
-        dark: "bg-gray-200 shadow-xs hover:bg-gray-300 aria-disabled:pointer-events-none",
-        ghost: "hover:bg-gray-100 aria-disabled:pointer-events-none",
+          "border-gray-200 bg-white shadow-xs hover:bg-gray-100 disabled:pointer-events-none",
+        dark: "bg-gray-200 shadow-xs hover:bg-gray-300 disabled:pointer-events-none",
+        ghost: "hover:bg-gray-100 disabled:pointer-events-none",
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -90,19 +89,11 @@ export interface LinkButtonProps extends LinkProps, VariantProps<typeof buttonVa
 }
 
 export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
-  ({ className, variant, size, isDisabled, onClick, ...props }, ref) => {
+  ({ className, variant, size, ...props }, ref) => {
     return (
       <Link
         ref={ref}
         className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
-        aria-disabled={isDisabled || undefined}
-        onClick={
-          isDisabled
-            ? (e) => {
-                e.preventDefault();
-              }
-            : onClick
-        }
         {...props}
       />
     );
