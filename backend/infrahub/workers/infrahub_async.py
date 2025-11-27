@@ -221,9 +221,11 @@ class InfrahubWorkerAsync(BaseWorker):
 
         await self._run_git_config_global(config.SETTINGS.git.user_name, setting_name="user.name")
         await self._run_git_config_global(config.SETTINGS.git.user_email, setting_name="user.email")
-        await self._run_git_config_global("'*'", "--replace-all", setting_name="safe.directory")
+        await self._run_git_config_global("*", "--replace-all", setting_name="safe.directory")
         await self._run_git_config_global("true", setting_name="credential.usehttppath")
-        await self._run_git_config_global(config.SETTINGS.dev.git_credential_helper, setting_name="credential.helper")
+        await self._run_git_config_global(
+            f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}", setting_name="credential.helper"
+        )
 
     async def _run_git_config_global(self, *args: str, setting_name: str) -> None:
         proc = await asyncio.create_subprocess_exec(
