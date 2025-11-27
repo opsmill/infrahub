@@ -107,7 +107,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         # Start metric endpoint
         if metric_port is None or metric_port != 0:
-            metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", 8000))
+            metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", "8000"))
             self._logger.info(f"Starting metric endpoint on port {metric_port}")
             start_http_server(metric_port)
 
