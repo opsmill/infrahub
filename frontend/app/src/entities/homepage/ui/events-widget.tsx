@@ -13,7 +13,7 @@ interface EventsWidgetProps {
 
 export const EventsWidget = ({ className }: EventsWidgetProps) => {
   return (
-    <HomeCard className={classNames("flex flex-col", className)}>
+    <HomeCard className={classNames("flex min-h-0 flex-1 flex-col", className)}>
       <HomeCard.Title className="flex items-center justify-between">
         <span className="flex items-center gap-2">
           <Icon icon={"mdi:file-replace-outline"} /> Recent Activities
@@ -24,7 +24,7 @@ export const EventsWidget = ({ className }: EventsWidgetProps) => {
         </HomeCard.Link>
       </HomeCard.Title>
 
-      <ScrollArea>
+      <ScrollArea className="flex-1">
         <HomeEvents />
       </ScrollArea>
     </HomeCard>
