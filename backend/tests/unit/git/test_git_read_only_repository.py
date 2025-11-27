@@ -77,9 +77,7 @@ async def test_sync_from_remote_new_ref(git_repo_01_read_only: InfrahubReadOnlyR
     repo.client = mock_client
 
     # Mock import_objects_from_files since we're testing git sync, not import functionality
-    with patch(
-        "infrahub.git.repository.InfrahubReadOnlyRepository.import_objects_from_files", new_callable=AsyncMock
-    ):
+    with patch("infrahub.git.repository.InfrahubReadOnlyRepository.import_objects_from_files", new_callable=AsyncMock):
         await repo.sync_from_remote()
 
     worktree_commits = {wt.identifier for wt in repo.get_worktrees()}
