@@ -6,9 +6,9 @@ import { Separator } from "@/shared/components/aria/separator";
 import { LinkButton, type LinkButtonProps } from "@/shared/components/buttons/button-primitive";
 import { HomeCard } from "@/shared/components/ui/home-card";
 
-export const GettingStarted = () => {
+export const GettingStarted = ({ className }: { className?: string }) => {
   return (
-    <HomeCard>
+    <HomeCard className={className}>
       <HomeCard.Title className="flex items-center justify-between">
         <span>Getting Started with Infrahub</span>
 
@@ -25,6 +25,7 @@ export const GettingStarted = () => {
           </LinkButton>
         </div>
       </HomeCard.Title>
+
       <HomeCard.Content>
         <div className="grid grid-cols-1 lg:grid-cols-2">
           <GettingStartedContentItem>
