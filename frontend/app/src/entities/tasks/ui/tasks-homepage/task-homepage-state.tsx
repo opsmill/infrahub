@@ -1,3 +1,5 @@
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage.query";
 import { TaskHomepageItem } from "@/entities/tasks/ui/tasks-homepage/task-homepage-item";
@@ -42,7 +44,13 @@ export const TaskHomepageState = ({
     );
   }
 
-  return data.map((task) => {
-    return <TaskHomepageItem key={task.id} {...task} />;
-  });
+  return (
+    <ScrollArea className="h-full w-full">
+      <div className="flex flex-col gap-1.5">
+        {data.map((task) => {
+          return <TaskHomepageItem key={task.id} {...task} />;
+        })}
+      </div>
+    </ScrollArea>
+  );
 };
