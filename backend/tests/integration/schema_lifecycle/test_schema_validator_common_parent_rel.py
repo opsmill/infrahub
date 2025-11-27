@@ -284,13 +284,13 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
     async def test_step_04_add_device_to_invalid_rack(self, db: InfrahubDatabase, client: InfrahubClient):
         site_1 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_SITE, name__value="site_1")
         rack_2_2 = await client.get(
-            branch=self.branch_name, kind=TestKind.DATACENTER_RACK, site__ids=[site.id], name__value="rack_2_2"
+            branch=self.branch_name, kind=TestKind.DATACENTER_RACK, site__ids=[site_1.id], name__value="rack_2_2"
         )
 
         device = await client.create(
             branch=self.branch_name,
             kind=TestKind.DATACENTER_DEVICE,
-            name=f"device_1_4",
+            name="device_1_4",
             device_type="Server",
             rack=rack_2_2,
             parent=site_1,
