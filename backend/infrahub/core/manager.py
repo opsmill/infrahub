@@ -3,9 +3,9 @@ from __future__ import annotations
 from copy import copy
 from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
-from infrahub_sdk.utils import is_valid_uuid
+from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
@@ -188,6 +188,23 @@ class NodeManager:
         await query.execute(db=db)
         node_ids = query.get_node_ids()
 
+        if (
+            fields
+            and "identifier" in fields
+            and node_schema.kind
+            in [
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ]
+        ):
+            # This is a workaround to ensure we are querying the right fields for permissions
+            # The identifier for permissions needs the same fields as the display label
+            schema_branch = db.schema.get_schema_branch(name=branch.name)
+            display_label_fields = schema_branch.generate_fields_for_display_label(name=node_schema.kind)
+            if display_label_fields:
+                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
+
         response = await cls.get_many(
             ids=node_ids,
             fields=fields,
@@ -311,6 +328,20 @@ class NodeManager:
         peers_info = list(query.get_peers())
         if not peers_info:
             return []
+
+        if fields and "identifier" in fields:
+            # This is a workaround to ensure we are querying the right fields for permissions
+            # The identifier for permissions needs the same fields as the display label
+            peer_schema = schema.get_peer_schema(db=db, branch=branch)
+            if peer_schema.kind in [
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ]:
+                schema_branch = db.schema.get_schema_branch(name=branch.name)
+                display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
+                if display_label_fields:
+                    fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         if fetch_peers:
             peer_ids = [peer.peer_id for peer in peers_info]
