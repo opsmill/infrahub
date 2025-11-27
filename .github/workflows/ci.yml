@@ -47,13 +47,13 @@ jobs:
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
-      infrahub_poetry_files: ${{ steps.changes.outputs.infrahub_poetry_files }}
+      infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check for file changes
@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Setup environment"
@@ -88,7 +88,7 @@ jobs:
       contents: read
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -107,11 +107,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Setup environment"
-        run: "pip install ruff==0.11.9"
+        run: "pip install ruff==0.14.5"
       - name: "Linting: ruff check"
         run: "ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
@@ -127,7 +127,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Linting: markdownlint"
@@ -144,7 +144,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check workflow files
@@ -155,25 +155,25 @@ jobs:
         env:
           SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004 --exclude=SC2129
 
-  infrahub-poetry-check:
+  infrahub-uv-check:
     if: |
-      needs.files-changed.outputs.infrahub_poetry_files == 'true' ||
+      needs.files-changed.outputs.infrahub_uv_files == 'true' ||
       github.ref_name == 'stable' ||
       github.ref_name == 'develop'
     needs:
       - "files-changed"
-    uses: "./.github/workflows/poetry-check.yml"
+    uses: "./.github/workflows/uv-check.yml"
     with:
       directory: "./"
 
   infrahub-testcontainers-check:
-    if: needs.files-changed.outputs.infrahub_poetry_files == 'true'
+    if: needs.files-changed.outputs.infrahub_uv_files == 'true'
     needs: ["prepare-environment", "files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -183,21 +183,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: "Setup Python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: Compare package versions
         run: |
-          INFRAHUB_VERSION=$(poetry version --short)
+          INFRAHUB_VERSION=$(uv version --short)
           echo "Infrahub version: $INFRAHUB_VERSION"
 
           cd python_testcontainers
-          TESTCONTAINERS_VERSION=$(poetry version --short)
+          TESTCONTAINERS_VERSION=$(uv version --short)
           echo "Testcontainers version: $TESTCONTAINERS_VERSION"
 
           if [ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]; then
@@ -234,28 +233,28 @@ jobs:
         working-directory: ./python_testcontainers
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: "Setup environment"
-        run: |
-          pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }} --python python${{ matrix.python-version }}
-          poetry config virtualenvs.create true --local
-      - name: "Install Package"
-        run: "poetry install --all-extras"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Unit Tests"
-        run: "poetry run pytest --rootdir=. -vs tests"
+        run: "uv run pytest --rootdir=. -c pyproject.toml -vs tests"
 
-  infrahub-testcontainers-poetry-check:
+  infrahub-testcontainers-uv-check:
     if: |
-      needs.files-changed.outputs.infrahub_poetry_files == 'true' ||
+      needs.files-changed.outputs.infrahub_uv_files == 'true' ||
       github.ref_name == 'stable' ||
       github.ref_name == 'develop'
     needs:
       - "files-changed"
-    uses: "./.github/workflows/poetry-check.yml"
+    uses: "./.github/workflows/uv-check.yml"
     with:
       directory: "./python_testcontainers"
 
@@ -274,7 +273,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -287,18 +286,15 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Unit Tests"
-        run: "poetry run invoke backend.test-unit"
+        run: "uv run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -331,7 +327,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -344,20 +340,17 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Mypy Tests"
-        run: "poetry run invoke backend.mypy"
+        run: "uv run invoke backend.mypy"
       - name: "Integration Tests"
-        run: "poetry run invoke backend.test-integration"
+        run: "uv run invoke backend.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -381,7 +374,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -394,20 +387,17 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Mypy Tests"
-        run: "poetry run invoke backend.mypy"
+        run: "uv run invoke backend.mypy"
       - name: "Functional Tests"
-        run: "poetry run invoke backend.test-functional"
+        run: "uv run invoke backend.test-functional"
       - name: "Coveralls : Functional Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -431,10 +421,10 @@ jobs:
     env:
       INFRAHUB_DB_TYPE: neo4j
       PYTEST_XDIST_WORKER_COUNT: 1
-      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -449,7 +439,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }}>> $GITHUB_ENV
       - name: "Set environment variables"
@@ -459,22 +449,17 @@ jobs:
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
           echo INFRAHUB_TESTING_DOCKER_IMAGE="opsmill/infrahub" >> $GITHUB_ENV
-      - name: Install Invoke
-        run: pip install invoke
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Build container"
-        run: "invoke dev.build"
-      - name: "Setup Python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+        run: "uv run invoke dev.build"
       - name: "Run tests"
         # Use tini to properly propagate cancellation signal to pytest, so that containers are properly destroyed
-        run: "exec tini -s -g -- poetry run pytest backend/tests/integration_docker/"
+        run: "exec tini -s -g -- uv run pytest backend/tests/integration_docker/"
 
   # ---------------------------------------------------
   # DISABLING Memgraph for now :(
@@ -507,7 +492,7 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v5"
+  #       uses: "actions/checkout@v6"
   #       with:
   #         submodules: true
   #     - name: Set up Python
@@ -519,15 +504,15 @@ jobs:
   #             git config --global user.email 'infrahub@opsmill.com' && \
   #             git config --global --add safe.directory '*' && \
   #             git config --global credential.usehttppath true && \
-  #             git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-  #     - name: "Setup Python environment"
-  #       run: |
-  #         poetry config virtualenvs.create true --local
-  #         poetry env use 3.12
-  #     - name: "Install dependencies"
-  #       run: "poetry install --no-interaction --no-ansi"
+  #             git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@v7
+  #       with:
+  #         version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+  #     - name: Install dependencies
+  #       run: "uv sync --all-groups"
   #     - name: "Unit Tests"
-  #       run: "poetry run invoke backend.test-unit"
+  #       run: "uv run invoke backend.test-unit"
 
   backend-validate-generated:
     if: |
@@ -540,7 +525,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -548,17 +533,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
-      - name: "Setup environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install Package"
-        run: "poetry install"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Run validator"
-        run: "poetry run invoke backend.validate-generated"
+        run: "uv run invoke backend.validate-generated"
 
   frontend-tests:
     if: |
@@ -571,7 +553,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -606,11 +588,10 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
+    runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -618,19 +599,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
-      - name: "Setup environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-          poetry run pip install invoke toml
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install Package"
-        run: "poetry install"
-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: Run validation
-        run: poetry run invoke schema.validate-graphqlschema
+        run: uv run invoke schema.validate-graphqlschema
   json-schema:
     if: |
       always() && !cancelled() &&
@@ -638,8 +614,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
+    runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
         uses: "actions/checkout@v5"
@@ -650,19 +625,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
-      - name: "Setup environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-          poetry run pip install invoke toml
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install Package"
-        run: "poetry install"
-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: Run validation
-        run: poetry run invoke schema.validate-jsonschema
+        run: uv run invoke schema.validate-jsonschema
 
   documentation:
     defaults:
@@ -678,7 +648,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -692,20 +662,17 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
-      - name: "Setup python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install Poetry packages"
-        run: "poetry install"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Install npm dependencies"
         working-directory: ./docs
         run: npm install
       - name: "Build docs"
-        run: "poetry run invoke docs.build"
+        run: "uv run invoke docs.build"
 
   validate-generated-documentation:
     if: |
@@ -718,7 +685,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -732,17 +699,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: "Setup Python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Validate generated documentation"
-        run: "poetry run invoke docs.validate"
+        run: "uv run invoke docs.validate"
 
   validate-documentation-style:
     if: |
@@ -755,7 +719,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -781,7 +745,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -822,7 +786,7 @@ jobs:
           - name: E2E-testing-playwright
             env:
               INFRAHUB_DB_TYPE: neo4j
-              POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+              UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
           # - name: E2E-testing-playwright-nats
           #   env:
           #     INFRAHUB_DB_TYPE: neo4j
@@ -836,7 +800,7 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install NodeJS
@@ -1014,7 +978,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -1108,7 +1072,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -1121,16 +1085,13 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
 
@@ -1140,7 +1101,7 @@ jobs:
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
-          run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
+          run: "uv run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
 
       - name: Run non-intensive benchmarks
         if: |
@@ -1149,7 +1110,7 @@ jobs:
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
-          run: "poetry run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
+          run: "uv run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:

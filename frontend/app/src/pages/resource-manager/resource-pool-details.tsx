@@ -18,6 +18,7 @@ import {
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
@@ -149,7 +150,7 @@ const ResourcePoolContent = ({
           name: schemaRelationship.label || schemaRelationship.name,
           value: relationshipData && (
             <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
-              {relationshipData?.display_label}
+              {relationshipData ? getNodeLabel(relationshipData) : ""}
             </Link>
           ),
         };
@@ -159,7 +160,7 @@ const ResourcePoolContent = ({
   return (
     <Content.Card>
       <Content.CardTitle
-        title={resourcePool.display_label}
+        title={getNodeLabel(resourcePool)}
         isReloadLoading={isRefetching}
         reload={handleRefetchAll}
         end={

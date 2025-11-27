@@ -208,6 +208,7 @@ subtyping
 Subtyping
 Telecom
 template_path
+templated
 toml
 toolchain
 Tooltips
@@ -223,6 +224,7 @@ userinfo
 uuid
 UUID
 UUIDs
+uv
 validator
 validators
 Version Control

@@ -13,7 +13,7 @@ describe("SchemaViewer Component", () => {
       description: "Test Node description",
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // THEN
     await expect
@@ -48,7 +48,7 @@ describe("SchemaViewer Component", () => {
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -85,7 +85,7 @@ describe("SchemaViewer Component", () => {
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -121,7 +121,7 @@ describe("SchemaViewer Component", () => {
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -154,7 +154,7 @@ describe("SchemaViewer Component", () => {
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -187,7 +187,7 @@ describe("SchemaViewer Component", () => {
       ],
     });
 
-    const component = render(<SchemaViewer schema={schema} onClose={() => {}} />);
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();

@@ -8,6 +8,8 @@ import { Popover } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { RelationshipSchema } from "@/entities/schema/types";
@@ -18,11 +20,13 @@ export function BreadcrumbItemObject({
   autocompleteObjectKind,
   parentRelationshipSchema,
   parentId,
+  filterQuery,
 }: {
   node: NodeCore;
   autocompleteObjectKind?: string;
   parentId?: string;
   parentRelationshipSchema?: RelationshipSchema;
+  filterQuery?: GetRelationshipsParams["filterQuery"];
 }) {
   const { schema } = useSchema(node.__typename);
 
@@ -59,12 +63,16 @@ export function BreadcrumbItemObject({
             to={getObjectDetailsUrl(node.__typename, node.id)}
             className="truncate font-medium text-sm leading-4 hover:underline"
           >
-            {node.display_label}
+            {getNodeLabel(node)}
           </Link>
         </Col>
 
         <MenuTrigger>
-          <Button variant="ghost" className="size-5 p-0">
+          <Button
+            variant="ghost"
+            className="size-5 p-0"
+            aria-label={`Select a different ${schema?.label ?? "object"}`}
+          >
             <ChevronsUpDownIcon className="size-3.5" />
           </Button>
 
@@ -76,9 +84,13 @@ export function BreadcrumbItemObject({
                     objectKind: parentToChildRelationshipSchema.peer,
                     filterQuery: {
                       [`${parentRelationshipSchema.name}__ids`]: [parentId],
+                      ...filterQuery,
                     },
                   }
-                : { objectKind: autocompleteObjectKind ?? node.__typename })}
+                : {
+                    objectKind: autocompleteObjectKind ?? node.__typename,
+                    filterQuery,
+                  })}
             />
           </Popover>
         </MenuTrigger>

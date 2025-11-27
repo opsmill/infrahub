@@ -111,48 +111,35 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: `/objects/${ARTIFACT_OBJECT}/:artifactId`,
-                children: [
-                  {
-                    index: true,
-                    lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
-                  },
-                ],
-              },
-              {
                 path: "/objects",
                 children: [
                   {
-                    path: ":objectKind",
+                    path: `${ARTIFACT_OBJECT}/:artifactId`,
                     children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
+                      },
+                    ],
+                  },
+                  {
+                    path: ":objectKind",
+                    lazy: () => import("@/pages/objects/layout"),
+                    children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/objects/object-items"),
+                      },
                       {
                         path: ":objectId",
                         children: [
                           {
+                            index: true,
+                            lazy: () => import("@/pages/objects/object-details-page"),
+                          },
+                          {
                             path: "convert",
                             lazy: () => import("@/pages/objects/object-convert"),
-                          },
-                        ],
-                      },
-                      {
-                        lazy: () => import("@/pages/objects/layout"),
-                        children: [
-                          {
-                            index: true,
-                            lazy: () => import("@/pages/objects/object-items"),
-                          },
-                          {
-                            path: ":objectId",
-                            children: [
-                              {
-                                index: true,
-                                lazy: () => import("@/pages/objects/object-details"),
-                              },
-                              {
-                                path: "convert",
-                                lazy: () => import("@/pages/objects/object-convert"),
-                              },
-                            ],
                           },
                         ],
                       },
@@ -246,7 +233,7 @@ export const router = createBrowserRouter([
                         children: [
                           {
                             path: ":objectId",
-                            lazy: () => import("@/pages/objects/object-details"),
+                            lazy: () => import("@/pages/objects/object-details-page"),
                           },
                         ],
                       },

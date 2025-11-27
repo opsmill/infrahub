@@ -13,7 +13,7 @@ Infrahub by OpsMill is taking a new approach to Infrastructure Management by pro
 - Neo4j (Graph Database)
 - Pydantic (Data Models)
 - Pytest (Testing)
-- Poetry (Dependency Management)
+- uv (Dependency Management)
 - Invoke (Task Runner)
 
 ## Development Commands
@@ -21,16 +21,19 @@ Infrahub by OpsMill is taking a new approach to Infrastructure Management by pro
 ### Python/Backend Development
 
 ```bash
+# Install dependencies
+uv sync --all-groups
+
 # Format all Python code
-poetry run invoke format
+uv run invoke format
 
 # Lint all code (Python + YAML)
-poetry run invoke lint
+uv run invoke lint
 
 # Run specific linting/formatting
-poetry run invoke backend.format
-poetry run invoke backend.lint
-poetry run invoke yamllint
+uv run invoke backend.format
+uv run invoke backend.lint
+uv run invoke yamllint
 
 # Lint markdown files
 markdownlint --config .markdownlint.yaml --ignore "**/node_modules/**" "**/*.md" "**/*.mdx"
@@ -44,23 +47,23 @@ vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./doc
 
 ```bash
 # Run tests
-poetry run pytest
+uv run pytest
 
 # Run tests with coverage
-poetry run pytest --cov
+uv run pytest --cov
 
 # Run specific test files
-poetry run pytest tests/path/to/test_file.py
+uv run pytest tests/path/to/test_file.py
 ```
 
 ### Project Management
 
 ```bash
 # Install dependencies
-poetry install
+uv sync
 
 # Update dependencies and submodules
-poetry run invoke pull
+uv run invoke pull
 ```
 
 ### Documentation
@@ -105,8 +108,8 @@ vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./doc
 **Formatting & Linting:**
 
 - Use ruff and mypy for type checking and validations
-- Format all Python files: `poetry run invoke format`
-- Validate formatting: `poetry run invoke lint`
+- Format all Python files: `uv run invoke format`
+- Validate formatting: `uv run invoke lint`
 - Lint markdown files: `markdownlint --config .markdownlint.yaml "**/*.md" "**/*.mdx"`
 - Lint documentation prose: `vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")`
 - **ALWAYS run Vale after documentation updates**: Check style, sentence-case, and spelling before considering documentation changes complete
@@ -121,7 +124,7 @@ vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./doc
 - Don't use Git precommit hooks
 - Use ruff and mypy to validate and lint Python files
 - Use yamllint to validate YAML files
-- Use poetry to manage the Python project and its dependencies
+- Use uv to manage the Python project and its dependencies
 
 ### Documentation Writing Guidelines (from .github/instructions/)
 

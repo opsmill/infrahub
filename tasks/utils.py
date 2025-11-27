@@ -9,7 +9,7 @@ except ModuleNotFoundError:
     try:
         import tomli as tomllib
     except ModuleNotFoundError:
-        sys.exit("Please make sure to `pip install tomli` or enable the Poetry shell and run `poetry install`.")
+        sys.exit("Please make sure to `pip install tomli` or enable the uv shell and run `uv sync`.")
 
 path = Path(__file__)
 TASKS_DIR = path.parent
@@ -50,7 +50,7 @@ def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
 
     with (REPO_BASE / "pyproject.toml").open("rb") as file:
-        return tomllib.load(file)["tool"]["poetry"].get("version", "latest")
+        return tomllib.load(file)["project"].get("version", "latest")
 
 
 def git_info(context: Context) -> tuple[str, str]:
@@ -108,7 +108,7 @@ def get_version_from_pyproject() -> str:
     """Retrieve the current version from the pyproject.toml file."""
 
     with (REPO_BASE / "pyproject.toml").open("rb") as file:
-        return tomllib.load(file)["tool"]["poetry"]["version"]
+        return tomllib.load(file)["project"]["version"]
 
 
 def get_yamllint_rules() -> dict:

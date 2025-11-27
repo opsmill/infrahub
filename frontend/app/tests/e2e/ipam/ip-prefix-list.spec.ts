@@ -21,7 +21,7 @@ test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
     await page.goto("/ipam");
 
     await test.step("select a prefix to view all sub prefixes", async () => {
-      await page.getByRole("treeitem", { name: "2001:db8::/100" }).click();
+      await page.getByLabel("IPAM tree").getByText("2001:db8::/100").click();
       await expect(page.getByRole("heading", { name: "2001:db8::/100" })).toBeVisible();
       await expect(page.getByTestId("ip-prefix-table")).toBeVisible();
     });
@@ -56,7 +56,10 @@ test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
     await expect(page.getByTestId("ip-prefix-table")).toContainText("10.0.0.0/8");
 
     await test.step("enter search term and verify filtered results", async () => {
-      await page.getByRole("searchbox", { name: "Search" }).fill("2001");
+      await page
+        .getByTestId("object-list-search-bar")
+        .getByRole("searchbox", { name: "Search" })
+        .fill("2001");
       await expect(page.getByTestId("ip-prefix-table")).toContainText("2001:db8::/100");
       await expect(page.getByTestId("ip-prefix-table")).toContainText("2001:db8::14:0/110");
       await expect(page.getByTestId("ip-prefix-table")).not.toContainText("10.0.0.0/8");

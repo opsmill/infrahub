@@ -13,13 +13,15 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, Relat
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.shared import MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
+from infrahub.core.schema import NodeSchema
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.types import is_large_attribute_type
 
 from ..shared import MigrationRequiringRebase
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import AttributeSchema, NodeSchema
+    from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, TemplateSchema
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -38,18 +40,23 @@ class DefaultBranchNodeCount(Query):
     name = "get_branch_node_count"
     type = QueryType.READ
 
-    def __init__(self, kinds_to_skip: list[str], **kwargs: Any) -> None:
+    def __init__(
+        self, kinds_to_skip: list[str] | None = None, kinds_to_include: list[str] | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
-        self.kinds_to_skip = kinds_to_skip
+        self.kinds_to_skip = kinds_to_skip or []
+        self.kinds_to_include = kinds_to_include
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params = {
             "branch_names": [registry.default_branch, GLOBAL_BRANCH_NAME],
             "kinds_to_skip": self.kinds_to_skip,
+            "kinds_to_include": self.kinds_to_include,
         }
         query = """
 MATCH (n:Node)-[e:IS_PART_OF]->(:Root)
 WHERE NOT n.kind IN $kinds_to_skip
+AND ($kinds_to_include IS NULL OR n.kind IN $kinds_to_include)
 AND e.branch IN $branch_names
 AND e.status = "active"
 AND e.to IS NULL
@@ -621,7 +628,7 @@ class Migration044(MigrationRequiringRebase):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        schema: NodeSchema,
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
         schema_branch: SchemaBranch,
         attribute_schema_map: dict[AttributeSchema, AttributeSchema],
         progress: Progress | None = None,
@@ -729,6 +736,10 @@ class Migration044(MigrationRequiringRebase):
                         continue
 
                     node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+
+                    if node_schema.branch is not BranchSupportType.AWARE:
+                        continue
+
                     attribute_schema_map = {}
                     if node_schema.display_labels:
                         attribute_schema_map[display_labels_attribute_schema] = display_label_attribute_schema
@@ -755,7 +766,7 @@ class Migration044(MigrationRequiringRebase):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        schema: NodeSchema,
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
         schema_branch: SchemaBranch,
         source_attribute_schema: AttributeSchema,
         destination_attribute_schema: AttributeSchema,
@@ -824,18 +835,32 @@ class Migration044(MigrationRequiringRebase):
                     continue
 
                 node_schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
-                default_node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+                if node_schema.branch not in (BranchSupportType.AWARE, BranchSupportType.LOCAL):
+                    continue
+                try:
+                    default_node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+                except SchemaNotFoundError:
+                    default_node_schema = None
                 schemas_for_universal_update_map = {}
                 schemas_for_targeted_update_map = {}
-                if default_node_schema.display_label != node_schema.display_label:
-                    schemas_for_universal_update_map[display_labels_attribute_schema] = display_label_attribute_schema
-                elif node_schema.display_labels:
-                    schemas_for_targeted_update_map[display_labels_attribute_schema] = display_label_attribute_schema
+                if node_schema.display_label:
+                    if default_node_schema is None or default_node_schema.display_label != node_schema.display_label:
+                        schemas_for_universal_update_map[display_labels_attribute_schema] = (
+                            display_label_attribute_schema
+                        )
+                    else:
+                        schemas_for_targeted_update_map[display_labels_attribute_schema] = (
+                            display_label_attribute_schema
+                        )
 
-                if default_node_schema.human_friendly_id != node_schema.human_friendly_id:
-                    schemas_for_universal_update_map[hfid_attribute_schema] = hfid_attribute_schema
-                elif node_schema.human_friendly_id:
-                    schemas_for_targeted_update_map[hfid_attribute_schema] = hfid_attribute_schema
+                if node_schema.human_friendly_id:
+                    if (
+                        default_node_schema is None
+                        or default_node_schema.human_friendly_id != node_schema.human_friendly_id
+                    ):
+                        schemas_for_universal_update_map[hfid_attribute_schema] = hfid_attribute_schema
+                    else:
+                        schemas_for_targeted_update_map[hfid_attribute_schema] = hfid_attribute_schema
 
                 if schemas_for_universal_update_map:
                     await self._do_one_schema_all(

@@ -23,6 +23,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { ObjectItemsCell, TextCell } from "@/entities/nodes/object-items/object-items-cell";
@@ -180,7 +181,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         relationshipsData.node?.id
                       )}
                     >
-                      {relationshipsData.node?.display_label}
+                      {relationshipsData.node ? getNodeLabel(relationshipsData.node) : "-"}
                     </StyledLink>
                   ) : (
                     "-"
@@ -324,7 +325,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData?.map(({ node, properties }: any) => (
                     <dd className="flex items-center text-gray-900 underline" key={node.id}>
                       <Link to={getObjectDetailsUrl(node.__typename, node.id)}>
-                        {node.display_label}
+                        {getNodeLabel(node)}
                       </Link>
 
                       {node && (
@@ -356,10 +357,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           description={
             <>
               Are you sure you want to remove the association between{" "}
-              <b>`{props.parentNode.display_label}`</b> and{" "}
-              <b>`{relatedRowToDelete.display_label}`</b>? The{" "}
+              <b>`{getNodeLabel(props.parentNode)}`</b> and{" "}
+              <b>`{getNodeLabel(relatedRowToDelete)}`</b>? The{" "}
               <b>`{relatedRowToDelete.__typename.replace(regex, "")}`</b>{" "}
-              <b>`{relatedRowToDelete.display_label}`</b> won&apos;t be deleted in the process.
+              <b>`{getNodeLabel(relatedRowToDelete)}`</b> won&apos;t be deleted in the process.
             </>
           }
           onCancel={() => setRelatedRowToDelete(undefined)}
@@ -381,7 +382,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               <SlideOverTitle
                 schema={parentSchema}
                 currentObjectLabel={relationshipSchema.label}
-                title={`Edit ${relatedObjectToEdit?.display_label}`}
+                title={`Edit ${relatedObjectToEdit ? getNodeLabel(relatedObjectToEdit) : ""}`}
                 subtitle="Update the details of the related object"
               />
             )

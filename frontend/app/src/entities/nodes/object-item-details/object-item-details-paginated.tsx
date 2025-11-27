@@ -23,6 +23,7 @@ import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
@@ -87,9 +88,7 @@ export default function ObjectItemDetails({
   const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
-    objectDetailsData?.display_label
-      ? `${objectDetailsData?.display_label} details`
-      : `${schema.label} details`
+    objectDetailsData ? `${getNodeLabel(objectDetailsData)} details` : `${schema.label} details`
   );
 
   if (!objectDetailsData) {

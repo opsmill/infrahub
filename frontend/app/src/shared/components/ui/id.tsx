@@ -8,6 +8,7 @@ import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/bad
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { getObjectDisplayLabel } from "@/entities/nodes/api/getObjectDisplayLabel";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 type tId = {
   id: string;
@@ -32,13 +33,13 @@ export const Id = (props: tId) => {
     return <LoadingIndicator />;
   }
 
-  if (error || !object?.display_label) {
+  if (error || !getNodeLabel(object)) {
     return <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>Name not found</BadgeCircle>;
   }
 
   return (
     <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>
-      {object?.display_label}
+      {getNodeLabel(object)}
 
       {!preventCopy && (
         <Clipboard

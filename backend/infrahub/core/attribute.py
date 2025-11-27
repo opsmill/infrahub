@@ -336,7 +336,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         delete_at = Timestamp(at)
 
-        query = await AttributeGetQuery.init(db=db, attr=self)
+        query = await AttributeGetQuery.init(db=db, attr=self, at=delete_at)
         await query.execute(db=db)
         results = query.get_results()
 

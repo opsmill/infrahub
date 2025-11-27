@@ -9,6 +9,7 @@ import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 interface MetaDetailsTooltipProps {
@@ -36,10 +37,10 @@ export default function MetaDetailsTooltip({
           {isFromProfile ? (
             <Badge variant="green" className="font-normal hover:underline">
               <Icon icon="mdi:shape-plus-outline" className="mr-1" />
-              {source.display_label}
+              {getNodeLabel(source)}
             </Badge>
           ) : (
-            source.display_label
+            getNodeLabel(source)
           )}
         </Link>
       ) : (
@@ -57,7 +58,7 @@ export default function MetaDetailsTooltip({
     {
       name: "Owner",
       value: owner ? (
-        <Link to={getObjectDetailsUrl(owner.__typename, owner.id)}>{owner.display_label}</Link>
+        <Link to={getObjectDetailsUrl(owner.__typename, owner.id)}>{getNodeLabel(owner)}</Link>
       ) : (
         "-"
       ),

@@ -3,6 +3,8 @@ import { NODE_OBJECT } from "@/config/constants";
 import { Skeleton } from "@/shared/components/skeleton";
 import { classNames } from "@/shared/utils/common";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+
 import { useNodeLabel } from "../api/get-display-label.query";
 
 type NodeLabelProps = {
@@ -23,9 +25,9 @@ export const NodeLabel = ({ id, kind = NODE_OBJECT, branch, className }: NodeLab
     return <div className="italic">No id provided</div>;
   }
 
-  if (error || !data?.display_label) {
+  if (error || !data) {
     return <div className={classNames("italic", className)}>{id}</div>;
   }
 
-  return <div className={className}>{data?.display_label}</div>;
+  return <div className={className}>{getNodeLabel(data)}</div>;
 };

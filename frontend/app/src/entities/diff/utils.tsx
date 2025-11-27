@@ -7,7 +7,8 @@ import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
-import { NodeLabel } from "../nodes/object/ui/node-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 function extractNodeId(path: string) {
   // Expect an ID immediately following "data/"; support optional leading slash
@@ -34,6 +35,10 @@ export const displayValue = (value: any) => {
 
   if (value === "NULL") {
     return "-";
+  }
+
+  if (value && typeof value === "object" && "__typename" in value && "id" in value) {
+    return getNodeLabel(value);
   }
 
   return value?.display_label || value || "-";

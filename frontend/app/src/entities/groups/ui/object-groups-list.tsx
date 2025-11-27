@@ -14,6 +14,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { pluralize } from "@/shared/utils/string";
 
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
@@ -54,7 +55,7 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
           to={getObjectDetailsUrl(group.__typename, group.id)}
           className="block truncate font-semibold hover:underline"
         >
-          {group.display_label}
+          {getNodeLabel(group)}
         </Link>
 
         <div className="flex items-center gap-2">
@@ -118,7 +119,7 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
 
       <ModalDelete
         title="Leave Group"
-        description={`Are you sure you want to leave group ${group.display_label}?`}
+        description={`Are you sure you want to leave group ${getNodeLabel(group)}?`}
         onCancel={() => setShowDeleteModal(false)}
         onDelete={handleRemoveGroup}
         open={showDeleteModal}

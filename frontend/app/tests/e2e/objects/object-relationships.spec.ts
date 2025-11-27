@@ -69,6 +69,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
         await page.goto(`/objects/InfraPlatform?branch=${BRANCH_NAME}`);
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
         await page.getByRole("link", { name: "Devices 9" }).click();
+        await expect(page.getByRole("link", { name: "atl1-leaf2" })).toBeVisible();
       });
 
       await test.step("Add a new relationship", async () => {
@@ -93,8 +94,9 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       });
 
       await test.step("Edit a relationship", async () => {
-        await page.getByTestId("actions-cell-atl1-core1, Loopback0").click();
-        await page.getByRole("menuitem", { name: "Edit" }).click();
+        await page.getByRole("link", { name: "Loopback0", exact: true }).click();
+
+        await page.getByTestId("edit-button").click();
         await expect(page.getByText("Device *")).toBeVisible();
         await page.getByRole("textbox", { name: "Name *" }).fill("Loopback0-update");
         await page.getByRole("button", { name: "Save" }).click();
@@ -102,7 +104,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("Verify relationship update", async () => {
         await expect(page.getByText("InterfaceL3 updated")).toBeVisible();
-        await expect(page.getByText("Loopback0-update", { exact: true })).toBeVisible();
+        await expect(page.getByText("NameLoopback0-update")).toBeVisible();
       });
     });
 
@@ -131,9 +133,10 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
       await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
       await page
         .getByTestId("identifier-cell")
-        .getByRole("link", { name: "den1-edge2, Ethernet1", exact: true })
+        .getByRole("link", { name: "Ethernet1", exact: true })
+        .nth(2)
         .click();
-      await page.getByText("Ip Addresses1").click();
+      await page.getByText("Ip Addresses0").click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByTestId("select-open-pool-option-button").click();
       await expect(page.getByRole("option", { name: "Loopbacks pool" })).toBeVisible();

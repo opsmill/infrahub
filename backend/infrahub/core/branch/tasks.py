@@ -502,9 +502,13 @@ async def post_process_branch_merge(source_branch: str, target_branch: str, cont
             parameters={"branch": target_branch, "source": GeneratorDefinitionRunSource.MERGE},
         )
 
+        active_branches = await Branch.get_list(db=db)
+        active_branch_names = {branch.name for branch in active_branches}
+
         for diff_root in branch_diff_roots:
             if (
                 diff_root.base_branch_name != diff_root.diff_branch_name
+                and diff_root.diff_branch_name in active_branch_names
                 and diff_root.tracking_id
                 and isinstance(diff_root.tracking_id, BranchTrackingId)
             ):

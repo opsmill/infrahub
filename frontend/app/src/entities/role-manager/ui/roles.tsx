@@ -21,6 +21,7 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -78,13 +79,17 @@ function Roles() {
     data[ACCOUNT_ROLE_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
         name: { value: edge?.node?.name.value },
         description: { value: edge?.node?.description?.value },
         groups: {
           value: { edges: edge?.node?.groups?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.groups?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.groups?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

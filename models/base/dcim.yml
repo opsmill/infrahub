@@ -176,6 +176,7 @@ nodes:
     order_by:
       - name__value
     display_label: "{{ name__value }}"
+    generate_template: true
     attributes:
       - name: name
         kind: Text

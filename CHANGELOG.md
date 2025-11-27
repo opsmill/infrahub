@@ -11,6 +11,29 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.5.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.2) - 2025-11-17
+
+### Fixed
+
+- Fix migration that backfills display labels and human-friendly IDs to account for schema that only exist on the branch being migrated.
+  Add new migration to add display labels and human-friendly IDs to existing instances of templates and profiles. ([#7655](https://github.com/opsmill/infrahub/issues/7655))
+- Prevent attempting diff update on a deleted branch. Log a warning instead. ([#7666](https://github.com/opsmill/infrahub/issues/7666))
+
+## [Infrahub - v1.5.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.1) - 2025-11-13
+
+### Security
+
+- Updated FastAPI and vulnerable version of starlette
+
+### Fixed
+
+- Disabled scroll on number input fields to prevent accidental value changes. ([#7602](https://github.com/opsmill/infrahub/issues/7602))
+- Backend database sessions are now handled consistently avoiding resource leakage.
+
+### Housekeeping
+
+- Bump SDK to fix issue with object file range expansion.
+
 ## [Infrahub - v1.5.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.0) - 2025-11-10
 
 We're excited to announce the latest version of Infrahub, v1.5.0!

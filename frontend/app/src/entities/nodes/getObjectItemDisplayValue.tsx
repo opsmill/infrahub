@@ -24,13 +24,15 @@ import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Link } from "@/shared/components/ui/link";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 const getTextValue = (data: any) => {
-  if (typeof data === "string" || typeof data === "number") {
-    return data;
+  // If data.node is a node object, use getNodeLabel
+  if (data?.node && "__typename" in data.node && "id" in data.node) {
+    return data?.label ?? getNodeLabel(data.node) ?? data?.value ?? "-";
   }
 
   return (
@@ -88,7 +90,7 @@ export const getDisplayValue = (
 
   if (row[attribute?.name]?.edges) {
     const items = row[attribute?.name]?.edges
-      .map((edge: any) => edge?.node?.display_label ?? edge?.node?.value ?? "-")
+      .map((edge: any) => (edge?.node ? getNodeLabel(edge.node) : (edge?.node?.value ?? "-")))
       .slice(0, 5);
 
     const rest = row[attribute?.name]?.edges?.slice(5)?.length;

@@ -143,8 +143,9 @@ class Branch(StandardNode):
         """
 
         params: dict[str, Any] = {"name": name}
+        params["ignore_statuses"] = []
         if ignore_deleting:
-            params["ignore_statuses"] = [BranchStatus.DELETING.value]
+            params["ignore_statuses"].append(BranchStatus.DELETING.value)
 
         results = await db.execute_query(query=query, params=params, name="branch_get_by_name", type=QueryType.READ)
 
@@ -179,7 +180,7 @@ class Branch(StandardNode):
         **kwargs: Any,
     ) -> int:
         query: Query = await BranchNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, exclude_global=True, **kwargs
         )
         return await query.count(db=db)
 
@@ -356,7 +357,7 @@ class Branch(StandardNode):
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = f"{variable_name}.from <= ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            filter_str = f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
@@ -369,10 +370,13 @@ class Branch(StandardNode):
         filters = []
         for idx in range(len(branches_times)):
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from < ${pp}time{idx} "
+                f"AND {variable_name}.to >= ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"

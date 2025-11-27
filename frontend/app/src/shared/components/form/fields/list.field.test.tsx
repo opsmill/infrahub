@@ -1,5 +1,5 @@
-import { userEvent } from "@vitest/browser/context";
 import { describe, expect, test } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import ListField from "@/shared/components/form/fields/list.field";
 import type { FormAttributeValue } from "@/shared/components/form/type";
@@ -11,7 +11,7 @@ describe("List Field Component", () => {
   test("renders empty list field correctly", async () => {
     // GIVEN
     let formValue;
-    const component = render(
+    const component = await render(
       <TestForm onSubmit={(formData) => (formValue = formData)}>
         <ListField name="field1" label="Test List" />
       </TestForm>
@@ -35,7 +35,7 @@ describe("List Field Component", () => {
       source: { type: "schema" },
       value: ["item 1", "item 2"],
     };
-    const component = render(
+    const component = await render(
       <TestForm onSubmit={(formData) => (formValue = formData)}>
         <ListField name="field1" label="Test List" defaultValue={defaultValue} />
       </TestForm>
@@ -59,7 +59,7 @@ describe("List Field Component", () => {
       source: { type: "user" },
       value: ["user item 1", "user item 2"],
     };
-    const component = render(
+    const component = await render(
       <TestForm onSubmit={(formData) => (formValue = formData)}>
         <ListField name="field1" label="Test List" defaultValue={defaultValue} />
       </TestForm>
@@ -78,7 +78,7 @@ describe("List Field Component", () => {
 
   test("shows required validation message when empty", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <TestForm>
         <ListField name="test" label="Test List" rules={{ required: true }} />
       </TestForm>
@@ -94,7 +94,7 @@ describe("List Field Component", () => {
   test("passes validation when required field has items", async () => {
     // GIVEN
     const defaultValue: FormAttributeValue = { source: { type: "user" }, value: ["test item"] };
-    const component = render(
+    const component = await render(
       <TestForm>
         <ListField
           name="test"
@@ -114,7 +114,7 @@ describe("List Field Component", () => {
 
   test("displays description on hover when provided", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <TestForm>
         <ListField name="test" label="Test List" description="This is a test description" />
       </TestForm>
@@ -129,7 +129,7 @@ describe("List Field Component", () => {
 
   test("shows unique indicator when unique prop is true", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <TestForm>
         <ListField name="test" label="Test List" unique={true} />
       </TestForm>
@@ -143,7 +143,7 @@ describe("List Field Component", () => {
     // GIVEN
     let formValue;
     const defaultValue: FormAttributeValue = { source: { type: "user" }, value: [] };
-    const component = render(
+    const component = await render(
       <TestForm onSubmit={(formData) => (formValue = formData)}>
         <ListField
           name="field1"
@@ -171,7 +171,7 @@ describe("List Field Component", () => {
       source: { type: "user" },
       value: ["item 1", "item 2"],
     };
-    const component = render(
+    const component = await render(
       <TestForm onSubmit={(formData) => (formValue = formData)}>
         <ListField name="field1" label="Test List" defaultValue={defaultValue} />
       </TestForm>

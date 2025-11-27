@@ -17,7 +17,7 @@ Documentation generated for Infrahub must reflect this novel approach, providing
 
 ## Developer Workflows
 
-- **Backend**: Use Poetry for dependency management (`pyproject.toml`). Run tests with `pytest` or via `invoke` tasks.
+- **Backend**: Use uv for dependency management (`pyproject.toml`). Run tests with `pytest` or via `invoke` tasks.
 - **Frontend**: Use npm scripts (`npm start`, `npm test`, `npm run build`) in `frontend/app/`.
 - **Docs**: Develop in `docs/`, preview with `invoke docs.build docs.serve`. Validate docs site with `invoke docs.validate`.
 
