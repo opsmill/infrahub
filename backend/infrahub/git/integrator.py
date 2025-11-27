@@ -199,7 +199,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 commit=commit,
                 config_file=config_file,
             )
-            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
+            await self.import_all_python_files(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
             await self.import_jinja2_transforms(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
