@@ -215,9 +215,7 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
     def schema_datacenter_base(self) -> dict[str, Any]:
         """Schema with DatacenterSite, DatacenterRack, DatacenterDevice without constraint."""
         return SchemaRoot(
-            version="1.0",
-            generics=[DATACENTER_HIERARCHY],
-            nodes=[DATACENTER_SITE, DATACENTER_RACK, DATACENTER_DEVICE]
+            version="1.0", generics=[DATACENTER_HIERARCHY], nodes=[DATACENTER_SITE, DATACENTER_RACK, DATACENTER_DEVICE]
         ).model_dump()
 
     @pytest.fixture(scope="class")
@@ -283,11 +281,11 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
             last_device = await NodeManager.get_one(db=db, branch=self.branch_name, id=devices[-1].id)
             await last_device.delete(db=db)
 
-    async def test_step_04_add_device_to_invalid_rack(
-        self, db: InfrahubDatabase, client: InfrahubClient  
-    ):
+    async def test_step_04_add_device_to_invalid_rack(self, db: InfrahubDatabase, client: InfrahubClient):
         site_1 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_SITE, name__value="site_1")
-        rack_2_2 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_RACK, site__ids=[site.id], name__value="rack_2_2")
+        rack_2_2 = await client.get(
+            branch=self.branch_name, kind=TestKind.DATACENTER_RACK, site__ids=[site.id], name__value="rack_2_2"
+        )
 
         device = await client.create(
             branch=self.branch_name,
@@ -295,7 +293,7 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
             name=f"device_1_4",
             device_type="Server",
             rack=rack_2_2,
-            parent=site_1
+            parent=site_1,
         )
         await device.save()
         await device.delete()
@@ -307,17 +305,18 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
         response = await client.schema.load(schemas=[schema_rack_with_constraint], branch=self.branch_name)
         assert not response.errors
 
-
     async def test_step_06_incorrectly_add_device_from_different_site(
         self, db: InfrahubDatabase, client: InfrahubClient
     ) -> None:
         """Attempt to add device from site2 to rack in site1 - should fail."""
-        device_2_1 = await client.all(branch=self.branch_name, kind=TestKind.DATACENTER_DEVICE, name__value="device_2_1", include=["rack"])
+        device_2_1 = await client.all(
+            branch=self.branch_name, kind=TestKind.DATACENTER_DEVICE, name__value="device_2_1", include=["rack"]
+        )
         rack_1_1 = await client.all(branch=self.branch_name, kind=TestKind.DATACENTER_RACK, name__value="rack_1_1")
 
         device_2_1.rack = None
         await device_2_1.save()
-        
+
         query = """
         mutation {
             RelationshipAdd(
