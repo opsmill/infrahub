@@ -31,7 +31,6 @@ const generateRelationshipPropertiesQuery = ({
               },
               edges: {
                 properties: {
-                  is_visible: true,
                   is_protected: true,
                   updated_at: true,
                   source: {

@@ -137,8 +137,6 @@ export const formatPropertyName = (name: DiffProperty["property_type"]) => {
       return "value";
     case "IS_PROTECTED":
       return "protected";
-    case "IS_VISIBLE":
-      return "visible";
     case "IS_RELATED":
       return "ID";
     default: {
