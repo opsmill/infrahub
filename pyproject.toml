@@ -576,7 +576,6 @@ ignore = [
     "SIM108",  # Use ternary operator `markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"` instead of `if`-`else`-block
     "SIM102",  # Use a single `if` statement instead of nested `if` statements
     "SIM103",  # Return the condition `identifier in self.sub_by_id.keys()` directly
-    "SIM105",  # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
     "SIM110",  # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
     "SIM113",  # Use `enumerate()` for index variable `color` in `for` loop
     "SIM114",  # Combine `if` branches using logical `or` operator
