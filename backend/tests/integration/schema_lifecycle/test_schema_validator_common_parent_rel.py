@@ -11,7 +11,13 @@ from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
-from tests.helpers.schema.device import LAG_INTERFACE
+from tests.helpers.schema.device import DATACENTER_DEVICE, LAG_INTERFACE
+from tests.helpers.schema.location import (
+    DATACENTER_HIERARCHY,
+    DATACENTER_RACK,
+    DATACENTER_RACK_WITH_CONSTRAINT,
+    DATACENTER_SITE,
+)
 
 from .shared import TestSchemaLifecycleBase
 
@@ -196,5 +202,141 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
         assert {n.device.id for n in nodes} == {device1.id}
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)
+
+
+class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
+    """Test common_parent constraint with hierarchical relationships (RelationshipKind.HIERARCHY)."""
+
+    branch_name = "hierarchy-test-branch"
+
+    @pytest.fixture(scope="class")
+    def schema_datacenter_base(self) -> dict[str, Any]:
+        """Schema with DatacenterSite, DatacenterRack, DatacenterDevice without constraint."""
+        return SchemaRoot(
+            version="1.0",
+            generics=[DATACENTER_HIERARCHY],
+            nodes=[DATACENTER_SITE, DATACENTER_RACK, DATACENTER_DEVICE]
+        ).model_dump()
+
+    @pytest.fixture(scope="class")
+    def schema_rack_without_constraint(self) -> dict[str, Any]:
+        """Schema for DatacenterRack without common_parent constraint."""
+        rack_without_constraint = copy.deepcopy(DATACENTER_RACK)
+        return SchemaRoot(version="1.0", generics=[], nodes=[rack_without_constraint]).model_dump()
+
+    @pytest.fixture(scope="class")
+    def schema_rack_with_constraint(self) -> dict[str, Any]:
+        """Schema for DatacenterRack with common_parent='parent' constraint on devices relationship."""
+        return SchemaRoot(version="1.0", generics=[], nodes=[DATACENTER_RACK_WITH_CONSTRAINT]).model_dump()
+
+    async def test_step_01_create_branch(self, client: InfrahubClient) -> None:
+        branch = await client.branch.create(branch_name=self.branch_name, sync_with_git=False)
+        assert branch
+
+    async def test_step_02_load_base_schema(
+        self, client: InfrahubClient, schema_datacenter_base: dict[str, Any]
+    ) -> None:
+        response = await client.schema.load(schemas=[schema_datacenter_base], branch=self.branch_name)
+        assert not response.errors
+
+    async def test_step_03_create_sites_racks_devices(self, db: InfrahubDatabase, client: InfrahubClient) -> None:
+        """Create 2 sites, each with 2 racks and 4 devices."""
+        for site_num in [1, 2]:
+            site = await client.create(
+                branch=self.branch_name,
+                kind=TestKind.DATACENTER_SITE,
+                name=f"site_{site_num}",
+                location=f"Location {site_num}",
+            )
+            await site.save()
+
+            # Create racks for this site
+            racks: list[InfrahubNode] = []
+            for rack_num in [1, 2]:
+                rack = await client.create(
+                    branch=self.branch_name,
+                    kind=TestKind.DATACENTER_RACK,
+                    name=f"rack_{site_num}_{rack_num}",
+                    position=rack_num,
+                    parent=site,
+                )
+                await rack.save()
+                racks.append(rack)
+
+            # Create devices for this site
+            devices: list[InfrahubNode] = []
+            for dev_num in [1, 2, 3, 4]:
+                device = await client.create(
+                    branch=self.branch_name,
+                    kind=TestKind.DATACENTER_DEVICE,
+                    name=f"device_{site_num}_{dev_num}",
+                    device_type="Server",
+                    rack=racks[dev_num % 2],
+                    parent=site,
+                )
+                await device.save()
+                devices.append(device)
+
+            # Delete last device to test deletion handling
+            last_device = await NodeManager.get_one(db=db, branch=self.branch_name, id=devices[-1].id)
+            await last_device.delete(db=db)
+
+    async def test_step_04_add_device_to_invalid_rack(
+        self, db: InfrahubDatabase, client: InfrahubClient  
+    ):
+        site_1 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_SITE, name__value="site_1")
+        rack_2_2 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_RACK, site__ids=[site.id], name__value="rack_2_2")
+
+        device = await client.create(
+            branch=self.branch_name,
+            kind=TestKind.DATACENTER_DEVICE,
+            name=f"device_1_4",
+            device_type="Server",
+            rack=rack_2_2,
+            parent=site_1
+        )
+        await device.save()
+        await device.delete()
+
+    async def test_step_05_set_constraint_to_rack(
+        self, db: InfrahubDatabase, client: InfrahubClient, schema_rack_with_constraint: dict[str, Any]
+    ) -> None:
+        "Load new Rack schema, with common parent constraint, should succeed since there is no violations"
+        response = await client.schema.load(schemas=[schema_rack_with_constraint], branch=self.branch_name)
+        assert not response.errors
+
+
+    async def test_step_06_incorrectly_add_device_from_different_site(
+        self, db: InfrahubDatabase, client: InfrahubClient
+    ) -> None:
+        """Attempt to add device from site2 to rack in site1 - should fail."""
+        device_2_1 = await client.all(branch=self.branch_name, kind=TestKind.DATACENTER_DEVICE, name__value="device_2_1", include=["rack"])
+        rack_1_1 = await client.all(branch=self.branch_name, kind=TestKind.DATACENTER_RACK, name__value="rack_1_1")
+
+        device_2_1.rack = None
+        await device_2_1.save()
+        
+        query = """
+        mutation {
+            RelationshipAdd(
+                data: {
+                    id: "%s",
+                    name: "devices",
+                    nodes: [ %s ]
+                }
+            ) {
+                ok
+            }
+        }
+        """ % (rack_1_1.id, {"id": device_2_1.id})
+
+        with pytest.raises(GraphQLError) as exc:
+            await client.execute_graphql(query=query, branch_name=self.branch_name, tracker="add-devices-to-rack")
+
+        assert "do not have the same parent" in exc.value.errors[0]["message"]
+
+    async def test_final_validate(self, db: InfrahubDatabase):
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
