@@ -1044,8 +1044,7 @@ This prevents users from adding interfaces from different devices to the same LA
 :::warning Limitations
 
 - The parent relationship name must be the same on both sides of the relationship
-- Only standard parent relationships are supported (hierarchical parent relationships are not supported)
-- The parent relationship must be of kind `Parent` (and cardinality `one`)
+- The parent relationship must be of kind `Parent` or `Hierarchy` (with the relationship name `parent`) and cardinality `one`
 
 :::
 
