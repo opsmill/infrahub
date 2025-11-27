@@ -6,6 +6,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames, sortByCreatedAtDesc } from "@/shared/utils/common";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
@@ -47,19 +48,21 @@ export const BranchesWidget = ({ className }: BranchesWidgetProps) => {
 
       {branches.length === 0 && (
         <EmptyHomeCard
-          title={"You don’t have any open branches yet"}
+          title={"You don't have any open branches yet"}
           subtitle={"Create your first branch to start tracking changes."}
         />
       )}
 
       {!!branches.length && (
-        <ListBox
-          aria-label="Branches list"
-          items={branches}
-          className="flex h-full flex-col divide-y"
-        >
-          {(branch) => <BranchListItem branch={branch} />}
-        </ListBox>
+        <ScrollArea>
+          <ListBox
+            aria-label="Branches list"
+            items={branches}
+            className="flex h-full flex-col divide-y"
+          >
+            {(branch) => <BranchListItem branch={branch} />}
+          </ListBox>
+        </ScrollArea>
       )}
     </HomeCard>
   );
