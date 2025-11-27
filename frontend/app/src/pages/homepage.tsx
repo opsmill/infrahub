@@ -20,7 +20,7 @@ const Homepage = () => {
         <div className="flex max-h-[816px] min-h-0 flex-col gap-4">
           <GitRepositoriesWidget className="max-h-1/3" />
 
-          <EventsWidget className="" />
+          <EventsWidget />
         </div>
       </div>
 
