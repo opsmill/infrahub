@@ -8,6 +8,7 @@ from prefect.client.schemas.objects import WorkerStatus
 from infrahub.events.utils import get_all_events
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import TriggerType
+from infrahub.trigger.setup import gather_all_automations
 
 from .models import TelemetryPrefectData, TelemetryWorkPoolData
 
@@ -53,7 +54,7 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
 
 @task(name="telemetry-gather-automations", task_run_name="Gather Automations", cache_policy=NONE)
 async def gather_prefect_automations(client: PrefectClient) -> dict[str, Any]:
-    automations = await client.read_automations()
+    automations = await gather_all_automations(client=client)
 
     data: dict[str, Any] = {}
 

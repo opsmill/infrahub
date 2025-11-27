@@ -45,13 +45,14 @@ jobs:
           python-version: "3.12"
 
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:

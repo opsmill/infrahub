@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 from infrahub_sdk.exceptions import URLNotFoundError
 from prefect import flow
 from prefect.logging import get_run_logger
@@ -138,11 +136,32 @@ async def hfid_setup(context: InfrahubContext, branch_name: str | None = None, e
         )  # type: ignore[misc]
 
         # Configure all DisplayLabelTriggerDefinitions in Prefect
-        hfid_reports = [cast(HFIDTriggerDefinition, entry) for entry in report.updated + report.created]
-        direct_target_triggers = [hfid_report for hfid_report in hfid_reports if hfid_report.target_kind]
+        all_triggers = report.triggers_with_type(trigger_type=HFIDTriggerDefinition)
+        direct_target_triggers = [
+            hfid_report
+            for hfid_report in report.modified_triggers_with_type(trigger_type=HFIDTriggerDefinition)
+            if hfid_report.target_kind
+        ]
 
         for display_report in direct_target_triggers:
             if event_name != BranchDeletedEvent.event_name and display_report.branch == branch_name:
+                if branch_name != registry.default_branch:
+                    default_branch_triggers = [
+                        trigger
+                        for trigger in all_triggers
+                        if trigger.branch == registry.default_branch
+                        and trigger.target_kind == display_report.target_kind
+                    ]
+                    if (
+                        default_branch_triggers
+                        and len(default_branch_triggers) == 1
+                        and default_branch_triggers[0].hfid_hash == display_report.hfid_hash
+                    ):
+                        log.debug(
+                            f"Skipping HFID updates for {display_report.target_kind} [{branch_name}], schema is identical to default branch"
+                        )
+                        continue
+
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_HFID,
                     context=context,

@@ -53,7 +53,7 @@ jobs:
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check for file changes
@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Setup environment"
@@ -88,7 +88,7 @@ jobs:
       contents: read
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -107,7 +107,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Setup environment"
@@ -127,7 +127,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Linting: markdownlint"
@@ -144,7 +144,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check workflow files
@@ -173,7 +173,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -185,7 +185,8 @@ jobs:
 
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -231,14 +232,15 @@ jobs:
         working-directory: ./python_testcontainers
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: "Setup environment"
         run: |
-          pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }} --python python${{ matrix.python-version }}
+          python -m pip install --user pipx
+          python -m pipx install poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }} --python python${{ matrix.python-version }}
           poetry config virtualenvs.create true --local
       - name: "Install Package"
         run: "poetry install --all-extras"
@@ -271,7 +273,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -287,7 +289,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -328,7 +331,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -344,7 +347,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -378,7 +382,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -394,7 +398,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -431,7 +436,7 @@ jobs:
       POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -462,7 +467,8 @@ jobs:
         run: "invoke dev.build"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -504,7 +510,7 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v5"
+  #       uses: "actions/checkout@v6"
   #       with:
   #         submodules: true
   #     - name: Set up Python
@@ -537,7 +543,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -547,7 +553,8 @@ jobs:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -568,7 +575,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -607,7 +614,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -617,10 +624,10 @@ jobs:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-          poetry run pip install invoke toml
         env:
           PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
       - name: "Install Package"
@@ -643,7 +650,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -659,7 +666,8 @@ jobs:
           python-version: 3.12
       - name: "Setup python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -683,7 +691,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -699,7 +707,8 @@ jobs:
           python-version: "3.12"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:
@@ -720,7 +729,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -746,7 +755,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -801,7 +810,7 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install NodeJS
@@ -979,7 +988,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -1073,7 +1082,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -1089,7 +1098,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           poetry env use 3.12
         env:

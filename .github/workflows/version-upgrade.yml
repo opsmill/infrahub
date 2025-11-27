@@ -53,7 +53,7 @@ jobs:
       POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -62,7 +62,8 @@ jobs:
           python-version: 3.12
       - name: "Setup python environment"
         run: |
-          pipx install -f poetry==${{ env.POETRY_VERSION }}
+          python -m pip install --user pipx
+          python -m pipx install -f poetry==${{ env.POETRY_VERSION }}
           poetry config virtualenvs.create true --local
           pip install invoke
       - name: "Install Package"
