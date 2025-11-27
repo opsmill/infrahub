@@ -34,7 +34,7 @@ export const TasksWidget = ({ className }: TasksWidgetProps) => {
         </HomeCard.Link>
       </HomeCard.Title>
 
-      <HomeCard.Content className="grid grid-cols-1 gap-2 lg:grid-cols-5">
+      <HomeCard.Content className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-5">
         <TaskHomepageColumn>
           <TaskHomepageColumnHeader variant={"green"}>COMPLETED</TaskHomepageColumnHeader>
           <TaskHomepageState
