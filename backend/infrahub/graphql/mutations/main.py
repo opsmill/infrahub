@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields_first_node
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core.constants import MutationAction

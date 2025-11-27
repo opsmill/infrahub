@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType

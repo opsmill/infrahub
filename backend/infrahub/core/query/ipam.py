@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
@@ -14,6 +14,7 @@ from infrahub.core.utils import convert_ip_to_binary_str
 from . import Query
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from uuid import UUID
 
     from infrahub.core.branch import Branch

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -9,6 +9,8 @@ from infrahub.core.constants import InfrahubKind, RelationshipStatus
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.database import InfrahubDatabase
 

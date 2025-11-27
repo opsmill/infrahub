@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 from uuid import uuid4
 
 from prefect import flow
@@ -25,6 +25,8 @@ from .model.path import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 

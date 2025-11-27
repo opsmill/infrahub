@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import ssl
-from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
+from collections.abc import Awaitable, Callable, MutableMapping
+from typing import TYPE_CHECKING, TypeVar
 
 import nats
 import ujson

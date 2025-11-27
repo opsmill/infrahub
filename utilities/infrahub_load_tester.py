@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import random
 import string
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Iterable
 
     from infrahub_sdk import InfrahubClient
 

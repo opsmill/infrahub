@@ -1,5 +1,6 @@
+from collections.abc import Hashable
 from dataclasses import dataclass
-from typing import Any, Hashable
+from typing import Any
 
 import pytest
 from pydantic import ValidationError

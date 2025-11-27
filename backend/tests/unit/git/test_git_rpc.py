@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
-from typing_extensions import Self
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext

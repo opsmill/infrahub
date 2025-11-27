@@ -1,8 +1,8 @@
 import re
 import shutil
 import tarfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import anyio
 import pytest

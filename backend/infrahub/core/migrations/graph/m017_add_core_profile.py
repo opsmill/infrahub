@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.migrations.shared import MigrationResult
@@ -11,6 +11,8 @@ from infrahub.log import get_logger
 from ..shared import InternalSchemaMigration, SchemaMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()

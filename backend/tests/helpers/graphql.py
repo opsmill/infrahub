@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from graphql import (
     ExecutionContext,
@@ -18,6 +18,8 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from infrahub.auth import AccountSession
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices

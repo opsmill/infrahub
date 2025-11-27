@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from opentelemetry import trace
-from typing_extensions import Self
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import ProfileSchema

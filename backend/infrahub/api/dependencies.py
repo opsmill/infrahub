@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -17,6 +17,8 @@ from infrahub.exceptions import AuthorizationError
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub.models import RefreshTokenData
 
 jwt_scheme = HTTPBearer(auto_error=False)

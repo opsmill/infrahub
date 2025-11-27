@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub import config
 from infrahub.core import registry
@@ -19,6 +19,8 @@ from infrahub.log import get_logger
 from infrahub.types import Number
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()

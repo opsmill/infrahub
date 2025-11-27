@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.diff.payload_builder import get_display_labels_per_kind
@@ -15,6 +15,8 @@ from infrahub.log import get_logger
 from ..shared import InternalSchemaMigration, SchemaMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.validators.uniqueness.model import NonUniqueNode
     from infrahub.database import InfrahubDatabase
 

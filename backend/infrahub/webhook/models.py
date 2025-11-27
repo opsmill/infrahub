@@ -4,11 +4,10 @@ import base64
 import hashlib
 import hmac
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind

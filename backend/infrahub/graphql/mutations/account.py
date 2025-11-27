@@ -1,9 +1,8 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
-from typing_extensions import Self
 
 from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub.constants.database import IndexType
 from infrahub.core.migrations.shared import MigrationResult
@@ -12,6 +12,8 @@ from infrahub.database.neo4j import IndexManagerNeo4j
 from ..shared import GraphMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
-from typing_extensions import Self
 
 from infrahub.core import protocols, registry
 from infrahub.core.constants import InfrahubKind, NumberPoolType

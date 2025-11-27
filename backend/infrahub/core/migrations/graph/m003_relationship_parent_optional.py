@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
@@ -9,6 +9,8 @@ from infrahub.core.timestamp import Timestamp
 from ..shared import GraphMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 

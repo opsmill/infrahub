@@ -1,6 +1,6 @@
 from collections import defaultdict
+from collections.abc import AsyncGenerator
 from dataclasses import asdict
-from typing import AsyncGenerator
 
 from infrahub.core.query import QueryType
 from infrahub.database import InfrahubDatabase

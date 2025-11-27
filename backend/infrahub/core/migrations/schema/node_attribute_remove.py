@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_remove import AttributeRemoveQuery
 from ..shared import AttributeSchemaMigration
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery, AttributeRemoveQuery):

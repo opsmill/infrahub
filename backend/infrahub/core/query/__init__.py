@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterator, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import ujson
 from neo4j.graph import Node as Neo4jNode
@@ -18,8 +18,10 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator, Iterator
+    from typing import Self
+
     from neo4j import Record
-    from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase

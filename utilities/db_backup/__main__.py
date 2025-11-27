@@ -1,11 +1,12 @@
 import argparse
 import os
 import sys
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import docker
 from docker.models.containers import Container

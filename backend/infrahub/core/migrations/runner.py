@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -10,6 +10,8 @@ from .exceptions import MigrationFailureError
 from .shared import MigrationRequiringRebase
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 

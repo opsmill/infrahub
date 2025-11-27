@@ -1,6 +1,6 @@
 from abc import abstractmethod
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from rich.console import Console
 from rich.progress import Progress

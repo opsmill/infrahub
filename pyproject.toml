@@ -587,7 +587,6 @@ ignore = [
     "TC006",   # [*] Add quotes to type expression in `typing.cast()`
     "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
-    "UP035",   # `typing.List` is deprecated, use `list` instead
 ]
 
 [tool.ruff.lint.flake8-bugbear]

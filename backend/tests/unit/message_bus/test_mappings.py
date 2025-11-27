@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 from prefect import Flow
 
 from infrahub.message_bus.messages import MESSAGE_MAP
 from infrahub.message_bus.operations import COMMAND_MAP
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def test_message_command_overlap() -> None:

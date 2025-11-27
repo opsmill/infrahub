@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.lock import initialize_lock
@@ -13,6 +13,8 @@ from ...initialization import initialization
 from ...query import Query, QueryType
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()

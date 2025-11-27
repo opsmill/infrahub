@@ -21,9 +21,10 @@ from infrahub.core.query.standard_node import (
 from infrahub.exceptions import Error, InitializationError
 
 if TYPE_CHECKING:
+    from typing import Self
+
     from neo4j.graph import Node as Neo4jNode
     from pydantic.fields import FieldInfo
-    from typing_extensions import Self
 
     from infrahub.core.query import Query
     from infrahub.database import InfrahubDatabase

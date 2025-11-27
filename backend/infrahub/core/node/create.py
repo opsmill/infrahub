@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any
 
 from infrahub import lock
 from infrahub.core import registry
@@ -15,6 +15,8 @@ from infrahub.lock import InfrahubMultiLock
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub.core.branch import Branch
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes, RelationshipSchema

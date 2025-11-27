@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
@@ -9,6 +9,8 @@ from ..query import MigrationQuery
 from ..shared import SchemaMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from pydantic.fields import FieldInfo
 
     from infrahub.database import InfrahubDatabase

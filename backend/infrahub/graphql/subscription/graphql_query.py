@@ -1,5 +1,6 @@
 import asyncio
-from typing import TYPE_CHECKING, Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING, Any
 
 from graphene import Schema
 from graphql import GraphQLResolveInfo, graphql

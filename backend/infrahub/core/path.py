@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from itertools import chain
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, Field
-from typing_extensions import Self
 
 from infrahub.core.constants import PathResourceType, PathType, SchemaPathType
 

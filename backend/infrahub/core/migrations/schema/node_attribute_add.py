@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.node import Node
@@ -14,6 +14,8 @@ from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationResult
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.attribute_schema import AttributeSchema

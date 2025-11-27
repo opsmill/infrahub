@@ -1,10 +1,9 @@
 import ipaddress
 from ipaddress import IPv4Interface
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
-from typing_extensions import Self
 
 from infrahub import lock
 from infrahub.core import registry

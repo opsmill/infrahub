@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from opentelemetry import trace
-from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core import registry

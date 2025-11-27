@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub_sdk.graphql import Query
 from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.constants import RelationshipCardinality

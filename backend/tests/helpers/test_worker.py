@@ -1,6 +1,7 @@
 import asyncio
+from collections.abc import Generator
 from contextlib import ExitStack
-from typing import Any, Generator
+from typing import Any
 from uuid import UUID
 
 import pytest

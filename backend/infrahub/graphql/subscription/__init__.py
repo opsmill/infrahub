@@ -1,4 +1,5 @@
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from graphene import Field, Int, ObjectType, Schema, String
 from graphene.types.generic import GenericScalar

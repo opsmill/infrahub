@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.utils import str_to_bool
 
@@ -19,6 +19,8 @@ from .models import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import (
         EnrichedDiffAttribute,

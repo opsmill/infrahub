@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.query.attribute_remove import AttributeRemoveQuery
 from infrahub.core.schema.generic_schema import GenericSchema
@@ -11,6 +11,8 @@ from ..query.attribute_add import AttributeAddQuery
 from ..shared import AttributeSchemaMigration, MigrationResult
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch.models import Branch
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.timestamp import Timestamp

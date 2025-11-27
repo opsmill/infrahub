@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, ParamSpec, TypeVar, overload
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext

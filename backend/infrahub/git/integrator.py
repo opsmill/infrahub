@@ -4,7 +4,7 @@ import hashlib
 import importlib
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import ujson
 import yaml
@@ -40,7 +40,6 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
-from typing_extensions import Self
 
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry

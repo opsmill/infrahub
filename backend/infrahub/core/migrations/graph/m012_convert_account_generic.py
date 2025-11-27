@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -16,6 +16,8 @@ from ..query.schema_attribute_update import SchemaAttributeUpdateQuery
 from ..shared import GraphMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 

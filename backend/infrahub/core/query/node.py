@@ -5,7 +5,7 @@ from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core import registry
@@ -26,6 +26,8 @@ from infrahub.exceptions import QueryError
 from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Generator
+
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute

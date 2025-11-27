@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import initialization
@@ -15,6 +15,8 @@ from infrahub.log import get_logger
 from ..shared import InternalSchemaMigration, SchemaMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()

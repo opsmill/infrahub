@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Generator, Iterable
+from collections.abc import AsyncGenerator, Generator, Iterable
 
 from neo4j.exceptions import TransientError
 

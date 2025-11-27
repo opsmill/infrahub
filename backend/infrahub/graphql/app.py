@@ -6,14 +6,11 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncGenerator,
-    Awaitable,
-    Callable,
-    Sequence,
     cast,
 )
 

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
-from typing_extensions import Self
 
 from infrahub.core import registry
 from infrahub.core.path import SchemaPath  # noqa: TC001
@@ -28,6 +27,8 @@ def get_migration_console() -> Console:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase

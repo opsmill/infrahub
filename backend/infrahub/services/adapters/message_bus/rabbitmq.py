@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
+from collections.abc import Awaitable, Callable, MutableMapping
+from typing import TYPE_CHECKING, TypeVar
 
 import aio_pika
 import opentelemetry.instrumentation.aio_pika.span_builder

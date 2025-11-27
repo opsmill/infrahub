@@ -1,6 +1,6 @@
 import asyncio
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from typing import AsyncGenerator, Generator
 
 import pytest
 from fast_depends import Provider

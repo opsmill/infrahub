@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.log import get_logger
@@ -9,6 +9,8 @@ from ...constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from ...query import Query, QueryType
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()

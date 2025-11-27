@@ -1,4 +1,5 @@
-from typing import Sequence, cast
+from collections.abc import Sequence
+from typing import cast
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.diff.model.diff import ObjectConflict

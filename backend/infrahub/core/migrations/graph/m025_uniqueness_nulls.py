@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.log import get_logger
@@ -9,6 +9,8 @@ from ..shared import InternalSchemaMigration, SchemaMigration
 from .m018_uniqueness_nulls import validate_nulls_in_uniqueness_constraints
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()

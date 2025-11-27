@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from ..shared import SchemaMigration
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):

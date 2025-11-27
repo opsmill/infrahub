@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub.core.constants import NULL_VALUE, InfrahubKind, PermissionDecision
 from infrahub.core.query import Query, QueryType

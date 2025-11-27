@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.uuidt import UUIDT
 
@@ -21,6 +21,7 @@ from infrahub.core.utils import extract_field_filters
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from uuid import UUID
 
     from neo4j.graph import Relationship as Neo4jRelationship

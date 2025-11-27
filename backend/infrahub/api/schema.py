@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import (
@@ -51,7 +51,8 @@ from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from collections.abc import Sequence
+    from typing import Self
 
     from infrahub.auth import AccountSession
     from infrahub.context import InfrahubContext

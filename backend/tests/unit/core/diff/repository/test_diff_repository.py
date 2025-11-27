@@ -1,7 +1,7 @@
 import random
 from collections import defaultdict
+from collections.abc import Generator
 from dataclasses import replace
-from typing import Generator
 from uuid import uuid4
 
 import pytest

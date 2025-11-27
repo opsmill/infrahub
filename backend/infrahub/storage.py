@@ -1,10 +1,9 @@
 import io
 import tempfile
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, Self
 
 import botocore.exceptions
 import fastapi_storages
-from typing_extensions import Self
 
 from infrahub.config import StorageSettings
 from infrahub.exceptions import NodeNotFoundError

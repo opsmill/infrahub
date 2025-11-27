@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from .m001_add_version_to_graph import Migration001
 from .m002_attribute_is_default import Migration002
@@ -50,6 +50,8 @@ from .m045_backfill_hfid_display_label_in_db_profile_template import Migration04
 from .m046_fill_agnostic_hfid_display_labels import Migration046
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from ..shared import MigrationTypes
 
 

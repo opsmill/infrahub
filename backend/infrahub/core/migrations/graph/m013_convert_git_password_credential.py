@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -20,6 +20,8 @@ from ..query.delete_element_in_schema import DeleteElementInSchemaQuery
 from ..shared import GraphMigration
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 default_branch = Branch(

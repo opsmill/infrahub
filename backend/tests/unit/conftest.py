@@ -2,9 +2,10 @@ import os
 import shutil
 import subprocess  # noqa: S404
 import sys
+from collections.abc import Generator
 from itertools import islice
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest

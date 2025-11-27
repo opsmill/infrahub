@@ -1,4 +1,5 @@
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from infrahub.core.query import Query, QueryType
 from infrahub.database import InfrahubDatabase

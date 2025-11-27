@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -23,7 +23,6 @@ from neo4j import (
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from opentelemetry import trace
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
@@ -39,6 +38,7 @@ from infrahub.utils import InfrahubStringEnum
 from .metrics import CONNECTION_POOL_USAGE, QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
     from types import TracebackType
 
     from infrahub.core.branch import Branch

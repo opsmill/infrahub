@@ -5,11 +5,12 @@ import os
 import sys
 import tempfile
 import time
+from collections.abc import AsyncGenerator, Generator
 from contextlib import ExitStack
 from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncGenerator, Generator, TypeVar
+from typing import Any, TypeVar
 
 import pytest
 import ujson
