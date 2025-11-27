@@ -221,6 +221,7 @@ async def expected_hierarchy_invalid_data_paths(
         for device in rack_devices.values()
     }
 
+
 async def test_query_no_relationships(db: InfrahubDatabase, branch: Branch, data_empty_lags: dict[str, Any]):
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
     interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
