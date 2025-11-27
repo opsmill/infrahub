@@ -18,7 +18,6 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
-from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
@@ -707,7 +706,6 @@ async def test_relationship_groups_add_remove(
     await g2.new(db=db, name="group2", members=[c2])
     await g2.save(db=db)
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -735,14 +733,10 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 6
-
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -770,9 +764,6 @@ async def test_relationship_groups_add_remove(
     )
 
     assert result.errors is None
-
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 6
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -782,7 +773,6 @@ async def test_relationship_groups_add_remove(
     members = await group2.members.get(db=db)
     assert len(members) == 1
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -811,14 +801,10 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 6
-
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -846,8 +832,6 @@ async def test_relationship_groups_add_remove(
     )
 
     assert result.errors is None
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 6
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)

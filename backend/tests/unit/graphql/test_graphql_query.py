@@ -1927,6 +1927,9 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     )
 
 
+# TODO IFC-1813 add test for cardinality-one updated_at
+
+
 async def test_query_relationship_updated_at(
     db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None
 ) -> None:
@@ -1992,6 +1995,7 @@ async def test_query_relationship_updated_at(
     assert result2.errors is None
     assert result2.data
     assert len(result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"]) == 2
+    assert result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"] is not None
     assert (
         result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
         != result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]

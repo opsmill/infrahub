@@ -46,6 +46,8 @@ NULL_VALUE = "NULL"
 
 EVENT_NAMESPACE = "infrahub"
 
+SYSTEM_USER_ID = "__system__"
+
 
 class EventType(InfrahubStringEnum):
     BRANCH_CREATED = f"{EVENT_NAMESPACE}.branch.created"
@@ -365,12 +367,14 @@ class MetadataOptions(Flag):
     OWNER = auto()
     LINKED_NODES = SOURCE | OWNER
     IS_PROTECTED = auto()
+    IS_VISIBLE = auto()
     CREATED_BY = auto()
     CREATED_AT = auto()
     UPDATED_BY = auto()
     UPDATED_AT = auto()
     TIMESTAMPS = CREATED_AT | UPDATED_AT
     USERS = CREATED_BY | UPDATED_BY
+    USER_TIMESTAMPS = TIMESTAMPS | USERS
 
 
 RESTRICTED_NAMESPACES: list[str] = [
