@@ -189,21 +189,21 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         error: Exception | None = None
 
         try:
-            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)
-            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
-            await self.import_all_graphql_query(
+            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[misc]
+            await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
+            await self.import_all_graphql_query(  # type: ignore[misc]
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
-            await self.import_objects(
+            await self.import_objects(  # type: ignore[misc]
                 branch_name=infrahub_branch_name,
                 commit=commit,
                 config_file=config_file,
             )
-            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)
-            await self.import_jinja2_transforms(
+            await self.import_all_python_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc, call-overload]
+            await self.import_jinja2_transforms(  # type: ignore[misc]
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
-            await self.import_artifact_definitions(
+            await self.import_artifact_definitions(  # type: ignore[misc]
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
 
