@@ -178,6 +178,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/infrahub-yml',
                 'topics/repository',
+                'topics/branch-synchronization',
               ],
             },
             {

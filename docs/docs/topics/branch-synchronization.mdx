@@ -1,0 +1,329 @@
+---
+title: Selective branch synchronization
+---
+import ReferenceLink from "../../src/components/Card";
+
+# Selective branch synchronization
+
+Infrahub automatically creates all branches from a connected Git repository by default. While this ensures full visibility, it can create unnecessary noise when many Git branches are unrelated to Infrahub data or workflows. Selective branch synchronization introduces an optional configuration that allows teams to control which Git branches are imported and synchronized into Infrahub based on custom naming patterns.
+
+## Why selective synchronization matters
+
+In real-world Git repositories, teams often maintain many branches for different purposes:
+
+- Development branches for features unrelated to infrastructure
+- Documentation-only branches
+- Experimental work that doesn't involve Infrahub data
+- Personal development branches
+- Archive branches kept for historical reference
+
+When all these branches automatically sync to Infrahub, it creates:
+
+- **Visual clutter**: Branch lists become difficult to navigate with irrelevant entries
+- **Performance overhead**: Unnecessary synchronization consumes system resources
+- **Workflow confusion**: Team members may struggle to identify which branches contain infrastructure changes
+
+Selective synchronization addresses these challenges by allowing administrators to define explicit rules for which branches should be imported and maintained in Infrahub.
+
+## How selective synchronization works
+
+The feature operates through a set of branch naming rules that determine which Git branches Infrahub will track and synchronize.
+
+### Default behavior
+
+By default, every branch created in your Git repository continues to be automatically imported and synchronized into Infrahub. No configuration changes are required for teams who want to maintain the current behavior.
+
+This default ensures backward compatibility and zero-configuration operation for existing deployments.
+
+### Enabling selective synchronization
+
+When you enable selective branch synchronization, Infrahub will only import branches whose names match a set of user-defined rules. Each rule is a regular expression that defines a pattern for matching branch names.
+
+:::info
+Selective synchronization only affects the Git to Infrahub direction. Branches created in Infrahub with the "sync to Git" option enabled will still synchronize to Git normally.
+:::
+
+## Configuration
+
+Add the `sync_branch_names` setting to your Infrahub configuration file to define the list of branch naming rules. Each rule is a regular expression used to match branch names against a pattern.
+
+### Configuration file
+
+Add the following section to your `infrahub.toml` configuration file:
+
+```toml
+[git]
+repositories_directory = "/opt/infrahub/git"
+sync_branch_names = [
+  "^infra/.*$",
+  "^feature/infrahub-.*$"
+]
+```
+
+### Environment variable
+
+Alternatively, configure the rules using an environment variable:
+
+```shell
+export INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES='["^infrahub-.*","^sync-.*"]'
+```
+
+:::warning
+Environment variables take precedence over configuration file settings. If both are defined, the environment variable value will be used.
+:::
+
+<ReferenceLink title="View complete Git configuration options" url="../reference/configuration#git" />
+
+## Rule processing
+
+Infrahub processes the rules in the order they appear in the configuration. The first matching expression determines whether a branch is synchronized.
+
+**Processing logic:**
+
+1. When Infrahub discovers a branch in the Git repository, it evaluates the branch name against each rule in sequence
+2. The first rule that matches the branch name determines the outcome
+3. If a match is found, the branch will be created and synchronized in Infrahub
+4. If no match is found after checking all rules, the branch will be ignored
+
+This top-to-bottom evaluation allows for fine-grained control over branch synchronization behavior.
+
+### Rule evaluation during updates
+
+When you modify the synchronization rules after a repository has been imported, Infrahub evaluates branches differently depending on their current state:
+
+**For new Git branches that now match the updated rules:**
+
+If a Git branch exists but was not previously imported because it didn't match the old rules, and it now matches the updated rules, Infrahub will import that branch during the next synchronization cycle. This allows you to expand your synchronization scope by adding new patterns.
+
+**For existing Infrahub branches that no longer match the updated rules:**
+
+If a branch was already imported into Infrahub and has the "sync with Git" flag enabled, it will continue to synchronize even if it no longer matches the updated rules. This preserves existing work and prevents unexpected data loss. Once a branch exists in Infrahub with Git synchronization enabled, the branch naming rules no longer apply to it.
+
+:::info
+The synchronization rules only control initial import of branches from Git to Infrahub. Once a branch exists in Infrahub with Git synchronization enabled, it continues syncing regardless of rule changes.
+:::
+
+## Regular expression patterns
+
+Each rule uses standard regular expression syntax to define matching patterns. This approach provides maximum flexibility without enforcing a specific naming convention.
+
+### Pattern examples
+
+Common pattern elements you can use:
+
+- `^` - Match the beginning of the branch name
+- `$` - Match the end of the branch name
+- `.*` - Match any characters (zero or more)
+- `[a-z]` - Match any lowercase letter
+- `[0-9]+` - Match one or more digits
+- `(feature|fix)` - Match either "feature" or "fix"
+
+### Configuration examples
+
+**Match branches with specific prefixes:**
+
+```toml
+sync_branch_names = [
+  "^infra/.*$",        # Matches: infra/network-update, infra/devices
+  "^feature/infrahub-.*$"  # Matches: feature/infrahub-123, feature/infrahub-network
+]
+```
+
+**Match multiple prefix patterns:**
+
+```toml
+sync_branch_names = [
+  "^(infra|config|network)/.*$"  # Matches: infra/*, config/*, network/*
+]
+```
+
+**Match branches containing specific keywords:**
+
+```toml
+sync_branch_names = [
+  ".*infrahub.*",  # Matches any branch name containing "infrahub"
+]
+```
+
+**Match specific branch names exactly:**
+
+```toml
+sync_branch_names = [
+  "^production$",  # Matches only "production"
+  "^staging$",     # Matches only "staging"
+  "^main$"         # Matches only "main"
+]
+```
+
+## Practical examples
+
+### Example 1: infrastructure-only branches
+
+Your team uses a naming convention where all infrastructure-related branches start with `infra/`:
+
+```toml
+[git]
+sync_branch_names = ["^infra/.*$"]
+```
+
+**Results:**
+
+| Git Branch Name | Matches Rule? | Imported to Infrahub? |
+|----------------|---------------|----------------------|
+| `infra/network-update` | ✅ Yes | ✅ Created in Infrahub |
+| `infra/add-devices` | ✅ Yes | ✅ Created in Infrahub |
+| `docs/update-readme` | ❌ No | 🚫 Not imported |
+| `feature/new-api` | ❌ No | 🚫 Not imported |
+
+### Example 2: Multiple team prefixes
+
+Different teams use different prefixes for their infrastructure work:
+
+```toml
+[git]
+sync_branch_names = [
+  "^infra/.*$",
+  "^network/.*$",
+  "^config/.*$"
+]
+```
+
+**Results:**
+
+| Git Branch Name | Matches Rule? | Imported to Infrahub? |
+|----------------|---------------|----------------------|
+| `infra/devices` | ✅ Yes | ✅ Created in Infrahub |
+| `network/topology` | ✅ Yes | ✅ Created in Infrahub |
+| `config/templates` | ✅ Yes | ✅ Created in Infrahub |
+| `docs/architecture` | ❌ No | 🚫 Not imported |
+
+### Example 3: Feature branches with issue numbers
+
+Your workflow includes Infrahub-related feature branches that reference issue numbers:
+
+```toml
+[git]
+sync_branch_names = [
+  "^feature/infrahub-[0-9]+.*$"
+]
+```
+
+**Results:**
+
+| Git Branch Name | Matches Rule? | Imported to Infrahub? |
+|----------------|---------------|----------------------|
+| `feature/infrahub-321` | ✅ Yes | ✅ Created in Infrahub |
+| `feature/infrahub-123-network` | ✅ Yes | ✅ Created in Infrahub |
+| `feature/api-update` | ❌ No | 🚫 Not imported |
+| `feature/device-backup` | ❌ No | 🚫 Not imported |
+
+## Current scope and limitations
+
+### Directional behavior
+
+Selective branch synchronization only affects the **Git → Infrahub** direction:
+
+- Git branches that don't match the rules will not be imported into Infrahub
+- Branches created in Infrahub with the "sync to Git" option enabled will still synchronize to Git normally
+- This asymmetric behavior allows teams to use Infrahub as the source of truth while filtering incoming Git branches
+
+### Dynamic updates
+
+When you modify the `sync_branch_names` configuration:
+
+- New Git branches will be evaluated against the updated rules during the next synchronization
+- Git branches that now match the rules will be automatically imported
+- Existing Infrahub branches with Git synchronization enabled continue syncing regardless of rule changes
+- Branches no longer matching the rules will **not** be automatically removed from Infrahub
+- You must manually delete branches in Infrahub if they no longer align with your synchronization policy
+
+### Repository types
+
+Selective branch synchronization applies to standard read-write repositories that support full bidirectional integration. Read-only repositories track a single reference and are not affected by this configuration.
+
+## Managing configuration updates
+
+As your team's branching conventions evolve, you may need to update the synchronization rules.
+
+### Updating rules
+
+1. Edit the `infrahub.toml` file or update the environment variable
+2. Restart the Infrahub services to apply the new configuration
+3. Wait for the next synchronization cycle (typically within a few seconds)
+
+### What happens after updating rules
+
+When you change the `sync_branch_names` configuration, Infrahub handles existing and new branches differently:
+
+**New branches matching updated rules:**
+
+Git branches that exist but were not previously imported will be automatically imported during the next synchronization if they now match the updated rules. This happens automatically without manual intervention.
+
+**Example:** You add a new rule `^network/.*$` to your configuration. Existing Git branches like `network/topology` and `network/devices` that were previously ignored will now be imported into Infrahub on the next sync.
+
+**Existing branches that no longer match:**
+
+Branches already imported into Infrahub with the "sync with Git" flag enabled will continue to synchronize even if they no longer match the updated rules. The naming rules only control initial import, not ongoing synchronization of existing branches.
+
+**Example:** You remove the rule `^feature/.*$` from your configuration. Existing Infrahub branches like `feature/infrahub-123` will continue syncing with their Git counterparts because they're already established in Infrahub.
+
+### Cleaning up existing branches
+
+If you want to stop synchronizing branches that no longer align with your policy:
+
+1. Identify branches in Infrahub that no longer match your updated rules
+2. Manually delete them through the Infrahub UI or API
+3. These deletions will not affect the corresponding Git branches
+4. The Git branches will not be re-imported because they don't match the current rules
+
+:::warning
+Manually deleting branches in Infrahub is a permanent action. Ensure you have backups or can recreate any work before proceeding.
+:::
+
+## Why regular expressions?
+
+Every team uses different naming conventions and organizational structures. Regular expressions provide maximum flexibility without enforcing a specific prefix format or naming standard.
+
+Benefits of regex-based rules:
+
+- **Flexibility**: Support any naming convention your team uses
+- **Precision**: Define exact patterns to match or exclude specific branches
+- **Scalability**: Handle complex matching scenarios with a single rule
+- **Familiarity**: Leverage a widely understood pattern matching syntax
+
+:::info
+If you're unfamiliar with regular expressions, start with simpler patterns like `^prefix/.*$` and gradually add complexity as needed. Many online tools can help you test and validate regex patterns before adding them to your configuration.
+:::
+
+## Design rationale
+
+The selective branch synchronization feature addresses a common operational challenge: managing signal-to-noise ratio in Git repository integrations.
+
+### Problem being solved
+
+In organizations with active development practices, Git repositories often contain:
+
+- Infrastructure code managed by platform teams
+- Application code managed by development teams
+- Documentation maintained by technical writers
+- Experimental branches from individual contributors
+
+Without filtering, all these branches appear in Infrahub, making it difficult to identify infrastructure-relevant branches and creating unnecessary synchronization overhead.
+
+### Design decisions
+
+The implementation makes several intentional choices:
+
+- **Opt-in behavior**: Default to synchronizing all branches maintains backward compatibility
+- **Regular expressions**: Provide flexibility for diverse naming conventions
+- **Unidirectional filtering**: Only affects Git → Infrahub to prevent accidental data loss
+- **Manual cleanup**: Prevents automatic deletion of existing branches to avoid surprising users
+
+These decisions prioritize safety, flexibility, and user control over automated convenience.
+
+## Further reading
+
+- [Understanding Git repositories in Infrahub](../topics/repository.mdx) - Repository integration concepts and architecture
+- [How to connect external Git repositories](../guides/repository.mdx) - Step-by-step repository setup guide
+- [Understanding branching in Infrahub](../topics/branching.mdx) - Branch isolation, hierarchy, and workflows
+- [Configuration reference](../reference/configuration.mdx) - Complete configuration options including Git settings
