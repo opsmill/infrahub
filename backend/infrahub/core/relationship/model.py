@@ -93,7 +93,6 @@ class PeerWithRelationshipMetadata:
     owner_id: str | None = None
     source_id: str | None = None
     is_protected: bool | None = None
-    is_visible: bool | None = None
 
 
 def _use_global_branch(schema: MainSchemaTypes) -> bool:
@@ -262,8 +261,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self._set_updated_by(data.updated_by)
         if data.is_protected is not None:
             self.is_protected = data.is_protected
-        if data.is_visible is not None:
-            self.is_visible = data.is_visible
         if data.owner_id is not None:
             self.set_owner(value=data.owner_id)
         if data.source_id is not None:
@@ -1039,7 +1036,7 @@ class RelationshipManager:
                 schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), node=self.node
             ),
             branch_agnostic=branch_agnostic,
-            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.LINKED_NODES,
+            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.LINKED_NODES,
         )
         await query.execute(db=db)
         return list(query.get_peers())

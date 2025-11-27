@@ -1,9 +1,9 @@
-from infrahub.core.migrations.graph import Migration045
+from infrahub.core.migrations.graph import Migration046
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_migration_045(db: InfrahubDatabase, default_branch, person_john_main, car_accord_main) -> None:
+async def test_migration_046(db: InfrahubDatabase, default_branch, person_john_main, car_accord_main) -> None:
     count_is_visible_relationship_query = """
     MATCH ()-[rel:IS_VISIBLE]-()
     RETURN count(*) AS is_visible_count;
@@ -48,7 +48,7 @@ async def test_migration_045(db: InfrahubDatabase, default_branch, person_john_m
     is_visible_count = await db.execute_query(query=count_is_visible_relationship_query)
     assert is_visible_count[0].get("is_visible_count") == 4
 
-    migration = Migration045()
+    migration = Migration046()
     await migration.execute(db=db)
     result = await migration.validate_migration(db=db)
     assert result.success

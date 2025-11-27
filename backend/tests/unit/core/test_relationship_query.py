@@ -740,7 +740,7 @@ async def test_query_RelationshipGetPeerQuery(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
+        include_metadata=MetadataOptions.IS_PROTECTED,
     )
     await query.execute(db=db)
 

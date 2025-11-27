@@ -977,21 +977,18 @@ CALL (rl) {
                 properties={},
             )
 
-            for prop, metadata_option in [
-                ("is_protected", MetadataOptions.IS_PROTECTED),
-                ("is_visible", MetadataOptions.IS_VISIBLE),
-            ]:
-                if not self.include_metadata & metadata_option:
-                    continue
-                prop_node = result.get(prop)
-                if not prop_node:
-                    continue
-                data.properties[prop] = FlagPropertyData(
-                    name=prop,
-                    prop_db_id=prop_node.element_id,
-                    rel=RelData.from_db(result.get(f"rel_{prop}")),
-                    value=prop_node.get("value"),
-                )
+            prop, metadata_option = ("is_protected", MetadataOptions.IS_PROTECTED)
+            if not self.include_metadata & metadata_option:
+                continue
+            prop_node = result.get(prop)
+            if not prop_node:
+                continue
+            data.properties[prop] = FlagPropertyData(
+                name=prop,
+                prop_db_id=prop_node.element_id,
+                rel=RelData.from_db(result.get(f"rel_{prop}")),
+                value=prop_node.get("value"),
+            )
 
             for prop, metadata_option in [("owner", MetadataOptions.OWNER), ("source", MetadataOptions.SOURCE)]:
                 if not self.include_metadata & metadata_option:

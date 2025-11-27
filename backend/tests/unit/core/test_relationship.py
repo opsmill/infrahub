@@ -106,7 +106,7 @@ async def test_relationship_load_existing(
         branch=branch,
         at=Timestamp(),
         rel=rel,
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
+        include_metadata=MetadataOptions.IS_PROTECTED,
     )
     await query.execute(db=db)
 
