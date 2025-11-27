@@ -275,7 +275,11 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
             return grouped_data_paths_list
 
         parent_relationship = next(
-            iter(request.node_schema.get_relationships_of_kind(relationship_kinds=[RelationshipKind.PARENT, RelationshipKind.HIERARCHY]))
+            iter(
+                request.node_schema.get_relationships_of_kind(
+                    relationship_kinds=[RelationshipKind.PARENT, RelationshipKind.HIERARCHY]
+                )
+            )
         )
         peer_parent_relationship = request.schema_branch.get(name=relationship.peer, duplicate=False).get_relationship(
             name=relationship.common_parent

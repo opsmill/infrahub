@@ -1110,7 +1110,7 @@ class SchemaBranch:
             raise ValueError(
                 (
                     f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent}'",
-                    "is not of kind 'parent' or 'hierarchy'"
+                    "is not of kind 'parent' or 'hierarchy'",
                 )
             )
 
