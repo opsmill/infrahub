@@ -576,7 +576,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     self,
                     rel_schema.name,
                     await generator_method(
-                        db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
+                        db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name)
                     ),
                 )
             except ValidationError as exc:
@@ -606,7 +606,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     self,
                     attr_schema.name,
                     await generator_method(
-                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name, None)
+                        db=db, name=attr_schema.name, schema=attr_schema, data=fields.get(attr_schema.name)
                     ),
                 )
                 if not self._existing:

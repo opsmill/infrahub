@@ -327,7 +327,7 @@ class DevelopmentSettings(BaseSettings):
         description="Allow enterprise configuration in development mode, this will not enable the features just allow the configuration.",
     )
     git_credential_helper: str = Field(
-        default="/usr/local/bin/infrahub-git-credential",
+        default="infrahub-git-credential",
         description="Location of git credential helper",
     )
 

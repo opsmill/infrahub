@@ -101,8 +101,12 @@ jobs:
         run: npx biome ci .
 
   python-lint:
-    if: needs.files-changed.outputs.python == 'true'
-    needs: ["files-changed"]
+    if: |
+      needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.python == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
@@ -110,12 +114,22 @@ jobs:
         uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: "Setup environment"
-        run: "pip install ruff==0.14.5"
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Linting: ruff check"
-        run: "ruff check . --exclude python_sdk"
+        run: "uv run ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
-        run: "ruff format --check --diff --exclude python_sdk ."
+        run: "uv run ruff format --check --diff --exclude python_sdk ."
 
   markdown-lint:
     if: |
@@ -286,7 +300,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -340,7 +354,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -387,7 +401,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -439,7 +453,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }}>> $GITHUB_ENV
       - name: "Set environment variables"
@@ -504,7 +518,7 @@ jobs:
   #             git config --global user.email 'infrahub@opsmill.com' && \
   #             git config --global --add safe.directory '*' && \
   #             git config --global credential.usehttppath true && \
-  #             git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #             git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
   #     - name: Install uv
   #       uses: astral-sh/setup-uv@v7
   #       with:
@@ -1085,7 +1099,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
