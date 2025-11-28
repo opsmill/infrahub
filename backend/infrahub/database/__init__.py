@@ -356,7 +356,7 @@ class InfrahubDatabase:
                     type
                     and type == QueryType.READ
                     and runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]
-                    and not (self.is_transaction and runtime in [Neo4jRuntime.PARALLEL])
+                    and not (self.is_transaction and runtime == Neo4jRuntime.PARALLEL)
                 ):
                     query = f"CYPHER runtime = {runtime.value}\n" + query
                 else:
