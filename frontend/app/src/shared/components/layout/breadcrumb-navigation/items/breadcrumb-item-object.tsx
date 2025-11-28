@@ -1,10 +1,11 @@
 import { ChevronsUpDownIcon } from "lucide-react";
+import { Pressable } from "react-aria-components";
 import { Link } from "react-router";
 
 import { Breadcrumb } from "@/shared/components/aria/breadcrumbs";
-import { Button } from "@/shared/components/aria/button";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
@@ -72,13 +73,15 @@ export function BreadcrumbItemObject({
         </Col>
 
         <MenuTrigger>
-          <Button
-            variant="ghost"
-            className="size-5 p-0"
-            aria-label={`Select a different ${schema?.label ?? "object"}`}
-          >
-            <ChevronsUpDownIcon className="size-3.5" />
-          </Button>
+          <Pressable>
+            <Button
+              variant="ghost"
+              className="size-5 p-0"
+              aria-label={`Select a different ${schema?.label ?? "object"}`}
+            >
+              <ChevronsUpDownIcon className="size-3.5" />
+            </Button>
+          </Pressable>
 
           <Popover className="bg-stone-100/50 backdrop-blur">
             {parentRelationshipSchema &&
