@@ -21,6 +21,8 @@ test.describe("Branch - Merge action", () => {
     await test.step("access the branch details page", async () => {
       await page.goto(`/branches/${BRANCH_NAME}`);
       await page.getByText("Tasks").click();
+      await expect(page.getByText("Loading...Loading...")).toBeVisible();
+      await expect(page.getByText("Loading...Loading...")).not.toBeVisible();
     });
 
     await test.step("Merge the branch and verify button state", async () => {
