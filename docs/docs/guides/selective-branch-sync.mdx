@@ -42,7 +42,7 @@ See the [Regular expression patterns](../topics/branch-synchronization.mdx#regul
 You can configure selective branch synchronization using either a configuration file or environment variables.
 
 <Tabs>
-  <TabItem value="config-file" label="Configuration file" default>
+<TabItem value="config-file" label="Configuration file" default>
 
 Add the `sync_branch_names` setting to your `infrahub.toml` configuration file:
 
@@ -55,14 +55,14 @@ sync_branch_names = [
 ]
 ```
 
-**Where to find the configuration file:**
+Where to find the configuration file:
 
 - Default location: `/opt/infrahub/infrahub.toml`
 - Development installations may use a different path
 - Check your deployment documentation for the correct location
 
-  </TabItem>
-  <TabItem value="env-var" label="Environment variable">
+</TabItem>
+<TabItem value="env-var" label="Environment variable">
 
 Set the `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` environment variable:
 
@@ -70,9 +70,7 @@ Set the `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` environment variable:
 export INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES='["^infra/.*$","^feature/infrahub-.*$"]'
 ```
 
-**For Docker deployments:**
-
-Add to your `docker-compose.yml` file:
+For Docker deployments, add to your `docker-compose.yml` file:
 
 ```yaml
 services:
@@ -81,9 +79,7 @@ services:
       - INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES=["^infra/.*$","^feature/infrahub-.*$"]
 ```
 
-**For Kubernetes deployments:**
-
-Add to your deployment configuration:
+For Kubernetes deployments, add to your deployment configuration:
 
 ```yaml
 env:
@@ -91,7 +87,7 @@ env:
     value: '["^infra/.*$","^feature/infrahub-.*$"]'
 ```
 
-  </TabItem>
+</TabItem>
 </Tabs>
 
 :::warning Environment variable precedence
