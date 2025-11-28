@@ -17,7 +17,7 @@ from .load_schema_branch import get_or_load_schema_branch
 from .m044_backfill_hfid_display_label_in_db import DefaultBranchNodeCount, GetPathDetailsDefaultBranch
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, TemplateSchema
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -402,7 +402,7 @@ class Migration047(MigrationRequiringRebase):
         self,
         db: InfrahubDatabase,
         branch: Branch,
-        schema: NodeSchema | ProfileSchema | TemplateSchema,
+        schema: MainSchemaTypes,
         schema_branch: SchemaBranch,
         attribute_schema: AttributeSchema,
         progress: Progress | None = None,
@@ -476,7 +476,7 @@ class Migration047(MigrationRequiringRebase):
             if node_schema_name in self.kinds_to_skip:
                 continue
 
-            node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+            node_schema = main_schema_branch.get(name=node_schema_name, duplicate=False)
             if node_schema.branch != BranchSupportType.AWARE or not node_schema.display_label:
                 continue
 
@@ -522,7 +522,7 @@ class Migration047(MigrationRequiringRebase):
                         await self._do_one_schema_all(
                             db=db,
                             branch=default_branch,
-                            schema=main_schema_branch.get_node(name=node_schema_name, duplicate=False),
+                            schema=main_schema_branch.get(name=node_schema_name, duplicate=False),
                             schema_branch=main_schema_branch,
                             attribute_schema=display_label_attribute_schema,
                             progress=progress,
