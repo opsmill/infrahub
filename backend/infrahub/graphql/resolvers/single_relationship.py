@@ -141,9 +141,6 @@ class SingleRelationshipResolver:
         except (KeyError, IndexError):
             return None
 
-        if node_fields and "display_label" in node_fields:
-            node_fields["display_label"] = None
-
         if node_fields and "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
 

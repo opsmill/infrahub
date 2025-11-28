@@ -225,9 +225,6 @@ class ManyRelationshipResolver:
         filters: dict[str, Any],
         node_fields: dict[str, Any],
     ) -> list[dict[str, Any]] | None:
-        if node_fields and "display_label" in node_fields:
-            node_fields["display_label"] = None
-
         if node_fields and "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
 
