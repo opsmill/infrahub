@@ -29,5 +29,5 @@ export const NodeLabel = ({ id, kind = NODE_OBJECT, branch, className }: NodeLab
     return <div className={classNames("italic", className)}>{id}</div>;
   }
 
-  return <div className={className}>{getNodeLabel(data)}</div>;
+  return <div className={classNames("contents", className)}>{getNodeLabel(data)}</div>;
 };

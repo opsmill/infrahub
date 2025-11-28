@@ -2,7 +2,6 @@ import { Icon } from "@iconify-icon/react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { HomeCard } from "@/shared/components/ui/home-card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 
 import { HomeEvents } from "@/entities/events/ui/node-details-events-homepage";
@@ -24,9 +23,7 @@ export const EventsWidget = ({ className }: EventsWidgetProps) => {
         </HomeCard.Link>
       </HomeCard.Title>
 
-      <ScrollArea>
-        <HomeEvents />
-      </ScrollArea>
+      <HomeEvents />
     </HomeCard>
   );
 };
