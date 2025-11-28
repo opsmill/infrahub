@@ -14,7 +14,7 @@ const Homepage = () => {
       <GitRepositoriesWidget className="col-span-1 row-span-1" />
       <BranchesWidget className="col-span-1 row-span-2 lg:col-span-2" />
       <EventsWidget className="col-span-1 row-span-3 lg:col-start-3 lg:row-start-2" />
-      <TasksWidget className="col-span-full row-span-3" />
+      <TasksWidget className="col-span-full row-span-4 lg:row-span-3" />
       <GettingStarted className="col-span-full h-fit" />
     </Content>
   );
