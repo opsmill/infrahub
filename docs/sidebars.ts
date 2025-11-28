@@ -234,6 +234,7 @@ const sidebars: SidebarsConfig = {
                 'topics/order-weight',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
+                'topics/labels',
               ],
             },
             {
