@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import os
 from pathlib import Path
@@ -212,10 +213,8 @@ class InfrahubWorkerAsync(BaseWorker):
         global_config_file = config.SETTINGS.git.global_config_file
         if not os.getenv("GIT_CONFIG_GLOBAL") and global_config_file:
             config_dir = Path(global_config_file).parent
-            try:
+            with contextlib.suppress(FileExistsError):
                 config_dir.mkdir(exist_ok=True, parents=True)
-            except FileExistsError:
-                pass
             os.environ["GIT_CONFIG_GLOBAL"] = global_config_file
             self._logger.info(f"Set git config file to {global_config_file}")
 

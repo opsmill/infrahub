@@ -1,3 +1,4 @@
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipKind, SchemaPathType
@@ -84,14 +85,10 @@ class ConstraintValidatorDeterminer:
         constraints: list[SchemaUpdateConstraintInfo] = []
         schemas = list(self.schema_branch.get_all(duplicate=False).values())
         # added here to check their uniqueness constraints
-        try:
+        with contextlib.suppress(SchemaNotFoundError):
             schemas.append(self.schema_branch.get_node(name="SchemaAttribute", duplicate=False))
-        except SchemaNotFoundError:
-            pass
-        try:
+        with contextlib.suppress(SchemaNotFoundError):
             schemas.append(self.schema_branch.get_node(name="SchemaRelationship", duplicate=False))
-        except SchemaNotFoundError:
-            pass
         for schema in schemas:
             constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         return constraints

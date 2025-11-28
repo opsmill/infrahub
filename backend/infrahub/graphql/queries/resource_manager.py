@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from graphene import BigInt, Field, Float, Int, List, NonNull, ObjectType, String
@@ -196,10 +197,8 @@ class PoolUtilization(ObjectType):
 
         resources_map: dict[str, Node] = {}
 
-        try:
+        with contextlib.suppress(SchemaNotFoundError):
             resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
-        except SchemaNotFoundError:
-            pass
 
         utilization_getter = PrefixUtilizationGetter(
             db=db, ip_prefixes=list(resources_map.values()), at=graphql_context.at

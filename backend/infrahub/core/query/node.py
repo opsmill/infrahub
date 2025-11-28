@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
@@ -1139,10 +1140,8 @@ class NodeGetListQuery(Query):
             self._variables_to_track.append(variable)
 
     def _untrack_variable(self, variable: str) -> None:
-        try:
+        with contextlib.suppress(ValueError):
             self._variables_to_track.remove(variable)
-        except ValueError:
-            ...
 
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track

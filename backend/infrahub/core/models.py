@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
 from typing import TYPE_CHECKING, Any
 
@@ -578,11 +579,9 @@ class HashableModel(BaseModel):
 
         for field_name in other.model_fields.keys():
             if not hasattr(self, field_name):
-                try:
-                    setattr(self, field_name, getattr(other, field_name))
-                except ValueError:
+                with contextlib.suppress(ValueError):
                     # handles the case where self and other are different types and other has fields that self does not
-                    pass
+                    setattr(self, field_name, getattr(other, field_name))
                 continue
 
             attr_other = getattr(other, field_name)
