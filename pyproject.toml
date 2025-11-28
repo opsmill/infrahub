@@ -3,7 +3,7 @@ name = "infrahub-server"
 version = "1.6.1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 readme = "README.md"
 license = "Apache-2.0"
 
@@ -11,6 +11,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
@@ -60,8 +61,8 @@ dependencies = [
 
     # Dependencies specific to the SDK
     "rich>=13,<14",
-    "pyarrow>=14,<15",
-    "numpy==1.26.2",
+    "pyarrow>=14",
+    "numpy>=1.26.2",
     "dulwich==0.22.7",
     "whenever==0.9.3",
     "netutils==1.12.0",
