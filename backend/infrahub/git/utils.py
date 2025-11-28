@@ -27,6 +27,7 @@ from .models import RepositoryBranchInfo, RepositoryData
 async def get_repositories_commit_per_branch(
     db: InfrahubDatabase,
     kind: str = InfrahubKind.GENERICREPOSITORY,
+    only_sync_with_git: bool = False,
 ) -> dict[str, RepositoryData]:
     """Get a list of all repositories and their commit on each branches.
 
@@ -38,6 +39,9 @@ async def get_repositories_commit_per_branch(
     repositories: dict[str, RepositoryData] = {}
 
     for branch in list(registry.branch.values()):
+        if only_sync_with_git and not branch.sync_with_git:
+            continue
+
         repos: list[CoreRepository | CoreReadOnlyRepository] = await NodeManager.query(
             db=db,
             branch=branch,
