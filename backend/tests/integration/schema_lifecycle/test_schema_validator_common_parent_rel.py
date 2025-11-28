@@ -309,10 +309,10 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
         self, db: InfrahubDatabase, client: InfrahubClient
     ) -> None:
         """Attempt to add device from site2 to rack in site1 - should fail."""
-        device_2_1 = await client.all(
+        device_2_1 = await client.get(
             branch=self.branch_name, kind=TestKind.DATACENTER_DEVICE, name__value="device_2_1", include=["rack"]
         )
-        rack_1_1 = await client.all(branch=self.branch_name, kind=TestKind.DATACENTER_RACK, name__value="rack_1_1")
+        rack_1_1 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_RACK, name__value="rack_1_1")
 
         device_2_1.rack = None
         await device_2_1.save()
