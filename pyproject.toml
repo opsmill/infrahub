@@ -542,7 +542,6 @@ ignore = [
     "N806",    # Variable in function should be lowercase
     "PERF203", # `try`-`except` within a loop incurs performance overhead
     "PERF401", # Use a list comprehension to create a transformed list
-    "PERF402", # Use `list` or `list.copy` to create a copy of a list
     "PERF403", # Use a dictionary comprehension instead of a for-loop
     "PLC0415", # `import` should be at the top-level of a file
     "PLC2701", # Private name import from external module
