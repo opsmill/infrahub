@@ -368,6 +368,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return False
 
     @property
+    def has_hierarchy_parent_relationship(self) -> bool:
+        for rel in self.relationships:
+            if rel.kind == RelationshipKind.HIERARCHY and rel.name == "parent":
+                return True
+        return False
+
+    @property
+    def has_parent_or_hierarchy_relationship(self) -> bool:
+        """Check if node has either a parent relationship or a hierarchy parent relationship"""
+        return self.has_parent_relationship or self.has_hierarchy_parent_relationship
+
+    @property
     def valid_input_names(self) -> list[str]:
         return self.attribute_names + self.relationship_names + NODE_METADATA_ATTRIBUTES + NODE_PROPERTY_ATTRIBUTES
 
