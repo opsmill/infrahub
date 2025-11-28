@@ -6,13 +6,15 @@ import { Link } from "@/shared/components/ui/link";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
+const GROUP_MEMBERSTO_DISPLAY = 3;
+
 export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactElement> = {
   "infrahub.group.member_added": (props) => {
     return (
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-        <span className="whitespace-nowrap">added</span>
-        <div className="flex min-w-0 items-center gap-1 overflow-hidden text-black">
-          {props.related_nodes.slice(0, 5).map(({ id, kind }) => {
+      <div className="flex flex-wrap items-center gap-1">
+        <span>added</span>
+        <div className="flex min-w-0 items-center gap-1 text-black">
+          {props.related_nodes.slice(0, GROUP_MEMBERSTO_DISPLAY).map(({ id, kind }) => {
             return (
               <Link
                 key={id}
@@ -23,13 +25,13 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
               </Link>
             );
           })}
-          {props.related_nodes.slice(6).length > 0 && (
+          {props.related_nodes.slice(GROUP_MEMBERSTO_DISPLAY).length > 0 && (
             <span className="shrink-0 text-gray-500 italic">
-              (+{props.related_nodes.slice(6).length})
+              (+{props.related_nodes.slice(GROUP_MEMBERSTO_DISPLAY).length})
             </span>
           )}
         </div>
-        <span className="whitespace-nowrap">in group</span>
+        <span>in group</span>
         <span className="min-w-0 truncate font-semibold text-black">
           <Link
             key={props.primary_node?.id}
@@ -91,7 +93,7 @@ export const GroupEventTitle = (props: GroupEvent) => {
   const { event, account_id } = props;
 
   return (
-    <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
+    <div className="flex w-full flex-wrap items-center gap-1 text-sm">
       {account_id ? (
         <span className="max-w-[200px] shrink-0 truncate">
           <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} />
