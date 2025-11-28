@@ -1,6 +1,7 @@
-import React from "react";
 import { ListBox } from "react-aria-components";
 
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { classNames } from "@/shared/utils/common";
 
@@ -10,10 +11,10 @@ import { useGetProposedChanges } from "@/entities/proposed-changes/domain/get-pr
 import { ProposedChangesItemLight } from "@/entities/proposed-changes/ui/proposed-change-item-light";
 import { ProposedChangesTableHeader } from "@/entities/proposed-changes/ui/proposed-changes-table-header";
 import { ProposedChangesTableSkeleton } from "@/entities/proposed-changes/ui/proposed-changes-table-skeleton";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 type ProposedChangesTableHomepageProps = {
-  schema: NodeSchema;
+  schema: ModelSchema;
   className?: string;
 };
 
@@ -21,39 +22,44 @@ export function ProposedChangesTableHomepage({
   schema,
   className,
 }: ProposedChangesTableHomepageProps) {
-  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useGetProposedChanges(
-    {
+  const { data, error, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } =
+    useGetProposedChanges({
       schema,
       filters: [{ value: PROPOSED_CHANGE_STATES.opened, name: STATE_VALUES_FILTER }],
-    }
-  );
+    });
+
+  if (isPending) {
+    return <LoadingIndicator className="h-full" />;
+  }
+
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
 
   const isLoading = isPending || isFetchingNextPage;
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = data?.pages?.flat() ?? [];
+
+  if (flatData.length === 0) {
+    return (
+      <EmptyHomeCard
+        title="You don’t have any open proposed changes"
+        subtitle="Once you create or review a branch, changes will appear here."
+      />
+    );
+  }
 
   return (
-    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage} className="h-full">
+    <InfiniteScroll scrollX hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
       <ProposedChangesTableHeader />
 
       <ListBox
         aria-label="Proposed changes list"
         items={flatData}
-        className={classNames(
-          "m-2 flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200",
-          className
-        )}
+        className={classNames("flex flex-col divide-y divide-gray-200", className)}
       >
-        {(node) => <ProposedChangesItemLight key={node.id} node={node} />}
+        {(node) => <ProposedChangesItemLight node={node} />}
       </ListBox>
-
-      {!isLoading && flatData.length === 0 && (
-        <EmptyHomeCard
-          className="py-20"
-          title={"You don’t have any open proposed changes"}
-          subtitle={"Once you create or review a branch, changes will appear here."}
-        />
-      )}
 
       {isLoading && <ProposedChangesTableSkeleton headerCount={flatData.length} />}
     </InfiniteScroll>

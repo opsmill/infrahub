@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { ListBox } from "react-aria-components";
+import * as R from "remeda";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { classNames, sortByCreatedAtDesc } from "@/shared/utils/common";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
@@ -19,51 +19,56 @@ interface BranchesWidgetProps {
 }
 
 export const BranchesWidget = ({ className }: BranchesWidgetProps) => {
-  const { data: storedBranches, isPending, error } = useGetBranches();
-
-  if (error) {
-    return <ErrorScreen message={error.message} />;
-  }
-
-  const sortedBranches = sortByCreatedAtDesc(
-    (storedBranches?.filter((b) => b.name !== "main" && b.created_at) ?? []) as (Branch & {
-      created_at: string;
-    })[]
-  );
-  const branches = [...(storedBranches?.filter((b) => b.name === "main") ?? []), ...sortedBranches];
-
   return (
-    <HomeCard className={classNames("flex h-full flex-col", className)}>
-      <HomeCard.Title className="flex items-center justify-between">
-        <span className="flex items-center gap-2">
+    <HomeCard className={className}>
+      <HomeCard.Title>
+        <Row>
           <Icon icon={"mdi:source-branch"} /> Branches
-        </span>
+        </Row>
 
         <HomeCard.Link to={constructPath("/branches")}>
           View all <Icon icon={"mdi:chevron-right"} />
         </HomeCard.Link>
       </HomeCard.Title>
 
-      {isPending && <LoadingIndicator />}
-
-      {branches.length === 0 && (
-        <EmptyHomeCard
-          title={"You don't have any open branches yet"}
-          subtitle={"Create your first branch to start tracking changes."}
-        />
-      )}
-
-      {!!branches.length && (
-        <ScrollArea>
-          <ListBox
-            aria-label="Branches list"
-            items={branches}
-            className="flex h-full flex-col divide-y"
-          >
-            {(branch) => <BranchListItem branch={branch} />}
-          </ListBox>
-        </ScrollArea>
-      )}
+      <BranchesWidgetContent />
     </HomeCard>
   );
 };
+
+function BranchesWidgetContent() {
+  const { data, isPending, error } = useGetBranches();
+
+  if (isPending) {
+    return <LoadingIndicator />;
+  }
+
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
+
+  if (data.length === 0) {
+    return (
+      <EmptyHomeCard
+        title={"You don't have any open branches yet"}
+        subtitle={"Create your first branch to start tracking changes."}
+      />
+    );
+  }
+
+  const [defaultBranches, otherBranches] = R.partition(data, (branch) => !!branch?.is_default);
+  const sortedBranches = R.sortBy(otherBranches, [(x) => x.created_at ?? 0, "desc"]);
+  const branches = [...defaultBranches, ...sortedBranches];
+
+  return (
+    <ScrollArea>
+      <ListBox
+        aria-label="Branches list"
+        items={branches}
+        className="flex h-full flex-col divide-y"
+      >
+        {(branch) => <BranchListItem branch={branch} />}
+      </ListBox>
+    </ScrollArea>
+  );
+}

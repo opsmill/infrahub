@@ -9,7 +9,7 @@ import { HomeCard } from "@/shared/components/ui/home-card";
 export const GettingStarted = ({ className }: { className?: string }) => {
   return (
     <HomeCard className={className}>
-      <HomeCard.Title className="flex items-center justify-between">
+      <HomeCard.Title>
         <span>Getting Started with Infrahub</span>
 
         <div className="flex items-center gap-3">

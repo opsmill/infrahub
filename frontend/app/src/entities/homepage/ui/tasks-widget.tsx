@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import { HomeCard } from "@/shared/components/ui/home-card";
-import { classNames } from "@/shared/utils/common";
 
 import {
   MORE_TASKS_STATES,
@@ -23,11 +23,11 @@ interface TasksWidgetProps {
 
 export const TasksWidget = ({ className }: TasksWidgetProps) => {
   return (
-    <HomeCard className={classNames("flex flex-col", className)}>
-      <HomeCard.Title className="flex items-center justify-between">
-        <span className="flex items-center gap-2">
+    <HomeCard className={className}>
+      <HomeCard.Title>
+        <Row>
           <Icon icon={"mdi:shield-check"} /> Tasks overview
-        </span>
+        </Row>
 
         <HomeCard.Link to={constructPath("/tasks")}>
           View all <Icon icon={"mdi:chevron-right"} />

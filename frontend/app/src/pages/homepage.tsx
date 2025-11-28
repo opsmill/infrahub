@@ -9,24 +9,13 @@ import { TasksWidget } from "@/entities/homepage/ui/tasks-widget";
 
 const Homepage = () => {
   return (
-    <Content className="flex flex-col gap-4 p-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="col-span-2 flex flex-col gap-4">
-          <ProposedChangesWidget className="max-h-[400px] min-h-80" />
-
-          <BranchesWidget className="max-h-[400px] min-h-80" />
-        </div>
-
-        <div className="flex max-h-[816px] min-h-0 flex-col gap-4">
-          <GitRepositoriesWidget className="max-h-1/3" />
-
-          <EventsWidget />
-        </div>
-      </div>
-
-      <TasksWidget className="min-h-[500px]" />
-
-      <GettingStarted />
+    <Content className="grid auto-rows-[10rem] gap-3 p-3 lg:grid-cols-3">
+      <ProposedChangesWidget className="col-span-1 row-span-2 lg:col-span-2" />
+      <GitRepositoriesWidget className="col-span-1 row-span-1" />
+      <BranchesWidget className="col-span-1 row-span-2 lg:col-span-2" />
+      <EventsWidget className="col-span-1 row-span-3 lg:col-start-3 lg:row-start-2" />
+      <TasksWidget className="col-span-full row-span-3" />
+      <GettingStarted className="col-span-full h-fit" />
     </Content>
   );
 };

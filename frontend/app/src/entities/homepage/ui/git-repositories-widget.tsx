@@ -1,15 +1,15 @@
 import { Icon } from "@iconify-icon/react";
-import React from "react";
-import { ListBox } from "react-aria-components";
+import { Collection, ListBox, ListBoxLoadMoreItem } from "react-aria-components";
 
 import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
 
 import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
-import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
-import { classNames } from "@/shared/utils/common";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { GitRepositoryItem } from "@/entities/homepage/ui/git-repository";
@@ -21,10 +21,28 @@ interface GitRepositoriesWidgetProps {
   className?: string;
 }
 
-export const GitRepositoriesWidget = ({ className }: GitRepositoriesWidgetProps) => {
+export function GitRepositoriesWidget({ className }: GitRepositoriesWidgetProps) {
+  return (
+    <HomeCard className={className}>
+      <HomeCard.Title>
+        <Row>
+          <Icon icon={"mdi:git"} /> Git repositories
+        </Row>
+
+        <HomeCard.Link to={constructPath(`/objects/${GENERIC_REPOSITORY_KIND}`)}>
+          View all <Icon icon={"mdi:chevron-right"} />
+        </HomeCard.Link>
+      </HomeCard.Title>
+
+      <GitRepositoriesWidgetContent />
+    </HomeCard>
+  );
+}
+
+export function GitRepositoriesWidgetContent() {
   const { schema } = useSchema(GENERIC_REPOSITORY_KIND);
 
-  const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({
+  const { data, error, fetchNextPage, hasNextPage, isPending, isFetchingNextPage } = useObjects({
     schema: schema!,
     getAttributesVisible: (attributes) => {
       return attributes.filter(({ name }) => {
@@ -34,48 +52,41 @@ export const GitRepositoriesWidget = ({ className }: GitRepositoriesWidgetProps)
     getRelationshipsVisible: () => [],
   });
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  if (isPending) {
+    return <LoadingIndicator className="h-full" />;
+  }
 
-  const isLoading = isPending || isFetchingNextPage;
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
+
+  const flatData = data?.pages?.flat() ?? [];
+
+  if (flatData.length === 0) {
+    return (
+      <EmptyHomeCard
+        title="No git repository connected"
+        subtitle="Connect a Git repo to sync changes."
+      />
+    );
+  }
 
   return (
-    <HomeCard className={classNames("flex flex-col", className)}>
-      <HomeCard.Title className="flex items-center justify-between">
-        <span className="flex items-center gap-2">
-          <Icon icon={"mdi:git"} /> Git repositories
-        </span>
+    <ScrollArea>
+      <ListBox aria-label="Git repositories list">
+        <Collection items={flatData}>
+          {(repository) => <GitRepositoryItem {...(repository as unknown as CoreRepository)} />}
+        </Collection>
 
-        <HomeCard.Link to={constructPath(`/objects/${GENERIC_REPOSITORY_KIND}`)}>
-          View all <Icon icon={"mdi:chevron-right"} />
-        </HomeCard.Link>
-      </HomeCard.Title>
-
-      <InfiniteScroll hasNextPage={hasNextPage} onLoadMore={fetchNextPage}>
-        <ListBox
-          aria-label="Git repositories list"
-          items={flatData}
-          renderEmptyState={() =>
-            !isLoading && (
-              <EmptyHomeCard
-                title={"No git repository connected"}
-                subtitle={"Connect a Git repo to sync changes."}
-                className="py-10"
-              />
-            )
-          }
-        >
-          {(repository) => {
-            return (
-              <GitRepositoryItem
-                {...(repository as unknown as CoreRepository)}
-                key={repository.id}
-              />
-            );
-          }}
-        </ListBox>
-
-        {isLoading && <LoadingIndicator />}
-      </InfiniteScroll>
-    </HomeCard>
+        {hasNextPage && (
+          <ListBoxLoadMoreItem
+            isLoading={isPending || isFetchingNextPage}
+            onLoadMore={fetchNextPage}
+          >
+            <LoadingIndicator />
+          </ListBoxLoadMoreItem>
+        )}
+      </ListBox>
+    </ScrollArea>
   );
-};
+}
