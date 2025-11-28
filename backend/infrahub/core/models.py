@@ -359,7 +359,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def validate_migrations(self, migration_map: dict[str, Any]) -> None:
         for migration in self.migrations:
-            if migration_map.get(migration.migration_name, None) is None:
+            if migration_map.get(migration.migration_name) is None:
                 self.errors.append(
                     SchemaUpdateValidationError(
                         path=migration.path,
@@ -370,7 +370,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def validate_constraints(self, validator_map: dict[str, Any]) -> None:
         for constraint in self.constraints:
-            if validator_map.get(constraint.constraint_name, None) is None:
+            if validator_map.get(constraint.constraint_name) is None:
                 self.errors.append(
                     SchemaUpdateValidationError(
                         path=constraint.path,

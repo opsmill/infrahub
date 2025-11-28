@@ -2,7 +2,6 @@ import time
 from pathlib import Path
 
 import click
-import common.events
 import common.users
 import gevent
 from common.config import config
