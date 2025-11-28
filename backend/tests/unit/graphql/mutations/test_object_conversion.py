@@ -8,11 +8,85 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.mutations.convert_object_type import _filter_none_values_from_data
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+
+class TestFilterNoneValuesFromData:
+    """Tests for the _filter_none_values_from_data helper function."""
+
+    def test_source_field_unchanged(self) -> None:
+        """Test that source_field input is unchanged."""
+        input_dict = {"source_field": "name"}
+        result = _filter_none_values_from_data(input_dict)
+        assert result == {"source_field": "name"}
+
+    def test_use_default_value_unchanged(self) -> None:
+        """Test that use_default_value input is unchanged."""
+        input_dict = {"use_default_value": True}
+        result = _filter_none_values_from_data(input_dict)
+        assert result == {"use_default_value": True}
+
+    def test_data_with_valid_value_unchanged(self) -> None:
+        """Test that data with a valid attribute_value is unchanged."""
+        input_dict = {"data": {"attribute_value": "test"}}
+        result = _filter_none_values_from_data(input_dict)
+        assert result == {"data": {"attribute_value": "test"}}
+
+    def test_data_with_none_attribute_value_filtered(self) -> None:
+        """Test that data with null attribute_value is filtered out.
+
+        This is the key bug fix case - UI sends {"data": {"attribute_value": null}}
+        which would cause a validation error.
+        """
+        input_dict = {"data": {"attribute_value": None}}
+        result = _filter_none_values_from_data(input_dict)
+        assert result is None
+
+    def test_data_with_valid_peer_id_unchanged(self) -> None:
+        """Test that data with a valid peer_id is unchanged."""
+        input_dict = {"data": {"peer_id": "123"}}
+        result = _filter_none_values_from_data(input_dict)
+        assert result == {"data": {"peer_id": "123"}}
+
+    def test_data_with_valid_peers_ids_unchanged(self) -> None:
+        """Test that data with a valid peers_ids is unchanged."""
+        input_dict = {"data": {"peers_ids": ["123", "456"]}}
+        result = _filter_none_values_from_data(input_dict)
+        assert result == {"data": {"peers_ids": ["123", "456"]}}
+
+    def test_data_with_empty_peers_ids_unchanged(self) -> None:
+        """Test that data with an empty peers_ids list is unchanged."""
+        input_dict = {"data": {"peers_ids": []}}
+        result = _filter_none_values_from_data(input_dict)
+        assert result == {"data": {"peers_ids": []}}
+
+    def test_data_with_multiple_none_values_filtered(self) -> None:
+        """Test that all None values in data are filtered."""
+        input_dict = {"data": {"attribute_value": None, "peer_id": None}}
+        result = _filter_none_values_from_data(input_dict)
+        assert result is None
+
+    def test_data_with_mixed_none_and_value_keeps_value(self) -> None:
+        """Test that non-None values are kept when there are also None values."""
+        input_dict = {"data": {"attribute_value": None, "peer_id": "123"}}
+        result = _filter_none_values_from_data(input_dict)
+        assert result == {"data": {"peer_id": "123"}}
+
+    def test_non_dict_input_unchanged(self) -> None:
+        """Test that non-dict input is returned unchanged."""
+        input_val = "not a dict"
+        result = _filter_none_values_from_data(input_val)  # type: ignore
+        assert result == "not a dict"
+
+    def test_empty_dict_returns_none(self) -> None:
+        """Test that an empty dict returns None."""
+        result = _filter_none_values_from_data({})
+        assert result is None
 
 
 async def test_convert_object_type_with_profile_error(
