@@ -5,16 +5,15 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
 import type { EventType } from "@/entities/events/types";
+import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
+import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
+import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
+import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
+import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
+import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
+import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
-
-import { ArtifactEventTitle } from "./artifact-events/artifact-event-title";
-import { BranchEventTitle } from "./branch-events/branch-event-title";
-import { GroupEventTitle } from "./group-events/group-event-title";
-import { EventAttributes } from "./node-events/event-attributes";
-import { NodeEventTitle } from "./node-events/node-event-title";
-import { ProposedChangeEventTitle } from "./proposed-change-events/proposed-change-event-title";
-import { StandardEventTitle } from "./standard-events/standard-event-title";
 
 const EventContent = (props: EventType) => {
   const { pathname } = useLocation();
