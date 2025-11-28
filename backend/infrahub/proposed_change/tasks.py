@@ -480,7 +480,7 @@ async def _get_proposed_change_schema_integrity_constraints(
                 DiffElementType.RELATIONSHIP_ONE.value.lower(),
             ):
                 field_summary.relationship_names.add(element_name)
-            elif element_type.lower() in (DiffElementType.ATTRIBUTE.value.lower(),):
+            elif element_type.lower() == DiffElementType.ATTRIBUTE.value.lower():
                 field_summary.attribute_names.add(element_name)
 
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)

@@ -533,7 +533,6 @@ ignore = [
     "FURB113", # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB118", # Use `operator.itemgetter(1)` instead of defining a lambda
     "FURB140", # Use `itertools.starmap` instead of the generator
-    "FURB171", # Membership test against single-item container
     "FURB192", # Prefer `min` over `sorted()` to compute the minimum value in a sequence
     "INP001",  # File declares a package, but is nested under an implicit namespace package.
     "LOG015",  # `info()` call on root logger
