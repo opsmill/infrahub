@@ -30,6 +30,16 @@ export function ObjectAutocomplete({
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useRelationships({ peer: objectKind, search, filterQuery });
 
+  if (isPending) {
+    return (
+      <Autocomplete onInputChange={setSearchDebounced}>
+        <ListBox className="p-1">
+          <ListBoxLoadMoreItem isLoading />
+        </ListBox>
+      </Autocomplete>
+    );
+  }
+
   if (error) return <ErrorScreen message={error.message} />;
 
   const flatData = data?.pages.flat() ?? [];
@@ -58,11 +68,8 @@ export function ObjectAutocomplete({
             }}
           </Collection>
 
-          {(isPending || hasNextPage) && (
-            <ListBoxLoadMoreItem
-              isLoading={isPending || isFetchingNextPage}
-              onLoadMore={fetchNextPage}
-            />
+          {hasNextPage && (
+            <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
           )}
         </ListBox>
       </Virtualizer>

@@ -14,8 +14,7 @@ import {
 } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
-import { disabledStyle } from "@/shared/components/style-rac";
-import { PushableItem, pushableItemContainerStyle } from "@/shared/components/ui/pushable-item";
+import { disabledStyle, focusVisibleStyle } from "@/shared/components/style-rac";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -53,22 +52,17 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
   return (
     <AriaMenuItem
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
-      className={classNames(disabledStyle, pushableItemContainerStyle)}
+      className={composeRenderProps(className, (className) =>
+        classNames(
+          disabledStyle,
+          focusVisibleStyle,
+          "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
+          className
+        )
+      )}
       {...props}
     >
-      {(renderProps) => (
-        <PushableItem
-          isElevated={renderProps.isFocused}
-          isPressed={renderProps.isPressed}
-          className={
-            typeof className === "function"
-              ? className({ ...renderProps, defaultClassName: undefined })
-              : className
-          }
-        >
-          {typeof children === "function" ? children(renderProps) : children}
-        </PushableItem>
-      )}
+      {children}
     </AriaMenuItem>
   );
 };
