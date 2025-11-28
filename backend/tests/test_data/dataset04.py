@@ -1,6 +1,5 @@
 import random
 import time
-from typing import List
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
