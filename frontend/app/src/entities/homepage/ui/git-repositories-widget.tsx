@@ -79,10 +79,7 @@ export function GitRepositoriesWidgetContent() {
         </Collection>
 
         {hasNextPage && (
-          <ListBoxLoadMoreItem
-            isLoading={isPending || isFetchingNextPage}
-            onLoadMore={fetchNextPage}
-          >
+          <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage}>
             <LoadingIndicator />
           </ListBoxLoadMoreItem>
         )}

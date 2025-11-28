@@ -36,8 +36,6 @@ export function ProposedChangesTableHomepage({
     return <ErrorScreen message={error.message} />;
   }
 
-  const isLoading = isPending || isFetchingNextPage;
-
   const flatData = data?.pages?.flat() ?? [];
 
   if (flatData.length === 0) {
@@ -61,7 +59,7 @@ export function ProposedChangesTableHomepage({
         {(node) => <ProposedChangesItemLight node={node} />}
       </ListBox>
 
-      {isLoading && <ProposedChangesTableSkeleton headerCount={flatData.length} />}
+      {isFetchingNextPage && <ProposedChangesTableSkeleton headerCount={flatData.length} />}
     </InfiniteScroll>
   );
 }
