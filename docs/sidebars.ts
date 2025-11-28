@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
+            'guides/selective-branch-sync',
           ],
         },
         {
