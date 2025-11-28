@@ -325,7 +325,7 @@ class PrefectTask:
                                 "parameters": flow.parameters,
                                 "branch": await cls._extract_branch_name(flow=flow),
                                 "tags": flow.tags,
-                                "workflow": workflow_names.get(flow.flow_id, None),
+                                "workflow": workflow_names.get(flow.flow_id),
                                 "related_node": related_node.id if related_node else None,
                                 "related_node_kind": related_node.kind if related_node else None,
                                 "related_nodes": related_nodes_info.get_related_nodes_as_dict(flow_id=flow.id),

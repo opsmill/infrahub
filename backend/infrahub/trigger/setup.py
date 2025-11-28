@@ -122,7 +122,7 @@ async def setup_triggers(
             actions=[action.get_prefect(mapping=deployments_mapping) for action in trigger.actions],
         )
 
-        existing_automation = existing_automations.get(trigger.generate_name(), None)
+        existing_automation = existing_automations.get(trigger.generate_name())
 
         if existing_automation:
             trigger_comparison = compare_automations(
