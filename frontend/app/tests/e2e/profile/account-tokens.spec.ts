@@ -7,7 +7,7 @@ test.describe("/profile?tab=tokens", () => {
   test.describe("when not logged in as admin account", () => {
     test("should not access profile tokens", async ({ page }) => {
       await page.goto("/profile?tab=tokens");
-      await expect(page.getByText("Open Proposed changes")).toBeVisible();
+      await expect(page.getByText("Open Proposed changes", { exact: true })).toBeVisible();
     });
   });
 

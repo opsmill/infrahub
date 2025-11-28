@@ -144,7 +144,7 @@ test.describe("/login", () => {
     test("redirect to homepage if user is already logged in", async ({ page }) => {
       await page.goto("/login");
 
-      await expect(page.getByText("Open Proposed changes")).toBeVisible();
+      await expect(page.getByText("Open Proposed changes", { exact: true })).toBeVisible();
     });
 
     test("should refresh access token and retry failed request", async ({ page }) => {
