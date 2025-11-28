@@ -14,7 +14,7 @@ import {
 } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
-import { disabledStyle, focusVisibleStyle } from "@/shared/components/style-rac";
+import { disabledStyle } from "@/shared/components/style-rac";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -55,8 +55,8 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
       className={composeRenderProps(className, (className) =>
         classNames(
           disabledStyle,
-          focusVisibleStyle,
           "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
+          "data-focused:ring-1",
           className
         )
       )}
