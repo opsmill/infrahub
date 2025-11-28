@@ -22,6 +22,10 @@ query GET_TASKS_HOMEPAGE(
         title
         updated_at
         state
+        related_nodes {
+          id
+          kind
+        }
       }
     }
   }

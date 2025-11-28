@@ -144,7 +144,7 @@ test.describe("/login", () => {
     test("redirect to homepage if user is already logged in", async ({ page }) => {
       await page.goto("/login");
 
-      await expect(page.getByText("Welcome to Infrahub!")).toBeVisible();
+      await expect(page.getByText("Open Proposed changes")).toBeVisible();
     });
 
     test("should refresh access token and retry failed request", async ({ page }) => {
