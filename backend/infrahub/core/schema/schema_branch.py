@@ -1108,10 +1108,8 @@ class SchemaBranch:
 
         if parent_rel.kind not in [RelationshipKind.PARENT, RelationshipKind.HIERARCHY]:
             raise ValueError(
-
-                    f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent}'"
-                    " is not of kind 'parent' or 'hierarchy'"
-
+                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent}'"
+                " is not of kind 'parent' or 'hierarchy'"
             )
 
     def validate_kinds(self) -> None:
