@@ -8,6 +8,7 @@ import { Popover } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
+import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { NodeCore } from "@/entities/nodes/types";
@@ -47,6 +48,9 @@ export function BreadcrumbItemObject({
         }
       })
     : null;
+  const { schema: parentToChildSchema, isGeneric: isGenericParentToChild } = useSchema(
+    parentToChildRelationshipSchema?.peer
+  ); // TO FIX: https://github.com/opsmill/infrahub/issues/7748, generic on hierarchy do not have parent__ids filter
 
   return (
     <Breadcrumb>
@@ -77,21 +81,35 @@ export function BreadcrumbItemObject({
           </Button>
 
           <Popover className="bg-stone-100/50 backdrop-blur">
-            <ObjectAutocomplete
-              className="max-h-58"
-              {...(parentRelationshipSchema && parentToChildRelationshipSchema && parentId
-                ? {
-                    objectKind: parentToChildRelationshipSchema.peer,
-                    filterQuery: {
-                      [`${parentRelationshipSchema.name}__ids`]: [parentId],
-                      ...filterQuery,
-                    },
-                  }
-                : {
-                    objectKind: autocompleteObjectKind ?? node.__typename,
-                    filterQuery,
-                  })}
-            />
+            {parentRelationshipSchema &&
+            parentId &&
+            parentToChildRelationshipSchema?.kind === "Hierarchy" &&
+            isGenericParentToChild &&
+            !parentToChildSchema.hierarchical ? (
+              <ObjectRelationshipList
+                className="max-h-58"
+                parentKind={parentRelationshipSchema.peer}
+                parentId={parentId}
+                relationshipName={parentToChildRelationshipSchema.name}
+                relationshipSchema={parentToChildSchema}
+              />
+            ) : (
+              <ObjectAutocomplete
+                className="max-h-58"
+                {...(parentRelationshipSchema && parentToChildRelationshipSchema && parentId
+                  ? {
+                      objectKind: parentToChildRelationshipSchema.peer,
+                      filterQuery: {
+                        [`${parentRelationshipSchema.name}__ids`]: [parentId],
+                        ...filterQuery,
+                      },
+                    }
+                  : {
+                      objectKind: autocompleteObjectKind ?? node.__typename,
+                      filterQuery,
+                    })}
+              />
+            )}
           </Popover>
         </MenuTrigger>
       </Row>

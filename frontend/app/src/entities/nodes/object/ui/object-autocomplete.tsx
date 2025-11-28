@@ -40,7 +40,7 @@ export function ObjectAutocomplete({
         layout={ListLayout}
         layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
       >
-        <ListBox className={className}>
+        <ListBox className={className} emptyMessage="No result found">
           <Collection items={flatData}>
             {(node) => {
               const { schema } = getSchema(node.__typename);
