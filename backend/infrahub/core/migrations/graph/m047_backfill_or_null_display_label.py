@@ -470,7 +470,9 @@ class Migration047(MigrationRequiringRebase):
 
         # Count nodes that will get computed values
         kinds_to_backfill: list[str] = []
-        for node_schema_name in main_schema_branch.node_names:
+        for node_schema_name in (
+            main_schema_branch.node_names + main_schema_branch.profile_names + main_schema_branch.template_names
+        ):
             if node_schema_name in self.kinds_to_skip:
                 continue
 
