@@ -1160,7 +1160,10 @@ async def test_schema_branch_validate_common_parent_invalid_relationship_kind() 
         schema.validate_kinds()
 
     assert str(exc.value) == (
-        "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.device' is not of kind 'parent' or 'hierarchy'"
+
+            "TestingLinkAggegrationInterface: Relationship 'members' defines 'common_parent' but 'TestingPhysicalInterface.device'"
+            " is not of kind 'parent' or 'hierarchy'"
+
     )
 
 

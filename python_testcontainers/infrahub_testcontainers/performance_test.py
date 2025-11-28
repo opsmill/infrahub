@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from types import TracebackType
 from typing import Any
 
