@@ -14,13 +14,19 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
         <div className="flex min-w-0 items-center gap-1 overflow-hidden text-black">
           {props.related_nodes.slice(0, 5).map(({ id, kind }) => {
             return (
-              <Link key={id} to={constructPath(`/objects/${kind}/${id}`)} className="max-w-[150px] shrink-0 truncate">
+              <Link
+                key={id}
+                to={constructPath(`/objects/${kind}/${id}`)}
+                className="max-w-[150px] shrink-0 truncate"
+              >
                 <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
             );
           })}
           {props.related_nodes.slice(6).length > 0 && (
-            <span className="shrink-0 text-gray-500 italic">(+{props.related_nodes.slice(6).length})</span>
+            <span className="shrink-0 text-gray-500 italic">
+              (+{props.related_nodes.slice(6).length})
+            </span>
           )}
         </div>
         <span className="whitespace-nowrap">in group</span>
@@ -47,13 +53,19 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: GroupEvent) => ReactEl
         <div className="flex min-w-0 items-center gap-1 overflow-hidden text-black">
           {props.related_nodes.slice(0, 5).map(({ id, kind }) => {
             return (
-              <Link key={id} to={constructPath(`/objects/${kind}/${id}`)} className="max-w-[150px] shrink-0 truncate">
+              <Link
+                key={id}
+                to={constructPath(`/objects/${kind}/${id}`)}
+                className="max-w-[150px] shrink-0 truncate"
+              >
                 <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
             );
           })}
           {props.related_nodes.slice(6).length > 0 && (
-            <span className="shrink-0 text-gray-500 italic">(+{props.related_nodes.slice(6).length})</span>
+            <span className="shrink-0 text-gray-500 italic">
+              (+{props.related_nodes.slice(6).length})
+            </span>
           )}
         </div>
         <span className="whitespace-nowrap">from group</span>
