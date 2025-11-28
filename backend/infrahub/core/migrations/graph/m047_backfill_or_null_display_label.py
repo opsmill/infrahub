@@ -458,29 +458,45 @@ class Migration047(MigrationRequiringRebase):
 
         main_schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
 
-        total_nodes_query = await DefaultBranchNodeCount.init(db=db, kinds_to_skip=self.kinds_to_skip)
-        await total_nodes_query.execute(db=db)
-        total_nodes_count = total_nodes_query.get_num_nodes()
-
         base_node_schema = main_schema_branch.get("SchemaNode", duplicate=False)
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
 
+        # Get nodes without display_label in the database
+        get_nodes_without_dl_query = await GetNodesWithoutDisplayLabelQuery.init(
+            db=db, kinds_to_skip=self.kinds_to_skip
+        )
+        await get_nodes_without_dl_query.execute(db=db)
+        nodes_without_display_label = get_nodes_without_dl_query.get_node_uuids()
+
+        # Count nodes that will get computed values
+        kinds_to_backfill: list[str] = []
+        for node_schema_name in main_schema_branch.node_names:
+            if node_schema_name in self.kinds_to_skip:
+                continue
+
+            node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+            if node_schema.branch != BranchSupportType.AWARE or not node_schema.display_label:
+                continue
+
+            kinds_to_backfill.append(node_schema.kind)
+
+        backfill_count = 0
+        if kinds_to_backfill:
+            count_query = await DefaultBranchNodeCount.init(
+                db=db, kinds_to_skip=self.kinds_to_skip, kinds_to_include=kinds_to_backfill
+            )
+            await count_query.execute(db=db)
+            backfill_count = count_query.get_num_nodes()
+
         try:
             with Progress(console=console) as progress:
-                update_task = progress.add_task(
-                    f"Backfilling display_label for {total_nodes_count} nodes on default branch",
-                    total=total_nodes_count,
-                )
-
-                # First ensure all nodes have display_label attribute (create with NULL if missing)
-                get_nodes_without_dl_query = await GetNodesWithoutDisplayLabelQuery.init(
-                    db=db, kinds_to_skip=self.kinds_to_skip
-                )
-                await get_nodes_without_dl_query.execute(db=db)
-                nodes_without_display_label = get_nodes_without_dl_query.get_node_uuids()
-
+                # Create NULL display_label
                 if nodes_without_display_label:
-                    print(f"Creating NULL display_label for {len(nodes_without_display_label)} nodes...", end="")
+                    null_task = progress.add_task(
+                        f"Creating NULL display_label for {len(nodes_without_display_label)} nodes",
+                        total=len(nodes_without_display_label),
+                    )
+
                     for offset in range(0, len(nodes_without_display_label), self.update_batch_size):
                         batch_uuids = nodes_without_display_label[offset : offset + self.update_batch_size]
                         if not batch_uuids:
@@ -491,29 +507,25 @@ class Migration047(MigrationRequiringRebase):
                         )
                         await create_display_label_query.execute(db=db)
 
-                        if progress is not None and update_task is not None:
-                            progress.update(update_task, advance=len(batch_uuids))
-                    print("done")
+                        progress.update(null_task, advance=len(batch_uuids))
 
-                # Backfill with computed values for schemas with display_label defined (similar to m044)
-                for node_schema_name in main_schema_branch.node_names:
-                    if node_schema_name in self.kinds_to_skip:
-                        continue
-
-                    node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
-                    # Don't bother backfilling if the schema does not define a display_label
-                    if node_schema.branch is not BranchSupportType.AWARE or not node_schema.display_label:
-                        continue
-
-                    await self._do_one_schema_all(
-                        db=db,
-                        branch=default_branch,
-                        schema=node_schema,
-                        schema_branch=main_schema_branch,
-                        attribute_schema=display_label_attribute_schema,
-                        progress=progress,
-                        update_task=update_task,
+                # Backfill computed display_label values
+                if backfill_count > 0:
+                    backfill_task = progress.add_task(
+                        f"Backfilling computed display_label for {backfill_count} nodes",
+                        total=backfill_count,
                     )
+
+                    for node_schema_name in kinds_to_backfill:
+                        await self._do_one_schema_all(
+                            db=db,
+                            branch=default_branch,
+                            schema=main_schema_branch.get_node(name=node_schema_name, duplicate=False),
+                            schema_branch=main_schema_branch,
+                            attribute_schema=display_label_attribute_schema,
+                            progress=progress,
+                            update_task=backfill_task,
+                        )
 
         except Exception as exc:
             return MigrationResult(errors=[str(exc)])
