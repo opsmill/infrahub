@@ -1126,7 +1126,7 @@ class SchemaBranch:
                     ) from None
 
             for rel in node.relationships:
-                if rel.peer in [InfrahubKind.GENERICGROUP]:
+                if rel.peer == InfrahubKind.GENERICGROUP:
                     continue
                 if not self.has(rel.peer) or self.get(rel.peer, duplicate=False).state == HashableModelState.ABSENT:
                     raise ValueError(

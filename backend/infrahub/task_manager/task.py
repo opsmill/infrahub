@@ -151,7 +151,7 @@ class PrefectTask:
             remaining -= nb_fetched
 
         for flow_log in all_logs:
-            if flow_log.flow_run_id and flow_log.message not in ["Finished in state Completed()"]:
+            if flow_log.flow_run_id and flow_log.message != "Finished in state Completed()":
                 logs_flow.logs[flow_log.flow_run_id].append(flow_log)
 
         return logs_flow
