@@ -17,7 +17,7 @@ from .load_schema_branch import get_or_load_schema_branch
 from .m044_backfill_hfid_display_label_in_db import DefaultBranchNodeCount, GetPathDetailsDefaultBranch
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import AttributeSchema, MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
+    from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.core.schema.basenode_schema import SchemaAttributePath
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -376,9 +376,7 @@ class Migration047(MigrationRequiringRebase):
         return MigrationResult()
 
     def _extract_schema_paths_from_display_label(
-        self,
-        schema: NodeSchema | ProfileSchema | TemplateSchema,
-        schema_branch: SchemaBranch,
+        self, schema: MainSchemaTypes, schema_branch: SchemaBranch
     ) -> list[SchemaAttributePath]:
         """Extract schema paths from display_label, handling both simple paths and Jinja2 templates.
 
