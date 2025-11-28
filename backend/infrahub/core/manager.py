@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
@@ -188,17 +188,22 @@ class NodeManager:
         await query.execute(db=db)
         node_ids = query.get_node_ids()
 
-        # if display_label or hfid has been requested we need to ensure we are querying the right fields
-        if fields and "display_label" in fields:
+        if (
+            fields
+            and "identifier" in fields
+            and node_schema.kind
+            in [
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ]
+        ):
+            # This is a workaround to ensure we are querying the right fields for permissions
+            # The identifier for permissions needs the same fields as the display label
             schema_branch = db.schema.get_schema_branch(name=branch.name)
             display_label_fields = schema_branch.generate_fields_for_display_label(name=node_schema.kind)
             if display_label_fields:
                 fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
-
-        if fields and "hfid" in fields and node_schema.human_friendly_id:
-            hfid_fields = node_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
 
         response = await cls.get_many(
             ids=node_ids,
@@ -324,19 +329,19 @@ class NodeManager:
         if not peers_info:
             return []
 
-        # if display_label has been requested we need to ensure we are querying the right fields
-        if fields and "display_label" in fields:
+        if fields and "identifier" in fields:
+            # This is a workaround to ensure we are querying the right fields for permissions
+            # The identifier for permissions needs the same fields as the display label
             peer_schema = schema.get_peer_schema(db=db, branch=branch)
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
-            if display_label_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
-
-        if fields and "hfid" in fields:
-            peer_schema = schema.get_peer_schema(db=db, branch=branch)
-            hfid_fields = peer_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
+            if peer_schema.kind in [
+                InfrahubKind.BASEPERMISSION,
+                InfrahubKind.GLOBALPERMISSION,
+                InfrahubKind.OBJECTPERMISSION,
+            ]:
+                schema_branch = db.schema.get_schema_branch(name=branch.name)
+                display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
+                if display_label_fields:
+                    fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         if fetch_peers:
             peer_ids = [peer.peer_id for peer in peers_info]
@@ -419,15 +424,6 @@ class NodeManager:
 
         if not peers_ids:
             return {}
-
-        hierarchy_schema = node_schema.get_hierarchy_schema(db=db, branch=branch)
-
-        # if display_label has been requested we need to ensure we are querying the right fields
-        if fields and "display_label" in fields:
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=hierarchy_schema.kind)
-            if display_label_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         return await cls.get_many(
             db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
