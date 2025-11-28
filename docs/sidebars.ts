@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
+            'guides/selective-branch-sync',
           ],
         },
         {
@@ -178,6 +179,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/infrahub-yml',
                 'topics/repository',
+                'topics/branch-synchronization',
               ],
             },
             {
