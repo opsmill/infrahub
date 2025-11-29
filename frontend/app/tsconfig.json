@@ -35,7 +35,7 @@
     "noUnusedParameters": true,
 
     /* Type Definitions */
-    "types": ["vite/client"]
+    "types": ["node", "vite/client"]
   },
   "include": [
     "src",
