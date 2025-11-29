@@ -1,6 +1,5 @@
 import { RouterProvider } from "react-aria-components";
-import type { NavigateOptions, To } from "react-router";
-import { useHref, useNavigate } from "react-router";
+import { type NavigateOptions, type To, useHref, useNavigate } from "react-router";
 
 declare module "react-aria-components" {
   interface RouterConfig {
