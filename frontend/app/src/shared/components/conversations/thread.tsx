@@ -5,8 +5,6 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import * as R from "remeda";
 
-import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -14,6 +12,7 @@ import ModalConfirm from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";

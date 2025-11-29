@@ -3,8 +3,6 @@ import { useAtomValue } from "jotai";
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 
-import { TASK_OBJECT } from "@/config/constants";
-
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
@@ -15,6 +13,7 @@ import { type Property, PropertyList } from "@/shared/components/table/property-
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

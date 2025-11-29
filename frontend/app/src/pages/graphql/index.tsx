@@ -4,10 +4,9 @@ import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 
-import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { QSP } from "@/config/qsp";
-
+import { CONFIG } from "@/shared/config/config";
+import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
+import { QSP } from "@/shared/config/qsp";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";

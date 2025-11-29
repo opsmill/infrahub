@@ -1,8 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { REPOSITORY_KIND } from "@/config/constants";
-
 import type { ContextParams, QueryConfig } from "@/shared/api/types";
+import { REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { relationshipsQueryKeys } from "@/entities/nodes/relationships/domain/relationships.query-keys";

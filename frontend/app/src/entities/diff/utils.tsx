@@ -1,11 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 
-import { NODE_PATH_EXCLUDELIST } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { NODE_PATH_EXCLUDELIST } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

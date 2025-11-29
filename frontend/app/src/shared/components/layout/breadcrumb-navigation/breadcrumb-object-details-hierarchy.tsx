@@ -1,8 +1,6 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { TriangleAlertIcon } from "lucide-react";
 
-import { INFRAHUB_DOC_LOCAL } from "@/config/config";
-
 import {
   BreadcrumbItem,
   BreadcrumbItemError,
@@ -10,6 +8,7 @@ import {
 } from "@/shared/components/aria/breadcrumbs";
 import { BreadcrumbItemObject } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-object";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";

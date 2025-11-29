@@ -1,9 +1,8 @@
 import { useAtomValue } from "jotai";
 
-import { QSP } from "@/config/qsp";
-
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
+import { QSP } from "@/shared/config/qsp";
 
 import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";

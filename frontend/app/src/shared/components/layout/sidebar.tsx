@@ -3,7 +3,6 @@ import { Link } from "react-router";
 
 import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
 import InfrahubLogo from "@/assets/infrahub-logo.svg";
-import { SIDEBAR_COLLAPSED_KEY } from "@/config/localStorage";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { AccountMenu } from "@/shared/components/account-menu";
@@ -12,6 +11,7 @@ import { Button } from "@/shared/components/buttons/button-primitive";
 import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
 import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { SIDEBAR_COLLAPSED_KEY } from "@/shared/config/localStorage";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 

@@ -4,13 +4,12 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { currentBranchAtom } from "@/entities/branches/stores";

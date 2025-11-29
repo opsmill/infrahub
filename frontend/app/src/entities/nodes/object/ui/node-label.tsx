@@ -1,6 +1,5 @@
-import { NODE_OBJECT } from "@/config/constants";
-
 import { Skeleton } from "@/shared/components/skeleton";
+import { NODE_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

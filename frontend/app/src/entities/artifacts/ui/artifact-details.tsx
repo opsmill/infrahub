@@ -1,5 +1,3 @@
-import { CONFIG } from "@/config/config";
-
 import type { CoreArtifact } from "@/shared/api/graphql/generated/graphql";
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
@@ -7,6 +5,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card } from "@/shared/components/ui/card";
+import { CONFIG } from "@/shared/config/config";
 
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";

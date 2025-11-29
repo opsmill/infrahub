@@ -1,10 +1,9 @@
 import { useParams } from "react-router";
 
-import { ARTIFACT_OBJECT } from "@/config/constants";
-
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { ArtifactsDetails } from "@/entities/artifacts/ui/artifact-details";

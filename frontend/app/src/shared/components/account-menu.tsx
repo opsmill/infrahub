@@ -4,14 +4,6 @@ import { useAtomValue } from "jotai";
 import { Link, useLocation } from "react-router";
 import { toast } from "react-toastify";
 
-import {
-  INFRAHUB_DISCORD_URL,
-  INFRAHUB_DOC_LOCAL,
-  INFRAHUB_GITHUB_URL,
-  INFRAHUB_SWAGGER_DOC_URL,
-} from "@/config/config";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -28,6 +20,13 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Spinner } from "@/shared/components/ui/spinner";
+import {
+  INFRAHUB_DISCORD_URL,
+  INFRAHUB_DOC_LOCAL,
+  INFRAHUB_GITHUB_URL,
+  INFRAHUB_SWAGGER_DOC_URL,
+} from "@/shared/config/config";
+import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";

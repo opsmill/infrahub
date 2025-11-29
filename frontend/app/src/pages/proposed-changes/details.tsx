@@ -3,9 +3,6 @@ import { useAtom } from "jotai";
 import { useQueryState } from "nuqs";
 import { Link, useLocation, useParams } from "react-router";
 
-import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import type { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -16,6 +13,8 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Tabs } from "@/shared/components/tabs";
 import { Badge } from "@/shared/components/ui/badge";
+import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";

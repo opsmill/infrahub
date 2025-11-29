@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
 
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
 import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/search-anywhere/ui/search-anywhere-item";

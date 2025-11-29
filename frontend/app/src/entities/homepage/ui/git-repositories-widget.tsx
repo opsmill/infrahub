@@ -1,8 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Collection, ListBox, ListBoxLoadMoreItem } from "react-aria-components";
 
-import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
-
 import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
@@ -10,6 +8,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { HomeCard } from "@/shared/components/ui/home-card";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { GitRepositoryItem } from "@/entities/homepage/ui/git-repository";

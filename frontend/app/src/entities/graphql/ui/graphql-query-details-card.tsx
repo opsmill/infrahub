@@ -1,7 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 
-import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
-
 import type { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import PropertiesPopover from "@/shared/components/display/properties-popover";
@@ -11,6 +9,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { RELATIONSHIP_VIEW_BLACKLIST } from "@/shared/config/constants";
 
 import {
   type AttributeType,

@@ -4,12 +4,11 @@ import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-import { TASK_OBJECT } from "@/config/constants";
-
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { TASK_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";

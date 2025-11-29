@@ -1,7 +1,5 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
-import { MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
-
 import type {
   AnyAttribute,
   CheckboxAttribute,
@@ -23,6 +21,7 @@ import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Link } from "@/shared/components/ui/link";
+import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
