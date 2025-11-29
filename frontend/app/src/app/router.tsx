@@ -17,7 +17,7 @@ export const router = createBrowserRouter([
     element: (
       <ReactAriaRouterProvider>
         <ToastContainer
-          hideProgressBar={true}
+          hideProgressBar
           transition={Slide}
           autoClose={5000}
           closeOnClick={false}
