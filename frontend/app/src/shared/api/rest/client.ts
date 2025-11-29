@@ -1,10 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
 import createClient, { type Middleware } from "openapi-fetch";
 
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-
 import type { paths } from "@/shared/api/rest/types.generated";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
+import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
 
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 

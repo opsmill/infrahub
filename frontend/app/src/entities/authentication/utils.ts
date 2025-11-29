@@ -1,5 +1,5 @@
-import { REFRESH_TOKEN_KEY } from "@/config/constants";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
+import { REFRESH_TOKEN_KEY } from "@/shared/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
 
 import type { UserToken } from "@/entities/authentication/types";
 

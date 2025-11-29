@@ -3,14 +3,13 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { Link } from "react-router";
 
-import { QSP } from "@/config/qsp";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ItemGroup from "@/shared/components/layouts/item-group";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { QSP } from "@/shared/config/qsp";
 import { pluralize } from "@/shared/utils/string";
 
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";

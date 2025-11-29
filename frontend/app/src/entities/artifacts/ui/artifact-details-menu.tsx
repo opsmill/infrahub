@@ -1,10 +1,9 @@
-import { ARTIFACT_OBJECT } from "@/config/constants";
-
 import { CopyToClipboardMenuItem } from "@/shared/components/aria/menu";
 import {
   ObjectDetailsButton,
   type ObjectDetailsButtonProps,
 } from "@/shared/components/menu/object-details-button";
+import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
 export interface ArtifactDetailsMenuProps extends ObjectDetailsButtonProps {
   checksum?: string;

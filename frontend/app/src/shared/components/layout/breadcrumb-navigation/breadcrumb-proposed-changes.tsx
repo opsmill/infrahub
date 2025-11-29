@@ -1,8 +1,6 @@
 import { keepPreviousData } from "@tanstack/react-query";
 import { useLocation, useParams } from "react-router";
 
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
   Breadcrumb,
@@ -14,6 +12,7 @@ import {
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
 import { BreadcrumbSelectorTrigger } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-selector-trigger";
+import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";

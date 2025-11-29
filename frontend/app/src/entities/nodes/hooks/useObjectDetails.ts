@@ -1,9 +1,8 @@
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 
-import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
-
 import useQuery from "@/shared/api/graphql/useQuery";
+import { PROFILE_KIND, TASK_OBJECT } from "@/shared/config/constants";
 
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";

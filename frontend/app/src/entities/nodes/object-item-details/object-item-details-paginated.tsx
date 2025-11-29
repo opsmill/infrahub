@@ -4,18 +4,17 @@ import { useQueryState } from "nuqs";
 import { useCallback } from "react";
 import { Navigate, useParams } from "react-router";
 
+import { queryClient } from "@/shared/api/rest/client";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import {
   DEFAULT_BRANCH_NAME,
   GENERIC_REPOSITORY_KIND,
   MENU_EXCLUDELIST,
   TASK_TARGET,
-} from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
-import { queryClient } from "@/shared/api/rest/client";
-import SlideOver from "@/shared/components/display/slide-over";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
+} from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { currentBranchAtom } from "@/entities/branches/stores";

@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
-import { ARTIFACT_DEFINITION_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import type { ArtifactEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
+import { ARTIFACT_DEFINITION_OBJECT, ARTIFACT_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";

@@ -10,11 +10,10 @@ import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { toast } from "react-toastify";
 
-import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { CONFIG } from "@/shared/config/config";
+import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
 
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 

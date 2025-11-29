@@ -2,12 +2,11 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
-import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
-
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
+import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";

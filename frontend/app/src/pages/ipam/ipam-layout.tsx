@@ -4,8 +4,6 @@ import { SidebarIcon } from "lucide-react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router";
 
-import { IPAM_TREE_KEY } from "@/config/localStorage";
-
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
@@ -16,6 +14,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
+import { IPAM_TREE_KEY } from "@/shared/config/localStorage";
 import { classNames } from "@/shared/utils/common";
 
 import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";

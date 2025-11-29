@@ -1,6 +1,5 @@
-import { CONFIG } from "@/config/config";
-
 import { fetchUrl } from "@/shared/api/rest/fetch";
+import { CONFIG } from "@/shared/config/config";
 
 export interface SearchDocsParams {
   query: string;

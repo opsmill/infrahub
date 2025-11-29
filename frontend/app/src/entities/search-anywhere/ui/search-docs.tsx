@@ -1,7 +1,6 @@
 import { useCommandState } from "cmdk";
 
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
-
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { useGetSearchDocs } from "@/entities/search-anywhere/domain/search-docs.query";

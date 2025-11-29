@@ -4,8 +4,6 @@ import { Text } from "react-aria-components";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
 
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -13,6 +11,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";

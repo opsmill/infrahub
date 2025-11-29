@@ -10,9 +10,8 @@ import {
 } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
 
-import { ARTIFACT_OBJECT } from "@/config/constants";
-
 import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
+import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
 import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";

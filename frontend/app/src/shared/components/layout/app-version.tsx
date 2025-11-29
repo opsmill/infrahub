@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { CONFIG } from "@/config/config";
-
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import type { components } from "@/shared/api/rest/types.generated";
 import { Skeleton } from "@/shared/components/skeleton";
+import { CONFIG } from "@/shared/config/config";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 
 import { useConfig } from "@/entities/config/ui/config-provider";

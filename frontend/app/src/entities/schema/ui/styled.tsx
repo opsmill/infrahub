@@ -2,11 +2,10 @@ import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { ReactElement } from "react";
 import { Tab, TabPanel, type TabPanelProps, type TabProps } from "react-aria-components";
 
-import { QSP } from "@/config/qsp";
-
 import Accordion, { type AccordionProps } from "@/shared/components/display/accordion";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Badge } from "@/shared/components/ui/badge";
+import { QSP } from "@/shared/config/qsp";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
 interface AccordionStyleProps extends AccordionProps {

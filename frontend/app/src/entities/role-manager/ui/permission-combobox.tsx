@@ -2,8 +2,6 @@ import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { forwardRef } from "react";
 
-import { ACCOUNT_PERMISSION_OBJECT } from "@/config/constants";
-
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
@@ -17,6 +15,7 @@ import {
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
+import { ACCOUNT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { classNames, debounce } from "@/shared/utils/common";
 
 import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";

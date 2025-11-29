@@ -5,19 +5,18 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 
-import { CONFIG } from "@/config/config";
-import {
-  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
-  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/config/constants";
-
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { CONFIG } from "@/shared/config/config";
+import {
+  PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
+  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";

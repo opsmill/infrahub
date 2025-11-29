@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
 
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
+import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
 

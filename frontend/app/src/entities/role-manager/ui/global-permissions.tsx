@@ -2,8 +2,6 @@ import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -19,6 +17,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { BadgeCopy } from "@/shared/components/ui/badge-copy";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { GLOBAL_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
