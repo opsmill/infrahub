@@ -2368,7 +2368,7 @@ async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str,
     )
     organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
     for asn in ASNS:
-        organization_type = organizations_dict.get(asn.organization, None)
+        organization_type = organizations_dict.get(asn.organization)
         asn_name = f"AS{asn.asn}"
         data_asn = {
             "name": {"value": asn.name, "source": account_crm.id, "owner": account_chloe.id},

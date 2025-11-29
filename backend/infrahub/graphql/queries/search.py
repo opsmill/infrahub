@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import ipaddress
 from typing import TYPE_CHECKING, Any
 
@@ -117,11 +118,9 @@ async def search_resolver(
         if matching:
             results.append(matching)
     else:
-        try:
+        with contextlib.suppress(ValueError, ipaddress.AddressValueError):
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
             q = _collapse_ipv6(q)
-        except (ValueError, ipaddress.AddressValueError):
-            pass
 
         for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
             objs = await NodeManager.query(

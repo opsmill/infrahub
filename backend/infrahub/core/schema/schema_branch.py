@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
 import keyword
@@ -345,10 +346,8 @@ class SchemaBranch:
             )
 
         schema: MainSchemaTypes | None = None
-        try:
+        with contextlib.suppress(KeyError):
             schema = self._cache[key]
-        except KeyError:
-            pass
 
         if not schema:
             raise ValueError(f"Schema {name!r} on branch {self.name} has incorrect hash: {key!r}")
@@ -1127,7 +1126,7 @@ class SchemaBranch:
                     ) from None
 
             for rel in node.relationships:
-                if rel.peer in [InfrahubKind.GENERICGROUP]:
+                if rel.peer == InfrahubKind.GENERICGROUP:
                     continue
                 if not self.has(rel.peer) or self.get(rel.peer, duplicate=False).state == HashableModelState.ABSENT:
                     raise ValueError(
@@ -2174,10 +2173,8 @@ class SchemaBranch:
                 or not node.generate_profile
                 or node.state == HashableModelState.ABSENT
             ):
-                try:
+                with contextlib.suppress(SchemaNotFoundError):
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))
-                except SchemaNotFoundError:
-                    ...
                 continue
 
             profile = self.generate_profile_from_node(node=node)

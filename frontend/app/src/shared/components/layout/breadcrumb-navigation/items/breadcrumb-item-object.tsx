@@ -1,13 +1,15 @@
 import { ChevronsUpDownIcon } from "lucide-react";
+import { Pressable } from "react-aria-components";
 import { Link } from "react-router";
 
 import { Breadcrumb } from "@/shared/components/aria/breadcrumbs";
-import { Button } from "@/shared/components/aria/button";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
+import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { NodeCore } from "@/entities/nodes/types";
@@ -47,6 +49,9 @@ export function BreadcrumbItemObject({
         }
       })
     : null;
+  const { schema: parentToChildSchema, isGeneric: isGenericParentToChild } = useSchema(
+    parentToChildRelationshipSchema?.peer
+  ); // TO FIX: https://github.com/opsmill/infrahub/issues/7748, generic on hierarchy do not have parent__ids filter
 
   return (
     <Breadcrumb>
@@ -68,30 +73,46 @@ export function BreadcrumbItemObject({
         </Col>
 
         <MenuTrigger>
-          <Button
-            variant="ghost"
-            className="size-5 p-0"
-            aria-label={`Select a different ${schema?.label ?? "object"}`}
-          >
-            <ChevronsUpDownIcon className="size-3.5" />
-          </Button>
+          <Pressable>
+            <Button
+              variant="ghost"
+              className="size-5 p-0"
+              aria-label={`Select a different ${schema?.label ?? "object"}`}
+            >
+              <ChevronsUpDownIcon className="size-3.5" />
+            </Button>
+          </Pressable>
 
           <Popover className="bg-stone-100/50 backdrop-blur">
-            <ObjectAutocomplete
-              className="max-h-58"
-              {...(parentRelationshipSchema && parentToChildRelationshipSchema && parentId
-                ? {
-                    objectKind: parentToChildRelationshipSchema.peer,
-                    filterQuery: {
-                      [`${parentRelationshipSchema.name}__ids`]: [parentId],
-                      ...filterQuery,
-                    },
-                  }
-                : {
-                    objectKind: autocompleteObjectKind ?? node.__typename,
-                    filterQuery,
-                  })}
-            />
+            {parentRelationshipSchema &&
+            parentId &&
+            parentToChildRelationshipSchema?.kind === "Hierarchy" &&
+            isGenericParentToChild &&
+            !parentToChildSchema.hierarchical ? (
+              <ObjectRelationshipList
+                className="max-h-58"
+                parentKind={parentRelationshipSchema.peer}
+                parentId={parentId}
+                relationshipName={parentToChildRelationshipSchema.name}
+                relationshipSchema={parentToChildSchema}
+              />
+            ) : (
+              <ObjectAutocomplete
+                className="max-h-58"
+                {...(parentRelationshipSchema && parentToChildRelationshipSchema && parentId
+                  ? {
+                      objectKind: parentToChildRelationshipSchema.peer,
+                      filterQuery: {
+                        [`${parentRelationshipSchema.name}__ids`]: [parentId],
+                        ...filterQuery,
+                      },
+                    }
+                  : {
+                      objectKind: autocompleteObjectKind ?? node.__typename,
+                      filterQuery,
+                    })}
+              />
+            )}
           </Popover>
         </MenuTrigger>
       </Row>

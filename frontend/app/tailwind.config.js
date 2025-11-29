@@ -30,10 +30,6 @@ export default {
         "custom-black": "#000000",
         "custom-white": "#FFFFFF",
       },
-      backgroundImage: {
-        "pushable-edge-gradient":
-          "linear-gradient(to left, oklch(87% 0 0) 0%, oklch(97% 0 0) 8%, oklch(97% 0 0) 92%, oklch(87% 0 0) 100%)",
-      },
     },
   },
   plugins: [

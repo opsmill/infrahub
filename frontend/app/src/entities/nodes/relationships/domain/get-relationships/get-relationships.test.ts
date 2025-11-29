@@ -25,6 +25,7 @@ describe("getRelationships", () => {
             {
               node: {
                 id: "1",
+                hfid: ["test", "hfid", "1"],
                 display_label: "Test Label",
                 __typename: "TestType",
               },
@@ -65,6 +66,7 @@ describe("getRelationships", () => {
     expect(result).toEqual([
       {
         id: "1",
+        hfid: ["test", "hfid", "1"],
         display_label: "Test Label",
         __typename: "TestType",
       },
