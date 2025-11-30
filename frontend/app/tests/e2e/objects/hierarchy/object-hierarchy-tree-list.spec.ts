@@ -56,6 +56,7 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Country created")).toBeVisible();
       await expect(objectHierarchyTreeLite.getByText("Country 1")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Country 1" })).toBeVisible();
     });
 
     await test.step("add another sibling node - lite tree should refresh", async () => {
@@ -65,6 +66,7 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
       await page.getByRole("option", { name: "North America" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(objectHierarchyTreeLite.getByText("country 2")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Country 2" })).toBeVisible();
     });
 
     await test.step("delete a sibling node - lite tree should refresh", async () => {
@@ -72,7 +74,9 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(objectHierarchyTreeLite.getByText("Country 1")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Country 1" })).toBeVisible();
       await expect(objectHierarchyTreeLite.getByText("country 2")).not.toBeVisible();
+      await expect(page.getByRole("link", { name: "Country 2" })).not.toBeVisible();
     });
 
     await test.step("navigate to sibling via lite tree", async () => {
@@ -99,6 +103,7 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
       // After deleting the current node, should fall back to full tree (not show error)
       await expect(objectHierarchyTree).toBeVisible();
       await expect(objectHierarchyTreeLite).not.toBeVisible();
+      await expect(page.getByRole("link", { name: "Country 1" })).not.toBeVisible();
     });
   });
 });
