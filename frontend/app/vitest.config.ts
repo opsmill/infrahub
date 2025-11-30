@@ -23,7 +23,7 @@ export default mergeConfig(
       },
       coverage: {
         reporter: ["text", "lcovonly"],
-        include: ["src/**/*.{ts,tsx,js,jsx}"],
+        include: ["src/**/*.{ts,tsx}"],
         exclude: [
           "mocks/",
           "node_modules/",
