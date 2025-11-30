@@ -15,7 +15,7 @@ export function AppInfo() {
 export function AppInstallationType() {
   const config = useConfig();
 
-  return capitalizeFirstLetter(config.installation_type) + " Edition";
+  return `${capitalizeFirstLetter(config.installation_type)} Edition`;
 }
 
 export function AppVersion() {
