@@ -11,7 +11,7 @@ Docusaurus documentation site following the [Diataxis framework](https://diataxi
 - `docs/` – MDX content
   - `guides/` – How-to guides (task-oriented)
   - `topics/` – Explanations (understanding-oriented)
-  - `reference/` – API/config reference
+  - `reference/` – API/configuration reference
   - `tutorials/` – Learning tutorials
   - `media/` – Images and screenshots
 - `sidebars.ts` – Navigation configuration
