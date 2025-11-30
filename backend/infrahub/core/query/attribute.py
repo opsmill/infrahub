@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from pydantic import BaseModel, Field
+
 from infrahub.core.constants import AttributeDBNodeType
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
@@ -45,7 +47,36 @@ class AttributeQuery(Query):
         super().__init__(**kwargs)
 
 
+class AttributeUpdateValueQueryData(BaseModel):
+    """Data returned by AttributeUpdateValueQuery.
+
+    Represents the result of updating an attribute's value in the database,
+    including references to the attribute node, the newly created value node,
+    and the relationship connecting them.
+    """
+
+    attribute_uuid: str = Field(description="The UUID of the attribute that was updated")
+    attribute_value_uuid: str = Field(description="The UUID of the newly created attribute value node")
+    relationship_id: str = Field(description="The element ID of the relationship connecting attribute to value")
+    branch: str = Field(description="The branch name where the update was made")
+
+
 class AttributeUpdateValueQuery(AttributeQuery):
+    """Query to update an attribute's value in the database.
+
+    This query creates a new AttributeValue node with the updated value and links it
+    to the existing Attribute node. It handles different attribute types (indexed,
+    IP host, IP network) by applying appropriate labels to the value node.
+
+    Args:
+        attr: The attribute instance containing the new value.
+        at: Optional timestamp for the update operation.
+        branch: Optional branch where the update should be applied.
+
+    Returns:
+        Results containing the attribute node, new value node, and relationship.
+    """
+
     name = "attribute_update_value"
     type: QueryType = QueryType.WRITE
 
@@ -81,7 +112,24 @@ class AttributeUpdateValueQuery(AttributeQuery):
         """ % {"rel_label": self.attr._rel_to_value_label, "labels": ":".join(labels), "props": ", ".join(prop_list)}
 
         self.add_to_query(query)
-        self.return_labels = ["a", "av", "r"]
+        self.return_labels = [
+            "a.uuid AS attribute_uuid",
+            "av.uuid AS attribute_value_uuid",
+            "elementId(r) AS relationship_id",
+            "r.branch AS branch",
+        ]
+
+    def get_data(self) -> list[AttributeUpdateValueQueryData]:
+        """Return query results as typed data objects."""
+        return [
+            AttributeUpdateValueQueryData.model_construct(
+                attribute_uuid=result.get("attribute_uuid"),
+                attribute_value_uuid=result.get("attribute_value_uuid"),
+                relationship_id=result.get("relationship_id"),
+                branch=result.get("branch"),
+            )
+            for result in self.results
+        ]
 
 
 class AttributeUpdateFlagQuery(AttributeQuery):

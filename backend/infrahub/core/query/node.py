@@ -595,6 +595,32 @@ class NodeCheckIDQuery(Query):
 
 
 class NodeListGetAttributeQuery(Query):
+    """Query to retrieve all attributes for a list of nodes.
+
+    This query fetches complete attribute data for multiple nodes in a single database
+    query, including attribute values, flag properties (is_visible, is_protected),
+    profile information, and optionally source/owner node properties.
+
+    The query returns structured data through existing dataclasses:
+    - Use `get_attributes_group_by_node()` to get attributes grouped by node UUID
+    - Use `get_result_by_id_and_name()` to get a specific attribute for a node
+
+    Note: This query returns entire Neo4j nodes (a, av, source, owner) rather than
+    specific properties because `AttributeFromDB.content` requires all properties
+    from the attribute value node (`av._properties`).
+
+    Args:
+        ids: List of node UUIDs to fetch attributes for.
+        fields: Optional dict of field names to filter (if None, fetches all attributes).
+        include_source: Whether to include source node properties.
+        include_owner: Whether to include owner node properties.
+        account: Optional account for permission filtering.
+
+    Returns:
+        Results containing node, attribute, and value data. Access via
+        `get_attributes_group_by_node()` or `get_result_by_id_and_name()`.
+    """
+
     name = "node_list_get_attribute"
     type = QueryType.READ
 

@@ -4,8 +4,10 @@ import inspect
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generator
+from uuid import UUID
 
 from infrahub_sdk.uuidt import UUIDT
+from pydantic import BaseModel, Field
 
 from infrahub.core.changelog.models import (
     ChangelogRelationshipMapper,
@@ -21,8 +23,6 @@ from infrahub.core.utils import extract_field_filters
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from neo4j.graph import Relationship as Neo4jRelationship
 
     from infrahub.core.branch import Branch
@@ -113,17 +113,23 @@ class RelationshipPeerData:
         return response
 
 
-@dataclass
-class RelationshipPeersData:
-    id: UUID
-    identifier: str
-    source_id: UUID
-    source_kind: str
-    destination_id: UUID
-    destination_kind: str
+class RelationshipPeersData(BaseModel):
+    """Data representing a relationship and its connected peer nodes.
+
+    Used by RelationshipGetByIdentifierQuery to return structured data about
+    relationships found by their identifier, including source and destination node info.
+    """
+
+    id: UUID = Field(description="The UUID of the relationship")
+    identifier: str = Field(description="The relationship identifier/name (e.g., 'builtinlocation__devices')")
+    source_id: UUID = Field(description="The UUID of the source node")
+    source_kind: str = Field(description="The schema kind of the source node (e.g., 'BuiltinLocation')")
+    destination_id: UUID = Field(description="The UUID of the destination node")
+    destination_kind: str = Field(description="The schema kind of the destination node (e.g., 'InfraDevice')")
 
     def reversed(self) -> RelationshipPeersData:
-        return RelationshipPeersData(
+        """Return a new instance with source and destination swapped."""
+        return RelationshipPeersData.model_construct(
             id=self.id,
             identifier=self.identifier,
             source_id=self.destination_id,
@@ -917,6 +923,22 @@ class RelationshipGetQuery(RelationshipQuery):
 
 
 class RelationshipGetByIdentifierQuery(Query):
+    """Query to retrieve relationships by their identifier/name.
+
+    This query finds source and destination nodes connected by relationships
+    matching the specified identifiers. It supports filtering by full identifiers
+    (source_kind, identifier, destination_kind) and excludes relationships with
+    internal nodes by default.
+
+    Args:
+        identifiers: List of relationship names to search for.
+        full_identifiers: List of FullRelationshipIdentifier for precise matching.
+        excluded_namespaces: List of node namespaces to exclude (Internal always excluded).
+
+    Returns:
+        Results containing relationship and peer node data. Access via `get_peers()`.
+    """
+
     name = "relationship_get_identifier"
     type = QueryType.READ
 
@@ -976,19 +998,26 @@ class RelationshipGetByIdentifierQuery(Query):
         """ % ("\n AND ".join(rels_filter),)
 
         self.add_to_query(query)
-        self.return_labels = ["src", "dst", "rl"]
+        self.return_labels = [
+            "rl.uuid AS id",
+            "rl.name AS identifier",
+            "src.uuid AS source_id",
+            "src.kind AS source_kind",
+            "dst.uuid AS destination_id",
+            "dst.kind AS destination_kind",
+        ]
 
     def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
+        """Yield relationship peer data for each result."""
         for result in self.get_results():
-            data = RelationshipPeersData(
-                id=result.get("rl").get("uuid"),
-                identifier=result.get("rl").get("name"),
-                source_id=result.get("src").get("uuid"),
-                source_kind=result.get("src").get("kind"),
-                destination_id=result.get("dst").get("uuid"),
-                destination_kind=result.get("dst").get("kind"),
+            yield RelationshipPeersData.model_construct(
+                id=result.get_as_type(label="id", return_type=UUID),
+                identifier=result.get_as_type(label="identifier", return_type=str),
+                source_id=result.get_as_type(label="source_id", return_type=UUID),
+                source_kind=result.get_as_type(label="source_kind", return_type=str),
+                destination_id=result.get_as_type(label="destination_id", return_type=UUID),
+                destination_kind=result.get_as_type(label="destination_kind", return_type=str),
             )
-            yield data
 
 
 class RelationshipCountPerNodeQuery(Query):
