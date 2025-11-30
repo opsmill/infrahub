@@ -7,11 +7,11 @@ import { useMenu } from "@/entities/menu/domain/get-menu.query";
 import { SidebarMenuSectionInternal } from "@/entities/menu/ui/sidebar-menu-section-internal";
 import { SidebarMenuSectionObject } from "@/entities/menu/ui/sidebar-menu-section-object";
 
-export interface MenuNavigationProps {
+export interface SidebarMenuProps {
   isCollapsed?: boolean;
 }
 
-export default function SidebarMenu({ isCollapsed }: MenuNavigationProps) {
+export default function SidebarMenu({ isCollapsed }: SidebarMenuProps) {
   const { data: menu, isPending, error } = useMenu();
 
   if (isPending) return <Spinner className="mx-auto grow p-4" />;
