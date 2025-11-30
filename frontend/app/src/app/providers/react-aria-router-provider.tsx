@@ -1,4 +1,4 @@
-import { RouterProvider } from "react-aria-components";
+import { RouterProvider as AriaRouterProvider } from "react-aria-components";
 import { type NavigateOptions, type To, useHref, useNavigate } from "react-router";
 
 declare module "react-aria-components" {
@@ -23,8 +23,8 @@ export function ReactAriaRouterProvider({ children }: { children: React.ReactNod
   const navigate = useNavigate();
 
   return (
-    <RouterProvider navigate={navigate} useHref={useAbsoluteHref}>
+    <AriaRouterProvider navigate={navigate} useHref={useAbsoluteHref}>
       {children}
-    </RouterProvider>
+    </AriaRouterProvider>
   );
 }
