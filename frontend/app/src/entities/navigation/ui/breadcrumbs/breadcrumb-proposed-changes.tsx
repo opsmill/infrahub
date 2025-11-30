@@ -11,9 +11,9 @@ import {
 } from "@/shared/components/aria/breadcrumbs";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
-import { BreadcrumbSelectorTrigger } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-selector-trigger";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
+import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

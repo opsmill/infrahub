@@ -1,10 +1,9 @@
 import { useParams } from "react-router";
 
-import { BreadcrumbIpamBase } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ipam";
-import { BreadcrumbObjectDetails } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details";
-import { BreadcrumbItemSchema } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-schema";
-
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/constants";
+import { BreadcrumbIpamBase } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-ipam";
+import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
+import { BreadcrumbItemSchema } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbIpNamespaces() {
