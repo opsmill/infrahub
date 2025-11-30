@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 
-vi.mock("@/entities/nodes/relationships/api/get-relationships-from-api");
+vi.mock("@/entities/nodes/relationships/api/get-relationships-from-api", () => ({
+  getRelationshipsFromApi: vi.fn(),
+}));
 
 describe("getRelationships", () => {
   beforeEach(() => {
