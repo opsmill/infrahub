@@ -22,6 +22,7 @@ export function AppVersion() {
   const { data, isPending, isError } = useGetAppInfo();
 
   if (isPending) return <Skeleton className="h-4 w-14" />;
+
   if (isError) return "N/A";
 
   return `v${data.version}`;
