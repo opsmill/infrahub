@@ -10,7 +10,7 @@ const STYLES = [
   "bg-blue-50 text-blue-600",
 ];
 
-export function ObjectAvatar({ name = "" }: { name: string }) {
+export function MenuItemAvatar({ name = "" }: { name: string }) {
   const firstLetter = name[0];
   if (!firstLetter) {
     return <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-gray-100" />;

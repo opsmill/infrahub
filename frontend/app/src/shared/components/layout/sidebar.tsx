@@ -8,13 +8,13 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { AccountMenu } from "@/shared/components/account-menu";
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
 import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { SIDEBAR_COLLAPSED_KEY } from "@/shared/config/localStorage";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 
+import MenuNavigation from "@/entities/menu/ui/menu-navigation";
 import { SearchAnywhere } from "@/entities/search-anywhere/ui/search-anywhere";
 
 export default function Sidebar() {

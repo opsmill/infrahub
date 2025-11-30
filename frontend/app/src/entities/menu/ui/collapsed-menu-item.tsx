@@ -9,7 +9,7 @@ export interface CollapsedButton extends ButtonProps {
   icon: string;
 }
 
-export const CollapsedButton = forwardRef<HTMLButtonElement, CollapsedButton>(
+export const CollapsedMenuItem = forwardRef<HTMLButtonElement, CollapsedButton>(
   ({ className, icon, ...props }, ref) => {
     return (
       <ButtonWithTooltip

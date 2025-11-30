@@ -1,14 +1,14 @@
 import { queryClient } from "@/shared/api/rest/client";
 import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import Content from "@/shared/components/layout/content";
-import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { ObjectDetailsButton } from "@/entities/nodes/object/ui/object-details-button";
+import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";

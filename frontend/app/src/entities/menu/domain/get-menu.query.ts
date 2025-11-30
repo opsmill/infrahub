@@ -2,10 +2,10 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
 import type { ContextParams, QueryConfig } from "@/shared/api/types";
-import { getMenu } from "@/shared/components/menu/domain/get-menu";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getMenu } from "@/entities/menu/domain/get-menu";
 
 export function menuQueryOptions({ branchName, atDate }: ContextParams) {
   return queryOptions({

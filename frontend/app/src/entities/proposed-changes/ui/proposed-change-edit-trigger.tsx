@@ -6,12 +6,12 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import {
   PROPOSED_CHANGES_EDITABLE_STATE,
   PROPOSED_CHANGES_OBJECT,
 } from "@/shared/config/constants";
 
+import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

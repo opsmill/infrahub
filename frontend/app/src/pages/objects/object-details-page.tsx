@@ -7,7 +7,7 @@ import { GRAPHQL_QUERY_OBJECT } from "@/shared/config/constants";
 
 import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
-import { ObjectDetailsHeader } from "@/entities/nodes/object-header";
+import { ObjectDetailsHeader } from "@/entities/nodes/object/ui/object-header";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

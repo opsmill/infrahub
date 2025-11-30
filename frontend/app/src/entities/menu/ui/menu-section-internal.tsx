@@ -3,9 +3,6 @@ import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { CollapsedButton } from "@/shared/components/layout/menu-navigation/components/collapsed-button";
-import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
-import type { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { classNames } from "@/shared/utils/common";
+
+import type { MenuItem } from "@/entities/menu/types";
+import { CollapsedMenuItem } from "@/entities/menu/ui/collapsed-menu-item";
+import { menuNavigationItemStyle } from "@/entities/menu/ui/styles";
 
 export interface MenuSectionInternalProps {
   items: MenuItem[];
@@ -51,7 +52,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
 
 const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
   <Link to={constructPath(item.path)} tabIndex={-1}>
-    <CollapsedButton icon={item.icon} tooltipContent={item.label} />
+    <CollapsedMenuItem icon={item.icon} tooltipContent={item.label} />
   </Link>
 );
 
@@ -75,7 +76,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
     asChild={isCollapsed}
   >
     {isCollapsed ? (
-      <CollapsedButton tooltipContent={item.label} icon={item.icon} />
+      <CollapsedMenuItem tooltipContent={item.label} icon={item.icon} />
     ) : (
       <>
         <Icon icon={item.icon} className="size-4" />

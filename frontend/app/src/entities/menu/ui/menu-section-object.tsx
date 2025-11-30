@@ -3,9 +3,6 @@ import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ObjectAvatar } from "@/shared/components/layout/menu-navigation/components/object-avatar";
-import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
-import type { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import {
   DropdownMenu,
   DropdownMenuAccordion,
@@ -18,6 +15,10 @@ import {
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
+import type { MenuItem } from "@/entities/menu/types";
+import { MenuItemAvatar } from "@/entities/menu/ui/menu-item-avatar";
+import { menuNavigationItemStyle } from "@/entities/menu/ui/styles";
+
 export interface MenuSectionObjectsProps {
   items: MenuItem[];
   isCollapsed?: boolean;
@@ -27,7 +28,7 @@ const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
     return <Icon icon={item.icon} className="m-1 size-4 text-md" />;
   }
-  return <ObjectAvatar name={item.label} />;
+  return <MenuItemAvatar name={item.label} />;
 };
 
 const RecursiveObjectMenuItem: React.FC<{

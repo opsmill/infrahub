@@ -4,10 +4,10 @@ import { useAtomValue } from "jotai";
 import { useId, useMemo } from "react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import type { MenuItem } from "@/shared/components/layout/menu-navigation/types";
-import { useMenu } from "@/shared/components/menu/domain/get-menu.query";
 import { Badge } from "@/shared/components/ui/badge";
 
+import { useMenu } from "@/entities/menu/domain/get-menu.query";
+import type { MenuItem } from "@/entities/menu/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
