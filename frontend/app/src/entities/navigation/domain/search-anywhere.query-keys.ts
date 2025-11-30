@@ -1,5 +1,5 @@
-import type { SearchAnywhereParams } from "@/entities/search-anywhere/domain/search-anywhere";
-import type { SearchDocsParams } from "@/entities/search-anywhere/domain/search-docs";
+import type { SearchAnywhereParams } from "@/entities/navigation/domain/search-anywhere";
+import type { SearchDocsParams } from "@/entities/navigation/domain/search-docs";
 
 export const searchAnywhereQueryKeys = {
   objects: ({ branchName, search, atDate }: SearchAnywhereParams) => [

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 
 import { CommandItem } from "@/shared/components/ui/command";
 
-import { useSearchAnywhereContext } from "@/entities/search-anywhere/ui/search-anywhere-context";
+import { useSearchAnywhereContext } from "@/entities/navigation/ui/search-anywhere/search-anywhere-context";
 
 export interface SearchAnywhereItemProps extends React.ComponentProps<typeof CommandItem> {
   to: string;

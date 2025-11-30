@@ -8,16 +8,16 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { AccountMenu } from "@/shared/components/account-menu";
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
 import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
-import { SIDEBAR_COLLAPSED_KEY } from "@/shared/config/localStorage";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 
-import { SearchAnywhere } from "@/entities/search-anywhere/ui/search-anywhere";
+import { SIDEBAR_COLLAPSED_KEY } from "@/entities/navigation/constants";
+import { SearchAnywhere } from "@/entities/navigation/ui/search-anywhere/search-anywhere";
+import SidebarMenu from "@/entities/navigation/ui/sidebar/sidebar-menu";
 
-export default function Sidebar() {
+export default function AppSidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);
 
   const booleanCollapsed = collapsed === "true";
@@ -66,7 +66,7 @@ export default function Sidebar() {
 
       <Separator />
 
-      <MenuNavigation isCollapsed={booleanCollapsed} />
+      <SidebarMenu isCollapsed={booleanCollapsed} />
 
       <AccountMenu />
     </Card>

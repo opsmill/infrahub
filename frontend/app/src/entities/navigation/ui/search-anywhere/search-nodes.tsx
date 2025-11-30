@@ -8,6 +8,10 @@ import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import type { ObjectResult } from "@/entities/navigation/domain/search-anywhere";
+import { useGetSearchAnywhere } from "@/entities/navigation/domain/search-anywhere.query";
+import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
+import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
@@ -16,10 +20,6 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import type { ObjectResult } from "@/entities/search-anywhere/domain/search-anywhere";
-import { useGetSearchAnywhere } from "@/entities/search-anywhere/domain/search-anywhere.query";
-import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
-import { SearchAnywhereItem } from "@/entities/search-anywhere/ui/search-anywhere-item";
 
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);

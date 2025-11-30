@@ -3,9 +3,6 @@ import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ObjectAvatar } from "@/shared/components/layout/menu-navigation/components/object-avatar";
-import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
-import type { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import {
   DropdownMenu,
   DropdownMenuAccordion,
@@ -18,16 +15,15 @@ import {
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-export interface MenuSectionObjectsProps {
-  items: MenuItem[];
-  isCollapsed?: boolean;
-}
+import type { MenuItem } from "@/entities/navigation/types";
+import { SidebarMenuItemAvatar } from "@/entities/navigation/ui/sidebar/sidebar-menu-item-avatar";
+import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles";
 
 const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
     return <Icon icon={item.icon} className="m-1 size-4 text-md" />;
   }
-  return <ObjectAvatar name={item.label} />;
+  return <SidebarMenuItemAvatar name={item.label} />;
 };
 
 const RecursiveObjectMenuItem: React.FC<{
@@ -128,8 +124,13 @@ const TopLevelMenuItem: React.FC<{
   );
 };
 
-export const MenuSectionObject: React.FC<MenuSectionObjectsProps> = ({ isCollapsed, items }) => {
+export interface SidebarMenuSectionObjectProps {
+  items: MenuItem[];
+  isCollapsed?: boolean;
+}
+
+export function SidebarMenuSectionObject({ isCollapsed, items }: SidebarMenuSectionObjectProps) {
   return items.map((item) => (
     <TopLevelMenuItem key={item.identifier} item={item} isCollapsed={isCollapsed} />
   ));
-};
+}

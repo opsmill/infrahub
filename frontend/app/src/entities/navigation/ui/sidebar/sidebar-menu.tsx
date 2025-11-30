@@ -1,19 +1,21 @@
 import { Separator } from "@/shared/components/aria/separator";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { MenuSectionInternal } from "@/shared/components/layout/menu-navigation/components/menu-section-internal";
-import { MenuSectionObject } from "@/shared/components/layout/menu-navigation/components/menu-section-object";
-import { useMenu } from "@/shared/components/menu/domain/get-menu.query";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 
-export interface MenuNavigationProps {
+import { useMenu } from "@/entities/navigation/domain/get-menu.query";
+import { SidebarMenuSectionInternal } from "@/entities/navigation/ui/sidebar/sidebar-menu-section-internal";
+import { SidebarMenuSectionObject } from "@/entities/navigation/ui/sidebar/sidebar-menu-section-object";
+
+export interface SidebarMenuProps {
   isCollapsed?: boolean;
 }
 
-export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
+export default function SidebarMenu({ isCollapsed }: SidebarMenuProps) {
   const { data: menu, isPending, error } = useMenu();
 
   if (isPending) return <Spinner className="mx-auto grow p-4" />;
+
   if (error) return <ErrorScreen message="Something went wrong when fetching the menu" />;
 
   if (!menu?.sections) return <div className="grow" />;
@@ -21,10 +23,10 @@ export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   return (
     <>
       <ScrollArea>
-        <MenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
+        <SidebarMenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
       </ScrollArea>
       <Separator />
-      <MenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
+      <SidebarMenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
     </>
   );
 }

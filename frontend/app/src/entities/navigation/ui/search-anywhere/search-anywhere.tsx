@@ -1,10 +1,10 @@
 import { Command } from "cmdk";
 import { useEffect, useState } from "react";
 
-import { SearchAnywhereDialog } from "@/entities/search-anywhere/ui/search-anywhere-dialog";
-import { SearchAnywhereEmpty } from "@/entities/search-anywhere/ui/search-anywhere-empty";
-import { SearchAnywhereInput } from "@/entities/search-anywhere/ui/search-anywhere-input";
-import { SearchAnywhereTrigger } from "@/entities/search-anywhere/ui/search-anywhere-trigger";
+import { SearchAnywhereDialog } from "@/entities/navigation/ui/search-anywhere/search-anywhere-dialog";
+import { SearchAnywhereEmpty } from "@/entities/navigation/ui/search-anywhere/search-anywhere-empty";
+import { SearchAnywhereInput } from "@/entities/navigation/ui/search-anywhere/search-anywhere-input";
+import { SearchAnywhereTrigger } from "@/entities/navigation/ui/search-anywhere/search-anywhere-trigger";
 
 import { SearchActions } from "./search-actions";
 import { SearchAnywhereContext } from "./search-anywhere-context";

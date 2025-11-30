@@ -3,9 +3,6 @@ import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { CollapsedButton } from "@/shared/components/layout/menu-navigation/components/collapsed-button";
-import { menuNavigationItemStyle } from "@/shared/components/layout/menu-navigation/styles";
-import type { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +14,9 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { classNames } from "@/shared/utils/common";
 
-export interface MenuSectionInternalProps {
-  items: MenuItem[];
-  isCollapsed?: boolean;
-}
+import type { MenuItem } from "@/entities/navigation/types";
+import { CollapsedSidebarMenuItem } from "@/entities/navigation/ui/sidebar/collapsed-sidebar-menu-item";
+import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles";
 
 const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (!item.children?.length) {
@@ -51,7 +47,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
 
 const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
   <Link to={constructPath(item.path)} tabIndex={-1}>
-    <CollapsedButton icon={item.icon} tooltipContent={item.label} />
+    <CollapsedSidebarMenuItem icon={item.icon} tooltipContent={item.label} />
   </Link>
 );
 
@@ -75,7 +71,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
     asChild={isCollapsed}
   >
     {isCollapsed ? (
-      <CollapsedButton tooltipContent={item.label} icon={item.icon} />
+      <CollapsedSidebarMenuItem tooltipContent={item.label} icon={item.icon} />
     ) : (
       <>
         <Icon icon={item.icon} className="size-4" />
@@ -89,7 +85,15 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
   </DropdownMenuTrigger>
 );
 
-export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalProps) {
+export interface SidebarMenuSectionInternalProps {
+  items: MenuItem[];
+  isCollapsed?: boolean;
+}
+
+export function SidebarMenuSectionInternal({
+  items,
+  isCollapsed,
+}: SidebarMenuSectionInternalProps) {
   return (
     <div className="mb-auto flex flex-col">
       {items.map((item) => {
