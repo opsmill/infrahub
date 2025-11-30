@@ -9,7 +9,6 @@ import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
-import { AppVersion } from "@/shared/components/layout/app-version";
 import { Skeleton } from "@/shared/components/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
@@ -30,6 +29,7 @@ import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { AppVersion } from "@/entities/config/ui/app-version";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
