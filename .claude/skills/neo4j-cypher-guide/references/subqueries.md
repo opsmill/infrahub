@@ -3,13 +3,16 @@
 ## CALL Subqueries for Read Operations
 
 ### Basic Syntax
+
 CALL subqueries allow for complex query composition for:
+
 - Post-union processing
 - Limiting results per row
 - Conditional queries
 - Complex aggregations
 
 ### Variable Scope Clause (Recommended)
+
 ```cypher
 // Import specific variables
 MATCH (p:Person)
@@ -29,6 +32,7 @@ RETURN p, companyCount
 ```
 
 ### Conditional Queries
+
 ```cypher
 // Return different results based on conditions
 MATCH (n:Node)
@@ -45,6 +49,7 @@ RETURN n.id, result, value
 ```
 
 ### Post-UNION Processing
+
 ```cypher
 CALL {
   MATCH (p:Person) RETURN p AS node, 'Person' AS type
@@ -59,6 +64,7 @@ RETURN node.name, type
 ## COLLECT Subqueries
 
 ### Basic COLLECT Subquery
+
 ```cypher
 MATCH (p:Person)
 WITH p, COLLECT {
@@ -69,6 +75,7 @@ RETURN p.name, friendNames
 ```
 
 ### Complex COLLECT with Filtering
+
 ```cypher
 MATCH (p:Person)
 WITH p, COLLECT {
@@ -85,6 +92,7 @@ RETURN p.name, topOldestFriends
 ## COUNT Subqueries
 
 ### Modern count{} syntax
+
 ```cypher
 // Count relationships
 MATCH (p:Person)
@@ -100,6 +108,7 @@ ORDER BY friendCount DESC
 ## EXISTS Subqueries
 
 ### Pattern Existence Check
+
 ```cypher
 // Simple pattern check
 MATCH (p:Person)
@@ -118,6 +127,7 @@ RETURN p
 ## Sorting Best Practices
 
 ### IMPORTANT: Always Filter NULL Values When Sorting
+
 ```cypher
 // WRONG - May include null values in results
 MATCH (p:Person)
@@ -139,6 +149,7 @@ ORDER BY p.age DESC NULLS LAST
 ## Aggregation Best Practices
 
 ### Avoiding Implicit Grouping Keys
+
 ```cypher
 // WRONG - Will fail in modern Neo4j
 MATCH (p:Person)
@@ -151,6 +162,7 @@ RETURN name, age + cnt
 ```
 
 ### Proper Use of COLLECT
+
 ```cypher
 // Collecting with ordering
 MATCH (d:Department)<-[:WORKS_IN]-(p:Person)
@@ -160,6 +172,7 @@ RETURN d.name, collect(p.name)[..5] AS topEarners
 ```
 
 ### Memory-Efficient Aggregations
+
 ```cypher
 // Use subqueries to limit aggregation scope
 MATCH (d:Department)
@@ -174,6 +187,7 @@ RETURN d.name, avgSalary
 ## Common Read Patterns
 
 ### Pattern: Get Top N per Group
+
 ```cypher
 MATCH (d:Department)
 CALL (d) {
@@ -187,6 +201,7 @@ RETURN d.name, topThree
 ```
 
 ### Pattern: Conditional Aggregation
+
 ```cypher
 MATCH (p:Person)
 WITH p,
@@ -197,6 +212,7 @@ RETURN p.name, friendCount, colleagueCount
 ```
 
 ### Pattern: Multiple Aggregations
+
 ```cypher
 MATCH (c:Company)
 CALL (c) {
@@ -208,6 +224,7 @@ RETURN c.name, employees, avgAge
 ```
 
 ### Pattern: Limiting Results per Row
+
 ```cypher
 // Get first 3 friends for each person
 MATCH (p:Person)
