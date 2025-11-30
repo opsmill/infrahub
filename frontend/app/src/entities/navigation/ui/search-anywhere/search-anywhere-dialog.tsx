@@ -2,7 +2,7 @@ import { Dialog, type DialogProps, Modal, ModalOverlay } from "react-aria-compon
 
 import { classNames } from "@/shared/utils/common";
 
-import { useSearchAnywhereContext } from "@/entities/search-anywhere/ui/search-anywhere-context";
+import { useSearchAnywhereContext } from "@/entities/navigation/ui/search-anywhere/search-anywhere-context";
 
 export function SearchAnywhereDialog({ children, className, ...props }: DialogProps) {
   const { isOpen, setIsOpen } = useSearchAnywhereContext();

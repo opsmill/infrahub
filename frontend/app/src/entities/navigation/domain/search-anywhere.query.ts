@@ -8,8 +8,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type SearchAnywhereParams,
   searchAnywhere,
-} from "@/entities/search-anywhere/domain/search-anywhere";
-import { searchAnywhereQueryKeys } from "@/entities/search-anywhere/domain/search-anywhere.query-keys";
+} from "@/entities/navigation/domain/search-anywhere";
+import { searchAnywhereQueryKeys } from "@/entities/navigation/domain/search-anywhere.query-keys";
 
 export function searchAnywhereQueryOptions(params: SearchAnywhereParams) {
   return queryOptions({

@@ -14,9 +14,9 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { classNames } from "@/shared/utils/common";
 
-import type { MenuItem } from "@/entities/menu/types";
-import { CollapsedSidebarMenuItem } from "@/entities/menu/ui/collapsed-sidebar-menu-item";
-import { menuNavigationItemStyle } from "@/entities/menu/ui/styles";
+import type { MenuItem } from "@/entities/navigation/types";
+import { CollapsedSidebarMenuItem } from "@/entities/navigation/ui/sidebar/collapsed-sidebar-menu-item";
+import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles";
 
 const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (!item.children?.length) {

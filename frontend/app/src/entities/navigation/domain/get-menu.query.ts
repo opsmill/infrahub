@@ -5,7 +5,7 @@ import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getMenu } from "@/entities/menu/domain/get-menu";
+import { getMenu } from "@/entities/navigation/domain/get-menu";
 
 export function menuQueryOptions({ branchName, atDate }: ContextParams) {
   return queryOptions({

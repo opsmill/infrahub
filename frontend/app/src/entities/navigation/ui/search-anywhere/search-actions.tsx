@@ -6,12 +6,12 @@ import { useId, useMemo } from "react";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 
-import { useMenu } from "@/entities/menu/domain/get-menu.query";
-import type { MenuItem } from "@/entities/menu/types";
+import { useMenu } from "@/entities/navigation/domain/get-menu.query";
+import type { MenuItem } from "@/entities/navigation/types";
+import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
+import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema } from "@/entities/schema/types";
-import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
-import { SearchAnywhereItem } from "@/entities/search-anywhere/ui/search-anywhere-item";
 
 export const SearchActions = () => {
   const query = useCommandState((state) => state.search);

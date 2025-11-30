@@ -3,8 +3,8 @@ import { useCommandState } from "cmdk";
 
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
-import { SearchAnywhereGroup } from "@/entities/search-anywhere/ui/search-anywhere-group";
-import { SearchAnywhereItem } from "@/entities/search-anywhere/ui/search-anywhere-item";
+import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
+import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 
 export function SearchAnywhereEmpty() {
   const count = useCommandState((state) => state.filtered.count);

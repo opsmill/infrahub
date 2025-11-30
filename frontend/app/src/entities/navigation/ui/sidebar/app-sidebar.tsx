@@ -13,11 +13,11 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 
-import { SIDEBAR_COLLAPSED_KEY } from "@/entities/menu/constants";
-import SidebarMenu from "@/entities/menu/ui/sidebar-menu";
-import { SearchAnywhere } from "@/entities/search-anywhere/ui/search-anywhere";
+import { SIDEBAR_COLLAPSED_KEY } from "@/entities/navigation/constants";
+import { SearchAnywhere } from "@/entities/navigation/ui/search-anywhere/search-anywhere";
+import SidebarMenu from "@/entities/navigation/ui/sidebar/sidebar-menu";
 
-export default function Sidebar() {
+export default function AppSidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);
 
   const booleanCollapsed = collapsed === "true";

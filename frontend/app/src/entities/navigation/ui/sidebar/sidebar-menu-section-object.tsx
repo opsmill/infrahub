@@ -15,9 +15,9 @@ import {
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-import type { MenuItem } from "@/entities/menu/types";
-import { SidebarMenuItemAvatar } from "@/entities/menu/ui/sidebar-menu-item-avatar";
-import { menuNavigationItemStyle } from "@/entities/menu/ui/styles";
+import type { MenuItem } from "@/entities/navigation/types";
+import { SidebarMenuItemAvatar } from "@/entities/navigation/ui/sidebar/sidebar-menu-item-avatar";
+import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles";
 
 const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
