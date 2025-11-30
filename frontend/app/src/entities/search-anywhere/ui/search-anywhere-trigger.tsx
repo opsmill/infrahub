@@ -4,7 +4,7 @@ import { Button, type ButtonProps } from "@/shared/components/buttons/button-pri
 import Kbd from "@/shared/components/ui/kbd";
 import { classNames } from "@/shared/utils/common";
 
-import { CollapsedMenuItem } from "@/entities/menu/ui/collapsed-menu-item";
+import { CollapsedSidebarMenuItem } from "@/entities/menu/ui/collapsed-sidebar-menu-item";
 
 export interface SearchAnywhereTriggerButtonProps extends ButtonProps {
   isCollapsed?: boolean;
@@ -17,7 +17,7 @@ export function SearchAnywhereTrigger({
 }: SearchAnywhereTriggerButtonProps) {
   if (isCollapsed) {
     return (
-      <CollapsedMenuItem
+      <CollapsedSidebarMenuItem
         tooltipContent="Search anywhere"
         icon="mdi:search"
         data-testid="search-anywhere-trigger"

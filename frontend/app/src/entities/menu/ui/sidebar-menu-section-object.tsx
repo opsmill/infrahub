@@ -16,19 +16,14 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import type { MenuItem } from "@/entities/menu/types";
-import { MenuItemAvatar } from "@/entities/menu/ui/menu-item-avatar";
+import { SidebarMenuItemAvatar } from "@/entities/menu/ui/sidebar-menu-item-avatar";
 import { menuNavigationItemStyle } from "@/entities/menu/ui/styles";
-
-export interface MenuSectionObjectsProps {
-  items: MenuItem[];
-  isCollapsed?: boolean;
-}
 
 const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
     return <Icon icon={item.icon} className="m-1 size-4 text-md" />;
   }
-  return <MenuItemAvatar name={item.label} />;
+  return <SidebarMenuItemAvatar name={item.label} />;
 };
 
 const RecursiveObjectMenuItem: React.FC<{
@@ -129,8 +124,13 @@ const TopLevelMenuItem: React.FC<{
   );
 };
 
-export const MenuSectionObject: React.FC<MenuSectionObjectsProps> = ({ isCollapsed, items }) => {
+export interface SidebarMenuSectionObjectProps {
+  items: MenuItem[];
+  isCollapsed?: boolean;
+}
+
+export function SidebarMenuSectionObject({ isCollapsed, items }: SidebarMenuSectionObjectProps) {
   return items.map((item) => (
     <TopLevelMenuItem key={item.identifier} item={item} isCollapsed={isCollapsed} />
   ));
-};
+}

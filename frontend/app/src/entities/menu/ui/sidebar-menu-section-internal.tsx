@@ -15,13 +15,8 @@ import {
 import { classNames } from "@/shared/utils/common";
 
 import type { MenuItem } from "@/entities/menu/types";
-import { CollapsedMenuItem } from "@/entities/menu/ui/collapsed-menu-item";
+import { CollapsedSidebarMenuItem } from "@/entities/menu/ui/collapsed-sidebar-menu-item";
 import { menuNavigationItemStyle } from "@/entities/menu/ui/styles";
-
-export interface MenuSectionInternalProps {
-  items: MenuItem[];
-  isCollapsed?: boolean;
-}
 
 const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (!item.children?.length) {
@@ -52,7 +47,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
 
 const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
   <Link to={constructPath(item.path)} tabIndex={-1}>
-    <CollapsedMenuItem icon={item.icon} tooltipContent={item.label} />
+    <CollapsedSidebarMenuItem icon={item.icon} tooltipContent={item.label} />
   </Link>
 );
 
@@ -76,7 +71,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
     asChild={isCollapsed}
   >
     {isCollapsed ? (
-      <CollapsedMenuItem tooltipContent={item.label} icon={item.icon} />
+      <CollapsedSidebarMenuItem tooltipContent={item.label} icon={item.icon} />
     ) : (
       <>
         <Icon icon={item.icon} className="size-4" />
@@ -90,7 +85,15 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean
   </DropdownMenuTrigger>
 );
 
-export function MenuSectionInternal({ items, isCollapsed }: MenuSectionInternalProps) {
+export interface SidebarMenuSectionInternalProps {
+  items: MenuItem[];
+  isCollapsed?: boolean;
+}
+
+export function SidebarMenuSectionInternal({
+  items,
+  isCollapsed,
+}: SidebarMenuSectionInternalProps) {
   return (
     <div className="mb-auto flex flex-col">
       {items.map((item) => {

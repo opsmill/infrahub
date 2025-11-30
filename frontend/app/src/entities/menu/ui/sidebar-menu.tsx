@@ -4,14 +4,14 @@ import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 
 import { useMenu } from "@/entities/menu/domain/get-menu.query";
-import { MenuSectionInternal } from "@/entities/menu/ui/menu-section-internal";
-import { MenuSectionObject } from "@/entities/menu/ui/menu-section-object";
+import { SidebarMenuSectionInternal } from "@/entities/menu/ui/sidebar-menu-section-internal";
+import { SidebarMenuSectionObject } from "@/entities/menu/ui/sidebar-menu-section-object";
 
 export interface MenuNavigationProps {
   isCollapsed?: boolean;
 }
 
-export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
+export default function SidebarMenu({ isCollapsed }: MenuNavigationProps) {
   const { data: menu, isPending, error } = useMenu();
 
   if (isPending) return <Spinner className="mx-auto grow p-4" />;
@@ -23,10 +23,10 @@ export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
   return (
     <>
       <ScrollArea>
-        <MenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
+        <SidebarMenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
       </ScrollArea>
       <Separator />
-      <MenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
+      <SidebarMenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
     </>
   );
 }

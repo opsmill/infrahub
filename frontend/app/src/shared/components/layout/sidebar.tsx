@@ -10,11 +10,11 @@ import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
-import { SIDEBAR_COLLAPSED_KEY } from "@/shared/config/localStorage";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 
-import MenuNavigation from "@/entities/menu/ui/menu-navigation";
+import { SIDEBAR_COLLAPSED_KEY } from "@/entities/menu/constants";
+import SidebarMenu from "@/entities/menu/ui/sidebar-menu";
 import { SearchAnywhere } from "@/entities/search-anywhere/ui/search-anywhere";
 
 export default function Sidebar() {
@@ -66,7 +66,7 @@ export default function Sidebar() {
 
       <Separator />
 
-      <MenuNavigation isCollapsed={booleanCollapsed} />
+      <SidebarMenu isCollapsed={booleanCollapsed} />
 
       <AccountMenu />
     </Card>
