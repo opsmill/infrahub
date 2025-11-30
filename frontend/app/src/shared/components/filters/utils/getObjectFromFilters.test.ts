@@ -5,7 +5,7 @@ import type { Filter } from "@/shared/hooks/useFilters";
 
 import type { ModelSchema } from "@/entities/schema/types";
 
-import { generateRelationshipSchema } from "../../../fake/schema";
+import { generateRelationshipSchema } from "../../../../../tests/fake/schema";
 
 describe("getObjectFromFilters - test", () => {
   it("returns value for a attribute correctly", () => {
