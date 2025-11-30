@@ -30,11 +30,11 @@ export default function ObjectGroupsList({ className, objectId, groups }: Object
   }
 
   return (
-    <ul className={classNames("space-y-4", className)}>
+    <div className={classNames("space-y-4", className)}>
       {groups.map((group) => (
         <ObjectGroupItem objectId={objectId} key={group.id} group={group} />
       ))}
-    </ul>
+    </div>
   );
 }
 
