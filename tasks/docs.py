@@ -135,7 +135,8 @@ def markdownlint(context: Context) -> None:
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
         return
-    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} '#**/node_modules/**'"
+    # Include .claude directory explicitly since ** doesn't match dotdirectories by default
+    exec_cmd = "markdownlint-cli2 '**/*.{md,mdx}' '.claude/**/*.{md,mdx}' '#**/node_modules/**' '#.git/**' '#.venv/**'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -146,7 +147,10 @@ def format_markdownlint(context: Context) -> None:
     """Run markdownlint-cli2 to format all .md/mdx files."""
 
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} --fix"
+    # Include .claude directory explicitly since ** doesn't match dotdirectories by default
+    exec_cmd = (
+        "markdownlint-cli2 '**/*.{md,mdx}' '.claude/**/*.{md,mdx}' '#**/node_modules/**' '#.git/**' '#.venv/**' --fix"
+    )
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 

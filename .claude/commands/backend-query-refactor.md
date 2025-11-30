@@ -71,6 +71,7 @@ Based on the analysis, create a Pydantic class that:
    - Better IDE support and type inference
 
    **Conversion example:**
+
    ```python
    # Before: dataclass
    @dataclass
@@ -115,6 +116,7 @@ class {QueryName}Data(BaseModel):
 ### Step 6: Add Query Class Documentation
 
 If the Query class lacks a docstring, add one that describes:
+
 - What the query does
 - What data it retrieves from the database
 - Any important parameters or configuration
@@ -138,24 +140,28 @@ class {QueryName}(Query):
 **Important**: Refactor the Cypher query to return only the specific values needed, not entire nodes or relationships. This reduces data transfer from Neo4j and simplifies result processing.
 
 **Before** (inefficient - returns entire nodes):
+
 ```python
 self.return_labels = ["n", "r", "av"]
 # Then in get_data(): result.get_node("n").get("uuid")
 ```
 
 **After** (efficient - returns only needed values):
+
 ```python
 self.return_labels = ["n.uuid AS node_uuid", "n.kind AS node_kind", "r.from AS updated_at"]
 # Then in get_data(): result.get("node_uuid")
 ```
 
 When refactoring:
+
 1. Identify all properties actually used from each node/relationship
 2. Update `self.return_labels` to return `alias.property AS label_name` for each value
 3. Use descriptive label names that match your Pydantic data class field names
 4. For relationship element IDs, use `elementId(r) AS relationship_id`
 
 **Example transformation**:
+
 ```python
 # Before:
 self.return_labels = ["a", "av", "r"]
@@ -195,6 +201,7 @@ def get_data(self) -> list[{QueryName}Data]:
 Review the query for performance issues and memory consumption:
 
 **Cypher Query Performance Checklist:**
+
 1. **Index usage**: Does the query start with indexed properties (uuid, name)?
 2. **Early filtering**: Are WHERE clauses applied as early as possible?
 3. **LIMIT placement**: Is LIMIT used inside subqueries to prevent unbounded results?
@@ -203,12 +210,14 @@ Review the query for performance issues and memory consumption:
 6. **OPTIONAL MATCH**: Could expensive OPTIONAL MATCH be avoided or optimized?
 
 **Python/Memory Performance Checklist:**
+
 1. **Generator vs List**: Use `Generator` (yield) instead of building lists for large result sets
 2. **Lazy iteration**: Use `get_results()` generator instead of `self.results` list when possible
 3. **Avoid intermediate lists**: Don't create temporary lists when iterating
 4. **Early termination**: Can the query use LIMIT or should callers use itertools.islice?
 
 **Anti-patterns to flag:**
+
 ```python
 # Bad: Building full list in memory
 def get_data(self) -> list[Data]:
@@ -241,6 +250,7 @@ Search for existing tests for this query:
 3. Check if there are performance/benchmark tests
 
 Report findings:
+
 - List any existing test files and what they cover
 - Identify gaps in test coverage
 - Note if performance tests exist
@@ -250,6 +260,7 @@ Report findings:
 If tests are missing or incomplete, propose:
 
 **Unit Tests** (in `backend/tests/unit/core/query/test_{module}.py`):
+
 ```python
 import pytest
 from infrahub.core.query.{module} import {QueryName}, {QueryName}Data
@@ -281,6 +292,7 @@ class Test{QueryName}:
 ```
 
 **Performance Tests** (if query is performance-critical):
+
 ```python
 import pytest
 from infrahub.core.query.{module} import {QueryName}
@@ -410,12 +422,15 @@ class GetNodeByIdQuery(Query):
 ### Performance Analysis Example
 
 **Cypher Performance:**
+
 - ✅ Query starts with indexed property lookup (`uuid`)
 - ✅ LIMIT is used appropriately
 - ⚠️ Consider adding index on `kind` if frequently filtered
 
 **Memory Performance:**
+
 - ⚠️ `get_data()` returns a list - consider using a generator for large result sets:
+
 ```python
 def get_data(self) -> Generator[GetNodeByIdQueryData, None, None]:
     for result in self.get_results():
