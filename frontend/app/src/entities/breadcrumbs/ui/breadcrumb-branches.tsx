@@ -8,9 +8,9 @@ import { Breadcrumb, BreadcrumbItem, Breadcrumbs } from "@/shared/components/ari
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
-import { BreadcrumbSelectorTrigger } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-selector-trigger";
 
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
+import { BreadcrumbSelectorTrigger } from "@/entities/breadcrumbs/ui/items/breadcrumb-selector-trigger";
 
 export function BreadcrumbBranches() {
   const { "*": branchName } = useParams();

@@ -9,9 +9,9 @@ import {
   BreadcrumbItemLoading,
   Breadcrumbs,
 } from "@/shared/components/aria/breadcrumbs";
-import { BreadcrumbObjectDetailsHierarchy } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-object-details-hierarchy";
-import { BreadcrumbItemObject } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-item-object";
 
+import { BreadcrumbObjectDetailsHierarchy } from "@/entities/breadcrumbs/ui/breadcrumb-object-details-hierarchy";
+import { BreadcrumbItemObject } from "@/entities/breadcrumbs/ui/items/breadcrumb-item-object";
 import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,

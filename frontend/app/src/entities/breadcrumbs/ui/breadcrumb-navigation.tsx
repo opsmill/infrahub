@@ -1,17 +1,17 @@
 import { matchPath, useLocation } from "react-router";
 
-import { BreadcrumbAccountProfile } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-account-profile";
-import { BreadcrumbActivities } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-activities";
-import { BreadcrumbBranches } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-branches";
-import { BreadcrumbGraphql } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-graphql";
-import { BreadcrumbIpNamespaces } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ip-namespaces";
-import { BreadcrumbIpam } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-ipam";
-import { BreadcrumbObjects } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-objects";
-import { BreadcrumbProposedChanges } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-proposed-changes";
-import { BreadcrumbResourceManager } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-resource-manager";
-import { BreadcrumbRoleManagement } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-role-management";
-import { BreadcrumbSchemaViewer } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-schema-viewer";
-import { BreadcrumbTasks } from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-tasks";
+import { BreadcrumbAccountProfile } from "@/entities/breadcrumbs/ui/breadcrumb-account-profile";
+import { BreadcrumbActivities } from "@/entities/breadcrumbs/ui/breadcrumb-activities";
+import { BreadcrumbBranches } from "@/entities/breadcrumbs/ui/breadcrumb-branches";
+import { BreadcrumbGraphql } from "@/entities/breadcrumbs/ui/breadcrumb-graphql";
+import { BreadcrumbIpNamespaces } from "@/entities/breadcrumbs/ui/breadcrumb-ip-namespaces";
+import { BreadcrumbIpam } from "@/entities/breadcrumbs/ui/breadcrumb-ipam";
+import { BreadcrumbObjects } from "@/entities/breadcrumbs/ui/breadcrumb-objects";
+import { BreadcrumbProposedChanges } from "@/entities/breadcrumbs/ui/breadcrumb-proposed-changes";
+import { BreadcrumbResourceManager } from "@/entities/breadcrumbs/ui/breadcrumb-resource-manager";
+import { BreadcrumbRoleManagement } from "@/entities/breadcrumbs/ui/breadcrumb-role-management";
+import { BreadcrumbSchemaViewer } from "@/entities/breadcrumbs/ui/breadcrumb-schema-viewer";
+import { BreadcrumbTasks } from "@/entities/breadcrumbs/ui/breadcrumb-tasks";
 
 export default function BreadcrumbNavigation() {
   const { pathname } = useLocation();
