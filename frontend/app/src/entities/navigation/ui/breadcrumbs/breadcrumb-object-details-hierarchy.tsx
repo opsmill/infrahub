@@ -9,7 +9,7 @@ import {
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
-import { BreadcrumbItemObject } from "@/entities/breadcrumbs/ui/items/breadcrumb-item-object";
+import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { NodeCoreWithParent } from "@/entities/nodes/types";

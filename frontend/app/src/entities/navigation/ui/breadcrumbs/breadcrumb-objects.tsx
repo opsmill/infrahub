@@ -3,9 +3,9 @@ import { useLocation, useParams } from "react-router";
 import { Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 import { ARTIFACT_OBJECT, PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/config/constants";
 
-import { BreadcrumbObjectDetails } from "@/entities/breadcrumbs/ui/breadcrumb-object-details";
-import { BreadcrumbObjectDetailsHierarchy } from "@/entities/breadcrumbs/ui/breadcrumb-object-details-hierarchy";
-import { BreadcrumbItemSchema } from "@/entities/breadcrumbs/ui/items/breadcrumb-item-schema";
+import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
+import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
+import { BreadcrumbItemSchema } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-schema";
 

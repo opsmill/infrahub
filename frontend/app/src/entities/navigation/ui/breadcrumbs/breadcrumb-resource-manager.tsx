@@ -17,7 +17,7 @@ import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Col, Row } from "@/shared/components/container";
 
-import { BreadcrumbObjectDetails } from "@/entities/breadcrumbs/ui/breadcrumb-object-details";
+import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

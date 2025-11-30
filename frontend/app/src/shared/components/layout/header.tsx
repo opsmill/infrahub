@@ -2,7 +2,7 @@ import BranchSelector from "@/shared/components/branch-selector";
 import { TimeFrameSelector } from "@/shared/components/time-selector";
 import { Card } from "@/shared/components/ui/card";
 
-import BreadcrumbNavigation from "@/entities/breadcrumbs/ui/breadcrumb-navigation";
+import { BreadcrumbNavigation } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation";
 import { TaskStatus } from "@/entities/tasks/ui/task-status";
 
 export default function Header() {

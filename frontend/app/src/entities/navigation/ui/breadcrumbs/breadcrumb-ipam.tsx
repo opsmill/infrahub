@@ -10,8 +10,6 @@ import {
   Breadcrumbs,
 } from "@/shared/components/aria/breadcrumbs";
 
-import { BreadcrumbObjectDetailsHierarchy } from "@/entities/breadcrumbs/ui/breadcrumb-object-details-hierarchy";
-import { BreadcrumbItemObject } from "@/entities/breadcrumbs/ui/items/breadcrumb-item-object";
 import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
@@ -19,6 +17,8 @@ import {
   IPAM_QSP,
 } from "@/entities/ipam/constants";
 import { constructPathForIpam } from "@/entities/ipam/utils";
+import { BreadcrumbObjectDetailsHierarchy } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details-hierarchy";
+import { BreadcrumbItemObject } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-item-object";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import type { NodeRelationshipOne } from "@/entities/nodes/types";

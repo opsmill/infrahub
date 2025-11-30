@@ -1,19 +1,19 @@
 import { matchPath, useLocation } from "react-router";
 
-import { BreadcrumbAccountProfile } from "@/entities/breadcrumbs/ui/breadcrumb-account-profile";
-import { BreadcrumbActivities } from "@/entities/breadcrumbs/ui/breadcrumb-activities";
-import { BreadcrumbBranches } from "@/entities/breadcrumbs/ui/breadcrumb-branches";
-import { BreadcrumbGraphql } from "@/entities/breadcrumbs/ui/breadcrumb-graphql";
-import { BreadcrumbIpNamespaces } from "@/entities/breadcrumbs/ui/breadcrumb-ip-namespaces";
-import { BreadcrumbIpam } from "@/entities/breadcrumbs/ui/breadcrumb-ipam";
-import { BreadcrumbObjects } from "@/entities/breadcrumbs/ui/breadcrumb-objects";
-import { BreadcrumbProposedChanges } from "@/entities/breadcrumbs/ui/breadcrumb-proposed-changes";
-import { BreadcrumbResourceManager } from "@/entities/breadcrumbs/ui/breadcrumb-resource-manager";
-import { BreadcrumbRoleManagement } from "@/entities/breadcrumbs/ui/breadcrumb-role-management";
-import { BreadcrumbSchemaViewer } from "@/entities/breadcrumbs/ui/breadcrumb-schema-viewer";
-import { BreadcrumbTasks } from "@/entities/breadcrumbs/ui/breadcrumb-tasks";
+import { BreadcrumbAccountProfile } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-account-profile";
+import { BreadcrumbActivities } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-activities";
+import { BreadcrumbBranches } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-branches";
+import { BreadcrumbGraphql } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-graphql";
+import { BreadcrumbIpNamespaces } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-ip-namespaces";
+import { BreadcrumbIpam } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-ipam";
+import { BreadcrumbObjects } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-objects";
+import { BreadcrumbProposedChanges } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-proposed-changes";
+import { BreadcrumbResourceManager } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-resource-manager";
+import { BreadcrumbRoleManagement } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-role-management";
+import { BreadcrumbSchemaViewer } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-schema-viewer";
+import { BreadcrumbTasks } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-tasks";
 
-export default function BreadcrumbNavigation() {
+export function BreadcrumbNavigation() {
   const { pathname } = useLocation();
 
   if (matchPath({ path: "/branches", end: false }, pathname)) {
