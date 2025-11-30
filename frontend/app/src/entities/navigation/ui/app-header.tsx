@@ -5,7 +5,7 @@ import { Card } from "@/shared/components/ui/card";
 import { BreadcrumbNavigation } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation";
 import { TaskStatus } from "@/entities/tasks/ui/task-status";
 
-export default function Header() {
+export function AppHeader() {
   return (
     <Card className="flex h-12.5 items-center gap-2 p-2">
       <TimeFrameSelector />

@@ -1,8 +1,7 @@
 import { Outlet } from "react-router";
 
-import AppSidebar from "@/entities/navigation/ui/sidebar/app-sidebar";
-
-import Header from "./header";
+import { AppHeader } from "@/entities/navigation/ui/app-header";
+import { AppSidebar } from "@/entities/navigation/ui/sidebar/app-sidebar";
 
 function AppLayout() {
   return (
@@ -11,7 +10,7 @@ function AppLayout() {
         <AppSidebar />
 
         <div className="flex h-full grow flex-col gap-0.5 overflow-hidden">
-          <Header />
+          <AppHeader />
 
           <Outlet />
         </div>
