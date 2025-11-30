@@ -29,7 +29,7 @@ import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { AppVersion } from "@/entities/config/ui/app-version";
+import { AppInfo } from "@/entities/config/ui/app-info";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
@@ -138,7 +138,7 @@ const UnauthenticatedAccountMenu = () => {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuDivider />
-        <AppVersion />
+        <AppInfo />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -211,7 +211,7 @@ const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
           Logout
         </DropdownMenuItem>
         <DropdownMenuDivider />
-        <AppVersion />
+        <AppInfo />
       </DropdownMenuContent>
     </DropdownMenu>
   );
