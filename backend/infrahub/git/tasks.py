@@ -201,9 +201,7 @@ async def sync_remote_repositories() -> None:
 
     branches = await client.branch.all()
     async with db.start_session() as dbs:
-        repositories = await get_repositories_commit_per_branch(
-            db=dbs, kind=InfrahubKind.REPOSITORY, only_sync_with_git=True
-        )
+        repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
         repository: CoreRepository = repository_data.repository
