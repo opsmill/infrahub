@@ -1,5 +1,6 @@
 ---
 default: true
+MD001: false # heading levels increment - disabled for release notes structure
 MD013: false # disables max line-length
 MD014: false # dollar signs used before commands
 MD024: false # disables 'no duplicate headings', which we use in tabs for instructions
