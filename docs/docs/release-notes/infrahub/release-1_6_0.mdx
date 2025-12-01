@@ -18,7 +18,7 @@ title: Release 1.6.0
   </tbody>
 </table>
 
-We're excited to announce the release of Infrahub v1.6.0! 
+We're excited to announce the release of Infrahub v1.6.0!
 
 This release brings significant improvements to Git integration, UI navigation, branch management, Profiles in Object Templates and introduces a new dashboard landing page.
 
@@ -110,7 +110,7 @@ If you are not using `convert_query_response` or if the queries that you are usi
 
 # Full changelog
 
-### Added
+## Added
 
 - Templates now support profile assignment. When both `generate_template` and `generate_profile` are configured on a schema node, profiles can be assigned to templates and will be automatically inherited by objects created from those templates. Profiles provide values for attributes not explicitly configured on the template, while template values take precedence when manually set. Multiple profiles can be assigned with proper priority handling. This enables bulk configuration updates across templated objects while maintaining consistency through profile inheritance. ([#template-profiles](https://github.com/opsmill/infrahub/issues/template-profiles))
 - Merge core read only repositories on branch merge ([#5978](https://github.com/opsmill/infrahub/issues/5978))
@@ -156,7 +156,7 @@ If you are not using `convert_query_response` or if the queries that you are usi
   - We will show a tree that only display the current node’s parent and siblings for faster loading.
   - Include a ‘Back’ button at the top, to return to the full tree view
 
-### Fixed
+## Fixed
 
 - Prevent long titles from overflowing event cards
 

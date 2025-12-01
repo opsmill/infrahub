@@ -187,6 +187,8 @@ Redoc
 regenerate_host_artifact
 repo
 requesters
+resizable
+Resizable
 resources
 REST
 reusability
