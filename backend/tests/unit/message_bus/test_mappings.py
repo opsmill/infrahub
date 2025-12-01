@@ -9,7 +9,7 @@ from infrahub.message_bus.messages import MESSAGE_MAP
 from infrahub.message_bus.operations import COMMAND_MAP
 
 
-def test_message_command_overlap():
+def test_message_command_overlap() -> None:
     """
     Verify that a command is defined for each message
     except events that don't need to be associated with a command
@@ -33,7 +33,7 @@ operations_without_flows = [
     "operation",
     [pytest.param(function, id=key) for key, function in COMMAND_MAP.items() if key not in operations_without_flows],
 )
-def test_operations_decorated(operation: Callable):
+def test_operations_decorated(operation: Callable) -> None:
     if callable(operation) and hasattr(operation, "__name__") and "Flow" not in type(operation).__name__:
         pytest.fail(f"{operation.__name__} is not decorated with @flow")
     else:

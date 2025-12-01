@@ -1,12 +1,11 @@
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 
-import { CONFIG } from "@/config/config";
-import { QSP } from "@/config/qsp";
-
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { CONFIG } from "@/shared/config/config";
+import { QSP } from "@/shared/config/qsp";
 
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import "react-diff-view/style/index.css";

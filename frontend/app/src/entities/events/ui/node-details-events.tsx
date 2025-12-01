@@ -1,14 +1,14 @@
 import React from "react";
 
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Link } from "@/shared/components/ui/link";
+import { QSP } from "@/shared/config/qsp";
 
 import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 import { useGetEvents } from "../domain/get-events.query";
 import { EventCard } from "./event-card";
@@ -19,16 +19,18 @@ export const NodeEvents = ({
   parentId,
   objectId,
   objectKind,
+  maxEvent = MAX_EVENTS,
 }: {
   parentId?: string;
   objectId?: string;
   objectKind?: string;
+  maxEvent?: number;
 }) => {
   const { isPending, data, error } = useGetEvents({
     filters: {
       parentIds: parentId ? [parentId] : undefined,
       relatedNodeIds: objectId ? [objectId] : undefined,
-      limit: parentId ? 0 : MAX_EVENTS,
+      limit: parentId ? 0 : maxEvent,
     },
   });
 
@@ -37,7 +39,7 @@ export const NodeEvents = ({
     error: displayLabelError,
     data: displayLabelData,
   } = useNodeLabel({
-    objectid: objectId,
+    objectId,
     kind: objectKind as string,
     enabled: !parentId && !!objectKind,
   });
@@ -58,7 +60,7 @@ export const NodeEvents = ({
 
   const filter = {
     name: "relatedNodeIds__value",
-    value: [{ id: objectId, display_label: displayLabelData.display_label }],
+    value: [{ id: objectId, display_label: getNodeLabel(displayLabelData) }],
   };
 
   return (

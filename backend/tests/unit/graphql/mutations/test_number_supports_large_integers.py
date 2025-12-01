@@ -14,7 +14,7 @@ class TestNumberSupportsLargeInter(TestInfrahubApp):
         session_admin,
         person_john_main,
         service,
-    ):
+    ) -> None:
         query = """
         mutation {
             TestCarCreate(data: {

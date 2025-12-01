@@ -58,7 +58,7 @@ class InfrahubMultiLock:
         self.locks = locks or []
         self.metrics = metrics
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
         await self.acquire()
 
     async def __aexit__(
@@ -66,7 +66,7 @@ class InfrahubMultiLock:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         await self.release()
 
     async def acquire(self) -> None:
@@ -86,7 +86,7 @@ class NATSLock:
         self.token = None
         self.service = service
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
         await self.acquire()
 
     async def __aexit__(
@@ -94,7 +94,7 @@ class NATSLock:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         await self.release()
 
     async def acquire(self) -> None:
@@ -162,7 +162,7 @@ class InfrahubLock:
     def acquire_time(self, value: int) -> None:
         self._acquire_time = value
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
         await self.acquire()
 
     async def __aexit__(
@@ -170,7 +170,7 @@ class InfrahubLock:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ):
+    ) -> None:
         await self.release()
 
     async def acquire(self) -> None:

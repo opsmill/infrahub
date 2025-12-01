@@ -3,9 +3,6 @@ import { useAtom } from "jotai";
 import { useQueryState } from "nuqs";
 import { Link, useLocation, useParams } from "react-router";
 
-import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import type { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -13,15 +10,18 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Tabs } from "@/shared/components/tabs";
 import { Badge } from "@/shared/components/ui/badge";
+import { DIFF_TABS, PROPOSED_CHANGES_OBJECT, TASK_TAB } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/entities/diff/checks/checks";
 import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
+import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/domain/get-proposed-change-details.query";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
@@ -45,9 +45,7 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
   const [qspTaskId] = useQueryState(QSP.TASK_ID);
   const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
   useTitle(
-    `${
-      proposedChange.display_label ? `${proposedChange.display_label} - ` : ""
-    }Proposed change - Infrahub`
+    `${proposedChange ? `${getNodeLabel(proposedChange)} - ` : ""}Proposed change - Infrahub`
   );
 
   if (proposedChangeData) setProposedChange(proposedChangeData);
@@ -181,7 +179,7 @@ export function Component() {
   return (
     <Content.Card className="flex flex-col">
       <Content.CardTitle
-        title={proposedChangeData.display_label}
+        title={getNodeLabel(proposedChangeData)}
         description={
           <div className="inline-flex items-center gap-1 text-xs">
             <Link
@@ -191,7 +189,9 @@ export function Component() {
               )}
               className="font-semibold text-custom-blue-green"
             >
-              {proposedChangeData?.created_by?.node?.display_label}
+              {proposedChangeData?.created_by?.node
+                ? getNodeLabel(proposedChangeData.created_by.node)
+                : ""}
             </Link>
             wants to merge
             <Link to={constructPath(`/branches/${proposedChangeData.source_branch?.value}`)}>

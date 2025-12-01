@@ -4,12 +4,11 @@ import { useAtom } from "jotai";
 import { use, useState } from "react";
 import { useParams } from "react-router";
 
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
-
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
 import SlideOver from "@/shared/components/display/slide-over";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/shared/config/constants";
 
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/utils";
 import { getPermission } from "@/entities/permission/utils";

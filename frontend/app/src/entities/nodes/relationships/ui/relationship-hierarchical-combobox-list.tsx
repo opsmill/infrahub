@@ -11,6 +11,7 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
@@ -107,7 +108,7 @@ const HierarchicalExplorer = ({
     return (
       <>
         <Badge className="mt-1 ml-2 cursor-pointer self-start" onClick={handleRemoveNode}>
-          {selectNode.display_label} &times;
+          {getNodeLabel(selectNode)} &times;
         </Badge>
 
         <HierarchicalExplorer
@@ -169,7 +170,7 @@ const HierarchicalExplorer = ({
                     selectedValue={value?.id}
                     onSelect={() => handleSelect(node)}
                   >
-                    <span className="truncate">{node.display_label}</span>
+                    <span className="truncate">{getNodeLabel(node)}</span>
                     <span className="ml-auto text-gray-500 text-xs">{schema?.label}</span>
                   </ComboboxItem>
                 );

@@ -5,7 +5,7 @@ from infrahub.database import InfrahubDatabase
 async def test_migration_027(
     db: InfrahubDatabase,
     default_branch,
-):
+) -> None:
     query = """
     CREATE (valid_node:Node {uuid: '123'})
     CREATE (isolated_node:Node {uuid: '456'})

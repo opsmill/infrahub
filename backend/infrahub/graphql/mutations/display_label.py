@@ -101,7 +101,7 @@ class UpdateDisplayLabel(Mutation):
             event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
-                changelog=target_node.node_changelog.model_dump(),
+                changelog=target_node.node_changelog,
                 fields=["display_label"],
                 meta=EventMeta(
                     context=graphql_context.get_context(),

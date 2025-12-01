@@ -57,6 +57,8 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
     ) -> None:
         if not node_ids:
             related_nodes = await obj.related_nodes.get_relationships(db=db)  # type: ignore[attr-defined]
+            if hasattr(obj, "related_templates"):
+                related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
             node_ids = [rel.peer_id for rel in related_nodes]
         if node_ids:
             await workflow_service.submit_workflow(
@@ -79,7 +81,12 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     async def _get_profile_related_node_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
-        related_nodes = await obj.related_nodes.get_relationships(db=db)  # type: ignore[attr-defined]
+        related_nodes = []
+        related_nodes.extend(await obj.related_nodes.get_relationships(db=db))  # type: ignore[attr-defined]
+
+        if hasattr(obj, "related_templates"):
+            related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
+
         if related_nodes:
             related_node_ids = {rel.peer_id for rel in related_nodes}
         else:
@@ -186,6 +193,7 @@ class InfrahubProfilesRefresh(Mutation):
             branch=branch,
             id=str(data.id),
             include_source=True,
+            raise_on_error=True,
         )
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         updated_fields = await node_profiles_applier.apply_profiles(node=obj)

@@ -1,15 +1,17 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
-import { useLocation, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 
 import { DiffNodeAttribute } from "./node-attribute";
@@ -50,7 +52,15 @@ export const DiffNode = ({ sourceBranch, destinationBranch, node }: DiffNodeProp
             <div className="group flex items-center gap-2 py-2 pr-2 text-xs">
               <DiffBadge status={node.status} hasConflicts={node.contains_conflict} />
               <Badge variant="white">{schemaKindName[node.kind] ?? node.kind}</Badge>
-              <span className="px-2 py-1 font-medium text-gray-800">{node.label}</span>
+              <Link
+                to={getObjectDetailsUrl(node.kind, node.uuid, [
+                  { name: QSP.BRANCH, value: destinationBranch },
+                ])}
+                className="px-2 py-1 font-medium text-gray-800 hover:text-custom-blue-800 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {node.label}
+              </Link>
 
               {!branchName && node.path_identifier && <DiffThread path={node.path_identifier} />}
             </div>

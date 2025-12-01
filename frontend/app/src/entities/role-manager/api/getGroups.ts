@@ -16,6 +16,8 @@ export const GET_ROLE_MANAGEMENT_GROUPS = gql`
       edges {
         node {
           id
+          display_label
+          hfid
           name {
             value
           }

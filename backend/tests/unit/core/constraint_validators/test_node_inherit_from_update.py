@@ -14,7 +14,7 @@ from infrahub.core.validators.node.inherit_from import NodeInheritFromChecker
 from infrahub.database import InfrahubDatabase
 
 
-async def test_add_generic_success(db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
+async def test_add_generic_success(db: InfrahubDatabase, default_branch: Branch, animal_person_schema) -> None:
     branch = await create_branch(branch_name="branch", db=db)
 
     good_animal_schema = GenericSchema(
@@ -42,7 +42,7 @@ async def test_add_generic_success(db: InfrahubDatabase, default_branch: Branch,
     assert len(all_data_paths) == 0
 
 
-async def test_remove_generic_fail(db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
+async def test_remove_generic_fail(db: InfrahubDatabase, default_branch: Branch, animal_person_schema) -> None:
     branch = await create_branch(branch_name="branch", db=db)
 
     dog_schema = registry.schema.get_node_schema(name="TestDog")
@@ -77,7 +77,7 @@ async def test_remove_generic_fail(db: InfrahubDatabase, default_branch: Branch,
     )
 
 
-async def test_rename_generic_success(db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
+async def test_rename_generic_success(db: InfrahubDatabase, default_branch: Branch, animal_person_schema) -> None:
     branch = await create_branch(branch_name="branch", db=db)
 
     animal_schema = registry.schema.get(name="TestAnimal")

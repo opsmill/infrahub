@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ACCOUNT_TOKEN_OBJECT } from "@/shared/config/constants";
 
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 import { ALERT_TYPES, Alert } from "../ui/alert";
 import ModalDelete from "./modal-delete";
@@ -26,6 +26,9 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
   const deleteObject = useDeleteObjectMutation();
 
   const objectDisplay =
+    (rowToDelete && "__typename" in rowToDelete && "id" in rowToDelete
+      ? getNodeLabel(rowToDelete)
+      : null) ||
     rowToDelete?.display_label?.value ||
     rowToDelete?.display_label ||
     rowToDelete?.name?.value ||

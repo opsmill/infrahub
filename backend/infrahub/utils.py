@@ -76,10 +76,28 @@ def get_nested_dict(nested_dict: dict[str, Any], keys: list[str]) -> dict[str, A
     return current_level if isinstance(current_level, dict) else {}
 
 
-def get_all_subclasses(cls: AnyClass) -> list[AnyClass]:
+def get_all_subclasses[AnyClass: type](cls: AnyClass) -> list[AnyClass]:
     """Recursively get all subclasses of the given class."""
     subclasses: list[AnyClass] = []
     for subclass in cls.__subclasses__():
         subclasses.append(subclass)
         subclasses.extend(get_all_subclasses(subclass))
     return subclasses
+
+
+def has_any_key(data: dict[str, Any], keys: list[str]) -> bool:
+    """Recursively check if any of the specified keys exist in the dictionary at any level.
+
+    Args:
+        data: The dictionary to search through
+        keys: List of key names to search for
+
+    Returns:
+        True if any of the keys are found at any level of the dictionary, False otherwise
+    """
+    for key, value in data.items():
+        if key in keys:
+            return True
+        if isinstance(value, dict) and has_any_key(data=value, keys=keys):
+            return True
+    return False

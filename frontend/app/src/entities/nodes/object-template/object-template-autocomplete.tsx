@@ -31,6 +31,8 @@ export function ObjectTemplateAutocomplete({
     filters: search ? [{ name: "any__value", value: search }] : undefined,
     getAttributesVisible: (attributes) => attributes,
     getRelationshipsVisible: (relationships) => relationships,
+    attributesOptions: { withMetadata: true },
+    relationshipsOptions: { withMetadata: true },
   });
 
   if (error) return <ErrorScreen message={error.message} />;

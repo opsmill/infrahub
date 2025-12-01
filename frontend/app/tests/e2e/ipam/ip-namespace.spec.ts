@@ -111,6 +111,7 @@ test.describe("/ipam - IP Namespace", () => {
     await page.goto(`/ipam?branch=${BRANCH_NAME}`);
     await page.getByTestId("namespace-select").click();
     await page.getByRole("option", { name: "test-namespace" }).click();
+    const ipamTree = page.getByRole("treegrid", { name: "IPAM tree" });
 
     await test.step("create a prefix at top level", async () => {
       await page.getByTestId("create-object-button").click();
@@ -122,8 +123,8 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("validate new top level tree", async () => {
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/8" })).toBeVisible();
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(1);
+      await expect(ipamTree.getByText("11.0.0.0/8")).toBeVisible();
+      expect(await ipamTree.getByRole("row").count()).toEqual(1);
     });
 
     await test.step("create a children prefix", async () => {
@@ -136,16 +137,22 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("validate new top level tree", async () => {
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(1);
-      await page
-        .getByRole("treeitem", { name: "11.0.0.0/8" })
-        .getByTestId("tree-item-toggle")
-        .click();
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeVisible();
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(2);
+      expect(await ipamTree.getByRole("row").count()).toEqual(1);
+      await ipamTree.getByRole("button", { name: "Expand 11.0.0.0/8" }).click();
+      await expect(ipamTree.getByText("11.0.0.0/16")).toBeVisible();
+      expect(await ipamTree.getByRole("row").count()).toEqual(2);
     });
 
     await test.step("create a prefix between a parent and its children", async () => {
+      await ipamTree.getByText("11.0.0.0/8").click();
+
+      // validate breadcrumb
+      const breadcrumb = page.getByTestId("breadcrumb-navigation");
+      await expect(breadcrumb.getByRole("link", { name: "11.0.0.0/8" })).toBeVisible();
+      await breadcrumb.getByRole("button", { name: "Select a different IP Prefix" }).click();
+      await expect(page.getByRole("option")).toHaveCount(2);
+      await page.getByPlaceholder("Search...").press("Escape");
+
       await page.getByRole("link", { name: "Children" }).click();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/10");
@@ -156,17 +163,22 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("validate tree position", async () => {
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(2);
-      await page
-        .getByRole("treeitem", { name: "11.0.0.0/10" })
-        .getByTestId("tree-item-toggle")
-        .click();
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeVisible();
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(3);
+      expect(await ipamTree.getByRole("row").count()).toEqual(2);
+      await ipamTree.getByRole("button", { name: "Expand 11.0.0.0/10" }).click();
+      await expect(ipamTree.getByText("11.0.0.0/16")).toBeVisible();
+      expect(await ipamTree.getByRole("row").count()).toEqual(3);
     });
 
     await test.step("delete a prefix between 2 other prefixes", async () => {
-      await page.getByTestId("ipam-tree").getByRole("link", { name: "11.0.0.0/10" }).click();
+      await ipamTree.getByText("11.0.0.0/10").click();
+
+      // validate breadcrumb
+      const breadcrumb = page.getByTestId("breadcrumb-navigation");
+      await expect(breadcrumb.getByRole("link", { name: "11.0.0.0/10" })).toBeVisible();
+      await breadcrumb.getByRole("button", { name: "Select a different IP Prefix" }).last().click();
+      await expect(page.getByRole("option")).toHaveCount(1);
+      await page.getByPlaceholder("Search...").press("Escape");
+
       await page.getByTestId("object-details-menu").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByTestId("modal-delete")).toContainText(
@@ -178,10 +190,10 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("validate deleted prefix is removed from tree", async () => {
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/10" })).toBeHidden();
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/8" })).toBeVisible();
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeVisible();
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(2);
+      await expect(ipamTree.getByText("11.0.0.0/8")).toBeVisible();
+      await expect(ipamTree.getByText("11.0.0.0/16")).toBeVisible();
+      await expect(ipamTree.getByText("11.0.0.0/10")).toBeHidden();
+      expect(await ipamTree.getByRole("row").count()).toEqual(2);
     });
 
     await test.step("delete a children prefix", async () => {
@@ -196,8 +208,8 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("validate deleted prefix is removed from tree", async () => {
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/16" })).toBeHidden();
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(1);
+      await expect(ipamTree.getByText("11.0.0.0/16")).toBeHidden();
+      expect(await ipamTree.getByRole("row").count()).toEqual(1);
     });
 
     await test.step("delete top level prefix", async () => {
@@ -211,8 +223,8 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("validate deleted prefix is removed from tree", async () => {
-      await expect(page.getByRole("treeitem", { name: "11.0.0.0/8" })).toBeHidden();
-      await expect(await page.getByTestId("ipam-tree-item").count()).toEqual(0);
+      await expect(ipamTree.getByText("11.0.0.0/8")).toBeHidden();
+      await expect(ipamTree.getByText("No ip prefix", { exact: true })).toBeVisible();
     });
   });
 

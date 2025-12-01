@@ -63,7 +63,7 @@ async def test_migration_018_success(
     car_red,
     car_invisible,
     migration,
-):
+) -> None:
     # check no validation errors for now
     async with db.start_session() as dbs:
         execution_result = await migration.execute(db=dbs)
@@ -82,7 +82,7 @@ async def test_migration_018_fail(
     car_invisible,
     car_person_schema: SchemaBranch,
     migration,
-):
+) -> None:
     """
     Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint
     """

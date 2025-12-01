@@ -19,7 +19,7 @@ from infrahub.permissions import get_global_permission_for_kind
 )
 def test_get_global_permission_for_kind(
     register_core_models_schema: None, kinds: list[str], permission: GlobalPermissions
-):
+) -> None:
     for kind in kinds:
         schema = registry.schema.get(name=kind)
         assert get_global_permission_for_kind(schema=schema) == permission

@@ -3,8 +3,18 @@ import operator
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.types import BranchType, InfrahubBranch
 from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
+
+
+def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
+    exempted_fields = ("id", "created_at")
+    for field_name, field_value in BranchType._meta.fields.items():
+        if field_name in exempted_fields:
+            continue
+        if InfrahubBranch._meta.fields[field_name] == field_value:
+            raise Exception(f"'{field_name}' is not updated in InfrahubBranch")
 
 
 class TestBranchQuery(TestInfrahubApp):
@@ -16,7 +26,7 @@ class TestBranchQuery(TestInfrahubApp):
         session_admin,
         client,
         service,
-    ):
+    ) -> None:
         create_branch_query = """
         mutation {
             BranchCreate(data: { name: "branch3", description: "my description" }) {
@@ -141,3 +151,194 @@ class TestBranchQuery(TestInfrahubApp):
         assert id_response.data
         assert id_response.data["Branch"][0]["name"] == "branch3"
         assert len(id_response.data["Branch"]) == 1
+
+    async def test_paginated_branch_query(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema,
+        session_admin,
+        client,
+        service,
+    ) -> None:
+        branch_map = {}
+        for i in range(10):
+            create_branch_query = """
+            mutation($branch_name: String!, $branch_description: String!) {
+                BranchCreate(data: { name: $branch_name, description: $branch_description }) {
+                    ok
+                    object {
+                        id
+                        name
+                    }
+                }
+            }
+            """
+
+            gql_params = await prepare_graphql_params(
+                db=db,
+                branch=default_branch,
+                account_session=session_admin,
+                service=service,
+            )
+
+            branch_name = f"sample-branch-{i}"
+            branch_result = await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"branch_name": branch_name, "branch_description": f"sample description {i}"},
+            )
+            assert branch_result.errors is None
+            assert branch_result.data
+            branch_id = branch_result.data["BranchCreate"]["object"]["id"]
+            assert branch_result.data["BranchCreate"]["object"]["name"] == branch_name
+            assert branch_id
+            branch_map[branch_name] = branch_id
+
+        query = """
+            query($offset: Int, $limit: Int, $name: String, $ids: [ID!]) {
+                InfrahubBranch(offset: $offset, limit: $limit, name__value: $name, ids: $ids) {
+                    count
+                    edges {
+                        node {
+                            name {
+                                value
+                            }
+                            description {
+                                value
+                            }
+                        }
+                    }
+                    default_branch {
+                        name {
+                            value
+                        }
+                    }
+                }
+            }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"offset": 2, "limit": 5},
+        )
+        assert all_branches.errors is None
+        assert all_branches.data
+        assert all_branches.data["InfrahubBranch"]["count"] == 12  # 10 created here + 1 created above + main branch
+
+        expected_branches = [
+            {
+                "description": {"value": "Default Branch"},
+                "name": {"value": "main"},
+            },
+            {
+                "description": {"value": "my description"},
+                "name": {"value": "branch3"},
+            },
+            *[
+                {
+                    "description": {"value": f"sample description {i}"},
+                    "name": {"value": f"sample-branch-{i}"},
+                }
+                for i in range(10)
+            ],
+        ]
+        all_branches_data_only = [branch.get("node") for branch in all_branches.data["InfrahubBranch"]["edges"]]
+        assert all_branches_data_only.sort(key=lambda x: x["name"]["value"]) == expected_branches.sort(
+            key=lambda x: x["name"]["value"]
+        )
+
+        assert all_branches.data["InfrahubBranch"]["default_branch"]["name"]["value"] == "main"
+
+        name_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"name": "sample-branch-4"},
+        )
+        assert name_branches.errors is None
+        assert name_branches.data
+        assert name_branches.data["InfrahubBranch"]["count"] == 1
+        assert name_branches.data["InfrahubBranch"]["edges"][0]["node"]["name"]["value"] == "sample-branch-4"
+        assert name_branches.data["InfrahubBranch"]["default_branch"]["name"]["value"] == "main"
+
+        ids = [branch_map["sample-branch-3"], branch_map["sample-branch-7"]]
+        id_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"ids": ids},
+        )
+        assert id_branches.errors is None
+        assert id_branches.data
+        assert id_branches.data["InfrahubBranch"]["count"] == 2
+        assert id_branches.data["InfrahubBranch"]["edges"][0]["node"]["name"]["value"] == "sample-branch-3"
+        assert id_branches.data["InfrahubBranch"]["edges"][1]["node"]["name"]["value"] == "sample-branch-7"
+        assert id_branches.data["InfrahubBranch"]["default_branch"]["name"]["value"] == "main"
+
+    async def test_paginated_branch_query__returns_error_on_invalid_offset_or_limit(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema,
+        session_admin,
+        client,
+        service,
+    ) -> None:
+        query = """
+            query {
+                InfrahubBranch(offset: -1, limit: 5) {
+                    count
+                    edges {
+                        node {
+                            graph_version {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert all_branches.errors
+        assert len(all_branches.errors)
+        assert all_branches.errors[0].message == "offset must be >= 0"
+
+        query = """
+            query {
+                InfrahubBranch(offset: 0, limit: 0) {
+                    count
+                    edges {
+                        node {
+                            graph_version {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert all_branches.errors
+        assert len(all_branches.errors)
+        assert all_branches.errors[0].message == "limit must be >= 1"

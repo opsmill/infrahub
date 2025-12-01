@@ -95,7 +95,7 @@ class TestObjectPermissions:
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
-    ):
+    ) -> None:
         permissions_helper._first = first_account
         permissions_helper._default_branch = default_branch
 
@@ -366,7 +366,7 @@ class TestAttributePermissions:
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
-    ):
+    ) -> None:
         permissions_helper._first = first_account
         permissions_helper._default_branch = default_branch
 

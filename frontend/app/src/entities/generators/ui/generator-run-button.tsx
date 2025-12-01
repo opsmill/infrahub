@@ -2,11 +2,10 @@ import { PlayIcon } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
 
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { QSP } from "@/shared/config/qsp";
 
 import { useRunGeneratorMutation } from "@/entities/generators/domain/run-generator.mutation";
 

@@ -19,7 +19,7 @@ async def test_query_no_violations(
     car_prius_main: Node,
     car_yaris_main: Node,
     car_volt_main: Node,
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     seats_attr = car_schema.get_attribute(name="nbr_seats")
     seats_attr.unique = True
@@ -45,7 +45,7 @@ async def test_query_with_violations(
     car_yaris_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     await branch.rebase(db=db)
     car = await Node.init(db=db, schema="TestCar", branch=branch)
     await car.new(db=db, name="New Accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
@@ -103,7 +103,7 @@ async def test_query_no_violations_update_in_branch(
     car_yaris_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     car_accord_main.name.value = "New Accord"
     await car_accord_main.save(db=db)
 
@@ -137,7 +137,7 @@ async def test_query_no_violations_deleted_node(
     car_yaris_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     car_accord_main.name.value = "New Accord"
     await car_accord_main.save(db=db)
 
@@ -169,7 +169,7 @@ async def test_validator(
     car_yaris_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     await branch.rebase(db=db)
     car = await Node.init(db=db, schema="TestCar", branch=branch)
     await car.new(db=db, name="New Accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)

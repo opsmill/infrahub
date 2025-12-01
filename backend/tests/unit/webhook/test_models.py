@@ -4,7 +4,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.webhook.models import StandardWebhook
 
 
-def test_standard_webhook():
+def test_standard_webhook() -> None:
     webhook = StandardWebhook(
         name="test", url="http://test.com", event_type="test", validate_certificates=True, shared_key="test"
     )
@@ -23,7 +23,7 @@ def test_standard_webhook():
     assert StandardWebhook.from_cache(cache_dict) == webhook
 
 
-def test_standard_webhook_header():
+def test_standard_webhook_header() -> None:
     webhook = StandardWebhook(
         name="test", url="http://test.com", event_type="test", validate_certificates=True, shared_key="test"
     )

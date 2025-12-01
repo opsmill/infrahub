@@ -9,6 +9,7 @@ import {
   type RelationshipManyType,
   type RelationshipOneType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
@@ -57,7 +58,7 @@ export const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => 
       to={getObjectDetailsUrl(data.node.__typename, data.node.id)}
       className="hover:underline"
     >
-      {data.node.display_label}
+      {getNodeLabel(data.node)}
     </LinkCell>
   );
 };
@@ -71,7 +72,7 @@ export const RelationshipManyCell = ({ data }: { data: RelationshipManyType }) =
         return (
           <Link key={node.id} to={getObjectDetailsUrl(node.__typename, node.id)}>
             <Badge className="font-medium hover:bg-gray-200 hover:underline">
-              {node.display_label}
+              {getNodeLabel(node)}
             </Badge>
           </Link>
         );

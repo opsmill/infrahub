@@ -58,7 +58,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
 
         return device
 
-    async def test_same_parent(self, db: InfrahubDatabase, device_1: Node):
+    async def test_same_parent(self, db: InfrahubDatabase, device_1: Node) -> None:
         lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerParentConstraint(db=db)
@@ -71,7 +71,7 @@ class TestRelationshipPeerParentConstraint(TestInfrahubApp):
 
         await constraint.check(relm=lag.members, node_schema=lag_schema, node=lag)
 
-    async def test_different_parent(self, db: InfrahubDatabase, device_1: Node, device_2: Node):
+    async def test_different_parent(self, db: InfrahubDatabase, device_1: Node, device_2: Node) -> None:
         lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerParentConstraint(db=db)
@@ -134,7 +134,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
 
         return device
 
-    async def test_common_relatives_allowed(self, db: InfrahubDatabase, device_1: Node):
+    async def test_common_relatives_allowed(self, db: InfrahubDatabase, device_1: Node) -> None:
         lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerRelativesConstraint(db=db)
@@ -147,7 +147,7 @@ class TestRelationshipPeerRelativesConstraint(TestInfrahubApp):
 
         await constraint.check(relm=lag.members, node_schema=lag_schema, node=lag)
 
-    async def test_common_relatives_disallowed(self, db: InfrahubDatabase, device_1: Node, device_2: Node):
+    async def test_common_relatives_disallowed(self, db: InfrahubDatabase, device_1: Node, device_2: Node) -> None:
         lag_schema = registry.schema.get_node_schema(name=TestKind.LAG_INTERFACE, duplicate=False)
 
         constraint = RelationshipPeerRelativesConstraint(db=db)

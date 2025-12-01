@@ -1,5 +1,8 @@
+import asyncio
+import contextlib
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -105,7 +108,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         # Start metric endpoint
         if metric_port is None or metric_port != 0:
-            metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", 8000))
+            metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", "8000"))
             self._logger.info(f"Starting metric endpoint on port {metric_port}")
             start_http_server(metric_port)
 
@@ -122,6 +125,7 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         set_component_type(component_type=self.component_type)
+        await self.set_git_global_config()
         await self._init_services(client=client)
 
         if not registry.schema_has_been_initialized():
@@ -204,3 +208,37 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         self.service = service
+
+    async def set_git_global_config(self) -> None:
+        global_config_file = config.SETTINGS.git.global_config_file
+        if not os.getenv("GIT_CONFIG_GLOBAL") and global_config_file:
+            config_dir = Path(global_config_file).parent
+            with contextlib.suppress(FileExistsError):
+                config_dir.mkdir(exist_ok=True, parents=True)
+            os.environ["GIT_CONFIG_GLOBAL"] = global_config_file
+            self._logger.info(f"Set git config file to {global_config_file}")
+
+        await self._run_git_config_global(config.SETTINGS.git.user_name, setting_name="user.name")
+        await self._run_git_config_global(config.SETTINGS.git.user_email, setting_name="user.email")
+        await self._run_git_config_global("*", "--replace-all", setting_name="safe.directory")
+        await self._run_git_config_global("true", setting_name="credential.usehttppath")
+        await self._run_git_config_global(
+            f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}", setting_name="credential.helper"
+        )
+
+    async def _run_git_config_global(self, *args: str, setting_name: str) -> None:
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "config",
+            "--global",
+            setting_name,
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            error_msg = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
+            self._logger.error(f"Failed to set git {setting_name}: %s", error_msg)
+        else:
+            self._logger.info(f"Git {setting_name} set")

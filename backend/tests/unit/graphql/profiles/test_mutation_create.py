@@ -6,7 +6,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.graphql import graphql
 
 
-async def test_create_profile(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_create_profile(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     query = """
     mutation {
         ProfileTestPersonCreate(data: {

@@ -6,7 +6,7 @@ import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive"
 
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
-import ObjectHeader from "@/entities/nodes/object-header";
+import { ObjectItemsHeader } from "@/entities/nodes/object/ui/object-header";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -23,9 +23,9 @@ export function ProposedChangesManagerToolbar({
 
   return (
     <>
-      <ObjectHeader schema={schema} />
+      <ObjectItemsHeader schema={schema} />
 
-      <div className="flex h-14 items-center justify-between px-3">
+      <div className="flex h-14 items-center justify-between p-3">
         <div className="flex shrink-0 items-center justify-between">
           <FilterSearchInput schema={schema} />
 
@@ -34,6 +34,7 @@ export function ProposedChangesManagerToolbar({
 
         <div className="flex items-center gap-3">
           <ButtonWithTooltip
+            size="sm"
             disabled={!permission.create.isAllowed}
             tooltipEnabled={!permission.create.isAllowed}
             tooltipContent={permission.create.message ?? undefined}

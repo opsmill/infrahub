@@ -1,8 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useLocation } from "react-router";
 
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
-
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { classNames } from "@/shared/utils/common";
 
 import type { SSOProvider } from "@/entities/config/types";

@@ -3,7 +3,7 @@
 
 @import "tailwindcss";
 
-@config '../../../tailwind.config.js';
+@config "../../../tailwind.config.js";
 
 @font-face {
   font-family: InterVariable;
@@ -16,6 +16,16 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
 

@@ -27,11 +27,11 @@ if TYPE_CHECKING:
 
 class TestProposedChangeReconcile(TestIpamReconcileBase):
     @pytest.fixture(scope="class", autouse=True)
-    def enable_broker_settings(self):
+    def enable_broker_settings(self) -> None:
         config.SETTINGS.broker.enable = True
 
     @pytest.fixture(scope="class", autouse=True)
-    def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...
+    def git_repos_dir(self, git_repos_source_dir_module_scope: Path) -> None: ...
 
     @pytest.fixture(scope="class")
     async def branch_1(self, db: InfrahubDatabase):

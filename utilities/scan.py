@@ -92,7 +92,7 @@ def main() -> None:
         SystemExit: If prohibited keywords are found or if KEYWORDS_LIST is not set.
 
     Examples:
-        $ poetry run python utilities/scan.py
+        $ uv run python utilities/scan.py
     """
     keyword_list = os.environ.get("KEYWORDS_LIST", "")
     if not keyword_list:

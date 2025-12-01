@@ -10,11 +10,11 @@ from infrahub.core.utils import (
 from infrahub.database import InfrahubDatabase
 
 
-async def test_delete_all_nodes(db: InfrahubDatabase):
+async def test_delete_all_nodes(db: InfrahubDatabase) -> None:
     assert await delete_all_nodes(db) == []
 
 
-def test_parse_node_kind():
+def test_parse_node_kind() -> None:
     assert parse_node_kind(kind="TestMyModel") == NodeKind(namespace="Test", name="MyModel")
     assert parse_node_kind(kind="Test3Myname1234") == NodeKind(namespace="Test3", name="Myname1234")
 
@@ -25,7 +25,7 @@ def test_parse_node_kind():
         parse_node_kind(kind="Test3myname1234")
 
 
-async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database):
+async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database) -> None:
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })
@@ -61,7 +61,7 @@ async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database):
     assert len(paths) == 0
 
 
-async def test_count_relationships(db: InfrahubDatabase, empty_database):
+async def test_count_relationships(db: InfrahubDatabase, empty_database) -> None:
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })

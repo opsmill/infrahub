@@ -10,7 +10,9 @@ from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
-async def test_query_optional_true(db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main):
+async def test_query_optional_true(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
+) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(
         db=db,
@@ -37,7 +39,9 @@ async def test_query_optional_true(db: InfrahubDatabase, default_branch: Branch,
     assert len(all_data_paths) == 0
 
 
-async def test_query_optional_false(db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main):
+async def test_query_optional_false(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
+) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="ALFRED")
     await person.save(db=db)
@@ -70,7 +74,7 @@ async def test_query_optional_false(db: InfrahubDatabase, default_branch: Branch
 
 async def test_query_optional_update_on_branch(
     db: InfrahubDatabase, branch: Branch, person_john_main, person_jane_main
-):
+) -> None:
     person_john_main.height.value = None
     await person_john_main.save(db=db)
 
@@ -110,7 +114,7 @@ async def test_query_optional_update_on_branch(
 
 async def test_query_optional_node_deleted_on_branch(
     db: InfrahubDatabase, branch: Branch, person_john_main, person_jane_main
-):
+) -> None:
     person_john_main.height.value = None
     await person_john_main.save(db=db)
 
@@ -147,7 +151,7 @@ async def test_query_optional_node_deleted_on_branch(
     ]
 
 
-async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main, person_jane_main):
+async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main, person_jane_main) -> None:
     person = await Node.init(db=db, schema="TestPerson", branch=branch)
     await person.new(db=db, name="ALFRED")
     await person.save(db=db)

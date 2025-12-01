@@ -122,7 +122,7 @@ class IPAddressPoolGetResource(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
-        obj: CoreIPAddressPool = await registry.manager.find_object(
+        obj: CoreIPAddressPool = await registry.manager.find_object(  # type: ignore[assignment]
             db=graphql_context.db,
             kind=InfrahubKind.IPADDRESSPOOL,
             id=data.get("id"),

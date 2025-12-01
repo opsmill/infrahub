@@ -16,7 +16,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.definitions.core.repository import core_repository
+from infrahub.core.schema.definitions.core.repository import core_read_only_repository, core_repository
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, get_db
@@ -55,6 +55,15 @@ class TestDiffCoordinatorLocks:
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
 
+        dummy_repository = NodeSchema(
+            name=core_read_only_repository.name,
+            namespace=core_read_only_repository.namespace,
+        )
+        schema = SchemaRoot(nodes=[dummy_repository])
+        registry.schema.register_schema(schema=schema, branch=default_branch.name)
+        default_branch.update_schema_hash()
+        await default_branch.save(db=db)
+
     async def get_diff_coordinator(self, db: InfrahubDatabase, diff_branch: Branch) -> DiffCoordinator:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         component_registry = get_component_registry()
@@ -67,7 +76,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_incremental_diff_locks_do_not_queue_up(
         self, db: InfrahubDatabase, default_branch: Branch, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -83,7 +92,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_arbitrary_diff_locks_queue_up(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -120,7 +129,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_arbitrary_diff_blocks_incremental_diff(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -151,7 +160,7 @@ class TestDiffCoordinatorLocks:
 
     async def test_incremental_diff_blocks_arbitrary_diff(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
@@ -187,7 +196,7 @@ class TestDiffCoordinatorLocks:
         diff_repository: DiffRepository,
         branch_with_data: Branch,
         dummy_repository_schema: None,
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
         branch_merger = BranchMerger(
@@ -222,7 +231,7 @@ class TestDiffCoordinatorLocks:
         diff_repository: DiffRepository,
         branch_with_data: Branch,
         dummy_repository_schema: None,
-    ):
+    ) -> None:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 

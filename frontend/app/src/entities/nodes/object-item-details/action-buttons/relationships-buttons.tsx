@@ -5,8 +5,6 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { QSP } from "@/config/qsp";
-
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
@@ -16,6 +14,7 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { QSP } from "@/shared/config/qsp";
 
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
@@ -36,7 +35,7 @@ export function RelationshipsButtons({
   schema: parentSchema,
   objectDetailsData,
 }: RelationshipsButtonsProps) {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
@@ -90,7 +89,7 @@ export function RelationshipsButtons({
     if (relation?.id || relation?.from_pool) {
       await addRelationship({
         variables: {
-          objectId: objectid,
+          objectId,
           relationshipIds: [{ id: relation.id }],
           relationshipName: relationshipSchema?.name,
         },
