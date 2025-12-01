@@ -2,9 +2,6 @@ import { useQueryState } from "nuqs";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router";
 
-import { TASK_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import useQuery from "@/shared/api/graphql/useQuery";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
@@ -15,6 +12,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { TASK_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";

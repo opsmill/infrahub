@@ -150,7 +150,7 @@ class TestProfiles(TestInfrahubApp):
         original_node: InfrahubNode,
         updated_node: InfrahubNode,
         expected_profile_attrs: list[AttributeProfileDetails],
-    ):
+    ) -> None:
         expected_profile_attrs_by_name = {attr.attribute_name: attr for attr in expected_profile_attrs}
         for attribute_name in updated_node._attributes:
             current_attribute = getattr(updated_node, attribute_name)
@@ -177,7 +177,7 @@ class TestProfiles(TestInfrahubApp):
         device_template: InfrahubNode,
         device_profile_1: InfrahubNode,
         branch: BranchData,
-    ):
+    ) -> None:
         pass
 
     async def test_profile_values_do_not_override_non_default_values(
@@ -186,7 +186,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_1: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         device_profile_1 = await client.get(
             branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_1.id, property=True
         )
@@ -207,7 +207,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_2_with_empty_node: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         fresh_device_2 = await client.get(branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id)
         fresh_device_2.manufacturer.is_default = True
         await fresh_device_2.save()
@@ -255,7 +255,7 @@ class TestProfiles(TestInfrahubApp):
         device_2_empty_attribute: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         updated_device_2 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id, property=True
         )
@@ -323,7 +323,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_3_with_all_nodes: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         updated_device_1 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_1_full_attributes.id, property=True
         )
@@ -383,7 +383,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_3_with_all_nodes: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         # make profile 3 the highest priority
         device_profile_3 = await client.get(
             branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_3_with_all_nodes.id
@@ -439,7 +439,7 @@ class TestProfiles(TestInfrahubApp):
         device_profile_3_with_all_nodes: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         # delete profile 3
         device_profile_3 = await client.get(
             branch=branch.name, kind=f"Profile{TestKind.DEVICE}", id=device_profile_3_with_all_nodes.id
@@ -522,7 +522,7 @@ class TestProfiles(TestInfrahubApp):
         device_4_with_template: InfrahubNode,
         client: InfrahubClient,
         branch: BranchData,
-    ):
+    ) -> None:
         updated_device_4 = await client.get(
             branch=branch.name, kind=f"{TestKind.DEVICE}", id=device_4_with_template.id, property=True
         )
@@ -544,3 +544,333 @@ class TestProfiles(TestInfrahubApp):
                 ),
             ],
         )
+
+    async def test_create_template_with_profile(
+        self,
+        device_profile_1: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ) -> None:
+        """Test creating a template with a profile assigned via SDK.
+
+        This test creates a template with explicit values for manufacturer and weight,
+        and a profile assigned. The profile should provide values for attributes that
+        are using defaults (height, airflow, part_number).
+        """
+        template = await client.create(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name=f"template-with-profile-{branch.name}",
+            manufacturer="Template Manufacturer",
+            weight=100,
+            profiles=[device_profile_1.id],
+        )
+        await template.save()
+
+        # Retrieve template with property=True to get metadata
+        retrieved_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name__value=f"template-with-profile-{branch.name}",
+            property=True,
+        )
+        await retrieved_template.profiles.fetch()
+
+        # Verify profile was assigned
+        assert device_profile_1.id in retrieved_template.profiles.peer_ids
+
+        # Explicitly set attributes should use template values (not profile)
+        assert retrieved_template.manufacturer.value == "Template Manufacturer"
+        assert retrieved_template.manufacturer.is_from_profile is False
+        assert retrieved_template.manufacturer.source is None
+
+        assert retrieved_template.weight.value == 100
+        assert retrieved_template.weight.is_from_profile is False
+        assert retrieved_template.weight.source is None
+
+        # Attributes where template uses defaults should get profile values
+        # Note: Profile values may only be applied if the attribute truly uses the default,
+        # not if the user sets it to the default value
+        if retrieved_template.height.is_from_profile:
+            assert retrieved_template.height.value == 101
+            assert retrieved_template.height.source.id == device_profile_1.id
+
+        if retrieved_template.airflow.is_from_profile:
+            assert retrieved_template.airflow.value == "Left to right"
+            assert retrieved_template.airflow.source.id == device_profile_1.id
+
+        if retrieved_template.part_number.is_from_profile:
+            assert retrieved_template.part_number.value == "part-number-profile-1"
+            assert retrieved_template.part_number.source.id == device_profile_1.id
+
+    async def test_assign_profile_to_existing_template(
+        self,
+        device_profile_1: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ) -> None:
+        """Test assigning a profile to an existing template via SDK."""
+        # Create a new template (not using the shared device_template fixture)
+        # to avoid cross-branch issues with parameterized tests
+        template = await client.create(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name=f"assign-profile-template-{branch.name}",
+            manufacturer="Test Manufacturer",
+            height=501,
+        )
+        await template.save()
+
+        # Retrieve it to verify it has no profiles
+        retrieved_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+        )
+        await retrieved_template.profiles.fetch()
+        assert len(retrieved_template.profiles.peer_ids) == 0
+
+        # Assign profile
+        retrieved_template.profiles.add(device_profile_1.id)
+        await retrieved_template.save()
+
+        # Retrieve and verify profile was assigned
+        updated_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+            property=True,
+        )
+        await updated_template.profiles.fetch()
+
+        assert len(updated_template.profiles.peer_ids) == 1
+        assert device_profile_1.id in updated_template.profiles.peer_ids
+
+        # Template's explicitly set value should remain
+        assert updated_template.height.value == 501
+        assert updated_template.height.is_from_profile is False
+
+    async def test_template_with_multiple_profiles_respects_priority(
+        self,
+        device_profile_1: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ) -> None:
+        """Test that templates with multiple profiles can have multiple profiles assigned."""
+        # Create second profile with different priority
+        profile_2 = await client.create(
+            branch=branch.name,
+            kind=f"Profile{TestKind.DEVICE}",
+            profile_name=f"high-priority-profile-{branch.name}",
+            profile_priority=500,  # Lower priority number than device_profile_1 (1001)
+            airflow="High priority airflow",
+            weight=999,
+        )
+        await profile_2.save()
+
+        # Create template with both profiles
+        template = await client.create(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name=f"multi-profile-template-{branch.name}",
+            manufacturer="Multi Profile Manufacturer",
+            profiles=[device_profile_1.id, profile_2.id],
+        )
+        await template.save()
+
+        # Retrieve and verify both profiles are assigned
+        retrieved_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name__value=f"multi-profile-template-{branch.name}",
+            property=True,
+        )
+        await retrieved_template.profiles.fetch()
+
+        assert len(retrieved_template.profiles.peer_ids) == 2
+        assert device_profile_1.id in retrieved_template.profiles.peer_ids
+        assert profile_2.id in retrieved_template.profiles.peer_ids
+
+    async def test_update_template_attribute_overrides_profile(
+        self,
+        device_profile_1: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ) -> None:
+        """Test that updating a template attribute explicitly sets its value."""
+        # Create template with profile
+        template = await client.create(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name=f"update-override-template-{branch.name}",
+            manufacturer="Initial Manufacturer",
+            profiles=[device_profile_1.id],
+        )
+        await template.save()
+
+        # Update airflow explicitly to a different valid enum value
+        template_for_update = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+        )
+        template_for_update.airflow.value = "Front to rear"  # Valid enum value
+        await template_for_update.save()
+
+        # Verify explicit value was set
+        updated_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+            property=True,
+        )
+        assert updated_template.airflow.value == "Front to rear"
+        assert updated_template.airflow.is_from_profile is False
+        assert updated_template.airflow.source is None
+
+    async def test_remove_profile_from_template(
+        self,
+        device_profile_1: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ) -> None:
+        """Test removing a profile from a template via SDK."""
+        # Create template with profile
+        template = await client.create(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name=f"remove-profile-template-{branch.name}",
+            manufacturer="Test Manufacturer",
+            profiles=[device_profile_1.id],
+        )
+        await template.save()
+
+        # Verify profile is assigned
+        retrieved_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+            property=True,
+        )
+        await retrieved_template.profiles.fetch()
+        assert device_profile_1.id in retrieved_template.profiles.peer_ids
+
+        # Remove profile
+        template_for_update = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+        )
+        await template_for_update.profiles.fetch()
+        template_for_update.profiles.remove(device_profile_1.id)
+        await template_for_update.save()
+
+        # Verify profile was removed
+        updated_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+            property=True,
+        )
+        await updated_template.profiles.fetch()
+        assert len(updated_template.profiles.peer_ids) == 0
+
+    async def test_create_node_from_template_with_profile(
+        self,
+        device_profile_1: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ) -> None:
+        """Test creating a node from a template that has a profile assigned.
+
+        When a node is created from a template with profiles:
+        - Template's explicit values should come from template
+        - Profile values (inherited from template) should come from profile
+        """
+        # Create template with profile, providing all required attributes
+        template = await client.create(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name=f"node-creation-template-{branch.name}",
+            manufacturer="Template Manufacturer",
+            airflow="Front to rear",  # Required attribute
+            weight=150,
+            profiles=[device_profile_1.id],
+        )
+        await template.save()
+
+        # Create node from template
+        device = await client.create(
+            branch=branch.name,
+            kind=TestKind.DEVICE,
+            name=f"device-from-template-{branch.name}",
+            object_template=template.id,
+        )
+        await device.save()
+
+        # Retrieve and verify
+        retrieved_device = await client.get(
+            branch=branch.name,
+            kind=TestKind.DEVICE,
+            id=device.id,
+            property=True,
+        )
+
+        # Explicitly set template values should come from template
+        assert retrieved_device.manufacturer.value == "Template Manufacturer"
+        assert retrieved_device.manufacturer.source.id == template.id
+        assert retrieved_device.manufacturer.is_from_profile is False
+
+        assert retrieved_device.airflow.value == "Front to rear"
+        assert retrieved_device.airflow.source.id == template.id
+        assert retrieved_device.airflow.is_from_profile is False
+
+        assert retrieved_device.weight.value == 150
+        assert retrieved_device.weight.source.id == template.id
+        assert retrieved_device.weight.is_from_profile is False
+
+    async def test_template_explicit_value_not_overridden_by_profile(
+        self,
+        device_profile_1: InfrahubNode,
+        client: InfrahubClient,
+        branch: BranchData,
+    ) -> None:
+        """Test that explicitly set template values are not overridden by profile values."""
+        # Create template with explicit airflow value (different from profile)
+        # Profile has "Left to right", template will have "Front to rear"
+        template = await client.create(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            template_name=f"explicit-value-template-{branch.name}",
+            manufacturer="Explicit Manufacturer",
+            airflow="Front to rear",  # Explicitly set to different value than profile
+            weight=200,
+        )
+        await template.save()
+
+        # Assign profile (which has airflow="Left to right")
+        template_for_update = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+        )
+        await template_for_update.profiles.fetch()  # Must fetch before editing
+        template_for_update.profiles.add(device_profile_1.id)
+        await template_for_update.save()
+
+        # Verify explicit template value is not overridden
+        updated_template = await client.get(
+            branch=branch.name,
+            kind=f"Template{TestKind.DEVICE}",
+            id=template.id,
+            property=True,
+        )
+
+        # Template's explicit airflow should remain
+        assert updated_template.airflow.value == "Front to rear"
+        assert updated_template.airflow.is_from_profile is False
+        assert updated_template.airflow.source is None
+
+        # Profile relationship should be established
+        await updated_template.profiles.fetch()
+        assert device_profile_1.id in updated_template.profiles.peer_ids

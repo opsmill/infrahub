@@ -1,12 +1,11 @@
 import { useQueryState } from "nuqs";
 import { useLocation } from "react-router";
 
-import { TASK_TAB } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { TASK_TAB } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { ObjectDetailsTab, type TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
 import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";

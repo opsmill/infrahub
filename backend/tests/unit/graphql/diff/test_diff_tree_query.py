@@ -213,7 +213,7 @@ async def test_diff_tree_no_changes(
     criticality_low,
     diff_coordinator: DiffCoordinator,
     diff_branch: Branch,
-):
+) -> None:
     enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
@@ -249,7 +249,7 @@ async def test_diff_tree_no_changes(
 
 async def test_diff_tree_no_diffs(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, diff_branch: Branch
-):
+) -> None:
     default_branch.update_schema_hash()
     params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
@@ -265,7 +265,9 @@ async def test_diff_tree_no_diffs(
     assert result.data["DiffTree"] is None
 
 
-async def test_diff_tree_no_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_diff_tree_no_branch(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
     default_branch.update_schema_hash()
     params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
@@ -288,7 +290,7 @@ async def test_diff_tree_one_attr_change(
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
     diff_repository: DiffRepository,
-):
+) -> None:
     main_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
     main_crit.color.value = "#fedcba"
     branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
@@ -422,7 +424,7 @@ async def test_diff_tree_one_relationship_change(
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
     diff_repository: DiffRepository,
-):
+) -> None:
     branch_car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=diff_branch)
     await branch_car.owner.update(db=db, data=[person_jane_main])
     before_change_datetime = Timestamp()
@@ -676,7 +678,7 @@ async def test_diff_tree_hierarchy_change(
     hierarchical_location_data,
     diff_branch: Branch,
     diff_coordinator: DiffCoordinator,
-):
+) -> None:
     europe_main = hierarchical_location_data["europe"]
     paris_main = hierarchical_location_data["paris"]
     rack1_main = hierarchical_location_data["paris-r1"]
@@ -718,7 +720,7 @@ async def test_diff_tree_hierarchy_change(
 
 async def test_diff_tree_summary_no_diffs(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, diff_branch: Branch
-):
+) -> None:
     default_branch.update_schema_hash()
     params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
@@ -740,7 +742,7 @@ async def test_diff_tree_summary_no_changes(
     criticality_low,
     diff_coordinator: DiffCoordinator,
     diff_branch: Branch,
-):
+) -> None:
     enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
@@ -907,7 +909,7 @@ async def test_diff_summary_filters(
 )
 async def test_diff_get_filters(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data, filters, labels
-):
+) -> None:
     rack1_main = hierarchical_location_data["paris-r1"]
     rack2_main = hierarchical_location_data["paris-r2"]
 

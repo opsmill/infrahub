@@ -8,6 +8,7 @@ from netaddr import IPSet
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import BuiltinIPPrefix
 from infrahub.core.query.ipam import get_ip_addresses, get_subnets
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.address import get_available
@@ -31,7 +32,9 @@ class IPAddressGetNextAvailable(ObjectType):
     ) -> dict[str, str]:
         graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(id=prefix_id, db=graphql_context.db, branch=graphql_context.branch)
+        prefix = await NodeManager.get_one(
+            id=prefix_id, kind=BuiltinIPPrefix, db=graphql_context.db, branch=graphql_context.branch
+        )
 
         if not prefix:
             raise NodeNotFoundError(
@@ -78,17 +81,19 @@ class IPPrefixGetNextAvailable(ObjectType):
     ) -> dict[str, str]:
         graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(id=prefix_id, db=graphql_context.db, branch=graphql_context.branch)
+        prefix = await NodeManager.get_one(
+            id=prefix_id, db=graphql_context.db, branch=graphql_context.branch, kind=BuiltinIPPrefix
+        )
 
         if not prefix:
             raise NodeNotFoundError(
                 branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
             )
 
-        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)  # type: ignore[attr-defined]
+        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)
         subnets = await get_subnets(
             db=graphql_context.db,
-            ip_prefix=ipaddress.ip_network(prefix.prefix.value),  # type: ignore[attr-defined]
+            ip_prefix=ipaddress.ip_network(prefix.prefix.value),
             namespace=namespace,
             branch=graphql_context.branch,
         )

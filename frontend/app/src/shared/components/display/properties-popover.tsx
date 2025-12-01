@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import type { Permission } from "@/entities/permission/types";
@@ -76,7 +77,7 @@ const PropertiesPopover = ({
         title={
           <SlideOverTitle
             schema={schema}
-            currentObjectLabel={data?.display_label}
+            currentObjectLabel={data ? getNodeLabel(data) : ""}
             title={`${metaEditFieldDetails?.label} properties`}
             subtitle={`Update the properties of ${metaEditFieldDetails?.label}`}
           />

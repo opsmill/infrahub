@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, TypeAlias
+from typing import TYPE_CHECKING, Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
@@ -261,4 +261,4 @@ class MigrationRequiringRebase(BaseModel):
         raise NotImplementedError()
 
 
-MigrationTypes: TypeAlias = GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase
+type MigrationTypes = GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase

@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router";
 
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
-
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useConfig } from "@/entities/config/ui/config-provider";

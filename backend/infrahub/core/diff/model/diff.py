@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -271,7 +271,7 @@ class SchemaConflict(ObjectConflict):
         return self.value
 
 
-class DiffElementType(str, Enum):
+class DiffElementType(StrEnum):
     ATTRIBUTE = "Attribute"
     RELATIONSHIP_ONE = "RelationshipOne"
     RELATIONSHIP_MANY = "RelationshipMany"

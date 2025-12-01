@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { SEARCH_ANY_FILTER } from "@/config/constants";
-
 import { SearchInput, type SearchInputProps } from "@/shared/components/inputs/search-input";
+import { SEARCH_ANY_FILTER } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import useFilters from "@/shared/hooks/useFilters";
 import { useSearch } from "@/shared/hooks/useSearch";

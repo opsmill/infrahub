@@ -36,7 +36,7 @@ async def schema_aware():
 
 
 @pytest.fixture
-async def init_database(db: InfrahubDatabase):
+async def init_database(db: InfrahubDatabase) -> None:
     params = {
         "nodes": [],
         "rel_props": {"branch": "main", "branch_level": "1", "status": "active", "from": Timestamp().to_string()},
@@ -62,7 +62,7 @@ async def init_database(db: InfrahubDatabase):
     await db.execute_query(query=query_init_root, params=params)
 
 
-async def test_query01(db: InfrahubDatabase, default_branch, init_database, schema_aware):
+async def test_query01(db: InfrahubDatabase, default_branch, init_database, schema_aware) -> None:
     node = schema_aware
 
     assert await count_nodes(db=db, label="TestCar") == 5
@@ -137,7 +137,7 @@ async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_
     assert await count_nodes(db=db, label="Attribute") == 24
 
 
-async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware):
+async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware) -> None:
     node = schema_aware
     migration = NodeAttributeAddMigration(
         new_node_schema=node,

@@ -39,7 +39,7 @@ async def test_generate_menu_placement(
     car_person_schema_generics: SchemaRoot,
     menu_repository: MenuRepository,
     helper,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
     schema_car = schema_branch.get(name="TestCar")
@@ -66,7 +66,7 @@ async def test_generate_menu_top_level(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     helper,
-):
+) -> None:
     await create_default_menu(db=db)
 
     new_menu_items = generate_menu_fixtures(nbr_item=2)
@@ -87,7 +87,7 @@ async def test_generate_menu_default(
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     helper,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_car = schema_branch.get(name="TestCar")
     schema_car.menu_placement = "DoesNotExist"

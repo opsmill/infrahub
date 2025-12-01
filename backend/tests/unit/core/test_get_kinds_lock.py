@@ -22,7 +22,7 @@ class TestGetKindsLock(TestInfrahubApp):
         default_branch,
         register_core_models_schema,
         client,
-    ):
+    ) -> None:
         # CoreCredential has no uniqueness_constraint, but generic CorePasswordCredential has one
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         assert _get_kinds_to_lock_on_object_mutation(kind="CorePasswordCredential", schema_branch=schema_branch) == [
@@ -45,7 +45,7 @@ class TestGetKindsLock(TestInfrahubApp):
         default_branch,
         register_core_models_schema,
         client,
-    ):
+    ) -> None:
         graphql_query = await client.create(
             kind=GRAPHQLQUERY,
             name="a_gql_query",
@@ -123,7 +123,7 @@ class TestGetKindsLock(TestInfrahubApp):
         default_branch,
         client,
         car_person_schema,
-    ):
+    ) -> None:
         other_branch = await create_branch(branch_name="other_branch", db=db)
         schema_branch = registry.schema.get_schema_branch(name=other_branch.name)
 
@@ -138,7 +138,7 @@ class TestGetKindsLock(TestInfrahubApp):
         default_branch,
         client,
         car_person_schema_unregistered,
-    ):
+    ) -> None:
         car_person_schema_unregistered = deepcopy(car_person_schema_unregistered)
         car_person_schema_unregistered.nodes[0].uniqueness_constraints = [
             ["name__value", "color__value", "owner__name"]
@@ -158,7 +158,7 @@ class TestGetKindsLock(TestInfrahubApp):
         default_branch,
         client,
         car_person_schema_unregistered,
-    ):
+    ) -> None:
         car_person_schema_unregistered = deepcopy(car_person_schema_unregistered)
         car_person_schema_unregistered.nodes[1].uniqueness_constraints = [["height__value"]]
         registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)

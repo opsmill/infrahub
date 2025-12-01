@@ -1,4 +1,4 @@
-import { describe, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import type { FormFieldValue } from "@/shared/components/form/type";

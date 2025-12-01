@@ -113,7 +113,7 @@ async def expected_invalid_lag_data_paths(
     }
 
 
-async def test_query_no_relationships(db: InfrahubDatabase, branch: Branch, data_empty_lags: dict[str, Any]):
+async def test_query_no_relationships(db: InfrahubDatabase, branch: Branch, data_empty_lags: dict[str, Any]) -> None:
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
     interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
@@ -141,7 +141,7 @@ async def test_query_invalid_lag(
     data_invalid_lag: dict[str, Node],
     expected_invalid_lag_data_paths: set[DataPath],
     branch: Branch,
-):
+) -> None:
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
     interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
@@ -163,7 +163,9 @@ async def test_query_invalid_lag(
     assert set(all_paths) == expected_invalid_lag_data_paths
 
 
-async def test_query_deleted_lag_members(db: InfrahubDatabase, data_invalid_lag: dict[str, Node], branch: Branch):
+async def test_query_deleted_lag_members(
+    db: InfrahubDatabase, data_invalid_lag: dict[str, Node], branch: Branch
+) -> None:
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
     interface_schema = registry.schema.get(TestKind.PHYSICAL_INTERFACE)
 
@@ -198,7 +200,7 @@ async def test_validator(
     data_invalid_lag: dict[str, Node],
     expected_invalid_lag_data_paths: set[DataPath],
     branch: Branch,
-):
+) -> None:
     lag_schema = registry.schema.get(name=TestKind.LAG_INTERFACE)
 
     request = SchemaConstraintValidatorRequest(

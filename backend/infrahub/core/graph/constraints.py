@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, ForwardRef, Optional, Union, get_origin
 
 from pydantic import BaseModel
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class GraphPropertyType(str, Enum):
+class GraphPropertyType(StrEnum):
     BOOLEAN = "BOOLEAN"
     STRING = "STRING"
     INTEGER = "INTEGER"

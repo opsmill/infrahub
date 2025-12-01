@@ -35,11 +35,7 @@
     "noUnusedParameters": true,
 
     /* Type Definitions */
-    "types": [
-      "vite/client",
-      "vitest/globals",
-      "@vitest/browser/providers/playwright"
-    ]
+    "types": ["node", "vite/client"]
   },
   "include": [
     "src",

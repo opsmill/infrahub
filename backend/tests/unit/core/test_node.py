@@ -3,7 +3,13 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import (
+    BranchSupportType,
+    DiffAction,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -18,7 +24,7 @@ from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 
 async def test_node_init(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, first_account: Node
-):
+) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4)
 
@@ -60,7 +66,7 @@ async def test_node_init(
     assert obj._source == first_account
 
 
-async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     registry.schema.set(name="TestCriticality", schema=criticality_schema)
     obj = await Node.init(db=db, schema="TestCriticality")
     await obj.new(db=db, name="low", level=4)
@@ -74,7 +80,7 @@ async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branc
     assert obj.color.is_default is True
 
 
-async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     uuid1 = str(UUIDT())
@@ -85,7 +91,7 @@ async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, critic
     assert obj._existing is False
 
 
-async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     uuid1 = str(UUIDT())
@@ -100,7 +106,7 @@ async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branc
     assert "already in use" in str(exc.value)
 
 
-async def test_node_init_invalid_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_invalid_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     obj = await Node.init(db=db, schema="TestCriticality")
@@ -110,7 +116,7 @@ async def test_node_init_invalid_id(db: InfrahubDatabase, default_branch: Branch
     assert "UUID" in str(exc.value)
 
 
-async def test_node_init_mandatory_missing(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_mandatory_missing(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
 
     with pytest.raises(ValidationError) as exc:
@@ -119,7 +125,7 @@ async def test_node_init_mandatory_missing(db: InfrahubDatabase, default_branch:
     assert "mandatory" in str(exc.value)
 
 
-async def test_node_init_mandatory_field_null(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_mandatory_field_null(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
 
     with pytest.raises(ValidationError) as direct_exc:
@@ -132,7 +138,7 @@ async def test_node_init_mandatory_field_null(db: InfrahubDatabase, default_bran
     assert "A value must be provided for name at name" in str(dict_exc.value)
 
 
-async def test_node_init_invalid_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_invalid_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
 
     await obj.new(db=db, name="low", level=4, notvalid=False)
@@ -145,7 +151,7 @@ async def test_node_init_invalid_attribute(db: InfrahubDatabase, default_branch:
     assert not hasattr(node, "notvalid")
 
 
-async def test_node_init_invalid_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_init_invalid_value(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
     with pytest.raises(ValidationError) as exc:
         await obj.new(db=db, name="low", level="notanint")
@@ -159,7 +165,7 @@ async def test_node_init_invalid_value(db: InfrahubDatabase, default_branch: Bra
     assert "False is not a valid Text at name" in str(exc.value)
 
 
-async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch):
+async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch) -> None:
     SCHEMA = {
         "name": "OneOfEachKind",
         "namespace": "Test",
@@ -193,7 +199,7 @@ async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch):
     assert obj.mybool_default_false.value is False
 
 
-async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
     schema_01 = {
         "name": "Display",
         "namespace": "Test",
@@ -274,7 +280,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
 )
 async def test_display_label(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, display_label: str, expected: str
-):
+) -> None:
     schema_01 = {
         "name": "Display",
         "namespace": "Test",
@@ -307,7 +313,7 @@ async def test_display_label(
     assert await obj.get_display_label(db=db) == expected
 
 
-async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -338,7 +344,7 @@ async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_sche
     assert await dog1.get_hfid_as_string(db=db, include_kind=True) == "TestDog__Jack__Rocky"
 
 
-async def test_get_path_value(db: InfrahubDatabase, default_branch, animal_person_schema):
+async def test_get_path_value(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -362,7 +368,9 @@ async def test_get_path_value(db: InfrahubDatabase, default_branch, animal_perso
     assert "value of a path without property" in str(exc.value)
 
 
-async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_node_init_with_single_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -393,7 +401,7 @@ async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_
     assert c2_peer.id == p1.id
 
 
-async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -428,7 +436,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
     assert await c1.to_graphql(db=db, fields={"display_label": None, "name": {"is_protected": None}}) == expected_data
 
 
-async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -493,7 +501,7 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
     assert await c1.to_graphql(db=db) == expected_data
 
 
-async def test_to_graphql_without_properties(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_to_graphql_without_properties(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -538,7 +546,7 @@ async def test_to_graphql_without_properties(db: InfrahubDatabase, default_branc
 # --------------------------------------------------------------------------
 
 
-async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4)
     await obj.save(db=db)
@@ -590,7 +598,7 @@ async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Bra
 
 async def test_node_create_attribute_with_source(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account
-):
+) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4, _source=first_account)
     await obj.save(db=db)
@@ -614,7 +622,7 @@ async def test_node_create_attribute_with_source(
 
 async def test_node_create_attribute_with_different_sources(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account, second_account
-):
+) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name={"value": "low", "source": second_account.id}, level=4, _source=first_account)
     await obj.save(db=db)
@@ -638,7 +646,7 @@ async def test_node_create_attribute_with_different_sources(
 
 async def test_node_create_attribute_with_owner(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account
-):
+) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name="low", level=4, _owner=first_account)
     await obj.save(db=db)
@@ -662,7 +670,7 @@ async def test_node_create_attribute_with_owner(
 
 async def test_node_create_attribute_with_different_owner(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account, second_account
-):
+) -> None:
     obj = await Node.init(db=db, schema=criticality_schema)
     await obj.new(db=db, name={"value": "low", "owner": second_account.id}, level=4, _owner=first_account)
     await obj.save(db=db)
@@ -684,7 +692,9 @@ async def test_node_create_attribute_with_different_owner(
     assert obj.color.owner_id == first_account.id
 
 
-async def test_node_create_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_node_create_with_single_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -754,7 +764,9 @@ async def test_node_create_with_single_relationship(db: InfrahubDatabase, defaul
     assert len(paths) == 1
 
 
-async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema):
+async def test_node_create_with_multiple_relationship(
+    db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema
+) -> None:
     fruit = registry.schema.get(name="GardenFruit")
     tag = registry.schema.get(name=InfrahubKind.TAG)
 
@@ -788,7 +800,7 @@ async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, defa
 
 async def test_node_create_with_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-):
+) -> None:
     DUMMY = NodeSchema(
         name="Dummy",
         namespace="Testing",
@@ -885,12 +897,241 @@ async def test_node_create_with_object_template(
     )
 
 
+async def test_node_create_with_object_template_with_profile(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Test creating a device from a template with profile application."""
+    from infrahub.profiles.node_applier import NodeProfilesApplier
+
+    # Define schemas
+    DUMMY = NodeSchema(
+        name="Dummy",
+        namespace="Testing",
+        generate_template=True,
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+
+    SIMPLE_DEVICE = NodeSchema(
+        name="Device",
+        namespace="Testing",
+        generate_template=True,
+        generate_profile=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, order_weight=500),
+            AttributeSchema(name="manufacturer", kind="Text", order_weight=500),
+            AttributeSchema(name="height", kind="Number", order_weight=300),
+            AttributeSchema(name="weight", kind="Number", order_weight=1000),
+            AttributeSchema(name="airflow", kind="Text", enum=["Front to rear", "Rear to front"], optional=True),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="dummy",
+                peer="TestingDummy",
+                cardinality=RelationshipCardinality.ONE,
+                order_weight=5000,
+                optional=True,
+            )
+        ],
+    )
+
+    # Register schemas
+    registry.schema.set(name=DUMMY.kind, schema=DUMMY, branch=default_branch.name)
+    registry.schema.set(name=SIMPLE_DEVICE.kind, schema=SIMPLE_DEVICE, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    # Get generated schemas
+    template_schema = registry.schema.get(name=f"Template{SIMPLE_DEVICE.kind}", branch=default_branch.name)
+    node_schema = registry.schema.get(name=SIMPLE_DEVICE.kind, branch=default_branch.name)
+    profile_schema = registry.schema.get(name=f"Profile{SIMPLE_DEVICE.kind}", branch=default_branch.name)
+
+    # Validate order_weight inheritance
+    template_weights = {
+        attr.name: attr.order_weight for attr in template_schema.attributes + template_schema.relationships
+    }
+    assert "name" not in template_weights
+    assert template_weights["manufacturer"] == 10500
+    assert template_weights["dummy"] == 15000
+
+    # Create profile
+    profile = await Node.init(db=db, schema=profile_schema)
+    await profile.new(db=db, profile_name="Airflow Rear to Front", airflow="Rear to front")
+    await profile.save(db=db)
+
+    # Create template with profile
+    template = await Node.init(db=db, schema=template_schema)
+    await template.new(db=db, template_name="Juniper MX204", manufacturer="Juniper", height=1, weight=8)
+    await template.profiles.update(db=db, data=[profile])
+    await template.save(db=db)
+
+    # Apply profile to template
+    applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await applier.apply_profiles(node=template)
+    await template.save(db=db)
+    assert template.airflow.value == "Rear to front"
+    assert template.airflow.source_id == profile.id
+
+    # Create device from template
+    device = await Node.init(db=db, schema=node_schema)
+    await device.new(db=db, name="par-th2-br01", object_template={"id": template.id})
+    await device.save(db=db)
+
+    # Verify device attributes
+    assert device.id and device.db_id
+    assert device.name.value == "par-th2-br01"
+    assert device.node_changelog.attributes["name"].value_update_status == DiffAction.ADDED
+    assert "source" not in device.node_changelog.attributes["name"].properties
+
+    # Verify template-sourced attributes
+    template_attrs = {
+        "manufacturer": ("Juniper", template.id),
+        "height": (1, template.id),
+        "weight": (8, template.id),
+    }
+    for attr_name, (expected_value, expected_source) in template_attrs.items():
+        attr = getattr(device, attr_name)
+        changelog_attr = device.node_changelog.attributes[attr_name]
+        assert attr.value == changelog_attr.value == expected_value
+        assert changelog_attr.value_update_status == DiffAction.ADDED
+        assert attr.source_id == changelog_attr.properties["source"].value == expected_source
+
+    # Verify profile-sourced attribute
+    assert device.airflow.value.value == "Rear to front"
+    assert device.node_changelog.attributes["airflow"].value.value == "Rear to front"
+    assert device.node_changelog.attributes["airflow"].value_update_status == DiffAction.ADDED
+    assert device.airflow.source_id == profile.id
+    assert device.node_changelog.attributes["airflow"].properties["source"].value == profile.id
+
+
+async def test_node_create_with_object_template_with_profile_and_components(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Test creating a node with a template that has a profile and component relationships.
+
+    This test demonstrates that:
+    - Device has a component relationship to interfaces
+    - Interface templates can have profiles
+    - Profiles are applied correctly to interface templates
+    """
+    from infrahub.profiles.node_applier import NodeProfilesApplier
+
+    # Define schemas
+    INTERFACE = NodeSchema(
+        name="Interface",
+        namespace="Testing",
+        generate_template=True,
+        generate_profile=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=False, order_weight=500),
+            AttributeSchema(name="speed", kind="Number", order_weight=400, optional=True),
+            AttributeSchema(name="mtu", kind="Number", order_weight=300, optional=True),
+            AttributeSchema(name="enabled", kind="Boolean", default_value=True, optional=True),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="device",
+                peer="TestingDevice",
+                kind=RelationshipKind.PARENT,
+                cardinality=RelationshipCardinality.ONE,
+                optional=False,
+            ),
+        ],
+    )
+
+    DEVICE = NodeSchema(
+        name="Device",
+        namespace="Testing",
+        generate_template=True,
+        generate_profile=True,
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True, order_weight=500),
+            AttributeSchema(name="manufacturer", kind="Text", order_weight=500, optional=True),
+            AttributeSchema(name="model", kind="Text", order_weight=400, optional=True),
+            AttributeSchema(name="height", kind="Number", order_weight=300, optional=True),
+            AttributeSchema(
+                name="airflow",
+                kind="Text",
+                enum=["Front to rear", "Rear to front"],
+                optional=True,
+            ),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name="interfaces",
+                peer="TestingInterface",
+                kind=RelationshipKind.COMPONENT,
+                cardinality=RelationshipCardinality.MANY,
+                optional=True,
+            ),
+        ],
+    )
+
+    registry.schema.set(name=INTERFACE.kind, schema=INTERFACE, branch=default_branch.name)
+    registry.schema.set(name=DEVICE.kind, schema=DEVICE, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    # Get schemas
+    interface_template_schema = registry.schema.get(name=f"Template{INTERFACE.kind}", branch=default_branch.name)
+    interface_profile_schema = registry.schema.get(name=f"Profile{INTERFACE.kind}", branch=default_branch.name)
+    device_template_schema = registry.schema.get(name=f"Template{DEVICE.kind}", branch=default_branch.name)
+    device_profile_schema = registry.schema.get(name=f"Profile{DEVICE.kind}", branch=default_branch.name)
+
+    # Create profiles
+    interface_profile = await Node.init(db=db, schema=interface_profile_schema)
+    await interface_profile.new(db=db, profile_name="Standard Interface", speed=10000, mtu=9000)
+    await interface_profile.save(db=db)
+
+    device_profile = await Node.init(db=db, schema=device_profile_schema)
+    await device_profile.new(db=db, profile_name="High Density", airflow="Rear to front", height=1)
+    await device_profile.save(db=db)
+
+    # Create device template with profile
+    device_template = await Node.init(db=db, schema=device_template_schema)
+    await device_template.new(db=db, template_name="Juniper MX204", manufacturer="Juniper", model="MX204")
+    await device_template.profiles.update(db=db, data=[device_profile])
+    await device_template.save(db=db)
+
+    applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await applier.apply_profiles(node=device_template)
+    await device_template.save(db=db)
+
+    # Verify device profile application
+    assert device_template.airflow.value == "Rear to front"
+    assert device_template.airflow.source_id == device_profile.id
+    assert device_template.height.value == 1
+
+    # Create interface templates with profile (loop for efficiency)
+    interface_names = ["eth0", "eth1"]
+    for name in interface_names:
+        iface_template = await Node.init(db=db, schema=interface_template_schema)
+        await iface_template.new(db=db, template_name=name, name=name, enabled=True, device=device_template)
+        await iface_template.profiles.update(db=db, data=[interface_profile])
+        await iface_template.save(db=db)
+        await applier.apply_profiles(node=iface_template)
+        await iface_template.save(db=db)
+
+        # Verify profile application
+        assert iface_template.speed.value == 10000
+        assert iface_template.speed.source_id == interface_profile.id
+        assert iface_template.mtu.value == 9000
+
+    # Verify component relationships
+    device_template = await NodeManager.get_one(id=device_template.id, db=db)
+    device_interfaces = await device_template.interfaces.get_peers(db=db)
+    assert len(device_interfaces) == 2
+
+    # Verify all interfaces are templates with correct profile values
+    for iface in device_interfaces.values():
+        assert iface.get_kind().startswith("Template")
+        assert iface.speed.value == 10000
+        assert iface.mtu.value == 9000
+
+
 # --------------------------------------------------------------------------
 # Update
 # --------------------------------------------------------------------------
 
 
-async def test_node_update_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_update_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -930,7 +1171,9 @@ async def test_node_update_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert await count_relationships(db=db) == nbr_rels
 
 
-async def test_node_update_local_attrs_with_flags(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_update_local_attrs_with_flags(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     fields_to_query = {"name": True, "level": True}
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
@@ -948,7 +1191,7 @@ async def test_node_update_local_attrs_with_flags(db: InfrahubDatabase, default_
 
 async def test_node_update_local_attrs_with_metadata(
     db: InfrahubDatabase, criticality_schema, first_account, second_account, branch: Branch
-):
+) -> None:
     obj1 = await Node.init(db=db, branch=branch, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     obj1.name.source = first_account
@@ -996,7 +1239,7 @@ async def test_node_update_local_attrs_with_metadata(
 
 
 @pytest.mark.parametrize("use_branch", [True, False])
-async def test_update_related_node(db: InfrahubDatabase, data_schema, default_branch: Branch, use_branch: bool):
+async def test_update_related_node(db: InfrahubDatabase, data_schema, default_branch: Branch, use_branch: bool) -> None:
     """
     This test has been written to troubleshoot a specific issue
     where a relationship between 2 nodes was being deleted when one of the node was getting updated.
@@ -1148,7 +1391,7 @@ async def test_update_related_node(db: InfrahubDatabase, data_schema, default_br
 # --------------------------------------------------------------------------
 
 
-async def test_node_delete_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_delete_local_attrs(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj2 = await Node.init(db=db, schema=criticality_schema)
     await obj2.new(db=db, name="medium", level=3, description="My desc", color="#333333")
     await obj2.save(db=db)
@@ -1168,7 +1411,7 @@ async def test_node_delete_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert not await NodeManager.get_one(id=obj2.id, db=db)
 
 
-async def test_node_delete_query_past(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_delete_query_past(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -1189,7 +1432,9 @@ async def test_node_delete_query_past(db: InfrahubDatabase, default_branch: Bran
     assert await NodeManager.get_one(id=obj2.id, at=time1, db=db)
 
 
-async def test_node_delete_local_attrs_in_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_delete_local_attrs_in_branch(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -1217,7 +1462,9 @@ async def test_node_delete_local_attrs_in_branch(db: InfrahubDatabase, default_b
     assert len(resp) == 1
 
 
-async def test_node_delete_with_relationship_bidir(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_node_delete_with_relationship_bidir(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -1251,7 +1498,7 @@ async def test_node_delete_with_relationship_bidir(db: InfrahubDatabase, default
 # --------------------------------------------------------------------------
 
 
-async def test_node_create_in_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_create_in_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     branch1 = await create_branch(branch_name="branch1", db=db)
 
     obj = await Node.init(db=db, schema=criticality_schema, branch=branch1)
@@ -1263,7 +1510,7 @@ async def test_node_create_in_branch(db: InfrahubDatabase, default_branch: Branc
     assert obj2.id == obj.id
 
 
-async def test_node_update_in_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_node_update_in_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -1289,7 +1536,9 @@ async def test_node_update_in_branch(db: InfrahubDatabase, default_branch: Branc
 # --------------------------------------------------------------------------
 
 
-async def test_node_create_in_branch_global(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global):
+async def test_node_create_in_branch_global(
+    db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global
+) -> None:
     branch1 = await create_branch(branch_name="branch1", db=db)
 
     obj = await Node.init(db=db, schema="GardenFruit", branch=branch1)
@@ -1303,7 +1552,9 @@ async def test_node_create_in_branch_global(db: InfrahubDatabase, default_branch
     assert obj22.id == obj.id
 
 
-async def test_node_update_in_branch_global(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global):
+async def test_node_update_in_branch_global(
+    db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global
+) -> None:
     obj1 = await Node.init(db=db, schema="GardenFruit")
     await obj1.new(db=db, name="RedApple")
     await obj1.save(db=db)
@@ -1326,7 +1577,7 @@ async def test_node_update_in_branch_global(db: InfrahubDatabase, default_branch
 
 async def test_node_update_attribute_hybrid_in_branch_global(
     db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global
-):
+) -> None:
     red = await Node.init(db=db, schema=InfrahubKind.TAG)
     await red.new(db=db, name="red")
     await red.save(db=db)
@@ -1363,7 +1614,7 @@ async def test_node_update_attribute_hybrid_in_branch_global(
 
 async def test_node_relationship_in_branch_global(
     db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global
-):
+) -> None:
     red = await Node.init(db=db, schema=InfrahubKind.TAG)
     await red.new(db=db, name="red")
     await red.save(db=db)
@@ -1413,7 +1664,9 @@ async def test_node_relationship_in_branch_global(
     assert len(await f2_main.related_fruits.get(db=db)) == 0
 
 
-async def test_node_delete_in_branch_global(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global):
+async def test_node_delete_in_branch_global(
+    db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global
+) -> None:
     red = await Node.init(db=db, schema=InfrahubKind.TAG)
     await red.new(db=db, name="red")
     await red.save(db=db)
@@ -1449,7 +1702,9 @@ async def test_node_delete_in_branch_global(db: InfrahubDatabase, default_branch
 # --------------------------------------------------------------------------
 
 
-async def test_node_relationship_interface(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema):
+async def test_node_relationship_interface(
+    db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema
+) -> None:
     d1 = await Node.init(db=db, schema="TestCar")
     await d1.new(db=db, name="Porsche 911", nbr_doors=2)
     await d1.save(db=db)
@@ -1472,7 +1727,7 @@ async def test_node_relationship_interface(db: InfrahubDatabase, default_branch:
 # --------------------------------------------------------------------------
 
 
-async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
+async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branch, prefix_schema) -> None:
     prefix = registry.schema.get(name="TestPrefix")
 
     p1 = await Node.init(db=db, schema=prefix)
@@ -1497,7 +1752,7 @@ async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branc
     assert retrieve_p3.prefix.value == "2001:db8::/128"
 
 
-async def test_node_serialize_address(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
+async def test_node_serialize_address(db: InfrahubDatabase, default_branch: Branch, prefix_schema) -> None:
     ip = registry.schema.get(name="TestIp")
 
     i1 = await Node.init(db=db, schema=ip)

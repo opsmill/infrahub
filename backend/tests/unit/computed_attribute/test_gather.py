@@ -9,12 +9,12 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
-async def test_gather_trigger_computed_attribute_jinja2_empty(register_core_models_schema):
+async def test_gather_trigger_computed_attribute_jinja2_empty(register_core_models_schema) -> None:
     triggers = await gather_trigger_computed_attribute_jinja2()
     assert len(triggers) == 0
 
 
-async def test_gather_trigger_computed_attribute_jinja2_only_main(car_person_schema_computed_attr):
+async def test_gather_trigger_computed_attribute_jinja2_only_main(car_person_schema_computed_attr) -> None:
     triggers = await gather_trigger_computed_attribute_jinja2()
     assert len(triggers) == 1
     trigger = triggers[0]
@@ -25,7 +25,7 @@ async def test_gather_trigger_computed_attribute_jinja2_only_main(car_person_sch
 
 async def test_gather_trigger_computed_attribute_jinja2_different_branch(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_computed_attr
-):
+) -> None:
     branch = await create_branch(branch_name="branch2", db=db)
 
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
@@ -64,7 +64,7 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
 
 async def test_gather_trigger_computed_attribute_python(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_computed_attr, transform01: Node
-):
+) -> None:
     triggers, trigger_queries = await gather_trigger_computed_attribute_python(db=db)
     assert triggers
     assert trigger_queries

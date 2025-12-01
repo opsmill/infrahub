@@ -1,14 +1,14 @@
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-
-import { TASK_OBJECT } from "@/config/constants";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { TASK_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -24,8 +24,9 @@ type BranchMergeButtonProps = {
 export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   const { isAuthenticated } = useAuth();
   const date = useAtomValue(datetimeAtom);
+  const [isMergeRequested, setIsMergeRequested] = useState(false);
 
-  const { loading, data } = useQuery(GET_BRANCH_ACTION_STATE, {
+  const { loading, data, refetch } = useQuery(GET_BRANCH_ACTION_STATE, {
     variables: {
       branch: branch.name,
       workflow: [BRANCH_MERGE_WORKFLOW],
@@ -35,8 +36,20 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
+  const hasOngoingTask = taskData?.count > 0;
+
+  // Reset local state when server confirms no ongoing merge task
+  useEffect(() => {
+    if (!loading && !hasOngoingTask) {
+      setIsMergeRequested(false);
+    }
+  }, [loading, hasOngoingTask]);
+
+  const hasMergeInProgress = isMergeRequested || hasOngoingTask;
 
   const handleSubmit = async () => {
+    setIsMergeRequested(true);
+
     try {
       await graphqlClient.mutate({
         mutation: BRANCH_MERGE,
@@ -52,8 +65,11 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merge requested!"} />, {
         toastId: "alert-success",
       });
+
+      await refetch();
     } catch (error) {
       console.error(error);
+      setIsMergeRequested(false);
       toast(
         <Alert type={ALERT_TYPES.ERROR} message={"An error occurred while merging the branch"} />
       );
@@ -62,7 +78,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
 
   return (
     <Button
-      disabled={!isAuthenticated || loading || branch.is_default || taskData?.count > 0}
+      disabled={!isAuthenticated || loading || branch.is_default || hasMergeInProgress}
       onClick={handleSubmit}
       variant={"active"}
       className="flex items-center gap-2"

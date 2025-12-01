@@ -2,11 +2,10 @@ import { Icon } from "@iconify-icon/react";
 import { useQueryState } from "nuqs";
 import { useRef } from "react";
 
-import { TASK_TAB } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
+import { TASK_TAB } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import type { NodeObject } from "@/entities/nodes/types";

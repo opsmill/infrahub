@@ -3,8 +3,6 @@ import { useAtomValue } from "jotai";
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 
-import { TASK_OBJECT } from "@/config/constants";
-
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
@@ -15,8 +13,10 @@ import { type Property, PropertyList } from "@/shared/components/table/property-
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
 import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
@@ -90,10 +90,21 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     {
       name: "Created by",
       value: (
-        <Tooltip content={proposedChangesDetails?.created_by?.node?.display_label} enabled>
+        <Tooltip
+          content={
+            proposedChangesDetails?.created_by?.node
+              ? getNodeLabel(proposedChangesDetails.created_by.node)
+              : ""
+          }
+          enabled
+        >
           <Avatar
             size={"sm"}
-            name={proposedChangesDetails?.created_by?.node?.display_label}
+            name={
+              proposedChangesDetails?.created_by?.node
+                ? getNodeLabel(proposedChangesDetails.created_by.node)
+                : ""
+            }
             className="bg-custom-blue-green"
           />
         </Tooltip>
@@ -104,8 +115,8 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       value: (
         <div className="flex flex-wrap gap-2">
           {approvedBy.map((user: any, index: number) => (
-            <Tooltip key={index} content={user.display_label} enabled>
-              <Avatar size={"sm"} name={user.display_label} />
+            <Tooltip key={index} content={getNodeLabel(user)} enabled>
+              <Avatar size={"sm"} name={getNodeLabel(user)} />
             </Tooltip>
           ))}
         </div>
@@ -116,8 +127,8 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       value: (
         <div className="flex flex-wrap gap-2">
           {rejectedBy.map((user: any, index: number) => (
-            <Tooltip key={index} content={user.display_label} enabled>
-              <Avatar size={"sm"} name={user.display_label} />
+            <Tooltip key={index} content={getNodeLabel(user)} enabled>
+              <Avatar size={"sm"} name={getNodeLabel(user)} />
             </Tooltip>
           ))}
         </div>
@@ -128,8 +139,8 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       value: (
         <div className="flex flex-wrap gap-2">
           {reviewers.map((reviewer: any, index: number) => (
-            <Tooltip key={index} content={reviewer.display_label} enabled>
-              <Avatar size={"sm"} name={reviewer.display_label} />
+            <Tooltip key={index} content={getNodeLabel(reviewer)} enabled>
+              <Avatar size={"sm"} name={getNodeLabel(reviewer)} />
             </Tooltip>
           ))}
         </div>
@@ -161,9 +172,18 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           {proposedChangesDetails?.description?.value && (
             <CardWithBorder contentClassName="" data-testid="pc-description">
               <CardWithBorder.Title className="flex items-center gap-2">
-                <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
+                <Avatar
+                  name={
+                    proposedChangesDetails?.created_by?.node
+                      ? getNodeLabel(proposedChangesDetails.created_by.node)
+                      : ""
+                  }
+                  size="sm"
+                />
 
-                {proposedChangesDetails?.created_by?.node?.display_label}
+                {proposedChangesDetails?.created_by?.node
+                  ? getNodeLabel(proposedChangesDetails.created_by.node)
+                  : ""}
 
                 <DateDisplay
                   date={proposedChangesDetails.description.updated_at}

@@ -73,7 +73,7 @@ from tests.test_data import dataset01 as ds01
 
 
 @pytest.fixture(scope="module", autouse=True)
-def load_component_dependency_registry():
+def load_component_dependency_registry() -> None:
     build_component_registry()
 
 
@@ -1814,6 +1814,7 @@ async def criticality_schema_root(register_core_models_schema: None) -> SchemaRo
         "display_labels": ["label__value"],
         "inherit_from": ["TestGenericCriticality"],
         "branch": BranchSupportType.AWARE.value,
+        "generate_template": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
@@ -3042,7 +3043,7 @@ def workflow_local(dependency_provider: Provider):
 
 
 @pytest.fixture
-async def generic_car_person_schema(default_branch: Branch, data_schema):
+async def generic_car_person_schema(default_branch: Branch, data_schema) -> None:
     schema: dict[str, Any] = {
         "generics": [
             {

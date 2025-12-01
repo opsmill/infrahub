@@ -7,12 +7,12 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import type { IPPrefixNode } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-ancestors";
-import { useGetIpPrefixAncestors } from "@/entities/ipam/ip-prefixes/domain/get-ip-prefix-ancestors.query";
 import { constructPathForIpam } from "@/entities/ipam/utils";
+import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
-import type { NodeRelationshipOne } from "@/entities/nodes/types";
+import type { NodeCoreWithParent, NodeRelationshipOne } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -101,7 +101,7 @@ interface IpPrefixHierarchyBreadcrumbProps {
 }
 
 function IpPrefixHierarchyBreadcrumb({ objectKind, objectId }: IpPrefixHierarchyBreadcrumbProps) {
-  const { data: ancestors, isPending, error } = useGetIpPrefixAncestors(objectKind, objectId);
+  const { data, isPending, error } = useGetObjectAncestors({ objectKind, objectId });
 
   if (isPending) {
     return <IpamBreadcrumbLoading />;
@@ -111,15 +111,15 @@ function IpPrefixHierarchyBreadcrumb({ objectKind, objectId }: IpPrefixHierarchy
     return <BreadcrumbError error={error} />;
   }
 
-  if (!ancestors || ancestors.length === 0) {
+  if (!data || data.length === 0) {
     return null;
   }
 
-  return <RecursiveAncestorBreadcrumb ancestors={ancestors} currentObjectId={objectId} />;
+  return <RecursiveAncestorBreadcrumb ancestors={data} currentObjectId={objectId} />;
 }
 
 interface RecursiveAncestorBreadcrumbProps {
-  ancestors: IPPrefixNode[];
+  ancestors: NodeCoreWithParent[];
   currentObjectId?: string;
 }
 
@@ -146,7 +146,7 @@ function RecursiveAncestorBreadcrumb({
       <IpamBreadcrumbSeparator />
 
       <IpamBreadcrumbLink to={getObjectDetailsUrl(currentObject.__typename, currentObject.id)}>
-        {currentObject.display_label}
+        {getNodeLabel(currentObject)}
       </IpamBreadcrumbLink>
     </>
   );
@@ -190,7 +190,7 @@ function IpAddressBreadcrumb({ objectSchema, objectId }: IpAddressBreadcrumbProp
       <IpamBreadcrumbSeparator />
 
       <IpamBreadcrumbLink to={getObjectDetailsUrl(data.__typename, data.id)}>
-        {data.display_label}
+        {getNodeLabel(data)}
       </IpamBreadcrumbLink>
     </>
   );

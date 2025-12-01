@@ -1,13 +1,12 @@
 import { useQueryState } from "nuqs";
 
-import { QSP } from "@/config/qsp";
-
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import { isMinLength, isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { QSP } from "@/shared/config/qsp";
 
 import { useCreateBranchMutation } from "@/entities/branches/domain/create-branch.mutation";
 

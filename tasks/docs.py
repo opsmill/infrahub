@@ -177,7 +177,7 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
     print(" - Generate Infrahub CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'poetry run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
+            exec_cmd = f'uv run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
             context.run(exec_cmd)
 
 

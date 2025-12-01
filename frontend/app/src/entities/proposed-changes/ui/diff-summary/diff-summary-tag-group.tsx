@@ -25,7 +25,7 @@ export function DiffSummaryTagGroup<T extends object>({
 }: DiffSummaryProps<T>) {
   return (
     <TagGroup aria-label="Diff summary" {...props}>
-      <TagList className="inline-flex items-center gap-2">
+      <TagList className="inline-flex items-center gap-2 rounded-md bg-gray-100 p-1">
         <TagList items={items} renderEmptyState={renderEmptyState}>
           {children}
         </TagList>
@@ -43,10 +43,10 @@ const diffSummaryTagStyles = cva(
   {
     variants: {
       variant: {
-        added: "bg-green-200 text-green-800",
-        removed: "bg-red-200 text-red-800",
-        updated: "bg-blue-200 text-blue-800",
-        conflicts: "bg-yellow-200 text-yellow-800",
+        added: "",
+        removed: "",
+        updated: "",
+        conflicts: "",
       },
       isMuted: {
         true: "opacity-50",
@@ -71,7 +71,7 @@ export function DiffSummaryTag({
 }: DiffSummaryTagProps) {
   return (
     <Tag
-      className={classNames(diffSummaryTagStyles({ variant, isMuted }), className)}
+      className={classNames(diffSummaryTagStyles({ isMuted }), className)}
       textValue={`diff ${variant} count`}
       {...props}
     >

@@ -3,6 +3,7 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
+  type AddAttributesToRequestOptions,
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
@@ -27,6 +28,8 @@ export type GetObjectsParams = ContextParams &
     filters?: Array<Filter>;
     getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
     getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
+    attributesOptions?: AddAttributesToRequestOptions;
+    relationshipsOptions?: AddAttributesToRequestOptions;
   };
 
 export type GetObjects = (args: GetObjectsParams) => Promise<Array<NodeObject>>;
@@ -40,6 +43,8 @@ export const getObjects: GetObjects = async ({
   filters,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
+  attributesOptions,
+  relationshipsOptions,
 }) => {
   const attributesVisible = getAttributesVisible(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);
@@ -60,8 +65,8 @@ export const getObjects: GetObjects = async ({
             id: true,
             display_label: true,
             hfid: true,
-            ...addAttributesToRequest(attributesVisible),
-            ...addRelationshipsToRequest(relationshipsVisible),
+            ...addAttributesToRequest(attributesVisible, attributesOptions),
+            ...addRelationshipsToRequest(relationshipsVisible, relationshipsOptions),
           },
         },
       },

@@ -110,7 +110,7 @@ class UpdateComputedAttribute(Mutation):
             event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
-                changelog=target_node.node_changelog.model_dump(),
+                changelog=target_node.node_changelog,
                 fields=[str(data.attribute)],
                 meta=EventMeta(
                     context=graphql_context.get_context(),

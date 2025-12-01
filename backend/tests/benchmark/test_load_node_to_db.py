@@ -8,7 +8,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 
 
-def test_load_node_to_db_node_schema(aio_benchmark, db: InfrahubDatabase, default_branch):
+def test_load_node_to_db_node_schema(aio_benchmark, db: InfrahubDatabase, default_branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 

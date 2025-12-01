@@ -16,7 +16,7 @@ from .factories import (
 
 
 class TestPathIdentifierEnricher:
-    async def test_path_identifiers_added(self, db: InfrahubDatabase, car_person_schema):
+    async def test_path_identifiers_added(self, db: InfrahubDatabase, car_person_schema) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         diff_attribute_value_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE)
         diff_attribute_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_OWNER)

@@ -39,6 +39,7 @@ cron
 Cron
 cypher
 Dagster
+Diataxis
 datacenter
 dataloader
 datastore
@@ -186,6 +187,8 @@ Redoc
 regenerate_host_artifact
 repo
 requesters
+resizable
+Resizable
 resources
 REST
 reusability
@@ -208,6 +211,7 @@ subtyping
 Subtyping
 Telecom
 template_path
+templated
 toml
 toolchain
 Tooltips
@@ -215,6 +219,7 @@ towncrier
 Towncrier
 UIs
 uncheck
+unoptimized
 uniqueness_constraints
 upsert
 upserting
@@ -223,6 +228,7 @@ userinfo
 uuid
 UUID
 UUIDs
+uv
 validator
 validators
 Version Control
