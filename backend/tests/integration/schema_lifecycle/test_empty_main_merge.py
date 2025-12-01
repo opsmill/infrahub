@@ -316,6 +316,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
         sfp_diff_node = diff_nodes_by_uuid[sfp_uuid]
         sfp_attr_values = self._get_diff_node_attribute_values(sfp_diff_node)
         assert sfp_attr_values == {
+            "display_label": "NULL",
             "human_friendly_id": '["SFP (1GE)","54321"]',
             "phys_type": "SFP (1GE)",
             "serial_number": "54321",
