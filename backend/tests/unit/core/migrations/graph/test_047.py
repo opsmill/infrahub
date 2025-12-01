@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m047_backfill_or_null_display_label import Migration047
 from infrahub.core.query.node import NodeListGetAttributeQuery
 from tests.helpers.test_app import TestInfrahubApp
@@ -127,3 +129,47 @@ class TestMigration047(TestInfrahubApp):
 
         second_values = await self.get_attribute_values_from_db(db=db, branch=default_branch, node_ids=node_ids)
         assert second_values[car_accord_main.id] == first_value
+
+    async def test_migration_047_execute_against_branch(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema,
+        person_john_main: Node,
+        person_jane_main: Node,
+    ) -> None:
+        await self.erase_display_label(db=db, node=person_john_main)
+        await self.erase_display_label(db=db, node=person_jane_main)
+
+        test_branch = await create_branch(db=db, branch_name="test-branch-m047")
+
+        person_john_branch = await NodeManager.get_one(db=db, id=person_john_main.id, branch=test_branch)
+        person_john_branch.height.value = 185
+        await person_john_branch.save(db=db)
+
+        person_jane_branch = await NodeManager.get_one(db=db, id=person_jane_main.id, branch=test_branch)
+        person_jane_branch.height.value = 165
+        await person_jane_branch.save(db=db)
+
+        initial_values = await self.get_attribute_values_from_db(
+            db=db, branch=test_branch, node_ids=[person_john_branch.id, person_jane_branch.id]
+        )
+        assert initial_values[person_john_branch.id] is None
+        assert initial_values[person_jane_branch.id] is None
+
+        async with db.start_session() as dbs:
+            migration = Migration047()
+            execution_result = await migration.execute_against_branch(db=dbs, branch=test_branch)
+            assert not execution_result.errors
+
+        branch_final_values = await self.get_attribute_values_from_db(
+            db=db, branch=test_branch, node_ids=[person_john_branch.id, person_jane_branch.id]
+        )
+        assert branch_final_values[person_john_branch.id] == "John"
+        assert branch_final_values[person_jane_branch.id] == "Jane"
+
+        default_values = await self.get_attribute_values_from_db(
+            db=db, branch=default_branch, node_ids=[person_john_main.id, person_jane_main.id]
+        )
+        assert default_values[person_john_main.id] is None
+        assert default_values[person_jane_main.id] is None

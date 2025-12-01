@@ -14,7 +14,11 @@ from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
 
 from .load_schema_branch import get_or_load_schema_branch
-from .m044_backfill_hfid_display_label_in_db import DefaultBranchNodeCount, GetPathDetailsDefaultBranch
+from .m044_backfill_hfid_display_label_in_db import (
+    DefaultBranchNodeCount,
+    GetPathDetailsBranchQuery,
+    GetPathDetailsDefaultBranch,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
@@ -414,17 +418,30 @@ class Migration047(MigrationRequiringRebase):
 
         # loop until we get no results from the get_details_query
         while True:
-            get_details_query = await GetPathDetailsDefaultBranch.init(
-                db=db, schema_kind=schema.kind, schema_paths=schema_paths, offset=offset, limit=self.update_batch_size
-            )
+            if branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
+                get_details_query = await GetPathDetailsDefaultBranch.init(
+                    db=db,
+                    schema_kind=schema.kind,
+                    schema_paths=schema_paths,
+                    offset=offset,
+                    limit=self.update_batch_size,
+                )
+            else:
+                get_details_query = await GetPathDetailsBranchQuery.init(
+                    db=db,
+                    branch=branch,
+                    schema_kind=schema.kind,
+                    schema_paths=schema_paths,
+                    updates_only=False,
+                    offset=offset,
+                    limit=self.update_batch_size,
+                )
             await get_details_query.execute(db=db)
 
             # Get the values for all schema paths
             schema_path_values_map = get_details_query.get_result_map(schema_paths)
             num_updates = len(schema_path_values_map)
 
-            # Format the values (join multiple values with space for display_label)
-            # NOTE: this may not result in what the user defined,
             formatted_schema_path_values_map = {}
             for k, v in schema_path_values_map.items():
                 if not v:
@@ -531,6 +548,97 @@ class Migration047(MigrationRequiringRebase):
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
-    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:  # noqa: ARG002
-        # FIXME
+    async def _do_one_schema_branch(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        schema: MainSchemaTypes,
+        schema_branch: SchemaBranch,
+        attribute_schema: AttributeSchema,
+    ) -> None:
+        print(f"Processing {schema.kind}.{attribute_schema.name} for {branch.name}...", end="")
+
+        schema_paths = self._extract_schema_paths_from_display_label(schema=schema, schema_branch=schema_branch)
+        if not schema_paths:
+            return
+
+        offset = 0
+
+        while True:
+            # loop until we get no results from the get_details_query
+            get_details_query = await GetPathDetailsBranchQuery.init(
+                db=db,
+                branch=branch,
+                schema_kind=schema.kind,
+                schema_paths=schema_paths,
+                offset=offset,
+                limit=self.update_batch_size,
+            )
+            await get_details_query.execute(db=db)
+
+            schema_path_values_map = get_details_query.get_result_map(schema_paths)
+            if not schema_path_values_map:
+                print("done")
+                break
+            formatted_schema_path_values_map = {}
+            for k, v in schema_path_values_map.items():
+                if not v:
+                    continue
+                # NOTE: this may not be what the user defined, we should render the Jinja2 template
+                formatted_schema_path_values_map[k] = " ".join(item for item in v if item is not None)
+
+            update_attr_values_query = await UpdateAttributeValuesQuery.init(
+                db=db,
+                branch=branch,
+                attribute_schema=attribute_schema,
+                values_by_id_map=formatted_schema_path_values_map,
+            )
+            await update_attr_values_query.execute(db=db)
+
+            offset += self.update_batch_size
+
+    async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
+        schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
+
+        base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
+        display_label_attribute_schema = base_node_schema.get_attribute("display_label")
+
+        try:
+            get_nodes_without_dl_query = await GetNodesWithoutDisplayLabelQuery.init(
+                db=db, kinds_to_skip=self.kinds_to_skip
+            )
+            await get_nodes_without_dl_query.execute(db=db)
+            nodes_without_display_label = get_nodes_without_dl_query.get_node_uuids()
+
+            if nodes_without_display_label:
+                for offset in range(0, len(nodes_without_display_label), self.update_batch_size):
+                    batch_uuids = nodes_without_display_label[offset : offset + self.update_batch_size]
+                    if not batch_uuids:
+                        break
+
+                    create_display_label_query = await CreateDisplayLabelNullQuery.init(
+                        db=db, branch=branch, node_uuids=batch_uuids
+                    )
+                    await create_display_label_query.execute(db=db)
+
+            for node_schema_name in (
+                schema_branch.node_names + schema_branch.profile_names + schema_branch.template_names
+            ):
+                if node_schema_name in self.kinds_to_skip:
+                    continue
+
+                node_schema = schema_branch.get(name=node_schema_name, duplicate=False)
+                if node_schema.branch != BranchSupportType.AWARE or not node_schema.display_label:
+                    continue
+
+                await self._do_one_schema_all(
+                    db=db,
+                    branch=branch,
+                    schema=node_schema,
+                    schema_branch=schema_branch,
+                    attribute_schema=display_label_attribute_schema,
+                )
+
+        except Exception as exc:
+            return MigrationResult(errors=[str(exc)])
         return MigrationResult()
