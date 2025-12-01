@@ -39,6 +39,7 @@ cron
 Cron
 cypher
 Dagster
+Diataxis
 datacenter
 dataloader
 datastore
@@ -216,6 +217,7 @@ towncrier
 Towncrier
 UIs
 uncheck
+unoptimized
 uniqueness_constraints
 upsert
 upserting
