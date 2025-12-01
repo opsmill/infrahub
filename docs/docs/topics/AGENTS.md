@@ -204,7 +204,6 @@ Use Infrahub's established terminology consistently:
 - Branch (not "workspace" or "environment")
 - Schema (not "model definition")
 - Proposed change (not "pull request" or "change request")
-- Repository (not "repo")
 - Attribute (not "field" or "property")
 
 ## Architecture Explanations
