@@ -14,9 +14,9 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
-import { IPAM_TREE_KEY } from "@/shared/config/localStorage";
 import { classNames } from "@/shared/utils/common";
 
+import { IPAM_TREE_KEY } from "@/entities/ipam/constants";
 import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";
 import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { IpamTreeWithSearch } from "@/entities/ipam/ipam-tree/ui/ipam-tree-with-search";

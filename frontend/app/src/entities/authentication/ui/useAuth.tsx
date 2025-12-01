@@ -1,9 +1,9 @@
 import React from "react";
 
-import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { parseJwt } from "@/shared/utils/common";
 
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import type { User, UserToken } from "@/entities/authentication/types";
 import {
   removeTokensInLocalStorage,

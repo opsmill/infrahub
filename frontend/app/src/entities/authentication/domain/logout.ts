@@ -1,6 +1,6 @@
 import { apiClient } from "@/shared/api/rest/client";
-import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
 
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { removeTokensInLocalStorage } from "@/entities/authentication/utils";
 
 export type Logout = () => Promise<void>;
