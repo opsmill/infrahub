@@ -38,8 +38,9 @@ The Google provider configuration is simplified compared to standard providers. 
 | Parameter | Environment Variable | TOML Path | Description | Required |
 |-----------|---------------------|-----------|-------------|----------|
 | Client ID | `INFRAHUB_OIDC_<SLOT>_CLIENT_ID` | `security.oidc_provider_settings.<slot>.client_id` | The client identifier issued to the client by the identity provider | Yes |
-| Client Secret | `INFRAHUB_OIDC_<SLOT>_CLIENT_SECRET` | `security.oidc_provider_settings.<slot>.client_secret` | The client secret issued to the client by the identity provider | Yes |
+| Client Secret | `INFRAHUB_OIDC_<SLOT>_CLIENT_SECRET` | `security.oidc_provider_settings.<slot>.client_secret` | The client secret issued to the client by the identity provider | No |
 | Discovery URL | `INFRAHUB_OIDC_<SLOT>_DISCOVERY_URL` | `security.oidc_provider_settings.<slot>.discovery_url` | The URL of the OIDC discovery document | Yes |
+| PKCE | `INFRAHUB_OIDC_<SLOT>_PKCE_ENABLED` | `security.oidc_provider_settings.<slot>.pkce_enabled` | Indicates if PKCE is enabled | No |
 | Display Label | `INFRAHUB_OIDC_<SLOT>_DISPLAY_LABEL` | `security.oidc_provider_settings.<slot>.display_label` | The label displayed on the login button | No |
 | Icon | `INFRAHUB_OIDC_<SLOT>_ICON` | `security.oidc_provider_settings.<slot>.icon` | The Material Design icon name to display on the login button | No |
 | Enabled Providers | `INFRAHUB_SECURITY_OIDC_PROVIDERS` | `security.oidc_providers` | Array of enabled OIDC provider slots | Yes* |
@@ -51,10 +52,11 @@ The Google provider configuration is simplified compared to standard providers. 
 | Parameter | Environment Variable | TOML Path | Description | Required |
 |-----------|---------------------|-----------|-------------|----------|
 | Client ID | `INFRAHUB_OAUTH2_<SLOT>_CLIENT_ID` | `security.oauth2_provider_settings.<slot>.client_id` | The client identifier issued to the client by the identity provider | Yes |
-| Client Secret | `INFRAHUB_OAUTH2_<SLOT>_CLIENT_SECRET` | `security.oauth2_provider_settings.<slot>.client_secret` | The client secret issued to the client by the identity provider | Yes |
+| Client Secret | `INFRAHUB_OAUTH2_<SLOT>_CLIENT_SECRET` | `security.oauth2_provider_settings.<slot>.client_secret` | The client secret issued to the client by the identity provider | No |
 | Authorization URL | `INFRAHUB_OAUTH2_<SLOT>_AUTHORIZATION_URL` | `security.oauth2_provider_settings.<slot>.authorization_url` | The authorization endpoint URL | Yes |
 | Token URL | `INFRAHUB_OAUTH2_<SLOT>_TOKEN_URL` | `security.oauth2_provider_settings.<slot>.token_url` | The token endpoint URL | Yes |
 | Userinfo URL | `INFRAHUB_OAUTH2_<SLOT>_USERINFO_URL` | `security.oauth2_provider_settings.<slot>.userinfo_url` | The userinfo endpoint URL | Yes |
+| PKCE | `INFRAHUB_OAUTH2_<SLOT>_PKCE_ENABLED` | `security.oauth2_provider_settings.<slot>.pkce_enabled` | Indicates if PKCE is enabled | No |
 | Display Label | `INFRAHUB_OAUTH2_<SLOT>_DISPLAY_LABEL` | `security.oauth2_provider_settings.<slot>.display_label` | The label displayed on the login button | No |
 | Icon | `INFRAHUB_OAUTH2_<SLOT>_ICON` | `security.oauth2_provider_settings.<slot>.icon` | The Material Design icon name to display on the login button | No |
 | Enabled Providers | `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` | `security.oauth2_providers` | Array of enabled OAuth 2.0 provider slots | Yes* |
