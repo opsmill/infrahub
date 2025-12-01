@@ -13,3 +13,4 @@ MD045: false # no alt text around images
 MD047: false # single trailing newline
 MD059:       # Link descriptions that are provibited
   prohibited_texts: []
+MD060: false # table column style alignment (new in v0.39.0)
