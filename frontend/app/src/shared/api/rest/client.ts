@@ -3,8 +3,8 @@ import createClient, { type Middleware } from "openapi-fetch";
 
 import type { paths } from "@/shared/api/rest/types.generated";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
-import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
 
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/domain/refresh-access-token.query";
 
 export const queryClient = new QueryClient({

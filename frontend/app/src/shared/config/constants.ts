@@ -5,8 +5,6 @@ import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/constants";
 
 export const DEFAULT_BRANCH_NAME = "main";
 
-export const REFRESH_TOKEN_KEY = "refresh_token";
-
 export const NODE_OBJECT = "CoreNode";
 
 export const PROFILE_KIND = "CoreProfile";

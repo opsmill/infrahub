@@ -1,7 +1,7 @@
 import { apiClient } from "@/shared/api/rest/client";
 import type { components } from "@/shared/api/rest/types.generated";
-import { REFRESH_TOKEN_KEY } from "@/shared/config/constants";
 
+import { REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
 import {
   removeTokensInLocalStorage,
   saveTokensInLocalStorage,

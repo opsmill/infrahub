@@ -5,9 +5,9 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
-import { ACCESS_TOKEN_KEY } from "@/shared/config/localStorage";
 import { parseJwt } from "@/shared/utils/common";
 
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
