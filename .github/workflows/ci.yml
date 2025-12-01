@@ -131,7 +131,7 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v20
+        uses: DavidAnson/markdownlint-cli2-action@v21
         with:
           config: .markdownlint.yaml
           globs: |
@@ -922,7 +922,7 @@ jobs:
 
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.name }}
           path: frontend/app/playwright-report/
