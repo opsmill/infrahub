@@ -1,5 +1,4 @@
-import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router";
+import { Outlet, useLocation, useParams } from "react-router";
 
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
@@ -10,71 +9,44 @@ import {
 } from "@/shared/components/ui/resizable";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
-import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
-import ObjectHeader from "@/entities/nodes/object-header";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ObjectHierarchyTreeWrapper } from "@/entities/nodes/hierarchy/ui/object-hierarchy-tree-wrapper";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { getGenericSchemaOfHierarchy } from "@/entities/schema/utils/is-hierarchical-schema";
 
 const ObjectPageLayout = () => {
-  const { objectKind, objectid } = useParams();
-
-  const generics = useAtomValue(genericSchemasAtom);
+  const { objectKind, objectId } = useParams();
+  const location = useLocation();
   const { schema } = useSchema(objectKind);
 
   if (!schema) return <NoDataFound message={`No schema found for ${objectKind}`} />;
 
-  const isHierarchicalModel = "hierarchical" in schema && schema.hierarchical;
-  const inheritFormHierarchicalModel = "hierarchy" in schema && schema.hierarchy;
+  const genericSchemaOfHierarchy = getGenericSchemaOfHierarchy(schema);
+  const isConvertPage = location.pathname.includes("/convert");
 
-  if (isHierarchicalModel || inheritFormHierarchicalModel) {
-    const getTreeSchema = () => {
-      if (isHierarchicalModel) {
-        return schema;
-      }
-
-      if (inheritFormHierarchicalModel) {
-        return generics.find(({ kind }) => kind === schema.hierarchy);
-      }
-
-      return null;
-    };
-
-    const treeSchema = getTreeSchema();
-
-    return (
-      <Content.Card className="flex flex-col">
-        <ObjectHeader schema={schema} objectId={objectid} />
-
-        <ResizablePanelGroup direction="horizontal">
-          {treeSchema && (
-            <>
-              <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
-                <ScrollArea scrollX className="h-full">
-                  <HierarchicalTree
-                    schema={treeSchema}
-                    currentNodeId={objectid}
-                    className="min-w-full p-2"
-                  />
-                </ScrollArea>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-            </>
-          )}
-
-          <ResizablePanel className="flex h-full flex-col">
-            <Outlet />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </Content.Card>
-    );
+  if (!genericSchemaOfHierarchy || isConvertPage) {
+    return <Outlet />;
   }
 
   return (
-    <Content.Card className="flex flex-col">
-      <ObjectHeader schema={schema} objectId={objectid} />
+    <ResizablePanelGroup direction="horizontal" className="items-stretch">
+      <ResizablePanel defaultSize={20} minSize={10} maxSize={50} className="flex grow flex-col">
+        <Content.Card className="flex grow flex-col">
+          <ScrollArea scrollX className="h-full p-1">
+            <ObjectHierarchyTreeWrapper
+              key={genericSchemaOfHierarchy.kind}
+              treeSchema={genericSchemaOfHierarchy}
+              currentNodeId={objectId}
+            />
+          </ScrollArea>
+        </Content.Card>
+      </ResizablePanel>
 
-      <Outlet />
-    </Content.Card>
+      <ResizableHandle />
+
+      <ResizablePanel className="flex grow flex-col">
+        <Outlet />
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 };
 

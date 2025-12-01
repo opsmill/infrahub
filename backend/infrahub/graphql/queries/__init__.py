@@ -1,5 +1,5 @@
 from .account import AccountPermissions, AccountToken
-from .branch import BranchQueryList
+from .branch import BranchQueryList, InfrahubBranchQueryList
 from .internal import InfrahubInfo
 from .ipam import (
     DeprecatedIPAddressGetNextAvailable,
@@ -20,6 +20,7 @@ __all__ = [
     "BranchQueryList",
     "DeprecatedIPAddressGetNextAvailable",
     "DeprecatedIPPrefixGetNextAvailable",
+    "InfrahubBranchQueryList",
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
     "InfrahubInfo",

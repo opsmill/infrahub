@@ -1,4 +1,4 @@
-import { relationshipKindForForm } from "@/config/constants";
+import { relationshipKindForForm } from "@/shared/config/constants";
 
 import {
   IP_ADDRESS_GENERIC,

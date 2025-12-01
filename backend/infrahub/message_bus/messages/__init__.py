@@ -22,20 +22,8 @@ RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
 }
 
 PRIORITY_MAP = {
-    "check.artifact.create": 2,
-    "check.repository.check_definition": 2,
-    "check.repository.merge_conflicts": 2,
     "send.echo.request": 5,  # Currently only for testing purposes, will be removed once all message bus have been migrated to prefect
-    "event.branch.delete": 5,
-    "event.branch.merge": 5,
-    "event.schema.update": 5,
-    "git.diff.names_only": 4,
     "git.file.get": 4,
-    "request.artifact.generate": 2,
-    "request.git.sync": 4,
-    "request.proposed_change.pipeline": 5,
-    "transform.jinja.template": 4,
-    "transform.python.data": 4,
 }
 
 

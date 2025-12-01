@@ -1,35 +1,40 @@
 import { Icon } from "@iconify-icon/react";
 import { Link, useParams } from "react-router";
 
-import { QSP } from "@/config/qsp";
-
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { Table } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
 import { Pagination } from "@/shared/components/ui/pagination";
+import { QSP } from "@/shared/config/qsp";
+import usePagination from "@/shared/hooks/usePagination";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { GET_RESOURCE_POOL_ALLOCATED } from "@/entities/resource-manager/api/resource-pool";
-import { RESOURCE_POOL_ALLOCATED_KIND } from "@/entities/resource-manager/constants";
+import { useGetResourceAllocated } from "@/entities/resource-manager/domain/get-resource-allocated.query";
 
 const ResourceAllocationDetailsPage = () => {
   const { resourcePoolId, resourceId } = useParams();
-  const { data, loading } = useQuery(GET_RESOURCE_POOL_ALLOCATED, {
-    variables: { poolId: resourcePoolId, resourceId },
+  const [{ limit, offset }] = usePagination();
+
+  const { data, error, isPending } = useGetResourceAllocated({
+    poolId: resourcePoolId!,
+    resourceId: resourceId!,
+    limit,
+    offset,
   });
 
-  if (loading) return <ResourceAllocationPageSkeleton />;
+  if (isPending) return <ResourceAllocationPageSkeleton />;
 
-  const getResourcePoolAllocatedData = data[RESOURCE_POOL_ALLOCATED_KIND];
-  const resourcesAllocated = getResourcePoolAllocatedData.edges.map(({ node }: any) => ({
-    values: { ...node },
+  if (error) return <ErrorScreen message={error.message} />;
+
+  const resourcesAllocated = data.nodes.map((node) => ({
+    values: node,
     link: getObjectDetailsUrl(node.kind, node.id, [{ name: QSP.BRANCH, value: node.branch }]),
   }));
-  const totalOfResourcesAllocated = getResourcePoolAllocatedData.count;
+  const totalOfResourcesAllocated = data.count;
 
   const columns = [
     {
@@ -104,6 +109,4 @@ const ResourceAllocationPageSkeleton = () => {
   );
 };
 
-export function Component() {
-  return <ResourceAllocationDetailsPage />;
-}
+export const Component = ResourceAllocationDetailsPage;

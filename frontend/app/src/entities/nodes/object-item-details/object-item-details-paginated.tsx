@@ -4,18 +4,17 @@ import { useQueryState } from "nuqs";
 import { useCallback } from "react";
 import { Navigate, useParams } from "react-router";
 
+import { queryClient } from "@/shared/api/rest/client";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import {
   DEFAULT_BRANCH_NAME,
   GENERIC_REPOSITORY_KIND,
   MENU_EXCLUDELIST,
   TASK_TARGET,
-} from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
-import { queryClient } from "@/shared/api/rest/client";
-import SlideOver from "@/shared/components/display/slide-over";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
+} from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
@@ -23,6 +22,7 @@ import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
@@ -51,7 +51,7 @@ export default function ObjectItemDetails({
   permission,
   hideHeaders,
 }: ObjectDetailsProps) {
-  const { objectKind, objectid } = useParams();
+  const { objectKind, objectId } = useParams();
 
   const [qspTab] = useQueryState(QSP.TAB);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
@@ -87,9 +87,7 @@ export default function ObjectItemDetails({
   const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
-    objectDetailsData?.display_label
-      ? `${objectDetailsData?.display_label} details`
-      : `${schema.label} details`
+    objectDetailsData ? `${getNodeLabel(objectDetailsData)} details` : `${schema.label} details`
   );
 
   if (!objectDetailsData) {
@@ -104,7 +102,7 @@ export default function ObjectItemDetails({
             <div className="flex grow gap-8 px-4" data-testid="object-details-tabs">
               <ObjectDetailsTab
                 isActive={!qspTab}
-                to={getObjectDetailsUrl(objectKind as string, objectid)}
+                to={getObjectDetailsUrl(objectKind as string, objectId)}
               >
                 {schema.label}
               </ObjectDetailsTab>
@@ -132,7 +130,7 @@ export default function ObjectItemDetails({
 
       {!qspTab && (
         <div className="flex flex-col gap-2 overflow-auto p-2 xl:grid xl:grid-cols-3 xl:items-start">
-          <Card className="grow overflow-x-hidden p-0 md:col-span-2">
+          <Card className="grow overflow-x-hidden p-0 md:col-span-2" data-testid="object-details">
             <CardWithBorder.Title className="border-gray-200 border-b">
               Details
             </CardWithBorder.Title>
@@ -149,7 +147,7 @@ export default function ObjectItemDetails({
             <CardWithBorder.Title className="border-gray-200 border-b">
               Activities
             </CardWithBorder.Title>
-            <NodeEvents objectId={objectid} objectKind={objectKind} />
+            <NodeEvents objectId={objectId} objectKind={objectKind} />
           </Card>
         </div>
       )}

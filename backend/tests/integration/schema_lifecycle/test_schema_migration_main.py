@@ -83,13 +83,13 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
 
         return objs
 
-    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset):
+    async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         assert len(persons) == 2
 
     async def test_step02_check_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
-    ):
+    ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
 
@@ -135,7 +135,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
 
     async def test_step02_load_attr_add_rename(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step02
-    ):
+    ) -> None:
         person_schema = registry.schema.get_node_schema(name=PERSON_KIND)
         attr = person_schema.get_attribute(name="name")
 
@@ -152,7 +152,9 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         john = persons[0]
         assert john.firstname.value == "John"  # type: ignore[attr-defined]
 
-    async def test_step03_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
+    async def test_step03_check(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+    ) -> None:
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -213,7 +215,9 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         }
         assert success
 
-    async def test_step03_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03):
+    async def test_step03_load(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step03
+    ) -> None:
         manufacturer_schema = registry.schema.get_node_schema(name=MANUFACTURER_KIND_01)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -244,7 +248,9 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
         assert len(honda_cars) == 2
 
-    async def test_step04_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
+    async def test_step04_check(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04
+    ) -> None:
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -265,7 +271,9 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         }
         assert success
 
-    async def test_step04_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04):
+    async def test_step04_load(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step04
+    ) -> None:
         tag_schema = registry.schema.get_node_schema(name=TAG_KIND)
 
         # Insert the ID of the attribute name into the schema in order to rename it firstname
@@ -277,7 +285,9 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
 
         assert registry.schema.has(name=TAG_KIND) is False
 
-    async def test_step05_check(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+    async def test_step05_check(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step05])
 
         assert response == {
@@ -304,7 +314,9 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         }
         assert success
 
-    async def test_step05_load(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05):
+    async def test_step05_load(
+        self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_step05
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step05])
         assert not response.errors
 
@@ -312,6 +324,6 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         car_schema = registry.schema.get(name=CAR_KIND, duplicate=False)
         assert "profiles" in car_schema.relationship_names
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

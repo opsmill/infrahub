@@ -20,6 +20,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
 import type { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 
 import { Badge } from "../ui/badge";
@@ -97,7 +98,7 @@ export const RelationshipInput = React.forwardRef<
       >
         {value && (
           <span data-testid="select-value">
-            {"from_pool" in value ? "Allocated by pool" : value.display_label}
+            {"from_pool" in value ? "Allocated by pool" : getNodeLabel(value)}
           </span>
         )}
 
@@ -132,7 +133,7 @@ export const RelationshipInput = React.forwardRef<
                   setOpen(false);
                 }}
               >
-                <span className="truncate">{relationship.display_label}</span>
+                <span className="truncate">{getNodeLabel(relationship)}</span>
               </ComboboxItem>
             );
           })}
@@ -148,7 +149,7 @@ export const RelationshipInput = React.forwardRef<
                     setOpen(false);
                   }}
                 >
-                  <span className="grow truncate">{option.display_label}</span>
+                  <span className="grow truncate">{getNodeLabel(option)}</span>
 
                   {option.badge && <Badge className="mr-2">{option.badge}</Badge>}
                 </ComboboxItem>

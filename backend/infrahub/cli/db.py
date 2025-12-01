@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 from csv import DictReader, DictWriter
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
 
@@ -74,13 +74,13 @@ app.add_typer(patch_app, name="patch")
 PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 
-class ConstraintAction(str, Enum):
+class ConstraintAction(StrEnum):
     SHOW = "show"
     ADD = "add"
     DROP = "drop"
 
 
-class IndexAction(str, Enum):
+class IndexAction(StrEnum):
     SHOW = "show"
     ADD = "add"
     DROP = "drop"

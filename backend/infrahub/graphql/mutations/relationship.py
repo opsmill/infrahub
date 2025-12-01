@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 RELATIONSHIP_PEERS_TO_IGNORE = [InfrahubKind.NODE]
 
 
-class GroupUpdateType(str, Enum):
+class GroupUpdateType(StrEnum):
     NONE = "none"
     MEMBERS = "members"
     MEMBER_OF_GROUPS = "member_of_groups"

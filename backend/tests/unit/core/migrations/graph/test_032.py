@@ -9,7 +9,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 
 
-async def test_migration_032(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
+async def test_migration_032(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> None:
     # Step 1: Create a couple of branches
     branch1 = await create_branch(db=db, branch_name="test-branch-1")
     branch2 = await create_branch(db=db, branch_name="test-branch-2")

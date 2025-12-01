@@ -27,7 +27,7 @@ async def repository_02(db: InfrahubDatabase, register_core_models_schema, defau
 
 async def test_get_repositories_commit_per_branch_main(
     db: InfrahubDatabase, register_core_models_schema, repository_01: Node, repository_02: Node
-):
+) -> None:
     repositories = await get_repositories_commit_per_branch(db=db)
     assert list(repositories.keys()) == ["repo01", "repo02"]
 
@@ -47,7 +47,7 @@ async def test_get_repositories_commit_per_branch_main(
 
 async def test_get_repositories_commit_per_branch_branches(
     db: InfrahubDatabase, register_core_models_schema, repository_01: Node, repository_02: Node
-):
+) -> None:
     branch2 = await create_branch(db=db, branch_name="branch2")
     repo01_branch = await NodeManager.get_one(db=db, id=repository_01.id, branch=branch2)
     repo01_branch.commit.value = "commit21"

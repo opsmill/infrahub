@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import os
+import re
 import ssl
 import sys
+import tomllib
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import tomllib
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
     BaseModel,
+    EmailStr,
     Field,
     PrivateAttr,
     ValidationError,
@@ -48,28 +50,28 @@ def default_append_git_suffix_domains() -> list[str]:
     return ["github.com", "gitlab.com"]
 
 
-class EnterpriseFeatures(str, Enum):
+class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
 
 
-class UserInfoMethod(str, Enum):
+class UserInfoMethod(StrEnum):
     POST = "post"
     GET = "get"
 
 
-class SSOProtocol(str, Enum):
+class SSOProtocol(StrEnum):
     OAUTH2 = "oauth2"
     OIDC = "oidc"
 
 
-class Oauth2Provider(str, Enum):
+class Oauth2Provider(StrEnum):
     GOOGLE = "google"
     PROVIDER1 = "provider1"
     PROVIDER2 = "provider2"
 
 
-class OIDCProvider(str, Enum):
+class OIDCProvider(StrEnum):
     GOOGLE = "google"
     PROVIDER1 = "provider1"
     PROVIDER2 = "provider2"
@@ -98,25 +100,25 @@ class SSOProviderInfo(BaseModel):
         return f"/api/{self.protocol.value}/{self.name}/token"
 
 
-class StorageDriver(str, Enum):
+class StorageDriver(StrEnum):
     FileSystemStorage = "local"
     InfrahubS3ObjectStorage = "s3"
 
 
-class TraceExporterType(str, Enum):
+class TraceExporterType(StrEnum):
     CONSOLE = "console"
     OTLP = "otlp"
     # JAEGER = "jaeger"
     # ZIPKIN = "zipkin"
 
 
-class TraceTransportProtocol(str, Enum):
+class TraceTransportProtocol(StrEnum):
     GRPC = "grpc"
     HTTP_PROTOBUF = "http/protobuf"
     # HTTP_JSON = "http/json"
 
 
-class BrokerDriver(str, Enum):
+class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
     NATS = "nats"
 
@@ -137,7 +139,7 @@ class BrokerDriver(str, Enum):
                 return "RabbitMQMessageBus"
 
 
-class CacheDriver(str, Enum):
+class CacheDriver(StrEnum):
     Redis = "redis"
     NATS = "nats"
 
@@ -158,12 +160,12 @@ class CacheDriver(str, Enum):
                 return "RedisCache"
 
 
-class WorkflowDriver(str, Enum):
+class WorkflowDriver(StrEnum):
     LOCAL = "local"
     WORKER = "worker"
 
 
-class ExtraLogLevel(str, Enum):
+class ExtraLogLevel(StrEnum):
     CRITICAL = "CRITICAL"
     ERROR = "ERROR"
     WARNING = "WARNING"
@@ -324,6 +326,10 @@ class DevelopmentSettings(BaseSettings):
         default=False,
         description="Allow enterprise configuration in development mode, this will not enable the features just allow the configuration.",
     )
+    git_credential_helper: str = Field(
+        default="infrahub-git-credential",
+        description="Location of git credential helper",
+    )
 
 
 class BrokerSettings(BaseSettings):
@@ -449,6 +455,48 @@ class GitSettings(BaseSettings):
         default_factory=default_append_git_suffix_domains,
         description="Automatically append '.git' to HTTP URLs if for these domains.",
     )
+    import_sync_branch_names: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Names or regex of branches to be created in infrahub during import "
+            "e.g. 'infrahub/.*', 'release/.*', '^branch-'. "
+            "Note: other branches created with sync with git will be imported also"
+        ),
+    )
+    user_name: str = Field(
+        default="Infrahub",
+        description=(
+            "User name of the git user. This will be used as the user name when Infrahub commits code to a repository"
+        ),
+    )
+    user_email: EmailStr = Field(
+        default="infrahub@opsmill.com",
+        description=(
+            "Email of the git user. This will be used as the user email when Infrahub commits code to a repository"
+        ),
+    )
+    global_config_file: str = Field(
+        default="/opt/infrahub/.gitconfig",
+        description=(
+            "The location of the git config file. "
+            "This will be set as the system `GIT_CONFIG_GLOBAL` environment variable "
+            "if the environment variable is not initially set"
+        ),
+    )
+    use_explicit_merge_commit: bool = Field(
+        default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
+    )
+
+    @model_validator(mode="after")
+    def validate_sync_branch_names(self) -> Self:
+        for branch_filter in self.import_sync_branch_names:
+            try:
+                re.compile(branch_filter)
+            except re.error as exc:
+                raise ValueError(
+                    f"Invalid regex pattern for import_sync_branch_names: '{branch_filter}' — {exc}"
+                ) from exc
+        return self
 
 
 class HTTPSettings(BaseSettings):

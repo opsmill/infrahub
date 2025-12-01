@@ -49,7 +49,7 @@ jobs:
   build:
     needs: prepare-environment
     env:
-      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     runs-on:
       group: huge-runners
     steps:
@@ -86,3 +86,5 @@ jobs:
           platforms: ${{ inputs.platforms }}
           tags: ${{ inputs.tags }}
           labels: ${{ inputs.labels }}
+          build-args: |
+            UV_VER=${{ env.UV_VERSION }}

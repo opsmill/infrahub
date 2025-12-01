@@ -22,6 +22,8 @@ class QueryPeerParams:
     fields: dict | None = None
     at: Timestamp | str | None = None
     branch_agnostic: bool = False
+    include_source: bool = False
+    include_owner: bool = False
 
     def __hash__(self) -> int:
         frozen_fields: frozenset | None = None
@@ -39,6 +41,8 @@ class QueryPeerParams:
                 self.schema.name,
                 str(self.source_kind),
                 str(self.branch_agnostic),
+                str(self.include_source),
+                str(self.include_owner),
             ]
         )
         return hash(hash_str)
@@ -63,6 +67,8 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
                 branch=self.query_params.branch,
                 branch_agnostic=self.query_params.branch_agnostic,
                 fetch_peers=True,
+                include_source=self.query_params.include_source,
+                include_owner=self.query_params.include_owner,
             )
         peer_rels_by_node_id: dict[str, list[Relationship]] = {}
         for rel in peer_rels:

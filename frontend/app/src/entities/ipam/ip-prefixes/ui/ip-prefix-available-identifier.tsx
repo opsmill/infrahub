@@ -1,4 +1,3 @@
-import { useSetAtom } from "jotai/index";
 import { PlusIcon } from "lucide-react";
 import React from "react";
 
@@ -11,7 +10,6 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import type { IpPrefixNode } from "@/entities/ipam/ip-prefixes/types";
-import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 
@@ -26,7 +24,6 @@ export function IpPrefixAvailableIdentifier({
 }: IpPrefixAvailableIdentifierProps) {
   const { selectedSchema, permission } = useObjectTableContext();
   const [isCreateFormOpen, setIsCreateFormOpen] = React.useState(false);
-  const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
 
   const parentNode = ipPrefixNode.parent?.node;
   const ancestorsCount: number = (parentNode?.ancestors?.count ?? 0) + 1;
@@ -79,10 +76,6 @@ export function IpPrefixAvailableIdentifier({
           onSuccess={() => {
             setIsCreateFormOpen(false);
             queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-
-            if (location.pathname.startsWith("/ipam")) {
-              reloadIpamTree(parentNode?.id);
-            }
           }}
           currentObject={{ prefix: { value: ipPrefixNode.display_label } }}
           onCancel={() => setIsCreateFormOpen(false)}

@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { useEffect, useId } from "react";
 
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -23,6 +23,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { getProfiles } from "@/entities/nodes/api/getProfiles";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { NodeSchema } from "@/entities/schema/types";
@@ -64,7 +65,9 @@ export const ProfilesSelector = ({
   const profilesList = kindList
     .map((profile) => {
       // Get the profile schema for the current kind
-      const profileSchema = profileSchemas.find((profileSchema) => profileSchema.name === profile);
+      const profileSchema = profileSchemas.find(
+        (profileSchema) => profileSchema.name === profile?.replace("Template", "")
+      );
 
       // Get attributes for query + form data
       const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
@@ -118,7 +121,7 @@ export const ProfilesSelector = ({
 
       onChange(defaultProfiles);
     }
-  }, [defaultValue, loading, profiles]);
+  }, [defaultValue, loading, profiles, value, onChange]);
 
   if (loading) return <LoadingIndicator className="p-4" />;
 
@@ -154,7 +157,7 @@ export const ProfilesSelector = ({
             <div className="flex grow flex-wrap gap-2">
               {selectedValues?.map((profile) => (
                 <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                  {profile.display_label}
+                  {getNodeLabel(profile)}
 
                   <Button
                     size="icon"
@@ -189,10 +192,10 @@ export const ProfilesSelector = ({
               .map((item) => (
                 <ComboboxItem
                   key={item.id}
-                  value={item.display_label}
+                  value={getNodeLabel(item)}
                   onSelect={() => handleChange(item)}
                 >
-                  {item.display_label}
+                  {getNodeLabel(item)}
                 </ComboboxItem>
               ))}
           </ComboboxList>

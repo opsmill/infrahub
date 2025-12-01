@@ -239,7 +239,7 @@ class TestObjectPermissions:
         default_branch: Branch,
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
-    ):
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permissions = []
@@ -402,7 +402,7 @@ class TestAccountManagerPermissions:
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -434,7 +434,7 @@ class TestAccountManagerPermissions:
     )
     async def test_supports_manage_accounts_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -447,7 +447,7 @@ class TestAccountManagerPermissions:
         default_permission_backend: None,
         permissions_helper: PermissionsHelper,
         operation: str,
-    ):
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -490,7 +490,7 @@ class TestAccountManagerPermissions:
         permissions_helper: PermissionsHelper,
         operation: str,
         must_raise: bool,
-    ):
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -539,7 +539,7 @@ class TestPermissionManagerPermissions:
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -571,7 +571,7 @@ class TestPermissionManagerPermissions:
     )
     async def test_supports_manage_accounts_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = PermissionManagerPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -593,7 +593,7 @@ class TestPermissionManagerPermissions:
         default_permission_backend: None,
         permissions_helper: PermissionsHelper,
         operation: str,
-    ):
+    ) -> None:
         checker = PermissionManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -635,7 +635,7 @@ class TestPermissionManagerPermissions:
         permissions_helper: PermissionsHelper,
         kind: str,
         relationship: str,
-    ):
+    ) -> None:
         query = """
         query {
           CoreNode {
@@ -699,7 +699,7 @@ class TestPermissionManagerPermissions:
         permissions_helper: PermissionsHelper,
         operation: str,
         must_raise: bool,
-    ):
+    ) -> None:
         checker = PermissionManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -751,7 +751,7 @@ class TestPermissionManagerPermissions:
         permissions_helper: PermissionsHelper,
         kind: str,
         relationship: str,
-    ):
+    ) -> None:
         query = """
         query {
           CoreNode {
@@ -808,7 +808,7 @@ class TestRepositoryManagerPermissions:
         permissions_helper: PermissionsHelper,
         first_account: CoreAccount,
         second_account: CoreAccount,
-    ):
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -840,7 +840,7 @@ class TestRepositoryManagerPermissions:
     )
     async def test_supports_manage_repositories_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = AccountManagerPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -855,7 +855,7 @@ class TestRepositoryManagerPermissions:
         default_permission_backend: None,
         permissions_helper: PermissionsHelper,
         operation: str,
-    ):
+    ) -> None:
         checker = RepositoryManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -897,7 +897,7 @@ class TestRepositoryManagerPermissions:
         permissions_helper: PermissionsHelper,
         operation: str,
         must_raise: bool,
-    ):
+    ) -> None:
         checker = RepositoryManagerPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT

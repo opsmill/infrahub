@@ -1,3 +1,4 @@
+import contextlib
 from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -45,7 +46,7 @@ class TestDiffCoordinator:
 
     async def test_node_deleted_after_branching(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         person_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
         await person_main.delete(db=db)
@@ -84,7 +85,7 @@ class TestDiffCoordinator:
 
     async def test_node_added_diff_updated_node_removed(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         main_person_2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
         await main_person_2.new(db=db, name="Rex", height=190)
         await main_person_2.save(db=db)
@@ -142,7 +143,9 @@ class TestDiffCoordinator:
         branch_john_diff = nodes_by_id[person_john_main.id]
         assert branch_john_diff.action is DiffAction.UPDATED
 
-    async def test_overlapping_diffs(self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node):
+    async def test_overlapping_diffs(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
@@ -210,7 +213,7 @@ class TestDiffCoordinator:
 
     async def test_no_changes_skips_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         wrapped_diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=branch)
         component_registry = get_component_registry()
@@ -248,7 +251,7 @@ class TestDiffCoordinator:
 
     async def test_unrelated_changes_skip_some_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
-    ):
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         wrapped_diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=branch)
         component_registry = get_component_registry()
@@ -395,10 +398,8 @@ class TestDiffCoordinator:
 
         # delete the schema on the branch, it might not exist b/c it was just deleted above
         branch_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        try:
+        with contextlib.suppress(SchemaNotFoundError):
             branch_schema_branch.delete(name="TestPerson")
-        except SchemaNotFoundError:
-            pass
 
         # calculate the diff
         diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)

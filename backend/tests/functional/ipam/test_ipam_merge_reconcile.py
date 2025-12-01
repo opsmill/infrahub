@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class TestIpamMergeReconcile(TestIpamReconcileBase):
     @pytest.fixture(scope="class", autouse=True)
-    def enable_broker_settings(self):
+    def enable_broker_settings(self) -> None:
         config.SETTINGS.broker.enable = True
 
     @pytest.fixture(scope="class")

@@ -373,7 +373,7 @@ async def default_attribute_query_filter(
         if property_name not in [v.value for v in NodeProperty]:
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
 
-        if property_attr not in ["id"]:
+        if property_attr != "id":
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
 
         clean_filter_name = f"{property_name}_{property_attr}"

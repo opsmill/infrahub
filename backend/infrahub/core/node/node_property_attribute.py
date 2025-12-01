@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from infrahub_sdk.template import Jinja2Template
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-class NodePropertyAttribute(Generic[T]):
+class NodePropertyAttribute[T]:
     """A node property attribute is a construct that seats between a property and an attribute.
 
     View it as a property, set at the node level but stored in the database as an attribute. It usually is something computed from other components of

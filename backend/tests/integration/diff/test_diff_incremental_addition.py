@@ -209,7 +209,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
@@ -298,7 +298,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         marty = initial_dataset["marty"]
@@ -389,7 +389,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
@@ -474,7 +474,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
@@ -555,7 +555,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         doc_brown_label = await doc_brown.get_display_label(db=db)

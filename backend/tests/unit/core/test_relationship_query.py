@@ -31,7 +31,7 @@ from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class DummyRelationshipQuery(RelationshipQuery):
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         pass
 
 
@@ -96,7 +96,7 @@ async def get_relationship_properties(
 
 async def test_RelationshipQuery_init(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -138,7 +138,7 @@ async def test_RelationshipQuery_init(
 
 async def test_query_RelationshipCreateQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -166,7 +166,7 @@ async def test_query_RelationshipCreateQuery(
 
 async def test_query_RelationshipCreateQuery_w_node_property(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, first_account: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -204,7 +204,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
     tag_red_main: Node,
     person_jack_main: Node,
     branch: Branch,
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=branch.name)
     person_schema = schema.get(name="TestPerson")
     person_schema.name = "GreatPerson"
@@ -286,7 +286,7 @@ async def test_query_RelationshipCreateQuery_for_node_with_migrated_kind(
 
 async def test_query_RelationshipDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -417,7 +417,7 @@ async def test_query_RelationshipDeleteQuery(
 
 async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
     paths = await get_paths_between_nodes(
@@ -464,7 +464,7 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node(
     await verify_no_duplicate_paths(db=db)
 
 
-async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node):
+async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node) -> None:
     person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
     await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
     create_before = Timestamp()
@@ -500,7 +500,7 @@ async def test_branch_delete_with_updated_main_relationship(
     person_jack_primary_tag_main: Node,
     tag_blue_main: Node,
     tag_black_main: Node,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch2")
     before_main_update = Timestamp()
     person_main = await NodeManager.get_one(db=db, id=person_jack_primary_tag_main.id)
@@ -551,7 +551,7 @@ async def test_main_delete_with_updated_branch_relationship(
     person_jack_primary_tag_main: Node,
     tag_blue_main: Node,
     tag_black_main: Node,
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch2")
     before_branch_update = Timestamp()
     person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_jack_primary_tag_main.id)
@@ -609,7 +609,7 @@ async def test_main_delete_with_updated_branch_relationship(
 
 async def test_relationship_update_with_delete_peer(
     db: InfrahubDatabase, default_branch, tag_blue_main: Node, tag_red_main: Node
-):
+) -> None:
     person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
     await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
     create_before = Timestamp()
@@ -642,7 +642,7 @@ async def test_relationship_update_with_delete_peer(
 
 async def test_query_RelationshipGetPeerQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -679,7 +679,7 @@ async def test_query_RelationshipGetPeerQuery_with_filter(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
@@ -707,7 +707,7 @@ async def test_query_RelationshipGetPeerQuery_with_id(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
@@ -734,7 +734,7 @@ async def test_query_RelationshipGetPeerQuery_with_ids(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
@@ -761,7 +761,7 @@ async def test_query_RelationshipGetPeerQuery_with_sort(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar", branch=branch)
     car_schema.order_by = ["name__value"]
     registry.schema.set(name="TestCar", branch=branch.name, schema=car_schema)
@@ -792,7 +792,7 @@ async def test_query_RelationshipGetPeerQuery_deleted_node(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     node = await NodeManager.get_one(id=car_volt_main.id, db=db, branch=branch)
     await node.delete(db=db)
 
@@ -821,7 +821,7 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
@@ -849,7 +849,7 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     person_schema = registry.schema.get_node_schema(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
@@ -885,7 +885,7 @@ async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
 
 async def test_query_RelationshipDataDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
@@ -937,7 +937,7 @@ async def test_query_RelationshipDataDeleteQuery(
 
 async def test_query_RelationshipDataDeleteQuery_on_migrated_kind_node(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_tags_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     rel_schema = person_schema.get_relationship("tags")
 
@@ -1031,7 +1031,7 @@ async def test_query_RelationshipCountPerNodeQuery(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
@@ -1085,7 +1085,7 @@ async def test_query_RelationshipGetByIdentifierQuery(
     car_prius_main,
     car_yaris_main,
     branch: Branch,
-):
+) -> None:
     with pytest.raises(ValueError) as exc:
         query = await RelationshipGetByIdentifierQuery.init(
             db=db, branch=branch, identifiers=[], excluded_namespaces=[]
@@ -1123,7 +1123,7 @@ async def test_query_RelationshipGetQuery(
     car_prius_main: Node,
     person_john_main: Node,
     branch: Branch,
-):
+) -> None:
     person_john = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
     car_prius = await NodeManager.get_one(db=db, branch=branch, id=car_prius_main.id)
     owner_rels = await car_prius.owner.get_relationships(db=db)

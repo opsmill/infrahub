@@ -39,6 +39,7 @@ from .queries import (
     BranchQueryList,
     DeprecatedIPAddressGetNextAvailable,
     DeprecatedIPPrefixGetNextAvailable,
+    InfrahubBranchQueryList,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -65,6 +66,7 @@ class InfrahubBaseQuery(ObjectType):
 
     Relationship = Relationship
 
+    InfrahubBranch = InfrahubBranchQueryList
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
 

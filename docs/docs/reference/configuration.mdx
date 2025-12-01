@@ -52,6 +52,11 @@ Here are a few common methods of setting environmental variables:
 | `INFRAHUB_GIT_REPOSITORIES_DIRECTORY` | None | string | repositories |
 | `INFRAHUB_GIT_SYNC_INTERVAL` | Time (in seconds) between git repositories synchronizations | integer | 10 |
 | `INFRAHUB_GIT_APPEND_GIT_SUFFIX` | Automatically append '.git' to HTTP URLs if for these domains. | array[string] | None |
+| `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` | Names or regex of branches to be created in infrahub during import e.g. 'infrahub/.*', 'release/.*', '^branch-'. Note: other branches created with sync with git will be imported also | array[string] | None |
+| `INFRAHUB_GIT_USER_NAME` | User name of the git user. This will be used as the user name when Infrahub commits code to a repository | string | Infrahub |
+| `INFRAHUB_GIT_USER_EMAIL` | Email of the git user. This will be used as the user email when Infrahub commits code to a repository | string | infrahub@opsmill.com |
+| `INFRAHUB_GIT_GLOBAL_CONFIG_FILE` | The location of the git config file. This will be set as the system `GIT_CONFIG_GLOBAL` environment variable if the environment variable is not initially set | string | /opt/infrahub/.gitconfig |
+| `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` | Whether to allow explicit merge commits when infrahub merges branches | boolean | False |
 
 ## Dev
 
@@ -61,6 +66,7 @@ The development settings are only relevant for local development
 |------|-------------|------|---------|
 | `INFRAHUB_DEV_FRONTEND_REDIRECT_SSO` | Indicates of the frontend should be responsible for the SSO redirection | boolean | False |
 | `INFRAHUB_DEV_ALLOW_ENTERPRISE_CONFIGURATION` | Allow enterprise configuration in development mode, this will not enable the features just allow the configuration. | boolean | False |
+| `INFRAHUB_DEV_GIT_CREDENTIAL_HELPER` | Location of git credential helper | string | infrahub-git-credential |
 
 ## Http
 

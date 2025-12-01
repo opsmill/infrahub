@@ -12,6 +12,7 @@ development/docker-compose.override.yml
 development/docker-compose.dev-override.yml
 .DS_Store
 .python-version
+.venv/*
 .ruff_cache
 **/.ruff_cache
 **/.idea/**

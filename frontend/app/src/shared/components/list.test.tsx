@@ -1,5 +1,5 @@
-import { userEvent } from "@vitest/browser/context";
 import { describe, expect, test } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import { render } from "../../../tests/components/render";
 import { List } from "./list";
@@ -7,7 +7,7 @@ import { List } from "./list";
 describe("List Component", () => {
   test("renders empty list state correctly", async () => {
     // GIVEN
-    const component = render(<List />);
+    const component = await render(<List />);
 
     // THEN
     await expect.element(component.getByPlaceholder("Add a new item + hit 'enter'")).toBeVisible();
@@ -17,7 +17,7 @@ describe("List Component", () => {
   test("renders with default values correctly", async () => {
     // GIVEN
     const defaultItems = ["item 1", "item 2"];
-    const component = render(<List defaultValue={defaultItems} />);
+    const component = await render(<List defaultValue={defaultItems} />);
 
     // THEN
     await expect.element(component.getByText("item 1")).toBeVisible();
@@ -28,7 +28,7 @@ describe("List Component", () => {
   test("adds new item when pressing enter", async () => {
     // GIVEN
     let items: string[] = [];
-    const component = render(<List onChange={(newItems) => (items = newItems)} />);
+    const component = await render(<List onChange={(newItems) => (items = newItems)} />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // WHEN
@@ -45,7 +45,7 @@ describe("List Component", () => {
   test("trims whitespace from input", async () => {
     // GIVEN
     let items: string[] = [];
-    const component = render(<List onChange={(newItems) => (items = newItems)} />);
+    const component = await render(<List onChange={(newItems) => (items = newItems)} />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // WHEN
@@ -59,7 +59,7 @@ describe("List Component", () => {
 
   test("handles empty string input correctly", async () => {
     // GIVEN
-    const component = render(<List />);
+    const component = await render(<List />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // WHEN
@@ -72,7 +72,7 @@ describe("List Component", () => {
 
   test("prevents adding duplicate items and shows toast", async () => {
     // GIVEN
-    const component = render(<List defaultValue={["existing item"]} />);
+    const component = await render(<List defaultValue={["existing item"]} />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // WHEN
@@ -87,7 +87,7 @@ describe("List Component", () => {
   test("removes item when clicking delete button", async () => {
     // GIVEN
     let items: string[] = ["test item"];
-    const component = render(
+    const component = await render(
       <List defaultValue={items} onChange={(newItems) => (items = newItems)} />
     );
 
@@ -103,7 +103,7 @@ describe("List Component", () => {
   test("removes middle item correctly", async () => {
     // GIVEN
     let items: string[] = ["first", "second", "third"];
-    const component = render(
+    const component = await render(
       <List defaultValue={items} onChange={(newItems) => (items = newItems)} />
     );
 
@@ -123,7 +123,7 @@ describe("List Component", () => {
 
   test("disables all interactions when disabled prop is true", async () => {
     // GIVEN
-    const component = render(<List defaultValue={["test item"]} disabled={true} />);
+    const component = await render(<List defaultValue={["test item"]} disabled={true} />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // THEN
@@ -135,7 +135,7 @@ describe("List Component", () => {
   test("handles controlled value prop correctly", async () => {
     // GIVEN
     const controlledItems = ["controlled item"];
-    const component = render(<List value={controlledItems} />);
+    const component = await render(<List value={controlledItems} />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // WHEN
@@ -148,7 +148,7 @@ describe("List Component", () => {
   test("preserves order of items", async () => {
     // GIVEN
     let items: string[] = [];
-    const component = render(<List onChange={(newItems) => (items = newItems)} />);
+    const component = await render(<List onChange={(newItems) => (items = newItems)} />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // WHEN
@@ -166,7 +166,7 @@ describe("List Component", () => {
   test("handles special characters in items", async () => {
     // GIVEN
     let items: string[] = [];
-    const component = render(<List onChange={(newItems) => (items = newItems)} />);
+    const component = await render(<List onChange={(newItems) => (items = newItems)} />);
     const input = component.getByPlaceholder("Add a new item + hit 'enter'");
 
     // WHEN

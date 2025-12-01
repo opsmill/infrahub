@@ -9,24 +9,24 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getNodeLabelFromApi } from "./get-display-label";
 
 type NodeLabelProps = {
-  objectid?: string;
+  objectId?: string;
   kind: string;
   enabled?: boolean;
   branch?: string | null;
 };
 
 export function getNodeLabelQueryOptions({
-  objectid,
+  objectId,
   kind,
   enabled,
   branchName,
   atDate,
 }: NodeLabelProps & ContextParams) {
   return queryOptions({
-    queryKey: [branchName, atDate, "display-label", objectid, kind],
+    queryKey: [branchName, atDate, "display-label", objectId, kind],
     queryFn: () => {
       return getNodeLabelFromApi({
-        objectid,
+        objectId,
         kind,
         branchName,
         atDate,
@@ -36,13 +36,13 @@ export function getNodeLabelQueryOptions({
   });
 }
 
-export const useNodeLabel = ({ objectid, kind, enabled, branch }: NodeLabelProps) => {
+export const useNodeLabel = ({ objectId, kind, enabled, branch }: NodeLabelProps) => {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   const { data, ...props } = useQuery(
     getNodeLabelQueryOptions({
-      objectid,
+      objectId,
       kind,
       enabled,
       branchName: branch ?? currentBranch.name,
