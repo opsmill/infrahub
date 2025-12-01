@@ -4,51 +4,70 @@
 
 ## Overview
 
-Docusaurus documentation site following the [Diataxis framework](https://diataxis.fr/).
+Infrahub documentation is organized using the [Diataxis framework](https://diataxis.fr/), separating documentation into four categories:
+
+- **Tutorials** - Learning-oriented walkthroughs
+- **Guides** - Task-oriented how-to documentation
+- **Topics** - Understanding-oriented explanations
+- **Reference** - Information-oriented specifications
+
+## Before You Start
+
+**Choose the right documentation type:**
+
+| Question | Doc Type | See Guide |
+|----------|----------|-----------|
+| Teaching users to complete a specific task? | **Guide** | [guides/AGENTS.md](docs/guides/AGENTS.md) |
+| Explaining concepts or how something works? | **Topic** | [topics/AGENTS.md](docs/topics/AGENTS.md) |
+| Providing reference information? | **Reference** | Auto-generated |
+| Walking through a complete learning scenario? | **Tutorial** | Diataxis framework |
 
 ## File Structure
 
 - `docs/` – MDX content
   - `guides/` – How-to guides (task-oriented)
+    - `AGENTS.md` – **Specialized instructions for writing guides**
   - `topics/` – Explanations (understanding-oriented)
+    - `AGENTS.md` – **Specialized instructions for writing topics**
   - `reference/` – API/configuration reference
   - `tutorials/` – Learning tutorials
   - `media/` – Images and screenshots
+  - `development/` – Developer documentation
+    - `docs.mdx` – Full documentation guide with linting rules
 - `sidebars.ts` – Navigation configuration
 
 ## Commands
 
 ```bash
-npm run start          # Dev server with hot reload
-npm run build          # Production build (checks broken links)
-uv run invoke docs.lint # Lint with Vale + markdownlint
+# Linting & Validation
+uv run invoke docs.lint          # Run all linters (Vale + markdownlint)
+
+# Development
+uv run invoke docs.build         # Build documentation site
+uv run invoke docs.serve         # Serve documentation site
+
+# Format
+uv run invoke docs.format        # Auto-format markdown files
 ```
 
-## Audience
+## Target Audience
 
-- **Primary:** Automation engineers, network ops, infrastructure teams
-- **Assumed:** Git, CI/CD, YAML/JSON, infrastructure-as-code knowledge
-- **Not assumed:** Prior Infrahub knowledge
+- **Primary:** Automation engineers, network operators, infrastructure teams
+- **Assumed knowledge:** Git, CI/CD, YAML/JSON, infrastructure-as-code
+- **Not assumed:** Prior Infrahub experience
 
-## Writing Style
+## Essential Style Guidelines
 
-### Tone
+### Voice and Tone
 
-- Professional but approachable
-- Concise and direct
-- Active voice, imperative mood
+- **Active voice**: "Create a branch" (not "A branch can be created")
+- **Imperative mood** for guides: "Click **New Branch**"
+- **Present tense**: "Infrahub uses branches to isolate changes"
+- **Professional but approachable**: Avoid "simple", "easy", or "just"
 
-```markdown
-<!-- ✅ Good -->
-Create a branch by clicking **New Branch**.
+### Formatting Standards
 
-<!-- ❌ Bad -->
-A branch can be created by clicking on the New Branch button.
-```
-
-### Code Blocks
-
-Always specify language:
+**Code blocks** - Always specify language:
 
 ````markdown
 ```python
@@ -56,76 +75,26 @@ from infrahub_sdk import InfrahubClient
 ```
 ````
 
-### Images
+**Images** - Include descriptive alt text:
 
 ```markdown
-![Alt text describing the image](./media/descriptive-filename.png)
+![Screenshot showing the branch creation dialog](./media/branch-creation.png)
 ```
 
-## Document Templates (Diataxis)
+**Headings** - Use sentence case:
 
-### How-to Guide Structure
+- ✅ "Creating a new branch"
+- ❌ "Creating A New Branch"
 
-```markdown
----
-title: How to [accomplish task]
----
+## Documentation Workflow
 
-## Introduction
-Brief statement of the problem/goal. What the user will achieve.
-
-## Prerequisites
-- Required setup or knowledge
-
-## Steps
-
-### Step 1: [Action]
-Instructions with code snippets, screenshots, or tabs for alternatives.
-
-### Step 2: [Action]
-...
-
-## Verification
-How to confirm success. Example outputs.
-
-## Related Resources
-Links to related guides or topics.
-```
-
-### Topic/Explanation Structure
-
-```markdown
----
-title: About [concept]
----
-
-## Introduction
-Why this topic matters. Questions this will answer.
-
-## Concepts
-Key terms and how they fit the broader system.
-
-## How It Works
-Architecture, design decisions, component interactions.
-
-## Related Topics
-Links to related concepts and guides.
-```
-
-## Quality Checklist
-
-**For Guides:**
-
-- Title states what will be accomplished
-- Steps are actionable, not explanatory
-- Includes verification steps
-- Addresses real-world complexity
-
-**For Topics:**
-
-- Explains "why", not just "what"
-- Provides context and background
-- Connects to related concepts
+1. **Choose documentation type** using the table above (if not specified)
+2. **Follow specialized guide** (guides/AGENTS.md or topics/AGENTS.md)
+3. **Create the .mdx file** in the appropriate directory
+4. **Add to navigation** by editing `sidebars.ts` in the appropriate section
+5. **Lint before committing**: `uv run invoke docs.lint`
+6. **Build to verify**: `uv run invoke docs.build`
+7. **Serve for human verification**: `uv run invoke docs.serve`
 
 ## Boundaries
 
@@ -135,11 +104,14 @@ Links to related concepts and guides.
 - Build docs to check for broken links
 - Use sentence case for headings
 - Include language tags on code blocks
+- Choose the appropriate documentation type (guide vs. topic)
+- Define technical terms on first use
 
 ### Ask First
 
 - New top-level navigation sections
 - Docusaurus configuration changes
+- Major restructuring of documentation hierarchy
 
 ### Never Do
 
@@ -147,3 +119,4 @@ Links to related concepts and guides.
 - Leave broken links
 - Commit large unoptimized images
 - Skip alt text for images
+- Mix guide and topic content in the same document
