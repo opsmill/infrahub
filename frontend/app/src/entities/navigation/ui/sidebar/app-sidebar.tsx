@@ -17,7 +17,7 @@ import { SIDEBAR_COLLAPSED_KEY } from "@/entities/navigation/constants";
 import { SearchAnywhere } from "@/entities/navigation/ui/search-anywhere/search-anywhere";
 import SidebarMenu from "@/entities/navigation/ui/sidebar/sidebar-menu";
 
-export default function AppSidebar() {
+export function AppSidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);
 
   const booleanCollapsed = collapsed === "true";

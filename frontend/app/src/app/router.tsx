@@ -42,7 +42,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/",
-            lazy: () => import("@/shared/components/layout/app-layout"),
+            lazy: () => import("@/pages/app-layout"),
             children: [
               {
                 index: true,
