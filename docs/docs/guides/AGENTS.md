@@ -292,5 +292,5 @@ For configuration-heavy tasks:
 ## Related Files
 
 - [Topic Documentation Guide](../topics/AGENTS.md) - For explanation/concept docs
-- [General Documentation Guide](../AGENTS.md) - For overall documentation standards
+- [General Documentation Guide](../../AGENTS.md) - For overall documentation standards
 - [Documentation Guidelines](../development/docs.mdx) - For detailed MDX syntax and examples
