@@ -64,6 +64,8 @@ cd docs && npm run build              # Build documentation
 - `backend/infrahub/core/protocols.py` – Protocol definitions
 - `frontend/app/src/shared/api/graphql/generated/` – GraphQL types
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
+- `schema/schema.graphql` - GraphQL schema of the Core Schema
+- `schema/openapi.json` - OpenAPI schema for the REST API
 
 Regenerate with: `uv run invoke backend.generate` or `cd frontend/app && npm run codegen`
 
@@ -89,7 +91,7 @@ When editing markdown files (enforced by markdownlint):
 
 - Run formatters before committing (`uv run invoke format`, `npm run biome:fix`)
 - Write tests for new functionality
-- Use type hints (Python) and TypeScript types (frontend)
+- Use type hints for Python (backend) and TypeScript types (frontend)
 
 ### Ask First
 

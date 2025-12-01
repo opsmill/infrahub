@@ -38,7 +38,7 @@ async def get_node(db: InfrahubDatabase, node_id: str) -> Node:
     await query.execute(db=db)
     return query.get_node()
 
-# ❌ Bad - blocks event loop
+# ❌ Bad - blocks event loop, no type hints
 def get_node(db, node_id):
     return db.get(node_id)
 ```
@@ -50,8 +50,8 @@ def get_node(db, node_id):
 from pydantic import BaseModel, Field
 
 class BranchCreateInput(BaseModel):
-    name: str = Field(..., min_length=1, max_length=250)
-    description: str | None = None
+    name: str = Field(..., min_length=1, max_length=250, description="name of the branch")
+    description: str | None = Field(default=None, description="Description of the branch")
 
 # ❌ Bad
 branch_data = {"name": "feature-x", "description": None}
@@ -102,7 +102,7 @@ class MyQuery(Query):
 
 ## Testing
 
-- Unit tests: no external dependencies, mock everything
+- Unit tests: no external dependencies except database
 - Integration tests: require Neo4j via testcontainers
 - Test files mirror source: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 - Async tests auto-configured via pytest-asyncio
