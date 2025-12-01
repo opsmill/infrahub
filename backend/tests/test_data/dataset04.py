@@ -65,9 +65,9 @@ async def load_data(
 
     start_time = time.time()
 
-    tags = {}
-    repository = {}
-    gqlquery = {}
+    tags: dict[str, Node] = {}
+    repository: dict[str, Node] = {}
+    gqlquery: dict[str, Node] = {}
 
     tag_schema = registry.schema.get_node_schema(name=InfrahubKind.TAG, branch=default_branch)
     repository_schema = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
@@ -103,11 +103,21 @@ async def load_data(
     for _idx in range(nbr_query):
         random_tags = [tags[tag] for tag in random.choices(TAGS, k=3)]
         random_repo = repository[random.choice(list(repository.keys()))]
+        random_repo_tags = [
+            {"id": tags[tag].id, "_relation__owner": random_repo.id, "_relation__source": random_repo.id}
+            for tag in random.choices(TAGS, k=3)
+        ]
 
         name = f"query-{nbr_query:04}"
         query_str = "query CoreQuery%s { tag { name { value }}}" % f"{nbr_query:04}"
         obj = await Node.init(db=db, schema=gqlquery_schema, branch=default_branch)
-        await obj.new(db=db, name=name, query=query_str, tags=random_tags, repository=random_repo)
+        await obj.new(
+            db=db,
+            name={"value": name, "source": random_repo.id, "owner": random_repo.id},
+            query=query_str,
+            tags=random_repo_tags,
+            repository={"id": random_repo.id, "_relation__owner": random_repo.id, "_relation__source": random_repo.id},
+        )
         await obj.save(db=db)
         gqlquery[name] = obj
 
