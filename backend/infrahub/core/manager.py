@@ -203,7 +203,7 @@ class NodeManager:
             schema_branch = db.schema.get_schema_branch(name=branch.name)
             display_label_fields = schema_branch.generate_fields_for_display_label(name=node_schema.kind)
             if display_label_fields:
-                fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
+                deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         response = await cls.get_many(
             ids=node_ids,
@@ -343,7 +343,7 @@ class NodeManager:
                 schema_branch = db.schema.get_schema_branch(name=branch.name)
                 display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
                 if display_label_fields:
-                    fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
+                    deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         if fetch_peers:
             peer_ids = [peer.peer_id for peer in peers_info]

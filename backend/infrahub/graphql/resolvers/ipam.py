@@ -248,7 +248,7 @@ def _ensure_display_label_fields(
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     display_label_fields = schema_branch.generate_fields_for_display_label(name=schema.kind)
     if display_label_fields:
-        node_fields = deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
+        deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
 
 
 def _filter_kinds(nodes: list[Node], kinds: list[str], limit: int | None) -> list[Node]:
