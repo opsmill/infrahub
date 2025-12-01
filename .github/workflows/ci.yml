@@ -53,7 +53,7 @@ jobs:
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check for file changes
@@ -65,19 +65,32 @@ jobs:
 
   # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
-    if: needs.files-changed.outputs.yaml == 'true'
-    needs: ["files-changed"]
+    if: |
+      needs.files-changed.outputs.yaml == 'true' ||
+      needs.files-changed.outputs.infrahub_uv_files == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: "Setup environment"
-        run: "pip install yamllint==1.35.1"
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Linting: yamllint"
-        run: "yamllint -s ."
+        run: "uv run yamllint -s ."
 
   javascript-lint:
     defaults:
@@ -88,7 +101,7 @@ jobs:
       contents: read
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -101,21 +114,35 @@ jobs:
         run: npx biome ci .
 
   python-lint:
-    if: needs.files-changed.outputs.python == 'true'
-    needs: ["files-changed"]
+    if: |
+      needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.python == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: "Setup environment"
-        run: "pip install ruff==0.11.9"
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Linting: ruff check"
-        run: "ruff check . --exclude python_sdk"
+        run: "uv run ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
-        run: "ruff format --check --diff --exclude python_sdk ."
+        run: "uv run ruff format --check --diff --exclude python_sdk ."
 
   markdown-lint:
     if: |
@@ -127,11 +154,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v21
+        uses: DavidAnson/markdownlint-cli2-action@v20
         with:
           config: .markdownlint.yaml
           globs: |
@@ -144,7 +171,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Check workflow files
@@ -173,7 +200,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -233,7 +260,7 @@ jobs:
         working-directory: ./python_testcontainers
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
@@ -273,7 +300,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -286,7 +313,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -327,7 +354,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -340,7 +367,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -374,7 +401,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -387,7 +414,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -424,7 +451,7 @@ jobs:
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -439,7 +466,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }}>> $GITHUB_ENV
       - name: "Set environment variables"
@@ -492,7 +519,7 @@ jobs:
   #   env: ${{ matrix.env }}
   #   steps:
   #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v5"
+  #       uses: "actions/checkout@v6"
   #       with:
   #         submodules: true
   #     - name: Set up Python
@@ -504,7 +531,7 @@ jobs:
   #             git config --global user.email 'infrahub@opsmill.com' && \
   #             git config --global --add safe.directory '*' && \
   #             git config --global credential.usehttppath true && \
-  #             git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #             git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
   #     - name: Install uv
   #       uses: astral-sh/setup-uv@v7
   #       with:
@@ -525,7 +552,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -553,7 +580,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -591,7 +618,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -648,7 +675,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -685,7 +712,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -719,7 +746,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -745,7 +772,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       # The official GitHub Action for Vale doesn't work, installing manually instead:
@@ -800,7 +827,7 @@ jobs:
     env: ${{ matrix.env }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install NodeJS
@@ -978,7 +1005,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -1072,7 +1099,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -1085,7 +1112,7 @@ jobs:
               git config --global user.email 'infrahub@opsmill.com' && \
               git config --global --add safe.directory '*' && \
               git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
