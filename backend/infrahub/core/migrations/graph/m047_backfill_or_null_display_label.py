@@ -18,6 +18,7 @@ from .m044_backfill_hfid_display_label_in_db import (
     DefaultBranchNodeCount,
     GetPathDetailsBranchQuery,
     GetPathDetailsDefaultBranch,
+    GetResultMapQuery,
 )
 
 if TYPE_CHECKING:
@@ -418,8 +419,8 @@ class Migration047(MigrationRequiringRebase):
 
         # loop until we get no results from the get_details_query
         while True:
-            if branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
-                get_details_query = await GetPathDetailsDefaultBranch.init(
+            if branch.is_default:
+                get_details_query: GetResultMapQuery = await GetPathDetailsDefaultBranch.init(
                     db=db,
                     schema_kind=schema.kind,
                     schema_paths=schema_paths,
