@@ -527,6 +527,36 @@ After restarting your environment, Infrahub should now connect through your conf
 
 :::
 
+### Customizing Git merge behavior
+
+By default, Infrahub performs fast-forward only (ff-only) merges between branches. When merging a branch linked to Git, Infrahub updates the destination branch pointer without creating a merge commit. To maintain consistency or improve auditability, you can configure Infrahub to always create a merge commit.
+
+:::info
+
+This configuration applies only to standard repositories, not read-only repositories.
+
+:::
+
+1. Configure Infrahub to always create a merge commit by setting the following environment variables:
+
+    ```shell
+    INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT=true
+
+    # Optional: set user name and email for Git commits
+    INFRAHUB_GIT_USER_NAME="infrahub-automation"
+    INFRAHUB_GIT_USER_EMAIL="infrahub-automation@example.com"
+    ```
+
+2. Restart the Infrahub stack to apply the changes.
+
+3. Verify the configuration is applied by checking the environment variables in the `task-worker` container.
+
+:::success Validation
+
+Test the merge behavior by merging a branch linked to Git. Infrahub should now create a merge commit in the main branch instead of performing a fast-forward update.
+
+:::
+
 ## Verification
 
 After completing this guide, you should have successfully connected external Git repositories to Infrahub.
