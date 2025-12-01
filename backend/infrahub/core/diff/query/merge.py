@@ -432,7 +432,7 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
             // ------------------------------
             CALL (attr_rel, property_diff) {
                 OPTIONAL MATCH (attr_rel)-[r_vis_pro]->(bool:Boolean)
-                WHERE property_diff.property_type IN ["IS_PROTECTED"]
+                WHERE property_diff.property_type = "IS_PROTECTED"
                 AND r_vis_pro.branch IN [$source_branch, $target_branch]
                 AND type(r_vis_pro) = property_diff.property_type
                 AND (property_diff.value IS NULL OR bool.value = property_diff.value)

@@ -93,7 +93,7 @@ class DiffMergeSerializer:
         if property_type in (DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED):
             return raw_value
         # these are boolean
-        if (property_type in (DatabaseEdgeType.IS_PROTECTED,)) and isinstance(raw_value, str):
+        if property_type == DatabaseEdgeType.IS_PROTECTED and isinstance(raw_value, str):
             return raw_value.lower() == "true"
         # this must be HAS_VALUE
         if raw_value in (None, NULL_VALUE):

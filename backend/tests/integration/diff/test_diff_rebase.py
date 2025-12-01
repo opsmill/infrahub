@@ -315,10 +315,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert related_prop.previous_value == koenigsegg_id
             assert related_prop.new_value == new_peer_id
             assert related_prop.conflict is None
-            for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
-                diff_prop = properties_by_type[prop_type]
-                assert diff_prop.action is DiffAction.UNCHANGED
-                assert diff_prop.previous_value == diff_prop.new_value == value
+            prop_type, value = (DatabaseEdgeType.IS_PROTECTED, "False")
+            diff_prop = properties_by_type[prop_type]
+            assert diff_prop.action is DiffAction.UNCHANGED
+            assert diff_prop.previous_value == diff_prop.new_value == value
             for manufacturer_id, expected_action in (
                 (koenigsegg_id, DiffAction.REMOVED),
                 (new_peer_id, DiffAction.ADDED),
