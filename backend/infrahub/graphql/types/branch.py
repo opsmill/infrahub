@@ -67,7 +67,7 @@ class BranchType(InfrahubObjectType):
 
 
 class InfrahubBranchMetaObject(ObjectType):
-    updated_by = String(required=False, description="UUID of the user that last modified the attribute or relationship")
+    updated_by = String(required=False, description="User that last modified the attribute or relationship")
     updated_at = DateTime(
         required=False,
         description="Date/Time when the attribute or relationship was last modified by a user or a system task",
