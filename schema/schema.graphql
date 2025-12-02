@@ -78,7 +78,12 @@ type AnyAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: GenericScalar
 }
 
@@ -148,6 +153,7 @@ type Branch {
   is_default: Boolean
   is_isolated: Boolean @deprecated(reason: "non isolated mode is not supported anymore")
   name: String!
+  node_metadata: InfrahubNodeMetaObject
   origin_branch: String
   status: BranchStatus!
   sync_with_git: Boolean
@@ -474,6 +480,7 @@ type BuiltinTag implements CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   profiles(ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -560,7 +567,12 @@ type CheckboxAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: Boolean
 }
 
@@ -634,6 +646,7 @@ type CoreAccount implements CoreGenericAccount & CoreNode & LineageOwner & Linea
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   password: TextAttribute
   status: Dropdown
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -678,6 +691,7 @@ type CoreAccountGroup implements CoreGroup & LineageOwner & LineageSource {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   parent: NestedEdgedCoreGroup!
   roles(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountRole!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
@@ -759,6 +773,7 @@ type CoreAccountRole implements CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   permissions(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], identifier__is_protected: Boolean, identifier__owner__id: ID, identifier__source__id: ID, identifier__value: String, identifier__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreBasePermission!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -905,6 +920,7 @@ type CoreArtifact implements CoreNode & CoreTaskTarget {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   object: NestedEdgedCoreArtifactTarget!
   """None"""
   parameters: JSONAttribute
@@ -938,6 +954,7 @@ type CoreArtifactCheck implements CoreCheck & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   message: TextAttribute
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   origin: TextAttribute
   severity: TextAttribute
   """None"""
@@ -1067,6 +1084,7 @@ type CoreArtifactDefinition implements CoreNode & CoreTaskTarget {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   parameters: JSONAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -1182,6 +1200,7 @@ type CoreArtifactThread implements CoreNode & CoreThread {
   """None"""
   line_number: NumberAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   resolved: CheckboxAttribute
   """None"""
   storage_id: TextAttribute
@@ -1314,6 +1333,7 @@ type CoreArtifactValidator implements CoreNode & CoreValidator {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   proposed_change: NestedEdgedCoreProposedChange!
   started_at: TextAttribute
   state: TextAttribute
@@ -1428,6 +1448,7 @@ type CoreChangeComment implements CoreComment & CoreNode {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   text: TextAttribute
 }
@@ -1501,6 +1522,7 @@ type CoreChangeThread implements CoreNode & CoreThread {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   resolved: CheckboxAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -1601,6 +1623,7 @@ type CoreCheckDefinition implements CoreNode & CoreTaskTarget {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """None"""
   parameters: JSONAttribute
   query: NestedEdgedCoreGraphQLQuery!
@@ -1778,6 +1801,7 @@ type CoreCustomWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   name: TextAttribute
   """Only send node mutation events for nodes of this kind"""
   node_kind: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """None"""
   shared_key: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -1883,6 +1907,7 @@ type CoreDataCheck implements CoreCheck & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   message: TextAttribute
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   origin: TextAttribute
   severity: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -1981,6 +2006,7 @@ type CoreDataValidator implements CoreNode & CoreValidator {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   proposed_change: NestedEdgedCoreProposedChange!
   started_at: TextAttribute
   state: TextAttribute
@@ -2070,6 +2096,7 @@ type CoreFileCheck implements CoreCheck & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   message: TextAttribute
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   origin: TextAttribute
   severity: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -2172,6 +2199,7 @@ type CoreFileThread implements CoreNode & CoreThread {
   """None"""
   line_number: NumberAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   repository: NestedEdgedCoreRepository!
   resolved: CheckboxAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -2264,6 +2292,7 @@ type CoreGeneratorAction implements CoreAction & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Short descriptive name"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   triggers(active__is_protected: Boolean, active__owner__id: ID, active__source__id: ID, active__value: Boolean, active__values: [Boolean], branch_scope__is_protected: Boolean, branch_scope__owner__id: ID, branch_scope__source__id: ID, branch_scope__value: String, branch_scope__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreTriggerRule!
 }
@@ -2357,6 +2386,7 @@ type CoreGeneratorAwareGroup implements CoreGroup {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   parent: NestedEdgedCoreGroup!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
 }
@@ -2439,6 +2469,7 @@ type CoreGeneratorCheck implements CoreCheck & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   message: TextAttribute
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   origin: TextAttribute
   severity: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -2540,6 +2571,7 @@ type CoreGeneratorDefinition implements CoreNode & CoreTaskTarget {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   parameters: JSONAttribute
   query: NestedEdgedCoreGraphQLQuery!
@@ -2636,6 +2668,7 @@ type CoreGeneratorGroup implements CoreGroup {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   parent: NestedEdgedCoreGroup!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
 }
@@ -2712,6 +2745,7 @@ type CoreGeneratorInstance implements CoreNode & CoreTaskTarget {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   object: NestedEdgedCoreNode!
   """None (required)"""
   status: TextAttribute
@@ -2783,6 +2817,7 @@ type CoreGeneratorValidator implements CoreNode & CoreValidator {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   proposed_change: NestedEdgedCoreProposedChange!
   started_at: TextAttribute
   state: TextAttribute
@@ -2957,6 +2992,7 @@ type CoreGlobalPermission implements CoreBasePermission & CoreNode {
   id: String!
   identifier: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   roles(ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountRole!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -3038,6 +3074,7 @@ type CoreGraphQLQuery implements CoreNode {
   models: ListAttribute
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """
   Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'
   """
@@ -3089,6 +3126,7 @@ type CoreGraphQLQueryGroup implements CoreGroup {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """None"""
   parameters: JSONAttribute
   parent: NestedEdgedCoreGroup!
@@ -3238,6 +3276,7 @@ type CoreGroupAction implements CoreAction & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Short descriptive name"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   triggers(active__is_protected: Boolean, active__owner__id: ID, active__source__id: ID, active__value: Boolean, active__values: [Boolean], branch_scope__is_protected: Boolean, branch_scope__owner__id: ID, branch_scope__source__id: ID, branch_scope__value: String, branch_scope__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreTriggerRule!
 }
@@ -3362,6 +3401,7 @@ type CoreGroupTriggerRule implements CoreNode & CoreTriggerRule {
   member_update: Dropdown
   """The name of the trigger rule"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
@@ -3509,6 +3549,7 @@ type CoreIPAddressPool implements CoreNode & CoreResourcePool & LineageSource {
   ip_namespace: NestedEdgedBuiltinIPNamespace!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   resources(broadcast_address__is_protected: Boolean, broadcast_address__owner__id: ID, broadcast_address__source__id: ID, broadcast_address__value: String, broadcast_address__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hostmask__is_protected: Boolean, hostmask__owner__id: ID, hostmask__source__id: ID, hostmask__value: String, hostmask__values: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], is_top_level__is_protected: Boolean, is_top_level__owner__id: ID, is_top_level__source__id: ID, is_top_level__value: Boolean, is_top_level__values: [Boolean], isnull: Boolean, limit: Int, member_type__is_protected: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], netmask__is_protected: Boolean, netmask__owner__id: ID, netmask__source__id: ID, netmask__value: String, netmask__values: [String], network_address__is_protected: Boolean, network_address__owner__id: ID, network_address__source__id: ID, network_address__value: String, network_address__values: [String], offset: Int, order: OrderInput, prefix__is_protected: Boolean, prefix__owner__id: ID, prefix__source__id: ID, prefix__value: String, prefix__values: [String], utilization__is_protected: Boolean, utilization__owner__id: ID, utilization__source__id: ID, utilization__value: BigInt, utilization__values: [BigInt]): NestedPaginatedBuiltinIPPrefix!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -3606,6 +3647,7 @@ type CoreIPPrefixPool implements CoreNode & CoreResourcePool & LineageSource {
   ip_namespace: NestedEdgedBuiltinIPNamespace!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   resources(broadcast_address__is_protected: Boolean, broadcast_address__owner__id: ID, broadcast_address__source__id: ID, broadcast_address__value: String, broadcast_address__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hostmask__is_protected: Boolean, hostmask__owner__id: ID, hostmask__source__id: ID, hostmask__value: String, hostmask__values: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], is_top_level__is_protected: Boolean, is_top_level__owner__id: ID, is_top_level__source__id: ID, is_top_level__value: Boolean, is_top_level__values: [Boolean], isnull: Boolean, limit: Int, member_type__is_protected: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], netmask__is_protected: Boolean, netmask__owner__id: ID, netmask__source__id: ID, netmask__value: String, netmask__values: [String], network_address__is_protected: Boolean, network_address__owner__id: ID, network_address__source__id: ID, network_address__value: String, network_address__values: [String], offset: Int, order: OrderInput, prefix__is_protected: Boolean, prefix__owner__id: ID, prefix__source__id: ID, prefix__value: String, prefix__values: [String], utilization__is_protected: Boolean, utilization__owner__id: ID, utilization__source__id: ID, utilization__value: BigInt, utilization__values: [BigInt]): NestedPaginatedBuiltinIPPrefix!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -3727,6 +3769,7 @@ type CoreMenuItem implements CoreMenu & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
   namespace: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   order_weight: NumberAttribute
   parent: NestedEdgedCoreMenu!
   path: TextAttribute
@@ -3862,6 +3905,7 @@ type CoreNodeTriggerAttributeMatch implements CoreNode & CoreNodeTriggerMatch {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   trigger: NestedEdgedCoreNodeTriggerRule!
   """The value the attribute is updated to"""
@@ -3997,6 +4041,7 @@ type CoreNodeTriggerRelationshipMatch implements CoreNode & CoreNodeTriggerMatch
   Indicates if the relationship was added or removed or just updated in any way
   """
   modification_type: Dropdown
+  node_metadata: InfrahubNodeMetaObject
   """The node_id of the relationship peer to match against"""
   peer: TextAttribute
   """The name of the relationship to match against (required)"""
@@ -4107,6 +4152,7 @@ type CoreNodeTriggerRule implements CoreNode & CoreTriggerRule {
   name: TextAttribute
   """The kind of node to match against (required)"""
   node_kind: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
@@ -4259,6 +4305,7 @@ type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
   node: TextAttribute
   """The attribute of the selected model (required)"""
   node_attribute: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """Defines how this number pool was created"""
   pool_type: TextAttribute
   """The start range for the pool (required)"""
@@ -4386,6 +4433,7 @@ type CoreObjectPermission implements CoreBasePermission & CoreNode {
   name: TextAttribute
   """None (required)"""
   namespace: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   roles(ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountRole!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -4500,6 +4548,7 @@ type CoreObjectThread implements CoreNode & CoreThread {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   object_path: TextAttribute
   resolved: CheckboxAttribute
@@ -4582,6 +4631,7 @@ type CorePasswordCredential implements CoreCredential & CoreNode {
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """None"""
   password: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -4695,6 +4745,7 @@ type CoreProposedChange implements CoreNode & CoreTaskTarget {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   rejected_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
   reviewers(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
   """None (required)"""
@@ -4802,6 +4853,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   location: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   operational_status: Dropdown
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   """None"""
@@ -4929,6 +4981,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   location: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   operational_status: Dropdown
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -4987,6 +5040,7 @@ type CoreRepositoryGroup implements CoreGroup {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   parent: NestedEdgedCoreGroup!
   repository: NestedEdgedCoreGenericRepository!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
@@ -5131,6 +5185,7 @@ type CoreRepositoryValidator implements CoreNode & CoreValidator {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   proposed_change: NestedEdgedCoreProposedChange!
   repository: NestedEdgedCoreGenericRepository!
   started_at: TextAttribute
@@ -5256,6 +5311,7 @@ type CoreSchemaCheck implements CoreCheck & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   message: TextAttribute
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   origin: TextAttribute
   severity: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5351,6 +5407,7 @@ type CoreSchemaValidator implements CoreNode & CoreValidator {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   proposed_change: NestedEdgedCoreProposedChange!
   started_at: TextAttribute
   state: TextAttribute
@@ -5436,6 +5493,7 @@ type CoreStandardCheck implements CoreCheck & CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   message: TextAttribute
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   origin: TextAttribute
   severity: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5528,6 +5586,7 @@ type CoreStandardGroup implements CoreGroup {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   parent: NestedEdgedCoreGroup!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
 }
@@ -5609,6 +5668,7 @@ type CoreStandardWebhook implements CoreNode & CoreTaskTarget & CoreWebhook {
   name: TextAttribute
   """Only send node mutation events for nodes of this kind"""
   node_kind: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   shared_key: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5741,6 +5801,7 @@ type CoreThreadComment implements CoreComment & CoreNode {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   text: TextAttribute
   thread: NestedEdgedCoreThread!
@@ -5832,6 +5893,7 @@ type CoreTransformJinja2 implements CoreNode & CoreTransformation {
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   query: NestedEdgedCoreGraphQLQuery!
   repository: NestedEdgedCoreGenericRepository!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5926,6 +5988,7 @@ type CoreTransformPython implements CoreNode & CoreTransformation {
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   query: NestedEdgedCoreGraphQLQuery!
   repository: NestedEdgedCoreGenericRepository!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -6113,6 +6176,7 @@ type CoreUserValidator implements CoreNode & CoreValidator {
   id: String!
   label: TextAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   proposed_change: NestedEdgedCoreProposedChange!
   repository: NestedEdgedCoreGenericRepository!
   started_at: TextAttribute
@@ -6466,7 +6530,12 @@ type Dropdown implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: String
 }
 
@@ -7090,7 +7159,12 @@ type IPHost implements AttributeInterface {
   permissions: PermissionType
   prefixlen: Int
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: String
   version: Int
   with_hostmask: String
@@ -7112,7 +7186,12 @@ type IPNetwork implements AttributeInterface {
   permissions: PermissionType
   prefixlen: Int
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: String
   version: Int
   with_hostmask: String
@@ -7224,6 +7303,7 @@ input InfrahubAccountTokenDeleteInput {
 
 type InfrahubAccountTokenType {
   id: String!
+  node_metadata: InfrahubNodeMetaObject
   token: ValueType
 }
 
@@ -7245,6 +7325,7 @@ type InfrahubBranch {
   is_default: NonRequiredBooleanValueField
   is_isolated: NonRequiredBooleanValueField @deprecated(reason: "non isolated mode is not supported anymore")
   name: RequiredStringValueField!
+  node_metadata: InfrahubNodeMetaObject
   origin_branch: NonRequiredStringValueField
   status: StatusField!
   sync_with_git: NonRequiredBooleanValueField
@@ -7306,6 +7387,21 @@ type InfrahubMutatedRelationship {
   peer: RelatedNode!
 }
 
+type InfrahubNodeMetaObject {
+  """Date/Time the object has been created"""
+  created_at: DateTime
+  """
+  UUID of the user that created the object, even if the user is later deleted
+  """
+  created_by: String
+  """Date/Time when the object was last modified by a user or a system task"""
+  updated_at: DateTime
+  """
+  UUID of the user that last modified the object, even if the user is later deleted
+  """
+  updated_by: String
+}
+
 type InfrahubProfilesRefresh {
   ok: Boolean
 }
@@ -7324,6 +7420,7 @@ type InternalAccountToken implements CoreNode {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None"""
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   token: TextAttribute
@@ -7354,6 +7451,7 @@ type InternalIPPrefixAvailable implements BuiltinIPPrefix & CoreNode {
   member_type: Dropdown
   netmask: TextAttribute
   network_address: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   parent: NestedEdgedBuiltinIPPrefix!
   prefix: IPNetwork
   profiles(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
@@ -7377,6 +7475,7 @@ type InternalIPRangeAvailable implements BuiltinIPAddress & CoreNode {
   """None (required)"""
   last_address: IPHost
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   profiles(ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -7393,6 +7492,7 @@ type InternalRefreshToken implements CoreNode {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
@@ -7411,6 +7511,7 @@ type IpamNamespace implements BuiltinIPNamespace & CoreNode {
   ip_prefixes(broadcast_address__is_protected: Boolean, broadcast_address__owner__id: ID, broadcast_address__source__id: ID, broadcast_address__value: String, broadcast_address__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hostmask__is_protected: Boolean, hostmask__owner__id: ID, hostmask__source__id: ID, hostmask__value: String, hostmask__values: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], is_top_level__is_protected: Boolean, is_top_level__owner__id: ID, is_top_level__source__id: ID, is_top_level__value: Boolean, is_top_level__values: [Boolean], isnull: Boolean, limit: Int, member_type__is_protected: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], netmask__is_protected: Boolean, netmask__owner__id: ID, netmask__source__id: ID, netmask__value: String, netmask__values: [String], network_address__is_protected: Boolean, network_address__owner__id: ID, network_address__source__id: ID, network_address__value: String, network_address__values: [String], offset: Int, order: OrderInput, prefix__is_protected: Boolean, prefix__owner__id: ID, prefix__source__id: ID, prefix__value: String, prefix__values: [String], utilization__is_protected: Boolean, utilization__owner__id: ID, utilization__source__id: ID, utilization__value: BigInt, utilization__values: [BigInt]): NestedPaginatedBuiltinIPPrefix!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   name: TextAttribute
+  node_metadata: InfrahubNodeMetaObject
   profiles(ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
@@ -7483,7 +7584,12 @@ type JSONAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: GenericScalar
 }
 
@@ -7530,7 +7636,12 @@ type ListAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: GenericScalar
 }
 
@@ -7572,7 +7683,12 @@ type MacAddress implements AttributeInterface {
   source: LineageSource
   """Format used by PostgreSQL"""
   split_notation: String
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: String
   version: Int
 }
@@ -8160,6 +8276,7 @@ type Mutation {
 type NestedEdgedBuiltinIPAddress {
   _updated_at: DateTime
   node: BuiltinIPAddress
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8167,6 +8284,7 @@ type NestedEdgedBuiltinIPAddress {
 type NestedEdgedBuiltinIPNamespace {
   _updated_at: DateTime
   node: BuiltinIPNamespace
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8174,6 +8292,7 @@ type NestedEdgedBuiltinIPNamespace {
 type NestedEdgedBuiltinIPPrefix {
   _updated_at: DateTime
   node: BuiltinIPPrefix
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8207,6 +8326,7 @@ type NestedEdgedCoreAccountRole {
 type NestedEdgedCoreAction {
   _updated_at: DateTime
   node: CoreAction
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8230,6 +8350,7 @@ type NestedEdgedCoreArtifactDefinition {
 type NestedEdgedCoreArtifactTarget {
   _updated_at: DateTime
   node: CoreArtifactTarget
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8249,6 +8370,7 @@ type NestedEdgedCoreArtifactValidator {
 type NestedEdgedCoreBasePermission {
   _updated_at: DateTime
   node: CoreBasePermission
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8267,6 +8389,7 @@ type NestedEdgedCoreChangeThread {
 type NestedEdgedCoreCheck {
   _updated_at: DateTime
   node: CoreCheck
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8279,6 +8402,7 @@ type NestedEdgedCoreCheckDefinition {
 type NestedEdgedCoreComment {
   _updated_at: DateTime
   node: CoreComment
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8286,6 +8410,7 @@ type NestedEdgedCoreComment {
 type NestedEdgedCoreCredential {
   _updated_at: DateTime
   node: CoreCredential
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8363,6 +8488,7 @@ type NestedEdgedCoreGeneratorValidator {
 type NestedEdgedCoreGenericAccount {
   _updated_at: DateTime
   node: CoreGenericAccount
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8370,6 +8496,7 @@ type NestedEdgedCoreGenericAccount {
 type NestedEdgedCoreGenericRepository {
   _updated_at: DateTime
   node: CoreGenericRepository
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8395,6 +8522,7 @@ type NestedEdgedCoreGraphQLQueryGroup {
 type NestedEdgedCoreGroup {
   _updated_at: DateTime
   node: CoreGroup
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8430,6 +8558,7 @@ type NestedEdgedCoreIPPrefixPool {
 type NestedEdgedCoreMenu {
   _updated_at: DateTime
   node: CoreMenu
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8443,6 +8572,7 @@ type NestedEdgedCoreMenuItem {
 type NestedEdgedCoreNode {
   _updated_at: DateTime
   node: CoreNode
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8458,6 +8588,7 @@ A trigger match condition related to changes to nodes within the Infrahub databa
 type NestedEdgedCoreNodeTriggerMatch {
   _updated_at: DateTime
   node: CoreNodeTriggerMatch
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8485,6 +8616,7 @@ type NestedEdgedCoreNumberPool {
 type NestedEdgedCoreObjectComponentTemplate {
   _updated_at: DateTime
   node: CoreObjectComponentTemplate
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8498,6 +8630,7 @@ type NestedEdgedCoreObjectPermission {
 type NestedEdgedCoreObjectTemplate {
   _updated_at: DateTime
   node: CoreObjectTemplate
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8517,6 +8650,7 @@ type NestedEdgedCorePasswordCredential {
 type NestedEdgedCoreProfile {
   _updated_at: DateTime
   node: CoreProfile
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8558,6 +8692,7 @@ The resource manager contains pools of resources to allow for automatic assignme
 type NestedEdgedCoreResourcePool {
   _updated_at: DateTime
   node: CoreResourcePool
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8595,6 +8730,7 @@ type NestedEdgedCoreStandardWebhook {
 type NestedEdgedCoreTaskTarget {
   _updated_at: DateTime
   node: CoreTaskTarget
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8602,6 +8738,7 @@ type NestedEdgedCoreTaskTarget {
 type NestedEdgedCoreThread {
   _updated_at: DateTime
   node: CoreThread
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8627,6 +8764,7 @@ type NestedEdgedCoreTransformPython {
 type NestedEdgedCoreTransformation {
   _updated_at: DateTime
   node: CoreTransformation
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8636,6 +8774,7 @@ A rule that allows you to define a trigger and map it to an action that runs onc
 type NestedEdgedCoreTriggerRule {
   _updated_at: DateTime
   node: CoreTriggerRule
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8648,6 +8787,7 @@ type NestedEdgedCoreUserValidator {
 type NestedEdgedCoreValidator {
   _updated_at: DateTime
   node: CoreValidator
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8655,6 +8795,7 @@ type NestedEdgedCoreValidator {
 type NestedEdgedCoreWebhook {
   _updated_at: DateTime
   node: CoreWebhook
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8664,6 +8805,7 @@ Resource to be used in a pool, its weight is used to determine its priority on a
 type NestedEdgedCoreWeightedPoolResource {
   _updated_at: DateTime
   node: CoreWeightedPoolResource
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8703,6 +8845,7 @@ type NestedEdgedIpamNamespace {
 type NestedEdgedLineageOwner {
   _updated_at: DateTime
   node: LineageOwner
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8710,6 +8853,7 @@ type NestedEdgedLineageOwner {
 type NestedEdgedLineageSource {
   _updated_at: DateTime
   node: LineageSource
+  node_metadata: InfrahubNodeMetaObject
   properties: RelationshipProperty
 }
 
@@ -8741,18 +8885,21 @@ type NestedEdgedProfileIpamNamespace {
 type NestedPaginatedBuiltinIPAddress {
   count: Int!
   edges: [NestedEdgedBuiltinIPAddress!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A generic container for IP prefixes and IP addresses"""
 type NestedPaginatedBuiltinIPNamespace {
   count: Int!
   edges: [NestedEdgedBuiltinIPNamespace!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """IPv4 or IPv6 prefix also referred as network"""
 type NestedPaginatedBuiltinIPPrefix {
   count: Int!
   edges: [NestedEdgedBuiltinIPPrefix!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """
@@ -8789,6 +8936,7 @@ type NestedPaginatedCoreAccountRole {
 type NestedPaginatedCoreAction {
   count: Int!
   edges: [NestedEdgedCoreAction!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 type NestedPaginatedCoreArtifact {
@@ -8814,6 +8962,7 @@ type NestedPaginatedCoreArtifactDefinition {
 type NestedPaginatedCoreArtifactTarget {
   count: Int!
   edges: [NestedEdgedCoreArtifactTarget!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A thread related to an artifact on a proposed change"""
@@ -8834,6 +8983,7 @@ type NestedPaginatedCoreArtifactValidator {
 type NestedPaginatedCoreBasePermission {
   count: Int!
   edges: [NestedEdgedCoreBasePermission!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A comment on proposed change"""
@@ -8853,6 +9003,7 @@ type NestedPaginatedCoreChangeThread {
 type NestedPaginatedCoreCheck {
   count: Int!
   edges: [NestedEdgedCoreCheck!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 type NestedPaginatedCoreCheckDefinition {
@@ -8865,12 +9016,14 @@ type NestedPaginatedCoreCheckDefinition {
 type NestedPaginatedCoreComment {
   count: Int!
   edges: [NestedEdgedCoreComment!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A credential that could be referenced to access external services."""
 type NestedPaginatedCoreCredential {
   count: Int!
   edges: [NestedEdgedCoreCredential!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A webhook that connects to an external integration"""
@@ -8959,12 +9112,14 @@ type NestedPaginatedCoreGeneratorValidator {
 type NestedPaginatedCoreGenericAccount {
   count: Int!
   edges: [NestedEdgedCoreGenericAccount!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A Git Repository integrated with Infrahub"""
 type NestedPaginatedCoreGenericRepository {
   count: Int!
   edges: [NestedEdgedCoreGenericRepository!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A permission that grants global rights to perform actions in Infrahub"""
@@ -8992,6 +9147,7 @@ type NestedPaginatedCoreGraphQLQueryGroup {
 type NestedPaginatedCoreGroup {
   count: Int!
   edges: [NestedEdgedCoreGroup!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """
@@ -9030,6 +9186,7 @@ type NestedPaginatedCoreIPPrefixPool {
 type NestedPaginatedCoreMenu {
   count: Int!
   edges: [NestedEdgedCoreMenu!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """Menu Item"""
@@ -9043,6 +9200,7 @@ type NestedPaginatedCoreMenuItem {
 type NestedPaginatedCoreNode {
   count: Int!
   edges: [NestedEdgedCoreNode!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A trigger match that matches against attribute changes on a node"""
@@ -9058,6 +9216,7 @@ A trigger match condition related to changes to nodes within the Infrahub databa
 type NestedPaginatedCoreNodeTriggerMatch {
   count: Int!
   edges: [NestedEdgedCoreNodeTriggerMatch!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A trigger match that matches against relationship changes on a node"""
@@ -9087,6 +9246,7 @@ type NestedPaginatedCoreNumberPool {
 type NestedPaginatedCoreObjectComponentTemplate {
   count: Int!
   edges: [NestedEdgedCoreObjectComponentTemplate!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A permission that grants rights to perform actions on objects"""
@@ -9100,6 +9260,7 @@ type NestedPaginatedCoreObjectPermission {
 type NestedPaginatedCoreObjectTemplate {
   count: Int!
   edges: [NestedEdgedCoreObjectTemplate!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A thread related to an object on a proposed change"""
@@ -9120,6 +9281,7 @@ type NestedPaginatedCorePasswordCredential {
 type NestedPaginatedCoreProfile {
   count: Int!
   edges: [NestedEdgedCoreProfile!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """Metadata related to a proposed change"""
@@ -9165,6 +9327,7 @@ The resource manager contains pools of resources to allow for automatic assignme
 type NestedPaginatedCoreResourcePool {
   count: Int!
   edges: [NestedEdgedCoreResourcePool!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A check related to the schema"""
@@ -9206,12 +9369,14 @@ type NestedPaginatedCoreStandardWebhook {
 type NestedPaginatedCoreTaskTarget {
   count: Int!
   edges: [NestedEdgedCoreTaskTarget!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A thread on a Proposed Change"""
 type NestedPaginatedCoreThread {
   count: Int!
   edges: [NestedEdgedCoreThread!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A comment on thread within a Proposed Change"""
@@ -9239,6 +9404,7 @@ type NestedPaginatedCoreTransformPython {
 type NestedPaginatedCoreTransformation {
   count: Int!
   edges: [NestedEdgedCoreTransformation!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """
@@ -9247,6 +9413,7 @@ A rule that allows you to define a trigger and map it to an action that runs onc
 type NestedPaginatedCoreTriggerRule {
   count: Int!
   edges: [NestedEdgedCoreTriggerRule!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A Validator related to a user defined checks in a repository"""
@@ -9259,12 +9426,14 @@ type NestedPaginatedCoreUserValidator {
 type NestedPaginatedCoreValidator {
   count: Int!
   edges: [NestedEdgedCoreValidator!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """A webhook that connects to an external integration"""
 type NestedPaginatedCoreWebhook {
   count: Int!
   edges: [NestedEdgedCoreWebhook!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """
@@ -9273,6 +9442,7 @@ Resource to be used in a pool, its weight is used to determine its priority on a
 type NestedPaginatedCoreWeightedPoolResource {
   count: Int!
   edges: [NestedEdgedCoreWeightedPoolResource!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """Token for User Account"""
@@ -9316,12 +9486,14 @@ type NestedPaginatedIpamNamespace {
 type NestedPaginatedLineageOwner {
   count: Int!
   edges: [NestedEdgedLineageOwner!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """Any Entities that stores or produces data."""
 type NestedPaginatedLineageSource {
   count: Int!
   edges: [NestedEdgedLineageSource!]
+  node_metadata: InfrahubNodeMetaObject
 }
 
 """Profile for BuiltinIPAddress"""
@@ -9396,14 +9568,32 @@ type NodeMutatedEvent implements EventNodeInterface {
 }
 
 type NonRequiredBooleanValueField {
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: Boolean
 }
 
 type NonRequiredIntValueField {
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: Int
 }
 
 type NonRequiredStringValueField {
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: String
 }
 
@@ -9417,7 +9607,12 @@ type NumberAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: BigInt
 }
 
@@ -10165,6 +10360,7 @@ type ProfileBuiltinIPAddress implements CoreNode & CoreProfile & LineageSource {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   profile_name: TextAttribute
   """None"""
@@ -10243,6 +10439,7 @@ type ProfileBuiltinIPPrefix implements CoreNode & CoreProfile & LineageSource {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None"""
   member_type: Dropdown
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   profile_name: TextAttribute
   """None"""
@@ -10326,6 +10523,7 @@ type ProfileBuiltinTag implements CoreNode & CoreProfile & LineageSource {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   profile_name: TextAttribute
   """None"""
@@ -10400,6 +10598,7 @@ type ProfileIpamNamespace implements CoreNode & CoreProfile & LineageSource {
   """Unique identifier"""
   id: String!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  node_metadata: InfrahubNodeMetaObject
   """None (required)"""
   profile_name: TextAttribute
   """None"""
@@ -10877,6 +11076,12 @@ type Relationship {
   id: String
   identifier: String
   peers: [RelationshipPeer!]
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
 }
 
 type RelationshipAdd {
@@ -10925,6 +11130,12 @@ type Relationships {
 }
 
 type RequiredStringValueField {
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: String!
 }
 
@@ -11022,6 +11233,12 @@ type Status {
 }
 
 type StatusField {
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: BranchStatus!
 }
 
@@ -11112,7 +11329,12 @@ type TextAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute or relationship was last modified by a user or a system task
+  """
   updated_at: DateTime
+  """UUID of the user that last modified the attribute or relationship"""
+  updated_by: String
   value: String
 }
 

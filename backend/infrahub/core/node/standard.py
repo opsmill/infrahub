@@ -84,9 +84,9 @@ class StandardNode(BaseModel):
                 continue
             if field_name == "node_metadata" and isinstance(fields.get("node_metadata"), dict):
                 _result = {}
-                for meta_field in fields.get(field_name).keys():
+                for meta_field in fields.get(field_name, {}).keys():
                     if meta_field == "created_at":
-                        _result[meta_field] = Timestamp(self.created_at).to_datetime()
+                        _result[meta_field] = Timestamp(self.created_at).to_datetime() if self.created_at else None  # type: ignore[attr-defined]
                         continue
                     _result[meta_field] = getattr(self, meta_field, None)
                 response[field_name] = _result
@@ -97,7 +97,7 @@ class StandardNode(BaseModel):
                 continue
             if isinstance(fields.get(field_name), dict):
                 result = {}
-                for nested_field in fields.get(field_name).keys():
+                for nested_field in fields.get(field_name, {}).keys():
                     if nested_field == "value":
                         result[nested_field] = field
                         continue
