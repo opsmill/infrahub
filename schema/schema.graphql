@@ -79,10 +79,10 @@ type AnyAttribute implements AttributeInterface {
   permissions: PermissionType
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: GenericScalar
 }
@@ -568,10 +568,10 @@ type CheckboxAttribute implements AttributeInterface {
   permissions: PermissionType
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: Boolean
 }
@@ -6531,10 +6531,10 @@ type Dropdown implements AttributeInterface {
   permissions: PermissionType
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: String
 }
@@ -7160,10 +7160,10 @@ type IPHost implements AttributeInterface {
   prefixlen: Int
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: String
   version: Int
@@ -7187,10 +7187,10 @@ type IPNetwork implements AttributeInterface {
   prefixlen: Int
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: String
   version: Int
@@ -7585,10 +7585,10 @@ type JSONAttribute implements AttributeInterface {
   permissions: PermissionType
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: GenericScalar
 }
@@ -7637,10 +7637,10 @@ type ListAttribute implements AttributeInterface {
   permissions: PermissionType
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: GenericScalar
 }
@@ -7684,10 +7684,10 @@ type MacAddress implements AttributeInterface {
   """Format used by PostgreSQL"""
   split_notation: String
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: String
   version: Int
@@ -9572,7 +9572,7 @@ type NonRequiredBooleanValueField {
   Date/Time when the attribute or relationship was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute or relationship"""
   updated_by: String
   value: Boolean
 }
@@ -9582,7 +9582,7 @@ type NonRequiredIntValueField {
   Date/Time when the attribute or relationship was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute or relationship"""
   updated_by: String
   value: Int
 }
@@ -9592,7 +9592,7 @@ type NonRequiredStringValueField {
   Date/Time when the attribute or relationship was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute or relationship"""
   updated_by: String
   value: String
 }
@@ -9608,10 +9608,10 @@ type NumberAttribute implements AttributeInterface {
   permissions: PermissionType
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: BigInt
 }
@@ -11077,10 +11077,10 @@ type Relationship {
   identifier: String
   peers: [RelationshipPeer!]
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the relationship was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the relationship"""
   updated_by: String
 }
 
@@ -11134,7 +11134,7 @@ type RequiredStringValueField {
   Date/Time when the attribute or relationship was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute or relationship"""
   updated_by: String
   value: String!
 }
@@ -11237,7 +11237,7 @@ type StatusField {
   Date/Time when the attribute or relationship was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute or relationship"""
   updated_by: String
   value: BranchStatus!
 }
@@ -11330,10 +11330,10 @@ type TextAttribute implements AttributeInterface {
   permissions: PermissionType
   source: LineageSource
   """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
+  Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """UUID of the user that last modified the attribute or relationship"""
+  """User that last modified the attribute"""
   updated_by: String
   value: String
 }
