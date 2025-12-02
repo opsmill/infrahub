@@ -9,7 +9,6 @@ from graphene import Boolean, Field, InputObjectType, Mutation, String
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.schema import NodeSchema
 from infrahub.git.models import (
     GitRepositoryImportObjects,
@@ -34,6 +33,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -107,7 +107,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if node.get_kind() != InfrahubKind.READONLYREPOSITORY:
             return await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
 
-        node = cast(CoreReadOnlyRepository, node)
+        node = cast("CoreReadOnlyRepository", node)
         current_commit = node.commit.value
         current_ref = node.ref.value
         new_commit = None
@@ -118,7 +118,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             new_ref = data.ref.value
 
         obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
-        obj = cast(CoreReadOnlyRepository, obj)
+        obj = cast("CoreReadOnlyRepository", obj)
 
         send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
         if not send_update_message:
