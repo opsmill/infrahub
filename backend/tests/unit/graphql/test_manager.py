@@ -10,6 +10,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
+from infrahub.graphql.types.node import InfrahubObjectWithoutMeta
 
 
 async def test_input_type_registration() -> None:
@@ -57,6 +58,7 @@ async def test_generate_graphql_object(
         "level",
         "mylist",
         "name",
+        "node_metadata",
         "status",
         "time",
     ]
@@ -81,6 +83,7 @@ async def test_generate_graphql_object_with_interface(
         "id",
         "name",
         "nbr_doors",
+        "node_metadata",
     ]
 
 
@@ -129,11 +132,11 @@ async def test_generate_object_types(
     relationship_property = gqlm.get_type(name="RelationshipProperty")
 
     assert issubclass(car, InfrahubObject)
-    assert issubclass(edged_car, InfrahubObject)
-    assert issubclass(nested_edged_car, InfrahubObject)
+    assert issubclass(edged_car, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_car, InfrahubObjectWithoutMeta)
     assert issubclass(person, InfrahubObject)
-    assert issubclass(edged_person, InfrahubObject)
-    assert issubclass(nested_edged_person, InfrahubObject)
+    assert issubclass(edged_person, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_person, InfrahubObjectWithoutMeta)
     assert issubclass(relationship_property, graphene.ObjectType)
 
     assert sorted(car._meta.fields.keys()) == [
@@ -147,6 +150,7 @@ async def test_generate_object_types(
         "member_of_groups",
         "name",
         "nbr_seats",
+        "node_metadata",
         "owner",
         "profiles",
         "subscriber_of_groups",
@@ -169,6 +173,7 @@ async def test_generate_object_types(
         "id",
         "member_of_groups",
         "name",
+        "node_metadata",
         "profiles",
         "subscriber_of_groups",
     ]

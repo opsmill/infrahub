@@ -1879,7 +1879,9 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
         TestPerson {
             edges {
                 node {
-                    _updated_at
+                    node_metadata {
+                        updated_at
+                    }
                     id
                 }
             }
@@ -1898,7 +1900,7 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
 
     assert result1.errors is None
     assert result1.data
-    assert result1.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
+    assert result1.data["TestPerson"]["edges"][0]["node"]["node_metadata"]["updated_at"]
 
     p2 = await Node.init(db=db, schema="TestPerson")
     await p2.new(db=db, firstname="Jane", lastname="Doe")
@@ -1916,14 +1918,14 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
 
     assert result2.errors is None
     assert result2.data
-    assert result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
-    assert result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
-    assert result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"] == Timestamp(
-        result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
+    assert result2.data["TestPerson"]["edges"][0]["node"]["node_metadata"]["updated_at"]
+    assert result2.data["TestPerson"]["edges"][1]["node"]["node_metadata"]["updated_at"]
+    assert result2.data["TestPerson"]["edges"][1]["node"]["node_metadata"]["updated_at"] == Timestamp(
+        result2.data["TestPerson"]["edges"][1]["node"]["node_metadata"]["updated_at"]
     ).to_string(with_z=False)
     assert (
-        result2.data["TestPerson"]["edges"][0]["node"]["_updated_at"]
-        != result2.data["TestPerson"]["edges"][1]["node"]["_updated_at"]
+        result2.data["TestPerson"]["edges"][0]["node"]["node_metadata"]["updated_at"]
+        != result2.data["TestPerson"]["edges"][1]["node"]["node_metadata"]["updated_at"]
     )
 
 
@@ -1949,7 +1951,9 @@ async def test_query_relationship_updated_at(
                     tags {
                         edges {
                             node {
-                                _updated_at
+                                node_metadata {
+                                    updated_at
+                                }
                                 name {
                                     value
                                 }
@@ -1995,13 +1999,18 @@ async def test_query_relationship_updated_at(
     assert result2.errors is None
     assert result2.data
     assert len(result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"]) == 2
-    assert result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"] is not None
     assert (
-        result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+        result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["node_metadata"]["updated_at"]
+        is not None
+    )
+    assert (
+        result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["node_metadata"]["updated_at"]
         != result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["properties"]["updated_at"]
     )
-    assert result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"] == Timestamp(
-        result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["_updated_at"]
+    assert result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["node_metadata"][
+        "updated_at"
+    ] == Timestamp(
+        result2.data["TestPerson"]["edges"][0]["node"]["tags"]["edges"][0]["node"]["node_metadata"]["updated_at"]
     ).to_string(with_z=False)
 
 
