@@ -12,8 +12,6 @@ from infrahub.actions.schema import (
     core_trigger_rule,
 )
 
-from ...generic_schema import GenericSchema
-from ...node_schema import NodeSchema
 from .account import (
     core_account,
     core_account_token,
@@ -93,7 +91,7 @@ from .template import core_object_component_template, core_object_template
 from .transform import core_transform, core_transform_jinja2, core_transform_python
 from .webhook import core_custom_webhook, core_standard_webhook, core_webhook
 
-core_models_mixed: dict[str, list] = {
+core_models: dict[str, Any] = {
     "generics": [
         core_action,
         core_trigger_rule,
@@ -184,10 +182,4 @@ core_models_mixed: dict[str, list] = {
         internal_ipam_ip_prefix_available,
         internal_ipam_ip_range_available,
     ],
-}
-
-
-core_models: dict[str, Any] = {
-    "generics": [item.to_dict() if isinstance(item, GenericSchema) else item for item in core_models_mixed["generics"]],
-    "nodes": [item.to_dict() if isinstance(item, NodeSchema) else item for item in core_models_mixed["nodes"]],
 }
