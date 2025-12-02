@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    SYSTEM_USER_ID,
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
@@ -22,8 +23,10 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.constants.schema import SchemaElementPathType
+from infrahub.core.metadata.interface import MetadataInterface
+from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
-from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
+from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -40,12 +43,10 @@ from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
-from ...graphql.models import OrderModel
 from ...log import get_logger
 from ..attribute import BaseAttribute
 from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
-from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 from .node_property_attribute import DisplayLabel, HumanFriendlyIdentifier
 
@@ -69,7 +70,7 @@ SchemaProtocol = TypeVar("SchemaProtocol")
 log = get_logger()
 
 
-class Node(BaseNode, metaclass=BaseNodeMeta):
+class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     @classmethod
     def __init_subclass_with_meta__(
         cls, _meta: BaseNodeOptions | None = None, default_filter: None = None, **options: dict[str, Any]
@@ -81,12 +82,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     def __init__(self, schema: NodeSchema | ProfileSchema | TemplateSchema, branch: Branch, at: Timestamp):
+        super().__init__()
         self._schema: NodeSchema | ProfileSchema | TemplateSchema = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
         self._existing: bool = False
+        self._metadata = MetadataInfo()
 
-        self._updated_at: Timestamp | None = None
         self.id: str = None
         self.db_id: str = None
 
@@ -102,6 +104,30 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._attributes: list[str] = []
         self._relationships: list[str] = []
         self._node_changelog: NodeChangelog | None = None
+
+    def _set_created_at(self, value: Timestamp | None) -> None:
+        self._metadata.created_at = value
+
+    def _set_created_by(self, value: str | None) -> None:
+        self._metadata.created_by = value
+
+    def _set_updated_at(self, value: Timestamp | None) -> None:
+        self._metadata.updated_at = value
+
+    def _set_updated_by(self, value: str | None) -> None:
+        self._metadata.updated_by = value
+
+    def _get_created_at(self) -> Timestamp | None:
+        return self._metadata.created_at
+
+    def _get_created_by(self) -> str | None:
+        return self._metadata.created_by
+
+    def _get_updated_at(self) -> Timestamp | None:
+        return self._metadata.updated_at
+
+    def _get_updated_by(self) -> str | None:
+        return self._metadata.updated_by
 
     def get_schema(self) -> NonGenericSchemaTypes:
         return self._schema
@@ -119,9 +145,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return self.id
 
         raise InitializationError("The node has not been saved yet and doesn't have an id")
-
-    def get_updated_at(self) -> Timestamp | None:
-        return self._updated_at
 
     def get_attribute(self, name: str) -> BaseAttribute:
         attribute = getattr(self, name)
@@ -726,6 +749,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             source=self._source,
             owner=self._owner,
         )
+        if isinstance(data, dict):
+            attr._set_created_at(data.pop("created_at", None))
+            attr._set_created_by(data.pop("created_by", None))
+            attr._set_updated_at(data.pop("updated_at", None))
+            attr._set_updated_by(data.pop("updated_by", None))
+
         return attr
 
     async def process_label(self, db: InfrahubDatabase | None = None) -> None:  # noqa: ARG002
@@ -786,18 +815,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         id: str | None = None,
         db_id: str | None = None,
-        updated_at: Timestamp | str | None = None,
         **kwargs: Any,
     ) -> Self:
         self.id = id
         self.db_id = db_id
         self._existing = True
-
-        if updated_at:
-            kwargs["updated_at"] = (
-                updated_at  # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
-            )
-            self._updated_at = Timestamp(updated_at)
 
         if not self._schema.is_schema_node:
             if hfid := kwargs.pop("human_friendly_id", None):
@@ -812,19 +834,22 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await self._process_fields(db=db, fields=kwargs)
         return self
 
-    async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> NodeChangelog:
+    async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
+        self._set_created_at(create_at)
+        self._set_created_by(user_id)
+        self._set_updated_at(create_at)
+        self._set_updated_by(user_id)
 
         if not self._schema.is_schema_node:
             await self.add_human_friendly_id(db=db)
             await self.add_display_label(db=db)
 
-        query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
+        query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at, user_id=user_id)
         await query.execute(db=db)
 
         _, self.db_id = query.get_self_ids()
         self._at = create_at
-        self._updated_at = create_at
         self._existing = True
 
         new_ids = query.get_ids()
@@ -842,6 +867,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr: BaseAttribute = getattr(self, name)
             attr.id, attr.db_id = new_ids[name]
             attr.at = create_at
+            attr._set_created_at(create_at)
+            attr._set_created_by(user_id)
+            attr._set_updated_at(create_at)
+            attr._set_updated_by(user_id)
             node_changelog.create_attribute(attribute=attr)
 
         # Go over the list of relationships and assign the new IDs one by one
@@ -856,7 +885,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return node_changelog
 
     async def _update(
-        self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None
+        self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
     ) -> NodeChangelog:
         """Update the node in the database if needed."""
 
@@ -866,8 +895,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             if (fields and name in fields) or not fields:
-                attr: BaseAttribute = getattr(self, name)
-                updated_attribute = await attr.save(at=update_at, db=db)
+                attr = self.get_attribute(name=name)
+                updated_attribute = await attr.save(db=db, user_id=user_id, at=update_at)
                 if updated_attribute:
                     node_changelog.add_attribute(attribute=updated_attribute)
 
@@ -876,15 +905,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for name in self._relationships:
             if (fields and name in fields) or not fields:
                 processed_relationships.append(name)
-                rel: RelationshipManager = getattr(self, name)
-                updated_relationship = await rel.save(at=update_at, db=db)
+                rel = self.get_relationship(name=name)
+                updated_relationship = await rel.save(db=db, user_id=user_id, at=update_at)
                 node_changelog.add_relationship(relationship_changelog=updated_relationship)
 
         if len(processed_relationships) != len(self._relationships):
             # Analyze if the node has a parent and add it to the changelog if missing
             if parent_relationship := self._get_parent_relationship_name():
                 if parent_relationship not in processed_relationships:
-                    rel: RelationshipManager = getattr(self, parent_relationship)
+                    rel = self.get_relationship(name=parent_relationship)
                     if parent := await rel.get_parent(db=db):
                         node_changelog.add_parent_from_relationship(parent=parent)
 
@@ -912,20 +941,31 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 node_changelog.add_attribute(attribute=updated_attribute)
 
         node_changelog.display_label = await self.get_display_label(db=db)
+
+        if node_changelog.has_changes:
+            self._set_updated_at(update_at)
+            self._set_updated_by(user_id)
+
         return node_changelog
 
-    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, fields: list[str] | None = None) -> Self:
+    async def save(
+        self,
+        db: InfrahubDatabase,
+        user_id: str = SYSTEM_USER_ID,
+        at: Timestamp | None = None,
+        fields: list[str] | None = None,
+    ) -> Self:
         """Create or Update the Node in the database."""
         save_at = Timestamp(at)
 
         if self._existing:
-            self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
+            self._node_changelog = await self._update(db=db, user_id=user_id, at=save_at, fields=fields)
         else:
-            self._node_changelog = await self._create(at=save_at, db=db)
+            self._node_changelog = await self._create(db=db, user_id=user_id, at=save_at)
 
         return self
 
-    async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
+    async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
 
         delete_at = Timestamp(at)
@@ -954,7 +994,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         branch = self.get_branch_based_on_support_type()
 
         delete_query = await RelationshipDeleteAllQuery.init(
-            db=db, node_id=self.get_id(), branch=branch, at=delete_at, branch_agnostic=branch.name == GLOBAL_BRANCH_NAME
+            db=db,
+            node_id=self.get_id(),
+            branch=branch,
+            user_id=user_id,
+            at=delete_at,
+            branch_agnostic=branch.name == GLOBAL_BRANCH_NAME,
         )
         await delete_query.execute(db=db)
 
@@ -962,22 +1007,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for relationship_changelog in deleted_relationships_changelogs:
             node_changelog.add_relationship(relationship_changelog=relationship_changelog)
 
-        # Update the relationship to the branch itself
-        query = await NodeGetListQuery.init(
-            db=db,
-            schema=self._schema,
-            filters={"id": self.id},
-            branch=self._branch,
-            at=delete_at,
-            order=OrderModel(disable=True),
-        )
-        await query.execute(db=db)
-        result = query.get_result()
-
-        if result and result.get("rb.branch") == branch.name:
-            await update_relationships_to([result.get("rb_id")], to=delete_at, db=db)
-
-        query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
+        query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at, user_id=user_id)
         await query.execute(db=db)
 
         self._node_changelog = node_changelog
@@ -1025,8 +1055,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "_updated_at":
-                if self._updated_at:
-                    response[field_name] = await self._updated_at.to_graphql()
+                if updated_at := self._get_updated_at():
+                    response[field_name] = await updated_at.to_graphql()
                 else:
                     response[field_name] = None
                 continue

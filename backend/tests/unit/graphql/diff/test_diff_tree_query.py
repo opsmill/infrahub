@@ -357,8 +357,8 @@ async def test_diff_tree_one_attr_change(
         "num_removed": 0,
         "num_updated": 1,
         "num_conflicts": 1,
-        "num_untracked_base_changes": 1,
-        "num_untracked_diff_changes": 1,
+        "num_untracked_base_changes": 2,
+        "num_untracked_diff_changes": 2,
         "nodes": [
             {
                 "uuid": criticality_low.id,
