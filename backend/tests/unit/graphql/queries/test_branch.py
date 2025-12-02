@@ -9,7 +9,7 @@ from tests.helpers.test_app import TestInfrahubApp
 
 
 def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
-    exempted_fields = ("id", "created_at")
+    exempted_fields = ("id", "created_at", "node_metadata")
     for field_name, field_value in BranchType._meta.fields.items():
         if field_name in exempted_fields:
             continue
@@ -357,7 +357,7 @@ class TestBranchQuery(TestInfrahubApp):
                 InfrahubBranch {
                     edges {
                         node {
-                            meta {
+                            node_metadata {
                                 created_by
                                 created_at
                                 updated_by
@@ -366,17 +366,13 @@ class TestBranchQuery(TestInfrahubApp):
                             id
                             name {
                                 value
-                                meta {
-                                    updated_by
-                                    updated_at
-                                }
+                                updated_by
+                                updated_at
                             }
                             description {
                                 value
-                                meta {
-                                    updated_by
-                                    updated_at
-                                }
+                                updated_by
+                                updated_at
                             }
                         }
                     }
@@ -394,4 +390,12 @@ class TestBranchQuery(TestInfrahubApp):
         assert all_branches.data
 
         for branch in all_branches.data["InfrahubBranch"]["edges"]:
-            assert branch["node"]["meta"]["created_at"]
+            assert branch["node"]["name"]["value"]
+            assert branch["node"]["name"]["updated_at"] is None
+            assert branch["node"]["name"]["updated_by"] is None
+
+            assert branch["node"]["description"]["value"]
+            assert branch["node"]["description"]["updated_at"] is None
+            assert branch["node"]["description"]["updated_by"] is None
+
+            assert branch["node"]["node_metadata"]["created_at"]

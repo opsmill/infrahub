@@ -71,17 +71,13 @@ class AttributeInterface(InfrahubInterface):
 
 class InfrahubAttributeMetaObject(ObjectType):
     updated_by = String(required=False, description="UUID of the user that last modified the attribute or relationship")
-    updated_at = String(
+    updated_at = DateTime(
         required=False,
         description="Date/Time when the attribute or relationship was last modified by a user or a system task",
     )
 
 
-class InfrahubAttributeMeta(ObjectType):
-    meta = Field(InfrahubAttributeMetaObject, required=False)
-
-
-class BaseAttribute(InfrahubAttributeMeta):
+class BaseAttribute(InfrahubAttributeMetaObject):
     id = Field(String)
     is_from_profile = Field(Boolean)
     permissions = Field(PermissionType, required=False)

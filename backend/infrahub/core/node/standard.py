@@ -18,7 +18,7 @@ from infrahub.core.query.standard_node import (
     StandardNodeQuery,
     StandardNodeUpdateQuery,
 )
-from infrahub.core.timestamp import current_timestamp
+from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.exceptions import Error, InitializationError
 
 if TYPE_CHECKING:
@@ -73,6 +73,7 @@ class StandardNode(BaseModel):
         raise InitializationError("The root node has not been initialized with a uuid")
 
     async def to_graphql(self, fields: dict) -> dict:
+        print(fields)
         response: dict[str, Any] = {"id": self.uuid}
 
         for field_name in fields.keys():
@@ -81,10 +82,14 @@ class StandardNode(BaseModel):
             if field_name == "__typename":
                 response[field_name] = self.get_type()
                 continue
-            if field_name == "meta" and isinstance(fields.get("meta"), dict):
-                response[field_name] = {
-                    meta_field: getattr(self, meta_field, None) for meta_field in fields.get(field_name).keys()
-                }
+            if field_name == "node_metadata" and isinstance(fields.get("node_metadata"), dict):
+                _result = {}
+                for meta_field in fields.get(field_name).keys():
+                    if meta_field == "created_at":
+                        _result[meta_field] = Timestamp(self.created_at).to_datetime()
+                        continue
+                    _result[meta_field] = getattr(self, meta_field, None)
+                response[field_name] = _result
                 continue
             field = getattr(self, field_name, None)
             if field is None:
@@ -96,10 +101,6 @@ class StandardNode(BaseModel):
                     if nested_field == "value":
                         result[nested_field] = field
                         continue
-                    if nested_field == "meta":
-                        result[nested_field] = dict.fromkeys(fields.get(field_name).get("meta").keys())
-                        continue
-                    result[nested_field] = field
                 response[field_name] = result
                 continue
 
