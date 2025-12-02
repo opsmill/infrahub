@@ -28,6 +28,7 @@ frontend_files: &frontend_files
 
 openapi_schema_files: &openapi_schema_files
   - "schema/openapi.json"
+  - "frontend/app/src/shared/api/rest/types.generated.ts"
 
 e2e_test_files:
   - "frontend/app/tests/e2e/**"
