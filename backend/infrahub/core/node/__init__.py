@@ -1061,7 +1061,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
-            if field_name == "meta" and isinstance(fields.get("meta"), dict):
+            if field_name == "node_metadata" and isinstance(fields.get("node_metadata"), dict):
                 response[field_name] = await self._build_meta_response(db, field_name, fields)
                 continue
 
@@ -1114,6 +1114,24 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     async def _build_meta_response(self, db: InfrahubDatabase, field_name: str, fields: dict) -> dict:
         data = {}
         for meta_field in fields.get(field_name, {}).keys():
+            if meta_field == "created_at":
+                created_at = self._get_created_at()
+                data["created_at"] = created_at.to_datetime() if created_at else None
+                continue
+
+            if meta_field == "created_by":
+                data["created_by"] = self._get_created_by()
+                continue
+
+            if meta_field == "updated_by":
+                data["updated_by"] = self._get_updated_by()
+                continue
+
+            if meta_field == "updated_at":
+                updated_at = self._get_updated_at()
+                data["updated_at"] = updated_at.to_datetime() if updated_at else None
+                continue
+
             meta_field_data: RelationshipManager | str | None = getattr(self, meta_field, None)
 
             if isinstance(meta_field_data, RelationshipManager):

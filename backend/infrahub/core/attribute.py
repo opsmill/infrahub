@@ -533,6 +533,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[field_name] = updated_at.to_graphql() if updated_at else None
                 continue
 
+            if field_name == "updated_by":
+                response[field_name] = self._get_updated_by()
+                continue
+
             if field_name == "__typename":
                 response[field_name] = self.get_kind()
                 continue
@@ -556,12 +560,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                         fields={"id": None, "display_label": None, "__typename": None},
                         related_node_ids=related_node_ids,
                     )
-                continue
-
-            if field_name == "meta" and isinstance(fields.get("meta"), dict):
-                response[field_name] = {
-                    meta_field: getattr(self, meta_field, None) for meta_field in fields.get(field_name).keys()
-                }
                 continue
 
             if field_name.startswith("_"):
