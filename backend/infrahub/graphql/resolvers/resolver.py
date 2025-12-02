@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
-from infrahub.core.constants import BranchSupportType, InfrahubKind, MetadataOptions, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
@@ -17,7 +17,7 @@ from ..permissions import get_permissions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -149,7 +149,7 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: NodeSchema = (
+    schema: MainSchemaTypes = (
         info.return_type.of_type.graphene_type._meta.schema
         if isinstance(info.return_type, GraphQLNonNull)
         else info.return_type.graphene_type._meta.schema
@@ -195,7 +195,6 @@ async def default_paginated_list_resolver(
                 limit=limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_metadata=MetadataOptions.LINKED_NODES,
                 partial_match=partial_match,
                 order=order,
             )

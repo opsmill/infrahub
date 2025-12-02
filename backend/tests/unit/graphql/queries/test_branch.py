@@ -9,7 +9,7 @@ from tests.helpers.test_app import TestInfrahubApp
 
 
 def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
-    exempted_fields = ("id", "created_at", "meta")
+    exempted_fields = ("id", "created_at", "node_metadata")
     for field_name, field_value in BranchType._meta.fields.items():
         if field_name in exempted_fields:
             continue
@@ -357,7 +357,7 @@ class TestBranchQuery(TestInfrahubApp):
                 InfrahubBranch {
                     edges {
                         node {
-                            meta {
+                            node_metadata {
                                 created_by
                                 created_at
                                 updated_by
@@ -393,12 +393,12 @@ class TestBranchQuery(TestInfrahubApp):
 
         for branch in all_branches.data["InfrahubBranch"]["edges"]:
             if branch["node"]["name"]["value"] == "main":
-                assert branch["node"]["meta"]["created_by"] is None
+                assert branch["node"]["node_metadata"]["created_by"] is None
                 continue
-            assert branch["node"]["meta"]["created_at"] is not None
-            assert branch["node"]["meta"]["created_by"] is not None
-            assert branch["node"]["meta"]["updated_at"] is None
-            assert branch["node"]["meta"]["updated_by"] is None
+            assert branch["node"]["node_metadata"]["created_at"] is not None
+            assert branch["node"]["node_metadata"]["created_by"] is not None
+            assert branch["node"]["node_metadata"]["updated_at"] is None
+            assert branch["node"]["node_metadata"]["updated_by"] is None
 
         update_query = """
             mutation {
@@ -427,7 +427,7 @@ class TestBranchQuery(TestInfrahubApp):
                 InfrahubBranch(name__value: "sample-branch-4") {
                     edges {
                         node {
-                            meta {
+                            node_metadata {
                                 updated_by
                                 updated_at
                             }
@@ -454,5 +454,6 @@ class TestBranchQuery(TestInfrahubApp):
         assert data["description"]["value"] == "updated description"
         assert data["description"]["updated_by"] is not None
         assert data["description"]["updated_at"] is not None
-        assert data["meta"]["updated_by"] is not None
-        assert data["meta"]["updated_at"] is not None
+
+        assert data["node_metadata"]["updated_by"] is not None
+        assert data["node_metadata"]["updated_at"] is not None

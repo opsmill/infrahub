@@ -62,28 +62,6 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
-async def update_relationships_to(
-    ids: list[str], db: InfrahubDatabase, to: Timestamp | None = None
-) -> list[Record] | None:
-    """Update the "to" field on one or multiple relationships."""
-    if not ids:
-        return None
-
-    to = Timestamp(to)
-
-    query = """
-    MATCH ()-[r]->()
-    WHERE %(id_func)s(r) IN $ids
-    AND r.to IS NULL
-    SET r.to = $to
-    RETURN %(id_func)s(r)
-    """ % {"id_func": db.get_id_function_name()}
-
-    params = {"to": to.to_string(), "ids": [db.to_database_id(_id) for _id in ids]}
-
-    return await db.execute_query(query=query, params=params, name="update_relationships_to")
-
-
 async def get_paths_between_nodes(
     db: InfrahubDatabase,
     source_id: str,

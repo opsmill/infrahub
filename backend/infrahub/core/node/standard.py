@@ -69,6 +69,7 @@ class StandardNode(BaseModel):
         raise InitializationError("The root node has not been initialized with a uuid")
 
     async def to_graphql(self, fields: dict) -> dict:
+        print(fields)
         response: dict[str, Any] = {"id": self.uuid}
 
         for field_name in fields.keys():

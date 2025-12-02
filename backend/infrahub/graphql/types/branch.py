@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
+from graphene import Boolean, DateTime, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.branch import Branch
 from infrahub.core.branch import InfrahubBranch as InfrahubBranchModel
@@ -69,7 +69,7 @@ class BranchType(InfrahubObjectType):
 
 class InfrahubBranchMetaObject(ObjectType):
     updated_by = String(required=False, description="UUID of the user that last modified the attribute or relationship")
-    updated_at = String(
+    updated_at = DateTime(
         required=False,
         description="Date/Time when the attribute or relationship was last modified by a user or a system task",
     )

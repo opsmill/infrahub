@@ -65,7 +65,6 @@ describe("addAttributesToRequest", () => {
         is_default: true,
         is_from_profile: true,
         is_protected: true,
-        is_visible: true,
         source: {
           id: true,
           hfid: true,
@@ -124,7 +123,6 @@ describe("addAttributesToRequest", () => {
         is_default: true,
         is_from_profile: true,
         is_protected: true,
-        is_visible: true,
         source: {
           id: true,
           hfid: true,
@@ -208,7 +206,6 @@ describe("addRelationshipsToRequest", () => {
           display_label: true,
         },
         properties: {
-          is_visible: true,
           is_protected: true,
           updated_at: true,
           source: {

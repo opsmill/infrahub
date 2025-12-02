@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
@@ -100,10 +100,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   if (loading) {
     return <LoadingIndicator className="h-12" />;
-  }
-
-  if (relationshipsData && relationshipsData?.properties?.is_visible === false) {
-    return null;
   }
 
   if (relationshipSchema?.cardinality === "many" && !Array.isArray(relationshipsData)) {
@@ -224,10 +220,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData.properties?.is_protected && (
                     <LockClosedIcon className="h-4 w-4" />
                   )}
-
-                  {relationshipsData.properties?.is_visible === false && (
-                    <EyeSlashIcon className="h-4 w-4" />
-                  )}
                 </>
               }
             />
@@ -339,8 +331,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       )}
 
                       {properties.is_protected && <LockClosedIcon className="h-4 w-4" />}
-
-                      {properties.is_visible === false && <EyeSlashIcon className="h-4 w-4" />}
                     </dd>
                   ))}
                 </dl>

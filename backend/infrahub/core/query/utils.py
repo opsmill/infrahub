@@ -5,16 +5,14 @@ from typing import TYPE_CHECKING
 from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 
 if TYPE_CHECKING:
-    from neo4j.graph import Node as Neo4jNode
-
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
 def find_node_schema(
-    db: InfrahubDatabase, node: Neo4jNode, branch: Branch | str, duplicate: bool = False
+    db: InfrahubDatabase, branch: Branch | str, labels: list[str], duplicate: bool = False
 ) -> NodeSchema | ProfileSchema | TemplateSchema | None:
-    for label in node.labels:
+    for label in labels:
         if db.schema.has(name=label, branch=branch):
             schema = db.schema.get(name=label, branch=branch, duplicate=duplicate)
             if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema):

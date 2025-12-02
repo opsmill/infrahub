@@ -305,7 +305,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -365,7 +364,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "1",
           display_label: "Architecture Team",
@@ -425,7 +423,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -474,7 +471,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -523,7 +519,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -585,7 +580,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -647,7 +641,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
@@ -709,7 +702,6 @@ describe("getFormFieldsFromSchema", () => {
       name: {
         is_from_profile: false,
         is_protected: true,
-        is_visible: true,
         owner: {
           id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
           display_label: "Architecture Team",
