@@ -2,6 +2,8 @@
 title: Git repository
 ---
 
+import ReferenceLink from "../../src/components/Card";
+
 # Understanding Git repositories in Infrahub
 
 Infrahub integrates with external Git repositories to enable comprehensive version-controlled infrastructure management. This integration allows you to store and manage transformations, queries, generators, and other automation resources alongside your infrastructure data. This topic explains how Infrahub's Git integration works, the available repository types, and the architectural decisions behind these features.
@@ -92,6 +94,16 @@ This separation ensures that Git operations don't block API requests and enables
 - Updates require manual modification of the `ref` property
 - Each update fetches the specified commit and imports resources according to configuration
 
+### Merging branches
+
+**This applies only to standard repositories:**
+
+By default, Infrahub performs fast-forward only (ff-only) merges between branches. When merging a branch linked to Git, Infrahub updates the destination branch pointer without creating a merge commit.
+
+You can configure Infrahub to always create a merge commit by setting the `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` environment variable to `true`. This approach maintains a more explicit commit history and improves auditability.
+
+<ReferenceLink title="Enabling explicit merge commits" url="../guides/repository#customizing-git-merge-behavior"/>
+
 ## The `.infrahub.yml` configuration file {#infrahub-yaml}
 
 The `.infrahub.yml` file acts as a manifest, declaring which resources Infrahub should import from the repository. This declarative approach enables:
@@ -159,27 +171,6 @@ The polling-based synchronization approach:
 - Provides near-real-time updates (within seconds)
 - Avoids webhook complexity and firewall issues
 - May introduce slight delays compared to push-based systems
-
-## Integration with Infrahub workflows
-
-Repository integration enhances several Infrahub features:
-
-### Proposed changes
-
-When merging Proposed Changes where both source and destination branches are linked to Git:
-
-1. Infrahub creates a merge commit combining both branches
-2. The merge commit is pushed to the destination branch in Git
-3. This maintains consistency between Infrahub and Git history
-
-### Version control benefits
-
-The integration provides:
-
-- Full audit trail of who changed what and when
-- Ability to roll back both data and code changes
-- Parallel development through branching
-- Code review workflows via Git pull requests
 
 ## Further reading
 
