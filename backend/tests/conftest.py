@@ -6,7 +6,6 @@ import sys
 import tempfile
 import time
 from contextlib import ExitStack
-from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
@@ -761,15 +760,6 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
     }
 
     return schema
-
-
-@pytest.fixture
-async def animal_person_schema_person_no_default_filter(
-    db: InfrahubDatabase, default_branch, node_group_schema, data_schema, animal_person_schema_unregistered
-) -> SchemaBranch:
-    schema_dict = deepcopy(animal_person_schema_unregistered)
-    del schema_dict["nodes"][2]["default_filter"]
-    return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
 
 
 @pytest.fixture
