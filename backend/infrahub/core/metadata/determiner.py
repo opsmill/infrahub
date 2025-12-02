@@ -12,13 +12,14 @@ class MetadataDeterminer:
         All attribute-level metadata is combined and all relationship-level metadata is combined
         """
         node_metadata_options = MetadataOptions.NONE
-        if "_updated_at" in node_fields or "updated_at" in node_fields:
+        metadata_fields = node_fields.get("node_metadata", {})
+        if "_updated_at" in metadata_fields or "updated_at" in metadata_fields:
             node_metadata_options |= MetadataOptions.UPDATED_AT
-        if "updated_by" in node_fields:
+        if "updated_by" in metadata_fields:
             node_metadata_options |= MetadataOptions.UPDATED_BY
-        if "created_at" in node_fields:
+        if "created_at" in metadata_fields:
             node_metadata_options |= MetadataOptions.CREATED_AT
-        if "created_by" in node_fields:
+        if "created_by" in metadata_fields:
             node_metadata_options |= MetadataOptions.CREATED_BY
 
         attribute_metadata_options = MetadataOptions.NONE

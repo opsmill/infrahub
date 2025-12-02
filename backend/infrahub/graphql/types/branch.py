@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
+from graphene import Boolean, DateTime, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.branch import Branch
 
@@ -68,33 +68,29 @@ class BranchType(InfrahubObjectType):
 
 class InfrahubBranchMetaObject(ObjectType):
     updated_by = String(required=False, description="UUID of the user that last modified the attribute or relationship")
-    updated_at = String(
+    updated_at = DateTime(
         required=False,
         description="Date/Time when the attribute or relationship was last modified by a user or a system task",
     )
 
 
-class InfrahubBranchMeta(ObjectType):
-    meta = Field(InfrahubBranchMetaObject, required=False)
-
-
-class RequiredStringValueField(InfrahubBranchMeta):
+class RequiredStringValueField(InfrahubBranchMetaObject):
     value = String(required=True)
 
 
-class NonRequiredStringValueField(InfrahubBranchMeta):
+class NonRequiredStringValueField(InfrahubBranchMetaObject):
     value = String(required=False)
 
 
-class NonRequiredIntValueField(InfrahubBranchMeta):
+class NonRequiredIntValueField(InfrahubBranchMetaObject):
     value = Int(required=False)
 
 
-class NonRequiredBooleanValueField(InfrahubBranchMeta):
+class NonRequiredBooleanValueField(InfrahubBranchMetaObject):
     value = Boolean(required=False)
 
 
-class StatusField(InfrahubBranchMeta):
+class StatusField(InfrahubBranchMetaObject):
     value = InfrahubBranchStatus(required=True)
 
 

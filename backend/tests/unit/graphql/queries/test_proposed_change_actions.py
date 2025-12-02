@@ -31,7 +31,7 @@ PROPOSED_CHANGE_META_DATA_QUERY = """
         CoreProposedChange {
             edges {
                 node {
-                    meta {
+                    node_metadata {
                         created_by
                         created_at
                         updated_by
@@ -40,20 +40,16 @@ PROPOSED_CHANGE_META_DATA_QUERY = """
                     id
                     name {
                         value
-                        meta {
-                            updated_by
-                            updated_at
-                        }
+                        updated_by
+                        updated_at
                     }
                     description {
                         value
-                        meta {
-                            updated_by
-                            updated_at
-                        }
+                        updated_by
+                        updated_at
                     }
                     reviewers {
-                        meta {
+                        node_metadata {
                             created_at
                             updated_at
                             created_by
@@ -62,18 +58,14 @@ PROPOSED_CHANGE_META_DATA_QUERY = """
                         edges {
                             node {
                                 name {
-                                    meta {
-                                        updated_at
-                                        updated_by
-                                    }
                                     value
+                                    updated_by
+                                    updated_at
                                 }
                                 description {
-                                    meta {
-                                        updated_at
-                                        updated_by
-                                    }
                                     value
+                                    updated_by
+                                    updated_at
                                 }
                             }
                         }
@@ -313,10 +305,10 @@ async def test_proposed_change_query_meta_data(
     await proposed_change.new(
         db=db,
         name="pc-1",
+        description="sample description",
         destination_branch="main",
         source_branch=branch_name,
         state="open",
-        created_by=await NodeManager.get_one(db=db, id=session_admin.account_id),
     )
     await proposed_change.save(db=db)
 
@@ -333,6 +325,15 @@ async def test_proposed_change_query_meta_data(
     assert response.data
 
     for prc in response.data["CoreProposedChange"]["edges"]:
-        assert prc["node"]["meta"]["created_by"]
-        assert prc["node"]["name"]["meta"]["updated_at"]
-        assert prc["node"]["description"]["meta"]["updated_at"]
+        assert prc["node"]["name"]["value"]
+        assert prc["node"]["name"]["updated_by"]
+        assert prc["node"]["name"]["updated_at"]
+
+        assert prc["node"]["description"]["value"]
+        assert prc["node"]["description"]["updated_by"]
+        assert prc["node"]["description"]["updated_at"]
+
+        assert prc["node"]["node_metadata"]["created_by"]
+        assert prc["node"]["node_metadata"]["created_at"]
+        assert prc["node"]["node_metadata"]["updated_by"]
+        assert prc["node"]["node_metadata"]["updated_at"]
