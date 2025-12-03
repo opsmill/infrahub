@@ -43,3 +43,4 @@ After plan approval:
 - Add styles following project conventions
 - Add tests if applicable
 - Summarize what was created when complete
+- If a plan file was created, ask the user if they want to remove it
