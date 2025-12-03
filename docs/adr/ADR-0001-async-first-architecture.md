@@ -38,4 +38,3 @@ We will use async/await throughout the backend, making all I/O operations asynch
 - All FastAPI endpoints and GraphQL resolvers are async functions
 - Database sessions are automatically closed via async context managers
 - Transactions automatically rollback on exceptions via `__aexit__` implementation
-

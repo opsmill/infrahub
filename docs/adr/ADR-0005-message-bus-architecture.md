@@ -234,7 +234,7 @@ response = await message_bus.rpc(message=request, response_class=messages.GitFil
 
 - **Prefect Integration**: Operations can be Prefect flows (decorated with `@flow`) or regular async functions. The `execute_message` function handles both.
 
-- **Broadcast vs Direct**: 
+- **Broadcast vs Direct**:
   - Broadcast messages (`refresh.git.*`) are sent to all workers
   - Direct messages (`git.file.get`) are sent to a specific worker queue
   - Workers subscribe to patterns defined in `worker_bindings`, `event_bindings`, and `broadcasted_event_bindings`
@@ -248,4 +248,3 @@ response = await message_bus.rpc(message=request, response_class=messages.GitFil
 - Priority levels supported for message ordering
 - Routing keys map to message classes via `MESSAGE_MAP` and `ROUTING_KEY_MAP`
 - Operations are registered in `COMMAND_MAP` in `operations/__init__.py`
-

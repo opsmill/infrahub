@@ -36,4 +36,3 @@ We use a schema-driven architecture where YAML schema definitions are loaded, va
 - Schema registry caches processed schemas per branch
 - Schema validation runs before code generation
 - Generated files in backend/infrahub/core/schema/generated/
-

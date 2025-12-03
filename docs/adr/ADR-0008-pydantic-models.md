@@ -96,6 +96,7 @@ Pydantic is used for all data that crosses external boundaries or needs automati
 ### Positive
 
 **Pydantic Benefits:**
+
 - Automatic data validation for external inputs
 - Type safety with Python type hints
 - JSON serialization/deserialization
@@ -105,6 +106,7 @@ Pydantic is used for all data that crosses external boundaries or needs automati
 - Automatic schema generation for external APIs
 
 **Slotted Dataclass Benefits:**
+
 - **1.5x faster** instance creation compared to regular dataclasses
 - **22% less memory** usage compared to regular dataclasses
 - **4-5x faster** than Pydantic v2 for instance creation
@@ -117,6 +119,7 @@ Pydantic is used for all data that crosses external boundaries or needs automati
 ### Negative
 
 **Pydantic Drawbacks:**
+
 - Performance overhead for validation (acceptable for external boundaries)
 - Learning curve for Pydantic features
 - Some complex validations require custom validators
@@ -124,6 +127,7 @@ Pydantic is used for all data that crosses external boundaries or needs automati
 - Validation errors need careful error handling
 
 **Slotted Dataclass Drawbacks:**
+
 - No automatic validation (data must be trusted - acceptable for database data)
 - Manual serialization/deserialization when needed
 - No automatic API documentation generation
@@ -188,4 +192,3 @@ class RefreshGitFetch(InfrahubMessage):
 - **Settings**: Uses Pydantic Settings for configuration management
 - Type hints are required for all model fields in both approaches
 - Benchmark with realistic workloads (CPU and memory profiling) when evaluating performance improvements
-

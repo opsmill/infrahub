@@ -22,8 +22,6 @@ Prefect fulfills three critical functions in Infrahub:
 
 Prefect flows define task dependencies, handle retries, provide state management, and integrate seamlessly with async Python. The pure Python implementation enables the workflow adapter pattern (see Flow Execution Patterns), allowing flows to be executed either through Prefect workers or directly in-process for testing, without requiring Prefect infrastructure in unit and functional tests.
 
-
-
 ## Architecture Overview
 
 ### Components
@@ -383,4 +381,3 @@ Prefect integration is tested using:
 - `prefect_test_fixture`: Starts ephemeral Prefect server for tests
 - Prefect test harness for isolated test execution
 - Mocked Prefect clients for unit tests
-

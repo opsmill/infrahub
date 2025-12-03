@@ -39,4 +39,3 @@ We use a component-based service architecture with adapter patterns and dependen
 - Component registry in infrahub/dependencies/registry.py
 - Services initialized during application startup
 - Override mechanism for testing
-

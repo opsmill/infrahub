@@ -36,4 +36,3 @@ We implement a temporal, multi-dimensional graph where edges carry temporal prop
 - Merge operations use diff algorithms to combine changes
 - Schema changes trigger branch migrations
 - Global branch provides unified view across all branches
-

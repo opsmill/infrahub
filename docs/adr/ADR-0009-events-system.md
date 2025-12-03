@@ -102,7 +102,8 @@ Infrahub uses two distinct event channels with different purposes:
 
 **Purpose**: Internal, operational messages for specific tasks and broadcast-type communication between Infrahub components.
 
-**Characteristics**:
+**Characteristics:**
+
 - **Legacy system**: Part of the original message bus architecture (see ADR-0005)
 - **Point-to-point or broadcast**: Used for direct component-to-component communication
 - **Specific tasks**: Triggers specific internal operations like:
@@ -124,7 +125,8 @@ class BranchCreatedEvent(InfrahubEvent):
 
 **Purpose**: User-visible events that are part of the automation and trigger system.
 
-**Characteristics**:
+**Characteristics:**
+
 - **All events**: Every `InfrahubEvent` is sent to Prefect
 - **Queryable**: Events are stored in Prefect database and queryable via GraphQL/REST APIs
 - **Automation triggers**: Used by Prefect Automation to trigger workflows based on event patterns
@@ -133,6 +135,7 @@ class BranchCreatedEvent(InfrahubEvent):
 - **User-facing**: Events represent user actions and state changes visible in the UI
 
 **Example**: A `NodeCreatedEvent` is always sent to Prefect, enabling:
+
 - Querying via GraphQL: `query { events(filter: { event: { name: ["infrahub.node.created"] } }) { ... } }`
 - Triggering workflows: Prefect Automation can match the event and run generators, group actions, etc.
 - Event history: Users can see when nodes were created

@@ -35,4 +35,3 @@ We use Neo4j as the primary database, leveraging Cypher query language for graph
 - Custom Query class pattern wraps Cypher queries
 - Branch-aware queries filter by branch properties on edges
 - Temporal properties (from/to) enable time-travel queries
-
