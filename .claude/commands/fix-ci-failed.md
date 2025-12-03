@@ -2,7 +2,7 @@ Please analyze and fix the GitHub CI job issue for a given branch.
 
 Follow these steps:
 
-1. Use this shell script to pull the failed logs from the Github CI job. The first argument to the script should be the current checked out branch, which you can retrieve using the shell command `git rev-parse --abbrev-ref HEAD`.
+1. Use this shell script to pull the failed logs from the Github CI job. The first argument to the script should be the current checked-out branch, which you can retrieve using the shell command `git rev-parse --abbrev-ref HEAD`.
 
 ```bash
 BRANCH=$1
