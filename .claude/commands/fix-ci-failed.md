@@ -12,6 +12,7 @@ JOB_ID=$( gh run view $RUN_ID --json jobs --jq '.jobs[] | select(.conclusion=="f
 
 gh run view -v --log-failed --job $JOB_ID
 ```
+
 2. Understand the problem described in the logs
 3. Search the codebase for relevant files
 4. Come up with a plan first and ask for my review
