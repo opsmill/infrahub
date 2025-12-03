@@ -13,6 +13,11 @@ Ask the user these questions **one at a time**, waiting for each answer before p
 5. **Frequency**: Does this happen every time, or intermittently?
 6. **Recent changes**: Were there any recent changes that might have caused this?
 7. **Error messages**: Are there any error messages in the console, logs, or UI?
+8. **Testing**: How should the fix be tested to prevent regression?
+   - **Unit test**: Test the fixed function/hook in isolation
+   - **Component test**: Test the fixed component behavior with mock data using testing-library
+   - **E2E test**: Test the fix within the full user flow using Playwright
+   - **No tests needed**: Explain why testing isn't required for this fix
 
 After gathering all answers, summarize your understanding of the bug and confirm with the user before proceeding.
 

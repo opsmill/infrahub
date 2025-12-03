@@ -10,7 +10,12 @@ Ask the user these questions **one at a time**, waiting for each answer before p
 2. **Context**: What files or areas of the codebase are involved? (If unsure, I can help explore)
 3. **Requirements**: Are there any specific constraints, patterns, or requirements to follow?
 4. **Success criteria**: What does success look like? How will we know this is complete?
-5. **Additional context**: Is there anything else I should know? (existing bugs, related features, deadlines, etc.)
+5. **Testing**: How should this change be tested?
+   - **Unit test**: Test individual functions/hooks in isolation
+   - **Component test**: Test component behavior with mock data using testing-library
+   - **E2E test**: Test full user flows in a real browser with Playwright
+   - **No tests needed**: Explain why testing isn't required for this change
+6. **Additional context**: Is there anything else I should know? (existing bugs, related features, deadlines, etc.)
 
 After gathering all answers, summarize what you understood and confirm with the user before proceeding.
 
