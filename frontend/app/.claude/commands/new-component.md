@@ -12,7 +12,12 @@ Ask the user these questions **one at a time**, waiting for each answer before p
 4. **Props**: What props/inputs should this component accept? Describe the data it needs.
 5. **State**: Does this component need to manage internal state? If so, what state?
 6. **Interactions**: What user interactions should it handle? (clicks, inputs, etc.)
-7. **Reference**: Are there existing components in the codebase I should reference for patterns or styling?
+7. **Testing**: How should this component be tested?
+   - **Unit test**: Test utility functions, hooks, or logic in isolation
+   - **Component test**: Test component rendering and behavior with mock data using testing-library
+   - **E2E test**: Test the component within full user flows using Playwright
+   - **No tests needed**: Explain why testing isn't required for this component
+8. **Reference**: Are there existing components in the codebase I should reference for patterns or styling?
 
 After gathering all answers, summarize the component design and confirm with the user before proceeding.
 
