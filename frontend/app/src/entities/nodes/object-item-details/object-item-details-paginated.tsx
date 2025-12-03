@@ -4,18 +4,17 @@ import { useQueryState } from "nuqs";
 import { useCallback } from "react";
 import { Navigate, useParams } from "react-router";
 
+import { queryClient } from "@/shared/api/rest/client";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import {
   DEFAULT_BRANCH_NAME,
   GENERIC_REPOSITORY_KIND,
   MENU_EXCLUDELIST,
   TASK_TARGET,
-} from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
-import { queryClient } from "@/shared/api/rest/client";
-import SlideOver from "@/shared/components/display/slide-over";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
+} from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { currentBranchAtom } from "@/entities/branches/stores";
@@ -23,6 +22,7 @@ import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
 import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
 import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
@@ -87,9 +87,7 @@ export default function ObjectItemDetails({
   const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   useTitle(
-    objectDetailsData?.display_label
-      ? `${objectDetailsData?.display_label} details`
-      : `${schema.label} details`
+    objectDetailsData ? `${getNodeLabel(objectDetailsData)} details` : `${schema.label} details`
   );
 
   if (!objectDetailsData) {

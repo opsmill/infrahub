@@ -55,7 +55,7 @@ class UpdateHFID(Mutation):
                 input_value=f"{node_schema.kind}.human_friendly_id has not been defined for this kind."
             )
 
-        updated_hfid = cast(list[str], data.value)
+        updated_hfid = cast("list[str]", data.value)
 
         if len(node_schema.human_friendly_id) != len(updated_hfid):
             raise ValidationError(

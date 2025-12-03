@@ -48,7 +48,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
         <p className="truncate text-gray-600 text-xs">{branch.description}</p>
       </Col>
 
-      <BranchGitSyncBadge isSyncWithGit={!!branch.sync_with_git} />
+      {branch.sync_with_git && <BranchGitSyncBadge />}
 
       <Row className="ml-auto gap-6">
         <BranchMetadata

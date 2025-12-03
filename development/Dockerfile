@@ -78,14 +78,15 @@ RUN git config --global user.name "Infrahub" && \
     git config --global user.email "infrahub@opsmill.com" && \
     git config --global --add safe.directory '*' && \
     git config --global credential.usehttppath true && \
-    git config --global credential.helper /usr/local/bin/infrahub-git-credential
+    git config --global credential.helper "/usr/bin/env infrahub-git-credential"
 
 RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
 
 WORKDIR /source
 
 ENV PREFECT_WORKER_QUERY_SECONDS="2" \
-    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500
+    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500 \
+    PREFECT_API_DATABASE_TIMEOUT=60
 
 # --------------------------------------------
 # Import Frontend Build

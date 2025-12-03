@@ -1,9 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import { HomeCard } from "@/shared/components/ui/home-card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { classNames } from "@/shared/utils/common";
 
 import { HomeEvents } from "@/entities/events/ui/node-details-events-homepage";
 
@@ -13,20 +12,18 @@ interface EventsWidgetProps {
 
 export const EventsWidget = ({ className }: EventsWidgetProps) => {
   return (
-    <HomeCard className={classNames("flex flex-col", className)}>
-      <HomeCard.Title className="flex items-center justify-between">
-        <span className="flex items-center gap-2">
+    <HomeCard className={className}>
+      <HomeCard.Title>
+        <Row>
           <Icon icon={"mdi:file-replace-outline"} /> Recent Activities
-        </span>
+        </Row>
 
         <HomeCard.Link to={constructPath("/activities")}>
           View all <Icon icon={"mdi:chevron-right"} />
         </HomeCard.Link>
       </HomeCard.Title>
 
-      <ScrollArea>
-        <HomeEvents />
-      </ScrollArea>
+      <HomeEvents />
     </HomeCard>
   );
 };

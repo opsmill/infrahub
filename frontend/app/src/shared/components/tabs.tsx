@@ -1,8 +1,7 @@
 import { parseAsString, useQueryState } from "nuqs";
 
-import { QSP } from "@/config/qsp";
-
 import { Pill } from "@/shared/components/display/pill";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { ScrollArea } from "./ui/scroll-area";

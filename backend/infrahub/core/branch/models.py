@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 
-from neo4j.graph import Node as Neo4jNode
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
@@ -24,6 +23,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
+    from neo4j.graph import Node as Neo4jNode
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -168,7 +169,7 @@ class Branch(StandardNode):
         )
         await query.execute(db=db)
 
-        return [cls.from_db(node=cast(Neo4jNode, result.get("n"))) for result in query.get_results()]
+        return [cls.from_db(node=cast("Neo4jNode", result.get("n"))) for result in query.get_results()]
 
     @classmethod
     async def get_list_count(
@@ -357,7 +358,7 @@ class Branch(StandardNode):
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = f"{variable_name}.from <= ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            filter_str = f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
@@ -370,10 +371,13 @@ class Branch(StandardNode):
         filters = []
         for idx in range(len(branches_times)):
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from < ${pp}time{idx} "
+                f"AND {variable_name}.to >= ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"

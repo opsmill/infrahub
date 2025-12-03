@@ -7,6 +7,7 @@ import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/a
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { debounce } from "@/shared/utils/common";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { GetRelationshipsParams } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -29,6 +30,16 @@ export function ObjectAutocomplete({
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useRelationships({ peer: objectKind, search, filterQuery });
 
+  if (isPending) {
+    return (
+      <Autocomplete onInputChange={setSearchDebounced}>
+        <ListBox className="p-1">
+          <ListBoxLoadMoreItem isLoading />
+        </ListBox>
+      </Autocomplete>
+    );
+  }
+
   if (error) return <ErrorScreen message={error.message} />;
 
   const flatData = data?.pages.flat() ?? [];
@@ -39,25 +50,26 @@ export function ObjectAutocomplete({
         layout={ListLayout}
         layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
       >
-        <ListBox className={className}>
+        <ListBox className={className} emptyMessage="No result found">
           <Collection items={flatData}>
-            {({ id, display_label, __typename }) => {
-              const { schema } = getSchema(__typename);
+            {(node) => {
+              const { schema } = getSchema(node.__typename);
+              const nodeLabel = getNodeLabel(node);
 
               return (
-                <ListBoxItem textValue={display_label} href={getObjectDetailsUrl(__typename, id)}>
+                <ListBoxItem
+                  textValue={nodeLabel}
+                  href={getObjectDetailsUrl(node.__typename, node.id)}
+                >
                   <Icon icon={getSchemaIcon(schema)} />
-                  <span className="truncate">{display_label}</span>
+                  <span className="truncate">{nodeLabel}</span>
                 </ListBoxItem>
               );
             }}
           </Collection>
 
-          {(isPending || hasNextPage) && (
-            <ListBoxLoadMoreItem
-              isLoading={isPending || isFetchingNextPage}
-              onLoadMore={fetchNextPage}
-            />
+          {hasNextPage && (
+            <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
           )}
         </ListBox>
       </Virtualizer>

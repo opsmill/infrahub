@@ -1,5 +1,3 @@
-import { CONFIG } from "@/config/config";
-
 import type { CoreArtifact } from "@/shared/api/graphql/generated/graphql";
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
@@ -7,11 +5,13 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card } from "@/shared/components/ui/card";
+import { CONFIG } from "@/shared/config/config";
 
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { NodeDescription } from "@/entities/nodes/object/ui/node-description";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { ModelSchema } from "@/entities/schema/types";
 
 import ArtifactHeader from "./artifact-header";
@@ -46,7 +46,7 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
       <Content.Card className="flex grow flex-col">
         <Col className="gap-3 p-4 pb-2">
           <ArtifactHeader
-            name={objectDetailsData?.display_label}
+            name={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
             status={objectDetailsData?.status?.value}
             id={artifactId}
             hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}

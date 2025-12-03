@@ -1,8 +1,7 @@
 import { parseAsJson, useQueryState } from "nuqs";
 import * as z from "zod";
 
-import { QSP } from "@/config/qsp";
-
+import { QSP } from "@/shared/config/qsp";
 import { uniqueItemsArray } from "@/shared/utils/array";
 
 import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";

@@ -1,10 +1,12 @@
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from infrahub.core.constants.infrahubkind import THREADCOMMENT
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreProposedChange as CoreProposedChangeProtocol
 from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.protocols import CoreProposedChange as CoreProposedChangeProtocol
 
 
 class CoreProposedChange(Node):
@@ -29,7 +31,7 @@ class CoreProposedChange(Node):
         if fields:
             if "total_comments" in fields:
                 total_comments = 0
-                proposed_change = cast(CoreProposedChangeProtocol, self)
+                proposed_change = cast("CoreProposedChangeProtocol", self)
                 change_comments = await proposed_change.comments.get_relationships(db=db)
                 total_comments += len(change_comments)
 

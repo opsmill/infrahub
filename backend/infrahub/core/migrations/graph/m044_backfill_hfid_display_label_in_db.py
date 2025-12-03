@@ -40,18 +40,23 @@ class DefaultBranchNodeCount(Query):
     name = "get_branch_node_count"
     type = QueryType.READ
 
-    def __init__(self, kinds_to_skip: list[str], **kwargs: Any) -> None:
+    def __init__(
+        self, kinds_to_skip: list[str] | None = None, kinds_to_include: list[str] | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
-        self.kinds_to_skip = kinds_to_skip
+        self.kinds_to_skip = kinds_to_skip or []
+        self.kinds_to_include = kinds_to_include
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params = {
             "branch_names": [registry.default_branch, GLOBAL_BRANCH_NAME],
             "kinds_to_skip": self.kinds_to_skip,
+            "kinds_to_include": self.kinds_to_include,
         }
         query = """
 MATCH (n:Node)-[e:IS_PART_OF]->(:Root)
 WHERE NOT n.kind IN $kinds_to_skip
+AND ($kinds_to_include IS NULL OR n.kind IN $kinds_to_include)
 AND e.branch IN $branch_names
 AND e.status = "active"
 AND e.to IS NULL
@@ -731,6 +736,10 @@ class Migration044(MigrationRequiringRebase):
                         continue
 
                     node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
+
+                    if node_schema.branch is not BranchSupportType.AWARE:
+                        continue
+
                     attribute_schema_map = {}
                     if node_schema.display_labels:
                         attribute_schema_map[display_labels_attribute_schema] = display_label_attribute_schema
@@ -826,6 +835,8 @@ class Migration044(MigrationRequiringRebase):
                     continue
 
                 node_schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
+                if node_schema.branch not in (BranchSupportType.AWARE, BranchSupportType.LOCAL):
+                    continue
                 try:
                     default_node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)
                 except SchemaNotFoundError:

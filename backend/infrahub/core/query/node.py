@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
     MetadataOptions,
     RelationshipDirection,
@@ -785,7 +787,8 @@ CALL (a) {
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
-        self.params["profile_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
+        self.params["profile_node_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
+        self.params["profile_template_relationship_name"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
         self.params["field_names"] = list(self.fields.keys()) if self.fields else []
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -795,7 +798,10 @@ CALL (a) {
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        WITH n, exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_relationship_name})) AS might_use_profile
+        WITH n, (
+            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_node_relationship_name})) OR
+            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_template_relationship_name}))
+        ) AS might_use_profile
         MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
         WHERE (a.name IN $field_names OR size($field_names) = 0)
         WITH DISTINCT n, a, might_use_profile
@@ -1478,10 +1484,8 @@ class NodeGetListQuery(Query):
             self._variables_to_track.append(variable)
 
     def _untrack_variable(self, variable: str) -> None:
-        try:
+        with contextlib.suppress(ValueError):
             self._variables_to_track.remove(variable)
-        except ValueError:
-            ...
 
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track

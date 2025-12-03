@@ -6,7 +6,6 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
@@ -18,6 +17,8 @@ import {
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
@@ -149,7 +150,7 @@ const ResourcePoolContent = ({
           name: schemaRelationship.label || schemaRelationship.name,
           value: relationshipData && (
             <Link to={getObjectDetailsUrl(relationshipData.__typename, relationshipData.id)}>
-              {relationshipData?.display_label}
+              {relationshipData ? getNodeLabel(relationshipData) : ""}
             </Link>
           ),
         };
@@ -159,7 +160,7 @@ const ResourcePoolContent = ({
   return (
     <Content.Card>
       <Content.CardTitle
-        title={resourcePool.display_label}
+        title={getNodeLabel(resourcePool)}
         isReloadLoading={isRefetching}
         reload={handleRefetchAll}
         end={

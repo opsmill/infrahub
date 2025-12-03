@@ -12,7 +12,6 @@ from fast_depends import Provider
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
-from prefect.logging.loggers import disable_run_logger
 from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
@@ -42,15 +41,12 @@ from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
     create_root_node,
-    first_time_initialization,
-    initialization,
 )
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.protocols_base import CoreNode
-from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -129,12 +125,6 @@ def prefect_test_fixture():
     with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
         with prefect_test_harness(server_startup_timeout=60):
             yield
-
-
-@pytest.fixture(scope="session")
-def prefect_test(prefect_test_fixture):
-    with disable_run_logger():
-        yield
 
 
 @pytest.fixture
@@ -1651,69 +1641,6 @@ async def group_group1_main(
 
 
 @pytest.fixture
-async def group_group1_members_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_jim_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group1", members=[person_john_main, person_jim_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
-async def group_group2_members_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_albert_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group2", members=[person_john_main, person_albert_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
-async def group_group1_subscribers_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_jim_main: Node,
-    person_albert_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group1", subscribers=[person_john_main, person_jim_main, person_albert_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
-async def group_group2_subscribers_main(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    group_schema,
-    person_john_main: Node,
-    person_jim_main: Node,
-    car_volt_main: Node,
-    car_accord_main: Node,
-) -> Node:
-    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
-    await obj.new(db=db, name="group2", subscribers=[person_john_main, person_jim_main, car_volt_main, car_accord_main])
-    await obj.save(db=db)
-
-    return obj
-
-
-@pytest.fixture
 async def optional_attr_uniqueness_constraint_schema(
     db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
 ) -> NodeSchema:
@@ -1814,6 +1741,7 @@ async def criticality_schema_root(register_core_models_schema: None) -> SchemaRo
         "display_labels": ["label__value"],
         "inherit_from": ["TestGenericCriticality"],
         "branch": BranchSupportType.AWARE.value,
+        "generate_template": True,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "label", "kind": "Text", "optional": True},
@@ -2179,42 +2107,6 @@ async def hierarchical_location_schema_simple(
 
 
 @pytest.fixture
-async def location_generic_protocol():
-    class LocationGeneric(CoreNode):
-        name: String
-        status: StringOptional
-        things: RelationshipManager
-        parent: RelationshipManager
-        children: RelationshipManager
-
-    return LocationGeneric
-
-
-@pytest.fixture
-async def location_site_protocol(location_generic_protocol):
-    class LocationSite(location_generic_protocol):
-        pass
-
-    return LocationSite
-
-
-@pytest.fixture
-async def location_region_protocol(location_generic_protocol):
-    class LocationRegion(location_generic_protocol):
-        pass
-
-    return LocationRegion
-
-
-@pytest.fixture
-async def location_rack_protocol(location_generic_protocol):
-    class LocationRack(location_generic_protocol):
-        pass
-
-    return LocationRack
-
-
-@pytest.fixture
 async def hierarchical_location_schema(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple, register_core_models_schema
 ) -> None: ...
@@ -2379,12 +2271,6 @@ async def delete_all_nodes_in_db(db: InfrahubDatabase) -> None:
 @pytest.fixture
 async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db) -> None:
     await create_root_node(db=db)
-
-
-@pytest.fixture
-async def init_db(empty_database, db: InfrahubDatabase) -> None:
-    await first_time_initialization(db=db)
-    await initialization(db=db)
 
 
 @pytest.fixture

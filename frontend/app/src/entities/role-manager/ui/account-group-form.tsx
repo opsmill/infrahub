@@ -3,8 +3,6 @@ import { useAtomValue } from "jotai";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -19,6 +17,11 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
+import {
+  ACCOUNT_GROUP_OBJECT,
+  ACCOUNT_OBJECT,
+  ACCOUNT_ROLE_OBJECT,
+} from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 

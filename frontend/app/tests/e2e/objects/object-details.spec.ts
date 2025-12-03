@@ -67,14 +67,14 @@ test.describe("/objects/:objectKind/:objectId", () => {
 
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
-      await page.getByRole("link", { name: "atl1-edge1, Ethernet4" }).click();
+      await page.getByRole("link", { name: "Ethernet4" }).first().click();
       await page.getByTestId("edit-button").click();
 
       const kindSelector = page.getByLabel("Kind").getByTestId("select-value");
       await expect(kindSelector).toContainText("Circuit Endpoint");
 
       const nodeSelector = page.getByLabel("Circuit Endpoint").getByTestId("select-value");
-      await expect(nodeSelector).toContainText("InfraCircuitEndpoint");
+      await expect(nodeSelector).not.toBeEmpty(); // ID is in the input but it's dynamic
     });
   });
 });

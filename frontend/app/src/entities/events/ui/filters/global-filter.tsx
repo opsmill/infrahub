@@ -6,6 +6,7 @@ import type { TagProps } from "react-aria-components";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 import { GlobalFilterForm } from "./global-filter-form";
@@ -41,7 +42,7 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
     if (Array.isArray(currentFilter?.value)) {
       return currentFilter?.value
         .map((value) => {
-          return value.display_label;
+          return getNodeLabel(value);
         })
         .join(", ");
     }
