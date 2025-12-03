@@ -1028,9 +1028,9 @@ CALL (rl) {
                     value=prop_node.get("uuid"),
                 )
 
-                if prop == "source" and (source := result.get("source")) and InfrahubKind.PROFILE in source.labels:
+                if prop == "source" and InfrahubKind.PROFILE in prop_node.labels:
                     data.is_from_profile = True
-                    data.profile_id = source._properties["uuid"]
+                    data.profile_id = prop_node._properties["uuid"]
 
             yield data
 
