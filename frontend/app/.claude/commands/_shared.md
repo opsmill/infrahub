@@ -2,6 +2,16 @@
 
 These instructions apply to all guided flows.
 
+## Issue/Ticket Reference
+
+During discovery, ask the user:
+
+> **Issue reference**: Is there a GitHub issue number or Jira ticket associated with this work? (e.g., `#1234` for GitHub, `IFC-1234` for Jira, or leave blank if none)
+
+Store this reference to use in:
+- Changelog filename (e.g., `+1234.fixed.md` or `+IFC-1234.added.md`)
+- PR title (e.g., `fix: resolve bug [#1234]` or `feat: add feature [IFC-1234]`)
+
 ## Testing Options
 
 When asking about testing, present these options:
@@ -27,14 +37,17 @@ At the end of every guided flow execution:
 
 After completing a task, suggest creating a changelog fragment file under `/changelog/`.
 
-**File naming pattern**: `+<pull request number | custom name>.<added | fixed>.md`
+**File naming pattern**: `+<issue reference | custom name>.<added | fixed>.md`
 
+- If an issue reference was provided, use it (without `#` prefix for GitHub issues)
+- Otherwise, use a descriptive custom name
 - Use `added` for new features or enhancements
 - Use `fixed` for bug fixes
 
 **Examples**:
-- `+7549.added.md` - PR number with added type
-- `+breadcrumb.added.md` - custom name with added type
+- `+1234.added.md` - GitHub issue #1234
+- `+IFC-1234.fixed.md` - Jira ticket IFC-1234
+- `+breadcrumb.added.md` - custom name (no issue reference)
 - `+sidebar-collapse.fixed.md` - custom name with fixed type
 
 **Content**: Write a brief, user-facing description of the change. Keep it concise and focus on what was added or fixed from the user's perspective.

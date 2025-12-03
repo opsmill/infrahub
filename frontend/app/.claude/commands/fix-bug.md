@@ -8,14 +8,15 @@ This is a guided flow for debugging and fixing issues. Follow these steps carefu
 
 Ask the user these questions **one at a time**, waiting for each answer before proceeding to the next:
 
-1. **Symptom**: What is the bug? Describe what is happening that shouldn't be.
-2. **Expected behavior**: What should happen instead?
-3. **Reproduction**: How can this bug be reproduced? What are the steps?
-4. **Location**: Do you know where in the codebase this might be occurring? (files, components, etc.)
-5. **Frequency**: Does this happen every time, or intermittently?
-6. **Recent changes**: Were there any recent changes that might have caused this?
-7. **Error messages**: Are there any error messages in the console, logs, or UI?
-8. **Testing**: How should the fix be tested to prevent regression? (See testing options in `_shared.md`)
+1. **Issue reference**: Is there a GitHub issue number or Jira ticket for this bug? (e.g., `#1234` or `IFC-1234`, or skip if none)
+2. **Symptom**: What is the bug? Describe what is happening that shouldn't be.
+3. **Expected behavior**: What should happen instead?
+4. **Reproduction**: How can this bug be reproduced? What are the steps?
+5. **Location**: Do you know where in the codebase this might be occurring? (files, components, etc.)
+6. **Frequency**: Does this happen every time, or intermittently?
+7. **Recent changes**: Were there any recent changes that might have caused this?
+8. **Error messages**: Are there any error messages in the console, logs, or UI?
+9. **Testing**: How should the fix be tested to prevent regression? (See testing options in `_shared.md`)
 
 After gathering all answers, summarize your understanding of the bug and confirm with the user before proceeding.
 

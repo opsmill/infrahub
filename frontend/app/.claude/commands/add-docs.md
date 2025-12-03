@@ -8,16 +8,17 @@ This is a guided flow for creating or updating documentation. Follow these steps
 
 Ask the user these questions **one at a time**, waiting for each answer before proceeding to the next:
 
-1. **Subject**: What needs to be documented? (component, feature, API, process, etc.)
-2. **Type**: What type of documentation is this?
+1. **Issue reference**: Is there a GitHub issue number or Jira ticket for this documentation? (e.g., `#1234` or `IFC-1234`, or skip if none)
+2. **Subject**: What needs to be documented? (component, feature, API, process, etc.)
+3. **Type**: What type of documentation is this?
    - Tutorial (learning-oriented, guides through a learning experience)
    - How-to guide (task-oriented, steps to accomplish a specific goal)
    - Explanation/Topic (understanding-oriented, explains concepts)
    - Reference (information-oriented, technical descriptions)
-3. **Audience**: Who is the target reader? What do they already know?
-4. **Location**: Where should this documentation live? (existing file to update, or new file?)
-5. **Scope**: What should be covered? What should be explicitly excluded?
-6. **Examples**: Are there specific examples, code snippets, or screenshots needed?
+4. **Audience**: Who is the target reader? What do they already know?
+5. **Location**: Where should this documentation live? (existing file to update, or new file?)
+6. **Scope**: What should be covered? What should be explicitly excluded?
+7. **Examples**: Are there specific examples, code snippets, or screenshots needed?
 
 After gathering all answers, summarize the documentation plan and confirm with the user before proceeding.
 

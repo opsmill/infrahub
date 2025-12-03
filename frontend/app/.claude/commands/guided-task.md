@@ -8,12 +8,13 @@ This is a guided task creation flow. Follow these steps carefully.
 
 Ask the user these questions **one at a time**, waiting for each answer before proceeding to the next:
 
-1. **Goal**: What are you trying to accomplish? Describe the feature, fix, or change you need.
-2. **Context**: What files or areas of the codebase are involved? (If unsure, I can help explore)
-3. **Requirements**: Are there any specific constraints, patterns, or requirements to follow?
-4. **Success criteria**: What does success look like? How will we know this is complete?
-5. **Testing**: How should this change be tested? (See testing options in `_shared.md`)
-6. **Additional context**: Is there anything else I should know? (existing bugs, related features, deadlines, etc.)
+1. **Issue reference**: Is there a GitHub issue number or Jira ticket for this task? (e.g., `#1234` or `IFC-1234`, or skip if none)
+2. **Goal**: What are you trying to accomplish? Describe the feature, fix, or change you need.
+3. **Context**: What files or areas of the codebase are involved? (If unsure, I can help explore)
+4. **Requirements**: Are there any specific constraints, patterns, or requirements to follow?
+5. **Success criteria**: What does success look like? How will we know this is complete?
+6. **Testing**: How should this change be tested? (See testing options in `_shared.md`)
+7. **Additional context**: Is there anything else I should know? (existing bugs, related features, deadlines, etc.)
 
 After gathering all answers, summarize what you understood and confirm with the user before proceeding.
 
