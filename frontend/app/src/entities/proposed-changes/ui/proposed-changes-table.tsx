@@ -2,9 +2,8 @@ import { useQueryState } from "nuqs";
 import React from "react";
 import { ListBox } from "react-aria-components";
 
-import { QSP } from "@/config/qsp";
-
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
+import { QSP } from "@/shared/config/qsp";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 

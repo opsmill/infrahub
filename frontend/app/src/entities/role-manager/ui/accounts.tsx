@@ -2,8 +2,6 @@ import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -19,9 +17,11 @@ import { Table, type tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/entities/role-manager/api/getAccounts";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -88,6 +88,8 @@ function Accounts() {
     data[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge) => ({
       values: {
         id: edge?.node?.id,
+        display_label: edge?.node?.display_label,
+        hfid: edge?.node?.hfid,
         name: { value: edge?.node?.name?.value },
         description: { value: edge?.node?.description?.value },
         account_type: { value: edge?.node?.account_type?.value },
@@ -105,7 +107,9 @@ function Accounts() {
           value: { edges: edge?.node?.member_of_groups?.edges },
           display: (
             <InlineDisplay
-              items={edge?.node?.member_of_groups?.edges?.map((edge) => edge?.node?.display_label)}
+              items={edge?.node?.member_of_groups?.edges?.map((edge) =>
+                edge?.node ? getNodeLabel(edge.node) : ""
+              )}
               render={(item) => <Badge>{item}</Badge>}
             />
           ),

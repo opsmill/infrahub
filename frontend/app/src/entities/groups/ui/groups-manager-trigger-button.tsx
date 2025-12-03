@@ -6,6 +6,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 
 import { GroupsManager, type GroupsManagerProps } from "@/entities/groups/ui/groups-manager";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { Permission } from "@/entities/permission/types";
 
 export interface GroupsManagerTriggerProps extends ButtonProps, GroupsManagerProps {
@@ -43,7 +44,7 @@ export const GroupsManagerTriggerButton = ({
         title={
           <SlideOverTitle
             schema={schema}
-            currentObjectLabel={objectDetailsData?.display_label}
+            currentObjectLabel={objectDetailsData ? getNodeLabel(objectDetailsData) : ""}
             title="Manage groups"
             subtitle="Add and unassign groups"
           />

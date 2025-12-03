@@ -36,7 +36,7 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
                 work_pool_filter=WorkPoolFilter(id=WorkPoolFilterId(any_=[work_pool_id]))
             )
 
-            scheduled_flows = [flow for flow in flows if flow.state_type in [StateType.SCHEDULED]]
+            scheduled_flows = [flow for flow in flows if flow.state_type == StateType.SCHEDULED]
             if scheduled_flows:
                 return scheduled_flows[0]
 

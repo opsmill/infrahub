@@ -24,7 +24,7 @@ class ObjectConflictValidatorRecorder:
             )
         except NodeNotFoundError:
             return []
-        proposed_change = cast(CoreProposedChange, proposed_change)
+        proposed_change = cast("CoreProposedChange", proposed_change)
         validator = await self.get_or_create_validator(proposed_change)
         await self.initialize_validator(validator)
 

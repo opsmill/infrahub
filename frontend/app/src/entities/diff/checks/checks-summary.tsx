@@ -2,18 +2,17 @@ import { useAtomValue } from "jotai";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import {
-  CHECKS_LABEL,
-  PROPOSED_CHANGES_VALIDATOR_OBJECT,
-  VALIDATIONS_ENUM_MAP,
-} from "@/config/constants";
-
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import {
+  CHECKS_LABEL,
+  PROPOSED_CHANGES_VALIDATOR_OBJECT,
+  VALIDATIONS_ENUM_MAP,
+} from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";

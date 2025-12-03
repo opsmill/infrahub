@@ -38,6 +38,9 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
 
       await expect(page.getByText("Metadata updated")).toBeVisible();
 
+      // Wait for the metadata edit slide-over to close before checking updated data
+      await expect(page.getByTestId("side-panel-container")).toBeHidden();
+
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
 
       await expect(page.getByText("Is protectedTrue")).toBeVisible();

@@ -9,6 +9,7 @@ export default mergeConfig(
     test: {
       browser: {
         enabled: true,
+        headless: true,
         provider: playwright(),
         instances: [
           {
@@ -22,14 +23,15 @@ export default mergeConfig(
       },
       coverage: {
         reporter: ["text", "lcovonly"],
+        include: ["src/**/*.{ts,tsx}"],
         exclude: [
-          "node_modules/",
           "mocks/",
-          "**/**.d.ts",
-          "**/tests/**",
-          "**/**component-preview",
+          "node_modules/",
           "playwright-report/",
-          "e2e/",
+          "tests/",
+          "**/*.d.ts",
+          "src/shared/api/graphql/generated/",
+          "src/shared/api/rest/types.generated.ts",
         ],
       },
       exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],

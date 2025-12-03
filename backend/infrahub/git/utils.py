@@ -1,10 +1,16 @@
 import re
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.node import RelationshipManager
-from infrahub_sdk.protocols import CoreArtifactDefinition, CoreCheckDefinition, CoreGroup
+from infrahub_sdk.protocols import (
+    CoreArtifactDefinition,
+    CoreCheckDefinition,
+    CoreGroup,
+    CoreReadOnlyRepository,
+    CoreRepository,
+)
 from infrahub_sdk.types import Order
 
 from infrahub.core import registry
@@ -12,16 +18,15 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.graphql.models import OrderModel
 
 from .. import config
 from .models import RepositoryBranchInfo, RepositoryData
 
-if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreGenericRepository
-
 
 async def get_repositories_commit_per_branch(
     db: InfrahubDatabase,
+    kind: str = InfrahubKind.GENERICREPOSITORY,
 ) -> dict[str, RepositoryData]:
     """Get a list of all repositories and their commit on each branches.
 
@@ -33,11 +38,12 @@ async def get_repositories_commit_per_branch(
     repositories: dict[str, RepositoryData] = {}
 
     for branch in list(registry.branch.values()):
-        repos: list[CoreGenericRepository] = await NodeManager.query(
+        repos: list[CoreRepository | CoreReadOnlyRepository] = await NodeManager.query(
             db=db,
             branch=branch,
-            fields={"id": None, "name": None, "commit": None, "internal_status": None},
-            schema=InfrahubKind.GENERICREPOSITORY,
+            fields={"id": None, "name": None, "commit": None, "internal_status": None, "location": None, "ref": None},
+            schema=kind,
+            order=OrderModel(disable=True),
         )
 
         for repository in repos:
@@ -46,10 +52,11 @@ async def get_repositories_commit_per_branch(
                 repositories[repo_name] = RepositoryData(
                     repository_id=repository.get_id(),
                     repository_name=repo_name,
+                    repository=repository,
                     branches={},
                 )
 
-            repositories[repo_name].branches[branch.name] = repository.commit.value  # type: ignore[attr-defined]
+            repositories[repo_name].branches[branch.name] = repository.commit.value
             repositories[repo_name].branch_info[branch.name] = RepositoryBranchInfo(
                 internal_status=repository.internal_status.value
             )

@@ -21,7 +21,7 @@ CONCLUSION_TO_SEVERITY = {"unknown": "warning", "failure": "error", "success": "
 
 
 def is_final_state(state: str) -> bool:
-    return state in ("completed",)
+    return state == "completed"
 
 
 class RandomStringFactory:

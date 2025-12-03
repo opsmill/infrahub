@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           submodules: true
@@ -75,7 +75,7 @@ jobs:
 
       - name: Checkout infrahub-helm
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: opsmill/infrahub-helm
           path: helm

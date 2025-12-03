@@ -2,8 +2,6 @@ import { Icon } from "@iconify-icon/react";
 import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
-import { QSP } from "@/config/qsp";
-
 import { Row } from "@/shared/components/container";
 import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import { Badge } from "@/shared/components/ui/badge";
@@ -14,6 +12,7 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
+import { QSP } from "@/shared/config/qsp";
 import { FilterSchema } from "@/shared/hooks/useFilters";
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";

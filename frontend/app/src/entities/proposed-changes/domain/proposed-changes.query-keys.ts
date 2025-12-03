@@ -1,5 +1,4 @@
-import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/config/constants";
-
+import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/shared/config/constants";
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";

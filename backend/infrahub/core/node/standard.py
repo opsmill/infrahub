@@ -72,7 +72,7 @@ class StandardNode(BaseModel):
         response: dict[str, Any] = {"id": self.uuid}
 
         for field_name in fields.keys():
-            if field_name in ["id"]:
+            if field_name == "id":
                 continue
             if field_name == "__typename":
                 response[field_name] = self.get_type()

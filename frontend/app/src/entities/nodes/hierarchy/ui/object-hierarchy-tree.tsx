@@ -95,14 +95,17 @@ export interface ObjectTreeItemProps {
   hasChildren: boolean;
   treeObjectKind: string;
   currentNodeId?: string;
+  defaultExpanded?: boolean;
 }
+
 export function ObjectTreeItem({
   node,
   hasChildren,
   treeObjectKind,
   currentNodeId,
+  defaultExpanded = false,
 }: ObjectTreeItemProps) {
-  const [isExpanded, setExpanded] = React.useState(false);
+  const [isExpanded, setExpanded] = React.useState(defaultExpanded);
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
     useGetTreeNodesByParent(
       {

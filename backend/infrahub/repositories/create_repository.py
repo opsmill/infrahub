@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, cast
 
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.constants.infrahubkind import READONLYREPOSITORY, REPOSITORY
-from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
 from infrahub.exceptions import ValidationError
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryAddReadOnly
 from infrahub.log import get_logger
@@ -16,6 +15,7 @@ if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -74,7 +74,7 @@ class RepositoryFinalizer:
             authenticated_user = self.account_session.account_id
 
         if obj.get_kind() == READONLYREPOSITORY:
-            obj = cast(CoreReadOnlyRepository, obj)
+            obj = cast("CoreReadOnlyRepository", obj)
             model = GitRepositoryAddReadOnly(
                 repository_id=obj.id,
                 repository_name=obj.name.value,
@@ -92,7 +92,7 @@ class RepositoryFinalizer:
             )
 
         elif obj.get_kind() == REPOSITORY:
-            obj = cast(CoreRepository, obj)
+            obj = cast("CoreRepository", obj)
             git_repo_add_model = GitRepositoryAdd(
                 repository_id=obj.id,
                 repository_name=obj.name.value,
