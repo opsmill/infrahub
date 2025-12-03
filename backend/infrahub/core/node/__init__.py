@@ -1074,7 +1074,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "node_metadata" and isinstance(fields.get("node_metadata"), dict):
-                response[field_name] = await self._build_meta_response(db, field_name, fields)
+                response[field_name] = await self._build_meta_response(field_name, fields)
                 continue
 
             field: BaseAttribute | None = getattr(self, field_name, None)
@@ -1123,7 +1123,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return response
 
-    async def _build_meta_response(self, db: InfrahubDatabase, field_name: str, fields: dict) -> dict:
+    async def _build_meta_response(self, field_name: str, fields: dict) -> dict:
         data = {}
         for meta_field in fields.get(field_name, {}).keys():
             if meta_field == "created_at":
@@ -1143,19 +1143,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 updated_at = self._get_updated_at()
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
                 continue
-
-            meta_field_data: RelationshipManager | str | None = getattr(self, meta_field, None)
-
-            if isinstance(meta_field_data, RelationshipManager):
-                peer = await meta_field_data.get_peer(db=db)
-                data[meta_field] = peer.id if peer else None
-                continue
-
-            if isinstance(meta_field_data, str):
-                data[meta_field] = meta_field_data
-                continue
-
-            data[meta_field] = None
         return data
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
