@@ -331,7 +331,7 @@ async def test_get_many_with_profile_relationships_empty(
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
@@ -375,7 +375,7 @@ async def test_get_many_with_profile_relationships(
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
@@ -398,7 +398,7 @@ async def test_get_many_with_profile_relationships(
     await child_and_thing_nodes.child_nodes[1].save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[1].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[1].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     updated_child_two = node_map[child_and_thing_nodes.child_nodes[1].id]
@@ -453,7 +453,9 @@ async def test_get_many_with_profile_relationships_existing_peers(
     assert updated_field_names == []
     await child_one.save(db=db)
 
-    node_map = await NodeManager.get_many(db=db, branch=branch, ids=[child_one.id], include_source=True)
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[child_one.id], include_metadata=MetadataOptions.SOURCE
+    )
     assert len(node_map) == 1
     updated_child_one = node_map[child_one.id]
     await _validate_node_profile_relationships(
@@ -470,7 +472,9 @@ async def test_get_many_with_profile_relationships_existing_peers(
         ],
     )
 
-    node_map = await NodeManager.get_many(db=db, branch=branch, ids=[child_two.id], include_source=True)
+    node_map = await NodeManager.get_many(
+        db=db, branch=branch, ids=[child_two.id], include_metadata=MetadataOptions.SOURCE
+    )
     assert len(node_map) == 1
     updated_child_two = node_map[child_two.id]
     await _validate_node_profile_relationships(
@@ -517,7 +521,7 @@ async def test_get_many_with_profile_relationships_clear(
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
@@ -544,7 +548,7 @@ async def test_get_many_with_profile_relationships_clear(
     await updated_child_one.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     final_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
@@ -586,7 +590,7 @@ async def test_get_many_with_profile_relationships_override(
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
@@ -613,7 +617,7 @@ async def test_get_many_with_profile_relationships_override(
     await updated_child_one.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     final_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
@@ -652,7 +656,7 @@ async def test_get_many_with_profile_relationships_partial_override(
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     updated_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
@@ -688,7 +692,7 @@ async def test_get_many_with_profile_relationships_partial_override(
     await updated_child_one.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_source=True
+        db=db, branch=branch, ids=[child_and_thing_nodes.child_nodes[0].id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 1
     final_child_one = node_map[child_and_thing_nodes.child_nodes[0].id]
