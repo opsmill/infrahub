@@ -2,6 +2,8 @@
 
 This is a guided flow for debugging and fixing issues. Follow these steps carefully.
 
+**Important**: Read and follow the shared instructions in `_shared.md` for testing options and execution checklist.
+
 ## Step 1: Discovery
 
 Ask the user these questions **one at a time**, waiting for each answer before proceeding to the next:
@@ -13,11 +15,7 @@ Ask the user these questions **one at a time**, waiting for each answer before p
 5. **Frequency**: Does this happen every time, or intermittently?
 6. **Recent changes**: Were there any recent changes that might have caused this?
 7. **Error messages**: Are there any error messages in the console, logs, or UI?
-8. **Testing**: How should the fix be tested to prevent regression?
-   - **Unit test**: Test the fixed function/hook in isolation
-   - **Component test**: Test the fixed component behavior with mock data using testing-library
-   - **E2E test**: Test the fix within the full user flow using Playwright
-   - **No tests needed**: Explain why testing isn't required for this fix
+8. **Testing**: How should the fix be tested to prevent regression? (See testing options in `_shared.md`)
 
 After gathering all answers, summarize your understanding of the bug and confirm with the user before proceeding.
 
@@ -30,17 +28,13 @@ Enter plan mode to investigate and plan the fix:
 - Identify the actual bug (not just the symptom)
 - Consider edge cases and related areas that might be affected
 - Plan the fix with minimal changes to avoid regressions
-- Determine if tests should be added to prevent recurrence
+- Determine what tests to add based on user's preference
 - Present findings and proposed fix for user approval
 
 ## Step 3: Execution
 
-After plan approval:
+After plan approval, follow the execution checklist in `_shared.md`, plus:
 
-- Use the todo list to track all tasks
 - Implement the fix
 - Verify the fix resolves the issue
 - Check for regressions in related functionality
-- Add tests if applicable
-- Summarize what was fixed and how when complete
-- If a plan file was created, ask the user if they want to remove it

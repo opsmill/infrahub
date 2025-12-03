@@ -2,6 +2,8 @@
 
 This is a guided flow for creating or updating documentation. Follow these steps carefully.
 
+**Important**: Read and follow the shared instructions in `_shared.md` for the execution checklist.
+
 ## Step 1: Discovery
 
 Ask the user these questions **one at a time**, waiting for each answer before proceeding to the next:
@@ -32,13 +34,10 @@ Enter plan mode and create a detailed documentation plan:
 
 ## Step 3: Execution
 
-After plan approval:
+After plan approval, follow the execution checklist in `_shared.md`, plus:
 
-- Use the todo list to track all sections
 - Write the documentation following project conventions
 - Include accurate code examples
 - Add cross-references and links where helpful
 - Run Vale to check style: `vale <filepath>`
 - Run markdownlint to check formatting
-- Summarize what was documented when complete
-- If a plan file was created, ask the user if they want to remove it

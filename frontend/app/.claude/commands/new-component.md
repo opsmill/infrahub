@@ -2,6 +2,8 @@
 
 This is a guided flow for creating a new React component. Follow these steps carefully.
 
+**Important**: Read and follow the shared instructions in `_shared.md` for testing options and execution checklist.
+
 ## Step 1: Discovery
 
 Ask the user these questions **one at a time**, waiting for each answer before proceeding to the next:
@@ -12,11 +14,7 @@ Ask the user these questions **one at a time**, waiting for each answer before p
 4. **Props**: What props/inputs should this component accept? Describe the data it needs.
 5. **State**: Does this component need to manage internal state? If so, what state?
 6. **Interactions**: What user interactions should it handle? (clicks, inputs, etc.)
-7. **Testing**: How should this component be tested?
-   - **Unit test**: Test utility functions, hooks, or logic in isolation
-   - **Component test**: Test component rendering and behavior with mock data using testing-library
-   - **E2E test**: Test the component within full user flows using Playwright
-   - **No tests needed**: Explain why testing isn't required for this component
+7. **Testing**: How should this component be tested? (See testing options in `_shared.md`)
 8. **Reference**: Are there existing components in the codebase I should reference for patterns or styling?
 
 After gathering all answers, summarize the component design and confirm with the user before proceeding.
@@ -29,18 +27,14 @@ Enter plan mode and create a detailed implementation plan:
 - Identify shared utilities, hooks, or styles to reuse
 - Plan the component structure (props interface, state, handlers)
 - Consider accessibility requirements
-- Determine if tests are needed and what to test
+- Determine what tests are needed based on user's preference
 - Present the plan for user approval
 
 ## Step 3: Execution
 
-After plan approval:
+After plan approval, follow the execution checklist in `_shared.md`, plus:
 
-- Use the todo list to track all tasks
 - Create the component file(s)
 - Implement props interface/types
 - Build the component logic and JSX
 - Add styles following project conventions
-- Add tests if applicable
-- Summarize what was created when complete
-- If a plan file was created, ask the user if they want to remove it
