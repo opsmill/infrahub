@@ -128,16 +128,14 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         # Handle nodes removed from related_nodes - these need explicit refresh
         # since the async automation won't find them in the profile's related_nodes after the change.
         # Attribute changes and added nodes are handled by the Prefect automation
-        if updated_related_node_ids != original_related_node_ids:
-            removed_node_ids = original_related_node_ids - updated_related_node_ids
-            if removed_node_ids:
-                await cls._send_profile_refresh_workflows(
-                    db=db,
-                    workflow_service=workflow_service,
-                    branch_name=branch.name,
-                    obj=obj,
-                    node_ids=list(removed_node_ids),
-                )
+        if removed_node_ids := original_related_node_ids - updated_related_node_ids:
+            await cls._send_profile_refresh_workflows(
+                db=db,
+                workflow_service=workflow_service,
+                branch_name=branch.name,
+                obj=obj,
+                node_ids=list(removed_node_ids),
+            )
 
         return obj, mutation
 
