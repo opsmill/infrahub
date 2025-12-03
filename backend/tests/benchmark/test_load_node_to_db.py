@@ -1,4 +1,8 @@
+from collections.abc import Callable
+from typing import Any
+
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.schema import (
     NodeSchema,
     SchemaRoot,
@@ -8,11 +12,13 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 
 
-def test_load_node_to_db_node_schema(aio_benchmark, db: InfrahubDatabase, default_branch) -> None:
+def test_load_node_to_db_node_schema(
+    aio_benchmark: Callable[..., Any], db: InfrahubDatabase, default_branch: Branch
+) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
-    SCHEMA = {
+    SCHEMA: dict[str, Any] = {
         "name": "Criticality",
         "namespace": "Builtin",
         "default_filter": "name__value",
@@ -26,6 +32,6 @@ def test_load_node_to_db_node_schema(aio_benchmark, db: InfrahubDatabase, defaul
             {"name": "others", "peer": "BuiltinCriticality", "optional": True, "cardinality": "many"},
         ],
     }
-    node = NodeSchema(**SCHEMA)  # type: ignore[arg-type]
+    node = NodeSchema(**SCHEMA)
 
     aio_benchmark(registry.schema.load_node_to_db, node=node, db=db, branch=default_branch)
