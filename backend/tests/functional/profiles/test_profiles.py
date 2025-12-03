@@ -276,7 +276,7 @@ class TestProfiles(TestInfrahubApp):
         client: InfrahubClient,
         branch: BranchData,
     ) -> None:
-        await self.refresh_profiles(client, branch.name, device_2_empty_attribute.id)
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_2_empty_attribute.id)
 
         updated_device_2 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_2_empty_attribute.id, property=True
@@ -413,9 +413,9 @@ class TestProfiles(TestInfrahubApp):
         device_profile_3.profile_priority.value = 999
         await device_profile_3.save()
 
-        await self.refresh_profiles(client, branch.name, device_1_full_attributes.id)
-        await self.refresh_profiles(client, branch.name, device_2_empty_attribute.id)
-        await self.refresh_profiles(client, branch.name, device_3.id)
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_1_full_attributes.id)
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_2_empty_attribute.id)
+        await self.refresh_profiles(client=client, branch_name=branch.name, node_id=device_3.id)
 
         updated_device_1 = await client.get(
             branch=branch.name, kind=TestKind.DEVICE, id=device_1_full_attributes.id, property=True
