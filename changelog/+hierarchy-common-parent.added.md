@@ -1,0 +1,1 @@
+Schema `common_parent` constraint now supports hierarchical relationships. Previously limited to `Parent` relationship kind, the constraint now works with both `Parent` and `Hierarchy` relationship kinds (using the `parent` relationship name). This enables common parent validation for nodes organized in hierarchical structures.

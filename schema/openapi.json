@@ -5460,7 +5460,7 @@
                             }
                         ],
                         "title": "Common Parent",
-                        "description": "Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
+                        "description": "Name of a parent or hierarchy relationship on the peer schema that must share the same related object with the object's parent.",
                         "update": "validate_constraint"
                     },
                     "common_relatives": {

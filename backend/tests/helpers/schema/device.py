@@ -173,3 +173,25 @@ SFP = NodeSchema(
         )
     ],
 )
+
+DATACENTER_DEVICE = NodeSchema(
+    name="DatacenterDevice",
+    namespace="Testing",
+    label="Datacenter Device",
+    default_filter="name__value",
+    inherit_from=["TestingDatacenterHierarchy"],
+    parent="TestingDatacenterSite",
+    children="",
+    attributes=[
+        AttributeSchema(name="device_type", kind="Text", optional=True),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="devices",
+            kind=RelationshipKind.GENERIC,
+            optional=True,
+            peer="TestingDatacenterDevice",
+            cardinality=RelationshipCardinality.MANY,
+        )
+    ],
+)

@@ -75,7 +75,7 @@ class GeneratedRelationshipSchema(HashableModel):
     )
     common_parent: str | None = Field(
         default=None,
-        description="Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
+        description="Name of a parent or hierarchy relationship on the peer schema that must share the same related object with the object's parent.",
         json_schema_extra={"update": "validate_constraint"},
     )
     common_relatives: list[str] | None = Field(

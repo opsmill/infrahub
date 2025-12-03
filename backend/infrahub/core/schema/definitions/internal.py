@@ -771,7 +771,8 @@ relationship_schema = SchemaNode(
             name="common_parent",
             kind="Text",
             optional=True,
-            description="Name of a parent relationship on the peer schema that must share the same related object with the object's parent.",
+            description="Name of a parent or hierarchy relationship on the peer schema that must share"
+            " the same related object with the object's parent.",
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(

@@ -1093,9 +1093,9 @@ class SchemaBranch:
             return
 
         peer_schema = self.get(name=rel.peer, duplicate=False)
-        if not node.has_parent_relationship:
+        if not node.has_parent_or_hierarchy_relationship:
             raise ValueError(
-                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but node does not have a parent relationship"
+                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but node does not have a parent or hierarchy relationship"
             )
 
         try:
@@ -1105,9 +1105,10 @@ class SchemaBranch:
                 f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent}' does not exist"
             ) from exc
 
-        if parent_rel.kind != RelationshipKind.PARENT:
+        if parent_rel.kind not in [RelationshipKind.PARENT, RelationshipKind.HIERARCHY]:
             raise ValueError(
-                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent} is not of kind 'parent'"
+                f"{node.kind}: Relationship {rel.name!r} defines 'common_parent' but '{rel.peer}.{rel.common_parent}'"
+                " is not of kind 'parent' or 'hierarchy'"
             )
 
     def validate_kinds(self) -> None:

@@ -1140,9 +1140,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._display_label.set_value(value=value, manually_assigned=True)
 
     def _get_parent_relationship_name(self) -> str | None:
-        """Return the name of the parent relationship is one is present"""
+        """Return the name of the parent or hierarchy relationship if present"""
         for relationship in self._schema.relationships:
-            if relationship.kind == RelationshipKind.PARENT:
+            if relationship.kind in [RelationshipKind.PARENT, RelationshipKind.HIERARCHY]:
+                # For hierarchy, only return 'parent' relationship, not 'children'
+                if relationship.kind == RelationshipKind.HIERARCHY and relationship.name != "parent":
+                    continue
                 return relationship.name
 
         return None
@@ -1172,10 +1175,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             relm.validate()
 
     async def get_parent_relationship_peer(self, db: InfrahubDatabase, name: str) -> Node | None:
-        """When a node has a parent relationship of a given name, this method returns the peer of that relationship."""
+        """When a node has a parent or hierarchy relationship of a given name, this method returns the peer of that relationship."""
         relationship = self.get_schema().get_relationship(name=name)
-        if relationship.kind != RelationshipKind.PARENT:
-            raise ValueError(f"Relationship '{name}' is not of kind 'parent'")
+        if relationship.kind not in [RelationshipKind.PARENT, RelationshipKind.HIERARCHY]:
+            raise ValueError(f"Relationship '{name}' is not of kind 'parent' or 'hierarchy'")
 
         relm: RelationshipManager = getattr(self, name)
         return await relm.get_peer(db=db)
