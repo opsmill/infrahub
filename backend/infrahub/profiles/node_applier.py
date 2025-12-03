@@ -2,7 +2,7 @@ from typing import Any
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
-from infrahub.core.constants import RelationshipKind
+from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.node import Node
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.relationship.model import Relationship
@@ -160,7 +160,12 @@ class NodeProfilesApplier:
         # Add relationships that are in profile but not present
         for peer_id in profile_peer_ids:
             if peer_id not in current_peer_ids:
-                new_rel = Relationship(schema=node_rel.schema, branch=self.branch, node=node)
+                new_rel = Relationship(
+                    schema=node_rel.schema,
+                    branch=self.branch,
+                    source_kind=InfrahubKind.PROFILE,  # NOTE: should this be more precise?
+                    node=node,
+                )
                 await new_rel.new(db=self.db, data=peer_id)
                 new_rel.set_source(value=profile_id)
                 node_rel._relationships.append(new_rel)
