@@ -1,6 +1,6 @@
 export const ProposedChangesTableHeader = () => {
   return (
-    <div className="sticky top-0 z-10 grid grid-cols-2 bg-gray-50 px-4 py-2 text-center text-sm">
+    <div className="sticky top-0 z-10 grid grid-cols-2 bg-gray-50 px-4 py-2 text-center text-sm dark:bg-slate-700 dark:text-slate-200">
       <span className="text-left">Name</span>
       <div className="grid grid-cols-7">
         <span>Reviews</span>

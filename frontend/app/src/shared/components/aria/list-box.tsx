@@ -23,7 +23,7 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
       className={classNames("no-scrollbar max-h-[inherit] overflow-auto", className)}
       renderEmptyState={
         emptyMessage
-          ? () => <div className="px-2 py-1.5 text-neutral-600 text-sm">{emptyMessage}</div>
+          ? () => <div className="px-2 py-1.5 text-neutral-600 text-sm dark:text-neutral-400">{emptyMessage}</div>
           : undefined
       }
       {...props}
@@ -32,7 +32,7 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
 }
 
 const listBoxItemBaseStyle =
-  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden transition-colors";
+  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden transition-colors dark:text-stone-300";
 export function ListBoxItem<T extends object>({
   children,
   className,
@@ -46,7 +46,7 @@ export function ListBoxItem<T extends object>({
         classNames(
           disabledStyle,
           listBoxItemBaseStyle,
-          "data-focused:border-stone-100 data-focused:bg-white data-focused:shadow-sm",
+          "data-focused:border-stone-100 data-focused:bg-white data-focused:shadow-sm dark:data-focused:border-gray-600 dark:data-focused:bg-gray-700",
           className
         )
       )}
@@ -65,7 +65,7 @@ export function ListBoxItem<T extends object>({
 export function ListBoxLoadMoreItem({ className, ...props }: AriaListBoxLoadMoreItemProps) {
   return (
     <AriaListBoxLoadMoreItem
-      className={classNames(listBoxItemBaseStyle, "text-stone-400", className)}
+      className={classNames(listBoxItemBaseStyle, "text-stone-400 dark:text-stone-500", className)}
       {...props}
     >
       <LoaderIcon className="size-3.5 animate-spin" /> loading...

@@ -56,7 +56,7 @@ const EventContent = (props: EventType) => {
     return <ArtifactEventTitle {...props} />;
   }
 
-  return <span className="text-gray-600 text-sm">{props.event}</span>;
+  return <span className="text-gray-600 text-sm dark:text-gray-400">{props.event}</span>;
 };
 
 export const EventCard = (props: EventType) => {
@@ -66,15 +66,15 @@ export const EventCard = (props: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border border-gray-200 bg-white p-2 text-sm shadow-xs">
+      <div className="flex min-w-0 grow flex-col gap-3 rounded-md border border-gray-200 bg-white p-2 text-sm shadow-xs dark:border-slate-600 dark:bg-slate-700">
         <EventContent {...props} />
 
-        <div className="flex justify-between text-gray-500">
+        <div className="flex justify-between text-gray-500 dark:text-gray-400">
           <DateDisplay date={props.occurred_at} />
 
           <div className="flex items-center gap-4">
             {!PROPOSED_CHANGE_EVENTS.includes(props.event) && props.branch && (
-              <div className="flex max-w-[200px] items-center gap-1 font-medium text-gray-500 text-xs">
+              <div className="flex max-w-[200px] items-center gap-1 font-medium text-gray-500 text-xs dark:text-gray-400">
                 <Icon icon={"mdi:source-branch"} className="shrink-0" />
 
                 <span className="truncate">{props.branch}</span>

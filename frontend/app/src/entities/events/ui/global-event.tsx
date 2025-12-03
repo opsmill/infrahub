@@ -49,7 +49,7 @@ const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
     return <ArtifactEventTitle {...(props as ArtifactEvent)} />;
   }
 
-  return <span className="flex items-center text-gray-500 text-sm">{props.event}</span>;
+  return <span className="flex items-center text-gray-500 text-sm dark:text-gray-400">{props.event}</span>;
 };
 
 export const Event = (props: EventType) => {
@@ -57,10 +57,11 @@ export const Event = (props: EventType) => {
     <div
       className={classNames(
         "relative grid grid-cols-8 gap-2 p-2",
-        "rounded-md border border-gray-200 bg-gray-50 shadow-xs transition-all"
+        "rounded-md border border-gray-200 bg-gray-50 shadow-xs transition-all",
+        "dark:border-slate-600 dark:bg-slate-700"
       )}
     >
-      <div className="flex items-center whitespace-nowrap font-medium text-gray-500 text-xs">
+      <div className="flex items-center whitespace-nowrap font-medium text-gray-500 text-xs dark:text-gray-400">
         <Tooltip enabled content={format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}>
           <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
         </Tooltip>
@@ -70,7 +71,7 @@ export const Event = (props: EventType) => {
         <GlobalEventDisplay {...props} />
       </div>
 
-      <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-500 text-xs">
+      <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-gray-500 text-xs dark:text-gray-400">
         {props.branch && (
           <>
             <Icon icon={"mdi:source-branch"} />
@@ -81,7 +82,7 @@ export const Event = (props: EventType) => {
       </div>
 
       <div className="relative">
-        <Link to={`/activities/${props.id}`} className="text-gray-500 text-xs">
+        <Link to={`/activities/${props.id}`} className="text-gray-500 text-xs dark:text-gray-400">
           View details
         </Link>
 

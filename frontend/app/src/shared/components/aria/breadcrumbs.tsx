@@ -29,7 +29,7 @@ export function Breadcrumb({ children, className, ...props }: AriaBreadcrumbProp
           <span
             role="presentation"
             aria-hidden="true"
-            className="select-none font-medium text-lg text-neutral-300"
+            className="select-none font-medium text-lg text-neutral-300 dark:text-neutral-500"
           >
             /
           </span>
@@ -43,12 +43,12 @@ export function Breadcrumb({ children, className, ...props }: AriaBreadcrumbProp
 const breadcrumbItemStyle = cva(
   [
     focusVisibleStyle,
-    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-0.5 text-stone-800",
+    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-0.5 text-stone-800 dark:text-stone-200",
   ],
   {
     variants: {
       isPressed: {
-        true: "bg-stone-100",
+        true: "bg-stone-100 dark:bg-stone-700",
       },
     },
   }

@@ -52,10 +52,10 @@ export default function BranchSelector() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-[205px] rounded-lg border-neutral-200 p-0 shadow-none"
+          className="h-8 w-[205px] rounded-lg border-neutral-200 p-0 shadow-none dark:border-slate-600"
           data-testid="branch-selector-trigger"
         >
-          <div className="inline-flex h-full grow items-center gap-1.5 truncate border-gray-200 border-r px-3">
+          <div className="inline-flex h-full grow items-center gap-1.5 truncate border-gray-200 border-r px-3 dark:border-slate-600">
             <Icon icon="mdi:source-branch" />
             <span className="truncate">{currentBranch.name}</span>
           </div>
@@ -111,7 +111,7 @@ function BranchSelect({
         <div className="mb-2 flex gap-2">
           <CommandInput
             autoFocus
-            className="h-8 grow rounded-lg border-none bg-neutral-100 text-neutral-800"
+            className="h-8 grow rounded-lg border-none bg-neutral-100 text-neutral-800 dark:bg-slate-600 dark:text-slate-200"
             placeholder="Search"
             data-testid="branch-search-input"
           />
@@ -133,7 +133,7 @@ function BranchSelect({
           ))}
         </CommandList>
       </Command>
-      <div className="-mx-2 mt-2 border-neutral-200 border-t p-2 pb-0">
+      <div className="-mx-2 mt-2 border-neutral-200 border-t p-2 pb-0 dark:border-slate-600">
         <LinkButton
           to={constructPath("/branches")}
           variant="ghost"
@@ -163,7 +163,7 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
 
         <div className="ml-auto inline-flex items-center gap-1">
           {branch.is_default && (
-            <span className="rounded-sm border border-gray-200 px-1.5 text-gray-400 text-xs">
+            <span className="rounded-sm border border-gray-200 px-1.5 text-gray-400 text-xs dark:border-slate-500">
               default
             </span>
           )}
@@ -223,9 +223,9 @@ const BranchNotFound = ({ onSelect }: { onSelect: (branchName: string) => void }
       forceMount
       value="create"
       onSelect={() => onSelect(search)}
-      className="gap-1 truncate text-neutral-600"
+      className="gap-1 truncate text-neutral-600 dark:text-neutral-400"
     >
-      Create branch <span className="font-semibold text-neutral-800">{search}</span>
+      Create branch <span className="font-semibold text-neutral-800 dark:text-neutral-200">{search}</span>
     </CommandItem>
   );
 };

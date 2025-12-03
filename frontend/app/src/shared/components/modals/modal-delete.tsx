@@ -56,34 +56,34 @@ export default function ModalDelete({
               leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95"
             >
               <Dialog.Panel
-                className="relative my-8 w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all"
+                className="relative my-8 w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all dark:bg-gray-800"
                 data-cy="modal-delete"
                 data-testid="modal-delete"
               >
-                <div className="bg-white p-6 px-4 pt-5 pb-4">
+                <div className="bg-white p-6 px-4 pt-5 pb-4 dark:bg-gray-800">
                   <div className="">
                     <div className="mt-0 ml-4 text-left">
                       <Dialog.Title
                         as="h3"
-                        className="flex items-center font-semibold text-gray-900 leading-6"
+                        className="flex items-center font-semibold text-gray-900 leading-6 dark:text-gray-100"
                       >
-                        <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+                        <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                           <Icon
                             icon={"mdi:warning-outline"}
-                            className="text-red-600"
+                            className="text-red-600 dark:text-red-400"
                             aria-hidden="true"
                           />
                         </div>
                         {title}
                       </Dialog.Title>
                       <div className="mt-2">
-                        <div className="text-gray-500 text-sm">{description}</div>
+                        <div className="text-gray-500 text-sm dark:text-gray-400">{description}</div>
                         {children}
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-row-reverse bg-gray-50 px-4 py-3">
+                <div className="flex flex-row-reverse bg-gray-50 px-4 py-3 dark:bg-gray-700">
                   <Button
                     onClick={onDelete}
                     buttonType={BUTTON_TYPES.CANCEL}

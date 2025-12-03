@@ -3,7 +3,10 @@ import { classNames } from "@/shared/utils/common";
 
 export function BranchDefaultBadge({ className, ...props }: BadgeProps) {
   return (
-    <Badge className={classNames("rounded-full font-normal text-gray-700", className)} {...props}>
+    <Badge
+      className={classNames("rounded-full font-normal text-gray-700 dark:text-gray-300", className)}
+      {...props}
+    >
       default
     </Badge>
   );

@@ -57,47 +57,47 @@ export const Alert = (props: AlertProps) => {
     switch (type) {
       case ALERT_TYPES.SUCCESS: {
         return {
-          container: "bg-green-50 text-green-800",
+          container: "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-400",
           bg: "",
-          text: "text-green-800",
+          text: "text-green-800 dark:text-green-400",
           button:
-            "bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:ring-green-600 focus:ring-offset-green-50",
+            "bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:ring-green-600 focus:ring-offset-green-50 dark:bg-green-900/30 dark:hover:bg-green-900/50",
         };
       }
       case ALERT_TYPES.INFO: {
         return {
-          container: "bg-blue-50 text-custom-blue-500",
+          container: "bg-blue-50 text-custom-blue-500 dark:bg-blue-900/30 dark:text-blue-400",
           bg: "",
-          text: "text-custom-blue-500",
+          text: "text-custom-blue-500 dark:text-blue-400",
           button:
-            "bg-blue-50 p-1.5 text-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-blue-50",
+            "bg-blue-50 p-1.5 text-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-blue-50 dark:bg-blue-900/30 dark:hover:bg-blue-900/50",
         };
       }
       case ALERT_TYPES.WARNING: {
         return {
-          container: "bg-yellow-50 text-yellow-800",
+          container: "bg-yellow-50 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
           bg: "",
-          text: "text-yellow-800",
+          text: "text-yellow-800 dark:text-yellow-400",
           button:
-            "bg-yellow-50 p-1.5 text-yellow-500 hover:bg-yellow-100 focus:ring-yellow-600 focus:ring-offset-yellow-50",
+            "bg-yellow-50 p-1.5 text-yellow-500 hover:bg-yellow-100 focus:ring-yellow-600 focus:ring-offset-yellow-50 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50",
         };
       }
       case ALERT_TYPES.ERROR: {
         return {
-          container: "bg-red-50 text-red-800",
+          container: "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-400",
           bg: "",
-          text: "text-red-800",
+          text: "text-red-800 dark:text-red-400",
           button:
-            "bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:ring-red-600 focus:ring-offset-red-50",
+            "bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:ring-red-600 focus:ring-offset-red-50 dark:bg-red-900/30 dark:hover:bg-red-900/50",
         };
       }
       default: {
         return {
-          container: "bg-gray-50 text-gray-800",
+          container: "bg-gray-50 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
           bg: "",
-          text: "text-gray-800",
+          text: "text-gray-800 dark:text-gray-200",
           button:
-            "bg-gray-50 p-1.5 text-gray-500 hover:bg-gray-100 focus:ring-gray-600 focus:ring-offset-gray-50",
+            "bg-gray-50 p-1.5 text-gray-500 hover:bg-gray-100 focus:ring-gray-600 focus:ring-offset-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600",
         };
       }
     }

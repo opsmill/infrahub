@@ -7,7 +7,11 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {}
 export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={classNames("rounded-xl border border-gray-200 bg-white p-3", className)}
+    className={classNames(
+      "rounded-xl border border-gray-200 bg-white p-3",
+      "dark:border-slate-600 dark:bg-slate-700",
+      className
+    )}
     {...props}
   />
 ));
@@ -23,6 +27,7 @@ const CardWithBorderRoot = forwardRef<HTMLDivElement, CardWithBorderProps>(
         ref={ref}
         className={classNames(
           "overflow-hidden rounded-lg border border-gray-200 bg-white p-3",
+          "dark:border-slate-600 dark:bg-slate-700",
           className
         )}
         {...props}
@@ -30,6 +35,7 @@ const CardWithBorderRoot = forwardRef<HTMLDivElement, CardWithBorderProps>(
         <div
           className={classNames(
             "flex h-full w-full flex-col overflow-auto rounded-md border border-gray-200",
+            "dark:border-slate-600",
             contentClassName
           )}
         >
@@ -44,7 +50,11 @@ const CardWithBorderTitle = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>>
   ({ className, ...props }, ref) => (
     <header
       ref={ref}
-      className={classNames("rounded-t bg-neutral-100 p-2 font-semibold text-sm", className)}
+      className={classNames(
+        "rounded-t bg-neutral-100 p-2 font-semibold text-sm",
+        "dark:bg-slate-600",
+        className
+      )}
       {...props}
     />
   )

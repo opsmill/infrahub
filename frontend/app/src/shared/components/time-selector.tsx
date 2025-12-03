@@ -36,8 +36,8 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "inline-flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200",
-        date && "bg-neutral-800"
+        "inline-flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200 dark:border-slate-600",
+        date && "bg-neutral-800 dark:bg-slate-700"
       )}
     >
       <DateTimePicker
@@ -45,7 +45,7 @@ export const TimeFrameSelector = () => {
           <Button
             size="square"
             variant="ghost"
-            className="h-8 w-8 bg-neutral-50"
+            className="h-8 w-8 bg-neutral-50 dark:bg-slate-700"
             data-testid="timeframe-selector"
           >
             <Icon icon="mdi:calendar-clock" className="text-xl" />

@@ -33,6 +33,7 @@ export function SearchAnywhereTrigger({
       variant="ghost"
       className={classNames(
         "justify-between gap-3 bg-neutral-100 px-3 py-2 text-neutral-800 shadow-none",
+        "dark:bg-gray-600 dark:text-neutral-200",
         className
       )}
       data-testid="search-anywhere-trigger"
@@ -40,7 +41,7 @@ export function SearchAnywhereTrigger({
     >
       <div className="flex items-center gap-2 overflow-hidden">
         <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
-        <span className="truncate text-neutral-700 text-sm transition-all group-data-[collapsed=true]/sidebar:hidden">
+        <span className="truncate text-neutral-700 text-sm transition-all group-data-[collapsed=true]/sidebar:hidden dark:text-neutral-300">
           Search
         </span>
       </div>

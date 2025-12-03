@@ -37,7 +37,7 @@ export function TableIdentifierCell({
         variant="ghost"
         size="sm"
         to={getObjectDetailsUrl(objectKind, objectId)}
-        className="truncate rounded-full px-2.5 text-custom-blue-700 hover:bg-custom-blue-700/10 hover:underline"
+        className="truncate rounded-full px-2.5 text-custom-blue-700 hover:bg-custom-blue-700/10 hover:underline dark:text-custom-blue-400"
       >
         {label}
       </LinkButton>

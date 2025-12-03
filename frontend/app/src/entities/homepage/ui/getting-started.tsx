@@ -41,7 +41,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               Explore our hands-on labs for a deep dive into Infrahub's usage and features.
             </span>
           </GettingStartedContentItem>
@@ -59,7 +59,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               Integrate Infrahub with Nornir for automated network device configuration and
               management.
             </span>
@@ -82,7 +82,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               In Infrahub, the schema is at the center of most things.
             </span>
           </GettingStartedContentItem>
@@ -100,7 +100,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               The Infrahub Python SDK greatly simplifies how you can interact with Infrahub
               programmatically.
             </span>
@@ -119,7 +119,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               Offers a collection of schemas designed to streamline and standardize
               infrastructure-related data structures.
             </span>
@@ -138,7 +138,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500">Infrahub Collection for Ansible Galaxy.</span>
+            <span className="text-gray-500 dark:text-gray-400">Infrahub Collection for Ansible Galaxy.</span>
           </GettingStartedContentItem>
         </div>
       </HomeCard.Content>
@@ -171,7 +171,7 @@ const GettingStartedContentItemLink = ({
   return (
     <LinkButton
       variant={"ghost"}
-      className="flex items-center gap-2 px-2 py-1 text-gray-500 underline"
+      className="flex items-center gap-2 px-2 py-1 text-gray-500 underline dark:text-gray-400"
       to={to}
       {...props}
     >

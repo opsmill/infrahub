@@ -13,7 +13,7 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        default: "font-medium text-gray-900 text-sm",
+        default: "font-medium text-gray-900 text-sm dark:text-gray-100",
         small: "font-normal text-xs",
       },
     },

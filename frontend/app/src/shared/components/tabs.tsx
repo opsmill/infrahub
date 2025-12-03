@@ -38,7 +38,11 @@ export const Tabs = (props: TabsProps) => {
 
   return (
     <div
-      className={classNames("flex items-center border-gray-200 border-b bg-white px-2", className)}
+      className={classNames(
+        "flex items-center border-gray-200 border-b bg-white px-2",
+        "dark:border-slate-600 dark:bg-slate-700",
+        className
+      )}
     >
       <ScrollArea scrollX className="flex-1">
         <nav className="flex space-x-8 px-4" aria-label="Tabs">
@@ -48,10 +52,10 @@ export const Tabs = (props: TabsProps) => {
                 key={tab.name}
                 onClick={() => handleClick(tab, index)}
                 className={classNames(
-                  "flex cursor-pointer items-center whitespace-nowrap border-gray-200 border-b-2 px-1 py-4 font-medium text-sm",
+                  "flex cursor-pointer items-center whitespace-nowrap border-gray-200 border-b-2 px-1 py-4 font-medium text-sm dark:border-slate-600",
                   (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
-                    ? "border-custom-blue-500 text-custom-blue-600"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    ? "border-custom-blue-500 text-custom-blue-600 dark:border-custom-blue-400 dark:text-custom-blue-400"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:text-gray-300"
                 )}
               >
                 {tab.label}

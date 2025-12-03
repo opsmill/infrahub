@@ -59,7 +59,7 @@ export function BreadcrumbItemObject({
         <Col className="gap-0 py-0.5">
           <Link
             to={getObjectDetailsUrl(node.__typename)}
-            className="truncate text-neutral-600 text-xs leading-3.5 hover:underline"
+            className="truncate text-neutral-600 text-xs leading-3.5 hover:underline dark:text-neutral-400"
           >
             {schema?.label}
           </Link>

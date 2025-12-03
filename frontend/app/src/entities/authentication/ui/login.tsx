@@ -25,7 +25,7 @@ export const Login = () => {
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
+          className="text-cyan-900 text-sm hover:bg-transparent hover:underline dark:text-cyan-400"
         >
           Log in with your credentials
         </Button>
@@ -36,7 +36,7 @@ export const Login = () => {
         <Button
           variant="ghost"
           onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
+          className="text-cyan-900 text-sm hover:bg-transparent hover:underline dark:text-cyan-400"
         >
           Log in with SSO
         </Button>

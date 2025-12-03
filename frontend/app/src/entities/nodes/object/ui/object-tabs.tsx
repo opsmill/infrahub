@@ -25,8 +25,8 @@ export function ObjectDetailsTab({ isActive, className, ...props }: ObjectDetail
       className={classNames(
         "flex cursor-pointer scroll-m-10 items-center gap-2 whitespace-nowrap border-gray-200 border-b-2 px-1 py-4 font-medium text-sm",
         isActive
-          ? "border-custom-blue-500 text-custom-blue-600"
-          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+          ? "border-custom-blue-500 text-custom-blue-600 dark:border-custom-blue-400 dark:text-custom-blue-400"
+          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:text-gray-300",
         className
       )}
       {...props}

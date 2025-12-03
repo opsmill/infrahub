@@ -1,2 +1,2 @@
 export const menuNavigationItemStyle =
-  "flex items-center outline-hidden gap-2 p-2 rounded-sm font-medium text-neutral-900 hover:bg-neutral-100 focus:bg-neutral-100 group data-[state=open]:bg-indigo-50 data-[state=open]:text-indigo-700";
+  "flex items-center outline-hidden gap-2 p-2 rounded-sm font-medium text-neutral-900 hover:bg-neutral-100 focus:bg-neutral-100 group data-[state=open]:bg-custom-blue-50 data-[state=open]:text-custom-blue-700 dark:text-neutral-100 dark:hover:bg-gray-600 dark:focus:bg-gray-600 dark:data-[state=open]:bg-custom-blue-900/40 dark:data-[state=open]:text-custom-blue-300";

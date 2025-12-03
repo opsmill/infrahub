@@ -14,11 +14,11 @@ import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 
 export const TaskHomepageItem = ({ id, title, branch, updated_at, related_nodes }: TaskNode) => {
   return (
-    <div className="flex w-full flex-col gap-1.5 rounded-md border border-transparent bg-white p-2 text-xs shadow-sm">
+    <div className="flex w-full flex-col gap-1.5 rounded-md border border-transparent bg-white p-2 text-xs shadow-sm dark:bg-slate-700">
       <Link
         className={classNames(
           focusVisibleStyle,
-          "line-clamp-2 font-semibold transition-colors hover:text-custom-blue-700"
+          "line-clamp-2 font-semibold transition-colors hover:text-custom-blue-700 dark:hover:text-custom-blue-400"
         )}
         to={constructPath(`/tasks/${id}`)}
       >
@@ -38,7 +38,7 @@ export const TaskHomepageItem = ({ id, title, branch, updated_at, related_nodes 
                 key={node.id}
                 className={classNames(
                   focusVisibleStyle,
-                  "flex items-center gap-1 rounded px-1 py-0.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-custom-blue-700"
+                  "flex items-center gap-1 rounded px-1 py-0.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-custom-blue-700 dark:text-gray-400 dark:hover:bg-slate-600 dark:hover:text-custom-blue-400"
                 )}
                 to={getObjectDetailsUrl(node.kind, node.id)}
               >
@@ -50,11 +50,11 @@ export const TaskHomepageItem = ({ id, title, branch, updated_at, related_nodes 
         </div>
       )}
 
-      <span className="flex items-center gap-1 text-gray-500">
+      <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
         <Icon icon={"mdi:source-branch"} />
         <span className="truncate">{branch}</span>
       </span>
-      <DateDisplay date={updated_at} dateFormat="d MMM yyyy HH:mm:ss" className="text-gray-500" />
+      <DateDisplay date={updated_at} dateFormat="d MMM yyyy HH:mm:ss" className="text-gray-500 dark:text-gray-400" />
     </div>
   );
 };

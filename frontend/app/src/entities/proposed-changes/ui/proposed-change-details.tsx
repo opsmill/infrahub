@@ -153,7 +153,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   ];
 
   return (
-    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
+    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5 dark:bg-slate-800">
       {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
         <Card>
           <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
@@ -187,7 +187,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
                 <DateDisplay
                   date={proposedChangesDetails.description.updated_at}
-                  className="ml-auto font-normal text-gray-600 text-xs"
+                  className="ml-auto font-normal text-gray-600 text-xs dark:text-gray-400"
                 />
               </CardWithBorder.Title>
 
@@ -205,7 +205,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
           <CardWithBorder.Title className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
-              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
+              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline dark:text-gray-100"
             >
               Proposed change
             </div>

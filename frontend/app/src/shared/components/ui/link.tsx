@@ -8,7 +8,7 @@ export const Link = (props: LinkProps) => {
   return (
     <RouterLink
       {...propsToPass}
-      className={classNames("cursor-pointer rounded-md underline", className)}
+      className={classNames("cursor-pointer rounded-md text-custom-blue-700 underline dark:text-custom-blue-400", className)}
     >
       {children}
     </RouterLink>
@@ -28,7 +28,7 @@ export function LinkTab({ href, className, ...props }: LinkTabProps) {
         classNames(
           "transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-custom-blue-600/25",
           "inline-flex h-11 items-center gap-2 truncate border-transparent border-b-2 px-3 py-2 text-sm",
-          isActive && "border-custom-blue-600"
+          isActive && "border-custom-blue-600 dark:border-custom-blue-400"
         )
       }
       {...props}

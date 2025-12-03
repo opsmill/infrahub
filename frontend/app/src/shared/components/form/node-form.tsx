@@ -111,7 +111,7 @@ export const NodeForm = ({
       onSubmit={(formData: Record<string, FormFieldValue>) =>
         onSubmit ? onSubmit({ formData, fields, profiles }) : onSubmitCreate(formData)
       }
-      className={classNames("flex flex-1 flex-col overflow-auto bg-white p-4", className)}
+      className={classNames("flex flex-1 flex-col overflow-auto p-4", className)}
       {...props}
     />
   );

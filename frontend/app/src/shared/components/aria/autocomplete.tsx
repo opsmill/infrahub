@@ -29,7 +29,7 @@ export interface SearchInputProps extends AriaSearchFieldProps {
 export function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
   return (
     <AriaSearchField
-      className="group sticky flex items-center border-neutral-200 border-b px-2 text-sm"
+      className="group sticky flex items-center border-neutral-200 border-b px-2 text-sm dark:border-gray-700"
       aria-label="Search"
       autoFocus
       {...props}
@@ -37,7 +37,7 @@ export function AutocompleteSearchField({ className, placeholder, ...props }: Se
       <SearchIcon aria-hidden className="size-3.5 text-neutral-400" />
       <AriaInput
         className={classNames(
-          "min-w-0 flex-1 border-none px-2 py-1.5 outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden",
+          "min-w-0 flex-1 border-none bg-transparent px-2 py-1.5 outline-hidden placeholder:text-neutral-400 dark:text-neutral-200 dark:placeholder:text-neutral-500 [&::-webkit-search-cancel-button]:hidden",
           className
         )}
         placeholder={placeholder}
@@ -45,7 +45,7 @@ export function AutocompleteSearchField({ className, placeholder, ...props }: Se
       <AriaButton
         className={classNames(
           "inline-flex rounded-full p-1 opacity-70 transition-all",
-          "hover:bg-neutral-200 hover:opacity-100",
+          "hover:bg-neutral-200 hover:opacity-100 dark:hover:bg-gray-600",
           "data-disabled:pointer-events-none",
           "group-data-empty:invisible"
         )}

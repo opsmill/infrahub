@@ -25,7 +25,7 @@ export const MenuPopover = ({ className, ...props }: MenuPopoverProps) => {
   return (
     <Popover
       className={composeRenderProps(className, (className) => {
-        return classNames("border-stone-200 bg-stone-100", className);
+        return classNames("border-stone-200 bg-stone-100 dark:border-gray-700 dark:bg-gray-800", className);
       })}
       {...props}
     />
@@ -56,7 +56,8 @@ export const MenuItem = ({ children, className, textValue, ...props }: MenuItemP
         classNames(
           disabledStyle,
           "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent bg-white px-2 py-1 text-sm text-stone-600 shadow-sm outline-hidden transition-colors",
-          "data-focused:ring-1",
+          "dark:bg-gray-700 dark:text-stone-300",
+          "data-focused:bg-gray-100 data-focused:ring-1 dark:data-focused:bg-gray-600",
           className
         )
       )}
@@ -78,7 +79,7 @@ export const MenuSection = <T extends object>({
 }: MenuSectionProps<T>) => {
   return (
     <AriaMenuSection className={classNames("flex flex-col gap-0.5", className)} {...props}>
-      {title && <AriaHeader className="px-1 text-stone-500 text-xs">{title}</AriaHeader>}
+      {title && <AriaHeader className="px-1 text-stone-500 text-xs dark:text-stone-400">{title}</AriaHeader>}
       <Collection items={props.items}>{children}</Collection>
     </AriaMenuSection>
   );

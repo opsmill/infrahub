@@ -36,7 +36,7 @@ export default function BranchesList() {
       <ListBox
         aria-label="Branches list"
         items={branches}
-        className="m-2 flex flex-col divide-y rounded-lg border border-gray-200"
+        className="m-2 flex flex-col divide-y rounded-lg border border-gray-200 dark:divide-slate-600 dark:border-slate-600"
       >
         {(branch) => <BranchListItem branch={branch} />}
       </ListBox>

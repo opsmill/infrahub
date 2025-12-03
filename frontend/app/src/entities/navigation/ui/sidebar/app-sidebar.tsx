@@ -48,13 +48,13 @@ export function AppSidebar() {
             className="-right-3.5 absolute top-11 hidden transition-all group-hover/sidebar:inline-flex"
             onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
-            <PanelLeftOpenIcon className="size-4 text-neutral-600" />
+            <PanelLeftOpenIcon className="size-4 text-neutral-600 dark:text-neutral-400" />
           </Button>
         ) : (
           <Button
             variant="ghost"
             size="sm"
-            className="p-1 text-gray-400 hover:text-neutral-600"
+            className="p-1 text-gray-400 hover:text-neutral-600 dark:hover:text-neutral-300"
             onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftCloseIcon className="size-5" />

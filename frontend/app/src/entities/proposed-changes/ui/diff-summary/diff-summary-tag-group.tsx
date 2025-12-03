@@ -25,7 +25,7 @@ export function DiffSummaryTagGroup<T extends object>({
 }: DiffSummaryProps<T>) {
   return (
     <TagGroup aria-label="Diff summary" {...props}>
-      <TagList className="inline-flex items-center gap-2 rounded-md bg-gray-100 p-1">
+      <TagList className="inline-flex items-center gap-2 rounded-md bg-gray-100 p-1 dark:bg-gray-600">
         <TagList items={items} renderEmptyState={renderEmptyState}>
           {children}
         </TagList>
@@ -38,7 +38,7 @@ const diffSummaryTagStyles = cva(
   [
     disabledStyle,
     focusVisibleStyle,
-    "relative inline-flex cursor-pointer items-center gap-1 rounded-full border border-transparent p-1 text-xs",
+    "relative inline-flex cursor-pointer items-center gap-1 rounded-full border border-transparent p-1 text-gray-700 text-xs dark:text-gray-200",
   ],
   {
     variants: {
@@ -103,14 +103,14 @@ export function DiffSummaryIcon({
 }
 
 const diffSummaryCloseStyles = cva(
-  "-top-2 -right-2 absolute flex items-center justify-center rounded-full border-2 border-white",
+  "-top-2 -right-2 absolute flex items-center justify-center rounded-full border-2 border-white dark:border-gray-800",
   {
     variants: {
       variant: {
-        added: "bg-green-200 text-green-800",
-        removed: "bg-red-200 text-red-800",
-        updated: "bg-blue-200 text-blue-800",
-        conflicts: "bg-yellow-200 text-yellow-800",
+        added: "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300",
+        removed: "bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-300",
+        updated: "bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+        conflicts: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
       },
     },
   }

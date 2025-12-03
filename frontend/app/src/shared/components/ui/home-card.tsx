@@ -19,6 +19,7 @@ const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
     <header
       className={classNames(
         "flex items-center justify-between rounded-t border-gray-200 border-b p-3 font-bold",
+        "dark:border-slate-600",
         className
       )}
       {...props}
@@ -30,7 +31,7 @@ const HomeCardLink = ({ className, ...props }: LinkProps) => {
   return (
     <Link
       className={classNames(
-        "flex items-center font-normal text-gray-500 text-sm hover:underline",
+        "flex items-center font-normal text-gray-500 text-sm hover:underline dark:text-gray-400",
         className
       )}
       {...props}

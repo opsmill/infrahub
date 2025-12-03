@@ -6,7 +6,10 @@ import { Button } from "@/shared/components/buttons/button";
 
 export function ModalTitle({ children }: { children: ReactNode }) {
   return (
-    <Dialog.Title as="h3" className="flex items-center font-semibold text-gray-900 leading-6">
+    <Dialog.Title
+      as="h3"
+      className="flex items-center font-semibold text-gray-900 leading-6 dark:text-gray-100"
+    >
       {children}
     </Dialog.Title>
   );
@@ -49,13 +52,13 @@ export default function Modal({ open, setOpen, children, closeLabel }: iProps) {
               leaveTo="opacity-0 translate-y-4 translate-y-0 scale-95"
             >
               <Dialog.Panel
-                className="relative my-8 w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all"
+                className="relative my-8 w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all dark:bg-gray-800"
                 data-cy="modal-delete"
                 data-testid="modal-delete"
               >
-                <div className="bg-white p-6 px-4 pt-5 pb-4">{children}</div>
+                <div className="bg-white p-6 px-4 pt-5 pb-4 dark:bg-gray-800">{children}</div>
 
-                <div className="flex flex-row-reverse bg-gray-50 px-4 py-3">
+                <div className="flex flex-row-reverse bg-gray-50 px-4 py-3 dark:bg-gray-700">
                   <Button onClick={() => setOpen(false)} ref={closeButtonRef}>
                     {closeLabel ?? "Close"}
                   </Button>

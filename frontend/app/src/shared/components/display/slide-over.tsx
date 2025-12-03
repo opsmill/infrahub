@@ -88,10 +88,10 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
                   leaveTo="translate-x-full"
                 >
                   <Dialog.Panel
-                    className={`pointer-events-auto flex flex-col bg-white shadow-xl ${panelWidth} ${offestWidth[offset]}`}
+                    className={`pointer-events-auto flex flex-col bg-white shadow-xl dark:bg-slate-800 ${panelWidth} ${offestWidth[offset]}`}
                     data-testid="side-panel-container"
                   >
-                    <div className="border-gray-200 border-b bg-gray-50 px-4 py-4 sm:px-4">
+                    <div className="border-gray-200 border-b bg-gray-50 px-4 py-4 sm:px-4 dark:border-slate-600 dark:bg-slate-700">
                       <div className="w-full">
                         <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
                       </div>

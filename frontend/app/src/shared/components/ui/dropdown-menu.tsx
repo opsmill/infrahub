@@ -27,6 +27,7 @@ export const DropdownMenuContent = forwardRef<
         ref={ref}
         className={classNames(
           "z-50 min-w-32 space-y-1 overflow-hidden rounded-xl bg-white p-2 shadow-lg",
+          "dark:border dark:border-gray-700 dark:bg-gray-800",
           "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
           "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
@@ -46,9 +47,9 @@ export const DropdownMenuItem = forwardRef<
     ref={ref}
     className={classNames(
       "rounded-lg px-2 py-1.5",
-      "text-neutral-800 text-sm",
+      "text-neutral-800 text-sm dark:text-neutral-200",
       "relative flex items-center gap-1.5",
-      "cursor-pointer outline-hidden focus:bg-neutral-100",
+      "cursor-pointer outline-hidden focus:bg-neutral-100 dark:focus:bg-gray-600",
       "data-disabled:pointer-events-none data-disabled:opacity-40",
       className
     )}
@@ -62,7 +63,7 @@ export const DropdownMenuDivider = forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={classNames("-mx-1 my-1 h-px bg-gray-200", className)}
+    className={classNames("-mx-1 my-1 h-px bg-gray-200 dark:bg-gray-700", className)}
     {...props}
   />
 ));
@@ -76,7 +77,9 @@ export const DropdownMenuSubTrigger = forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      "flex cursor-default select-none items-center gap-1.5 rounded-lg p-2 text-sm outline-hidden focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
+      "flex cursor-default select-none items-center gap-1.5 rounded-lg p-2 text-sm outline-hidden",
+      "focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
+      "dark:data-[state=open]:bg-gray-600 dark:focus:bg-gray-600",
       className
     )}
     {...props}
@@ -94,6 +97,7 @@ export const DropdownMenuSubContent = forwardRef<
     ref={ref}
     className={classNames(
       "min-w-32 space-y-1 overflow-hidden rounded-xl bg-white p-2 shadow-lg",
+      "dark:border dark:border-gray-700 dark:bg-gray-800",
       "data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in",
       "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out",
       "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",

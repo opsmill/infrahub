@@ -33,7 +33,8 @@ export function TaskStatus() {
   const commonButtonProps: LinkButtonProps = {
     size: "square",
     variant: "ghost",
-    className: "h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative shrink-0",
+    className:
+      "h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative shrink-0 dark:bg-gray-700 dark:border-gray-600",
     to: constructPath("/tasks", [{ name: QSP.FILTER, value: JSON.stringify([filter]) }]),
   };
 
@@ -55,7 +56,7 @@ export function TaskStatus() {
   return (
     <Tooltip enabled content={tooltipContent}>
       <LinkButton {...commonButtonProps} aria-label={tooltipContent}>
-        {isPending ? <Spinner /> : <TasksStatusIcon />}
+        {isPending ? <Spinner /> : <TasksStatusIcon className="text-slate-700 dark:text-slate-300" />}
         {isTaskRunningOnBranch && (
           <Pulse className="right-[6.5px] bottom-[6.5px]" data-testid="pulse" />
         )}

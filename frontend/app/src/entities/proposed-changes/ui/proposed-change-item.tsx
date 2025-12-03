@@ -81,14 +81,16 @@ const ProposedChangesInfo = ({
         <span className="flex items-center space-x-4">
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
-            className={classNames("font-semibold text-lg transition-all hover:text-gray-500")}
+            className={classNames(
+              "font-semibold text-lg transition-all hover:text-gray-500 dark:hover:text-gray-300"
+            )}
           >
             <Icon
               icon={"mdi:file-replace-outline"}
               className={classNames(
                 "text-base",
-                "text-green-700",
-                isDraft && "text-gray-500",
+                "text-green-700 dark:text-green-500",
+                isDraft && "text-gray-500 dark:text-gray-400",
                 isApproved && "text-custom-blue-500"
               )}
             />{" "}

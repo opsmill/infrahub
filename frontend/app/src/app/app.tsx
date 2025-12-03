@@ -17,6 +17,7 @@ import { store } from "@/shared/stores";
 
 import { AuthProvider } from "@/entities/authentication/ui/useAuth";
 import { ConfigProvider } from "@/entities/config/ui/config-provider";
+import { ThemeProvider } from "@/entities/theme/ui/theme-provider";
 
 import "@/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
@@ -28,16 +29,18 @@ export function App() {
     <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
       <NuqsAdapter>
         <Provider store={store}>
-          <QueryClientProvider client={queryClient}>
-            <ApolloProvider client={graphqlClient}>
-              <AuthProvider>
-                <ConfigProvider>
-                  <RouterProvider router={router} />
-                </ConfigProvider>
-              </AuthProvider>
-            </ApolloProvider>
-            <TanStackQueryDevtools buttonPosition="bottom-left" />
-          </QueryClientProvider>
+          <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+              <ApolloProvider client={graphqlClient}>
+                <AuthProvider>
+                  <ConfigProvider>
+                    <RouterProvider router={router} />
+                  </ConfigProvider>
+                </AuthProvider>
+              </ApolloProvider>
+              <TanStackQueryDevtools buttonPosition="bottom-left" />
+            </QueryClientProvider>
+          </ThemeProvider>
         </Provider>
       </NuqsAdapter>
     </ErrorBoundary>

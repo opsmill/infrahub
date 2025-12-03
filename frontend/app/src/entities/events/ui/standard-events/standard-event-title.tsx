@@ -15,10 +15,10 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: StandardEvent) => R
     return (
       <div className="flex flex-wrap items-center gap-1">
         updated the commit
-        <span className="text-black">{props.payload?.commit}</span>
+        <span className="text-black dark:text-white">{props.payload?.commit}</span>
         from repository
         <Link
-          className="text-black"
+          className="text-black dark:text-white"
           to={getObjectDetailsUrl("CoreRepository", props.payload?.repository_id, [
             { name: QSP.BRANCH, value: props.payload?.context?.branch?.name },
           ])}
@@ -37,7 +37,7 @@ export const StandardEventTitle = (props: StandardEvent) => {
     <div className="flex flex-wrap items-center gap-1 text-sm">
       <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
 
-      <div className="text-gray-600">
+      <div className="text-gray-600 dark:text-gray-400">
         {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}
 
         {!STANDARD_EVENTS_MAPPING[event] && event}

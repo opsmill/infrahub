@@ -21,7 +21,7 @@ export const CommandInput = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     className={classNames(
-      "flex h-10 shrink-0 items-center border-gray-200 border-b text-neutral-800 outline-hidden",
+      "flex h-10 shrink-0 items-center border-gray-200 border-b text-neutral-800 outline-hidden dark:border-gray-700 dark:text-neutral-200",
       className
     )}
   >
@@ -56,8 +56,8 @@ export const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={classNames(
-      "flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden",
-      "data-[disabled=true]:pointer-events-none data-[selected='true']:bg-gray-100 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50",
+      "flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden dark:text-gray-200",
+      "data-[disabled=true]:pointer-events-none data-[selected='true']:bg-gray-100 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50 dark:data-[selected='true']:bg-gray-600 dark:data-[selected=true]:bg-gray-600",
       className
     )}
     {...props}

@@ -4,6 +4,7 @@ import { Card } from "@/shared/components/ui/card";
 
 import { BreadcrumbNavigation } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation";
 import { TaskStatus } from "@/entities/tasks/ui/task-status";
+import { ThemeToggle } from "@/entities/theme/ui/theme-toggle";
 
 export function AppHeader() {
   return (
@@ -17,6 +18,7 @@ export function AppHeader() {
       </div>
 
       <TaskStatus />
+      <ThemeToggle />
     </Card>
   );
 }

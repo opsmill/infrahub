@@ -60,7 +60,7 @@ const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
     <kbd
       ref={ref}
       className={classNames(
-        "rounded-sm bg-gray-100 px-1.5 py-0.5 font-sans text-gray-600 text-xs",
+        "rounded-sm bg-gray-100 px-1.5 py-0.5 font-sans text-gray-600 text-xs dark:bg-gray-700 dark:text-gray-400",
         className
       )}
     >

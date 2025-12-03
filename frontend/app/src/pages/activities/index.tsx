@@ -79,7 +79,7 @@ export function Component() {
         <EmptyActivitiesView hasFilters={filters.length > 0} />
       ) : (
         <>
-          <div className="grid grid-cols-8 gap-2 px-4 py-2 font-semibold text-gray-500 text-xs">
+          <div className="grid grid-cols-8 gap-2 px-4 py-2 font-semibold text-gray-500 text-xs dark:text-gray-400">
             <span>Date</span>
             <span className="col-span-5">Event</span>
             <span>Branch</span>
@@ -116,7 +116,7 @@ function FiltersSection({ hasFilters }: { hasFilters: boolean }) {
 
 function EmptyActivitiesView({ hasFilters }: { hasFilters: boolean }) {
   return (
-    <div className="flex grow flex-col items-center justify-center p-8 text-gray-500">
+    <div className="flex grow flex-col items-center justify-center p-8 text-gray-500 dark:text-gray-400">
       <p className="mb-2 font-medium text-lg">No activities found</p>
       <p className="text-center text-sm">
         {hasFilters

@@ -98,17 +98,17 @@ const UnauthenticatedAccountMenu = () => {
     <DropdownMenu>
       <LinkButton
         variant="ghost"
-        className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 hover:bg-indigo-50"
+        className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 hover:bg-indigo-50 dark:hover:bg-indigo-900"
         to="/login"
         state={{ from: location }}
       >
-        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50">
-          <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600" />
+        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50 dark:border-gray-600 dark:bg-indigo-900">
+          <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600 dark:text-neutral-400" />
         </div>
 
         <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">
           <div className="truncate font-semibold text-sm">Log in</div>
-          <div className="truncate text-neutral-500 text-xs">anonymous</div>
+          <div className="truncate text-neutral-500 text-xs dark:text-neutral-400">anonymous</div>
         </div>
 
         <DropdownMenuTrigger
@@ -121,7 +121,7 @@ const UnauthenticatedAccountMenu = () => {
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="ml-auto shrink-0 hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
+            className="ml-auto shrink-0 hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden dark:hover:bg-indigo-900"
           >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
@@ -180,7 +180,7 @@ const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full shrink-0 justify-start gap-2 overflow-hidden rounded-lg p-2 text-left hover:bg-indigo-50"
+          className="h-auto w-full shrink-0 justify-start gap-2 overflow-hidden rounded-lg p-2 text-left hover:bg-indigo-50 dark:hover:bg-indigo-900"
           data-testid="authenticated-menu-trigger"
         >
           <Avatar name={profile?.name?.value} className="size-9 shrink-0" />

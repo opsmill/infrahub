@@ -13,6 +13,11 @@
 }
 
 @layer base {
+  html {
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+  }
+
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
@@ -40,8 +45,115 @@ body {
   --base-font-size: 14px;
   --heading-font-size: 2rem;
   --body-font-size: 1rem;
+
+  --background: 255 255 255;
+  --foreground: 11 24 41;
+  --card: 255 255 255;
+  --card-foreground: 11 24 41;
+  --popover: 255 255 255;
+  --popover-foreground: 11 24 41;
+  --primary: 11 151 187;
+  --primary-foreground: 255 255 255;
+  --secondary: 243 244 246;
+  --secondary-foreground: 11 24 41;
+  --muted: 243 244 246;
+  --muted-foreground: 107 114 128;
+  --accent: 243 244 246;
+  --accent-foreground: 11 24 41;
+  --border: 229 231 235;
+  --input: 229 231 235;
+  --ring: 11 151 187;
+}
+
+.dark {
+  --background: 30 41 59;
+  --foreground: 241 245 249;
+  --card: 51 65 85;
+  --card-foreground: 241 245 249;
+  --popover: 51 65 85;
+  --popover-foreground: 241 245 249;
+  --primary: 11 151 187;
+  --primary-foreground: 255 255 255;
+  --secondary: 71 85 105;
+  --secondary-foreground: 241 245 249;
+  --muted: 71 85 105;
+  --muted-foreground: 148 163 184;
+  --accent: 71 85 105;
+  --accent-foreground: 241 245 249;
+  --border: 100 116 139;
+  --input: 100 116 139;
+  --ring: 11 151 187;
 }
 
 code {
   font-family: source-code-pro, monospace;
+}
+
+/* React DatePicker dark mode styles */
+.dark .react-datepicker {
+  background-color: rgb(51 65 85);
+  border-color: rgb(71 85 105);
+  color: rgb(241 245 249);
+}
+
+.dark .react-datepicker__header {
+  background-color: rgb(71 85 105);
+  border-bottom-color: rgb(100 116 139);
+}
+
+.dark .react-datepicker__current-month,
+.dark .react-datepicker__day-name,
+.dark .react-datepicker-time__header {
+  color: rgb(241 245 249);
+}
+
+.dark .react-datepicker__day {
+  color: rgb(226 232 240);
+}
+
+.dark .react-datepicker__day:hover {
+  background-color: rgb(100 116 139);
+}
+
+.dark .react-datepicker__day--selected,
+.dark .react-datepicker__day--keyboard-selected {
+  background-color: rgb(11 151 187);
+  color: rgb(255 255 255);
+}
+
+.dark .react-datepicker__day--disabled {
+  color: rgb(100 116 139);
+}
+
+.dark .react-datepicker__time-container {
+  border-left-color: rgb(100 116 139);
+}
+
+.dark .react-datepicker__time {
+  background-color: rgb(51 65 85);
+}
+
+.dark .react-datepicker__time-list-item {
+  color: rgb(226 232 240);
+}
+
+.dark .react-datepicker__time-list-item:hover {
+  background-color: rgb(100 116 139) !important;
+}
+
+.dark .react-datepicker__time-list-item--selected {
+  background-color: rgb(11 151 187) !important;
+  color: rgb(255 255 255) !important;
+}
+
+.dark .react-datepicker__time-list-item--disabled {
+  color: rgb(100 116 139) !important;
+}
+
+.dark .react-datepicker__navigation-icon::before {
+  border-color: rgb(148 163 184);
+}
+
+.dark .react-datepicker__navigation:hover *::before {
+  border-color: rgb(241 245 249);
 }

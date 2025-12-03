@@ -25,9 +25,9 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
       className={classNames(
         focusVisibleStyle,
         "flex flex-wrap items-center gap-6 px-6 py-4",
-        "border border-transparent not-last:border-b-gray-200",
+        "border border-transparent not-last:border-b-gray-200 dark:not-last:border-b-slate-600",
         "first:rounded-t-lg last:rounded-b-lg",
-        "hover:bg-neutral-100",
+        "hover:bg-neutral-100 dark:hover:bg-slate-600",
         className
       )}
       {...props}
@@ -45,7 +45,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
           {branch.has_schema_changes && <BranchSchemaChangesBadge />}
         </Row>
 
-        <p className="truncate text-gray-600 text-xs">{branch.description}</p>
+        <p className="truncate text-gray-600 text-xs dark:text-gray-400">{branch.description}</p>
       </Col>
 
       {branch.sync_with_git && <BranchGitSyncBadge />}

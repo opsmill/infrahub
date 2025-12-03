@@ -125,7 +125,7 @@ export const GlobalPermissionForm = ({
   }
 
   return (
-    <div className={"flex flex-1 flex-col overflow-auto bg-white p-4"}>
+    <div className={"flex flex-1 flex-col overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
         <DropdownField
           name="action"

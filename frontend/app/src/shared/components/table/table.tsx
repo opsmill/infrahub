@@ -46,13 +46,18 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
       <table
         className={classNames(
           "w-full table-auto border-spacing-0 rounded-md border border-gray-300",
+          "dark:border-slate-600",
           className
         )}
       >
-        <thead className="rounded-md border-gray-300 border-b bg-gray-50 text-left">
+        <thead className="rounded-md border-gray-300 border-b bg-gray-50 text-left dark:border-slate-600 dark:bg-slate-700">
           <tr>
             {columns.map((column) => (
-              <th key={column.name} scope="col" className="p-2 font-semibold text-gray-900 text-xs">
+              <th
+                key={column.name}
+                scope="col"
+                className="p-2 font-semibold text-gray-900 text-xs dark:text-slate-100"
+              >
                 {column.label}
               </th>
             ))}
@@ -60,13 +65,13 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
           </tr>
         </thead>
 
-        <tbody className="bg-white text-left">
+        <tbody className="bg-white text-left dark:bg-slate-700">
           {rows.map((row, index: number) => (
             <tr
               key={index}
               className={classNames(
-                "h-[36px] border-gray-200 border-b",
-                row.link ? "cursor-pointer hover:bg-gray-50" : ""
+                "h-[36px] border-gray-200 border-b dark:border-slate-600",
+                row.link ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-600" : ""
               )}
               data-cy="object-table-row"
             >
@@ -75,7 +80,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                   <td key={index} className="p-0">
                     {row.link && (
                       <Link
-                        className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs"
+                        className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs dark:text-slate-100"
                         to={row.link}
                       >
                         {renderRowValue(row.values[column.name])}
@@ -83,7 +88,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                     )}
 
                     {!row.link && (
-                      <div className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs">
+                      <div className="whitespace-wrap flex items-center px-2 py-1 text-gray-900 text-xs dark:text-slate-100">
                         {renderRowValue(row.values[column.name])}
                       </div>
                     )}

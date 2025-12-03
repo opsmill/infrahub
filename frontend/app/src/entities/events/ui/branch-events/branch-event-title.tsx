@@ -12,31 +12,31 @@ import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = {
   "infrahub.branch.created": (props: BranchCreatedEvent) => (
-    <div className="flex min-w-0 items-center gap-1 text-gray-600">
+    <div className="flex min-w-0 items-center gap-1 text-gray-600 dark:text-gray-400">
       <span className="whitespace-nowrap">created the branch</span>
-      <Link to={`/branches/${props.created_branch}`} className="min-w-0 truncate text-black">
+      <Link to={`/branches/${props.created_branch}`} className="min-w-0 truncate text-black dark:text-white">
         {props.created_branch ?? "-"}
       </Link>
     </div>
   ),
   "infrahub.branch.rebased": (props: BranchRebasedEvent) => (
-    <div className="flex min-w-0 items-center gap-1 text-gray-600">
+    <div className="flex min-w-0 items-center gap-1 text-gray-600 dark:text-gray-400">
       <span className="whitespace-nowrap">rebased the branch</span>
-      <Link to={`/branches/${props.rebased_branch}`} className="min-w-0 truncate text-black">
+      <Link to={`/branches/${props.rebased_branch}`} className="min-w-0 truncate text-black dark:text-white">
         {props.rebased_branch ?? "-"}
       </Link>
     </div>
   ),
   "infrahub.branch.merged": (props: BranchMergedEvent) => (
-    <div className="flex min-w-0 items-center gap-1 text-gray-600">
+    <div className="flex min-w-0 items-center gap-1 text-gray-600 dark:text-gray-400">
       <span className="whitespace-nowrap">merged the branch</span>
-      <span className="min-w-0 truncate text-black">{props.source_branch ?? "-"}</span>
+      <span className="min-w-0 truncate text-black dark:text-white">{props.source_branch ?? "-"}</span>
     </div>
   ),
   "infrahub.branch.deleted": (props: BranchDeletedEvent) => (
-    <div className="flex min-w-0 items-center gap-1 text-gray-600">
+    <div className="flex min-w-0 items-center gap-1 text-gray-600 dark:text-gray-400">
       <span className="whitespace-nowrap">deleted the branch</span>
-      <span className="min-w-0 truncate text-black">{props.deleted_branch ?? "-"}</span>
+      <span className="min-w-0 truncate text-black dark:text-white">{props.deleted_branch ?? "-"}</span>
     </div>
   ),
 };

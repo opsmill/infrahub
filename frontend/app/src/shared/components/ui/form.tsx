@@ -135,7 +135,7 @@ export const FormMessage = ({
 
   return (
     <p
-      className={classNames("text-gray-600 text-sm", error && "text-red-600", className)}
+      className={classNames("text-gray-600 text-sm dark:text-gray-400", error && "text-red-600 dark:text-red-400", className)}
       data-cy={error && "field-error-message"}
       {...props}
     >

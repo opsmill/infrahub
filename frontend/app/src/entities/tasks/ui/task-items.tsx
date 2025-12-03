@@ -191,7 +191,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     <Content.Card>
       <Content.CardTitle title="Task Overview" badgeContent={count} />
 
-      <div className="flex flex-1 flex-col bg-white">
+      <div className="flex flex-1 flex-col bg-white dark:bg-slate-700">
         <div className="flex items-center gap-2 p-2">
           <SearchInput
             loading={loading}

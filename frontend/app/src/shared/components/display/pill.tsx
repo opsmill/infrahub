@@ -22,22 +22,22 @@ const DEFAULT_CLASS = (className?: string) => `
   ${className?.includes("text") ? "" : "text-xs"}
   flex items-center
   shrink-0 rounded-full px-2 py-0.5
-  text-gray-80
+  text-gray-800 dark:text-gray-200
 `;
 
 const getClassName = (type?: PILL_TYPES) => {
   switch (type) {
     case PILL_TYPES.VALIDATE: {
-      return "bg-green-100 ";
+      return "bg-green-100 dark:bg-green-900/30";
     }
     case PILL_TYPES.CANCEL: {
-      return "bg-red-100";
+      return "bg-red-100 dark:bg-red-900/30";
     }
     case PILL_TYPES.WARNING: {
-      return "bg-yellow-100";
+      return "bg-yellow-100 dark:bg-yellow-900/30";
     }
     default: {
-      return "bg-gray-100";
+      return "bg-gray-100 dark:bg-gray-700";
     }
   }
 };

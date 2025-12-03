@@ -49,7 +49,7 @@ const RecursiveObjectMenuItem: React.FC<{
           menuNavigationItemStyle,
           "py-1 font-bold data-[state=open]:data-highlighted:bg-neutral-100 data-[state=open]:bg-transparent data-[state=open]:text-inherit"
         )}
-        iconClassName="hover:bg-neutral-200"
+        iconClassName="hover:bg-neutral-200 dark:hover:bg-gray-600"
       >
         <Icon icon={item.icon} className="inline-flex w-5 shrink-0 items-center justify-center" />
         {item.path ? (
@@ -63,7 +63,7 @@ const RecursiveObjectMenuItem: React.FC<{
 
       <DropdownMenuAccordionContent
         style={{ marginLeft: (level + 1) * 18 }}
-        className="border-neutral-200 border-l"
+        className="border-neutral-200 border-l dark:border-gray-600"
       >
         {item.children.map((child) => (
           <RecursiveObjectMenuItem
