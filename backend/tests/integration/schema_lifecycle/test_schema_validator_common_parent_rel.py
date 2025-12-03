@@ -283,9 +283,8 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
 
     async def test_step_04_add_device_to_invalid_rack(self, db: InfrahubDatabase, client: InfrahubClient):
         site_1 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_SITE, name__value="site_1")
-        rack_2_2 = await client.get(
-            branch=self.branch_name, kind=TestKind.DATACENTER_RACK, site__ids=[site_1.id], name__value="rack_2_2"
-        )
+        # rack_2_2 belongs to site_2, query by name only (site is a hierarchical parent, not a peer relationship)
+        rack_2_2 = await client.get(branch=self.branch_name, kind=TestKind.DATACENTER_RACK, name__value="rack_2_2")
 
         device = await client.create(
             branch=self.branch_name,
@@ -323,13 +322,13 @@ class TestSchemaLifecycleHierarchyParentUpdate(TestSchemaLifecycleBase):
                 data: {
                     id: "%s",
                     name: "devices",
-                    nodes: [ %s ]
+                    nodes: [ {id: "%s"} ]
                 }
             ) {
                 ok
             }
         }
-        """ % (rack_1_1.id, {"id": device_2_1.id})
+        """ % (rack_1_1.id, device_2_1.id)
 
         with pytest.raises(GraphQLError) as exc:
             await client.execute_graphql(query=query, branch_name=self.branch_name, tracker="add-devices-to-rack")
