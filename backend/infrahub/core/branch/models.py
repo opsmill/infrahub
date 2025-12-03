@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import inspect
 import re
+from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
+from uuid import UUID
 
+import ujson
+from infrahub_sdk.uuidt import UUIDT
 from neo4j.graph import Node as Neo4jNode
 from pydantic import BaseModel, Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, SYSTEM_USER_ID
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
@@ -37,10 +43,6 @@ class Branch(StandardNode):
     origin_branch: str = "main"
     branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
-    created_at: Optional[str] = Field(default=None, validate_default=True)
-    created_by: Optional[str] = Field(default=None, validate_default=True)
-    updated_at: Optional[str] = Field(default=None, validate_default=True)
-    updated_by: Optional[str] = Field(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
@@ -559,7 +561,7 @@ class Branch(StandardNode):
 
 
 class FieldMetadata(BaseModel):
-    updated_at: str | None = None
+    updated_at: datetime | None = None
     updated_by: str | None = None
 
 
@@ -581,16 +583,12 @@ class OriginBranchValueField(FieldMetadata):
     value: str = "main"
 
 
-class BranchedFromValueField(FieldMetadata):
-    value: str | None = Field(default=None, validate_default=True)
+class OptionalDatetimeValueField(FieldMetadata):
+    value: datetime | None = Field(default=None, validate_default=True)
 
 
 class HierarchyLevelValueField(FieldMetadata):
     value: int = 2
-
-
-class TimestampValueField(FieldMetadata):
-    value: str | None = Field(default=None, validate_default=True)
 
 
 class BooleanValueField(FieldMetadata):
@@ -608,10 +606,6 @@ class TrueBooleanValueField(BooleanValueField):
     value: bool = True
 
 
-class OptionalStringValueField(FieldMetadata):
-    value: str | None = None
-
-
 class SchemaBranchHashValueField(FieldMetadata):
     value: SchemaBranchHash | None = None
 
@@ -625,64 +619,75 @@ class InfrahubBranch(Branch):
     description: DescriptionValueField
     status: StatusValueField
     origin_branch: OriginBranchValueField
-    branched_from: BranchedFromValueField
+    branched_from: OptionalDatetimeValueField
     hierarchy_level: HierarchyLevelValueField
-    created_at: TimestampValueField
-    created_by: TimestampValueField
-    updated_at: TimestampValueField
-    updated_by: TimestampValueField
+    created_at: datetime | None
+    created_by: str | None
+    updated_at: datetime | None
+    updated_by: str | None
     is_default: BooleanValueField
     is_global: BooleanValueField
     is_protected: BooleanValueField
     sync_with_git: SyncWithGitValueField
     is_isolated: TrueBooleanValueField
-    schema_changed_at: OptionalStringValueField
+    schema_changed_at: OptionalDatetimeValueField
     schema_hash: SchemaBranchHashValueField
     graph_version: OptionalIntValueField
 
     @classmethod
     def from_branch(cls, branch: Branch) -> Self:
+        at = Timestamp()
         return cls(
-            name={"value": branch.name},
-            description={"value": branch.description},
-            status={"value": branch.status},
-            origin_branch={"value": branch.origin_branch},
-            branched_from={"value": branch.branched_from},
-            hierarchy_level={"value": branch.hierarchy_level},
-            created_at={"value": branch.created_at},
-            created_by={"value": branch.created_by},
-            updated_at={"value": branch.updated_at},
-            updated_by={"value": branch.updated_by},
-            is_default={"value": branch.is_default},
-            is_global={"value": branch.is_global},
-            is_protected={"value": branch.is_protected},
-            sync_with_git={"value": branch.sync_with_git},
-            is_isolated={"value": branch.is_isolated},
-            schema_changed_at={"value": branch.schema_changed_at},
-            schema_hash={"value": branch.schema_hash},
-            graph_version={"value": branch.graph_version},
+            name={"value": branch.name, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            description={"value": branch.description, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            status={"value": branch.status, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            origin_branch={"value": branch.origin_branch, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            branched_from={"value": branch.branched_from, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            hierarchy_level={
+                "value": branch.hierarchy_level,
+                "updated_at": at.to_string(),
+                "updated_by": SYSTEM_USER_ID,
+            },
+            created_at=branch.created_at,
+            created_by=branch.created_by,
+            updated_at=branch.updated_at,
+            updated_by=branch.updated_by,
+            is_default={"value": branch.is_default, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            is_global={"value": branch.is_global, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            is_protected={"value": branch.is_protected, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            sync_with_git={"value": branch.sync_with_git, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            is_isolated={"value": branch.is_isolated, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            schema_changed_at={
+                "value": branch.schema_changed_at,
+                "updated_at": at.to_string(),
+                "updated_by": SYSTEM_USER_ID,
+            },
+            schema_hash={"value": branch.schema_hash, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
+            graph_version={"value": branch.graph_version, "updated_at": at.to_string(), "updated_by": SYSTEM_USER_ID},
         )
 
     @field_validator("name", mode="before")
     @classmethod
     def validate_branch_name(cls, value: dict) -> dict:
-        super().validate_branch_name(value.get("value"))
-        return value
+        return {
+            "value": super().validate_branch_name(value.get("value")),
+            "updated_at": value.get("updated_at"),
+            "updated_by": value.get("updated_by"),
+        }
 
     @field_validator("branched_from", mode="before")
     @classmethod
     def set_branched_from(cls, value: dict) -> dict:
-        return {"value": super().set_branched_from(value.get("value"))}
-
-    @field_validator("created_at", mode="before")
-    @classmethod
-    def set_created_at(cls, value: dict) -> dict:
-        return {"value": super().set_created_at(value.get("value"))}
+        return {
+            "value": super().set_branched_from(value.get("value")),
+            "updated_at": value.get("updated_at"),
+            "updated_by": value.get("updated_by"),
+        }
 
     @field_validator("graph_version", mode="before")
     @classmethod
-    def set_graph_version(cls, value: dict) -> dict:  # noqa: ARG003
-        return {"value": GRAPH_VERSION}
+    def set_graph_version(cls, value: dict) -> dict:
+        return {"value": GRAPH_VERSION, "updated_at": value.get("updated_at"), "updated_by": value.get("updated_by")}
 
     @classmethod
     async def get_list(
@@ -715,7 +720,7 @@ class InfrahubBranch(Branch):
         return await query.count(db=db)
 
     @classmethod
-    async def get_by_name(cls, name: str, db: InfrahubDatabase, ignore_deleting: bool = True) -> Branch:
+    async def get_by_name(cls, name: str, db: InfrahubDatabase, ignore_deleting: bool = True) -> Self:
         query = """
         MATCH (n:InfrahubBranch)
         WHERE n.name__value = $name
@@ -734,6 +739,165 @@ class InfrahubBranch(Branch):
             raise BranchNotFoundError(identifier=name)
 
         return cls.from_db(results[0].values()[0])
+
+    @classmethod
+    def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
+        attrs = {}
+        node_data = dict(node)
+        extras = extras or {}
+        node_data.update(extras)
+        attrs["id"] = node.element_id
+
+        processed_keys = set()
+        datetime_fields = ["created_at", "updated_at", "branched_from", "schema_changed_at"]
+
+        for key, value in node_data.items():
+            if key in processed_keys:
+                continue
+
+            if "__value" in key:
+                base_field_name = key.replace("__value", "")
+                if base_field_name in cls.model_fields:
+                    value_key = f"{base_field_name}__value"
+                    updated_at_key = f"{base_field_name}__updated_at"
+                    updated_by_key = f"{base_field_name}__updated_by"
+
+                    field_value = node_data.get(value_key)
+                    field_updated_at = (
+                        Timestamp(node_data.get(updated_at_key)).to_datetime()
+                        if node_data.get(updated_at_key) not in (None, NULL_VALUE)
+                        else NULL_VALUE
+                    )
+                    field_updated_by = node_data.get(updated_by_key)
+
+                    field_type = cls.guess_field_type(cls.model_fields[base_field_name])
+
+                    deserialized_value = cls._get_flattened_field_value(
+                        base_field_name, datetime_fields, field_type, field_value
+                    )
+
+                    attrs[base_field_name] = {
+                        "value": deserialized_value,
+                        "updated_at": None if field_updated_at == NULL_VALUE else field_updated_at,
+                        "updated_by": None if field_updated_by == NULL_VALUE else field_updated_by,
+                    }
+
+                    processed_keys.add(value_key)
+                    processed_keys.add(updated_at_key)
+                    processed_keys.add(updated_by_key)
+                    continue
+
+            if key in datetime_fields:
+                if value == NULL_VALUE:
+                    attrs[key] = None
+                else:
+                    attrs[key] = Timestamp(value).to_datetime()
+                continue
+
+            if key in ["created_by", "updated_by"]:
+                if value == NULL_VALUE:
+                    attrs[key] = None
+                else:
+                    attrs[key] = value
+                continue
+
+            if key not in cls.model_fields:
+                continue
+
+            field_type = cls.guess_field_type(cls.model_fields[key])
+
+            if value == NULL_VALUE:
+                attrs[key] = None
+            elif issubclass(field_type, int | float | bool | str | UUID):
+                attrs[key] = value
+            elif isinstance(value, str | bytes):
+                attrs[key] = ujson.loads(value)
+
+        return cls(**attrs)
+
+    @classmethod
+    def _get_flattened_field_value(
+        cls, base_field_name: str, datetime_fields: list[str], field_type: Any, field_value: Any
+    ) -> Any:
+        deserialized_value = None
+        if field_value == NULL_VALUE:
+            deserialized_value = None
+        elif inspect.isclass(field_type) and issubclass(field_type, FieldMetadata):
+            value_field_type = cls.guess_field_type(field_type.model_fields.get("value"))
+
+            if base_field_name in datetime_fields:
+                deserialized_value = Timestamp(field_value).to_datetime()
+            elif isinstance(field_value, str | bytes) and not issubclass(
+                value_field_type, int | float | bool | str | UUID
+            ):
+                deserialized_value = ujson.loads(field_value)
+            else:
+                deserialized_value = field_value
+        return deserialized_value
+
+    def to_db(self) -> dict[str, Any]:
+        data = {}
+
+        if not self.uuid:
+            data["uuid"] = str(UUIDT())
+        else:
+            data["uuid"] = str(self.uuid)
+
+        for attr_name, field in self.model_fields.items():
+            if attr_name in self._exclude_attrs:
+                continue
+
+            attr_value = getattr(self, attr_name)
+
+            if attr_name in ["created_at", "created_by", "updated_at", "updated_by"]:
+                if attr_value is None:
+                    data[attr_name] = NULL_VALUE
+                elif isinstance(attr_value, datetime):
+                    data[attr_name] = Timestamp(attr_value).to_string()
+                else:
+                    data[attr_name] = attr_value
+                continue
+
+            field_type = self.guess_field_type(field)
+            if inspect.isclass(field_type) and issubclass(field_type, FieldMetadata):
+                if attr_value is None:
+                    data[f"{attr_name}__value"] = NULL_VALUE
+                    data[f"{attr_name}__updated_at"] = NULL_VALUE
+                    data[f"{attr_name}__updated_by"] = NULL_VALUE
+                else:
+                    value = getattr(attr_value, "value", None)
+
+                    if isinstance(value, Enum):
+                        value = value.value
+
+                    if value is None:
+                        data[f"{attr_name}__value"] = NULL_VALUE
+                    elif inspect.isclass(type(value)) and issubclass(type(value), BaseModel):
+                        data[f"{attr_name}__value"] = value.model_dump_json()
+                    else:
+                        data[f"{attr_name}__value"] = value
+
+                    updated_at = getattr(attr_value, "updated_at", None)
+                    data[f"{attr_name}__updated_at"] = updated_at if updated_at is not None else NULL_VALUE
+
+                    updated_by = getattr(attr_value, "updated_by", None)
+                    data[f"{attr_name}__updated_by"] = updated_by if updated_by is not None else NULL_VALUE
+
+        return data
+
+    async def to_graphql(self, fields: dict) -> dict:
+        data = await super().to_graphql(fields=fields)
+
+        for key, value in data.items():
+            if issubclass(type(value), FieldMetadata):
+                data[key] = value.model_dump()
+
+        if "node_metadata" in fields:
+            data["node_metadata"] = {}
+            for key in fields.get("node_metadata", {}):
+                data["node_metadata"][key] = getattr(self, key, None)
+
+        return data
 
 
 registry.branch_object = Branch

@@ -44,7 +44,7 @@ from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
-from infrahub.graphql.mutations.models import BranchCreateModelWithMetaFields  # noqa: TC001
+from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
@@ -400,7 +400,7 @@ async def validate_branch(branch: str) -> State:
 
 
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
-async def create_branch(model: BranchCreateModelWithMetaFields, context: InfrahubContext) -> None:
+async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> None:
     await add_tags(branches=[model.name])
 
     database = await get_database()
@@ -427,8 +427,10 @@ async def create_branch(model: BranchCreateModelWithMetaFields, context: Infrahu
             registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
             obj.update_schema_hash()
             infrahub_branch = InfrahubBranch.from_branch(obj)
-            await obj.save(db=db)
-            await infrahub_branch.save(db=db)
+            async with db.start_transaction() as dbt:
+                await obj.save(db=dbt)
+                infrahub_branch.uuid = str(obj.uuid)
+                await infrahub_branch.save(db=dbt)
 
             # Add Branch to registry
             registry.branch[obj.name] = obj

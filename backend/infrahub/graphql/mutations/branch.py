@@ -25,9 +25,11 @@ from infrahub.workflows.catalogue import (
     BRANCH_VALIDATE,
 )
 
+from ...core.branch.models import DescriptionValueField
+from ...core.constants import SYSTEM_USER_ID
 from ..types import BranchType
 from ..types.task import TaskInfo
-from .models import BranchCreateModel, BranchCreateModelWithMetaFields
+from .models import BranchCreateModel
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -76,8 +78,8 @@ class BranchCreate(Mutation):
         graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
-        await apply_external_context(graphql_context=graphql_context, context_input=context)
         model = BranchCreateModel(**data)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         try:
             await Branch.get_by_name(db=graphql_context.db, name=model.name)
@@ -85,25 +87,19 @@ class BranchCreate(Mutation):
         except BranchNotFoundError:
             pass
 
-        model_to_create = BranchCreateModelWithMetaFields(
-            **model.dict(),
-            created_at=Timestamp().to_string(),
-            created_by=graphql_context.active_account_session.account_id,
-        )
-
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model_to_create}
+                workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
             )
             task = {"id": workflow.id}
             return cls(ok=True, task=task)
 
         await graphql_context.active_service.workflow.execute_workflow(
-            workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model_to_create}
+            workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
         )
 
         # Retrieve created branch
-        obj = await Branch.get_by_name(db=graphql_context.db, name=model_to_create.name)
+        obj = await Branch.get_by_name(db=graphql_context.db, name=model.name)
         fields = extract_graphql_fields(info=info)
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
 
@@ -168,14 +164,13 @@ class BranchUpdate(Mutation):
         data: BranchNameInput,
         context: ContextInput | None = None,
     ) -> Self:
+        at = Timestamp()
         graphql_context: GraphqlContext = info.context
+
+        obj = await Branch.get_by_name(db=graphql_context.db, name=data.name)
+        infrahub_branch = await InfrahubBranch.get_by_name(db=graphql_context.db, name=data.name)
+
         await apply_external_context(graphql_context=graphql_context, context_input=context)
-
-        obj = await Branch.get_by_name(db=graphql_context.db, name=data["name"])
-        obj.updated_by = graphql_context.active_account_session.account_id
-        obj.updated_at = Timestamp().to_string()
-
-        infrahub_branch = await InfrahubBranch.get_by_name(db=graphql_context.db, name=data["name"])
 
         to_extract = ["description"]
         for field_name in to_extract:
@@ -184,7 +179,9 @@ class BranchUpdate(Mutation):
                 setattr(
                     infrahub_branch,
                     field_name,
-                    {"value": data[field_name], "updated_at": obj.updated_at, "updated_by": obj.updated_by},
+                    DescriptionValueField(
+                        value=data[field_name], updated_at=at.to_datetime(), updated_by=SYSTEM_USER_ID
+                    ),
                 )
 
         async with graphql_context.db.start_transaction() as db:

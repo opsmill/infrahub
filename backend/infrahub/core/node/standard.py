@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import inspect
+from datetime import datetime  # noqa: TC003
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
 from uuid import UUID
 
 import ujson
+from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.uuidt import UUIDT
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from infrahub.core.constants import NULL_VALUE
+from infrahub.core.constants import NULL_VALUE, SYSTEM_USER_ID
 from infrahub.core.query.standard_node import (
     StandardNodeCreateQuery,
     StandardNodeDeleteQuery,
@@ -32,6 +34,11 @@ if TYPE_CHECKING:
 class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
+
+    created_at: datetime | None = Field(default=None, validate_default=True)
+    created_by: str | None = Field(default=None, validate_default=True)
+    updated_at: datetime | None = Field(default=None, validate_default=True)
+    updated_by: str | None = Field(default=None, validate_default=True)
 
     _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
@@ -86,22 +93,28 @@ class StandardNode(BaseModel):
 
         return response
 
-    async def save(self, db: InfrahubDatabase) -> bool:
+    async def save(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create or Update the Node in the database."""
 
         if self.id:
-            return await self.update(db=db)
+            return await self.update(db=db, user_id=user_id)
 
-        return await self.create(db=db)
+        return await self.create(db=db, user_id=user_id)
 
-    async def delete(self, db: InfrahubDatabase) -> None:
+    async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
         """Delete the Node in the database."""
+        updated_at = Timestamp()
+        self.updated_at = updated_at.to_datetime()
+        self.updated_by = user_id
 
         query: Query = await StandardNodeDeleteQuery.init(db=db, node=self)
         await query.execute(db=db)
 
-    async def create(self, db: InfrahubDatabase) -> bool:
+    async def create(self, db: InfrahubDatabase, user_id: str) -> bool:
         """Create a new node in the database."""
+        created_at = Timestamp()
+        self.created_at = created_at.to_datetime()
+        self.created_by = user_id
 
         query: Query = await self._query.init(db=db, node=self)
         await query.execute(db=db)
@@ -116,8 +129,11 @@ class StandardNode(BaseModel):
 
         return True
 
-    async def update(self, db: InfrahubDatabase) -> bool:
+    async def update(self, db: InfrahubDatabase, user_id: str) -> bool:
         """Update the node in the database if needed."""
+        updated_at = Timestamp()
+        self.updated_at = updated_at.to_datetime()
+        self.updated_by = user_id
 
         query: Query = await StandardNodeUpdateQuery.init(db=db, node=self)
         await query.execute(db=db)
@@ -165,6 +181,7 @@ class StandardNode(BaseModel):
         extras = extras or {}
         node_data.update(extras)
         attrs["id"] = node.element_id
+        datetime_fields = ["created_at", "updated_at"]
         for key, value in node_data.items():
             if key not in cls.model_fields:
                 continue
@@ -175,53 +192,16 @@ class StandardNode(BaseModel):
                 attrs[key] = None
             elif issubclass(field_type, int | float | bool | str | UUID):
                 attrs[key] = value
+            elif key in datetime_fields:
+                attrs[key] = Timestamp(value).to_datetime()
             elif isinstance(value, str | bytes):
                 attrs[key] = ujson.loads(value)
-
-        # Handle flattened properties (e.g. name__value -> name: {value: ...})
-        # Group by prefix
-        grouped_attrs = {}
-        for key, value in node_data.items():
-            if "__" in key:
-                prefix, subkey = key.split("__", 1)
-                if prefix not in attrs:  # Only if not already handled (though it shouldn't be)
-                    if prefix not in grouped_attrs:
-                        grouped_attrs[prefix] = {}
-
-                    if isinstance(value, str):
-                        try:
-                            value = ujson.loads(value)  # noqa: PLW2901
-                        except (ValueError, TypeError):
-                            pass
-                    grouped_attrs[prefix][subkey] = value
-
-        # Process grouped attributes
-        for prefix in grouped_attrs.keys():
-            if prefix in cls.model_fields:
-                field = cls.model_fields[prefix]
-                field_type = field.annotation or field.type_
-        # Process grouped attributes
-        for prefix, data in grouped_attrs.items():
-            if prefix in cls.model_fields:
-                field = cls.model_fields[prefix]
-                field_type = field.annotation or field.type_
-                if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
-                    attrs[prefix] = data
-
-        # Handle missing nested models that are required but have defaults in their definition
-        for field_name, field in cls.model_fields.items():
-            if field_name in attrs:
-                continue
-
-            field_type = field.annotation or field.type_
-            if inspect.isclass(field_type) and issubclass(field_type, BaseModel):
-                if field.is_required():
-                    attrs[field_name] = {}
 
         return cls(**attrs)
 
     def to_db(self) -> dict[str, Any]:
         data = {}
+        datetime_fields = ["created_at", "updated_at"]
 
         if not self.uuid:
             data["uuid"] = str(UUIDT())
@@ -245,15 +225,11 @@ class StandardNode(BaseModel):
                     clean_value = [item.model_dump() for item in attr_value]
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
-                    # Flatten the dictionary
-                    model_dict = attr_value.model_dump()
-                    for sub_key, sub_value in model_dict.items():
-                        if isinstance(sub_value, list | dict):
-                            data[f"{attr_name}__{sub_key}"] = ujson.dumps(sub_value)
-                        else:
-                            data[f"{attr_name}__{sub_key}"] = sub_value
+                    data[attr_name] = attr_value.model_dump_json()
             elif issubclass(field_type, int | float | bool | str | UUID):
                 data[attr_name] = attr_value
+            elif attr_name in datetime_fields:
+                data[attr_name] = Timestamp(attr_value).to_string()
             else:
                 data[attr_name] = ujson.dumps(attr_value)
 

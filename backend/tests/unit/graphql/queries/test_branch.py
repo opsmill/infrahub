@@ -393,7 +393,7 @@ class TestBranchQuery(TestInfrahubApp):
 
         for branch in all_branches.data["InfrahubBranch"]["edges"]:
             if branch["node"]["name"]["value"] == "main":
-                assert branch["node"]["node_metadata"]["created_by"] is None
+                assert branch["node"]["node_metadata"]["created_by"] is not None
                 continue
             assert branch["node"]["node_metadata"]["created_at"] is not None
             assert branch["node"]["node_metadata"]["created_by"] is not None
