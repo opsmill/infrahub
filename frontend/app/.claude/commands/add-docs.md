@@ -41,3 +41,4 @@ After plan approval:
 - Run Vale to check style: `vale <filepath>`
 - Run markdownlint to check formatting
 - Summarize what was documented when complete
+- If a plan file was created, ask the user if they want to remove it

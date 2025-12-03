@@ -43,3 +43,4 @@ After plan approval:
 - Check for regressions in related functionality
 - Add tests if applicable
 - Summarize what was fixed and how when complete
+- If a plan file was created, ask the user if they want to remove it

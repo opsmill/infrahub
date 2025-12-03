@@ -38,3 +38,4 @@ After plan approval:
 - Mark tasks complete as you finish them
 - Validate changes work as expected
 - Summarize what was done when complete
+- If a plan file was created, ask the user if they want to remove it
