@@ -8,7 +8,7 @@ from infrahub.database import InfrahubDatabase
 
 async def test_query_node_present_with_data(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
 
     schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name")
@@ -25,7 +25,7 @@ async def test_query_node_present_with_data(
 
 async def test_query_node_present_with_data_rel(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars")
@@ -42,7 +42,7 @@ async def test_query_node_present_with_data_rel(
 
 async def test_query_node_present_no_data(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
 
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar")

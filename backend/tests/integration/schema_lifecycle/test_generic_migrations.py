@@ -443,7 +443,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
 
     async def test_step01_baseline_backend(
         self, db: InfrahubDatabase, branch: Branch, client: InfrahubClient, initial_dataset
-    ):
+    ) -> None:
         all_specifics = await registry.manager.query(db=db, schema=GENERIC_KIND)
         assert len(all_specifics) == 3
 
@@ -481,7 +481,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_02: dict[str, Any],
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_02], branch=branch.name)
         assert success
         assert response == {
@@ -606,7 +606,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_02: dict[str, Any],
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_02], branch=branch.name)
         assert not response.errors
@@ -754,7 +754,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_03: dict[str, Any],
-    ):
+    ) -> None:
         await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_03)
         success, response = await client.schema.check(schemas=[schema_step_03], branch=branch.name)
         assert success
@@ -798,7 +798,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_03: dict[str, Any],
-    ):
+    ) -> None:
         await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_03)
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_03], branch=branch.name)
@@ -896,7 +896,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_04: dict[str, Any],
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_04], branch=branch.name)
         assert success
         assert response == {
@@ -954,7 +954,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_04: dict[str, Any],
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_04], branch=branch.name)
         assert not response.errors
@@ -1082,7 +1082,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_05: dict[str, Any],
-    ):
+    ) -> None:
         await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_05)
         success, response = await client.schema.check(schemas=[schema_step_05], branch=branch.name)
         assert success
@@ -1183,7 +1183,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_05: dict[str, Any],
-    ):
+    ) -> None:
         await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_05)
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_05], branch=branch.name)
@@ -1308,7 +1308,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_06: dict[str, Any],
-    ):
+    ) -> None:
         await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_06)
         success, response = await client.schema.check(schemas=[schema_step_06], branch=branch.name)
         assert success
@@ -1345,7 +1345,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         initial_dataset,
         branch: Branch,
         schema_step_06: dict[str, Any],
-    ):
+    ) -> None:
         await self._finalize_deleted_fields(db=db, branch=branch, full_schema_dict=schema_step_06)
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_06], branch=branch.name)
@@ -1427,7 +1427,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         )
         assert not errors
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
 

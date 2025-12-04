@@ -10,6 +10,7 @@ import {
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -57,7 +58,7 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
                   selectedValue={value?.id}
                   onSelect={() => onSelect(node)}
                 >
-                  <span className="truncate">{node.display_label}</span>
+                  <span className="truncate">{getNodeLabel(node)}</span>
                 </ComboboxItem>
               ));
             })}

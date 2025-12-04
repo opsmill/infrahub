@@ -7242,6 +7242,36 @@ input InfrahubAccountUpdateSelfInput {
   password: String
 }
 
+"""InfrahubBranch"""
+type InfrahubBranch {
+  branched_from: NonRequiredStringValueField
+  created_at: String
+  description: NonRequiredStringValueField
+  graph_version: NonRequiredIntValueField
+  has_schema_changes: NonRequiredBooleanValueField
+  id: String!
+  is_default: NonRequiredBooleanValueField
+  is_isolated: NonRequiredBooleanValueField @deprecated(reason: "non isolated mode is not supported anymore")
+  name: RequiredStringValueField!
+  origin_branch: NonRequiredStringValueField
+  status: StatusField!
+  sync_with_git: NonRequiredBooleanValueField
+}
+
+type InfrahubBranchEdge {
+  node: InfrahubBranch!
+}
+
+type InfrahubBranchType {
+  """Total number of items"""
+  count: Int
+  """
+  The default branch of the Infrahub instance, provides a direct way to access the default branch regardless of filters.
+  """
+  default_branch: InfrahubBranch!
+  edges: [InfrahubBranchEdge!]!
+}
+
 input InfrahubComputedAttributeRecomputeInput {
   """Name of the computed attribute that must be recomputed"""
   attribute: String!
@@ -9380,6 +9410,18 @@ type NodeMutatedEvent implements EventNodeInterface {
   relationships: [InfrahubMutatedRelationship!]!
 }
 
+type NonRequiredBooleanValueField {
+  value: Boolean
+}
+
+type NonRequiredIntValueField {
+  value: Int
+}
+
+type NonRequiredStringValueField {
+  value: String
+}
+
 """Attribute of type Number"""
 type NumberAttribute implements AttributeInterface {
   id: String
@@ -10755,6 +10797,8 @@ type Query {
   IPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPAddressGetNextAvailable'. It will be removed in the next version of Infrahub.")
   IPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.")
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
+  """Retrieve paginated information about active branches."""
+  InfrahubBranch(ids: [ID], limit: Int, name__value: String, offset: Int): InfrahubBranchType!
   InfrahubEvent(
     """Filter the query to specific accounts"""
     account__ids: [String!]
@@ -10902,6 +10946,10 @@ type Relationships {
   edges: [RelationshipNode!]!
 }
 
+type RequiredStringValueField {
+  value: String!
+}
+
 type ResolveDiffConflict {
   ok: Boolean
 }
@@ -10993,6 +11041,10 @@ enum StateType {
 type Status {
   summary: StatusSummary!
   workers: StatusWorkerEdges!
+}
+
+type StatusField {
+  value: BranchStatus!
 }
 
 type StatusSummary {

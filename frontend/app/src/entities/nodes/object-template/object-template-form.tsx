@@ -1,5 +1,5 @@
 import { FileBoxIcon, PlusIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button, type ButtonProps, Dialog, DialogTrigger } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
@@ -43,24 +43,15 @@ const StartFromTemplateButton = ({
   objectTemplateSchema: TemplateSchema;
   onSelect: (template: NodeObject | null) => void;
 }) => {
-  let buttonRef = useRef<HTMLButtonElement>(null);
-  let [buttonWidth, setButtonWidth] = useState<string | null>(null);
-  useEffect(() => {
-    if (buttonRef.current) {
-      setButtonWidth(buttonRef.current.offsetWidth + "px");
-    }
-  }, [buttonRef]);
-
   return (
     <DialogTrigger>
       <StartButton
-        ref={buttonRef}
         icon={<FileBoxIcon className="size-6" />}
         title="Start from template"
         description="Pick a premade object and customize it"
       />
 
-      <Popover style={buttonWidth ? { width: buttonWidth } : undefined} placement="bottom start">
+      <Popover placement="bottom start" className="w-(--trigger-width)">
         <Dialog>
           <ObjectTemplateAutocomplete
             autoFocus
@@ -89,7 +80,15 @@ export default function ObjectTemplateForm({
   }
 
   if (selectedObjectTemplate !== undefined) {
-    return <ObjectForm {...props} objectTemplate={selectedObjectTemplate} />;
+    return (
+      <ObjectForm
+        {...props}
+        currentProfiles={
+          selectedObjectTemplate?.profiles?.edges?.map((edge: any) => edge?.node) ?? []
+        }
+        objectTemplate={selectedObjectTemplate}
+      />
+    );
   }
 
   return (

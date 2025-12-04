@@ -2,11 +2,11 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import React, { Fragment, useRef, useState } from "react";
 
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import type { ModelSchema } from "@/entities/schema/types";
 
 import ModalDelete from "../modals/modal-delete";

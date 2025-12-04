@@ -2,8 +2,6 @@ import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -19,9 +17,11 @@ import { Badge } from "@/shared/components/ui/badge";
 import { BadgeCopy } from "@/shared/components/ui/badge-copy";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { GLOBAL_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import usePagination from "@/shared/hooks/usePagination";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/entities/role-manager/api/getGlobalPermissions";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -85,7 +85,8 @@ function GlobalPermissions() {
       return {
         values: {
           id: edge?.node?.id,
-          display_label: { value: edge?.node?.display_label },
+          display_label: edge?.node?.display_label,
+          hfid: edge?.node?.hfid,
           action: { value: edge?.node?.action?.value },
           decision: {
             display: globalDecisionOptions.find(
@@ -96,7 +97,9 @@ function GlobalPermissions() {
           roles: {
             display: (
               <InlineDisplay
-                items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+                items={edge?.node?.roles?.edges?.map((edge) =>
+                  edge?.node ? getNodeLabel(edge.node) : ""
+                )}
                 render={(item) => <Badge>{item}</Badge>}
               />
             ),

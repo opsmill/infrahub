@@ -50,7 +50,7 @@ jobs:
     needs: prepare-environment
     env:
       INFRAHUB_DB_TYPE: neo4j
-      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -60,14 +60,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
-      - name: "Setup python environment"
-        run: |
-          python -m pip install --user pipx
-          python -m pipx install -f poetry==${{ env.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          pip install invoke
-      - name: "Install Package"
-        run: "poetry install"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -79,30 +77,30 @@ jobs:
 
       # Initialize the demo environment with the Source Version
       - name: Pull External Docker Images
-        run: invoke demo.pull
+        run: uv run invoke demo.pull
         env:
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
 
       - name: Initialize Demo
         id: init-demo
-        run: invoke demo.start demo.load-infra-schema
+        run: uv run invoke demo.start demo.load-infra-schema
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
 
       - name: Check Demo Status
-        run: invoke demo.status
+        run: uv run invoke demo.status
         env:
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
 
       - name: Load Infra Data
-        run: invoke demo.load-infra-data
+        run: uv run invoke demo.load-infra-data
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
 
       - name: Run infra data patch scripts
-        run: invoke demo.run-infra-patch-scripts
+        run: uv run invoke demo.run-infra-patch-scripts
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
@@ -113,10 +111,10 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Load custom data
-        run: echo "DATA_NAME=$(poetry run invoke dev.test-add-dummy-data)" >> $GITHUB_ENV
+        run: echo "DATA_NAME=$(uv run invoke dev.test-add-dummy-data)" >> $GITHUB_ENV
 
       - name: Stop Demo
-        run: invoke demo.stop
+        run: uv run invoke demo.stop
 
       # Build the local version and run the migrations
       - name: "Set environment variables"
@@ -124,13 +122,13 @@ jobs:
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
 
       - name: Build Demo
-        run: invoke dev.build
+        run: uv run invoke dev.build
 
       - name: Upgrade Infrahub and apply the latest database migrations
-        run: invoke dev.upgrade --rebase-branches
+        run: uv run invoke dev.upgrade --rebase-branches
 
       - name: Start Demo
-        run: invoke dev.start
+        run: uv run invoke dev.start
 
       - name: Set infrahub address
         run: |
@@ -138,7 +136,7 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Verify branch graph version
-        run: poetry run invoke dev.test-branch-graph-version --branch atl1-delete-upstream
+        run: uv run invoke dev.test-branch-graph-version --branch atl1-delete-upstream
 
       - name: Containers after tests
         if: always()
@@ -166,7 +164,7 @@ jobs:
 
       - name: Display server status
         if: always()
-        run: invoke demo.status
+        run: uv run invoke demo.status
 
       - name: "Clear docker environment and force vmagent to stop"
         if: always()

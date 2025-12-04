@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.standard_node import StandardNodeGetListQuery
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -146,3 +148,12 @@ class RebaseBranchDeleteRelationshipQuery(Query):
         self.add_to_query(query=query)
 
         self.params["ids"] = [db.to_database_id(id) for id in self.ids]
+
+
+class BranchNodeGetListQuery(StandardNodeGetListQuery):
+    def __init__(self, exclude_global: bool = False, **kwargs: Any) -> None:
+        self.raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
+        if exclude_global:
+            self.raw_filter += f" AND n.name <> '{GLOBAL_BRANCH_NAME}'"
+
+        super().__init__(**kwargs)

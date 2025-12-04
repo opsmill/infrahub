@@ -36,7 +36,7 @@ class TestUniquenessChecker:
         car_yaris_main,
         car_prius_main,
         branch: Branch,
-    ):
+    ) -> None:
         schema = registry.schema.get("TestCar", branch=branch)
 
         grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
@@ -51,7 +51,7 @@ class TestUniquenessChecker:
         car_prius_main,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         schema = registry.schema.get("TestCar", branch=branch)
         schema.get_attribute("nbr_seats").unique = True
         schema_root = SchemaRoot(nodes=[schema])
@@ -94,7 +94,7 @@ class TestUniquenessChecker:
         car_accord_main,
         car_prius_main,
         branch: Branch,
-    ):
+    ) -> None:
         node_to_delete = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
         await node_to_delete.delete(db=db)
         schema = registry.schema.get("TestCar", branch=branch)
@@ -111,7 +111,7 @@ class TestUniquenessChecker:
         car_accord_main,
         car_prius_main,
         branch: Branch,
-    ):
+    ) -> None:
         car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
         car_to_update.nbr_seats.value = 3
         await car_to_update.save(db=db)
@@ -130,7 +130,7 @@ class TestUniquenessChecker:
         car_volt_main,
         car_yaris_main,
         branch: Branch,
-    ):
+    ) -> None:
         cars_to_update = await NodeManager.get_many(
             db=db, ids=[car_accord_main.id, car_prius_main.id, car_volt_main.id, car_yaris_main.id], branch=branch
         )
@@ -156,7 +156,7 @@ class TestUniquenessChecker:
         person_john_main,
         default_branch: Branch,
         branch: Branch,
-    ):
+    ) -> None:
         cars_to_update = await NodeManager.get_many(
             db=db, ids=[car_accord_main.id, car_prius_main.id, car_volt_main.id], branch=branch
         )
@@ -236,7 +236,7 @@ class TestUniquenessChecker:
         person_jane_main,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         cars_to_update = await NodeManager.get_many(db=db, ids=[car_volt_main.id, car_yaris_main.id], branch=branch)
         color = 111111
         for car in cars_to_update.values():
@@ -317,7 +317,7 @@ class TestUniquenessChecker:
         car_person_generics_data_simple,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         nolt_car = await NodeManager.get_one_by_id_or_default_filter(db=db, kind="TestGazCar", id="nolt", branch=branch)
         volt_car = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind="TestElectricCar", id="volt", branch=branch
@@ -364,7 +364,7 @@ class TestUniquenessChecker:
         car_person_generics_data_simple,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         person = registry.schema.get(name="TestPerson")
         nolt_owner = await Node.init(db=db, schema=person)
         await nolt_owner.new(db=db, name="Rupert", height=180)
@@ -447,7 +447,7 @@ class TestUniquenessChecker:
         car_person_generics_data_simple,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         owner = car_person_generics_data_simple["p1"]
         volt_car = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind="TestElectricCar", id="volt", branch=branch
@@ -527,7 +527,7 @@ class TestUniquenessChecker:
         person_john_main,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         car_to_update = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
         await car_to_update.owner.update(data=person_john_main, db=db)
         await car_to_update.save(db=db)
@@ -587,7 +587,7 @@ class TestUniquenessChecker:
         person_john_main,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         schema_on_branch = registry.schema.get_node_schema(name="TestCar", branch=branch)
         schema_on_branch.relationships.append(
             RelationshipSchema(
@@ -662,7 +662,7 @@ class TestUniquenessChecker:
         car_prius_main,
         car_camry_main,
         default_branch: Branch,
-    ):
+    ) -> None:
         car_accord_main.color.value = "#111111"
         await car_accord_main.save(db=db)
         car_prius_main.color.value = "#222222"
@@ -688,7 +688,7 @@ class TestUniquenessChecker:
         person_jane_main,
         branch: Branch,
         default_branch: Branch,
-    ):
+    ) -> None:
         await branch.rebase(db=db)
         car_accord_main.color.value = "#111111"
         car_accord_main.nbr_seats.value = 3

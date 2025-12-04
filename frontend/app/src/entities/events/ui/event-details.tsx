@@ -1,9 +1,8 @@
-import { ACCOUNT_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Link } from "@/shared/components/ui/link";
+import { ACCOUNT_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";

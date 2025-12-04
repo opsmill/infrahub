@@ -151,7 +151,7 @@ class TestInfrahubApp(TestInfrahub):
         bus_simulator: BusSimulator,
         service: InfrahubServices,
         dependency_provider: Provider,
-    ) -> InfrahubClient:
+    ) -> AsyncGenerator[InfrahubClient, None]:
         config = Config(
             api_token=api_admin_token,
             requester=test_client.async_request,

@@ -121,7 +121,7 @@ async def menu_repository(db: InfrahubDatabase) -> MenuRepository:
 @pytest.fixture
 async def menu_fixture_01(
     menu_repository: MenuRepository, default_branch: Branch, menu_fixture_01_data: list[MenuItemDefinition]
-):
+) -> None:
     await menu_repository.create_menu(menu=menu_fixture_01_data)
 
 

@@ -4,7 +4,7 @@ from infrahub.core.constants import HashableModelState
 from infrahub.core.models import HashableModel, HashableModelDiff
 
 
-def test_hashable_diff():
+def test_hashable_diff() -> None:
     diff1 = HashableModelDiff()
     diff2 = HashableModelDiff(added={"first": None})
     diff3 = HashableModelDiff(changed={"first": None})
@@ -16,7 +16,7 @@ def test_hashable_diff():
     assert diff4.has_diff is True
 
 
-def test_model_sorting():
+def test_model_sorting() -> None:
     class MySchema(HashableModel):
         _sort_by: list[str] = ["first_name", "last_name"]
         first_name: str
@@ -33,7 +33,7 @@ def test_model_sorting():
     assert sorted_names == [("David", "Doe"), ("David", "Smith"), ("John", "Doe")]
 
 
-def test_model_hashing():
+def test_model_hashing() -> None:
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
@@ -53,7 +53,7 @@ def test_model_hashing():
     assert node1.get_hash() == node2.get_hash()
 
 
-def test_hashing_dict():
+def test_hashing_dict() -> None:
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
@@ -74,7 +74,7 @@ def test_hashing_dict():
     assert node1.get_hash() == node2.get_hash()
 
 
-def test_update():
+def test_update() -> None:
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
@@ -120,7 +120,7 @@ def test_update():
     assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
 
 
-def test_update_element_absent():
+def test_update_element_absent() -> None:
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
@@ -168,7 +168,7 @@ def test_update_element_absent():
     assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
 
 
-def test_update_rename():
+def test_update_rename() -> None:
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
@@ -222,7 +222,7 @@ def test_update_rename():
     assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
 
 
-def test_diff_simple_object():
+def test_diff_simple_object() -> None:
     class ModelA(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
@@ -253,7 +253,7 @@ def test_diff_simple_object():
     assert diff_13.model_dump() == {"added": {"value1": None}, "changed": {"value3": None}, "removed": {}}
 
 
-def test_diff_nested_objects():
+def test_diff_nested_objects() -> None:
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
@@ -291,7 +291,7 @@ def test_diff_nested_objects():
     }
 
 
-def test_update_nested_objects():
+def test_update_nested_objects() -> None:
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str

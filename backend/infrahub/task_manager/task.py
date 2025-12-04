@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -151,7 +151,7 @@ class PrefectTask:
             remaining -= nb_fetched
 
         for flow_log in all_logs:
-            if flow_log.flow_run_id and flow_log.message not in ["Finished in state Completed()"]:
+            if flow_log.flow_run_id and flow_log.message != "Finished in state Completed()":
                 logs_flow.logs[flow_log.flow_run_id].append(flow_log)
 
         return logs_flow
@@ -325,7 +325,7 @@ class PrefectTask:
                                 "parameters": flow.parameters,
                                 "branch": await cls._extract_branch_name(flow=flow),
                                 "tags": flow.tags,
-                                "workflow": workflow_names.get(flow.flow_id, None),
+                                "workflow": workflow_names.get(flow.flow_id),
                                 "related_node": related_node.id if related_node else None,
                                 "related_node_kind": related_node.kind if related_node else None,
                                 "related_nodes": related_nodes_info.get_related_nodes_as_dict(flow_id=flow.id),
@@ -353,7 +353,7 @@ class PrefectTask:
         logger = get_logger()
 
         async with get_client(sync_client=False) as client:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
+            cutoff = datetime.now(UTC) - timedelta(days=days_to_keep)
 
             flow_run_filter = FlowRunFilter(
                 start_time=FlowRunFilterStartTime(before_=cutoff),  # type: ignore[arg-type]

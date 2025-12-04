@@ -30,7 +30,7 @@ class TestKindMigrationDeduplicationPatches:
         temporary_directory.cleanup()
 
     @pytest.fixture(scope="class", autouse=True)
-    async def load_bad_data(self, db: InfrahubDatabase):
+    async def load_bad_data(self, db: InfrahubDatabase) -> None:
         await delete_all_nodes(db=db)
         export_dir = Path(__file__).parent / ("data_export")
         await load_export(db=db, export_dir=export_dir)
@@ -75,7 +75,7 @@ RETURN db_id_a, db_id_b, edge_type, branch, status, num_dups
             )
         return errors
 
-    async def test_edge_deduplication_patch(self, db: InfrahubDatabase, temporary_directory_path: Path):
+    async def test_edge_deduplication_patch(self, db: InfrahubDatabase, temporary_directory_path: Path) -> None:
         before_errors = await self.validate_edge_deduplication_patch(db=db)
         assert before_errors
 

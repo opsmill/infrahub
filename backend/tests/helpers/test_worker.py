@@ -36,7 +36,7 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
                 work_pool_filter=WorkPoolFilter(id=WorkPoolFilterId(any_=[work_pool_id]))
             )
 
-            scheduled_flows = [flow for flow in flows if flow.state_type in [StateType.SCHEDULED]]
+            scheduled_flows = [flow for flow in flows if flow.state_type == StateType.SCHEDULED]
             if scheduled_flows:
                 return scheduled_flows[0]
 
@@ -108,7 +108,12 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def prefect_worker(
-        self, client: InfrahubClient, block_storage: Any, prefect_client: PrefectClient, work_pool: WorkPool
+        self,
+        client: InfrahubClient,
+        block_storage: Any,
+        prefect_client: PrefectClient,
+        work_pool: WorkPool,
+        git_global_config_env_setting: Any,
     ) -> InfrahubWorkerAsync:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
 

@@ -39,7 +39,7 @@ log = get_logger()
 )
 async def test_node_get_list_ordering(
     benchmark_config, car_person_schema_root, graph_generator, increase_query_size_limit, ordering
-):
+) -> None:
     # Initialization
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
         neo4j_image=benchmark_config.neo4j_image,

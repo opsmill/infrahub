@@ -168,7 +168,7 @@ def complex_schema_document() -> DocumentNode:
 
 def test_sort_schema_ast_basic_sorting(
     unsorted_schema_document: DocumentNode, expected_sorted_schema_document: DocumentNode
-):
+) -> None:
     """Test that sort_schema_ast correctly sorts basic schema elements."""
     result = sort_schema_ast(unsorted_schema_document)
 
@@ -179,7 +179,7 @@ def test_sort_schema_ast_basic_sorting(
     assert result_str == expected_str
 
 
-def test_sort_schema_ast_preserves_structure(unsorted_schema_document: DocumentNode):
+def test_sort_schema_ast_preserves_structure(unsorted_schema_document: DocumentNode) -> None:
     """Test that sorting preserves the overall document structure."""
     result = sort_schema_ast(unsorted_schema_document)
 
@@ -192,7 +192,7 @@ def test_sort_schema_ast_preserves_structure(unsorted_schema_document: DocumentN
     assert original_types == result_types
 
 
-def test_sort_schema_ast_sorts_definitions_by_name(unsorted_schema_document: DocumentNode):
+def test_sort_schema_ast_sorts_definitions_by_name(unsorted_schema_document: DocumentNode) -> None:
     """Test that type definitions are sorted alphabetically by name."""
     result = sort_schema_ast(unsorted_schema_document)
 
@@ -205,7 +205,7 @@ def test_sort_schema_ast_sorts_definitions_by_name(unsorted_schema_document: Doc
     assert definition_names == sorted(definition_names)
 
 
-def test_sort_schema_ast_sorts_object_fields(unsorted_schema_document: DocumentNode):
+def test_sort_schema_ast_sorts_object_fields(unsorted_schema_document: DocumentNode) -> None:
     """Test that object type fields are sorted alphabetically."""
     result = sort_schema_ast(unsorted_schema_document)
 
@@ -221,7 +221,7 @@ def test_sort_schema_ast_sorts_object_fields(unsorted_schema_document: DocumentN
     assert field_names == sorted(field_names)
 
 
-def test_sort_schema_ast_sorts_enum_values(unsorted_schema_document: DocumentNode):
+def test_sort_schema_ast_sorts_enum_values(unsorted_schema_document: DocumentNode) -> None:
     """Test that enum values are sorted alphabetically."""
     result = sort_schema_ast(unsorted_schema_document)
 
@@ -237,7 +237,7 @@ def test_sort_schema_ast_sorts_enum_values(unsorted_schema_document: DocumentNod
     assert enum_values == sorted(enum_values)
 
 
-def test_sort_schema_ast_sorts_input_fields(unsorted_schema_document: DocumentNode):
+def test_sort_schema_ast_sorts_input_fields(unsorted_schema_document: DocumentNode) -> None:
     """Test that input object fields are sorted alphabetically."""
     result = sort_schema_ast(unsorted_schema_document)
 
@@ -253,7 +253,7 @@ def test_sort_schema_ast_sorts_input_fields(unsorted_schema_document: DocumentNo
     assert field_names == sorted(field_names)
 
 
-def test_sort_schema_ast_complex_schema(complex_schema_document: DocumentNode):
+def test_sort_schema_ast_complex_schema(complex_schema_document: DocumentNode) -> None:
     """Test sorting with a more complex schema containing multiple types and arguments."""
     result = sort_schema_ast(complex_schema_document)
 
@@ -286,7 +286,7 @@ def test_sort_schema_ast_complex_schema(complex_schema_document: DocumentNode):
             assert field_names == sorted(field_names)
 
 
-def test_sort_schema_ast_empty_document():
+def test_sort_schema_ast_empty_document() -> None:
     """Test that sorting an empty document returns an empty document."""
     empty_doc = DocumentNode(definitions=[])
     result = sort_schema_ast(empty_doc)
@@ -295,7 +295,7 @@ def test_sort_schema_ast_empty_document():
     assert isinstance(result, DocumentNode)
 
 
-def test_sort_schema_ast_single_definition():
+def test_sort_schema_ast_single_definition() -> None:
     """Test sorting a document with a single definition."""
     single_type_str = """
     type User {
@@ -315,7 +315,7 @@ def test_sort_schema_ast_single_definition():
     assert field_names == sorted(field_names)
 
 
-def test_sort_schema_ast_preserves_metadata():
+def test_sort_schema_ast_preserves_metadata() -> None:
     """Test that sorting preserves important metadata like directives and descriptions."""
     # Test with a basic schema to ensure the function doesn't crash
     # and that the structure is preserved
@@ -373,7 +373,7 @@ def test_sort_schema_ast_preserves_metadata():
             assert enum_values == sorted(enum_values)
 
 
-def test_sort_schema_ast_idempotent():
+def test_sort_schema_ast_idempotent() -> None:
     """Test that sorting an already sorted document doesn't change it."""
     schema_str = """
     type User {
@@ -418,7 +418,7 @@ def schema_with_unsorted_interfaces() -> DocumentNode:
     return parse(schema_str)
 
 
-def test_sort_schema_ast_sorts_interfaces(schema_with_unsorted_interfaces: DocumentNode):
+def test_sort_schema_ast_sorts_interfaces(schema_with_unsorted_interfaces: DocumentNode) -> None:
     """Test that interfaces are sorted alphabetically when a type implements multiple interfaces."""
     result = sort_schema_ast(schema_with_unsorted_interfaces)
 
@@ -440,7 +440,7 @@ def test_sort_schema_ast_sorts_interfaces(schema_with_unsorted_interfaces: Docum
     assert interface_names == sorted(interface_names)
 
 
-def test_sort_schema_ast_sorts_all_interfaces_in_schema():
+def test_sort_schema_ast_sorts_all_interfaces_in_schema() -> None:
     """Test that all types with multiple interfaces get sorted."""
     schema_str = """
     type Article implements Publishable & Node & Timestamped {
@@ -462,7 +462,7 @@ def test_sort_schema_ast_sorts_all_interfaces_in_schema():
             assert interface_names == sorted(interface_names), f"{definition.name.value} interfaces not sorted"
 
 
-def test_sort_schema_ast_preserves_other_definition_types():
+def test_sort_schema_ast_preserves_other_definition_types() -> None:
     """Test that other definition types (scalars, unions, directives) are preserved."""
     schema_str = """
     scalar DateTime

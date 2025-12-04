@@ -199,7 +199,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_default_filter(db=db, id="John", kind=TestKind.PERSON)
         # The value of the description should match that of the source branch that was selected
         # as the branch to keep in the data conflict
-        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
+        assert john.description.value == "Oh boy"  # type: ignore[attr-defined, union-attr]
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
         proposed_change_user = await create_account(db=db, name="jimmy-change-user", password="Password123")

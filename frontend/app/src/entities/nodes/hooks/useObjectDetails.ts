@@ -1,9 +1,8 @@
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 
-import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
-
 import useQuery from "@/shared/api/graphql/useQuery";
+import { PROFILE_KIND, TASK_OBJECT } from "@/shared/config/constants";
 
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
 import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
@@ -28,7 +27,7 @@ export const useObjectDetails = (schema: ModelSchema, objectId: string) => {
           taskKind: TASK_OBJECT,
           columns,
           relationshipsTabs,
-          objectid: objectId,
+          objectId,
           // Do not query profiles on profiles nodes
           queryProfiles:
             !profileGenericSchema?.used_by?.includes(schema?.kind!) &&

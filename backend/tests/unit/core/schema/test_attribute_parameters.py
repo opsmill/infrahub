@@ -92,7 +92,7 @@ def test_number_pool_optional() -> None:
     schema_branch = SchemaBranch(cache={})
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
-        ValidationError, match="TestNumberAttribute.assigned_number is a NumberPool it can't be optional"
+        ValidationError, match=r"TestNumberAttribute.assigned_number is a NumberPool it can't be optional"
     ):
         schema_branch.process()
 
@@ -119,7 +119,7 @@ def test_number_pool_read_only() -> None:
     schema_branch = SchemaBranch(cache={})
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
-        ValidationError, match="TestNumberAttribute.assigned_number is a NumberPool it has to be a read_only attribute"
+        ValidationError, match=r"TestNumberAttribute.assigned_number is a NumberPool it has to be a read_only attribute"
     ):
         schema_branch.process()
 
@@ -164,7 +164,7 @@ def test_number_pool_override_generic() -> None:
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
         ValidationError,
-        match="Overriding 'TestNumberAttribute.number' NumberPool attribute from generic 'BaseNumberAttribute' is not supported",
+        match=r"Overriding 'TestNumberAttribute.number' NumberPool attribute from generic 'BaseNumberAttribute' is not supported",
     ):
         schema_branch.process()
 
@@ -201,7 +201,7 @@ def test_number_pool_fail_on_multiple_generics() -> None:
     schema_branch = SchemaBranch(cache={})
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
-        ValidationError, match="SnowIncident.number is a NumberPool inherited from more than one generic"
+        ValidationError, match=r"SnowIncident.number is a NumberPool inherited from more than one generic"
     ):
         schema_branch.process()
 

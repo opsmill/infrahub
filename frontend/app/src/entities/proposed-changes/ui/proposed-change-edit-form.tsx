@@ -2,13 +2,12 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 
-import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
@@ -16,6 +15,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ProposedChangeEditFormProps = {
@@ -87,14 +87,14 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
           initialData?.reviewers?.edges
             .map((edge: any) => ({
               id: edge?.node?.id,
-              display_label: edge?.node?.display_label,
+              display_label: edge?.node ? getNodeLabel(edge.node) : undefined,
               __typename: edge?.node?.__typename,
             }))
             .filter(Boolean) ?? [],
       },
       options: initialData?.reviewers?.edges.map(({ node }) => ({
         id: node?.id,
-        name: node?.display_label,
+        name: node ? getNodeLabel(node) : undefined,
       })),
     },
   ];

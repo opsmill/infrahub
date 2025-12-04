@@ -76,7 +76,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
 
     async def validate_indexed_state(
         self, db: InfrahubDatabase, branch: Branch, kind_index_map: dict[tuple[str, str], dict[str, bool]]
-    ):
+    ) -> None:
         kinds = {kind_and_uuid[0] for kind_and_uuid in kind_index_map.keys()}
         num_expected_results = sum(len(attr_map) for attr_map in kind_index_map.values())
         attr_is_indexeds = await self.get_indexed_state_for_attributes(db=db, branch=branch, kinds=list(kinds))
@@ -227,7 +227,9 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
 
         return objs
 
-    async def test_step01_baseline(self, db: InfrahubDatabase, initial_objects: dict[str, Node], branch: Branch):
+    async def test_step01_baseline(
+        self, db: InfrahubDatabase, initial_objects: dict[str, Node], branch: Branch
+    ) -> None:
         object_ids = [obj.id for obj in initial_objects.values()]
         objects = await NodeManager.get_many(db=db, ids=object_ids)
         assert len(objects) == len(object_ids)
@@ -255,7 +257,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         branch: Branch,
         schema_step_02: dict[str, Any],
         client: InfrahubClient,
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step_02], branch=branch.name)
         assert response.errors
         error_messages = response.errors["errors"][0]["message"].split("\n")
@@ -272,7 +274,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         branch: Branch,
         schema_step_03: dict[str, Any],
         client: InfrahubClient,
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step_03], branch=branch.name)
         assert not response.errors
 
@@ -299,7 +301,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         branch: Branch,
         schema_step_04: dict[str, Any],
         client: InfrahubClient,
-    ):
+    ) -> None:
         # first attempt fails because thing_one.text_area_value is too long
         response = await client.schema.load(schemas=[schema_step_04], branch=branch.name)
         assert response.errors
@@ -340,7 +342,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         branch: Branch,
         schema_step_05: dict[str, Any],
         client: InfrahubClient,
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step_05], branch=branch.name)
         assert not response.errors
 
@@ -367,7 +369,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         branch: Branch,
         schema_step_06: dict[str, Any],
         client: InfrahubClient,
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[schema_step_06], branch=branch.name)
         assert not response.errors
 

@@ -3,9 +3,9 @@ import importlib
 import logging
 import os
 import sys
+import tempfile
 import time
 from contextlib import ExitStack
-from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
@@ -75,11 +75,11 @@ pytest.register_assert_rewrite("tests.db_snapshot")
 graphql_registry.clear_cache()
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     markexpr = getattr(config.option, "markexpr", "")
 
     if not markexpr:
@@ -101,7 +101,7 @@ def pytest_configure(config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def add_tracker():
+def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
@@ -321,7 +321,7 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
     return None
 
 
-def wait_for_memgraph_ready(host, port, timeout=15):
+def wait_for_memgraph_ready(host, port, timeout=15) -> bool:
     # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
     URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
 
@@ -418,12 +418,12 @@ def prefect(prefect_container: dict[int, int] | None, reload_settings_before_eac
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_settings_before_session():
+def load_settings_before_session() -> None:
     load_and_exit()
 
 
 @pytest.fixture(scope="module", autouse=True)
-def reload_settings_before_each_module(tmpdir_factory):
+def reload_settings_before_each_module(tmpdir_factory) -> None:
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
     load_and_exit()
 
@@ -763,15 +763,6 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
 
 
 @pytest.fixture
-async def animal_person_schema_person_no_default_filter(
-    db: InfrahubDatabase, default_branch, node_group_schema, data_schema, animal_person_schema_unregistered
-) -> SchemaBranch:
-    schema_dict = deepcopy(animal_person_schema_unregistered)
-    del schema_dict["nodes"][2]["default_filter"]
-    return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
-
-
-@pytest.fixture
 async def person_schema_unique_attr_non_hfid_unregistered(
     db: InfrahubDatabase, node_group_schema, data_schema
 ) -> SchemaRoot:
@@ -1060,7 +1051,7 @@ class BusRPCMock(InfrahubMessageBus):
     ) -> None:
         self.messages.append(message)
 
-    def add_mock_reply(self, response: InfrahubResponse):
+    def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
@@ -1633,3 +1624,39 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
     }
 
     return schema
+
+
+@pytest.fixture(scope="class")
+def git_global_config_env_setting() -> Generator[Any, None, None]:
+    previous_git_config_global = os.getenv("GIT_CONFIG_GLOBAL")
+    previous_git_global_config_file = config.SETTINGS.git.global_config_file
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+        tmp_git_config = tmpfile.name
+
+    os.environ["GIT_CONFIG_GLOBAL"] = tmp_git_config
+    assert os.getenv("GIT_CONFIG_GLOBAL") is not None and os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
+    config.SETTINGS.git.global_config_file = tmp_git_config
+
+    yield tmp_git_config
+
+    if previous_git_config_global:
+        os.environ["GIT_CONFIG_GLOBAL"] = previous_git_config_global
+        assert os.getenv("GIT_CONFIG_GLOBAL") and os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
+    else:
+        os.environ.pop("GIT_CONFIG_GLOBAL", None)
+        assert os.getenv("GIT_CONFIG_GLOBAL") is None
+
+    config.SETTINGS.git.global_config_file = previous_git_global_config_file
+    Path(tmp_git_config).unlink()
+
+
+@pytest.fixture
+def git_user_config():
+    initial_user_name = config.SETTINGS.git.user_name
+    initial_user_email = config.SETTINGS.git.user_email
+    config.SETTINGS.git.user_email = "test@email.com"
+    config.SETTINGS.git.user_name = "Test User"
+    yield
+    config.SETTINGS.git.user_email = initial_user_email
+    config.SETTINGS.git.user_name = initial_user_name

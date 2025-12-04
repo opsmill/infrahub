@@ -14,24 +14,11 @@ $ infrahub dev [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `db-init`: Erase the content of the database and...
 * `export-graphql-schema`: Export the Core GraphQL schema to a file.
+* `export-json-schema`: Export the REST API OpenAPI schema to a file.
+* `export-node-schema`: Export the repository configuration to a...
+* `db-init`: Erase the content of the database and...
 * `load-test-data`: Load test data into the database from the...
-
-## `infrahub dev db-init`
-
-Erase the content of the database and initialize it with the core schema.
-
-**Usage**:
-
-```console
-$ infrahub dev db-init [OPTIONS]
-```
-
-**Options**:
-
-* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
-* `--help`: Show this message and exit.
 
 ## `infrahub dev export-graphql-schema`
 
@@ -47,6 +34,52 @@ $ infrahub dev export-graphql-schema [OPTIONS]
 
 * `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--out PATH`: [default: schema.graphql]
+* `--help`: Show this message and exit.
+
+## `infrahub dev export-json-schema`
+
+Export the REST API OpenAPI schema to a file.
+
+**Usage**:
+
+```console
+$ infrahub dev export-json-schema [OPTIONS]
+```
+
+**Options**:
+
+* `--out PATH`: [default: openapi.json]
+* `--help`: Show this message and exit.
+
+## `infrahub dev export-node-schema`
+
+Export the repository configuration to a file.
+
+**Usage**:
+
+```console
+$ infrahub dev export-node-schema [OPTIONS]
+```
+
+**Options**:
+
+* `--config-file TEXT`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+* `--out PATH`: [default: develop.json]
+* `--help`: Show this message and exit.
+
+## `infrahub dev db-init`
+
+Erase the content of the database and initialize it with the core schema.
+
+**Usage**:
+
+```console
+$ infrahub dev db-init [OPTIONS]
+```
+
+**Options**:
+
+* `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--help`: Show this message and exit.
 
 ## `infrahub dev load-test-data`

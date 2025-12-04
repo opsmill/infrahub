@@ -1,5 +1,6 @@
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { QSP } from "@/config/qsp";
+import { QSP } from "@/shared/config/qsp";
+
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 
 export const fetchUrl = async (url: string, payload?: RequestInit) => {
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);

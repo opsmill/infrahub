@@ -88,8 +88,8 @@ export function RelationshipFilterForm({
 
       <FilterConditionSelect
         filterType="relationship"
-        selectedKey={condition}
-        onSelectionChange={(key) => setCondition(key as FilterCondition)}
+        value={condition}
+        onChange={(key) => setCondition(key as FilterCondition)}
       />
 
       <Form

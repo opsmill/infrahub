@@ -25,7 +25,7 @@ async def do_nothing_global_graph(id=str, wait_sec=int) -> int:
     return id, start_time, end_time
 
 
-async def test_simple_infrahub_lock():
+async def test_simple_infrahub_lock() -> None:
     lock.initialize_lock(local_only=True)
 
     results = await gather(
@@ -37,7 +37,7 @@ async def test_simple_infrahub_lock():
     assert results[0][2] <= results[1][1]
 
 
-async def test_multi_global_graph_lock():
+async def test_multi_global_graph_lock() -> None:
     lock.initialize_lock(local_only=True)
 
     results = await gather(
@@ -50,7 +50,7 @@ async def test_multi_global_graph_lock():
     assert results[0][2] <= results[2][1]
 
 
-def test_generate_name():
+def test_generate_name() -> None:
     generate_name = lock.LockNameGenerator().generate_name
 
     assert generate_name("simple") == "simple"
@@ -62,7 +62,7 @@ def test_generate_name():
     assert generate_name("simple", namespace="other", local=False) == "global.other.simple"
 
 
-def test_unpack_name():
+def test_unpack_name() -> None:
     unpack_name = lock.LockNameGenerator().unpack_name
 
     assert unpack_name("simple") == ("simple", None, None)
@@ -73,7 +73,7 @@ def test_unpack_name():
     assert unpack_name("global.repository.simple") == ("simple", "repository", False)
 
 
-async def test_reentrant_lock_allows_nested_acquisitions():
+async def test_reentrant_lock_allows_nested_acquisitions() -> None:
     lock.initialize_lock(local_only=True)
 
     events: list[str] = []

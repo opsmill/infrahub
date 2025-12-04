@@ -75,8 +75,8 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
 
       <FilterConditionSelect
         filterType="attribute"
-        selectedKey={condition}
-        onSelectionChange={(key) => setCondition(key as FilterCondition)}
+        value={condition}
+        onChange={(key) => setCondition(key as FilterCondition)}
       />
 
       <Form

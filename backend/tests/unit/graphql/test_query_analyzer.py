@@ -13,7 +13,7 @@ from tests.helpers.schema.tshirt import TSHIRT
 
 async def test_analyzer_init_with_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str, bad_query_01: str
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -33,7 +33,7 @@ async def test_is_valid_simple_schema(
     query_04: str,
     query_introspection: str,
     car_person_schema_generics,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -78,7 +78,7 @@ async def test_is_valid_core_schema(
     default_branch: Branch,
     query_05: str,
     register_core_models_schema,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -98,7 +98,7 @@ async def test_get_models_in_use(
     query_02: str,
     query_03: str,
     car_person_schema_generics,
-):
+) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
@@ -183,7 +183,7 @@ async def test_get_models_in_use(
     assert gqa.query_report.requested_read[InfrahubKind.GENERICGROUP].relationships == set()
 
 
-async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics):
+async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics) -> None:
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)

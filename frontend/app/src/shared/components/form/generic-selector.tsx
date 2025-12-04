@@ -1,8 +1,6 @@
 import { gql } from "@apollo/client";
 import { useId, useState } from "react";
 
-import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/config/constants";
-
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
@@ -15,6 +13,7 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
+import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/config/constants";
 
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import type { PermissionData } from "@/entities/permission/types";

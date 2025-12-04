@@ -8,4 +8,4 @@ applyTo: '*'
 - Don't use Git precommit
 - Use ruff and mypy to validate and lint python files
 - Use yamllint to validate yaml files
-- Use poetry to manage the python project and its dependencies
+- Use uv to manage the python project and its dependencies

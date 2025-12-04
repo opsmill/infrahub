@@ -55,7 +55,7 @@ class UpdateHFID(Mutation):
                 input_value=f"{node_schema.kind}.human_friendly_id has not been defined for this kind."
             )
 
-        updated_hfid = cast(list[str], data.value)
+        updated_hfid = cast("list[str]", data.value)
 
         if len(node_schema.human_friendly_id) != len(updated_hfid):
             raise ValidationError(
@@ -108,7 +108,7 @@ class UpdateHFID(Mutation):
             event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
-                changelog=target_node.node_changelog.model_dump(),
+                changelog=target_node.node_changelog,
                 fields=["human_friendly_id"],
                 meta=EventMeta(
                     context=graphql_context.get_context(),

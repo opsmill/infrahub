@@ -18,6 +18,7 @@ import {
   SourceOptionValue,
 } from "@/entities/nodes/convert/ui/source-option-item";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 export const ConvertSourceRelationshipOneInput = ({
   sourceObject,
@@ -56,7 +57,7 @@ export const ConvertSourceRelationshipOneInput = ({
       <ComboboxTrigger className={className}>
         {currentOption && (
           <SourceOptionValue
-            optionLabel={currentOption?.value?.display_label || "-"}
+            optionLabel={currentOption?.value ? getNodeLabel(currentOption.value) : "-"}
             sourceFieldName={currentOption.source?.label}
           />
         )}
@@ -83,7 +84,7 @@ export const ConvertSourceRelationshipOneInput = ({
                 }}
               >
                 <SourceOptionItem
-                  optionLabel={option.value?.display_label || "-"}
+                  optionLabel={option.value ? getNodeLabel(option.value) : "-"}
                   isDefaultMatch={option.isDefaultMatch}
                   sourceFieldName={option.source?.label}
                 />

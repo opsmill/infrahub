@@ -69,8 +69,13 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS: ${INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:-false}
   INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX: ${INFRAHUB_EXPERIMENTAL_VALUE_DB_INDEX:-false}
   INFRAHUB_GIT_APPEND_GIT_SUFFIX:
+  INFRAHUB_GIT_GLOBAL_CONFIG_FILE: ${INFRAHUB_GIT_GLOBAL_CONFIG_FILE:-/opt/infrahub/.gitconfig}
+  INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES:
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
   INFRAHUB_GIT_SYNC_INTERVAL: ${INFRAHUB_GIT_SYNC_INTERVAL:-10}
+  INFRAHUB_GIT_USER_EMAIL: ${INFRAHUB_GIT_USER_EMAIL:-infrahub@opsmill.com}
+  INFRAHUB_GIT_USER_NAME: ${INFRAHUB_GIT_USER_NAME:-Infrahub}
+  INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT: ${INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT:-false}
   INFRAHUB_HTTP_TIMEOUT: ${INFRAHUB_HTTP_TIMEOUT:-10}
   INFRAHUB_HTTP_TLS_CA_BUNDLE:
   INFRAHUB_HTTP_TLS_INSECURE: ${INFRAHUB_HTTP_TLS_INSECURE:-false}
@@ -201,7 +206,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.5.3}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.6.0}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -210,7 +215,7 @@ services:
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${INFRAHUB_TASKMANAGER_DB_USER:-postgres}:${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}@task-manager-db:5432/${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
     healthcheck:
-      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
@@ -234,7 +239,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.5.3}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.6.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -280,7 +285,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.5.3}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.6.0}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

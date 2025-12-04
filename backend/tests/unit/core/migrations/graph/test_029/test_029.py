@@ -13,7 +13,7 @@ from tests.helpers.db_validation import verify_no_duplicate_paths
 
 class TestMigration029:
     @pytest.fixture(scope="class", autouse=True)
-    async def load_bad_data(self, db: InfrahubDatabase):
+    async def load_bad_data(self, db: InfrahubDatabase) -> None:
         await delete_all_nodes(db=db)
         export_dir = Path(__file__).parent / ("data_export")
         await load_export(db=db, export_dir=export_dir)
@@ -41,7 +41,7 @@ CALL () {
         await db.execute_query(query=query)
 
     @pytest.mark.skip("Flaky, migration is already released")
-    async def test_migration_029(self, db: InfrahubDatabase):
+    async def test_migration_029(self, db: InfrahubDatabase) -> None:
         snapshotter = DbSnapshotterDeduplicated(db=db)
         before_snapshot = await snapshotter.snapshot()
 

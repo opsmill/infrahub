@@ -1,5 +1,12 @@
 import { lazy, Suspense } from "react";
 
+import type { NumberAttribute } from "@/shared/api/graphql/generated/graphql";
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
+import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
+import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
+import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
@@ -9,15 +16,7 @@ import {
   OBJECT_PERMISSION_OBJECT,
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
-} from "@/config/constants";
-
-import type { NumberAttribute } from "@/shared/api/graphql/generated/graphql";
-import NoDataFound from "@/shared/components/errors/no-data-found";
-import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
-import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
-import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
-import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+} from "@/shared/config/constants";
 
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -65,7 +64,7 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
 }
 
 const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
-  const { schema, isNode, isGeneric } = useSchema(kind);
+  const { schema, isNode, isGeneric, isTemplate } = useSchema(kind);
 
   if (!schema) {
     return (
@@ -150,7 +149,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (isNode && schema.generate_profile) {
+  if ((isNode && schema.generate_profile) || isTemplate) {
     return <NodeWithProfileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 

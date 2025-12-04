@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-async def test_status_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None):
+async def test_status_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
     cache = MemoryCache()
     bus = BusRecorder()
     service = await InfrahubServices.new(

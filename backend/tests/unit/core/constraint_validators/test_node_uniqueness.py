@@ -11,7 +11,7 @@ from infrahub.exceptions import ValidationError
 
 async def test_node_validate_constraint_node_uniqueness_failure(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
     new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await new_john.new(db=db, name="John", height=160)
@@ -24,7 +24,7 @@ async def test_node_validate_constraint_node_uniqueness_failure(
 
 async def test_node_validate_constraint_node_uniqueness_success(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
     alfred = await Node.init(db=db, schema="TestPerson", branch=default_branch)
 
@@ -35,7 +35,7 @@ async def test_node_validate_constraint_node_uniqueness_success(
 
 async def test_hierarchical_uniqueness_constraint(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple_unregistered: SchemaRoot
-):
+) -> None:
     site_schema = hierarchical_location_schema_simple_unregistered.get(name="LocationSite")
     site_schema.human_friendly_id = ["parent__name__value", "name__value"]
     site_schema.uniqueness_constraints = [["parent", "name__value"]]

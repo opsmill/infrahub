@@ -46,7 +46,7 @@ async def test_relationship_add(
     enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
-):
+) -> None:
     await define_permissions(
         account=first_account,
         db=db,
@@ -188,7 +188,7 @@ async def test_relationship_remove(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -269,7 +269,7 @@ async def test_relationship_wrong_name(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -335,7 +335,7 @@ async def test_relationship_wrong_node(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
-):
+) -> None:
     # Non existing Node
     bad_uuid = str(UUIDT())
     query = """
@@ -406,7 +406,7 @@ async def test_relationship_groups_add(
     enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
-):
+) -> None:
     await define_permissions(
         account=first_account,
         db=db,
@@ -556,7 +556,7 @@ async def test_relationship_groups_remove(
     enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
-):
+) -> None:
     await define_permissions(
         account=first_account,
         db=db,
@@ -693,7 +693,9 @@ async def test_relationship_groups_remove(
     assert group_event.ancestors == []
 
 
-async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_relationship_groups_add_remove(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data
+) -> None:
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -856,7 +858,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     assert len(members) == 1
 
 
-async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data) -> None:
     c1 = car_person_generics_data["c1"]
     p2 = car_person_generics_data["p2"]
 
@@ -894,7 +896,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
     register_internal_models_schema,
     car_person_schema: Node,
     person_alfred_main: Node,
-):
+) -> None:
     schema = SchemaRoot(generics=[core_group], nodes=[core_standard_group])
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     default_branch.update_schema_hash()
@@ -1082,7 +1084,7 @@ async def test_relationship_add_for_node_with_migrated_kind(
 
 async def test_relationship_add_from_pool(
     db: InfrahubDatabase, default_branch: Branch, prefix_pool_01: dict[str, Node]
-):
+) -> None:
     hugh = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await hugh.new(db=db, name="Hugh Jackman")
     await hugh.save(db=db)
@@ -1128,7 +1130,7 @@ async def test_add_generic_related_node_with_hfid(
     db: InfrahubDatabase,
     default_branch: Branch,
     generic_car_person_schema,
-):
+) -> None:
     electric_car = await Node.init(db=db, schema="TestElectricCar", branch=default_branch)
     await electric_car.new(db=db, name="testing-car", color="blue")
     await electric_car.save(db=db)
@@ -1184,7 +1186,7 @@ async def test_with_permissions(
     first_account: CoreAccount,
     person_jack_main: Node,
     tag_blue_main: Node,
-):
+) -> None:
     permissions = []
     for object_permission in [
         ObjectPermission(
@@ -1259,7 +1261,7 @@ async def test_without_permissions(
     first_account: CoreAccount,
     person_jack_main: Node,
     tag_red_main: Node,
-):
+) -> None:
     first_session = AccountSession(
         authenticated=True, account_id=first_account.id, session_id=str(uuid4()), auth_type=AuthType.JWT
     )

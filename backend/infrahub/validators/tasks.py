@@ -12,7 +12,7 @@ from .events import send_start_validator
 ValidatorType = TypeVar("ValidatorType", bound=CoreValidator)
 
 
-async def start_validator(
+async def start_validator[ValidatorType: CoreValidator](
     client: InfrahubClient,
     validator: CoreValidator | None,
     validator_type: type[ValidatorType],
@@ -26,7 +26,7 @@ async def start_validator(
         validator.started_at.value = ""
         validator.completed_at.value = ""
         await validator.save()
-        validator = cast(ValidatorType, validator)
+        validator = cast("ValidatorType", validator)
     else:
         data["proposed_change"] = proposed_change
         validator = await client.create(kind=validator_type, data=data)
