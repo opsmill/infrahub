@@ -21,9 +21,11 @@ UPDATE_DISPLAY_LABEL = """
 mutation UpdateDisplayLabel(
     $id: String!,
     $kind: String!,
-    $value: String!
+    $value: String!,
+    $context_account_id: String!
   ) {
   InfrahubUpdateDisplayLabel(
+    context: {account: {id: $context_account_id}},
     data: {id: $id, value: $value, kind: $kind}
   ) {
     ok
@@ -41,6 +43,7 @@ async def display_label_jinja2_update_value(
     obj: DisplayLabelJinja2GraphQLResponse,
     node_kind: str,
     template: Jinja2Template,
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -55,7 +58,12 @@ async def display_label_jinja2_update_value(
     try:
         await client.execute_graphql(
             query=UPDATE_DISPLAY_LABEL,
-            variables={"id": obj.node_id, "kind": node_kind, "value": value},
+            variables={
+                "id": obj.node_id,
+                "kind": node_kind,
+                "value": value,
+                "context_account_id": context.account.account_id,
+            },
             branch_name=branch_name,
         )
         log.info(f"Updating {node_kind}.display_label='{value}' ({obj.node_id})")
@@ -74,7 +82,7 @@ async def process_display_label(
     node_kind: str,
     object_id: str,
     target_kind: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -114,6 +122,7 @@ async def process_display_label(
             obj=node,
             node_kind=node_schema.kind,
             template=jinja_template,
+            context=context,
         )
 
     _ = [response async for _, response in batch.execute()]
