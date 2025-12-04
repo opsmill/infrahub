@@ -101,6 +101,7 @@ class TriggerType(StrEnum):
     COMPUTED_ATTR_PYTHON_QUERY = "computed_attr_python_query"
     DISPLAY_LABEL_JINJA2 = "display_label_jinja2"
     HUMAN_FRIENDLY_ID = "human_friendly_id"
+    PROFILE = "profile"
     # OBJECT = "object"
 
     @property
