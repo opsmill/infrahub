@@ -98,8 +98,23 @@ mutation ($update_data: PretendPersonUpdateInput!) {
 }
 """ % {"person_values": PERSON_VALUES}
 
+REFRESH_PROFILES_MUTATION = """
+mutation RefreshProfiles($id: String!) {
+  InfrahubProfilesRefresh(data: {id: $id}) {
+    ok
+  }
+}
+"""
+
 
 class TestProfileLifecycle(TestInfrahubApp):
+    async def refresh_profiles(self, client: InfrahubClient, branch_name: str, node_id: str) -> None:
+        # This should be done using a trigger but for test purpose we do it manually
+        response = await client.execute_graphql(
+            query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name
+        )
+        assert response["InfrahubProfilesRefresh"]["ok"]
+
     @pytest.fixture(scope="class")
     def generic_schema_base(self) -> GenericSchema:
         return GenericSchema(
@@ -985,6 +1000,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         assert len(updated_person_profile_1.related_nodes.peers) == 1
         assert updated_person_profile_1.related_nodes.peers[0].id == person_1.id
 
+        await self.refresh_profiles(client=client, branch_name=default_branch.name, node_id=person_1.id)
+
     async def test_step_12_check_persons_again(
         self, db: InfrahubDatabase, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
     ) -> None:
@@ -1048,6 +1065,8 @@ class TestProfileLifecycle(TestInfrahubApp):
         await updated_person_profile_1.related_nodes.fetch()
         assert len(updated_person_profile_1.related_nodes.peers) == 1
         assert updated_person_profile_1.related_nodes.peers[0].id == person_2.id
+
+        await self.refresh_profiles(client=client, branch_name=default_branch.name, node_id=person_2.id)
 
     async def test_step_14_check_persons_again(
         self, default_branch: Branch, person_1, person_profile_1, client: InfrahubClient
