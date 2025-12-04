@@ -16,7 +16,7 @@ from infrahub.database import InfrahubDatabase
 @pytest.fixture
 async def profile_schema_with_attributes(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema, node_group_schema
-) -> SchemaRoot:
+) -> None:
     """Create a schema with a node that has attributes that can be set via profiles."""
     SCHEMA = SchemaRoot(
         nodes=[
@@ -38,13 +38,11 @@ async def profile_schema_with_attributes(
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
 
-    return SCHEMA
-
 
 @pytest.fixture
 async def profile_schema_with_generic_relationship(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema, node_group_schema
-) -> SchemaRoot:
+) -> None:
     """Create a schema with a node that has a generic relationship that can be set via profiles."""
     generic_schema = GenericSchema(
         name="GenericRole",
@@ -87,13 +85,11 @@ async def profile_schema_with_generic_relationship(
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
 
-    return SCHEMA
-
 
 @pytest.fixture
 async def profile_schema_with_attribute_relationship(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema, node_group_schema
-) -> SchemaRoot:
+) -> None:
     """Create a schema with a node that has an attribute relationship that can be set via profiles."""
     location_schema = NodeSchema(
         name="Location",
@@ -127,5 +123,3 @@ async def profile_schema_with_attribute_relationship(
     registry.schema.process_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
-
-    return SCHEMA

@@ -1,5 +1,4 @@
 from infrahub.core.branch import Branch
-from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.profiles.models import ProfileRefreshTriggerDefinition
@@ -8,7 +7,7 @@ from infrahub.workflows.catalogue import PROFILE_REFRESH_PROCESS
 
 
 async def test_profile_refresh_trigger_definition_from_profile_schema(
-    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: None
 ) -> None:
     """Test creating a ProfileRefreshTriggerDefinition from a profile schema."""
     trigger_fields = ["description", "status"]
@@ -42,7 +41,7 @@ async def test_profile_refresh_trigger_definition_from_profile_schema(
 
 
 async def test_profile_refresh_trigger_definition_with_branch_scoping(
-    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: None
 ) -> None:
     """Test creating a trigger with branch scoping for non-default branch."""
     trigger_fields = ["description", "status"]
@@ -62,7 +61,7 @@ async def test_profile_refresh_trigger_definition_with_branch_scoping(
 
 
 async def test_profile_refresh_trigger_definition_with_branches_out_of_scope(
-    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: None
 ) -> None:
     """Test creating a trigger with branches out of scope."""
     trigger_fields = ["description", "status"]
@@ -80,7 +79,7 @@ async def test_profile_refresh_trigger_definition_with_branches_out_of_scope(
 
 
 async def test_profile_refresh_trigger_definition_actions(
-    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: None
 ) -> None:
     """Test that the trigger has the correct workflow action."""
     trigger_fields = ["description", "status"]

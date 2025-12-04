@@ -27,7 +27,7 @@ async def test_gather_trigger_profile_refresh_core_models(register_core_models_s
 
 
 async def test_gather_trigger_profile_refresh_with_attributes(
-    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attributes: None
 ) -> None:
     """Test that triggers are created for profile schemas with attributes."""
     triggers = await gather_trigger_profile_refresh()
@@ -57,7 +57,7 @@ async def test_gather_trigger_profile_refresh_with_attributes(
 
 
 async def test_gather_trigger_profile_refresh_with_generic_relationship(
-    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_generic_relationship: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_generic_relationship: None
 ) -> None:
     """Test that triggers include generic relationships."""
     triggers = await gather_trigger_profile_refresh()
@@ -74,7 +74,7 @@ async def test_gather_trigger_profile_refresh_with_generic_relationship(
 
 
 async def test_gather_trigger_profile_refresh_with_attribute_relationship(
-    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attribute_relationship: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, profile_schema_with_attribute_relationship: None
 ) -> None:
     """Test that triggers include attribute relationships."""
     triggers = await gather_trigger_profile_refresh()
