@@ -100,6 +100,15 @@ class MyQuery(Query):
         self.add_to_query("MATCH (n:Node {uuid: $node_id}) RETURN n")
 ```
 
+### Neo4j/Cypher Queries
+
+When writing or modifying Cypher queries, **read `DATABASE.md`** first. It documents:
+
+- Vertex types (Root, Branch, Node, Relationship, Attribute, AttributeValue)
+- Edge types and properties (branch, from, to, status)
+- Temporal branching rules and valid path patterns
+- Example queries for common operations
+
 ## Testing
 
 - Unit tests: no external dependencies except database
