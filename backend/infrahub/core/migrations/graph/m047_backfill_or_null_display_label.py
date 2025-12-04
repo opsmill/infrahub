@@ -11,7 +11,6 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSuppor
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.shared import MigrationRequiringRebase, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
-from infrahub.types import is_large_attribute_type
 
 from .load_schema_branch import get_or_load_schema_branch
 from .m044_backfill_hfid_display_label_in_db import (
@@ -69,7 +68,6 @@ class UpdateAttributeValuesQuery(Query):
     def __init__(self, attribute_schema: AttributeSchema, values_by_id_map: dict[str, Any], **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.attribute_name = attribute_schema.name
-        self.is_large_type_attribute = is_large_attribute_type(attribute_schema.kind)
         self.is_branch_agnostic = attribute_schema.get_branch() is BranchSupportType.AGNOSTIC
         self.values_by_id_map = values_by_id_map
 
@@ -87,32 +85,7 @@ class UpdateAttributeValuesQuery(Query):
         branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_filter_params)
 
-        if self.is_large_type_attribute:
-            all_distinct_values = list(set(self.values_by_id_map.values()))
-            diy_index_query = """
-MATCH (av:AttributeValue&!AttributeValueIndexed {is_default: false})
-WHERE av.value IN $all_distinct_values
-WITH collect([av.value, elementId(av)]) AS value_id_pairs, collect(av.value) AS found_values
-WITH value_id_pairs, found_values,
-    reduce(
-        missing_distinct_values = [], value IN $all_distinct_values |
-            CASE
-                WHEN value IN found_values THEN missing_distinct_values
-                ELSE missing_distinct_values + [value]
-            END
-    ) AS missing_distinct_values
-CALL (missing_distinct_values) {
-    UNWIND missing_distinct_values AS missing_value
-    CREATE (av:AttributeValue {is_default: false, value: missing_value})
-    RETURN collect([av.value, elementId(av)]) AS created_value_id_pairs
-}
-WITH value_id_pairs + created_value_id_pairs AS value_id_pairs
-            """
-            self.params["all_distinct_values"] = all_distinct_values
-        else:
-            diy_index_query = """WITH [] AS value_id_pairs"""
-
-        self.add_to_query(diy_index_query)
+        self.add_to_query("WITH [] AS value_id_pairs")
 
         if self.branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
             update_value_query = """
@@ -203,28 +176,7 @@ WITH n, attr, existing_av, value_id_pairs
             """ % {"branch_filter": branch_filter}
         self.add_to_query(update_value_query)
 
-        if self.is_large_type_attribute:
-            set_value_query = """
-// ------------
-// only make updates if the existing value is not the same as the new value
-// ------------
-WITH attr, existing_av, value_id_pairs, $values_by_id[n.uuid] AS required_value
-WHERE existing_av.value <> required_value
-OR existing_av IS NULL
-WITH attr, value_id_pairs, required_value,
-    reduce(av_vertex_id = NULL, pair IN value_id_pairs |
-        CASE
-            WHEN av_vertex_id IS NOT NULL THEN av_vertex_id
-            WHEN pair[0] = required_value THEN pair[1]
-            ELSE av_vertex_id
-        END
-    ) AS av_vertex_id
-MATCH (av:AttributeValue)
-WHERE elementId(av) = av_vertex_id
-CREATE (attr)-[r:HAS_VALUE { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(av)
-            """
-        else:
-            set_value_query = """
+        set_value_query = """
 // ------------
 // only make updates if the existing value is not the same as the new value
 // ------------
