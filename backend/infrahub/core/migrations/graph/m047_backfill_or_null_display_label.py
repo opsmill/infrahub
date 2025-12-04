@@ -330,7 +330,7 @@ WHERE n.uuid IN $node_uuids
 AND e.branch IN [$default_branch, $global_branch]
 AND e.to IS NULL
 AND e.status = "active"
-CREATE (a:Attribute { name: $attribute_name, branch_support: $branch_support })
+CREATE (a:Attribute { uuid: randomUUID(), name: $attribute_name, branch_support: $branch_support })
 CREATE (n)-[:HAS_ATTRIBUTE { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(a)
 CREATE (a)-[:HAS_VALUE { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(av)
 CREATE (a)-[:IS_PROTECTED { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(is_protected_value)
@@ -353,7 +353,7 @@ CALL (n) {
 }
 WITH n, is_active, av, is_protected_value, is_visible_value
 WHERE is_active = TRUE
-CREATE (a:Attribute { name: $attribute_name, branch_support: $branch_support })
+CREATE (a:Attribute { uuid: randomUUID(), name: $attribute_name, branch_support: $branch_support })
 CREATE (n)-[:HAS_ATTRIBUTE { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(a)
 CREATE (a)-[:HAS_VALUE { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(av)
 CREATE (a)-[:IS_PROTECTED { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(is_protected_value)
