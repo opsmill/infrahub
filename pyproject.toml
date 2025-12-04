@@ -174,10 +174,6 @@ module = "infrahub.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "tests.benchmark.*"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "tests.conftest"
 disallow_untyped_defs = false
 
