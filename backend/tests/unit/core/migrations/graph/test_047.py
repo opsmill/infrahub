@@ -173,3 +173,82 @@ class TestMigration047(TestInfrahubApp):
         )
         assert default_values[person_john_main.id] is None
         assert default_values[person_jane_main.id] is None
+
+    async def test_migration_047_execute_against_branch_after_main(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema,
+        person_john_main: Node,
+        person_jane_main: Node,
+    ) -> None:
+        """Test running migration on main first, then running against a rebased branch."""
+        await self.erase_display_label(db=db, node=person_john_main)
+        await self.erase_display_label(db=db, node=person_jane_main)
+
+        # Create branch before running migration on main
+        test_branch = await create_branch(db=db, branch_name="test-branch-m047-after-main")
+
+        # Change things in branch
+        person_john_branch = await NodeManager.get_one(db=db, id=person_john_main.id, branch=test_branch)
+        person_john_branch.height.value = 185
+        await person_john_branch.save(db=db)
+
+        # Migrate main
+        async with db.start_session() as dbs:
+            migration = Migration047()
+            execution_result = await migration.execute(db=dbs)
+            assert not execution_result.errors
+
+        main_values = await self.get_attribute_values_from_db(
+            db=db, branch=default_branch, node_ids=[person_john_main.id, person_jane_main.id]
+        )
+        assert main_values[person_john_main.id] == "John"
+        assert main_values[person_jane_main.id] == "Jane"
+
+        await test_branch.rebase(db=db)
+
+        # Migrate branch
+        async with db.start_session() as dbs:
+            migration = Migration047()
+            execution_result = await migration.execute_against_branch(db=dbs, branch=test_branch)
+            assert not execution_result.errors
+
+        branch_values = await self.get_attribute_values_from_db(
+            db=db, branch=test_branch, node_ids=[person_john_branch.id, person_jane_main.id]
+        )
+        assert branch_values[person_john_branch.id] == "John"
+        assert branch_values[person_jane_main.id] == "Jane"
+
+    async def test_migration_047_execute_against_branch_with_name_change(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema, person_john_main: Node
+    ) -> None:
+        """Test that branch with changed name gets correct display_label after migration on main."""
+        await self.erase_display_label(db=db, node=person_john_main)
+
+        test_branch = await create_branch(db=db, branch_name="test-branch-name-change")
+        person_john_branch = await NodeManager.get_one(db=db, id=person_john_main.id, branch=test_branch)
+        person_john_branch.name.value = "Johnny"
+        await person_john_branch.save(db=db)
+
+        async with db.start_session() as dbs:
+            migration = Migration047()
+            execution_result = await migration.execute(db=dbs)
+            assert not execution_result.errors
+
+        main_values = await self.get_attribute_values_from_db(
+            db=db, branch=default_branch, node_ids=[person_john_main.id]
+        )
+        assert main_values[person_john_main.id] == "John"
+
+        await test_branch.rebase(db=db)
+
+        async with db.start_session() as dbs:
+            migration = Migration047()
+            execution_result = await migration.execute_against_branch(db=dbs, branch=test_branch)
+            assert not execution_result.errors
+
+        branch_values = await self.get_attribute_values_from_db(
+            db=db, branch=test_branch, node_ids=[person_john_branch.id]
+        )
+        assert branch_values[person_john_branch.id] == "Johnny"
