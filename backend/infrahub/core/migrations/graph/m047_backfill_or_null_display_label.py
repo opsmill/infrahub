@@ -501,55 +501,6 @@ class Migration047(MigrationRequiringRebase):
             return MigrationResult(errors=[str(exc)])
         return MigrationResult()
 
-    async def _do_one_schema_branch(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        schema: MainSchemaTypes,
-        schema_branch: SchemaBranch,
-        attribute_schema: AttributeSchema,
-    ) -> None:
-        print(f"Processing {schema.kind}.{attribute_schema.name} for {branch.name}...", end="")
-
-        schema_paths = self._extract_schema_paths_from_display_label(schema=schema, schema_branch=schema_branch)
-        if not schema_paths:
-            return
-
-        offset = 0
-
-        while True:
-            # loop until we get no results from the get_details_query
-            get_details_query = await GetPathDetailsBranchQuery.init(
-                db=db,
-                branch=branch,
-                schema_kind=schema.kind,
-                schema_paths=schema_paths,
-                offset=offset,
-                limit=self.update_batch_size,
-            )
-            await get_details_query.execute(db=db)
-
-            schema_path_values_map = get_details_query.get_result_map(schema_paths)
-            if not schema_path_values_map:
-                print("done")
-                break
-            formatted_schema_path_values_map = {}
-            for k, v in schema_path_values_map.items():
-                if not v:
-                    continue
-                # NOTE: this may not be what the user defined, we should render the Jinja2 template
-                formatted_schema_path_values_map[k] = " ".join(item for item in v if item is not None)
-
-            update_attr_values_query = await UpdateAttributeValuesQuery.init(
-                db=db,
-                branch=branch,
-                attribute_schema=attribute_schema,
-                values_by_id_map=formatted_schema_path_values_map,
-            )
-            await update_attr_values_query.execute(db=db)
-
-            offset += self.update_batch_size
-
     async def execute_against_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
 
