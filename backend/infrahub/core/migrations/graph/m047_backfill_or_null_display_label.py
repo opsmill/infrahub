@@ -263,9 +263,11 @@ class CreateDisplayLabelNullQuery(Query):
         branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_filter_params)
 
-        # Create the NULL AttributeValue and Boolean values first
+        # Create the NULL AttributeValue first
         create_av_query = """
 MERGE (av:AttributeValue&AttributeValueIndexed {is_default: true, value: $null_value})
+WITH av
+LIMIT 1
 MERGE (is_protected_value:Boolean { value: $is_protected_default })
 MERGE (is_visible_value:Boolean { value: $is_visible_default })
         """
