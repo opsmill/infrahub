@@ -313,7 +313,7 @@ class CreateDisplayLabelNullQuery(Query):
 
         # Create the NULL AttributeValue and Boolean values first
         create_av_query = """
-MERGE (av:AttributeValue&AttributeValueIndexed {is_default: false, value: $null_value})
+MERGE (av:AttributeValue&AttributeValueIndexed {is_default: true, value: $null_value})
 MERGE (is_protected_value:Boolean { value: $is_protected_default })
 MERGE (is_visible_value:Boolean { value: $is_visible_default })
         """
