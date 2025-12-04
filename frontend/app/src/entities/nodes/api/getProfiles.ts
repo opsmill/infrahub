@@ -22,7 +22,31 @@ export const getProfiles = Handlebars.compile(`
                 {{/if}}
             }
 
-            {{/each}}
+          {{/each}}
+
+          {{#each this.relationships}}
+
+            {{this.name}} {
+              {{#if this.paginated}}
+              edges {
+                node {
+                  id
+                  display_label
+                  hfid
+                  __typename
+                }
+              }
+              {{else}}
+              node {
+                id
+                display_label
+                hfid
+                __typename
+              }
+              {{/if}}
+            }
+
+          {{/each}}
 
         }
       }

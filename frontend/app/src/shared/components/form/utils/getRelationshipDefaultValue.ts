@@ -1,8 +1,12 @@
+import * as R from "remeda";
+
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
   EmptyFieldValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
+  RelationshipValueFromProfile,
   RelationshipValueFromTemplate,
   RelationshipValueFromUser,
   TemplateSource,
@@ -13,13 +17,15 @@ import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValu
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
   objectTemplate: NodeObject | null | undefined;
+  profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
   relationshipName?: string;
   schema?: ModelSchema | null;
@@ -31,6 +37,7 @@ export const getRelationshipDefaultValue = ({
   isFilterForm,
   relationshipData,
   objectTemplate,
+  profiles = [],
   relationshipName,
   schema,
   parentData,
@@ -65,31 +72,130 @@ export const getRelationshipDefaultValue = ({
 
   return (
     getRelationshipDefaultValueFromTemplate(objectTemplate, relationshipName) ??
+    getRelationshipDefaultValueFromProfiles(relationshipName, profiles) ??
     DEFAULT_FORM_FIELD_VALUE
   );
+};
+
+const isRelationshipDataFromProfile = (relationshipData: RelationshipType): boolean => {
+  // For cardinality many, check if any edge has a profile source
+  if ("edges" in relationshipData) {
+    const edgeWithSource = relationshipData.edges.find(
+      (edge) => edge.properties?.source?.__typename
+    );
+    if (edgeWithSource?.properties?.source?.__typename) {
+      const sourceKind = edgeWithSource.properties.source.__typename;
+      const profileSchemas = store.get(profileSchemasAtom);
+      const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
+      return !!(profileSchema && isProfileSchema(profileSchema));
+    }
+    return false;
+  }
+
+  // For cardinality one, check the properties source
+  if (!relationshipData.properties?.source?.__typename) {
+    return false;
+  }
+
+  const sourceKind = relationshipData.properties.source.__typename;
+  const profileSchemas = store.get(profileSchemasAtom);
+  const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
+  return !!(profileSchema && isProfileSchema(profileSchema));
+};
+
+const isRelationshipDataEmpty = (relationshipData: RelationshipType): boolean => {
+  // For cardinality many, check if edges are empty or all nodes are null
+  if ("edges" in relationshipData) {
+    return (
+      relationshipData.edges.length === 0 ||
+      relationshipData.edges.every((edge) => edge.node === null)
+    );
+  }
+
+  // For cardinality one, check if node is null
+  return relationshipData.node === null;
+};
+
+const isRelationshipDataFromPool = (relationshipData: RelationshipType): boolean => {
+  // For cardinality many, check if any edge has a pool source
+  if ("edges" in relationshipData) {
+    const edgeWithSource = relationshipData.edges.find(
+      (edge) => edge.properties?.source?.__typename
+    );
+    if (edgeWithSource?.properties?.source?.__typename) {
+      const sourceKind = edgeWithSource.properties.source.__typename;
+      if (sourceKind.match(/Pool$/g)) return true;
+      const nodes = store.get(nodeSchemasAtom);
+      const sourceSchema = nodes.find(({ kind }) => kind === sourceKind);
+      if (sourceSchema?.inherit_from?.includes(RESOURCE_GENERIC_KIND)) return true;
+    }
+    return false;
+  }
+
+  // For cardinality one, check the properties source
+  if (!relationshipData.properties?.source?.__typename) {
+    return false;
+  }
+
+  const sourceKind = relationshipData.properties.source.__typename;
+  if (sourceKind.match(/Pool$/g)) return true;
+  const nodes = store.get(nodeSchemasAtom);
+  const sourceSchema = nodes.find(({ kind }) => kind === sourceKind);
+  if (sourceSchema?.inherit_from?.includes(RESOURCE_GENERIC_KIND)) return true;
+
+  return false;
 };
 
 export const getRelationshipDefaultValueFromData = (
   relationshipData: RelationshipType,
   peerField?: string
-): RelationshipValueFromUser | RelationshipValueFromPool | EmptyFieldValue => {
+):
+  | RelationshipValueFromUser
+  | RelationshipValueFromPool
+  | RelationshipValueFromProfile
+  | EmptyFieldValue => {
   if ("edges" in relationshipData) {
+    const values = relationshipData.edges
+      .map(({ node }) =>
+        node
+          ? {
+              id: node.id,
+              display_label: node.display_label,
+              __typename: node.__typename,
+              ...(peerField ? { [peerField]: node[peerField] ?? node[peerField] } : {}),
+            }
+          : null
+      )
+      .filter((n) => !!n);
+
+    // Check if any edge has a profile source
+    const edgeWithSource = relationshipData.edges.find(
+      (edge) => edge.properties?.source?.__typename
+    );
+
+    if (edgeWithSource?.properties?.source?.__typename) {
+      const sourceKind = edgeWithSource.properties.source.__typename;
+      const profileSchemas = store.get(profileSchemasAtom);
+      const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
+
+      if (profileSchema && isProfileSchema(profileSchema)) {
+        return {
+          source: {
+            type: "profile",
+            label: edgeWithSource.properties.source.display_label ?? null,
+            id: edgeWithSource.properties.source.id as string,
+            kind: sourceKind,
+          },
+          value: values,
+        };
+      }
+    }
+
     return {
       source: {
         type: "user",
       },
-      value: relationshipData.edges
-        .map(({ node }) =>
-          node
-            ? {
-                id: node.id,
-                display_label: node.display_label,
-                __typename: node.__typename,
-                ...(peerField ? { [peerField]: node[peerField] ?? node[peerField] } : {}),
-              }
-            : null
-        )
-        .filter((n) => !!n),
+      value: values,
     };
   }
 
@@ -117,6 +223,22 @@ export const getRelationshipDefaultValueFromData = (
     return {
       source: {
         type: "pool",
+        label: source.display_label ?? null,
+        id: source.id as string,
+        kind: source.__typename as string,
+      },
+      value: relationshipData.node,
+    };
+  }
+
+  // Check if source is a profile
+  const profileSchemas = store.get(profileSchemasAtom);
+  const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
+
+  if (profileSchema && isProfileSchema(profileSchema)) {
+    return {
+      source: {
+        type: "profile",
         label: source.display_label ?? null,
         id: source.id as string,
         kind: source.__typename as string,
@@ -177,6 +299,102 @@ export const getRelationshipDefaultValueFromTemplate = (
       id: node.id,
       display_label: getNodeLabel(node),
       __typename: node.__typename,
+    },
+  };
+};
+
+type ProfileRelationshipNode = {
+  id: string;
+  display_label: string;
+  __typename: string;
+};
+
+type ProfileRelationshipOneData = {
+  node: ProfileRelationshipNode | null;
+};
+
+type ProfileRelationshipManyData = {
+  edges: Array<{ node: ProfileRelationshipNode | null }>;
+};
+
+type ProfileRelationshipData = ProfileRelationshipOneData | ProfileRelationshipManyData;
+
+const isRelationshipManyData = (
+  data: ProfileRelationshipData
+): data is ProfileRelationshipManyData => {
+  return "edges" in data;
+};
+
+const hasRelationshipValue = (data: ProfileRelationshipData): boolean => {
+  if (isRelationshipManyData(data)) {
+    return data.edges.length > 0 && data.edges.some((edge) => edge.node !== null);
+  }
+  return data.node !== null;
+};
+
+export const getRelationshipDefaultValueFromProfiles = (
+  relationshipName: string | undefined,
+  profiles: Array<ProfileData>
+): RelationshipValueFromProfile | null => {
+  if (!relationshipName) return null;
+
+  // Get value from profiles depending on the priority
+  const orderedProfiles = R.sortBy(
+    profiles,
+    (profile) => profile.profile_priority?.value ?? 0,
+    (profile) => profile.id
+  );
+
+  const profileWithDefaultValueForField = R.find(orderedProfiles, (profile) => {
+    const profileRelationshipData = profile[relationshipName] as
+      | ProfileRelationshipData
+      | undefined;
+    if (!profileRelationshipData) return false;
+    return hasRelationshipValue(profileRelationshipData);
+  });
+
+  if (!profileWithDefaultValueForField) return null;
+
+  const relationshipData = profileWithDefaultValueForField[
+    relationshipName
+  ] as ProfileRelationshipData;
+
+  const source = {
+    type: "profile" as const,
+    id: profileWithDefaultValueForField.id,
+    label: profileWithDefaultValueForField.display_label,
+    kind: profileWithDefaultValueForField.__typename,
+  };
+
+  // Handle cardinality many relationships
+  if (isRelationshipManyData(relationshipData)) {
+    const nodes = relationshipData.edges
+      .map(({ node }) =>
+        node
+          ? {
+              id: node.id,
+              display_label: node.display_label,
+              __typename: node.__typename,
+            }
+          : null
+      )
+      .filter((n): n is ProfileRelationshipNode => n !== null);
+
+    return {
+      source,
+      value: nodes,
+    };
+  }
+
+  // Handle cardinality one relationships
+  if (!relationshipData.node) return null;
+
+  return {
+    source,
+    value: {
+      id: relationshipData.node.id,
+      display_label: relationshipData.node.display_label,
+      __typename: relationshipData.node.__typename,
     },
   };
 };
