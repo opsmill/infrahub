@@ -42,7 +42,7 @@ async def gather_trigger_profile_refresh(
                 for rel in profile_schema.relationships
                 if rel.kind in (RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE) and rel.name != "related_nodes"
             ]
-            trigger_fields = trigger_attr + trigger_rels
+            trigger_fields = sorted(trigger_attr + trigger_rels)
 
             if trigger_fields:
                 triggers.append(
