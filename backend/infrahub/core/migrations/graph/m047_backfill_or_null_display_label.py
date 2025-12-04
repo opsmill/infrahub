@@ -194,7 +194,7 @@ CALL (n, attr) {
 
 
 class GetNodesWithoutDisplayLabelQuery(Query):
-    """Get all active nodes that do not have a display_label attribute."""
+    """Get all active nodes that do not have a display_label attribute on the default branch."""
 
     name = "get_nodes_without_display_label"
     type = QueryType.READ
@@ -228,6 +228,56 @@ WITH n, is_part_of_e, r AS has_attr_e
 WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
 WITH n.uuid AS node_uuid
         """
+        self.add_to_query(query)
+        self.return_labels = ["node_uuid"]
+
+    def get_node_uuids(self) -> list[str]:
+        return [result.get_as_type(label="node_uuid", return_type=str) for result in self.get_results()]
+
+
+class GetNodesWithoutDisplayLabelBranchQuery(Query):
+    """Get all active nodes that do not have a display_label attribute on a non-default branch."""
+
+    name = "get_nodes_without_display_label_branch"
+    type = QueryType.READ
+
+    def __init__(self, kinds_to_skip: list[str] | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.kinds_to_skip = kinds_to_skip or []
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
+        self.params = {
+            "kinds_to_skip": self.kinds_to_skip,
+            "attribute_name": "display_label",
+            **branch_filter_params,
+        }
+        query = """
+// ------------
+// Get all active nodes that don't have a display_label attribute
+// ------------
+MATCH (n:Node)
+WHERE NOT n.kind IN $kinds_to_skip
+CALL (n) {
+    MATCH (n)-[r:IS_PART_OF]->(:Root)
+    WHERE %(branch_filter)s
+    RETURN r.status = "active" AS is_active
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, is_active
+WHERE is_active = TRUE
+CALL (n) {
+    OPTIONAL MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $attribute_name})
+    WHERE %(branch_filter)s
+    WITH r, attr
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN CASE WHEN r IS NULL OR r.status = "deleted" THEN TRUE ELSE FALSE END AS missing_attr
+}
+WITH n.uuid AS node_uuid, missing_attr
+WHERE missing_attr = TRUE
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
         self.return_labels = ["node_uuid"]
 
@@ -510,8 +560,8 @@ class Migration047(MigrationRequiringRebase):
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
 
         try:
-            get_nodes_without_dl_query = await GetNodesWithoutDisplayLabelQuery.init(
-                db=db, kinds_to_skip=self.kinds_to_skip
+            get_nodes_without_dl_query = await GetNodesWithoutDisplayLabelBranchQuery.init(
+                db=db, branch=branch, kinds_to_skip=self.kinds_to_skip
             )
             await get_nodes_without_dl_query.execute(db=db)
             nodes_without_display_label = get_nodes_without_dl_query.get_node_uuids()
