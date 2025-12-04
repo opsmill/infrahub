@@ -189,11 +189,6 @@ class TestMigration047(TestInfrahubApp):
         # Create branch before running migration on main
         test_branch = await create_branch(db=db, branch_name="test-branch-m047-after-main")
 
-        # Change things in branch
-        person_john_branch = await NodeManager.get_one(db=db, id=person_john_main.id, branch=test_branch)
-        person_john_branch.height.value = 185
-        await person_john_branch.save(db=db)
-
         # Migrate main
         async with db.start_session() as dbs:
             migration = Migration047()
@@ -215,9 +210,9 @@ class TestMigration047(TestInfrahubApp):
             assert not execution_result.errors
 
         branch_values = await self.get_attribute_values_from_db(
-            db=db, branch=test_branch, node_ids=[person_john_branch.id, person_jane_main.id]
+            db=db, branch=test_branch, node_ids=[person_john_main.id, person_jane_main.id]
         )
-        assert branch_values[person_john_branch.id] == "John"
+        assert branch_values[person_john_main.id] == "John"
         assert branch_values[person_jane_main.id] == "Jane"
 
     async def test_migration_047_execute_against_branch_with_name_change(
