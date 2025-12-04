@@ -219,13 +219,16 @@ AND e.branch IN $branch_names
 AND e.status = "active"
 AND e.to IS NULL
 AND NOT exists((n)-[:IS_PART_OF {branch: e.branch, status: "deleted"}]->(:Root))
-WITH DISTINCT n, e AS is_part_of_e
-OPTIONAL MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $attribute_name})
-WHERE r.branch IN $branch_names
-AND r.status = "active"
-AND r.to IS NULL
-WITH n, is_part_of_e, r AS has_attr_e
-WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
+WITH DISTINCT n
+CALL (n) {
+    OPTIONAL MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $attribute_name})
+    WHERE r.branch IN $branch_names
+    RETURN r AS has_attr_e
+    ORDER BY r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, has_attr_e
+WHERE (has_attr_e IS NULL OR has_attr_e.status = "deleted")
 WITH n.uuid AS node_uuid
         """
         self.add_to_query(query)
@@ -261,22 +264,22 @@ WHERE NOT n.kind IN $kinds_to_skip
 CALL (n) {
     MATCH (n)-[r:IS_PART_OF]->(:Root)
     WHERE %(branch_filter)s
-    RETURN r.status = "active" AS is_active
+    RETURN r AS is_part_of_e
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
-WITH n, is_active
-WHERE is_active = TRUE
+WITH n, is_part_of_e
+WHERE is_part_of_e.status = "active"
 CALL (n) {
     OPTIONAL MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $attribute_name})
     WHERE %(branch_filter)s
-    WITH r, attr
+    RETURN r AS has_attr_e
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
-    RETURN CASE WHEN r IS NULL OR r.status = "deleted" THEN TRUE ELSE FALSE END AS missing_attr
 }
-WITH n.uuid AS node_uuid, missing_attr
-WHERE missing_attr = TRUE
+WITH n, has_attr_e
+WHERE (has_attr_e IS NULL OR has_attr_e.status = "deleted")
+WITH n.uuid AS node_uuid
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
         self.return_labels = ["node_uuid"]
