@@ -974,10 +974,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self
 
     async def _save_metadata(self, db: InfrahubDatabase, branch: Branch) -> None:
-        update_metadata_query = await NodeUpdateMetadataQuery.init(
-            db=db, branch=branch, node_id=self.get_id(), user_id=self._get_updated_by(), at=self._get_updated_at()
-        )
-        await update_metadata_query.execute(db=db)
+        if user_id := self._get_updated_by():
+            update_metadata_query = await NodeUpdateMetadataQuery.init(
+                db=db, branch=branch, node_id=self.get_id(), user_id=user_id, at=self._get_updated_at()
+            )
+            await update_metadata_query.execute(db=db)
 
     async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
