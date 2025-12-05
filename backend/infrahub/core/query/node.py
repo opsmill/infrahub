@@ -635,6 +635,32 @@ SET r.to_user_id = $user_id
         self.add_to_query(query)
 
 
+class NodeUpdateMetadataQuery(NodeQuery):
+    name = "node_update_metadata"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        if not self.branch.is_default and not self.branch.is_global:
+            raise ValueError("NodeUpdateMetadataQuery can only be used on the default or global branch")
+        self.params["uuid"] = self.node_id
+        self.params["branch"] = self.branch.name
+        self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
+
+        query = """
+MATCH (n:Node { uuid: $uuid })-[r:IS_PART_OF { branch_level: 1, status: "active" }]->(:Root)
+WHERE r.to IS NULL
+OPTIONAL MATCH (n)-[delete_edge:IS_PART_OF {status: "deleted", branch: $branch}]->(:Root)
+WHERE delete_edge.from <= $at
+WITH n, r
+WHERE delete_edge IS NULL
+SET n.updated_at = $at, n.updated_by = $user_id
+        """
+        self.add_to_query(query)
+
+
 class NodeCheckIDQuery(Query):
     name = "node_check_id"
 
@@ -1300,7 +1326,8 @@ CALL (field) {
     RETURN updated_at, updated_by
 }
 WITH n, r_is_part_of, updated_at, updated_by
-ORDER BY elementId(n), updated_at DESC
+// updated_by ordering preferences non "__system__" users
+ORDER BY elementId(n), updated_at DESC, updated_by DESC
 WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(updated_by)) AS updated_by
             """ % {"branch_filter": branch_filter_str}
         self.add_to_query(last_update_query)

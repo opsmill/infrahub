@@ -26,7 +26,7 @@ from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
-from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery
+from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -951,7 +951,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if node_changelog.has_changes:
             self._set_updated_at(update_at)
             self._set_updated_by(user_id)
-
+            update_branch = self.get_branch_based_on_support_type()
+            if update_branch.is_default or update_branch.is_global:
+                await self._save_metadata(db=db, branch=update_branch)
         return node_changelog
 
     async def save(
@@ -970,6 +972,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             self._node_changelog = await self._create(db=db, user_id=user_id, at=save_at)
 
         return self
+
+    async def _save_metadata(self, db: InfrahubDatabase, branch: Branch) -> None:
+        if user_id := self._get_updated_by():
+            update_metadata_query = await NodeUpdateMetadataQuery.init(
+                db=db, branch=branch, node_id=self.get_id(), user_id=user_id, at=self._get_updated_at()
+            )
+            await update_metadata_query.execute(db=db)
 
     async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
