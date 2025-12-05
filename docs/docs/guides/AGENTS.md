@@ -160,7 +160,7 @@ query GetDevices {
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-<Tabs>
+<Tabs groupId="interaction-method">
   <TabItem value="ui" label="Web UI" default>
 
 1. Navigate to **Objects** > **Devices**
