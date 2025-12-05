@@ -99,7 +99,7 @@ async def profile_refresh_process(
 
     await add_tags(branches=[branch_name])
 
-    profile = await client.get(kind=profile_kind, ids=[profile_id], branch=branch_name, prefetch_relationships=True)
+    profile = await client.get(kind=profile_kind, id=profile_id, branch=branch_name, include=["related_nodes"])
     related_nodes: RelationshipManager = profile.related_nodes  # type: ignore
 
     if not related_nodes.peer_ids:
