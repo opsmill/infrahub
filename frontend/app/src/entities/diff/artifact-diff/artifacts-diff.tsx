@@ -83,14 +83,6 @@ export const ArtifactsDiff = forwardRef((_, ref) => {
     setFilesInState();
   }, []);
 
-  if (isLoading) {
-    return <LoadingIndicator className="p-4" />;
-  }
-
-  if (!Object.values(artifactsDiff).length) {
-    return <NoDataFound message="No artifact found." />;
-  }
-
   // Sort artifacts by action type (ADDED, UPDATED, REMOVED) then alphabetically by display_label
   const sortedArtifacts = useMemo(() => {
     return (Object.values(artifactsDiff) as ArtifactDiff[]).sort((a, b) => {
@@ -104,6 +96,14 @@ export const ArtifactsDiff = forwardRef((_, ref) => {
       });
     });
   }, [artifactsDiff]);
+
+  if (isLoading) {
+    return <LoadingIndicator className="p-4" />;
+  }
+
+  if (!sortedArtifacts.length) {
+    return <NoDataFound message="No artifact found." />;
+  }
 
   return (
     <div className="text-sm">
