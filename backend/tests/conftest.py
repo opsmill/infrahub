@@ -266,7 +266,7 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
         return None
 
     container = (
-        DockerContainer(image="rabbitmq:3.13.1-management")
+        DockerContainer(image="rabbitmq:4.2.1-management")
         .with_env("RABBITMQ_DEFAULT_USER", "infrahub")
         .with_env("RABBITMQ_DEFAULT_PASS", "infrahub")
         .with_exposed_ports(PORT_CLIENT_RABBITMQ, PORT_HTTP_RABBITMQ)
@@ -303,7 +303,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
-    container = DockerContainer(image="redis:7.2.11").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough

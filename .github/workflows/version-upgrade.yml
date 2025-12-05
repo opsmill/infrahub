@@ -42,7 +42,7 @@ jobs:
           #   neo4j_image: "neo4j:5.20.0-enterprise"
           - name: From 1.3.0
             source_version: 1.3.0
-            neo4j_image: "neo4j:2025.03.0-enterprise"
+            neo4j_image: "neo4j:2025.10.1-enterprise"
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
