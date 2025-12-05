@@ -95,14 +95,13 @@ export const ArtifactsDiff = forwardRef((_, ref) => {
   const sortedArtifacts = useMemo(() => {
     return (Object.values(artifactsDiff) as ArtifactDiff[]).sort((a, b) => {
       // Sort by action first
-      const actionDiff =
-        (ACTION_PRIORITY[a.action] ?? 99) - (ACTION_PRIORITY[b.action] ?? 99);
+      const actionDiff = (ACTION_PRIORITY[a.action] ?? 99) - (ACTION_PRIORITY[b.action] ?? 99);
       if (actionDiff !== 0) return actionDiff;
 
       // Then sort alphabetically (case-insensitive) by display_label
-      const labelA = (a.display_label ?? "").toLowerCase();
-      const labelB = (b.display_label ?? "").toLowerCase();
-      return labelA.localeCompare(labelB);
+      return (a.display_label ?? "").localeCompare(b.display_label ?? "", undefined, {
+        sensitivity: "base",
+      });
     });
   }, [artifactsDiff]);
 
