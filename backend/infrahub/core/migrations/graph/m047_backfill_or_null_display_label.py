@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any
 
+from infrahub_sdk.template import Jinja2Template
 from rich.progress import Progress, TaskID
 
 from infrahub.core import registry
@@ -30,14 +31,13 @@ if TYPE_CHECKING:
 console = get_migration_console()
 
 
-def extract_jinja2_variables_in_order(template_str: str) -> list[str]:
+def _extract_jinja2_variables_in_order(template_str: str) -> list[str]:
     """Extract Jinja2 variables from a template string in the order they appear.
 
     I do not like this but, it seems that using Jinja2's built-in functions does not guarantee order.
     It's probably fine though since we know that the template is valid as it has been validated before.
     """
-    # We all love regex right? This one should match Jinja2 variable patterns like {{ variable }}
-    pattern = r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}"
+    pattern = r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?:\s*\|[^}]*)?\s*\}\}"
     matches = re.finditer(pattern, template_str)
 
     seen: set[str] = set()
@@ -49,6 +49,19 @@ def extract_jinja2_variables_in_order(template_str: str) -> list[str]:
             result.append(var_name)
 
     return result
+
+
+def _is_jinja2_template(display_label: str) -> bool:
+    return any(c in display_label for c in "{}")
+
+
+async def _render_display_label(display_label: str, variable_names: list[str], values: list[Any]) -> str | None:
+    if not _is_jinja2_template(display_label):
+        return values[0] if values and values[0] is not None else None
+
+    variables = dict(zip(variable_names, values, strict=False))
+    jinja_template = Jinja2Template(template=display_label)
+    return await jinja_template.render(variables=variables)
 
 
 class UpdateAttributeValuesQuery(Query):
@@ -397,12 +410,12 @@ class Migration047(MigrationRequiringRebase):
         if not schema.display_label:
             return []
 
-        if not any(c in schema.display_label for c in "{}"):
+        if not _is_jinja2_template(schema.display_label):
             schema_path = schema.parse_schema_path(path=schema.display_label, schema=schema_branch)
             return [schema_path]
 
         schema_paths = []
-        for variable in extract_jinja2_variables_in_order(schema.display_label):
+        for variable in _extract_jinja2_variables_in_order(schema.display_label):
             schema_path = schema.parse_schema_path(path=variable, schema=schema_branch)
             schema_paths.append(schema_path)
 
@@ -418,10 +431,14 @@ class Migration047(MigrationRequiringRebase):
         progress: Progress | None = None,
         update_task: TaskID | None = None,
     ) -> None:
+        if not schema.display_label:
+            return
+
         schema_paths = self._extract_schema_paths_from_display_label(schema=schema, schema_branch=schema_branch)
         if not schema_paths:
             return
 
+        variable_names = _extract_jinja2_variables_in_order(schema.display_label)
         offset = 0
 
         # loop until we get no results from the get_details_query
@@ -450,12 +467,16 @@ class Migration047(MigrationRequiringRebase):
             schema_path_values_map = get_details_query.get_result_map(schema_paths)
             num_updates = len(schema_path_values_map)
 
-            formatted_schema_path_values_map = {}
+            formatted_schema_path_values_map: dict[str, str] = {}
             for k, v in schema_path_values_map.items():
                 if not v:
                     continue
-                # NOTE: this may not be what the user defined, we should render the Jinja2 template
-                formatted_schema_path_values_map[k] = " ".join(item for item in v if item is not None)
+
+                rendered_value = await _render_display_label(
+                    display_label=schema.display_label, variable_names=variable_names, values=v
+                )
+                if rendered_value is not None:
+                    formatted_schema_path_values_map[k] = rendered_value
 
             if formatted_schema_path_values_map:
                 update_display_label_query = await UpdateAttributeValuesQuery.init(
