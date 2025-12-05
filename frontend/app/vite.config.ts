@@ -1,4 +1,5 @@
 /// <reference types="vite" />
+import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -31,4 +32,11 @@ export default defineConfig({
       publicPath: "assets/monaco-editor",
     }),
   ],
+  resolve: {
+    alias: {
+      // Ensure all packages use the same React instance
+      react: path.resolve("./node_modules/react"),
+      "react-dom": path.resolve("./node_modules/react-dom"),
+    },
+  },
 });

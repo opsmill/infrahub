@@ -1,5 +1,7 @@
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
 
@@ -23,6 +25,12 @@ function SchemaPage() {
         title="Schema Visualizer"
         badgeContent={nodes.length + generics.length + profiles.length}
         className="w-full"
+        end={
+          <LinkButton to="/schema-graph" variant="outline" size="sm" className="ml-auto">
+            <Icon icon="mdi:graph" className="mr-2" />
+            Graph View
+          </LinkButton>
+        }
       />
 
       <div className="flex grow items-stretch bg-stone-50">

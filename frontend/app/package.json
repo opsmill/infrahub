@@ -25,6 +25,7 @@
     "biome:fix": "biome check --write ."
   },
   "dependencies": {
+    "@infrahub/schema-visualizer": "file:../packages/schema-visualizer",
     "@apollo/client": "^3.13.8",
     "@codemirror/commands": "^6.10.0",
     "@codemirror/lang-markdown": "^6.5.0",
