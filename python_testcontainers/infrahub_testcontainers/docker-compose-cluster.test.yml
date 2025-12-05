@@ -22,7 +22,7 @@ x-neo4j-config-common: &neo4j-config-common
 
 services:
   message-queue:
-    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:4.2.1-management}
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: infrahub
@@ -37,7 +37,7 @@ services:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
   cache:
-    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.11}
+    image: ${CACHE_DOCKER_IMAGE:-redis:8.4.0}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
@@ -67,7 +67,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:5.20.0-enterprise}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2025.10.1-enterprise}"
     restart: unless-stopped
     environment:
       <<: *neo4j-config-common
@@ -100,7 +100,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:5.20.0-enterprise}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2025.10.1-enterprise}"
     environment:
       <<: *neo4j-config-common
       NEO4J_metrics_prometheus_endpoint: 0.0.0.0:2005
@@ -135,7 +135,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT}
-    image: "${DATABASE_DOCKER_IMAGE:-neo4j:5.20.0-enterprise}"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:2025.10.1-enterprise}"
     environment:
       <<: *neo4j-config-common
       NEO4J_metrics_prometheus_endpoint: 0.0.0.0:2006
@@ -240,7 +240,7 @@ services:
       PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED: "true"
 
   task-manager-db:
-    image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
     command: postgres -c 'max_connections=${INFRAHUB_TESTING_TASK_MANAGER_DB_MAX_CONNECTIONS:-100}'
     environment:
       - POSTGRES_USER=postgres
