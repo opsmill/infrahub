@@ -18,8 +18,24 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
+type ArtifactAction = "ADDED" | "UPDATED" | "REMOVED";
+
+interface ArtifactDiff {
+  id: string;
+  action: ArtifactAction;
+  display_label?: string;
+  item_new?: string;
+  item_previous?: string;
+}
+
+const ACTION_PRIORITY: Record<ArtifactAction, number> = {
+  ADDED: 1,
+  UPDATED: 2,
+  REMOVED: 3,
+};
+
 export const ArtifactsDiff = forwardRef((_, ref) => {
-  const [artifactsDiff, setArtifactsDiff] = useState({});
+  const [artifactsDiff, setArtifactsDiff] = useState<Record<string, ArtifactDiff>>({});
   const { "*": branchName } = useParams();
   const [branchOnly] = useQueryState(QSP.BRANCH_FILTER_BRANCH_ONLY);
   const [timeFrom] = useQueryState(QSP.BRANCH_FILTER_TIME_FROM);
@@ -77,16 +93,13 @@ export const ArtifactsDiff = forwardRef((_, ref) => {
 
   // Sort artifacts by action type (ADDED, UPDATED, REMOVED) then alphabetically by display_label
   const sortedArtifacts = useMemo(() => {
-    return Object.values(artifactsDiff).sort((a, b) => {
-      // Define action priority order
-      const actionPriority = { ADDED: 1, UPDATED: 2, REMOVED: 3 };
-
+    return (Object.values(artifactsDiff) as ArtifactDiff[]).sort((a, b) => {
       // Sort by action first
-      const actionDiff = (actionPriority[a.action] || 99) - (actionPriority[b.action] || 99);
+      const actionDiff =
+        (ACTION_PRIORITY[a.action] ?? 99) - (ACTION_PRIORITY[b.action] ?? 99);
       if (actionDiff !== 0) return actionDiff;
 
       // Then sort alphabetically (case-insensitive) by display_label
-      // Normalize to empty string if display_label is null/undefined
       const labelA = (a.display_label ?? "").toLowerCase();
       const labelB = (b.display_label ?? "").toLowerCase();
       return labelA.localeCompare(labelB);
