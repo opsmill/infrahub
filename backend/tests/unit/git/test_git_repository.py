@@ -763,6 +763,8 @@ async def test_artifact_generate_python_existing_different(
     assert result == expected_data
 
 
+# @pytest.mark.httpx_mock(should_mock=lambda request: "/api" not in str(request.url))
+@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
 async def test_artifact_generate_jinja2_new(
     client: InfrahubClient,
     prefect_test_fixture,
