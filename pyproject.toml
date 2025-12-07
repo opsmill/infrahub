@@ -504,7 +504,6 @@ ignore = [
     ##################################################################################################
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
-    "FA",       # flake8-future-annotations
     "PGH",      # pygrep-hooks
     "ERA",      # eradicate commented-out code
     "SLF001",   # flake8-self
@@ -561,7 +560,6 @@ ignore = [
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",    # Probable insecure usage of temporary file or directory
-    "S202",    # Uses of `tarfile.extractall()`
     "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
     "SIM108",  # Use ternary operator `markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"` instead of `if`-`else`-block
