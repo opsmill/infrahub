@@ -158,18 +158,23 @@ class TraceTransportProtocol(StrEnum):
 
 class BrokerDriver(StrEnum):
     RabbitMQ = "rabbitmq"
+    Redis = "redis"
 
     @property
     def driver_module_path(self) -> str:
         match self:
             case BrokerDriver.RabbitMQ:
                 return "infrahub.services.adapters.message_bus.rabbitmq"
+            case BrokerDriver.Redis:
+                return "infrahub.services.adapters.message_bus.redis"
 
     @property
     def driver_class_name(self) -> str:
         match self:
             case BrokerDriver.RabbitMQ:
                 return "RabbitMQMessageBus"
+            case BrokerDriver.Redis:
+                return "RedisMessageBus"
 
 
 class BrokerQueueType(StrEnum):
