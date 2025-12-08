@@ -708,30 +708,32 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         variables[variable] = None
 
                 elif attribute_path.is_type_attribute:
-                    attribute = getattr(
-                        getattr(self, attribute_path.active_attribute_schema.name),
-                        attribute_path.active_attribute_property_name,
-                    )
+                    attr_obj: BaseAttribute = getattr(self, attribute_path.active_attribute_schema.name)
+                    # Skip macro if the referenced attribute is from a pool but hasn't been allocated yet
+                    if attr_obj.from_pool and attr_obj.value is None:
+                        break
+                    attribute = getattr(attr_obj, attribute_path.active_attribute_property_name)
                     variables[variable] = attribute
+            else:
+                # Only render if the inner loop completed without breaking (all variables resolved)
+                content = await jinja_template.render(variables=variables)
 
-            content = await jinja_template.render(variables=variables)
+                generator_method_name = "_generate_attribute_default"
+                if hasattr(self, f"generate_{attr_schema.name}"):
+                    generator_method_name = f"generate_{attr_schema.name}"
 
-            generator_method_name = "_generate_attribute_default"
-            if hasattr(self, f"generate_{attr_schema.name}"):
-                generator_method_name = f"generate_{attr_schema.name}"
+                generator_method = getattr(self, generator_method_name)
+                try:
+                    setattr(
+                        self,
+                        attr_schema.name,
+                        await generator_method(db=db, name=attr_schema.name, schema=attr_schema, data=content),
+                    )
+                    attribute = getattr(self, attr_schema.name)
 
-            generator_method = getattr(self, generator_method_name)
-            try:
-                setattr(
-                    self,
-                    attr_schema.name,
-                    await generator_method(db=db, name=attr_schema.name, schema=attr_schema, data=content),
-                )
-                attribute = getattr(self, attr_schema.name)
-
-                attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
-            except ValidationError as exc:
-                errors.append(exc)
+                    attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
+                except ValidationError as exc:
+                    errors.append(exc)
 
         if errors:
             raise ValidationError(errors)
@@ -799,6 +801,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self.id = id or str(UUIDT())
 
         await self._process_fields(db=db, fields=kwargs, process_pools=process_pools)
+        print(f"Processed fields for new node {self}")
         await self._process_macros(db=db)
 
         return self
