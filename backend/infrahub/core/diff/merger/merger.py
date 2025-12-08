@@ -10,6 +10,7 @@ from infrahub.core.diff.query.merge import (
     DiffMergePropertiesQuery,
     DiffMergeQuery,
     DiffMergeRollbackQuery,
+    MergeMetadataQuery,
 )
 from infrahub.log import get_logger
 
@@ -39,6 +40,7 @@ class DiffMerger:
         self.db = db
         self.diff_repository = diff_repository
         self.serializer = serializer
+        self._affected_node_uuids: list[str] = []
 
     async def merge_graph(self, at: Timestamp) -> EnrichedDiffRoot:
         tracking_id = BranchTrackingId(name=self.source_branch.name)
@@ -69,6 +71,7 @@ class DiffMerger:
                 # make sure that we use the ADDED db_id if it exists
                 # it will not if a node was migrated and then deleted
                 migrated_kinds_id_map[n.uuid] = n.identifier.db_id
+
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
             if node_diff_dicts:
                 log.info(f"Merging batch of nodes #{batch_num}")
@@ -105,13 +108,31 @@ class DiffMerger:
             )
             await migrated_merge_query.execute(db=self.db)
 
+        affected_node_uuids = [n.uuid for n in enriched_diff.nodes]
+        self._affected_node_uuids = affected_node_uuids
+        if affected_node_uuids:
+            finalize_query = await MergeMetadataQuery.init(
+                db=self.db,
+                branch=self.source_branch,
+                at=at,
+                target_branch=self.destination_branch,
+                node_uuids=affected_node_uuids,
+            )
+            await finalize_query.execute(db=self.db)
+
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
         registry.branch[self.source_branch.name] = self.source_branch
         return enriched_diff
 
     async def rollback(self, at: Timestamp) -> None:
+        if not self._affected_node_uuids:
+            return
         rollback_query = await DiffMergeRollbackQuery.init(
-            db=self.db, branch=self.source_branch, target_branch=self.destination_branch, at=at
+            db=self.db,
+            branch=self.source_branch,
+            target_branch=self.destination_branch,
+            at=at,
+            node_uuids=self._affected_node_uuids,
         )
         await rollback_query.execute(db=self.db)
