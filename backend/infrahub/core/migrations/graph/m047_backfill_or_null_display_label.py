@@ -98,8 +98,6 @@ class UpdateAttributeValuesQuery(Query):
         branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_filter_params)
 
-        self.add_to_query("WITH [] AS value_id_pairs")
-
         if self.branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
             update_value_query = """
 // ------------
@@ -110,7 +108,7 @@ WHERE n.uuid IN $node_uuids
 AND e.branch IN [$default_branch, $global_branch]
 AND e.to IS NULL
 AND e.status = "active"
-WITH DISTINCT n, value_id_pairs
+WITH DISTINCT n
 MATCH (n)-[e:HAS_ATTRIBUTE]->(attr:Attribute {name: $attribute_name})
 WHERE e.branch IN [$default_branch, $global_branch]
 AND e.to IS NULL
@@ -119,7 +117,7 @@ AND e.status = "active"
 // If the attribute has an existing value on the branch, then set the to time on it
 // but only if the value is different from the new value
 // ------------
-WITH DISTINCT n, attr, value_id_pairs
+WITH DISTINCT n, attr
 CALL (attr) {
     OPTIONAL MATCH (attr)-[e:HAS_VALUE]->(existing_av)
     WHERE e.branch IN [$default_branch, $global_branch]
@@ -133,7 +131,7 @@ CALL (existing_has_value, existing_av, n) {
     AND existing_av.value <> $values_by_id[n.uuid]
     SET existing_has_value.to = $at
 }
-WITH n, attr, existing_av, value_id_pairs
+WITH n, attr, existing_av
             """
         else:
             update_value_query = """
@@ -149,9 +147,9 @@ CALL (n) {
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
-WITH n, value_id_pairs, is_active
+WITH n, is_active
 WHERE is_active = TRUE
-WITH DISTINCT n, value_id_pairs
+WITH DISTINCT n
 CALL (n) {
     MATCH (n)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $attribute_name})
     WHERE %(branch_filter)s
@@ -159,7 +157,7 @@ CALL (n) {
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
-WITH DISTINCT n, attr, value_id_pairs, is_active
+WITH DISTINCT n, attr, is_active
 WHERE is_active = TRUE
 // ------------
 // If the attribute has an existing value on the branch, then set the to time on it
@@ -185,7 +183,7 @@ CALL (existing_has_value) {
     WHERE existing_has_value IS NOT NULL
     SET existing_has_value.to = $at
 }
-WITH n, attr, existing_av, value_id_pairs
+WITH n, attr, existing_av
             """ % {"branch_filter": branch_filter}
         self.add_to_query(update_value_query)
 
@@ -193,7 +191,7 @@ WITH n, attr, existing_av, value_id_pairs
 // ------------
 // only make updates if the existing value is not the same as the new value
 // ------------
-WITH n, attr, existing_av, value_id_pairs, $values_by_id[n.uuid] AS required_value
+WITH n, attr, existing_av, $values_by_id[n.uuid] AS required_value
 WHERE existing_av.value <> required_value
 OR existing_av IS NULL
 CALL (n, attr) {
