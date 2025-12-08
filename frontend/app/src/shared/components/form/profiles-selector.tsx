@@ -23,6 +23,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { getProfiles } from "@/entities/nodes/api/getProfiles";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   getObjectAttributes,
   getObjectRelationships,
