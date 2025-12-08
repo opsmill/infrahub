@@ -70,6 +70,7 @@ Patterns extracted from the actual Infrahub frontend codebase.
 ### Status Colors
 
 #### Green (Success/Active)
+
 ```tsx
 // Badge
 "bg-green-700/10 text-green-900"
@@ -85,6 +86,7 @@ Patterns extracted from the actual Infrahub frontend codebase.
 ```
 
 #### Red (Error/Danger)
+
 ```tsx
 // Badge
 "bg-red-100 text-red-900"
@@ -103,6 +105,7 @@ Patterns extracted from the actual Infrahub frontend codebase.
 ```
 
 #### Yellow (Warning)
+
 ```tsx
 // Badge
 "bg-yellow-100 text-yellow-900"

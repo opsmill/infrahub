@@ -16,7 +16,7 @@ This document captures the established patterns and conventions for building Rea
 
 ## Directory Structure
 
-```
+```text
 src/shared/components/
 ├── ui/           # Base UI components (Button, Card, Input, Badge)
 ├── buttons/      # Button variants and composed buttons
@@ -510,7 +510,7 @@ import { ChevronDown, X, Search } from "lucide-react";
 
 Components should have corresponding test files:
 
-```
+```text
 component.tsx
 component.test.tsx
 ```
