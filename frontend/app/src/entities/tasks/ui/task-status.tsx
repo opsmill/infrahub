@@ -56,7 +56,11 @@ export function TaskStatus() {
   return (
     <Tooltip enabled content={tooltipContent}>
       <LinkButton {...commonButtonProps} aria-label={tooltipContent}>
-        {isPending ? <Spinner /> : <TasksStatusIcon className="text-slate-700 dark:text-slate-300" />}
+        {isPending ? (
+          <Spinner />
+        ) : (
+          <TasksStatusIcon className="text-slate-700 dark:text-slate-300" />
+        )}
         {isTaskRunningOnBranch && (
           <Pulse className="right-[6.5px] bottom-[6.5px]" data-testid="pulse" />
         )}

@@ -33,7 +33,10 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
           )}
         >
           {children}
-          <Icon icon="mdi:unfold-more-horizontal" className="ml-auto pl-2 text-gray-600 dark:text-slate-400" />
+          <Icon
+            icon="mdi:unfold-more-horizontal"
+            className="ml-auto pl-2 text-gray-600 dark:text-slate-400"
+          />
         </button>
       </PopoverTrigger>
     );

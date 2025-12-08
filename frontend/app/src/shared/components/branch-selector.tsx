@@ -225,7 +225,8 @@ const BranchNotFound = ({ onSelect }: { onSelect: (branchName: string) => void }
       onSelect={() => onSelect(search)}
       className="gap-1 truncate text-neutral-600 dark:text-neutral-400"
     >
-      Create branch <span className="font-semibold text-neutral-800 dark:text-neutral-200">{search}</span>
+      Create branch{" "}
+      <span className="font-semibold text-neutral-800 dark:text-neutral-200">{search}</span>
     </CommandItem>
   );
 };

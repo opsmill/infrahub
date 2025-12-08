@@ -45,7 +45,9 @@ export const NodeEventTitle = (props: NodeMutatedEvent) => {
         "-"
       )}
 
-      <span className="whitespace-nowrap text-gray-600 dark:text-gray-400">{NODE_EVENTS_MAPPING[event] ?? event}</span>
+      <span className="whitespace-nowrap text-gray-600 dark:text-gray-400">
+        {NODE_EVENTS_MAPPING[event] ?? event}
+      </span>
 
       <div className="whitespace-nowrap text-gray-600 dark:text-gray-400">
         {schemaLabels[payload.data.node_kind] ?? "-"}

@@ -138,7 +138,9 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
-            <span className="text-gray-500 dark:text-gray-400">Infrahub Collection for Ansible Galaxy.</span>
+            <span className="text-gray-500 dark:text-gray-400">
+              Infrahub Collection for Ansible Galaxy.
+            </span>
           </GettingStartedContentItem>
         </div>
       </HomeCard.Content>

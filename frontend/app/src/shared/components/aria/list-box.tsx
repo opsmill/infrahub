@@ -23,7 +23,11 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
       className={classNames("no-scrollbar max-h-[inherit] overflow-auto", className)}
       renderEmptyState={
         emptyMessage
-          ? () => <div className="px-2 py-1.5 text-neutral-600 text-sm dark:text-neutral-400">{emptyMessage}</div>
+          ? () => (
+              <div className="px-2 py-1.5 text-neutral-600 text-sm dark:text-neutral-400">
+                {emptyMessage}
+              </div>
+            )
           : undefined
       }
       {...props}

@@ -28,10 +28,7 @@ export const PropertyRow = ({
 }: PropertyRowProps) => {
   return (
     <tr>
-      <td
-        className={classNames("p-2 text-gray-600 dark:text-gray-400", labelClassName)}
-        {...props}
-      >
+      <td className={classNames("p-2 text-gray-600 dark:text-gray-400", labelClassName)} {...props}>
         {data.name}
       </td>
       <td className={classNames("p-2", valueClassName)} {...props}>
@@ -54,7 +51,9 @@ export const PropertyList = ({
       className={classNames("table-auto border-collapse border-spacing-2 text-sm", className)}
       {...props}
     >
-      <tbody className={classNames("divide-y divide-gray-200 dark:divide-slate-600", bodyClassName)}>
+      <tbody
+        className={classNames("divide-y divide-gray-200 dark:divide-slate-600", bodyClassName)}
+      >
         {properties.map((property, index) => {
           return (
             <PropertyRow

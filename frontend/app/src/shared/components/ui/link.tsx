@@ -8,7 +8,10 @@ export const Link = (props: LinkProps) => {
   return (
     <RouterLink
       {...propsToPass}
-      className={classNames("cursor-pointer rounded-md text-custom-blue-700 underline dark:text-custom-blue-400", className)}
+      className={classNames(
+        "cursor-pointer rounded-md text-custom-blue-700 underline dark:text-custom-blue-400",
+        className
+      )}
     >
       {children}
     </RouterLink>

@@ -49,7 +49,11 @@ const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
     return <ArtifactEventTitle {...(props as ArtifactEvent)} />;
   }
 
-  return <span className="flex items-center text-gray-500 text-sm dark:text-gray-400">{props.event}</span>;
+  return (
+    <span className="flex items-center text-gray-500 text-sm dark:text-gray-400">
+      {props.event}
+    </span>
+  );
 };
 
 export const Event = (props: EventType) => {

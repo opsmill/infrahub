@@ -24,12 +24,10 @@ const badgeVariants = cva(
           "border-gray-400 bg-white text-gray-700 dark:border-gray-500 dark:bg-gray-800 dark:text-gray-300",
         "lightgray-outline":
           "border-gray-200 bg-white text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400",
-        "blue-outline":
-          "border-custom-blue-700 bg-white text-custom-blue-700 dark:bg-gray-800",
+        "blue-outline": "border-custom-blue-700 bg-white text-custom-blue-700 dark:bg-gray-800",
         "yellow-outline":
           "border-yellow-100 bg-white text-yellow-900 dark:border-yellow-700 dark:bg-gray-800 dark:text-yellow-400",
-        "green-outline":
-          "border-2 border-green-500 text-green-700 dark:text-green-400",
+        "green-outline": "border-2 border-green-500 text-green-700 dark:text-green-400",
         "red-outline": "border-2 border-red-500 text-red-700 dark:text-red-400",
       },
     },

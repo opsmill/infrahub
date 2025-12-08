@@ -103,7 +103,10 @@ const UnauthenticatedAccountMenu = () => {
         state={{ from: location }}
       >
         <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50 dark:border-gray-600 dark:bg-indigo-900">
-          <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600 dark:text-neutral-400" />
+          <Icon
+            icon="mdi:user"
+            className="relative top-1 text-5xl text-neutral-600 dark:text-neutral-400"
+          />
         </div>
 
         <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">

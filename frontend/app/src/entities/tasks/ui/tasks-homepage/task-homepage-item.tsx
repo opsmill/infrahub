@@ -54,7 +54,11 @@ export const TaskHomepageItem = ({ id, title, branch, updated_at, related_nodes 
         <Icon icon={"mdi:source-branch"} />
         <span className="truncate">{branch}</span>
       </span>
-      <DateDisplay date={updated_at} dateFormat="d MMM yyyy HH:mm:ss" className="text-gray-500 dark:text-gray-400" />
+      <DateDisplay
+        date={updated_at}
+        dateFormat="d MMM yyyy HH:mm:ss"
+        className="text-gray-500 dark:text-gray-400"
+      />
     </div>
   );
 };

@@ -77,7 +77,9 @@ export default function ModalDelete({
                         {title}
                       </Dialog.Title>
                       <div className="mt-2">
-                        <div className="text-gray-500 text-sm dark:text-gray-400">{description}</div>
+                        <div className="text-gray-500 text-sm dark:text-gray-400">
+                          {description}
+                        </div>
                         {children}
                       </div>
                     </div>
