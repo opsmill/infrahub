@@ -7,12 +7,9 @@ import type { ModelSchema } from "@/entities/schema/types";
  */
 export const shouldAllowEmptySubmission = (schema: ModelSchema): boolean => {
   const attributes = schema.attributes ?? [];
+  const relationships = schema.relationships ?? [];
 
-  // If there are no attributes, allow submission
-  if (attributes.length === 0) {
-    return true;
-  }
-
-  // Allow submission if all attributes are read-only
-  return attributes.every((attr) => attr.read_only);
+  // Allow submission if all attributes and relationships are read-only
+  // (empty arrays return true for .every(), handling the no-fields case)
+  return attributes.every((attr) => attr.read_only) && relationships.every((rel) => rel.read_only);
 };
