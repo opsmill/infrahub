@@ -2,7 +2,7 @@
 # STAGE : Base Python Image
 # ****************************************************************
 ARG PYTHON_VER=3.12
-ARG POETRY_VER
+ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED=1
@@ -25,15 +25,11 @@ RUN apt-get update && \
     tee /etc/apt/sources.list.d/docker.list > /dev/null && \
     apt-get update && \
     apt-get install --no-install-recommends -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
-    curl -sSL https://install.python-poetry.org | POETRY_VERSION=$POETRY_VER python3 - && \
+    curl -sSL https://astral.sh/uv/$UV_VER/install.sh | sh - && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
-
-RUN poetry config virtualenvs.create false
-# Poetry 2.1 workaround
-ENV POETRY_VIRTUALENVS_CREATE=false
 
 # ****************************************************************
 # STAGE : Frontend
@@ -82,14 +78,15 @@ RUN git config --global user.name "Infrahub" && \
     git config --global user.email "infrahub@opsmill.com" && \
     git config --global --add safe.directory '*' && \
     git config --global credential.usehttppath true && \
-    git config --global credential.helper /usr/local/bin/infrahub-git-credential
+    git config --global credential.helper "/usr/bin/env infrahub-git-credential"
 
 RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
 
 WORKDIR /source
 
 ENV PREFECT_WORKER_QUERY_SECONDS="2" \
-    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500
+    PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500 \
+    PREFECT_API_DATABASE_TIMEOUT=60
 
 # --------------------------------------------
 # Import Frontend Build
@@ -103,16 +100,17 @@ COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
 
 # --------------------------------------------
 # Install Dependencies
-#   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
+#   Copy in only pyproject.toml/uv.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
-COPY poetry.lock pyproject.toml /source/
-RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
-    rm -rf /root/.cache
+ENV UV_PROJECT_ENVIRONMENT="/.venv"
+COPY uv.lock pyproject.toml python_sdk/pyproject.toml python_testcontainers/pyproject.toml python_testcontainers/uv.lock /source/
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project --no-install-workspace
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
 COPY . ./
-RUN poetry install --no-interaction --no-ansi
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 
+ENV PATH="/.venv/bin:$PATH"
 ENTRYPOINT ["tini", "-g", "--"]

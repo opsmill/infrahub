@@ -6,8 +6,7 @@ import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
-import { QSP } from "@/config/qsp";
-
+import { QSP } from "@/shared/config/qsp";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 

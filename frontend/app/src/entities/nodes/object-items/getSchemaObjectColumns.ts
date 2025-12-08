@@ -3,8 +3,7 @@ import {
   relationshipKindForForm,
   relationshipsForDetailsView,
   relationshipsForListView,
-} from "@/config/constants";
-
+} from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { RelationshipKind } from "@/entities/nodes/types";

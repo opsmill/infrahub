@@ -22,7 +22,9 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
+from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
+from infrahub.core.metadata.interface import MetadataInterface
+from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -30,16 +32,13 @@ from infrahub.core.property import (
 )
 from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
-    RelationshipDataDeleteQuery,
     RelationshipDeleteQuery,
     RelationshipGetPeerQuery,
-    RelationshipGetQuery,
     RelationshipPeerData,
     RelationshipUpdatePropertyQuery,
 )
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import update_relationships_to
-from infrahub.exceptions import Error, NodeNotFoundError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -85,13 +84,33 @@ class RelationshipUpdateDetails:
     peer_ids_present_database_only: list[str]
 
 
-class Relationship(FlagPropertyMixin, NodePropertyMixin):
+@dataclass
+class PeerWithRelationshipMetadata:
+    peer: Node | str
+    created_at: Timestamp | None = None
+    created_by: str | None = None
+    updated_at: Timestamp | None = None
+    updated_by: str | None = None
+    owner_id: str | None = None
+    source_id: str | None = None
+    is_protected: bool | None = None
+    is_visible: bool | None = None
+
+
+def _use_global_branch(schema: MainSchemaTypes) -> bool:
+    # only use the global branch alone if the schema is branch agnostic and it is a node schema
+    # if the schema is a generic, then its used_by schemas could be branch-aware
+    return bool(schema.branch is BranchSupportType.AGNOSTIC and schema.is_node_schema)
+
+
+class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     rel_type: str = "IS_RELATED"
 
     def __init__(
         self,
         schema: RelationshipSchema,
         branch: Branch,
+        source_kind: str,
         at: Timestamp | None = None,
         node: Node | None = None,
         node_id: str | None = None,
@@ -106,6 +125,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.name = schema.name
 
         self.branch = branch
+        self.source_kind = source_kind
         self.at = Timestamp(at)
 
         self._node = node
@@ -113,16 +133,21 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         self.id: UUID | None = None
         self.db_id: str | None = None
-        self.updated_at: Timestamp | None = None
         self.is_from_profile: bool = is_from_profile
         self.profile_id: UUID | None = profile_id
 
         self._peer: Node | str | None = None
         self.peer_id: str | None = None
         self.peer_hfid: list[str] | None = None
-        self.data: dict | RelationshipPeerData | str | None = None
+        self.data: dict | RelationshipPeerData | str | Node | None = None
 
         self.from_pool: dict[str, Any] | None = None
+        self._metadata = MetadataInfo(
+            created_at=kwargs.get("created_at"),
+            created_by=kwargs.get("created_by"),
+            updated_at=kwargs.get("updated_at"),
+            updated_by=kwargs.get("updated_by"),
+        )
 
         self._init_node_property_mixin(kwargs=kwargs)
         self._init_flag_property_mixin(kwargs=kwargs)
@@ -170,44 +195,104 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return registry.get_global_branch()
         return self.branch
 
-    def _process_data(self, data: dict | RelationshipPeerData | str) -> None:
-        self.data = data
+    def _set_created_at(self, value: Timestamp | None) -> None:
+        self._metadata.created_at = value
+
+    def _set_created_by(self, value: str | None) -> None:
+        self._metadata.created_by = value
+
+    def _set_updated_at(self, value: Timestamp | None) -> None:
+        self._metadata.updated_at = value
+
+    def _set_updated_by(self, value: str | None) -> None:
+        self._metadata.updated_by = value
+
+    def _get_created_at(self) -> Timestamp | None:
+        return self._metadata.created_at
+
+    def _get_created_by(self) -> str | None:
+        return self._metadata.created_by
+
+    def _get_updated_at(self) -> Timestamp | None:
+        return self._metadata.updated_at
+
+    def _get_updated_by(self) -> str | None:
+        return self._metadata.updated_by
+
+    def _process_relationship_peer_data(self, data: RelationshipPeerData) -> None:
+        self.set_peer(value=str(data.peer_id))
+
+        if not self.id and data.rel_node_id:
+            self.id = data.rel_node_id
+        if not self.db_id and data.rel_node_db_id:
+            self.db_id = data.rel_node_db_id
+
+        # Extract the properties
+        for prop_name, prop in data.properties.items():
+            if hasattr(self, "_flag_properties") and prop_name in self._flag_properties:
+                setattr(self, prop_name, prop.value)
+            elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
+                setattr(self, prop_name, prop.value)
+        self._set_created_at(data.created_at)
+        self._set_created_by(data.created_by)
+        self._set_updated_at(data.updated_at)
+        self._set_updated_by(data.updated_by)
+
+    def _process_dict_data(self, data: dict) -> None:
+        for key, value in data.items():
+            if key in ["peer", "id"]:
+                self.set_peer(value=value)
+            elif key == "hfid" and self.peer_id is None:
+                self.peer_hfid = value
+            elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
+                setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
+            elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
+                setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
+            elif key == "from_pool":
+                self.from_pool = value
+            elif key == "created_at" and value:
+                self._set_created_at(Timestamp(value))
+            elif key == "created_by" and value:
+                self._set_created_by(value)
+            elif key == "updated_at" and value:
+                self._set_updated_at(Timestamp(value))
+            elif key == "updated_by" and value:
+                self._set_updated_by(value)
+
+    def _process_peer_with_relationship_metadata(self, data: PeerWithRelationshipMetadata) -> None:
+        self.set_peer(value=data.peer)
+        self._set_created_at(data.created_at)
+        self._set_created_by(data.created_by)
+        self._set_updated_at(data.updated_at)
+        self._set_updated_by(data.updated_by)
+        if data.is_protected is not None:
+            self.is_protected = data.is_protected
+        if data.is_visible is not None:
+            self.is_visible = data.is_visible
+        if data.owner_id is not None:
+            self.set_owner(value=data.owner_id)
+        if data.source_id is not None:
+            self.set_source(value=data.source_id)
+
+    def _process_data(self, data: dict | RelationshipPeerData | str | Node | PeerWithRelationshipMetadata) -> None:
+        if isinstance(data, PeerWithRelationshipMetadata):
+            self.data = data.peer
+        else:
+            self.data = data
 
         if isinstance(data, RelationshipPeerData):
-            self.set_peer(value=str(data.peer_id))
-
-            if not self.id and data.rel_node_id:
-                self.id = data.rel_node_id
-            if not self.db_id and data.rel_node_db_id:
-                self.db_id = data.rel_node_db_id
-
-            # Extract the properties
-            for prop_name, prop in data.properties.items():
-                if hasattr(self, "_flag_properties") and prop_name in self._flag_properties:
-                    setattr(self, prop_name, prop.value)
-                elif hasattr(self, "_node_properties") and prop_name in self._node_properties:
-                    setattr(self, prop_name, prop.value)
-
+            self._process_relationship_peer_data(data=data)
         elif isinstance(data, dict):
-            for key, value in data.items():
-                if key in ["peer", "id"]:
-                    self.set_peer(value=data.get(key, None))
-                elif key == "hfid" and self.peer_id is None:
-                    self.peer_hfid = value
-                elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._flag_properties:
-                    setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
-                elif key.startswith(PREFIX_PROPERTY) and key.replace(PREFIX_PROPERTY, "") in self._node_properties:
-                    setattr(self, key.replace(PREFIX_PROPERTY, ""), value)
-                elif key == "from_pool":
-                    self.from_pool = value
-
+            self._process_dict_data(data=data)
+        elif isinstance(data, PeerWithRelationshipMetadata):
+            self._process_peer_with_relationship_metadata(data=data)
         else:
             self.set_peer(value=data)
 
     async def new(
         self,
         db: InfrahubDatabase,  # noqa: ARG002
-        data: dict | RelationshipPeerData | Any = None,
+        data: dict | RelationshipPeerData | PeerWithRelationshipMetadata | Any = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> Relationship:
         self._process_data(data=data)
@@ -219,19 +304,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         db: InfrahubDatabase,  # noqa: ARG002
         id: UUID | None = None,
         db_id: str | None = None,
-        updated_at: Timestamp | str | None = None,
         data: dict | RelationshipPeerData | Any = None,
     ) -> Self:
-        hash_before = hash(self)
-
         self.id = id or self.id
         self.db_id = db_id or self.db_id
-
         self._process_data(data=data)
-
-        if updated_at and hash(self) != hash_before:
-            self.updated_at = Timestamp(updated_at)
-
         return self
 
     def get_kind(self) -> str:
@@ -249,8 +326,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             kind=self.schema.kind.value,
             branch=self.branch,
             at=self.at,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         self._node = node
         self._node_id = self._node.id
@@ -294,8 +370,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     raise_on_error=True,
                     at=self.at,
                     branch=self.branch,
-                    include_source=True,
-                    include_owner=True,
+                    include_metadata=MetadataOptions.LINKED_NODES,
                     prefetch_relationships=False,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
@@ -306,8 +381,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     kind=self.schema.peer,
                     branch=self.branch,
                     at=self.at,
-                    include_owner=True,
-                    include_source=True,
+                    include_metadata=MetadataOptions.LINKED_NODES,
                     branch_agnostic=self.schema.branch is BranchSupportType.AGNOSTIC,
                 )
         except NodeNotFoundError:
@@ -336,15 +410,19 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 memory_value = getattr(self, f"{property_name}_id", None)
                 database_prop = data.properties.get(property_name)
                 database_value = database_prop.value if database_prop else None
-                if memory_value != database_value:
+                if memory_value != database_value or self.is_clear(property_name):
                     different_properties.append(property_name)
 
         return different_properties
 
-    async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
+    async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> None:
         """Add a relationship with another object by creating a new relationship node."""
 
         create_at = Timestamp(at)
+        self._set_created_by(value=user_id)
+        self._set_created_at(value=create_at)
+        self._set_updated_by(value=user_id)
+        self._set_updated_at(value=create_at)
 
         # Assuming nothing is present in the database yet
         # Create a new Relationship node and attach each object to it
@@ -353,7 +431,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         branch = self.get_branch_based_on_support_type()
 
         query = await RelationshipCreateQuery.init(
-            db=db, source=node, destination=peer, rel=self, branch=branch, at=create_at
+            db=db, source=node, destination=peer, rel=self, branch=branch, at=create_at, user_id=user_id
         )
         await query.execute(db=db)
         result = query.get_result()
@@ -368,22 +446,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         db: InfrahubDatabase,
         properties_to_update: list[str],
         data: RelationshipPeerData,
+        user_id: str = SYSTEM_USER_ID,
         at: Timestamp | None = None,
     ) -> None:
         """Update the properties of an existing relationship."""
 
         update_at = Timestamp(at)
         branch = self.get_branch_based_on_support_type()
-
-        rel_ids_to_update = []
-        for prop_name, prop in data.properties.items():
-            if prop_name in properties_to_update and prop.rel.branch == self.branch.name:
-                rel_ids_to_update.append(prop.rel.db_id)
-
-        if rel_ids_to_update:
-            await update_relationships_to(rel_ids_to_update, to=update_at, db=db)
-
-        node = await self.get_node(db=db)
 
         flag_properties_to_update = {}
         for prop_name in self._flag_properties:
@@ -397,8 +466,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         for prop_name in self._node_properties:
             if prop_name not in properties_to_update:
                 continue
-            if value := getattr(self, f"{prop_name}_id"):
-                node_properties_to_update[prop_name] = value
+            value = getattr(self, f"{prop_name}_id")
+            needs_clear = self.is_clear(prop_name)
+            if value or needs_clear:
+                node_properties_to_update[prop_name] = getattr(self, f"{prop_name}_id")
 
         if not flag_properties_to_update and not node_properties_to_update:
             return
@@ -406,46 +477,48 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         query = await RelationshipUpdatePropertyQuery.init(
             db=db,
             branch=branch,
-            source=node,
+            source_id=self.node_id,
             rel=self,
+            user_id=user_id,
             at=update_at,
             flag_properties_to_update=flag_properties_to_update,
             node_properties_to_update=node_properties_to_update,
-            rel_node_id=data.rel_node_id,
+            rel_id=data.rel_node_id,
         )
         await query.execute(db=db)
 
-    async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None:
+    async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         delete_at = Timestamp(at)
 
-        node = await self.get_node(db=db)
-        peer = await self.get_peer(db=db)
+        if self.peer_id:
+            peer_id = self.peer_id
+        else:
+            peer = await self.get_peer(db=db)
+            peer_id = peer.id
 
         branch = self.get_branch_based_on_support_type()
 
-        get_query = await RelationshipGetQuery.init(
-            db=db, source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
-        )
-        await get_query.execute(db=db)
-
-        rel_ids_to_update = get_query.get_relationships_ids_for_branch(branch_name=branch.name)
-        if rel_ids_to_update is None:
-            raise Error(
-                f"Unable to find the relationship to delete. id: {self.id}, source: {node.id}, destination: {peer.id}"
-            )
-
-        if get_query.is_already_deleted():
-            return
-
-        # when we remove a relationship we need to :
-        # - Update the existing relationship if we are on the same branch
-        # - Create a new rel of type DELETED in the right branch
-
-        if rel_ids_to_update:
-            await update_relationships_to(rel_ids_to_update, to=delete_at, db=db)
+        source_schema = db.schema.get(name=self.source_kind, branch=self.branch, duplicate=False)
+        if _use_global_branch(schema=source_schema):
+            source_branch = registry.get_global_branch()
+        else:
+            source_branch = self.branch
+        destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
+        if _use_global_branch(schema=destination_schema):
+            destination_branch = registry.get_global_branch()
+        else:
+            destination_branch = self.branch
 
         delete_query = await RelationshipDeleteQuery.init(
-            db=db, rel=self, source=node, destination=peer, branch=branch, at=delete_at
+            db=db,
+            rel=self,
+            source_id=self.node_id,
+            source_branch=source_branch,
+            destination_id=peer_id,
+            destination_branch=destination_branch,
+            branch=branch,
+            user_id=user_id,
+            at=delete_at,
         )
         await delete_query.execute(db=db)
 
@@ -508,13 +581,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             self.set_peer(value=assigned_peer)
             self.set_source(value=pool.id)
 
-    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None) -> Self:
+    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
         """Create or Update the Relationship in the database."""
 
         save_at = Timestamp(at)
 
         if not self.id:
-            await self._create(at=save_at, db=db)
+            await self._create(user_id=user_id, at=save_at, db=db)
             return self
 
         return self
@@ -540,9 +613,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         response = await peer.to_graphql(fields=peer_fields, db=db, related_node_ids=related_node_ids)
 
         for field_name in rel_fields.keys():
-            if field_name == "updated_at" and self.updated_at:
-                response[f"{PREFIX_PROPERTY}{field_name}"] = await self.updated_at.to_graphql(db=db)
-
             if field_name in self._node_properties:
                 node_prop_getter = getattr(self, f"get_{field_name}")
                 node_prop = await node_prop_getter(db=db)
@@ -554,6 +624,16 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     )
             if field_name in self._flag_properties:
                 response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)
+            if field_name == "created_at":
+                created_at = self._get_created_at()
+                response[f"{PREFIX_PROPERTY}{field_name}"] = await created_at.to_graphql() if created_at else None
+            elif field_name == "created_by":
+                response[f"{PREFIX_PROPERTY}{field_name}"] = self._get_created_by()
+            elif field_name in ["_updated_at", "updated_at"]:
+                updated_at = self._get_updated_at()
+                response[f"{PREFIX_PROPERTY}{field_name}"] = await updated_at.to_graphql() if updated_at else None
+            elif field_name == "updated_by":
+                response[f"{PREFIX_PROPERTY}{field_name}"] = self._get_updated_by()
 
         if fields and "__typename" in fields:
             response["__typename"] = f"Related{peer.get_kind()}"
@@ -811,7 +891,9 @@ class RelationshipManager:
             if not isinstance(item, rm.rel_class | str | dict) and not hasattr(item, "_schema"):
                 raise ValidationError({rm.name: f"Invalid data provided to form a relationship {item}"})
 
-            rel = rm.rel_class(schema=rm.schema, branch=rm.branch, at=rm.at, node=rm.node)
+            rel = rm.rel_class(
+                schema=rm.schema, branch=rm.branch, source_kind=rm.node.get_kind(), at=rm.at, node=rm.node
+            )
             await rel.new(db=db, data=item)
 
             rm._relationships.append(rel)
@@ -919,6 +1001,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: type[PeerType],
         branch_agnostic: bool = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> Mapping[str, PeerType]: ...
 
     @overload
@@ -927,6 +1010,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = None,
         branch_agnostic: bool = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> Mapping[str, Node]: ...
 
     async def get_peers(
@@ -934,11 +1018,16 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: type[PeerType] | None = None,  # noqa: ARG002
         branch_agnostic: bool = False,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
         nodes = await registry.manager.get_many(
-            db=db, ids=peer_ids, branch=self.branch, branch_agnostic=branch_agnostic
+            db=db,
+            ids=peer_ids,
+            branch=self.branch,
+            branch_agnostic=branch_agnostic,
+            include_metadata=include_metadata,
         )
         return nodes
 
@@ -962,8 +1051,11 @@ class RelationshipManager:
             db=db,
             source=self.node,
             at=at or self.at,
-            rel=self.rel_class(schema=self.schema, branch=self.branch, node=self.node),
+            rel=self.rel_class(
+                schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), node=self.node
+            ),
             branch_agnostic=branch_agnostic,
+            include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.LINKED_NODES,
         )
         await query.execute(db=db)
         return list(query.get_peers())
@@ -1023,6 +1115,7 @@ class RelationshipManager:
                 Relationship(
                     schema=self.schema,
                     branch=self.branch,
+                    source_kind=self.node.get_kind(),
                     at=at or self.at,
                     node=self.node,
                     is_from_profile=details.peers_database[peer_id].is_from_profile,
@@ -1078,10 +1171,19 @@ class RelationshipManager:
                 return rel
         return None
 
-    async def update(self, data: list[str | Node] | dict[str, Any] | str | Node | None, db: InfrahubDatabase) -> bool:
+    async def update(
+        self,
+        data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
+        | dict[str, Any]
+        | str
+        | Node
+        | PeerWithRelationshipMetadata
+        | None,
+        db: InfrahubDatabase,
+    ) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
-            list_data: Sequence[str | Node | dict[str, Any] | None] = [data]
+            list_data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None] = [data]
         else:
             list_data = data
 
@@ -1093,7 +1195,9 @@ class RelationshipManager:
         changed = False
 
         for item in list_data:
-            if not isinstance(item, self.rel_class | str | dict | type(None)) and not hasattr(item, "_schema"):
+            if not isinstance(
+                item, self.rel_class | str | dict | type(None) | PeerWithRelationshipMetadata
+            ) and not hasattr(item, "_schema"):
                 raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
 
             if hasattr(item, "_schema"):
@@ -1124,9 +1228,9 @@ class RelationshipManager:
 
             # If the item is not present in the previous list of relationship, we create a new one.
             self._relationships.append(
-                await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
-                    db=db, data=item
-                )
+                await self.rel_class(
+                    schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), at=self.at, node=self.node
+                ).new(db=db, data=item)
             )
             changed = True
 
@@ -1157,9 +1261,9 @@ class RelationshipManager:
 
         # If the item ID is not present in the previous set of relationships, create a new one
         self._relationships.append(
-            await self.rel_class(schema=self.schema, branch=self.branch, at=self.at, node=self.node).new(
-                db=db, data=data
-            )
+            await self.rel_class(
+                schema=self.schema, branch=self.branch, source_kind=self.node.get_kind(), at=self.at, node=self.node
+            ).new(db=db, data=data)
         )
 
         return True
@@ -1188,42 +1292,47 @@ class RelationshipManager:
         self,
         db: InfrahubDatabase,
         peer_data: RelationshipPeerData,
+        user_id: str,
         at: Timestamp | None = None,
     ) -> None:
         remove_at = Timestamp(at)
         branch = self.get_branch_based_on_support_type()
 
-        # - Update the existing relationship if we are on the same branch
-        rel_ids_per_branch = peer_data.rel_ids_per_branch()
+        source_schema = db.schema.get(name=self.node.get_kind(), branch=self.branch, duplicate=False)
+        if _use_global_branch(schema=source_schema):
+            source_branch = registry.get_global_branch()
+        else:
+            source_branch = self.branch
+        destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
+        if _use_global_branch(schema=destination_schema):
+            destination_branch = registry.get_global_branch()
+        else:
+            destination_branch = self.branch
 
-        # In which cases do we end up here and do not want to set `to` time?
-        if branch.name in rel_ids_per_branch:
-            await update_relationships_to([str(ri) for ri in rel_ids_per_branch[branch.name]], to=remove_at, db=db)
-
-        # - Create a new rel of type DELETED if the existing relationship is on a different branch
-        if peer_data.rels and {r.branch for r in peer_data.rels} == {peer_data.branch}:
-            return
-
-        query = await RelationshipDataDeleteQuery.init(
+        delete_query = await RelationshipDeleteQuery.init(
             db=db,
-            rel=self.rel_class,
+            rel_id=peer_data.rel_node_id,
             schema=self.schema,
-            source=self.node,
-            data=peer_data,
+            source_id=peer_data.source_id,
+            destination_id=peer_data.peer_id,
+            source_branch=source_branch,
+            destination_branch=destination_branch,
             branch=branch,
+            user_id=user_id,
             at=remove_at,
         )
-        await query.execute(db=db)
+        await delete_query.execute(db=db)
 
     async def save(
-        self, db: InfrahubDatabase, at: Timestamp | None = None
+        self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Create or Update the Relationship in the database."""
 
         await self.resolve(db=db)
+        branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
         save_at = Timestamp(at)
-        details = await self.fetch_relationship_ids(db=db, force_refresh=True)
+        details = await self.fetch_relationship_ids(db=db, branch_agnostic=branch_agnostic, force_refresh=True)
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         # If we have previously fetched the relationships from the database
@@ -1231,13 +1340,13 @@ class RelationshipManager:
         if self.has_fetched_relationships:
             for peer_id in details.peer_ids_present_database_only:
                 relationship_mapper.remove_peer(peer_data=details.peers_database[peer_id])
-                await self.remove_in_db(peer_data=details.peers_database[peer_id], at=save_at, db=db)
+                await self.remove_in_db(db=db, peer_data=details.peers_database[peer_id], user_id=user_id, at=save_at)
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
-        for rel in await self.get_relationships(db=db):
+        for rel in await self.get_relationships(db=db, branch_agnostic=branch_agnostic):
             if rel.peer_id in details.peer_ids_present_local_only:
-                await rel.save(at=save_at, db=db)
+                await rel.save(db=db, user_id=user_id, at=save_at)
 
                 relationship_mapper.add_peer_from_relationship(relationship=rel)
 
@@ -1247,6 +1356,7 @@ class RelationshipManager:
                 ):
                     await rel.update(
                         at=save_at,
+                        user_id=user_id,
                         properties_to_update=properties_not_matching,
                         data=details.peers_database[rel.peer_id],
                         db=db,

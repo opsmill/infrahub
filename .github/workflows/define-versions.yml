@@ -4,8 +4,8 @@ name: "Define versions"
 on:
   workflow_call:
     outputs:
-      POETRY_VERSION:
-        value: "2.1.3"
+      UV_VERSION:
+        value: "0.9.9"
 
 jobs:
   prepare:

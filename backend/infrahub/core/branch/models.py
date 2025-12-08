@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 
-from neo4j.graph import Node as Neo4jNode
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
@@ -24,6 +23,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
+    from neo4j.graph import Node as Neo4jNode
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -143,8 +144,9 @@ class Branch(StandardNode):
         """
 
         params: dict[str, Any] = {"name": name}
+        params["ignore_statuses"] = []
         if ignore_deleting:
-            params["ignore_statuses"] = [BranchStatus.DELETING.value]
+            params["ignore_statuses"].append(BranchStatus.DELETING.value)
 
         results = await db.execute_query(query=query, params=params, name="branch_get_by_name", type=QueryType.READ)
 
@@ -167,7 +169,7 @@ class Branch(StandardNode):
         )
         await query.execute(db=db)
 
-        return [cls.from_db(node=cast(Neo4jNode, result.get("n"))) for result in query.get_results()]
+        return [cls.from_db(node=cast("Neo4jNode", result.get("n"))) for result in query.get_results()]
 
     @classmethod
     async def get_list_count(
@@ -206,7 +208,7 @@ class Branch(StandardNode):
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Optional[Union[Timestamp, str]] = None) -> dict[frozenset, str]:
+    def get_branches_and_times_to_query(self, at: Optional[Timestamp] = None) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
 
         at = Timestamp(at)
@@ -227,7 +229,7 @@ class Branch(StandardNode):
 
     def get_branches_and_times_to_query_global(
         self,
-        at: Optional[Union[Timestamp, str]] = None,
+        at: Optional[Timestamp] = None,
         is_isolated: bool = True,
     ) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
@@ -297,7 +299,7 @@ class Branch(StandardNode):
         await super().delete(db=db)
 
     def get_query_filter_relationships(
-        self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
+        self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False
     ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
@@ -356,11 +358,11 @@ class Branch(StandardNode):
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = f"{variable_name}.from <= ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
+            filter_str = f"{variable_name}.from < ${pp}time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= ${pp}time1)"
             params[f"{pp}time1"] = at_str
             return filter_str, params
 
-        branches_times = self.get_branches_and_times_to_query_global(at=at_str, is_isolated=is_isolated)
+        branches_times = self.get_branches_and_times_to_query_global(at=at, is_isolated=is_isolated)
 
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
             params[f"{pp}branch{idx}"] = list(branch_name)
@@ -369,10 +371,13 @@ class Branch(StandardNode):
         filters = []
         for idx in range(len(branches_times)):
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from < ${pp}time{idx} AND {variable_name}.to IS NULL)"
             )
             filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to >= ${pp}time{idx})"
+                f"({variable_name}.branch IN ${pp}branch{idx} "
+                f"AND {variable_name}.from < ${pp}time{idx} "
+                f"AND {variable_name}.to >= ${pp}time{idx})"
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"
@@ -382,8 +387,8 @@ class Branch(StandardNode):
     def get_query_filter_relationships_range(
         self,
         rel_labels: list,
-        start_time: Union[Timestamp, str],
-        end_time: Union[Timestamp, str],
+        start_time: Timestamp,
+        end_time: Timestamp,
         include_outside_parentheses: bool = False,
         include_global: bool = False,
     ) -> tuple[list, dict]:
@@ -463,9 +468,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_range(
-        self, rel_label: list, start_time: Union[Timestamp, str], end_time: Union[Timestamp, str]
-    ) -> tuple[list, dict]:
+    def get_query_filter_range(self, rel_label: list, start_time: Timestamp, end_time: Timestamp) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
 

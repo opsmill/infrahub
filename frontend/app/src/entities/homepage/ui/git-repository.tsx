@@ -1,11 +1,10 @@
 import { ListBoxItem } from "react-aria-components";
 
-import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
-
 import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
 export const GitRepositoryItem = ({ id, display_label, sync_status }: CoreRepository) => {

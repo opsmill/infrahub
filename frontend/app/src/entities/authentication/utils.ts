@@ -1,6 +1,4 @@
-import { REFRESH_TOKEN_KEY } from "@/config/constants";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
 import type { UserToken } from "@/entities/authentication/types";
 
 export const saveTokensInLocalStorage = (result: Partial<UserToken>) => {

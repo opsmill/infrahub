@@ -36,7 +36,6 @@ class InfrahubObjectType(ObjectType):
                     at=graphql_context.at,
                     branch=graphql_context.branch,
                     account=graphql_context.account_session,
-                    include_source=True,
                     db=db,
                 )
             else:
@@ -44,7 +43,6 @@ class InfrahubObjectType(ObjectType):
                     at=graphql_context.at,
                     branch=graphql_context.branch,
                     account=graphql_context.account_session,
-                    include_source=True,
                     db=db,
                 )
 

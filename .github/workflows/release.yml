@@ -21,7 +21,7 @@ jobs:
       latest_tag: ${{ steps.release.outputs.latest_tag }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
@@ -31,24 +31,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: "Setup Python environment"
-        run: |
-          python -m pip install --user pipx
-          python -m pipx install -f poetry==${{ needs.prepare-environment.outputs.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-        env:
-          PIPX_DEFAULT_PYTHON: ${{ steps.python.outputs.python-path }}
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: "Check prerelease type"
         id: release
         run: |
-          echo is_prerelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_prerelease))") >> "$GITHUB_OUTPUT"
-          echo is_devrelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_devrelease))") >> "$GITHUB_OUTPUT"
-          echo "version=$(poetry version -s)" >> "$GITHUB_OUTPUT"
-          echo major_minor_version=$(poetry run python -c "from packaging.version import Version; print(f\"{Version('$(poetry version -s)').major}.{Version('$(poetry version -s)').minor}\")") >> "$GITHUB_OUTPUT"
+          echo is_prerelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$(uv version --short)').is_prerelease))") >> "$GITHUB_OUTPUT"
+          echo is_devrelease=$(uv run python -c "from packaging.version import Version; print(int(Version('$(uv version --short)').is_devrelease))") >> "$GITHUB_OUTPUT"
+          echo "version=$(uv version --short)" >> "$GITHUB_OUTPUT"
+          echo major_minor_version=$(uv run python -c "from packaging.version import Version; print(f\"{Version('$(uv version --short)').major}.{Version('$(uv version --short)').minor}\")") >> "$GITHUB_OUTPUT"
           echo latest_tag=$(curl -L \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ github.token }}" \

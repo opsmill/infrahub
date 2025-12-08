@@ -1,4 +1,4 @@
-import { CHECKS_LABEL, VALIDATION_CONCLUSIONS, VALIDATION_STATES } from "@/config/constants";
+import { CHECKS_LABEL, VALIDATION_CONCLUSIONS, VALIDATION_STATES } from "@/shared/config/constants";
 
 export const getValidatorsStats = (validators: any[]) => {
   const successValidators = validators.filter(

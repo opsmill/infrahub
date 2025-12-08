@@ -172,9 +172,9 @@ class InfrahubGraphQLApp:
 
         response = handler(request)
         if isawaitable(response):
-            return await cast(Awaitable[Response], response)
+            return await cast("Awaitable[Response]", response)
 
-        return cast(Response, response)
+        return cast("Response", response)
 
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
@@ -350,8 +350,8 @@ class InfrahubGraphQLApp:
         websocket: WebSocket,
         subscriptions: dict[str, AsyncGenerator[Any, None]],
     ) -> None:
-        operation_id = cast(str, message.get("id"))
-        message_type = cast(str, message.get("type"))
+        operation_id = cast("str", message.get("id"))
+        message_type = cast("str", message.get("type"))
 
         if message_type == GQL_CONNECTION_INIT:
             websocket.scope["connection_params"] = message.get("payload")
@@ -445,7 +445,7 @@ class InfrahubGraphQLApp:
         if isinstance(result, ExecutionResult) and result.errors:
             return result.errors
 
-        asyncgen = cast(AsyncGenerator[Any, None], result)
+        asyncgen = cast("AsyncGenerator[Any, None]", result)
         subscriptions[operation_id] = asyncgen
         task = asyncio.create_task(self._observe_subscription(asyncgen, operation_id, websocket))
         subscription_tasks.add(task)
@@ -479,7 +479,7 @@ async def _get_operation_from_request(request: Request) -> dict[str, Any] | list
     content_type = request.headers.get("Content-Type", "").split(";")[0]
     if content_type == "application/json":
         try:
-            return cast(dict[str, Any] | list[Any], await request.json())
+            return cast("dict[str, Any] | list[Any]", await request.json())
         except (TypeError, ValueError) as err:
             raise ValueError("Request body is not a valid JSON") from err
     elif content_type == "multipart/form-data":

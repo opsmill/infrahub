@@ -29,6 +29,7 @@ from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_com
 from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
+    ComputedAttrJinja2TriggerDefinition,
     PythonTransformTarget,
 )
 
@@ -312,21 +313,46 @@ async def computed_attribute_setup_jinja2(
         )  # type: ignore[misc]
         # Configure all ComputedAttrJinja2Trigger in Prefect
 
+        all_triggers = report.triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
+
         # Since we can have multiple trigger per NodeKind
-        # we need to extract the list of unique node that should be processed
-        unique_nodes: set[tuple[str, str, str]] = {
-            (trigger.branch, trigger.computed_attribute.kind, trigger.computed_attribute.attribute.name)  # type: ignore[attr-defined]
-            for trigger in report.updated + report.created
-        }
-        for branch, kind, attribute_name in unique_nodes:
-            if event_name != BranchDeletedEvent.event_name and branch == branch_name:
+        # we need to extract the list of unique node that should be processed, this is done by filtering the triggers that targets_self
+        modified_triggers = [
+            trigger
+            for trigger in report.modified_triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
+            if trigger.targets_self
+        ]
+
+        for modified_trigger in modified_triggers:
+            if event_name != BranchDeletedEvent.event_name and modified_trigger.branch == branch_name:
+                if branch_name != registry.default_branch:
+                    default_branch_triggers = [
+                        trigger
+                        for trigger in all_triggers
+                        if trigger.branch == registry.default_branch
+                        and trigger.targets_self
+                        and trigger.computed_attribute.kind == modified_trigger.computed_attribute.kind
+                        and trigger.computed_attribute.attribute.name
+                        == modified_trigger.computed_attribute.attribute.name
+                    ]
+                    if (
+                        default_branch_triggers
+                        and len(default_branch_triggers) == 1
+                        and default_branch_triggers[0].template_hash == modified_trigger.template_hash
+                    ):
+                        log.debug(
+                            f"Skipping computed attribute updates for {modified_trigger.computed_attribute.kind}."
+                            f"{modified_trigger.computed_attribute.attribute.name} [{branch_name}], schema is identical to default branch"
+                        )
+                        continue
+
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
-                        "branch_name": branch,
-                        "computed_attribute_name": attribute_name,
-                        "computed_attribute_kind": kind,
+                        "branch_name": modified_trigger.branch,
+                        "computed_attribute_name": modified_trigger.computed_attribute.attribute.name,
+                        "computed_attribute_kind": modified_trigger.computed_attribute.kind,
                     },
                 )
 

@@ -1,5 +1,4 @@
 /// <reference types="vite" />
-/// <reference types="vitest" />
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -26,39 +25,10 @@ export default defineConfig({
       customWorkers: [
         {
           label: "graphql",
-          entry: "monaco-graphql/esm/graphql.worker",
+          entry: "monaco-graphql/esm/graphql.worker.js",
         },
       ],
+      publicPath: "assets/monaco-editor",
     }),
   ],
-  test: {
-    browser: {
-      enabled: true,
-      provider: "playwright",
-      instances: [
-        {
-          browser: "chromium",
-        },
-      ],
-      viewport: {
-        width: 1280,
-        height: 720,
-      },
-    },
-    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
-    globals: true,
-    coverage: {
-      reporter: ["text", "lcovonly"],
-      exclude: [
-        "node_modules/",
-        "mocks/",
-        "**/**.d.ts",
-        "**/tests/**",
-        "**/**component-preview",
-        "playwright-report/",
-        "e2e/",
-      ],
-      all: true,
-    },
-  },
 });

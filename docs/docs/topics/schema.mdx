@@ -591,36 +591,9 @@ Order uniqueness constraint elements from most selective (returning fewer matche
 
 The `display_label` property allows you to define a custom label for nodes in the Infrahub UI. This label is used in various parts of the interface, such as list views and detail views, to provide a more user-friendly representation of the node.
 
-The `display_label` supports template syntax, allowing you to combine multiple attributes and relationships to create a meaningful label.
-
-Display label value is automatically computed and saved when the object is created or updated.
-
-In the example below, the `display_label` for the `DcimCircuit` node is defined to show both the `reference_id` attribute and `provider` relationship.
-
-```yaml {4} showLineNumbers
-nodes:
-  - name: Circuit
-    namespace: Dcim
-    display_label: "{{ reference_id__value }} ({{ provider__name__value }})"
-    attributes:
-      - name: reference_id
-        kind: Text
-        unique: true
-    relationships:
-      - name: provider
-        peer: DcimProvider
-        optional: false
-        cardinality: one
-```
-
-:::success
-This will create a display label like `CIR12345 (ProviderName)`.
-:::
-
-:::warning Limitations
-Relationships used in the `display_label` must be of cardinality `one`.
-Display label supports only one level of relationships.
-:::
+<ReferenceLink
+  title="See the topic dedicated to display labels"
+  url="labels" />
 
 ### Human friendly identifier (hfid)
 

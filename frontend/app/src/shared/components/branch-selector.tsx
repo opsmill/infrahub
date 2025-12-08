@@ -4,8 +4,6 @@ import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 
-import { QSP } from "@/config/qsp";
-
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -18,6 +16,7 @@ import {
   CommandList,
 } from "@/shared/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";

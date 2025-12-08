@@ -2,10 +2,9 @@ from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLResolveInfo
 from graphql.type.definition import GraphQLNonNull
-from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -24,6 +23,24 @@ if TYPE_CHECKING:
 class SingleRelationshipResolver:
     def __init__(self) -> None:
         self._data_loader_instances: dict[GetManyParams, NodeDataLoader] = {}
+
+    def _get_metadata_to_include(self, property_fields: dict[str, Any]) -> MetadataOptions:
+        include_metadata = MetadataOptions.NONE
+        if "created_at" in property_fields:
+            include_metadata |= MetadataOptions.CREATED_AT
+        if "created_by" in property_fields:
+            include_metadata |= MetadataOptions.CREATED_BY
+        if "updated_at" in property_fields:
+            include_metadata |= MetadataOptions.UPDATED_AT
+        if "updated_by" in property_fields:
+            include_metadata |= MetadataOptions.UPDATED_BY
+        if "source" in property_fields:
+            include_metadata |= MetadataOptions.SOURCE
+        if "owner" in property_fields:
+            include_metadata |= MetadataOptions.OWNER
+        if "is_protected" in property_fields:
+            include_metadata |= MetadataOptions.IS_PROTECTED
+        return include_metadata
 
     async def resolve(self, parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
         """Resolver for relationships of cardinality=one for Edged responses
@@ -59,6 +76,7 @@ class SingleRelationshipResolver:
         response: dict[str, Any] = {"node": None, "properties": {}}
 
         if requires_relationship_metadata:
+            include_metadata = self._get_metadata_to_include(property_fields=property_fields)
             node_graph = await self._get_entities_simple(
                 db=graphql_context.db,
                 branch=graphql_context.branch,
@@ -69,6 +87,7 @@ class SingleRelationshipResolver:
                 source_kind=node_schema.kind,
                 rel_schema=node_rel,
                 node_fields=node_fields,
+                include_metadata=include_metadata,
                 **kwargs,
             )
         else:
@@ -103,6 +122,7 @@ class SingleRelationshipResolver:
         source_kind: str,
         rel_schema: RelationshipSchema,
         node_fields: dict[str, Any],
+        include_metadata: MetadataOptions,
         **kwargs: Any,
     ) -> dict[str, Any] | None:
         filters = {
@@ -122,6 +142,7 @@ class SingleRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
+                include_metadata=include_metadata,
             )
             if not objs:
                 return None
@@ -142,26 +163,15 @@ class SingleRelationshipResolver:
         except (KeyError, IndexError):
             return None
 
-        if node_fields and "display_label" in node_fields:
-            schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(name=rel_schema.peer)
-            if display_label_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
-
         if node_fields and "hfid" in node_fields:
-            peer_schema = db.schema.get(name=rel_schema.peer, branch=branch, duplicate=False)
-            hfid_fields = peer_schema.generate_fields_for_hfid()
-            if hfid_fields:
-                node_fields = deep_merge_dict(dicta=node_fields, dictb=hfid_fields)
+            node_fields["human_friendly_id"] = None
 
         query_params = GetManyParams(
             fields=node_fields,
             at=at,
             branch=branch,
-            include_source=True,
-            include_owner=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
             prefetch_relationships=False,
-            account=None,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
         )
         if query_params in self._data_loader_instances:

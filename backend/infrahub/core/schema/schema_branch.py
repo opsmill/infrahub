@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
 import keyword
@@ -19,6 +20,7 @@ from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -70,6 +72,16 @@ from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
 
 log = get_logger()
+
+
+profiles_rel_settings: dict[str, Any] = {
+    "name": "profiles",
+    "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    "peer": InfrahubKind.PROFILE,
+    "kind": RelationshipKind.PROFILE,
+    "cardinality": RelationshipCardinality.MANY,
+    "branch": BranchSupportType.AWARE,
+}
 
 
 class SchemaBranch:
@@ -334,10 +346,8 @@ class SchemaBranch:
             )
 
         schema: MainSchemaTypes | None = None
-        try:
+        with contextlib.suppress(KeyError):
             schema = self._cache[key]
-        except KeyError:
-            pass
 
         if not schema:
             raise ValueError(f"Schema {name!r} on branch {self.name} has incorrect hash: {key!r}")
@@ -1116,7 +1126,7 @@ class SchemaBranch:
                     ) from None
 
             for rel in node.relationships:
-                if rel.peer in [InfrahubKind.GENERICGROUP]:
+                if rel.peer == InfrahubKind.GENERICGROUP:
                     continue
                 if not self.has(rel.peer) or self.get(rel.peer, duplicate=False).state == HashableModelState.ABSENT:
                     raise ValueError(
@@ -2202,10 +2212,8 @@ class SchemaBranch:
                 or not node.generate_profile
                 or node.state == HashableModelState.ABSENT
             ):
-                try:
+                with contextlib.suppress(SchemaNotFoundError):
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))
-                except SchemaNotFoundError:
-                    ...
                 continue
 
             profile = self.generate_profile_from_node(node=node)
@@ -2251,15 +2259,6 @@ class SchemaBranch:
                 InfrahubKind.IPPREFIXAVAILABLE,
             ):
                 continue
-
-            profiles_rel_settings: dict[str, Any] = {
-                "name": "profiles",
-                "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
-                "peer": InfrahubKind.PROFILE,
-                "kind": RelationshipKind.PROFILE,
-                "cardinality": RelationshipCardinality.MANY,
-                "branch": BranchSupportType.AWARE,
-            }
 
             # Add relationship between node and profile
             if "profiles" not in node.relationship_names:
@@ -2325,6 +2324,18 @@ class SchemaBranch:
                 )
             ],
         )
+        if f"Template{node.kind}" in self.all_names:
+            template = self.get(name=f"Template{node.kind}", duplicate=False)
+            profile.relationships.append(
+                RelationshipSchema(
+                    name="related_templates",
+                    identifier=PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
+                    peer=template.kind,
+                    kind=RelationshipKind.PROFILE,
+                    cardinality=RelationshipCardinality.MANY,
+                    branch=BranchSupportType.AWARE,
+                )
+            )
 
         for node_attr in node.attributes:
             if not node_attr.support_profiles:
@@ -2454,6 +2465,14 @@ class SchemaBranch:
             ):
                 template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
+
+        if getattr(node, "generate_profile", False):
+            if "profiles" not in [r.name for r in template_schema.relationships]:
+                settings = dict(profiles_rel_settings)
+                settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
+                template_schema.relationships.append(RelationshipSchema(**settings))
+
+        self.set(name=template_schema.kind, schema=template_schema)
 
     def generate_object_template_from_node(
         self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]

@@ -3,11 +3,10 @@ import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 import { Link, useLocation, useParams } from "react-router";
 
-import { QSP } from "@/config/qsp";
-
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/node-diff/types";

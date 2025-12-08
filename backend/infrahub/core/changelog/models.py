@@ -290,7 +290,7 @@ class NodeChangelog(BaseModel):
                     name=relationship.schema.name
                 )
             relationship_container = cast(
-                RelationshipCardinalityManyChangelog, self.relationships[relationship.schema.name]
+                "RelationshipCardinalityManyChangelog", self.relationships[relationship.schema.name]
             )
 
             relationship_container.add_new_peer(relationship=relationship)
@@ -311,7 +311,7 @@ class NodeChangelog(BaseModel):
                     name=relationship.schema.name
                 )
             relationship_container = cast(
-                RelationshipCardinalityManyChangelog, self.relationships[relationship.schema.name]
+                "RelationshipCardinalityManyChangelog", self.relationships[relationship.schema.name]
             )
             relationship_container.remove_peer(
                 peer_id=relationship.get_peer_id(), peer_kind=relationship.get_peer_kind()

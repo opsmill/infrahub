@@ -142,6 +142,6 @@ const RelationshipDisplay = ({ className, node, ...props }: RelationshipDisplayP
     className={classNames("inline-flex underline decoration-dotted", className)}
     {...props}
   >
-    {node.display_label}
+    {getNodeLabel(node)}
   </Link>
 );

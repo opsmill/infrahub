@@ -10,7 +10,7 @@ from structlog.dev import plain_traceback
 if TYPE_CHECKING:
     from structlog.types import Processor
 
-INFRAHUB_PRODUCTION = TypeAdapter(bool).validate_python(os.environ.get("INFRAHUB_PRODUCTION", True))
+INFRAHUB_PRODUCTION = TypeAdapter(bool).validate_python(os.environ.get("INFRAHUB_PRODUCTION", "true"))
 INFRAHUB_LOG_LEVEL = os.environ.get("INFRAHUB_LOG_LEVEL", "INFO")
 
 

@@ -33,6 +33,7 @@ const ObjectPageLayout = () => {
         <Content.Card className="flex grow flex-col">
           <ScrollArea scrollX className="h-full p-1">
             <ObjectHierarchyTreeWrapper
+              key={genericSchemaOfHierarchy.kind}
               treeSchema={genericSchemaOfHierarchy}
               currentNodeId={objectId}
             />

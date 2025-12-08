@@ -1,14 +1,14 @@
 import React from "react";
 
-import { QSP } from "@/config/qsp";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Link } from "@/shared/components/ui/link";
+import { QSP } from "@/shared/config/qsp";
 
 import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 import { useGetEvents } from "../domain/get-events.query";
 import { EventCard } from "./event-card";
@@ -60,7 +60,7 @@ export const NodeEvents = ({
 
   const filter = {
     name: "relatedNodeIds__value",
-    value: [{ id: objectId, display_label: displayLabelData.display_label }],
+    value: [{ id: objectId, display_label: getNodeLabel(displayLabelData) }],
   };
 
   return (

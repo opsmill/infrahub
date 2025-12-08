@@ -143,6 +143,7 @@ async def test_git_rpc_merge(
         destination_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         default_branch="main",
+        repository_kind=InfrahubKind.REPOSITORY,
     )
 
     client = InfrahubClient(config=Config(requester=dummy_async_request))

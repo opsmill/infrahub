@@ -64,4 +64,4 @@ async def get_diff_summary_cache(pipeline_id: UUID) -> list[NodeDiff]:
     if not summary_payload:
         raise ResourceNotFoundError(message=f"Diff summary for pipeline {pipeline_id} was not found in the cache")
 
-    return cast(list["NodeDiff"], json.loads(summary_payload))
+    return cast("list[NodeDiff]", json.loads(summary_payload))

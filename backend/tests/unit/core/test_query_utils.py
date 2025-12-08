@@ -3,11 +3,11 @@ from infrahub.core.query.utils import find_node_schema
 from infrahub.database import InfrahubDatabase
 
 
-async def test_find_node_schema(db: InfrahubDatabase, neo4j_factory, group_schema, branch) -> None:
-    n1 = neo4j_factory.hydrate_node(111, {"Node", "Group", InfrahubKind.STANDARDGROUP}, {"uuid": "n1"}, "111")
-    schema = find_node_schema(db=db, node=n1, branch=branch, duplicate=True)
+async def test_find_node_schema(db: InfrahubDatabase, group_schema, branch) -> None:
+    labels = ["Node", "Group", InfrahubKind.STANDARDGROUP]
+    schema = find_node_schema(db=db, branch=branch, labels=labels, duplicate=True)
     assert schema.kind == InfrahubKind.STANDARDGROUP
 
-    n2 = neo4j_factory.hydrate_node(122, {"Node", InfrahubKind.GENERICGROUP}, {"uuid": "n1"}, "122")
-    schema = find_node_schema(db=db, node=n2, branch=branch, duplicate=False)
+    labels = ["Node", InfrahubKind.GENERICGROUP]
+    schema = find_node_schema(db=db, branch=branch, labels=labels, duplicate=False)
     assert schema is None

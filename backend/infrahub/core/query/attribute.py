@@ -27,6 +27,7 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute,
+        user_id: str,
         attr_id: str | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | None = None,
@@ -34,11 +35,12 @@ class AttributeQuery(Query):
     ):
         self.attr = attr
         self.attr_id = attr_id or attr.db_id
+        self.user_id = user_id
 
         if at:
             self.at = Timestamp(at)
         else:
-            self.at = self.attr.at
+            self.at = Timestamp()
 
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
@@ -48,13 +50,14 @@ class AttributeQuery(Query):
 class AttributeUpdateValueQuery(AttributeQuery):
     name = "attribute_update_value"
     type: QueryType = QueryType.WRITE
-
-    raise_error_if_empty: bool = True
+    insert_return: bool = False
+    raise_error_if_empty: bool = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
+        self.params["user_id"] = self.user_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
@@ -73,22 +76,39 @@ class AttributeUpdateValueQuery(AttributeQuery):
             labels.append(GraphAttributeIPNetworkNode.get_default_label())
 
         query = """
-        MATCH (a:Attribute { uuid: $attr_uuid })
-        MERGE (av:%(labels)s { %(props)s } )
-        WITH av, a
-        LIMIT 1
-        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(av)
+MATCH (a:Attribute { uuid: $attr_uuid })
+MERGE (av:%(labels)s { %(props)s } )
+WITH av, a
+LIMIT 1
+// ----------
+// find the existing HAS_VALUE edge, if it exists, and set the to time and user_id
+// ---------
+OPTIONAL MATCH (a)-[existing_active_r:%(rel_label)s { branch: $branch, status: "active" }]->()
+WHERE existing_active_r.to IS NULL
+SET existing_active_r.to = $at, existing_active_r.to_user_id = $user_id
+WITH av, a
+LIMIT 1
+// ----------
+// create the new HAS_VALUE edge
+// ---------
+CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(av)
+// ----------
+// update the Attribute node with the new timestamp and user id if we are on the default or global branch
+// ---------
+WITH a
+WHERE $branch_level = 1
+LIMIT 1
+SET a.updated_at = $at, a.updated_by = $user_id
         """ % {"rel_label": self.attr._rel_to_value_label, "labels": ":".join(labels), "props": ", ".join(prop_list)}
 
         self.add_to_query(query)
-        self.return_labels = ["a", "av", "r"]
 
 
 class AttributeUpdateFlagQuery(AttributeQuery):
     name = "attribute_update_flag"
     type: QueryType = QueryType.WRITE
-
-    raise_error_if_empty: bool = True
+    insert_return: bool = False
+    raise_error_if_empty: bool = False
 
     def __init__(
         self,
@@ -108,6 +128,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
+        self.params["user_id"] = self.user_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
@@ -115,20 +136,37 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         self.params["flag_type"] = self.attr.get_kind()
 
         query = """
-        MATCH (a:Attribute { uuid: $attr_uuid })
-        MERGE (flag:Boolean { value: $flag_value })
-        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(flag)
-        """ % self.flag_name.upper()
-
+MATCH (a:Attribute { uuid: $attr_uuid })
+MERGE (flag:Boolean { value: $flag_value })
+WITH flag, a
+LIMIT 1
+// ----------
+// find the existing property edge, if it exists, and set the to time and user_id
+// ---------
+OPTIONAL MATCH (a)-[existing_active_r:%(flag_type)s { branch: $branch, status: "active" }]->()
+WHERE existing_active_r.to IS NULL
+SET existing_active_r.to = $at, existing_active_r.to_user_id = $user_id
+// ----------
+// create the new property edge
+// ---------
+WITH a, flag
+CREATE (a)-[r:%(flag_type)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(flag)
+// ----------
+// update the Attribute node with the new timestamp and user id if we are on the default or global branch
+// ---------
+WITH a
+WHERE $branch_level = 1
+LIMIT 1
+SET a.updated_at = $at, a.updated_by = $user_id
+        """ % {"flag_type": self.flag_name.upper()}
         self.add_to_query(query)
-        self.return_labels = ["a", "flag", "r"]
 
 
 class AttributeUpdateNodePropertyQuery(AttributeQuery):
     name = "attribute_update_node_property"
     type: QueryType = QueryType.WRITE
-
-    raise_error_if_empty: bool = True
+    insert_return: bool = False
+    raise_error_if_empty: bool = False
 
     def __init__(
         self,
@@ -147,6 +185,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
         self.params.update(branch_params)
         self.params["attr_uuid"] = self.attr.id
+        self.params["user_id"] = self.user_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
@@ -176,12 +215,28 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         self.add_to_query(node_query)
 
         attr_query = """
-        MATCH (a:Attribute { uuid: $attr_uuid })
-        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(np)
+MATCH (a:Attribute { uuid: $attr_uuid })
+// ----------
+// find the existing property edge, if it exists, and set the to time and user_id
+// ---------
+OPTIONAL MATCH (a)-[existing_active_r:%(rel_label)s { branch: $branch, status: "active" }]->()
+WHERE existing_active_r.to IS NULL
+SET existing_active_r.to = $at, existing_active_r.to_user_id = $user_id
+// ----------
+// create the new property edge
+// ---------
+WITH a, np
+LIMIT 1
+CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, from_user_id: $user_id }]->(np)
+// ----------
+// update the Attribute node with the new timestamp and user id if we are on the default or global branch
+// ---------
+WITH a
+WHERE $branch_level = 1
+LIMIT 1
+SET a.updated_at = $at, a.updated_by = $user_id
         """ % {"rel_label": rel_label}
         self.add_to_query(attr_query)
-
-        self.return_labels = ["a", "np", "r"]
 
 
 class AttributeClearNodePropertyQuery(AttributeQuery):
@@ -192,11 +247,9 @@ class AttributeClearNodePropertyQuery(AttributeQuery):
     def __init__(
         self,
         prop_name: str,
-        prop_id: str | None = None,
         **kwargs: Any,
     ):
         self.prop_name = prop_name
-        self.prop_id = prop_id
 
         super().__init__(**kwargs)
 
@@ -206,15 +259,14 @@ class AttributeClearNodePropertyQuery(AttributeQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=at)
         self.params.update(branch_params)
         self.params["attr_uuid"] = self.attr.id
+        self.params["user_id"] = self.user_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = at.to_string()
-        self.params["prop_name"] = self.prop_name
-        self.params["prop_id"] = self.prop_id
 
         rel_label = f"HAS_{self.prop_name.upper()}"
         query = """
-MATCH (a:Attribute { uuid: $attr_uuid })-[r:%(rel_label)s]->(np:Node { uuid: $prop_id })
+MATCH (a:Attribute { uuid: $attr_uuid })-[r:%(rel_label)s]->(np:Node)
 WITH DISTINCT a, np
 CALL (a, np) {
     MATCH (a)-[r:%(rel_label)s]->(np)
@@ -228,43 +280,108 @@ WHERE property_edge.status = "active"
 CALL (property_edge) {
     WITH property_edge
     WHERE property_edge.branch = $branch
-    SET property_edge.to = $at
+    SET property_edge.to = $at, property_edge.to_user_id = $user_id
 }
 CALL (a, np, property_edge) {
     WITH property_edge
     WHERE property_edge.branch_level < $branch_level
-    CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at }]->(np)
+    CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, from_user_id: $user_id }]->(np)
+}
+CALL (a) {
+    WITH a
+    WHERE $branch_level = 1
+    LIMIT 1
+    SET a.updated_at = $at, a.updated_by = $user_id
 }
         """ % {"branch_filter": branch_filter, "rel_label": rel_label}
         self.add_to_query(query)
 
 
-class AttributeGetQuery(AttributeQuery):
-    name = "attribute_get"
-    type: QueryType = QueryType.READ
+class AttributeDeleteQuery(AttributeQuery):
+    name = "attribute_delete"
+    type: QueryType = QueryType.WRITE
+    insert_return: bool = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["attr_uuid"] = self.attr.id
-        self.params["node_uuid"] = self.attr.node.id
+        self.params["user_id"] = self.user_id
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["branched_from"] = self.branch.get_branched_from()
+        self.params["at"] = self.at.to_string()
 
-        at = self.at or self.attr.at
-        self.params["at"] = at.to_string()
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
 
-        rels_filter, rels_params = self.branch.get_query_filter_path(at=at.to_string())
-        self.params.update(rels_params)
+        query = """
+MATCH (a:Attribute { uuid: $attr_uuid })
+CALL (a) {
+    WITH a
+    WHERE $branch_level = 1
+    LIMIT 1
+    SET a.updated_at = $at, a.updated_by = $user_id
+}
 
-        query = (
-            """
-        MATCH (a:Attribute { uuid: $attr_uuid })
-        MATCH p = ((a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap))
-        WHERE all(r IN relationships(p) WHERE ( %s ))
-        """
-            % rels_filter
-        )
-
+UNWIND [
+    ["HAS_ATTRIBUTE", "in"],
+    ["HAS_VALUE", "out"],
+    ["IS_VISIBLE", "out"],
+    ["IS_PROTECTED", "out"],
+    ["HAS_SOURCE", "out"],
+    ["HAS_OWNER", "out"]
+] AS edge_details
+WITH a, edge_details[0] AS property_type, edge_details[1] AS direction
+CALL (a, property_type, direction) {
+    MATCH (a)-[r]-(attr_peer)
+    WHERE type(r) = property_type
+    AND (
+        (direction = "in" AND startNode(r) = attr_peer)
+        OR (direction = "out" AND startNode(r) = a)
+    )
+    AND %(branch_filter)s
+    RETURN r AS property_edge, attr_peer
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+CALL (property_edge) {
+    WITH property_edge
+    WHERE property_edge.status = "active"
+    AND property_edge.branch = $branch
+    AND property_edge.to IS NULL
+    SET property_edge.to = $at, property_edge.to_user_id = $user_id
+}
+WITH a, property_edge, property_type, attr_peer, direction
+CALL (a, property_type, attr_peer, direction) {
+    WITH direction
+    WHERE direction = "out"
+    CREATE (a)
+        -[r:$(property_type) { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, from_user_id: $user_id }]
+        ->(attr_peer)
+}
+CALL (a, property_type, attr_peer, direction) {
+    WITH direction
+    WHERE direction = "in"
+    CREATE (a)
+        <-[r:$(property_type) { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, from_user_id: $user_id }]
+        -(attr_peer)
+}
+WITH CASE
+    WHEN property_type = "HAS_VALUE" THEN attr_peer.value
+    ELSE NULL
+END AS property_value
+WITH property_value
+RETURN property_value
+ORDER BY property_value ASC
+LIMIT 1
+        """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
+        self.return_labels = ["property_value"]
 
-        self.return_labels = ["a", "ap", "r2"]
+    def get_previous_property_value(self) -> Any:
+        result = self.get_result()
+        if result:
+            return result.get(label="property_value")
+        return None
 
 
 async def default_attribute_query_filter(
@@ -374,7 +491,7 @@ async def default_attribute_query_filter(
         if property_name not in [v.value for v in NodeProperty]:
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
 
-        if property_attr not in ["id"]:
+        if property_attr != "id":
             raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
 
         clean_filter_name = f"{property_name}_{property_attr}"

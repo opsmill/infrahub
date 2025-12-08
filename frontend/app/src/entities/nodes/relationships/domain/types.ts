@@ -7,7 +7,6 @@ export type RelationshipNode = {
 };
 
 export type RelationshipProperties = {
-  is_visible: boolean;
   is_protected: boolean;
   updated_at: Date;
   source: NodeCore | null;

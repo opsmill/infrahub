@@ -10,7 +10,7 @@ from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog
-from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision, SchemaPathType
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, PermissionDecision, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
@@ -18,7 +18,6 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
-from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
@@ -707,7 +706,6 @@ async def test_relationship_groups_add_remove(
     await g2.new(db=db, name="group2", members=[c2])
     await g2.save(db=db)
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -735,14 +733,10 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
-
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -770,9 +764,6 @@ async def test_relationship_groups_add_remove(
     )
 
     assert result.errors is None
-
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -782,7 +773,6 @@ async def test_relationship_groups_add_remove(
     members = await group2.members.get(db=db)
     assert len(members) == 1
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -811,14 +801,10 @@ async def test_relationship_groups_add_remove(
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
-
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -846,8 +832,6 @@ async def test_relationship_groups_add_remove(
     )
 
     assert result.errors is None
-    nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after - nbr_rels_before == 8
 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
@@ -1449,7 +1433,9 @@ async def test_relationship_add_remove_profiles(
     assert len(profiles) == 1
     assert profiles[0].peer_id == profile.id
 
-    person_updated = await NodeManager.get_one(db=db, id=person.id, branch=default_branch, include_source=True)
+    person_updated = await NodeManager.get_one(
+        db=db, id=person.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
     assert person_updated.height.value == 185
     assert person_updated.height.is_default is False
     assert person_updated.height.is_from_profile is True
@@ -1483,7 +1469,9 @@ async def test_relationship_add_remove_profiles(
 
     assert result.errors is None
 
-    person_final = await NodeManager.get_one(db=db, id=person.id, branch=default_branch, include_source=True)
+    person_final = await NodeManager.get_one(
+        db=db, id=person.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
     assert person_final.height.value is None
     assert person_final.height.is_default is True
     assert person_final.height.is_from_profile is False
@@ -1550,7 +1538,9 @@ async def test_relationship_add_remove_related_nodes(
 
     assert result.errors is None
 
-    person1_updated = await NodeManager.get_one(db=db, id=person1.id, branch=default_branch, include_source=True)
+    person1_updated = await NodeManager.get_one(
+        db=db, id=person1.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
     assert person1_updated.height.value == 185
     assert person1_updated.height.is_default is False
     assert person1_updated.height.is_from_profile is True
@@ -1558,7 +1548,9 @@ async def test_relationship_add_remove_related_nodes(
     assert source1 is not None
     assert source1.id == profile.id
 
-    person2_updated = await NodeManager.get_one(db=db, id=person2.id, branch=default_branch, include_source=True)
+    person2_updated = await NodeManager.get_one(
+        db=db, id=person2.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
     assert person2_updated.height.value == 185
     assert person2_updated.height.is_default is False
     assert person2_updated.height.is_from_profile is True
@@ -1592,14 +1584,18 @@ async def test_relationship_add_remove_related_nodes(
 
     assert result.errors is None
 
-    person1_final = await NodeManager.get_one(db=db, id=person1.id, branch=default_branch, include_source=True)
+    person1_final = await NodeManager.get_one(
+        db=db, id=person1.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
     assert person1_final.height.value is None
     assert person1_final.height.is_default is True
     assert person1_final.height.is_from_profile is False
     source1_final = await person1_final.height.get_source(db=db)
     assert source1_final is None
 
-    person2_final = await NodeManager.get_one(db=db, id=person2.id, branch=default_branch, include_source=True)
+    person2_final = await NodeManager.get_one(
+        db=db, id=person2.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE
+    )
     assert person2_final.height.value == 185
     assert person2_final.height.is_default is False
     assert person2_final.height.is_from_profile is True

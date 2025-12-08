@@ -1,0 +1,29 @@
+---
+title: Release 1.5.3
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.5.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 24th, 2025</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.5.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.5.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+<!-- vale off -->
+- Fixed bug that prevented retrieving cardinality-one relationships on a branch that was already merged and included changes to the relationship.
+  This bug would be visible to the user as errors that look like `ValidationError: Too many relationships, max 1 at field_name` ([#7338](https://github.com/opsmill/infrahub/issues/7338))
+- Enable caching of the task count in order to avoid performance issues when having a long task history. ([#7568](https://github.com/opsmill/infrahub/issues/7568))
+- Refactor task setup to avoid excessive tasks being scheduled for branches that previously didn't contain tasks. The updated behaviour is that the task will only be triggered on the branch if the task signature differs from that of the default branch. ([#7692](https://github.com/opsmill/infrahub/issues/7692))
+- Delete branch-aware human friendly ID and display label attributes from branch-agnostic nodes if they were erroneously added. Add branch-agnostic human friendly ID and display label attributes to branch-agnostic nodes and set their values. ([#7694](https://github.com/opsmill/infrahub/issues/7694))
+<!-- vale on -->

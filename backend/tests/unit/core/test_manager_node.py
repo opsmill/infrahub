@@ -4,6 +4,7 @@ import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
@@ -71,7 +72,7 @@ async def test_get_one_attribute_with_node_property(
     )
     await obj2.save(db=db)
 
-    obj = await NodeManager.get_one(db=db, id=obj2.id, include_source=True)
+    obj = await NodeManager.get_one(db=db, id=obj2.id, include_metadata=MetadataOptions.SOURCE)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id

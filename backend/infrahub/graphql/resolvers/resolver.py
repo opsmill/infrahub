@@ -17,7 +17,7 @@ from ..permissions import get_permissions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -149,7 +149,7 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: NodeSchema = (
+    schema: MainSchemaTypes = (
         info.return_type.of_type.graphene_type._meta.schema
         if isinstance(info.return_type, GraphQLNonNull)
         else info.return_type.graphene_type._meta.schema
@@ -195,8 +195,6 @@ async def default_paginated_list_resolver(
                 limit=limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_source=True,
-                include_owner=True,
                 partial_match=partial_match,
                 order=order,
             )

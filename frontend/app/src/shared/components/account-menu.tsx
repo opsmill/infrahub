@@ -4,20 +4,11 @@ import { useAtomValue } from "jotai";
 import { Link, useLocation } from "react-router";
 import { toast } from "react-toastify";
 
-import {
-  INFRAHUB_DISCORD_URL,
-  INFRAHUB_DOC_LOCAL,
-  INFRAHUB_GITHUB_URL,
-  INFRAHUB_SWAGGER_DOC_URL,
-} from "@/config/config";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
-import { AppVersion } from "@/shared/components/layout/app-version";
 import { Skeleton } from "@/shared/components/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
@@ -28,9 +19,17 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Spinner } from "@/shared/components/ui/spinner";
+import {
+  INFRAHUB_DISCORD_URL,
+  INFRAHUB_DOC_LOCAL,
+  INFRAHUB_GITHUB_URL,
+  INFRAHUB_SWAGGER_DOC_URL,
+} from "@/shared/config/config";
+import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import { useLogoutMutation } from "@/entities/authentication/domain/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { AppInfo } from "@/entities/config/ui/app-info";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
@@ -139,7 +138,7 @@ const UnauthenticatedAccountMenu = () => {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuDivider />
-        <AppVersion />
+        <AppInfo />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -212,7 +211,7 @@ const AuthenticatedAccountMenu = ({ schema }: { schema: ModelSchema }) => {
           Logout
         </DropdownMenuItem>
         <DropdownMenuDivider />
-        <AppVersion />
+        <AppInfo />
       </DropdownMenuContent>
     </DropdownMenu>
   );

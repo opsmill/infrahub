@@ -86,6 +86,7 @@
         "noArguments": "off"
       },
       "correctness": {
+        "useImageSize": "off",
         "noUndeclaredDependencies": "error",
         "noUndeclaredVariables": "off",
         "noUnusedFunctionParameters": "error",
@@ -104,13 +105,11 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
+        "useFind": "error",
         "useConsistentArrowReturn": "off",
-        "useConsistentTypeDefinitions": "off",
         "useExhaustiveSwitchCases": "off",
-        "useImageSize": "off",
         "noUnnecessaryConditions": "off",
         "useMaxParams": "off",
-        "noNonNullAssertedOptionalChain": "off",
         "noReactForwardRef": "off",
         "noShadow": "off"
       },
@@ -134,6 +133,7 @@
         "useBlockStatements": "off",
         "useConsistentArrayType": "off",
         "useConsistentBuiltinInstantiation": "off",
+        "useConsistentTypeDefinitions": "off",
         "useConst": "off",
         "useDefaultSwitchClause": "off",
         "useEnumInitializers": "off",
@@ -157,6 +157,7 @@
         },
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",
+        "noNonNullAssertedOptionalChain": "off",
         "noUnknownAtRules": "off",
         "noEvolvingTypes": "off",
         "noExplicitAny": "off",
@@ -194,5 +195,5 @@
       "enabled": true
     }
   },
-  "extends": ["ultracite"]
+  "extends": ["ultracite/core", "ultracite/react"]
 }

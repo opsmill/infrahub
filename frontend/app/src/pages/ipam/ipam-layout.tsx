@@ -4,8 +4,6 @@ import { SidebarIcon } from "lucide-react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router";
 
-import { IPAM_TREE_KEY } from "@/config/localStorage";
-
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
@@ -18,6 +16,7 @@ import {
 } from "@/shared/components/ui/resizable";
 import { classNames } from "@/shared/utils/common";
 
+import { IPAM_TREE_KEY } from "@/entities/ipam/constants";
 import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";
 import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { IpamTreeWithSearch } from "@/entities/ipam/ipam-tree/ui/ipam-tree-with-search";
