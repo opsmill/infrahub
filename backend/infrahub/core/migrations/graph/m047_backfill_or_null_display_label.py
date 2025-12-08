@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.template import Jinja2Template
@@ -31,28 +30,12 @@ if TYPE_CHECKING:
 console = get_migration_console()
 
 
-def _extract_jinja2_variables_in_order(template_str: str) -> list[str]:
-    """Extract Jinja2 variables from a template string in the order they appear.
-
-    I do not like this but, it seems that using Jinja2's built-in functions does not guarantee order.
-    It's probably fine though since we know that the template is valid as it has been validated before.
-    """
-    pattern = r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?:\s*\|[^}]*)?\s*\}\}"
-    matches = re.finditer(pattern, template_str)
-
-    seen: set[str] = set()
-    result: list[str] = []
-    for match in matches:
-        var_name = match.group(1)
-        if var_name not in seen:
-            seen.add(var_name)
-            result.append(var_name)
-
-    return result
-
-
 def _is_jinja2_template(display_label: str) -> bool:
     return any(c in display_label for c in "{}")
+
+
+def _extract_jinja2_variables(template_str: str) -> list[str]:
+    return Jinja2Template(template=template_str).get_variables()
 
 
 async def _render_display_label(display_label: str, variable_names: list[str], values: list[Any]) -> str | None:
@@ -413,7 +396,7 @@ class Migration047(MigrationRequiringRebase):
             return [schema_path]
 
         schema_paths = []
-        for variable in _extract_jinja2_variables_in_order(schema.display_label):
+        for variable in _extract_jinja2_variables(schema.display_label):
             schema_path = schema.parse_schema_path(path=variable, schema=schema_branch)
             schema_paths.append(schema_path)
 
@@ -436,7 +419,6 @@ class Migration047(MigrationRequiringRebase):
         if not schema_paths:
             return
 
-        variable_names = _extract_jinja2_variables_in_order(schema.display_label)
         offset = 0
 
         # loop until we get no results from the get_details_query
@@ -471,7 +453,9 @@ class Migration047(MigrationRequiringRebase):
                     continue
 
                 rendered_value = await _render_display_label(
-                    display_label=schema.display_label, variable_names=variable_names, values=v
+                    display_label=schema.display_label,
+                    variable_names=[s.attribute_path_as_str for s in schema_paths],
+                    values=v,
                 )
                 if rendered_value is not None:
                     formatted_schema_path_values_map[k] = rendered_value
