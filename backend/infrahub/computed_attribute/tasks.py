@@ -42,8 +42,10 @@ mutation UpdateAttribute(
     $kind: String!,
     $attribute: String!,
     $value: String!
+    $context_account_id: String!
   ) {
   InfrahubUpdateComputedAttribute(
+    context: {account: {id: $context_account_id}},
     data: {id: $id, attribute: $attribute, value: $value, kind: $kind}
   ) {
     ok
@@ -62,7 +64,7 @@ async def process_transform(
     object_id: str,
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[object_id])
@@ -124,7 +126,13 @@ async def process_transform(
 
         await client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
-            variables={"id": object_id, "kind": node_kind, "attribute": attribute_name, "value": transformed_data},
+            variables={
+                "id": object_id,
+                "kind": node_kind,
+                "attribute": attribute_name,
+                "value": transformed_data,
+                "context_account_id": context.account.account_id,
+            },
             branch_name=branch_name,
         )
 
@@ -168,6 +176,7 @@ async def computed_attribute_jinja2_update_value(
     node_kind: str,
     attribute_name: str,
     template: Jinja2Template,
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -182,7 +191,13 @@ async def computed_attribute_jinja2_update_value(
     try:
         await client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
-            variables={"id": obj.node_id, "kind": node_kind, "attribute": attribute_name, "value": value},
+            variables={
+                "id": obj.node_id,
+                "kind": node_kind,
+                "attribute": attribute_name,
+                "value": value,
+                "context_account_id": context.account.account_id,
+            },
             branch_name=branch_name,
         )
         log.info(f"Updating computed attribute {node_kind}.{attribute_name}='{value}' ({obj.node_id})")
@@ -202,7 +217,7 @@ async def process_jinja2(
     object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
     updated_fields: list[str] | None = None,
 ) -> None:
     log = get_run_logger()
@@ -258,6 +273,7 @@ async def process_jinja2(
                 node_kind=node_schema.kind,
                 attribute_name=computed_macro.attribute.name,
                 template=jinja_template,
+                context=context,
             )
 
         _ = [response async for _, response in batch.execute()]
@@ -462,6 +478,7 @@ async def query_transform_targets(
                         "object_id": subscriber.object_id,
                         "computed_attribute_name": computed_attribute.name,
                         "computed_attribute_kind": subscriber.kind,
+                        "context": context,
                     },
                 )
 

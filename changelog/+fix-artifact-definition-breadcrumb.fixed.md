@@ -1,0 +1,1 @@
+Fix breadcrumb display on CoreArtifactDefinition details page.

@@ -16,7 +16,7 @@ export function BreadcrumbObjects() {
   const { pathname } = useLocation();
 
   // For CoreArtifact route, objectKind is hardcoded in the path
-  const isArtifactRoute = pathname.includes(`/objects/${ARTIFACT_OBJECT}`);
+  const isArtifactRoute = pathname.includes(`/objects/${ARTIFACT_OBJECT}/`);
   const actualObjectKind = isArtifactRoute ? ARTIFACT_OBJECT : objectKind;
 
   const { schema, isProfile, isTemplate } = useSchema(actualObjectKind);

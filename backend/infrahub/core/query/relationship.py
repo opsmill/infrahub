@@ -108,9 +108,6 @@ class RelationshipPeerData:
     is_from_profile: bool = False
     profile_id: UUID | None = None
 
-    is_from_profile: bool = False
-    profile_id: UUID | None = None
-
     def rel_ids_per_branch(self) -> dict[str, list[str | int]]:
         response = defaultdict(list)
         for rel in self.rels:

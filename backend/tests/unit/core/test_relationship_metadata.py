@@ -73,6 +73,21 @@ class TestRelationshipMetadata:
         )
         return {rel.get_peer_id(): rel for rel in relationships}
 
+    async def _validate_node_metadata(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        node_id: str,
+        update_time_range: tuple[Timestamp, Timestamp],
+        updated_by: str,
+    ) -> None:
+        """Validate Node-level _get_updated_at and _get_updated_by metadata."""
+        node = await NodeManager.get_one(
+            db=db, branch=branch, id=node_id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
+        assert update_time_range[0] < node._get_updated_at() < update_time_range[1]
+        assert node._get_updated_by() == updated_by
+
     async def _validate_relationship_metadata(
         self,
         db: InfrahubDatabase,
@@ -191,6 +206,14 @@ class TestRelationshipMetadata:
         assert len(tags_rels_map) == 2
         for tag_rel in tags_rels_map.values():
             self._validate_rel_metadata(tag_rel, (self.before_create, self.after_create), SYSTEM_USER_ID, None, None)
+        # validate initial node-level metadata
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(self.before_create, self.after_create),
+            updated_by=SYSTEM_USER_ID,
+        )
 
         # Set the source and owner properties on both relationships on the default branch
         fresh_person = await NodeManager.get_one(db=db, branch=default_branch, id=self.person_id)
@@ -213,6 +236,14 @@ class TestRelationshipMetadata:
             updated_by="first-update",
             source_id=first_account.id,
             owner_id=second_account.id,
+        )
+        # validate node-level metadata after first update
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_first_update, after_first_update),
+            updated_by="first-update",
         )
 
         branch = await create_branch(db=db, branch_name="branch2")
@@ -239,6 +270,14 @@ class TestRelationshipMetadata:
             source_id=second_account.id,
             owner_id=first_account.id,
         )
+        # validate node-level metadata after second update on default branch
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_update, after_update),
+            updated_by="second-update",
+        )
         # validate that properties and metadata on branch remain the same
         await self._validate_relationship_metadata(
             db=db,
@@ -248,6 +287,14 @@ class TestRelationshipMetadata:
             updated_by="first-update",
             source_id=first_account.id,
             owner_id=second_account.id,
+        )
+        # validate node-level metadata on branch remains the same as first update
+        await self._validate_node_metadata(
+            db=db,
+            branch=branch,
+            node_id=self.person_id,
+            update_time_range=(before_first_update, after_first_update),
+            updated_by="first-update",
         )
 
         # Update the source and owner properties on the branch
@@ -273,6 +320,14 @@ class TestRelationshipMetadata:
             source_id=second_account.id,
             owner_id=first_account.id,
         )
+        # validate node-level metadata on default branch remains unchanged
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_update, after_update),
+            updated_by="second-update",
+        )
         # Validate that branch now has the updated source and owner and metadata
         await self._validate_relationship_metadata(
             db=db,
@@ -282,6 +337,14 @@ class TestRelationshipMetadata:
             updated_by="first-branch-update",
             source_id=second_account.id,
             owner_id=first_account.id,
+        )
+        # validate node-level metadata on branch reflects the branch update
+        await self._validate_node_metadata(
+            db=db,
+            branch=branch,
+            node_id=self.person_id,
+            update_time_range=(before_branch_update, after_branch_update),
+            updated_by="first-branch-update",
         )
 
         # clear the source and owner properties on both relationships on the default branch
@@ -306,6 +369,14 @@ class TestRelationshipMetadata:
             source_id=None,
             owner_id=None,
         )
+        # validate node-level metadata on default branch after third update
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_update, after_update),
+            updated_by="third-update",
+        )
         # Validate that branch keeps the same metadata
         await self._validate_relationship_metadata(
             db=db,
@@ -315,6 +386,14 @@ class TestRelationshipMetadata:
             updated_by="first-branch-update",
             source_id=second_account.id,
             owner_id=first_account.id,
+        )
+        # validate node-level metadata on branch remains unchanged
+        await self._validate_node_metadata(
+            db=db,
+            branch=branch,
+            node_id=self.person_id,
+            update_time_range=(before_branch_update, after_branch_update),
+            updated_by="first-branch-update",
         )
 
         # clear the source and owner on the branch
@@ -340,6 +419,14 @@ class TestRelationshipMetadata:
             source_id=None,
             owner_id=None,
         )
+        # validate node-level metadata on branch after second branch update
+        await self._validate_node_metadata(
+            db=db,
+            branch=branch,
+            node_id=self.person_id,
+            update_time_range=(before_branch_update_2, after_branch_update_2),
+            updated_by="second-branch-update",
+        )
         # validate that default_branch still has cleared source and owner from before
         await self._validate_relationship_metadata(
             db=db,
@@ -349,6 +436,14 @@ class TestRelationshipMetadata:
             updated_by="third-update",
             source_id=None,
             owner_id=None,
+        )
+        # validate node-level metadata on default branch remains unchanged
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_update, after_update),
+            updated_by="third-update",
         )
 
     def _validate_rel_metadata_peer_and_protected(
@@ -424,6 +519,14 @@ class TestRelationshipMetadata:
             for tag_rel in tag_rels
         ]
         self._validate_rel_metadata_peer_and_protected(tag_rels, tag_metadatas)
+        # validate initial node-level metadata
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(self.before_create, self.after_create),
+            updated_by=SYSTEM_USER_ID,
+        )
 
         # Set is_protected on both relationships on the default branch
         fresh_person = await NodeManager.get_one(db=db, branch=default_branch, id=self.person_id)
@@ -465,6 +568,14 @@ class TestRelationshipMetadata:
             ),
         ]
         self._validate_rel_metadata_peer_and_protected(list(tags_rels_map.values()), tags_metadata_main_1)
+        # validate node-level metadata after first update
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_first_update, after_first_update),
+            updated_by="first-update",
+        )
 
         branch = await create_branch(db=db, branch_name="branch2")
 
@@ -507,12 +618,28 @@ class TestRelationshipMetadata:
             ),
         ]
         self._validate_rel_metadata_peer_and_protected(list(tags_rels_map.values()), tags_metadata_main_2)
+        # validate node-level metadata on default branch after second update
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_update, after_update),
+            updated_by="second-update",
+        )
         # validate primary_tag relationship remains unchanged on branch
         primary_tag_rel = await self._get_primary_tag_rel(db=db, branch=branch)
         self._validate_rel_metadata_peer_and_protected([primary_tag_rel], [primary_tag_metadata_main_1])
         # validate tags relationships remain unchanged on branch
         tags_rels_map = await self._get_tags_rels(db=db, branch=branch)
         self._validate_rel_metadata_peer_and_protected(list(tags_rels_map.values()), tags_metadata_main_1)
+        # validate node-level metadata on branch remains unchanged
+        await self._validate_node_metadata(
+            db=db,
+            branch=branch,
+            node_id=self.person_id,
+            update_time_range=(before_first_update, after_first_update),
+            updated_by="first-update",
+        )
 
         # Update is_protected status on the primary_tag relationship and one of the peers in the tags relationship on branch
         fresh_person_branch = await NodeManager.get_one(db=db, branch=branch, id=self.person_id)
@@ -553,8 +680,24 @@ class TestRelationshipMetadata:
             ),
         ]
         self._validate_rel_metadata_peer_and_protected(list(tags_rels_map.values()), tags_metadata_branch)
+        # validate node-level metadata on branch after branch update
+        await self._validate_node_metadata(
+            db=db,
+            branch=branch,
+            node_id=self.person_id,
+            update_time_range=(before_branch_update, after_branch_update),
+            updated_by="branch-update-1",
+        )
         # Validate that no changes were made on the default branch
         primary_tag_rel = await self._get_primary_tag_rel(db=db, branch=default_branch)
         self._validate_rel_metadata_peer_and_protected([primary_tag_rel], [primary_tag_metadata_main_2])
         tags_rels_map = await self._get_tags_rels(db=db, branch=default_branch)
         self._validate_rel_metadata_peer_and_protected(list(tags_rels_map.values()), tags_metadata_main_2)
+        # validate node-level metadata on default branch remains unchanged
+        await self._validate_node_metadata(
+            db=db,
+            branch=default_branch,
+            node_id=self.person_id,
+            update_time_range=(before_update, after_update),
+            updated_by="second-update",
+        )
