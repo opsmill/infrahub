@@ -1074,7 +1074,7 @@ class RelationshipManager:
 
         peers = await self.get_db_peers(db=db, at=at, branch_agnostic=branch_agnostic)
 
-        self.is_from_profile = any(peer.is_from_profile for peer in peers)
+        self.is_from_profile = bool(peers) and all(peer.is_from_profile for peer in peers)
 
         peers_database = {str(peer.peer_id): peer for peer in peers}
         peer_ids = list(peers_database.keys())
