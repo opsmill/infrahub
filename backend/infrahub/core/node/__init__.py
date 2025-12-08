@@ -801,7 +801,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self.id = id or str(UUIDT())
 
         await self._process_fields(db=db, fields=kwargs, process_pools=process_pools)
-        print(f"Processed fields for new node {self}")
         await self._process_macros(db=db)
 
         return self
