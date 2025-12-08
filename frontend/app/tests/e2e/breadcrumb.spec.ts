@@ -85,6 +85,17 @@ test.describe("Breadcrumb Navigation", () => {
       await expect(breadcrumb.getByRole("link", { name: "atl1-core2" })).toBeVisible();
       await expect(page.getByTestId("object-header").getByText("atl1-core2")).toBeVisible();
     });
+
+    test("should display object kind in breadcrumb on artifact pages", async ({ page }) => {
+      await page.goto("/objects/CoreArtifact");
+      const breadcrumb = page.getByTestId("breadcrumb-navigation");
+      await expect(breadcrumb.getByRole("link", { name: "Artifact" })).toBeVisible();
+
+      await page.getByRole("link", { name: "openconfig-interfaces" }).first().click();
+
+      await expect(breadcrumb.getByRole("link", { name: "Artifact" })).toBeVisible();
+      await expect(breadcrumb.getByRole("link", { name: "openconfig-interfaces" })).toBeVisible();
+    });
   });
 
   test.describe("/profile - Account Profile breadcrumb", () => {
