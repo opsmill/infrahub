@@ -48,6 +48,7 @@ export const getRelationshipDefaultValue = ({
   }
 
   if (relationshipData) {
+    console.log("relationshipData: ", relationshipData);
     return getRelationshipDefaultValueFromData(relationshipData, relationshipName);
   }
 
@@ -168,26 +169,35 @@ export const getRelationshipDefaultValueFromData = (
       )
       .filter((n) => !!n);
 
-    // Check if any edge has a profile source
-    const edgeWithSource = relationshipData.edges.find(
+    // Check if all edges have a profile source
+    const edgesWithSource = relationshipData.edges.filter(
       (edge) => edge.properties?.source?.__typename
     );
 
-    if (edgeWithSource?.properties?.source?.__typename) {
-      const sourceKind = edgeWithSource.properties.source.__typename;
+    if (edgesWithSource.length > 0 && edgesWithSource.length === relationshipData.edges.length) {
+      // All edges have a source - check if they're all from profiles
       const profileSchemas = store.get(profileSchemasAtom);
-      const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
+      const allFromProfile = edgesWithSource.every((edge) => {
+        const sourceKind = edge.properties?.source?.__typename;
+        if (!sourceKind) return false;
+        const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
+        return profileSchema && isProfileSchema(profileSchema);
+      });
 
-      if (profileSchema && isProfileSchema(profileSchema)) {
-        return {
-          source: {
-            type: "profile",
-            label: edgeWithSource.properties.source.display_label ?? null,
-            id: edgeWithSource.properties.source.id as string,
-            kind: sourceKind,
-          },
-          value: values,
-        };
+      if (allFromProfile) {
+        // Use the first edge's source as the profile source
+        const firstEdgeSource = edgesWithSource[0]?.properties?.source;
+        if (firstEdgeSource?.__typename) {
+          return {
+            source: {
+              type: "profile",
+              label: firstEdgeSource.display_label ?? null,
+              id: firstEdgeSource.id as string,
+              kind: firstEdgeSource.__typename,
+            },
+            value: values,
+          };
+        }
       }
     }
 
@@ -336,6 +346,7 @@ export const getRelationshipDefaultValueFromProfiles = (
   relationshipName: string | undefined,
   profiles: Array<ProfileData>
 ): RelationshipValueFromProfile | null => {
+  console.log("relationshipName: ", relationshipName);
   if (!relationshipName) return null;
 
   // Get value from profiles depending on the priority
@@ -353,6 +364,7 @@ export const getRelationshipDefaultValueFromProfiles = (
     return hasRelationshipValue(profileRelationshipData);
   });
 
+  console.log("profileWithDefaultValueForField: ", profileWithDefaultValueForField);
   if (!profileWithDefaultValueForField) return null;
 
   const relationshipData = profileWithDefaultValueForField[
