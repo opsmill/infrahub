@@ -96,7 +96,7 @@ dev = [
     "ruff==0.14.5",
     "invoke==2.2.0",
     "pytest-benchmark>=4.0.0,<5",
-    "pytest-codspeed>=2.2.0,<3",
+    "pytest-codspeed>=4.2.0,<5",
     "polyfactory==2.16.2",
     "towncrier>=24.8,<25",
     "pytest-env>=1.1.3,<2",
