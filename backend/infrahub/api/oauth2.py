@@ -12,10 +12,12 @@ from opentelemetry import trace
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
 from infrahub.auth import (
+    SSOStateCache,
     get_groups_from_provider,
     signin_sso_account,
     validate_auth_response,
 )
+from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.exceptions import ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -42,6 +44,7 @@ async def authorize(request: Request, provider_name: str, final_url: str | None 
     with trace.get_tracer(__name__).start_as_current_span("sso_oauth2_client_configuration") as span:
         span.set_attribute("provider_name", provider_name)
         span.set_attribute("scopes", provider.scopes)
+        span.set_attribute("pkce_enabled", provider.pkce_enabled)
 
         client = AsyncOAuth2Client(
             client_id=provider.client_id,
@@ -52,14 +55,32 @@ async def authorize(request: Request, provider_name: str, final_url: str | None 
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
     final_url = final_url or config.SETTINGS.main.public_url or str(request.base_url)
 
+    # Generate PKCE parameters if enabled
+    code_verifier = None
+    pkce_params: dict[str, str] = {}
+    if provider.pkce_enabled:
+        code_verifier = generate_code_verifier()
+        code_challenge = compute_code_challenge(code_verifier)
+        pkce_params = {
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        }
+
     authorization_uri, state = client.create_authorization_url(
-        url=provider.authorization_url, redirect_uri=redirect_uri, scope=provider.scopes, final_url=final_url
+        url=provider.authorization_url,
+        redirect_uri=redirect_uri,
+        scope=provider.scopes,
+        final_url=final_url,
+        **pkce_params,
     )
 
     service: InfrahubServices = request.app.state.service
 
+    cache_data = SSOStateCache(final_url=final_url, code_verifier=code_verifier)
     await service.cache.set(
-        key=f"security:oauth2:provider:{provider_name}:state:{state}", value=final_url, expires=KVTTL.TWO_HOURS
+        key=f"security:oauth2:provider:{provider_name}:state:{state}",
+        value=cache_data.model_dump_json(),
+        expires=KVTTL.TWO_HOURS,
     )
 
     if config.SETTINGS.dev.frontend_redirect_sso:
@@ -82,19 +103,25 @@ async def token(
     service: InfrahubServices = request.app.state.service
 
     cache_key = f"security:oauth2:provider:{provider_name}:state:{state}"
-    stored_final_url = await service.cache.get(key=cache_key)
+    cached_data = await service.cache.get(key=cache_key)
     await service.cache.delete(key=cache_key)
 
-    if not stored_final_url:
+    if not cached_data:
         raise ProcessingError(message="Invalid 'state' parameter")
 
-    token_data = {
+    sso_state = SSOStateCache.model_validate_json(cached_data)
+
+    token_data: dict[str, str | None] = {
         "code": code,
         "client_id": provider.client_id,
         "client_secret": provider.client_secret,
         "redirect_uri": _get_redirect_url(request=request, provider_name=provider_name),
         "grant_type": "authorization_code",
     }
+
+    # Add code_verifier if PKCE was used
+    if sso_state.code_verifier:
+        token_data["code_verifier"] = sso_state.code_verifier
 
     token_response = await service.http.post(provider.token_url, data=token_data)
     validate_auth_response(response=token_response, provider_type="OAuth 2.0")
@@ -139,5 +166,5 @@ async def token(
     )
 
     return models.UserTokenWithUrl(
-        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=stored_final_url
+        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=sso_state.final_url
     )

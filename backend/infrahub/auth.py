@@ -51,6 +51,17 @@ class AccountSession(BaseModel):
         return self.auth_type == AuthType.JWT
 
 
+class SSOStateCache(BaseModel):
+    """Cache data stored during OAuth2/OIDC authorization flow.
+
+    This model is used to store state information between the authorization
+    request and the token exchange, including PKCE code_verifier when enabled.
+    """
+
+    final_url: str
+    code_verifier: str | None = None
+
+
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
     account = await NodeManager.get_one(db=db, kind=CoreGenericAccount, id=account_id, raise_on_error=True)
     if account.status.value != AccountStatus.ACTIVE.value:
