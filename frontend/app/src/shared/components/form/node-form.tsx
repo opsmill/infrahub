@@ -60,8 +60,6 @@ export const NodeForm = ({
 
   if (isPending) return <LoadingIndicator className="my-4" />;
 
-  console.log("---");
-  console.log("currentObject: ", currentObject);
   const fields = getFormFieldsFromSchema({
     schema,
     profiles,
