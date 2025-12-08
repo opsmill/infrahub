@@ -48,7 +48,6 @@ export const getRelationshipDefaultValue = ({
   }
 
   if (relationshipData) {
-    console.log("relationshipData: ", relationshipData);
     return getRelationshipDefaultValueFromData(relationshipData, relationshipName);
   }
 
@@ -346,7 +345,6 @@ export const getRelationshipDefaultValueFromProfiles = (
   relationshipName: string | undefined,
   profiles: Array<ProfileData>
 ): RelationshipValueFromProfile | null => {
-  console.log("relationshipName: ", relationshipName);
   if (!relationshipName) return null;
 
   // Get value from profiles depending on the priority
@@ -364,7 +362,6 @@ export const getRelationshipDefaultValueFromProfiles = (
     return hasRelationshipValue(profileRelationshipData);
   });
 
-  console.log("profileWithDefaultValueForField: ", profileWithDefaultValueForField);
   if (!profileWithDefaultValueForField) return null;
 
   const relationshipData = profileWithDefaultValueForField[
