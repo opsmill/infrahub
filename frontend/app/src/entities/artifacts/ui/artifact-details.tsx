@@ -20,7 +20,7 @@ export interface ArtifactsDetailsProps {
 }
 
 export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetailsProps) {
-  const artifactKind = artifactSchema.kind as string;
+  const artifactKind = artifactSchema.kind!;
   const { isPending, error, data } = useGetObject({
     objectSchema: artifactSchema,
     objectId: artifactId,
