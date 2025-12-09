@@ -24,13 +24,9 @@ interface ObjectDetailsTabsProps {
 export function ObjectDetailsTabs({ schema, objectData, permission }: ObjectDetailsTabsProps) {
   const [qspTab] = useQueryState(QSP.TAB);
 
-  const isTaskTarget = isOfKind(TASK_TARGET, schema);
-  const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, schema);
-
-  const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
-
   const objectId = objectData.id;
   const objectKind = objectData.__typename;
+  const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
 
   return (
     <header className="flex items-center border-gray-200 border-b px-2">
@@ -49,8 +45,10 @@ export function ObjectDetailsTabs({ schema, objectData, permission }: ObjectDeta
               />
             );
           })}
-          {isTaskTarget && <ObjectTaskTab objectId={objectId} />}
-          {isRepository && <RepositoryObjectsTab objectId={objectId} />}
+          {isOfKind(TASK_TARGET, schema) && <ObjectTaskTab objectId={objectId} />}
+          {isOfKind(GENERIC_REPOSITORY_KIND, schema) && (
+            <RepositoryObjectsTab objectId={objectId} />
+          )}
         </div>
       </ScrollArea>
 
