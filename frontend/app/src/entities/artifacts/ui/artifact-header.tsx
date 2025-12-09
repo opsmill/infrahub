@@ -8,7 +8,7 @@ interface ArtifactHeaderProps {
   artifact: ArtifactObject;
 }
 
-const ArtifactHeader = ({ artifact }: ArtifactHeaderProps) => {
+export function ArtifactHeader({ artifact }: ArtifactHeaderProps) {
   return (
     <div className="flex items-center gap-2">
       <h1 className="font-bold text-xl">{getNodeLabel(artifact)}</h1>
@@ -26,6 +26,4 @@ const ArtifactHeader = ({ artifact }: ArtifactHeaderProps) => {
       </div>
     </div>
   );
-};
-
-export default ArtifactHeader;
+}
