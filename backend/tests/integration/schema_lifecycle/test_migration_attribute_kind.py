@@ -240,12 +240,16 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "text_area_value": False,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
                 "text_value": True,
                 "text_area_value": False,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
         }
         await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
@@ -284,12 +288,16 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "text_area_value": False,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
                 "text_value": False,
                 "text_area_value": False,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
         }
         await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
@@ -325,12 +333,16 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "text_area_value": True,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
                 "text_value": False,
                 "text_area_value": True,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
         }
         await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
@@ -352,12 +364,16 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "text_area_value": True,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
                 "text_value": False,
                 "text_area_value": True,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
         }
         await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)
@@ -379,12 +395,16 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
                 "text_area_value": False,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
             (THING_KIND, initial_objects["thing_two"].id): {
                 "text_value": False,
                 "text_area_value": False,
                 "list_value": False,
                 "url_value": True,
+                "display_label": True,
+                "human_friendly_id": True,
             },
         }
         await self.validate_indexed_state(db=db, branch=branch, kind_index_map=kind_index_map)

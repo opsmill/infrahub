@@ -314,6 +314,38 @@ async def test_display_label(
     assert await obj.get_display_label(db=db) == expected
 
 
+async def test_display_label_unset(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
+    schema_01 = {
+        "name": "Display",
+        "namespace": "Test",
+        "attributes": [
+            {"name": "firstname", "kind": "Text"},
+            {"name": "lastname", "kind": "Text"},
+            {"name": "age", "kind": "Number"},
+            {"name": "color", "kind": "Text", "enum": ["blue", "red"], "default_value": "red"},
+            {"name": "height", "kind": "Number", "enum": [170, 180], "default_value": 170},
+        ],
+    }
+
+    kind = f"{schema_01['namespace']}{schema_01['name']}"
+    registry.schema.set(name=kind, schema=NodeSchema(**schema_01))
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    node_schema = registry.schema.get_node_schema(name=kind, duplicate=False)
+
+    obj = await Node.init(db=db, schema=node_schema)
+    await obj.new(db=db, firstname="John", lastname="Doe", age=99)
+    await obj.save(db=db)
+
+    assert obj.has_display_label()
+    assert await obj.get_display_label(db=db) == f"TestDisplay(ID: {obj.id})"
+
+    obj = await NodeManager.get_one(db=db, kind=node_schema.kind, id=obj.id)
+
+    assert obj.has_display_label()
+    assert await obj.get_display_label(db=db) == f"TestDisplay(ID: {obj.id})"
+
+
 async def test_get_hfid(db: InfrahubDatabase, default_branch, animal_person_schema) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")

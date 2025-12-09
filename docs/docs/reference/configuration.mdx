@@ -205,8 +205,9 @@ Configuration settings for the message bus.
 |------|-------------|------|---------|
 | `INFRAHUB_OAUTH2_GOOGLE_ICON` | None | string | mdi:google |
 | `INFRAHUB_OAUTH2_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OAUTH2_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OAUTH2_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
-| `INFRAHUB_OAUTH2_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OAUTH2_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_GOOGLE_AUTHORIZATION_URL` | None | string | https://accounts.google.com/o/oauth2/auth |
 | `INFRAHUB_OAUTH2_GOOGLE_TOKEN_URL` | None | string | https://oauth2.googleapis.com/token |
 | `INFRAHUB_OAUTH2_GOOGLE_USERINFO_URL` | None | string | https://www.googleapis.com/oauth2/v3/userinfo |
@@ -216,8 +217,9 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_GOOGLE_CLOUDIDENTITY_URL` | Google Cloud endpoint for Cloud Identity. Using searchDirectGroups by default because it is available for the Free plan | string | https://cloudidentity.googleapis.com/v1/groups/-/memberships:searchDirectGroups |
 | `INFRAHUB_OAUTH2_PROVIDER1_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OAUTH2_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
-| `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL` | None | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_TOKEN_URL` | None | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER1_USERINFO_URL` | None | string | None |
@@ -225,8 +227,9 @@ Configuration settings for the message bus.
 | `INFRAHUB_OAUTH2_PROVIDER1_DISPLAY_LABEL` | None | string | Single Sign on |
 | `INFRAHUB_OAUTH2_PROVIDER2_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OAUTH2_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OAUTH2_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
-| `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OAUTH2_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_AUTHORIZATION_URL` | None | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_TOKEN_URL` | None | string | None |
 | `INFRAHUB_OAUTH2_PROVIDER2_USERINFO_URL` | None | string | None |
@@ -240,8 +243,9 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_GOOGLE_ICON` | None | string | mdi:google |
 | `INFRAHUB_OIDC_GOOGLE_DISPLAY_LABEL` | None | string | Google |
 | `INFRAHUB_OIDC_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OIDC_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
-| `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_GOOGLE_DISCOVERY_URL` | None | string | https://accounts.google.com/.well-known/openid-configuration |
 | `INFRAHUB_OIDC_GOOGLE_SCOPES` | None | array[string] | None |
 | `INFRAHUB_OIDC_GOOGLE_FETCH_GROUPS` | Whether to use Cloud Identity API to fetch user groups. Note: requires additional scope: https://www.googleapis.com/auth/cloud-identity.groups.readonly | boolean | False |
@@ -249,15 +253,17 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER1_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL` | None | string | Single Sign on |
 | `INFRAHUB_OIDC_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OIDC_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
-| `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
 | `INFRAHUB_OIDC_PROVIDER1_SCOPES` | None | array[string] | None |
 | `INFRAHUB_OIDC_PROVIDER2_ICON` | None | string | mdi:account-key |
 | `INFRAHUB_OIDC_PROVIDER2_DISPLAY_LABEL` | None | string | Single Sign on |
 | `INFRAHUB_OIDC_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
+| `INFRAHUB_OIDC_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
-| `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | string | None |
+| `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER2_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
 | `INFRAHUB_OIDC_PROVIDER2_SCOPES` | None | array[string] | None |
 

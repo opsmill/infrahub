@@ -7,7 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind
+from infrahub.core.constants import NULL_VALUE, BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -307,7 +307,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert ed_209_node.action is DiffAction.REMOVED
         assert ed_209_node.label == ed_209_label
         attributes_by_name = {a.name: a for a in ed_209_node.attributes}
-        assert set(attributes_by_name.keys()) == {"name", "color", "description", "display_label"}
+        assert set(attributes_by_name.keys()) == {"name", "color", "description", "display_label", "human_friendly_id"}
         for attr_node in attributes_by_name.values():
             assert attr_node.action is DiffAction.REMOVED
             assert attr_node.contains_conflict is False
@@ -319,7 +319,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             }
             for prop_diff in properties_by_type.values():
                 assert prop_diff.action is DiffAction.REMOVED
-                assert prop_diff.new_value is None
+                assert prop_diff.new_value in [None, NULL_VALUE]
         relationships_by_name = {r.name: r for r in ed_209_node.relationships}
         assert set(relationships_by_name.keys()) == {"manufacturer", "owner"}
         manufacturer_rel = relationships_by_name["manufacturer"]

@@ -193,7 +193,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._human_friendly_id is not None
 
     async def add_human_friendly_id(self, db: InfrahubDatabase) -> None:
-        if not self._schema.human_friendly_id or self._human_friendly_id:
+        if self._human_friendly_id:
             return
 
         self._human_friendly_id = HumanFriendlyIdentifier(
@@ -202,11 +202,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._human_friendly_id.compute(db=db, node=self)
 
     async def get_display_label(self, db: InfrahubDatabase) -> str:
-        if self._display_label:
-            if isinstance(self._display_label._value, str):
-                return self._display_label._value
-            if self._display_label._value:
-                return self._display_label._value.value
+        if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
+            return value
 
         return await self.render_display_label(db=db)
 
@@ -214,7 +211,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._display_label is not None
 
     async def add_display_label(self, db: InfrahubDatabase) -> None:
-        if not self._schema.display_label or self._display_label:
+        if self._display_label:
             return
 
         self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
