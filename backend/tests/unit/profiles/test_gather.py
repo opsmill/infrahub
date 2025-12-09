@@ -45,8 +45,8 @@ async def test_gather_trigger_profile_refresh_with_attributes(
     trigger_fields = trigger.trigger.match_related["infrahub.field.name"]
     assert "description" in trigger_fields
     assert "status" in trigger_fields
+    assert "profile_priority" in trigger_fields
     assert "profile_name" not in trigger_fields
-    assert "profile_priority" not in trigger_fields
     assert "related_nodes" not in trigger_fields
 
     assert "prefect.resource.role" in trigger.trigger.match_related
