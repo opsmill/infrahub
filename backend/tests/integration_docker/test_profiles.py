@@ -8,14 +8,10 @@ import pytest
 import yaml
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
-from infrahub.trigger.constants import NAME_SEPARATOR
-from infrahub.trigger.models import TriggerType
-from infrahub.trigger.setup import gather_all_automations
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.node import RelatedNode, RelationshipManager
-    from prefect.client.orchestration import PrefectClient
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
@@ -25,23 +21,6 @@ class TestProfiles(TestInfrahubDockerClient):
     def schema_device(self) -> dict:
         with Path(CURRENT_DIRECTORY / "test_files/profile_device.yml").open(encoding="utf-8") as file:
             return yaml.safe_load(file.read())
-
-    async def wait_until_profile_automations_are_configured(
-        self, profile_kind: str, client: PrefectClient, max_retries: int = 30
-    ) -> None:
-        """Wait until the profile refresh automation for the given kind is configured."""
-        expected_prefix = f"{TriggerType.PROFILE.value}{NAME_SEPARATOR}"
-
-        for _ in range(max_retries):
-            automations = await gather_all_automations(client=client)
-            profile_automations = [a for a in automations if a.name.startswith(expected_prefix)]
-            # Check if any automation is for our profile kind
-            matching_automations = [a for a in profile_automations if profile_kind in a.name]
-            if matching_automations:
-                return
-            await sleep(1)
-
-        pytest.fail(f"Profile automation for {profile_kind} was not configured within {max_retries} seconds")
 
     async def wait_for_attribute_value(
         self,
