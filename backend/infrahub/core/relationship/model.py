@@ -1061,7 +1061,12 @@ class RelationshipManager:
 
         return self._relationships.as_list()
 
-    async def update(self, data: list[str | Node] | dict[str, Any] | str | Node | None, db: InfrahubDatabase) -> bool:
+    async def update(
+        self,
+        data: list[str | Node] | dict[str, Any] | str | Node | None,
+        db: InfrahubDatabase,
+        process_delete: bool = True,
+    ) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
             list_data: Sequence[str | Node | dict[str, Any] | None] = [data]
@@ -1087,8 +1092,9 @@ class RelationshipManager:
 
             if item is None:
                 if previous_relationships:
-                    for rel in previous_relationships.values():
-                        await rel.delete(db=db)
+                    if process_delete:
+                        for rel in previous_relationships.values():
+                            await rel.delete(db=db)
                     changed = True
                 continue
 
