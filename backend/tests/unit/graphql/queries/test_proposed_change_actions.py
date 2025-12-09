@@ -30,13 +30,12 @@ PROPOSED_CHANGE_META_DATA_QUERY = """
     query {
         CoreProposedChange {
             edges {
+                node_metadata {
+                    created_at
+                    updated_at
+                }
                 node {
-                    node_metadata {
-                        created_by
-                        created_at
-                        updated_by
-                        updated_at
-                    }
+
                     id
                     name {
                         value
@@ -49,13 +48,11 @@ PROPOSED_CHANGE_META_DATA_QUERY = """
                         updated_at
                     }
                     reviewers {
-                        node_metadata {
-                            created_at
-                            updated_at
-                            created_by
-                            updated_by
-                        }
                         edges {
+                            node_metadata {
+                                created_at
+                                updated_at
+                            }
                             node {
                                 name {
                                     value
@@ -333,7 +330,5 @@ async def test_proposed_change_query_meta_data(
         assert prc["node"]["description"]["updated_by"]
         assert prc["node"]["description"]["updated_at"]
 
-        assert prc["node"]["node_metadata"]["created_by"]
-        assert prc["node"]["node_metadata"]["created_at"]
-        assert prc["node"]["node_metadata"]["updated_by"]
-        assert prc["node"]["node_metadata"]["updated_at"]
+        assert prc["node_metadata"]["created_at"]
+        assert prc["node_metadata"]["updated_at"]

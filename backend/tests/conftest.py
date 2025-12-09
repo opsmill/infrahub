@@ -37,7 +37,11 @@ from infrahub.core.initialization import (
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
-from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.definitions.core import (
+    core_account_token,
+    core_generic_account,
+    core_profile_schema_definition,
+)
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
@@ -469,7 +473,9 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
                 "namespace": "Lineage",
             },
             core_profile_schema_definition,
-        ]
+            core_generic_account,
+        ],
+        "nodes": [core_account_token],
     }
 
     schema = SchemaRoot(**SCHEMA)
