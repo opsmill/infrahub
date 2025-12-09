@@ -9,7 +9,7 @@ Write comprehensive React component tests following the project's testing patter
 
 **Note**: This skill extends the `test-unit` skill with React-specific testing patterns. General testing principles (GIVEN/WHEN/THEN structure, factories, mocking fundamentals) apply from test-unit.
 
-# React-Specific Guidelines
+## React-Specific Guidelines
 
 ## Test Structure
 
@@ -116,11 +116,11 @@ describe("FormComponent", () => {
 - Follow BDD structure: GIVEN = component render, WHEN = user interaction, THEN = assertion
 - Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate
 
-# File Location
+## File Location
 
 Colocate tests: `.test.tsx` next to the component
 
-```
+```text
 src/entities/schema/components/status-badge.tsx
 src/entities/schema/components/status-badge.test.tsx
 ```

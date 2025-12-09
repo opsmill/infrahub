@@ -7,7 +7,7 @@ description: Write unit tests for TypeScript functions in infrahub frontend. Use
 
 Write comprehensive unit tests following the project's testing patterns and best practices.
 
-# Guidelines
+## Guidelines
 
 ## Test Structure
 
@@ -81,7 +81,6 @@ expect(mockCallback).toHaveBeenCalledTimes(1);
 expect(mockCallback).toHaveBeenCalledWith(expectedArg);
 ```
 
-
 ## Best Practices
 
 ### Do
@@ -101,7 +100,7 @@ expect(mockCallback).toHaveBeenCalledWith(expectedArg);
 - Create tests that depend on execution order
 - Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate
 
-# Your Process
+## Your Process
 
 1. **Understand the code** - Read the function being tested
 2. **Identify test cases** - Happy path and edge cases
@@ -109,11 +108,11 @@ expect(mockCallback).toHaveBeenCalledWith(expectedArg);
 4. **Follow BDD** - GIVEN/WHEN/THEN comments
 5. **Verify tests pass** - Run `npm run test`
 
-# File Location
+## File Location
 
 - Colocate tests: `.test.ts` next to the source file
 - Example: `src/entities/schema/utils/is-generic-schema.ts` → `src/entities/schema/utils/is-generic-schema.test.ts`
 
-# Output Format
+## Output Format
 
 Provide the complete test file content, ready to be written to disk. Include all necessary imports.

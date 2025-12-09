@@ -26,7 +26,7 @@ Dependency rule: `app → pages → entities → shared` (unidirectional)
 
 ## File Structure
 
-```
+```text
 src/
 ├── app/              # App setup: providers, router, styles
 ├── pages/            # Route handlers (one per page/route)
@@ -45,7 +45,6 @@ src/
 │   └── utils/        # Utility functions
 └── assets/           # Static files
 ```
-
 
 ## Generated Files (Do Not Edit)
 
