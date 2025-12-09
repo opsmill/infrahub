@@ -11,7 +11,7 @@ import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
-import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
 
@@ -36,19 +36,16 @@ export function ObjectDetailsTabs({ schema, objectData, permission }: ObjectDeta
     <header className="flex items-center border-gray-200 border-b px-2">
       <ScrollArea scrollX scrollBarClassName="hidden" className="grow">
         <div className="flex grow gap-8 px-4" data-testid="object-details-tabs">
-          <ObjectDetailsTab
-            isActive={!qspTab}
-            to={getObjectDetailsUrl(objectKind as string, objectData.id)}
-          >
+          <ObjectDetailsTab isActive={!qspTab} to={getObjectDetailsUrl(objectKind, objectData.id)}>
             {schema.label}
           </ObjectDetailsTab>
           {relationshipsTabs.map((tab) => {
             return (
               <RelationshipTab
                 key={tab.name}
-                objectKind={objectKind as string}
+                objectKind={objectKind}
                 objectId={objectId}
-                relationshipSchema={tab as RelationshipSchema}
+                relationshipSchema={tab}
               />
             );
           })}
