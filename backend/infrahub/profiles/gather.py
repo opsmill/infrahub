@@ -34,9 +34,7 @@ async def gather_trigger_profile_refresh(
         for profile_name in schema_branch.profile_names:
             profile_schema = schema_branch.get_profile(name=profile_name, duplicate=False)
 
-            trigger_attr = [
-                attr.name for attr in profile_schema.attributes if attr.name not in ("profile_name", "profile_priority")
-            ]
+            trigger_attr = [attr.name for attr in profile_schema.attributes if attr.name != "profile_name"]
             trigger_rels = [
                 rel.name
                 for rel in profile_schema.relationships

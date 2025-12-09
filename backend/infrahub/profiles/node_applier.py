@@ -122,24 +122,31 @@ class NodeProfilesApplier:
     ) -> bool:
         """Apply profile relationship peers to a node relationship.
 
-        Profile relationships are only applied if the node has no existing peers for this relationship.
-        If any peers exist, profile relationships are not applied.
+        Profile relationships are only applied if the node has no user-set peers for this relationship.
+        User-set peers (not from profile) take precedence over profile values.
         """
         is_changed = False
 
         current_rels = await node_rel.get_relationships(db=self.db)
-        current_peer_ids = {rel.peer_id for rel in current_rels if rel.peer_id}
         profile_peer_ids = set(peer_ids)
 
-        # We have peers to override the ones from the profile, so we need to remove the profile peers while keeping the ones that are in the override
-        # (even if they overlap)
-        if current_peer_ids and profile_peer_ids:
-            for peer_id in profile_peer_ids:
-                if peer_id in current_peer_ids:
-                    if profile_peer_ids.issubset(current_peer_ids):
-                        await node_rel.remove_locally(peer_id=peer_id, db=self.db)
-                    elif peer_rel := await node_rel.get_relationship(db=self.db, peer_id=peer_id):
-                        peer_rel.clear_source()
+        user_set_peer_ids: set[str] = set()
+        profile_set_rels: list[Relationship] = []
+        for rel in current_rels:
+            if rel.peer_id:
+                if rel.is_from_profile:
+                    profile_set_rels.append(rel)
+                else:
+                    user_set_peer_ids.add(rel.peer_id)
+
+        # If user has set any peers, they override profile values entirely
+        if user_set_peer_ids:
+            for rel in profile_set_rels:
+                if rel.peer_id and rel.peer_id not in user_set_peer_ids:
+                    await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
+                    is_changed = True
+                elif rel.peer_id and rel.peer_id in user_set_peer_ids:
+                    rel.clear_source()
                     is_changed = True
 
             if is_changed:
@@ -147,32 +154,33 @@ class NodeProfilesApplier:
                 await node_rel.save(db=self.db)
             return is_changed
 
-        # Remove relationships that are from this profile but not in profile
-        for rel in current_rels:
-            if not rel.is_from_profile:
-                continue
+        profile_set_peer_ids = {rel.peer_id for rel in profile_set_rels if rel.peer_id}
 
-            if rel.profile_id == profile_id and rel.peer_id and rel.peer_id not in profile_peer_ids:
+        # Remove relationships that are from profile but not in the new profile value
+        for rel in profile_set_rels:
+            if rel.peer_id and rel.peer_id not in profile_peer_ids:
                 await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
-                node_rel.is_from_profile = True
                 is_changed = True
 
         # Add relationships that are in profile but not present
         for peer_id in profile_peer_ids:
-            if peer_id not in current_peer_ids:
+            if peer_id not in profile_set_peer_ids:
                 new_rel = Relationship(
                     schema=node_rel.schema,
                     branch=self.branch,
-                    source_kind=InfrahubKind.PROFILE,  # NOTE: should this be more precise?
+                    source_kind=InfrahubKind.PROFILE,
                     node=node,
                 )
                 await new_rel.new(db=self.db, data=peer_id)
                 new_rel.set_source(value=profile_id)
                 node_rel._relationships.append(new_rel)
-            node_rel.is_from_profile = True
-            is_changed = True
+                is_changed = True
 
-        await node_rel.save(db=self.db)
+        if profile_peer_ids:
+            node_rel.is_from_profile = True
+
+        if is_changed:
+            await node_rel.save(db=self.db)
 
         return is_changed
 
