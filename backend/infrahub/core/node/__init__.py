@@ -1129,20 +1129,20 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if meta_field == "created_at":
                 created_at = self._get_created_at()
                 data["created_at"] = created_at.to_datetime() if created_at else None
-                continue
 
             if meta_field == "created_by":
-                data["created_by"] = self._get_created_by()
-                continue
+                data["created_by"] = (
+                    {"id": self._get_created_by(), "__kind__": "CoreAccount"} if self._get_created_by() else None
+                )
 
             if meta_field == "updated_by":
-                data["updated_by"] = self._get_updated_by()
-                continue
+                data["updated_by"] = (
+                    {"id": self._get_updated_by(), "__kind__": "CoreAccount"} if self._get_updated_by() else None
+                )
 
             if meta_field == "updated_at":
                 updated_at = self._get_updated_at()
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
-                continue
         return data
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:

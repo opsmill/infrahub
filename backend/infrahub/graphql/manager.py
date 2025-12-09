@@ -244,12 +244,21 @@ class GraphQLSchemaManager:
             self.set_type(name=event._meta.name, graphql_type=event)
 
     def _load_node_interface(self) -> None:
+        """Load the base CoreNode interface. Edged/paginated objects are created later in generate_object_types."""
         node_interface_schema = GenericSchema(
             name="Node", namespace="Core", description="Interface for all nodes in Infrahub"
         )
-        interface = self.generate_interface_object(schema=node_interface_schema, populate_cache=True)
+        self.generate_interface_object(schema=node_interface_schema, populate_cache=True)
+
+    def _complete_node_interface(self, node_metadata: type[InfrahubObject]) -> None:
+        """Complete the CoreNode interface by creating its edged and paginated objects."""
+        node_interface_schema = GenericSchema(
+            name="Node", namespace="Core", description="Interface for all nodes in Infrahub"
+        )
+        # Re-call generate_interface_object to get the InterfaceReference (will use cached version)
+        interface = self.generate_interface_object(schema=node_interface_schema, populate_cache=False)
         edged_interface = self.generate_graphql_edged_object(
-            schema=node_interface_schema, node=interface, populate_cache=True
+            schema=node_interface_schema, node=interface, node_metadata=node_metadata, populate_cache=True
         )
         self.generate_graphql_paginated_object(schema=node_interface_schema, edge=edged_interface, populate_cache=True)
 
@@ -312,25 +321,43 @@ class GraphQLSchemaManager:
 
         full_schema = self.schema.get_all(duplicate=False)
 
-        # Generate all GraphQL Interface  Object first and store them in the registry
+        # Pass 1: Generate all GraphQL Interface objects first (without edged/paginated)
+        # This ensures GENERICACCOUNT exists before we create node_metadata
         for node_schema in full_schema.values():
-            if not isinstance(node_schema, GenericSchema):
-                continue
-            interface = self.generate_interface_object(schema=node_schema, populate_cache=True)
-            edged_interface = self.generate_graphql_edged_object(
-                schema=node_schema, node=interface, populate_cache=True
-            )
-            self.generate_graphql_paginated_object(schema=node_schema, edge=edged_interface, populate_cache=True)
+            if isinstance(node_schema, GenericSchema):
+                self.generate_interface_object(schema=node_schema, populate_cache=True)
 
         # Define LineageSource and LineageOwner
         data_source = self.get_type(name=InfrahubKind.LINEAGESOURCE)
         data_owner = self.get_type(name=InfrahubKind.LINEAGEOWNER)
         self.define_relationship_property(data_source=data_source, data_owner=data_owner)
+
+        # Now that GENERICACCOUNT exists, create node_metadata and relationship_metadata
+        account_type = self.get_type(name=InfrahubKind.GENERICACCOUNT)
+        self.define_node_metadata(account_type=account_type)
+        self.define_relationship_metadata(account_type=account_type)
+        node_metadata = self.get_type(name="InfrahubNodeMetadata")
+        relationship_metadata = self.get_type(name="InfrahubRelationshipMetadata")
+
+        # Complete the CoreNode interface (edged/paginated) now that node_metadata exists
+        self._complete_node_interface(node_metadata=node_metadata)
+
         relationship_property = self.get_type(name="RelationshipProperty")
         for data_type in ATTRIBUTE_TYPES.values():
             gql_type = self.get_type(name=data_type.get_graphql_type_name())
             gql_type._meta.fields["source"] = graphene.Field(data_source)
             gql_type._meta.fields["owner"] = graphene.Field(data_owner)
+
+        # Pass 2: Generate edged/paginated objects for all GenericSchema interfaces
+        for node_schema in full_schema.values():
+            if not isinstance(node_schema, GenericSchema):
+                continue
+            # Re-call generate_interface_object to get the InterfaceReference (will use cached version)
+            interface = self.generate_interface_object(schema=node_schema, populate_cache=False)
+            edged_interface = self.generate_graphql_edged_object(
+                schema=node_schema, node=interface, node_metadata=node_metadata, populate_cache=True
+            )
+            self.generate_graphql_paginated_object(schema=node_schema, edge=edged_interface, populate_cache=True)
 
         # Generate all Nested, Edged and NestedEdged Interfaces and store them in the registry
         for node_name, node_schema in full_schema.items():
@@ -341,7 +368,9 @@ class GraphQLSchemaManager:
             nested_edged_interface = self.generate_nested_interface_object(
                 schema=node_schema,
                 base_interface=node_interface,
+                node_metadata=node_metadata,
                 relation_property=relationship_property,
+                relationship_metadata=relationship_metadata,
             )
 
             nested_interface = self.generate_paginated_interface_object(
@@ -357,11 +386,13 @@ class GraphQLSchemaManager:
             if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
                 node_object_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
                 node_type_edged = self.generate_graphql_edged_object(
-                    schema=node_schema, node=node_object_type, populate_cache=True
+                    schema=node_schema, node=node_object_type, node_metadata=node_metadata, populate_cache=True
                 )
                 nested_node_type_edged = self.generate_graphql_edged_object(
                     schema=node_schema,
                     node=node_object_type,
+                    node_metadata=node_metadata,
+                    relationship_metadata=relationship_metadata,
                     relation_property=relationship_property,
                     populate_cache=True,
                 )
@@ -627,6 +658,46 @@ class GraphQLSchemaManager:
         relationship_property = type(type_name, (graphene.ObjectType,), main_attrs)
 
         self.set_type(name=type_name, graphql_type=relationship_property)
+
+    def define_node_metadata(self, account_type: type[InfrahubObject]) -> None:
+        type_name = "InfrahubNodeMetadata"
+
+        meta_attrs = {
+            "name": type_name,
+            "description": "Defines node metadata information",
+        }
+
+        main_attrs = {
+            "created_at": graphene.DateTime(required=False),
+            "created_by": graphene.Field(account_type, required=False),
+            "updated_at": graphene.DateTime(required=False),
+            "updated_by": graphene.Field(account_type, required=False),
+            "Meta": type("Meta", (object,), meta_attrs),
+        }
+
+        node_metadata = type(type_name, (graphene.ObjectType,), main_attrs)
+
+        self.set_type(name=type_name, graphql_type=node_metadata)
+
+    def define_relationship_metadata(self, account_type: type[InfrahubObject]) -> None:
+        type_name = "InfrahubRelationshipMetadata"
+
+        meta_attrs = {
+            "name": type_name,
+            "description": "Defines relationship metadata information",
+        }
+
+        main_attrs = {
+            "created_at": graphene.DateTime(required=False),
+            "created_by": graphene.Field(account_type, required=False),
+            "updated_at": graphene.DateTime(required=False),
+            "updated_by": graphene.Field(account_type, required=False),
+            "Meta": type("Meta", (object,), meta_attrs),
+        }
+
+        relationship_metadata = type(type_name, (graphene.ObjectType,), main_attrs)
+
+        self.set_type(name=type_name, graphql_type=relationship_metadata)
 
     def generate_graphql_mutations(
         self,
@@ -966,6 +1037,8 @@ class GraphQLSchemaManager:
         self,
         schema: MainSchemaTypes,
         node: InterfaceReference | InfrahubObjectReference,
+        node_metadata: type[InfrahubObject],
+        relationship_metadata: type[InfrahubObject] | None = None,
         relation_property: type[InfrahubObject] | None = None,
         populate_cache: bool = False,
     ) -> InfrahubEdgedReference:
@@ -988,11 +1061,14 @@ class GraphQLSchemaManager:
 
         main_attrs: dict[str, Any] = {
             "node": graphene.Field(node.reference, required=False),
+            "node_metadata": graphene.Field(node_metadata, required=True),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
+        if relationship_metadata:
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
 
         graphql_edged_object = registry.get_edge_type(reference_hash=edge_hash, schema_hash=self.schema_hash)
         if not graphql_edged_object:
@@ -1055,6 +1131,8 @@ class GraphQLSchemaManager:
         schema: GenericSchema,
         relation_property: graphene.ObjectType,
         base_interface: graphene.ObjectType,
+        node_metadata: type[InfrahubObject],
+        relationship_metadata: type[InfrahubObject] | None = None,
         populate_cache: bool = False,
     ) -> type[InfrahubObject]:
         meta_attrs: dict[str, Any] = {
@@ -1066,11 +1144,14 @@ class GraphQLSchemaManager:
         main_attrs: dict[str, Any] = {
             "node": graphene.Field(base_interface, required=False),
             "_updated_at": graphene.DateTime(required=False),
+            "node_metadata": graphene.Field(node_metadata, required=True),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
+        if relationship_metadata:
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
 
         object_name = f"NestedEdged{schema.kind}"
         md5hash = hashlib.md5(usedforsecurity=False)

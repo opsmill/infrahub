@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from graphene import DateTime, Field, ObjectType, String
+from graphene import ObjectType
 from graphene.types.objecttype import ObjectTypeOptions
 
 from infrahub.core.schema import MainSchemaTypes
@@ -12,24 +12,7 @@ class InfrahubObjectOptions(ObjectTypeOptions):
     schema: MainSchemaTypes
 
 
-class InfrahubNodeMetaObject(ObjectType):
-    created_at = DateTime(required=False, description="Date/Time the object has been created")
-    created_by = String(
-        required=False, description="UUID of the user that created the object, even if the user is later deleted"
-    )
-    updated_by = String(
-        required=False, description="UUID of the user that last modified the object, even if the user is later deleted"
-    )
-    updated_at = DateTime(
-        required=False, description="Date/Time when the object was last modified by a user or a system task"
-    )
-
-
-class InfrahubNodeMeta(ObjectType):
-    node_metadata = Field(InfrahubNodeMetaObject, required=False)
-
-
-class InfrahubObject(InfrahubNodeMeta):
+class InfrahubObject(ObjectType):
     @classmethod
     def __init_subclass_with_meta__(
         cls,
