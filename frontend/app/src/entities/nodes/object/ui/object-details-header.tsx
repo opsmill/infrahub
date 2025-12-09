@@ -1,11 +1,8 @@
 import { queryClient } from "@/shared/api/rest/client";
-import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
 import Content from "@/shared/components/layout/content";
 import { Skeleton } from "@/shared/components/skeleton";
-import useFilters from "@/shared/hooks/useFilters";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ObjectDetailsButton } from "@/entities/nodes/object/ui/object-details-button";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
@@ -13,46 +10,8 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
-interface ObjectItemsHeaderProps {
+interface ObjectDetailsHeaderProps {
   schema: ModelSchema;
-}
-
-export function ObjectItemsHeader({ schema }: ObjectItemsHeaderProps) {
-  const [filters] = useFilters();
-  const {
-    data: count,
-    isPending,
-    isRefetching,
-    isError,
-  } = useObjectsCount({
-    objectKind: schema.kind as string,
-    filters: removeFiltersNotInSchema(filters, schema),
-  });
-
-  const refetchObjects = async () => {
-    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-  };
-
-  return (
-    <Content.CardTitle
-      title={schema.label || schema.name}
-      badgeContent={isPending && !isError ? "..." : count}
-      description={schema.description}
-      isReloadLoading={isRefetching}
-      reload={refetchObjects}
-      data-testid="object-header"
-      end={
-        <ObjectHelpButton
-          kind={schema.kind}
-          documentationUrl={schema.documentation}
-          className="ml-auto"
-        />
-      }
-    />
-  );
-}
-
-interface ObjectDetailsHeaderProps extends ObjectItemsHeaderProps {
   objectId: string;
 }
 
