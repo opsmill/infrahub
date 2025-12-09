@@ -1,44 +1,28 @@
-import type { ArtifactStatus } from "@/entities/artifacts/types";
+import type { ArtifactObject } from "@/entities/artifacts/types";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
+import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
-import { ArtifactGenerateButton } from "./artifact-generate-button";
+interface ArtifactHeaderProps {
+  artifact: ArtifactObject;
+}
 
-type ArtifactHeaderProps = {
-  id: string;
-  name: string;
-  status: ArtifactStatus;
-  hfid?: string;
-  checksum?: string;
-  storageId?: string;
-  artifactDefinitionId: string;
-};
-
-const ArtifactHeader = ({
-  name,
-  status,
-  id,
-  hfid,
-  checksum,
-  storageId,
-  artifactDefinitionId,
-}: ArtifactHeaderProps) => {
+const ArtifactHeader = ({ artifact }: ArtifactHeaderProps) => {
   return (
     <div className="flex items-center gap-2">
-      <h1 className="font-bold text-xl">{name}</h1>
+      <h1 className="font-bold text-xl">{getNodeLabel(artifact)}</h1>
 
-      <ArtifactStatusBadge status={status} />
+      <ArtifactStatusBadge status={artifact.status.value} />
 
       <div className="ml-auto flex items-center gap-1">
-        {artifactDefinitionId && (
-          <ArtifactGenerateButton
-            label="Re-generate"
-            artifactId={id}
-            artifactDefinitionId={artifactDefinitionId}
-          />
-        )}
+        <ArtifactGenerateButton
+          label="Re-generate"
+          artifactId={artifact.id}
+          artifactDefinitionId={artifact.definition.node.id}
+        />
 
-        <ArtifactDetailsMenu id={id} hfid={hfid} checksum={checksum} storageId={storageId} />
+        <ArtifactDetailsMenu artifact={artifact} />
       </div>
     </div>
   );
