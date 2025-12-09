@@ -31,10 +31,12 @@ After completing a task, suggest a PR title and description for the user.
 **PR title pattern**: `<type>: <short description> [<issue reference>]`
 
 The issue reference is optional and can be:
+
 - GitHub issue number: `#1234`
 - Jira ticket: `IFC-1234`
 
 Types:
+
 - `feat` - new feature or enhancement
 - `fix` - bug fix
 - `docs` - documentation changes
@@ -43,18 +45,20 @@ Types:
 - `chore` - maintenance tasks, dependencies, tooling
 
 **PR description**: Provide a brief summary with:
+
 - What was changed and why
 - Any notable implementation details
 - Testing performed
 
 **Examples**:
-```
+
+```text
 Title: feat: add breadcrumb navigation for hierarchical schemas [#7549]
 
 Title: fix: resolve sidebar collapse issue [IFC-2847]
 ```
 
-```
+```text
 Description:
 Adds breadcrumb navigation that displays the full ancestor lineage for objects
 and schema hierarchy for hierarchical schemas. Users can search and switch
