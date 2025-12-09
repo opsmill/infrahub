@@ -110,8 +110,17 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 continue
 
             # Create the valued query request for this constraint
+            # For HFID constraints, use the actual node's kind to ensure the query
+            # only matches nodes of the exact same type. This is important when
+            # node_schema is a parent/generic schema - sibling types that inherit
+            # from the same parent should be allowed to have the same HFID values.
+            # For STANDARD uniqueness constraints, use the schema's kind to enforce
+            # cross-type uniqueness as intended by generic constraints.
+            query_kind = (
+                node.get_kind() if uniqueness_constraint_path.typ == UniquenessConstraintType.HFID else node_schema.kind
+            )
             valued_query_request = NodeUniquenessQueryRequestValued(
-                kind=node_schema.kind,
+                kind=query_kind,
                 unique_valued_paths=valued_paths,
             )
 

@@ -343,3 +343,42 @@ class TestNodeGroupedUniquenessConstraint:
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'") as exc_info:
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_mercedes_of_maria)
         assert not isinstance(exc_info.value, HFIDViolatedError), "HFIDViolatedError should not be raised here"
+
+    async def test_hfid_on_generic_sibling_types_no_conflict(
+        self, db: InfrahubDatabase, default_branch: Branch, location_schema_hfid_on_generic
+    ) -> None:
+        """Test that sibling types with same HFID value don't conflict.
+
+        When HFID is defined on a parent generic (e.g., TestLocation), two different
+        child types (e.g., TestLocationState and TestLocationCountry) should be able to
+        have the same HFID value without conflict, since they are different types.
+
+        This tests the fix for the issue where:
+        ["LocationStateUpsert"] Node with id <uuid> exists, but it is a LocationCountry, not LocationState
+        """
+        # Create a LocationCountry with name "Georgia"
+        await create_and_save(db=db, schema="TestLocationCountry", name="Georgia", country_code="GE")
+
+        # Create a LocationState with the same name "Georgia" - this should NOT conflict
+        # because they are different types, even though they share the same parent HFID
+        location_state = await create_and_save(db=db, schema="TestLocationState", name="Georgia", state_code="GA")
+
+        # The uniqueness check should pass - no exception should be raised
+        await self.__call_system_under_test(db=db, branch=default_branch, node=location_state)
+
+    async def test_hfid_on_generic_same_type_does_conflict(
+        self, db: InfrahubDatabase, default_branch: Branch, location_schema_hfid_on_generic
+    ) -> None:
+        """Test that same types with same HFID value DO conflict.
+
+        Two nodes of the same type (e.g., both TestLocationState) should still conflict
+        if they have the same HFID value.
+        """
+        # Create first LocationState with name "Georgia"
+        _ = await create_and_save(db=db, schema="TestLocationState", name="Georgia", state_code="GA")
+
+        # Create second LocationState with same name - this SHOULD conflict
+        location_state_2 = await create_and_save(db=db, schema="TestLocationState", name="Georgia", state_code="GA2")
+
+        with pytest.raises(HFIDViolatedError, match="Violates uniqueness constraint 'name'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=location_state_2)

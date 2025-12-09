@@ -119,6 +119,53 @@ async def car_person_generics_data_simple(db: InfrahubDatabase, car_person_schem
 
 
 @pytest.fixture
+async def location_schema_hfid_on_generic(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+    """Schema with HFID defined on a generic (parent) with multiple concrete children.
+
+    This tests that HFID uniqueness is properly scoped to the specific child type,
+    not the parent generic type.
+    """
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Location",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "display_labels": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "LocationState",
+                "namespace": "Test",
+                "inherit_from": ["TestLocation"],
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "state_code", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "LocationCountry",
+                "namespace": "Test",
+                "inherit_from": ["TestLocation"],
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "country_code", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema
+
+
+@pytest.fixture
 async def car_person_schema_hfid(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
