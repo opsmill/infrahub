@@ -82,7 +82,7 @@ class TestProfiles(TestInfrahubDockerClient):
             await sleep(1)
 
         node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
-        rel: RelatedNode = getattr(node, relationship)
+        rel = getattr(node, relationship)
         pytest.fail(f"Expected {relationship} peer_id={expected_peer_id} but got {rel.id} after {max_retries} seconds")
 
     async def wait_for_relationship_peers(
@@ -103,7 +103,7 @@ class TestProfiles(TestInfrahubDockerClient):
             await sleep(1)
 
         node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
-        rel: RelationshipManager = getattr(node, relationship)
+        rel = getattr(node, relationship)
         pytest.fail(
             f"Expected {relationship} peer_ids={expected_peer_ids} but got {set(rel.peer_ids) if rel.peer_ids else set()} after {max_retries} seconds"
         )
