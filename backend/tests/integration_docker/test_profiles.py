@@ -8,7 +8,6 @@ import pytest
 import yaml
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
-
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from infrahub_sdk.node import RelatedNode, RelationshipManager
