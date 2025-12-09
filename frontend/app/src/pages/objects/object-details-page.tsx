@@ -3,7 +3,7 @@ import { Navigate, useParams } from "react-router";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
-import { GRAPHQL_QUERY_OBJECT } from "@/shared/config/constants";
+import { GRAPHQL_QUERY_OBJECT, MENU_EXCLUDELIST } from "@/shared/config/constants";
 
 import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
@@ -21,6 +21,10 @@ function ObjectDetailsPage() {
 
   if (!objectId) {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
+  }
+
+  if (MENU_EXCLUDELIST.includes(schema.kind!)) {
+    return <Navigate to={constructPath("/")} />;
   }
 
   return (
