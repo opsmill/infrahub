@@ -111,8 +111,8 @@ describe("FormComponent", () => {
 
 - Use accessibility-first queries (getByRole, getByLabelText) over getByTestId
 - Test user interactions and visible outcomes, not internal state
-- Use getByTestId only as last resort
-- Only test component specific behavior, do not test behavior implemented by radix-ui or react-aria-components
+- Use getByTestId only as a last resort
+- Only test component-specific behavior; do not test behavior implemented by radix-ui or react-aria-components
 - Follow BDD structure: GIVEN = component render, WHEN = user interaction, THEN = assertion
 - Never mix GIVEN/WHEN/THEN comments (e.g., "GIVEN / WHEN") - keep them separate
 
