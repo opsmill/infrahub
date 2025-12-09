@@ -48,7 +48,11 @@ export const getRelationshipDefaultValue = ({
   }
 
   if (relationshipData) {
-    return getRelationshipDefaultValueFromData(relationshipData, relationshipName);
+    const valueFromData = getRelationshipDefaultValueFromData(relationshipData, relationshipName);
+    if (valueFromData !== null) {
+      return valueFromData;
+    }
+    // If valueFromData is null (empty edges or null node), fall through to template/profile fallback
   }
 
   if (parentSchema && parentData && schema) {
@@ -84,8 +88,14 @@ export const getRelationshipDefaultValueFromData = (
   | RelationshipValueFromUser
   | RelationshipValueFromPool
   | RelationshipValueFromProfile
-  | EmptyFieldValue => {
+  | EmptyFieldValue
+  | null => {
   if ("edges" in relationshipData) {
+    // If edges are empty, return null to allow profile fallback
+    if (relationshipData.edges.length === 0) {
+      return null;
+    }
+
     const values = relationshipData.edges
       .map(({ node }) =>
         node
@@ -93,7 +103,9 @@ export const getRelationshipDefaultValueFromData = (
               id: node.id,
               display_label: node.display_label,
               __typename: node.__typename,
-              ...(peerField ? { [peerField]: node[peerField] ?? node[peerField] } : {}),
+              ...(peerField && (node as Record<string, unknown>)[peerField] !== undefined
+                ? { [peerField]: (node as Record<string, unknown>)[peerField] }
+                : {}),
             }
           : null
       )
@@ -137,6 +149,11 @@ export const getRelationshipDefaultValueFromData = (
       },
       value: values,
     };
+  }
+
+  // If node is null, return null to allow profile fallback
+  if (!relationshipData.node) {
+    return null;
   }
 
   if (!relationshipData.properties?.source?.__typename) {
