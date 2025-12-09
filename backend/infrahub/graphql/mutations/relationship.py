@@ -11,6 +11,7 @@ from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.models import NodeChangelog, RelationshipChangelogGetter
 from infrahub.core.constants import (
     InfrahubKind,
+    MetadataOptions,
     PermissionAction,
     PermissionDecision,
     RelationshipCardinality,
@@ -107,7 +108,9 @@ class RelationshipAdd(Mutation):
             for node_data in data.get("nodes"):
                 # Instantiate and resolve a relationship
                 # This will take care of allocating a node from a pool if needed
-                rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
+                rel = Relationship(
+                    schema=rel_schema, branch=graphql_context.branch, source_kind=source.get_kind(), node=source
+                )
                 await rel.new(db=db, data=node_data)
                 await rel.resolve(db=db)
                 # Save it only if it does not exist
@@ -230,9 +233,11 @@ class RelationshipRemove(Mutation):
             for node_data in data.get("nodes"):
                 if node_data.get("id") in existing_peers.keys():
                     # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
-                    # we should use RelationshipDataDeleteQuery to delete the relationship
+                    # we should use RelationshipDeleteQuery to delete the relationship
                     # it would be more query efficient
-                    rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
+                    rel = Relationship(
+                        schema=rel_schema, branch=graphql_context.branch, source_kind=source.get_kind(), node=source
+                    )
                     rel.load(db=db, data=existing_peers[node_data.get("id")])
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
@@ -318,8 +323,7 @@ async def _validate_node(info: GraphQLResolveInfo, data: RelationshipNodesInput)
             db=graphql_context.db,
             id=input_id,
             branch=graphql_context.branch,
-            include_owner=False,
-            include_source=False,
+            include_metadata=MetadataOptions.NONE,
         )
     ):
         raise NodeNotFoundError(node_type="node", identifier=input_id, branch_name=graphql_context.branch.name)
@@ -455,7 +459,9 @@ async def _collect_current_peers(
     query = await RelationshipGetPeerQuery.init(
         db=graphql_context.db,
         source=source_node,
-        rel=Relationship(schema=rel_schema, branch=graphql_context.branch, node=source_node),
+        rel=Relationship(
+            schema=rel_schema, branch=graphql_context.branch, source_kind=source_node.get_kind(), node=source_node
+        ),
     )
     await query.execute(db=graphql_context.db)
     return {str(peer.peer_id): peer for peer in query.get_peers()}

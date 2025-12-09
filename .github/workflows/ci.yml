@@ -51,6 +51,7 @@ jobs:
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
+      openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -113,6 +114,45 @@ jobs:
       - name: Run Biome
         run: npx biome ci .
 
+  frontend-validate-openapi-types:
+    if: |
+      needs.files-changed.outputs.openapi_schema == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate OpenAPI types
+        run: npm run codegen:openapi
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code src/shared/api/rest/types.generated.ts; then
+            echo "❌ Error: Generated OpenAPI types are out of sync with schema/openapi.json"
+            echo ""
+            echo "The OpenAPI schema has been updated, but the generated TypeScript types haven't been regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd frontend/app"
+            echo "  npm run codegen:openapi"
+            echo "  git add src/shared/api/rest/types.generated.ts"
+            echo "  git commit -m 'chore: regenerate OpenAPI types'"
+            exit 1
+          fi
+
   python-lint:
     if: |
       needs.files-changed.outputs.backend == 'true' ||
@@ -158,11 +198,12 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v20
+        uses: DavidAnson/markdownlint-cli2-action@v21
         with:
           config: .markdownlint.yaml
           globs: |
             **/*.{md,mdx}
+            !python_sdk/**
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
@@ -939,7 +980,7 @@ jobs:
 
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.name }}
           path: frontend/app/playwright-report/

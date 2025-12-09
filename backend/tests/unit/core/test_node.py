@@ -7,6 +7,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     DiffAction,
     InfrahubKind,
+    MetadataOptions,
     RelationshipCardinality,
     RelationshipKind,
 )
@@ -897,6 +898,63 @@ async def test_node_create_with_object_template(
     )
 
 
+async def test_node_create_user_timestamp_metadata(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
+    # Assume test user id for created_by
+    test_user_id = "user-123"
+
+    # Create object on default branch
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=2)
+    before_create_default = Timestamp()
+    await obj.save(db=db, user_id=test_user_id)
+    after_create_default = Timestamp()
+
+    # validate created object on default branch
+    assert before_create_default < obj._get_created_at() < after_create_default
+    assert obj._get_created_by() == test_user_id
+    assert obj._get_updated_at() == obj._get_created_at()
+    assert obj._get_updated_by() == test_user_id
+
+    # validate save with no changes does not update updated times
+    await obj.save(db=db, user_id="no-change-user")
+    assert obj._get_updated_at() == obj._get_created_at()
+    assert obj._get_updated_by() == obj._get_created_by()
+
+    # Retrieve node and validate metadata
+    retrieved_obj = await NodeManager.get_one(db=db, id=obj.id, include_metadata=MetadataOptions.USER_TIMESTAMPS)
+    assert retrieved_obj._get_created_at() == obj._get_created_at()
+    assert retrieved_obj._get_created_by() == obj._get_created_by()
+    assert retrieved_obj._get_updated_at() == obj._get_updated_at()
+    assert retrieved_obj._get_updated_by() == obj._get_updated_by()
+
+    # Create a branch and create another object on the branch
+    branch1 = await create_branch(branch_name="branch1", db=db)
+    branch_user_id = "user-456"
+
+    obj_branch = await Node.init(db=db, schema=criticality_schema, branch=branch1)
+    await obj_branch.new(db=db, name="medium", level=3)
+    before_create_branch = Timestamp()
+    await obj_branch.save(db=db, user_id=branch_user_id)
+    after_create_branch = Timestamp()
+
+    # Validate created object on branch
+    assert before_create_branch < obj_branch._get_created_at() < after_create_branch
+    assert obj_branch._get_created_by() == branch_user_id
+    assert obj_branch._get_updated_at() == obj_branch._get_created_at()
+    assert obj_branch._get_updated_by() == branch_user_id
+
+    # Retrieve node from branch and validate metadata
+    retrieved_obj_branch = await NodeManager.get_one(
+        db=db, id=obj_branch.id, branch=branch1, include_metadata=MetadataOptions.USER_TIMESTAMPS
+    )
+    assert retrieved_obj_branch._get_created_at() == obj_branch._get_created_at()
+    assert retrieved_obj_branch._get_created_by() == obj_branch._get_created_by()
+    assert retrieved_obj_branch._get_updated_at() == obj_branch._get_updated_at()
+    assert retrieved_obj_branch._get_updated_by() == obj_branch._get_updated_by()
+
+
 async def test_node_create_with_object_template_with_profile(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
@@ -1197,7 +1255,7 @@ async def test_node_update_local_attrs_with_metadata(
     obj1.name.source = first_account
     await obj1.save(db=db)
 
-    obj2 = await NodeManager.get_one(id=obj1.id, include_source=True, db=db, branch=branch)
+    obj2 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.SOURCE, db=db, branch=branch)
     assert obj2.name.value == "low"
     assert obj2.name.source_id == first_account.id
     assert obj2.name.owner_id is None
@@ -1216,7 +1274,7 @@ async def test_node_update_local_attrs_with_metadata(
     obj2.name.is_protected = True
     await obj2.save(db=db)
 
-    obj3 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    obj3 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch)
     assert obj3.name.value == "low"
     assert obj3.name.source_id == second_account.id
     assert obj3.name.owner_id == first_account.id
@@ -1230,7 +1288,7 @@ async def test_node_update_local_attrs_with_metadata(
     obj3.name.is_visible = True
     await obj3.save(db=db)
 
-    obj4 = await NodeManager.get_one(id=obj1.id, include_source=True, include_owner=True, db=db, branch=branch)
+    obj4 = await NodeManager.get_one(id=obj1.id, include_metadata=MetadataOptions.LINKED_NODES, db=db, branch=branch)
     assert obj4.name.value == "low"
     assert obj4.name.source_id is None
     assert obj4.name.owner_id == first_account.id

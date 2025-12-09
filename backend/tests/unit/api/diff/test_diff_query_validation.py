@@ -39,5 +39,5 @@ class TestDiffQueryValidation:
     def test_time_from_required_for_default_branch(self) -> None:
         self.branch.is_default = True
 
-        with pytest.raises(ValidationError, match="time_from is mandatory when diffing on the default branch `abc`."):
+        with pytest.raises(ValidationError, match=r"time_from is mandatory when diffing on the default branch `abc`."):
             DiffQueryValidated(branch=self.branch, branch_only=True)

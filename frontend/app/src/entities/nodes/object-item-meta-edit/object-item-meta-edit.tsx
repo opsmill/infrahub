@@ -104,18 +104,6 @@ export default function ObjectItemMetaEdit(props: Props) {
             parent: attributeOrRelationshipToEdit.source?.__typename,
           },
           {
-            name: "is_visible",
-            label: "is visible",
-            type: "Checkbox",
-            defaultValue: {
-              source: { type: "user" },
-              value: attributeOrRelationshipToEdit.is_visible,
-            },
-            rules: {
-              required: true,
-            },
-          },
-          {
             name: "is_protected",
             label: "is protected",
             type: "Checkbox",

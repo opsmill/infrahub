@@ -20,9 +20,11 @@ UPDATE_HFID = """
 mutation UpdateHFID(
     $id: String!,
     $kind: String!,
-    $value: [String!]!
+    $value: [String!]!,
+    $context_account_id: String!
   ) {
   InfrahubUpdateHFID(
+    context: {account: {id: $context_account_id}},
     data: {id: $id, value: $value, kind: $kind}
   ) {
     ok
@@ -40,6 +42,7 @@ async def hfid_update_value(
     obj: HFIDGraphQLResponse,
     node_kind: str,
     hfid_definition: list[str],
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -58,7 +61,12 @@ async def hfid_update_value(
     try:
         await client.execute_graphql(
             query=UPDATE_HFID,
-            variables={"id": obj.node_id, "kind": node_kind, "value": rendered_hfid},
+            variables={
+                "id": obj.node_id,
+                "kind": node_kind,
+                "value": rendered_hfid,
+                "context_account_id": context.account.account_id,
+            },
             branch_name=branch_name,
         )
         log.info(f"Updating {node_kind}.human_friendly_id='{rendered_hfid}' ({obj.node_id})")
@@ -77,7 +85,7 @@ async def process_hfid(
     node_kind: str,
     object_id: str,
     target_kind: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: InfrahubContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -115,6 +123,7 @@ async def process_hfid(
             obj=node,
             node_kind=node_schema.kind,
             hfid_definition=hfid_definition.hfid,
+            context=context,
         )
 
     _ = [response async for _, response in batch.execute()]

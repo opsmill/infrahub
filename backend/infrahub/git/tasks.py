@@ -60,7 +60,7 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
-from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets
+from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
 @flow(
@@ -195,13 +195,17 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
 async def sync_remote_repositories() -> None:
     log = get_run_logger()
+    db = await get_database()
 
     client = get_client()
 
     branches = await client.branch.all()
-    repositories = await client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
+    async with db.start_session() as dbs:
+        repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
+        repository: CoreRepository = repository_data.repository
+
         active_internal_status = RepositoryInternalStatus.ACTIVE.value
         default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
         staging_branch = None
@@ -215,12 +219,12 @@ async def sync_remote_repositories() -> None:
             init_failed = False
             try:
                 repo = await InfrahubRepository.init(
-                    id=repository_data.repository.id,
-                    name=repository_data.repository.name.value,
-                    location=repository_data.repository.location.value,
+                    id=repository.id,
+                    name=repository.name.value,
+                    location=repository.location.value,
                     client=client,
                     internal_status=active_internal_status,
-                    default_branch_name=repository_data.repository.default_branch.value,
+                    default_branch_name=repository.default_branch.value,
                 )
             except RepositoryError as exc:
                 get_logger().error(str(exc))
@@ -229,12 +233,12 @@ async def sync_remote_repositories() -> None:
             if init_failed:
                 try:
                     repo = await InfrahubRepository.new(
-                        id=repository_data.repository.id,
-                        name=repository_data.repository.name.value,
-                        location=repository_data.repository.location.value,
+                        id=repository.id,
+                        name=repository.name.value,
+                        location=repository.location.value,
                         client=client,
                         internal_status=active_internal_status,
-                        default_branch_name=repository_data.repository.default_branch.value,
+                        default_branch_name=repository.default_branch.value,
                     )
                     await repo.import_objects_from_files(  # type: ignore[call-overload]
                         git_branch_name=registry.default_branch, infrahub_branch_name=infrahub_branch
@@ -246,22 +250,22 @@ async def sync_remote_repositories() -> None:
             try:
                 await sync_git_repo_with_origin_and_tag_on_failure(
                     client=client,
-                    repository_id=repository_data.repository.id,
-                    repository_name=repository_data.repository.name.value,
-                    repository_location=repository_data.repository.location.value,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    repository_location=repository.location.value,
                     internal_status=active_internal_status,
-                    default_branch_name=repository_data.repository.default_branch.value,
-                    operational_status=repository_data.repository.operational_status.value,
+                    default_branch_name=repository.default_branch.value,
+                    operational_status=repository.operational_status.value,
                     staging_branch=staging_branch,
                     infrahub_branch=infrahub_branch,
                 )
                 # Tell workers to fetch to stay in sync
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-                    location=repository_data.repository.location.value,
-                    repository_id=repository_data.repository.id,
-                    repository_name=repository_data.repository.name.value,
-                    repository_kind=repository_data.repository.get_kind(),
+                    location=repository.location.value,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    repository_kind=repository.get_kind(),
                     infrahub_branch_name=infrahub_branch,
                     infrahub_branch_id=branches[infrahub_branch].id,
                 )

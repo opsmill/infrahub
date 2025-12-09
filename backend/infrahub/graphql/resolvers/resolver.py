@@ -9,7 +9,6 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind, Relationshi
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.utils import has_any_key
 
 from ..models import OrderModel
 from ..parser import extract_selection
@@ -18,7 +17,7 @@ from ..permissions import get_permissions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -150,7 +149,7 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: NodeSchema = (
+    schema: MainSchemaTypes = (
         info.return_type.of_type.graphene_type._meta.schema
         if isinstance(info.return_type, GraphQLNonNull)
         else info.return_type.graphene_type._meta.schema
@@ -186,9 +185,6 @@ async def default_paginated_list_resolver(
 
         objs = []
         if edges or "hfid" in filters:
-            include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
-            include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
-
             objs = await NodeManager.query(
                 db=db,
                 schema=schema,
@@ -199,8 +195,6 @@ async def default_paginated_list_resolver(
                 limit=limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_source=include_source,
-                include_owner=include_owner,
                 partial_match=partial_match,
                 order=order,
             )

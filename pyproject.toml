@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.6.0b0"
+version = "1.6.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.13"
@@ -96,7 +96,7 @@ dev = [
     "ruff==0.14.5",
     "invoke==2.2.0",
     "pytest-benchmark>=4.0.0,<5",
-    "pytest-codspeed>=2.2.0,<3",
+    "pytest-codspeed>=4.2.0,<5",
     "polyfactory==2.16.2",
     "towncrier>=24.8,<25",
     "pytest-env>=1.1.3,<2",
@@ -172,10 +172,6 @@ exclude = [
 [[tool.mypy.overrides]]
 module = "infrahub.*"
 disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = "tests.benchmark.*"
-disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "tests.conftest"
@@ -508,7 +504,6 @@ ignore = [
     ##################################################################################################
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
-    "FA",       # flake8-future-annotations
     "PGH",      # pygrep-hooks
     "ERA",      # eradicate commented-out code
     "SLF001",   # flake8-self
@@ -561,12 +556,10 @@ ignore = [
     "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF015",  # Prefer `next(...)` over single element slice
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
-    "RUF043",  # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
     "RUF052",  # Local dummy variable `_meta` is accessed
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",    # Probable insecure usage of temporary file or directory
-    "S202",    # Uses of `tarfile.extractall()`
     "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
     "SIM108",  # Use ternary operator `markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"` instead of `if`-`else`-block
@@ -578,7 +571,6 @@ ignore = [
     "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
-    "TC006",   # [*] Add quotes to type expression in `typing.cast()`
     "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
     "UP035",   # `typing.List` is deprecated, use `list` instead

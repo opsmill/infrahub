@@ -2,7 +2,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema.node_schema import NodeSchema
@@ -69,7 +71,7 @@ async def test_get_many_with_profile(
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     expected_profile_attrs = [
@@ -132,7 +134,7 @@ async def test_get_many_with_profile_generic(
     await criticality_medium.save(db=db)
 
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     expected_profile_attrs = [
@@ -189,7 +191,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
 
     lowest_uuid_profile = sorted(crit_profiles, key=lambda p: p.id)[0]
     node_map = await NodeManager.get_many(
-        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_source=True
+        db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )
     assert len(node_map) == 2
     updated_crit_low = node_map[criticality_low.id]
@@ -244,7 +246,12 @@ async def test_template_profile_application(
     assert updated_template_field_names == ["color"]
     await crit_template.save(db=db)
 
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
+    node = await NodeManager.get_one(
+        db=db,
+        branch=branch,
+        id=crit_template.id,
+        include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE),
+    )
     assert node.id == crit_template.id
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="green", source_uuid=crit_profile_1.id),
@@ -299,7 +306,12 @@ async def test_template_with_multiple_profiles(
     await crit_template.save(db=db)
 
     # Verify the values - high priority profile should win for color
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
+    node = await NodeManager.get_one(
+        db=db,
+        branch=branch,
+        id=crit_template.id,
+        include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE),
+    )
     expected_profile_attrs = [
         ExpectedProfileAttr(name="color", value="red", source_uuid=crit_profile_high_priority.id),
         ExpectedProfileAttr(name="description", value="High priority", source_uuid=crit_profile_high_priority.id),
@@ -350,7 +362,12 @@ async def test_template_profile_manual_values_precedence(
     await crit_template.save(db=db)
 
     # Template's own value should be preserved, not overridden by profile
-    node = await NodeManager.get_one(db=db, branch=branch, id=crit_template.id, include_source=True)
+    node = await NodeManager.get_one(
+        db=db,
+        branch=branch,
+        id=crit_template.id,
+        include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE),
+    )
     assert node.color.value == "#FF0000"
     # Source should be None since it's the template's own value
     color_source = await node.color.get_source(db=db)
@@ -399,7 +416,9 @@ async def test_node_from_template_with_profile_precedence(
     await node.save(db=db)
 
     # Reload node with source information
-    node = await NodeManager.get_one(db=db, branch=branch, id=node.id, include_source=True)
+    node = await NodeManager.get_one(
+        db=db, branch=branch, id=node.id, include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE)
+    )
 
     # Node should get level from template's manually defined value
     assert node.level.value == 5

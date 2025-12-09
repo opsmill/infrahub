@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 from graphql import GraphQLResolveInfo
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import BranchSupportType, RelationshipHierarchyDirection
+from infrahub.core.constants import BranchSupportType, MetadataOptions, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.schema.node_schema import NodeSchema
@@ -11,7 +11,6 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.utils import has_any_key
 
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -67,6 +66,24 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
             )
+
+    def _get_metadata_to_include(self, property_fields: dict[str, Any]) -> MetadataOptions:
+        include_metadata = MetadataOptions.NONE
+        if "created_at" in property_fields:
+            include_metadata |= MetadataOptions.CREATED_AT
+        if "created_by" in property_fields:
+            include_metadata |= MetadataOptions.CREATED_BY
+        if "updated_at" in property_fields:
+            include_metadata |= MetadataOptions.UPDATED_AT
+        if "updated_by" in property_fields:
+            include_metadata |= MetadataOptions.UPDATED_BY
+        if "source" in property_fields or "_relation__owner" in property_fields:
+            include_metadata |= MetadataOptions.SOURCE
+        if "owner" in property_fields or "_relation__source" in property_fields:
+            include_metadata |= MetadataOptions.OWNER
+        if "is_protected" in property_fields:
+            include_metadata |= MetadataOptions.IS_PROTECTED
+        return include_metadata
 
     async def resolve(
         self,
@@ -138,6 +155,8 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
+        relationships_include_metadata = self._get_metadata_to_include(property_fields=property_fields)
+
         if offset or limit:
             node_graph = await self._get_entities_simple(
                 db=graphql_context.db,
@@ -149,6 +168,7 @@ class ManyRelationshipResolver:
                 rel_schema=node_rel,
                 filters=filters,
                 node_fields=node_fields,
+                include_metadata=relationships_include_metadata,
                 offset=offset,
                 limit=limit,
             )
@@ -163,6 +183,7 @@ class ManyRelationshipResolver:
                 rel_schema=node_rel,
                 filters=filters,
                 node_fields=node_fields,
+                include_metadata=relationships_include_metadata,
             )
 
         if not node_graph:
@@ -192,12 +213,10 @@ class ManyRelationshipResolver:
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
         node_fields: dict[str, Any],
+        include_metadata: MetadataOptions,
         offset: int | None = None,
         limit: int | None = None,
     ) -> list[dict[str, Any]] | None:
-        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
-        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
-
         async with db.start_session(read_only=True) as dbs:
             objs = await NodeManager.query_peers(
                 db=dbs,
@@ -212,8 +231,7 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
                 fetch_peers=True,
-                include_source=include_source,
-                include_owner=include_owner,
+                include_metadata=include_metadata,
             )
             if not objs:
                 return None
@@ -230,12 +248,10 @@ class ManyRelationshipResolver:
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
         node_fields: dict[str, Any],
+        include_metadata: MetadataOptions,
     ) -> list[dict[str, Any]] | None:
         if node_fields and "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
-
-        include_source = has_any_key(data=node_fields, keys=["_relation__source", "source"])
-        include_owner = has_any_key(data=node_fields, keys=["_relation__owner", "owner"])
 
         query_params = QueryPeerParams(
             branch=branch,
@@ -245,8 +261,7 @@ class ManyRelationshipResolver:
             fields=node_fields,
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
-            include_source=include_source,
-            include_owner=include_owner,
+            include_metadata=include_metadata,
         )
         if query_params in self._data_loader_instances:
             loader = self._data_loader_instances[query_params]

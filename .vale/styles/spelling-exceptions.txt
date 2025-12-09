@@ -39,6 +39,7 @@ cron
 Cron
 cypher
 Dagster
+Diataxis
 datacenter
 dataloader
 datastore
@@ -186,6 +187,8 @@ Redoc
 regenerate_host_artifact
 repo
 requesters
+resizable
+Resizable
 resources
 REST
 reusability
@@ -216,6 +219,7 @@ towncrier
 Towncrier
 UIs
 uncheck
+unoptimized
 uniqueness_constraints
 upsert
 upserting
@@ -240,3 +244,4 @@ worktrees
 Yaml
 yamllint
 YouTube
+walkthroughs

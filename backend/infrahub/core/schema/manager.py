@@ -6,6 +6,7 @@ from cachetools import LRUCache
 from infrahub_sdk.schema import BranchSchema as SDKBranchSchema
 
 from infrahub import lock
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -382,8 +383,7 @@ class SchemaManager(NodeManager):
             ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
             db=db,
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
 
         for item in node.local_attributes:
@@ -466,8 +466,7 @@ class SchemaManager(NodeManager):
                 ids=list(item_ids),
                 db=db,
                 branch=branch,
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
         if missing_field_names:
             missing_attrs = await self.query(
@@ -475,16 +474,14 @@ class SchemaManager(NodeManager):
                 branch=branch,
                 schema=attribute_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             missing_rels = await self.query(
                 db=db,
                 branch=branch,
                 schema=relationship_schema,
                 filters={"name__values": missing_field_names, "node__id": node.id},
-                include_owner=True,
-                include_source=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
             items.update({field.id: field for field in missing_attrs + missing_rels})
 
@@ -774,10 +771,15 @@ class SchemaManager(NodeManager):
         """Return non active branches that were purged."""
 
         hashes_to_keep: set[str] = set()
+        branch_processed: set[str] = set()
         for active_branch in active_branches:
-            if branch := self._branches.get(active_branch):
-                nodes = branch.get_all(include_internal=True, duplicate=False)
-                hashes_to_keep.update([node.get_hash() for node in nodes.values()])
+            branch_hash = self._branch_hash_by_name.get(active_branch)
+            if not branch_hash or branch_hash not in branch_processed:
+                if branch_hash:
+                    branch_processed.add(branch_hash)
+                if branch := self._branches.get(active_branch):
+                    nodes = branch.get_all(include_internal=True, duplicate=False)
+                    hashes_to_keep.update([node.get_hash() for node in nodes.values()])
 
         removed_branches: list[str] = []
         for branch_name in list(self._branches.keys()):

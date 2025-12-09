@@ -36,7 +36,6 @@ query {{kind}} {
               is_default
               is_from_profile
               is_protected
-              is_visible
               source {
                 id
                 display_label
@@ -70,7 +69,6 @@ query {{kind}} {
               properties {
                 updated_at
                 is_protected
-                is_visible
                 source {
                   id
                   display_label

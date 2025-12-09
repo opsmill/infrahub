@@ -9,7 +9,7 @@ from netaddr import IPSet
 from opentelemetry import trace
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -248,7 +248,7 @@ def _ensure_display_label_fields(
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     display_label_fields = schema_branch.generate_fields_for_display_label(name=schema.kind)
     if display_label_fields:
-        node_fields = deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
+        deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
 
 
 def _filter_kinds(nodes: list[Node], kinds: list[str], limit: int | None) -> list[Node]:
@@ -400,8 +400,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 limit=query_limit,
                 offset=offset,
                 account=graphql_context.account_session,
-                include_source=True,
-                include_owner=True,
+                include_metadata=MetadataOptions.LINKED_NODES,
                 partial_match=partial_match,
                 order=order,
             )

@@ -18,14 +18,16 @@ from infrahub.core.attribute import (
     String,
 )
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, MetadataOptions
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import MetadataQueryOptions, NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 async def test_init(
@@ -471,6 +473,612 @@ async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch
     attr.owner = "yetotheruuid"
     assert attr._owner is None
     assert attr.owner_id == "yetotheruuid"
+
+
+async def _validate_node_metadata(
+    db: InfrahubDatabase,
+    branch: Branch,
+    node_id: str,
+    update_time_range: tuple[Timestamp, Timestamp],
+    updated_by: str,
+) -> None:
+    """Validate Node-level _get_updated_at and _get_updated_by metadata."""
+    node = await NodeManager.get_one(db=db, branch=branch, id=node_id, include_metadata=MetadataOptions.USER_TIMESTAMPS)
+    assert update_time_range[0] < node._get_updated_at() < update_time_range[1]
+    assert node._get_updated_by() == updated_by
+
+
+async def test_attribute_properties_and_metadata_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
+) -> None:
+    # Create a criticality_schema object on the default branch
+    crit_low = await Node.init(db=db, schema=criticality_schema)
+    await crit_low.new(db=db, name="low", level=4)
+    before_create = Timestamp()
+    await crit_low.save(db=db)
+    after_create = Timestamp()
+    # validate initial node-level metadata
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_create, after_create),
+        updated_by=SYSTEM_USER_ID,
+    )
+
+    # Set the source and owner properties on the object on the default branch
+    crit_low.name.source = first_account
+    crit_low.name.owner = second_account
+    before_default_update = Timestamp()
+    await crit_low.save(db=db, user_id="first-update")
+    after_default_update = Timestamp()
+
+    # Retrieve the object from the database and validate that the source and owner properties are correct
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.source_id == first_account.id
+    assert refreshed_crit_low.name.owner_id == second_account.id
+    assert before_create < refreshed_crit_low.name._get_created_at() < after_create
+    assert refreshed_crit_low.name._get_created_by() == SYSTEM_USER_ID
+    assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
+    assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    # validate node-level metadata after first update on default branch
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
+
+    # Create a branch
+    branch1 = await create_branch(branch_name="branch1", db=db)
+
+    # Update the source and owner properties on the branch
+    crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=branch1,
+    )
+    assert crit_low_branch.name.source_id == first_account.id
+    assert crit_low_branch.name.owner_id == second_account.id
+    assert before_create < crit_low_branch.name._get_created_at() < after_create
+    assert crit_low_branch.name._get_created_by() == SYSTEM_USER_ID
+    assert before_default_update < crit_low_branch.name._get_updated_at() < after_default_update
+    assert crit_low_branch.name._get_updated_by() == "first-update"
+
+    crit_low_branch.name.source = second_account
+    crit_low_branch.name.owner = first_account
+    before_branch_update = Timestamp()
+    await crit_low_branch.save(db=db, user_id="second-update")
+    after_branch_update = Timestamp()
+
+    # Retrieve the object on the branch and validate the source and owner properties
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=branch1,
+    )
+    assert refreshed_crit_low_branch.name.value == "low"
+    assert refreshed_crit_low_branch.name.source_id == second_account.id
+    assert refreshed_crit_low_branch.name.owner_id == first_account.id
+    assert before_branch_update < refreshed_crit_low_branch.name._get_updated_at() < after_branch_update
+    assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
+    assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch after branch update
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
+
+    # retrieve and verify the properties and metadata on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.source_id == first_account.id
+    assert refreshed_crit_low.name.owner_id == second_account.id
+    assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
+    assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
+
+    # Delete the source and owner properties on the object on the branch
+    refreshed_crit_low_branch.name.clear_source()
+    refreshed_crit_low_branch.name.clear_owner()
+    before_branch_clear = Timestamp()
+    await refreshed_crit_low_branch.save(db=db, user_id="third-update")
+    after_branch_clear = Timestamp()
+
+    # Retrieve the object on the branch and validate the source and owner properties
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        db=db,
+        branch=branch1,
+    )
+    assert refreshed_crit_low_branch.name.value == "low"
+    assert refreshed_crit_low_branch.name.source_id is None
+    assert refreshed_crit_low_branch.name.owner_id is None
+    assert before_branch_clear < refreshed_crit_low_branch.name._get_updated_at() < after_branch_clear
+    assert refreshed_crit_low_branch.name._get_updated_by() == "third-update"
+    assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch after clearing source/owner
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_clear, after_branch_clear),
+        updated_by="third-update",
+    )
+
+    # retrieve and verify the properties and metadata on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.source_id == first_account.id
+    assert refreshed_crit_low.name.owner_id == second_account.id
+    assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
+    assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
+
+    # Delete the source and owner properties on the object on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    refreshed_crit_low.name.clear_source()
+    refreshed_crit_low.name.clear_owner()
+    before_default_clear = Timestamp()
+    await refreshed_crit_low.save(db=db, user_id="fourth-update")
+    after_default_clear = Timestamp()
+
+    # Retrieve the object on the default branch and validate the source and owner properties
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.source_id is None
+    assert refreshed_crit_low.name.owner_id is None
+    assert before_default_clear < refreshed_crit_low.name._get_updated_at() < after_default_clear
+    assert refreshed_crit_low.name._get_updated_by() == "fourth-update"
+    assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch after clearing source/owner
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_clear, after_default_clear),
+        updated_by="fourth-update",
+    )
+
+    await verify_no_duplicate_paths(db=db)
+
+
+async def test_attribute_value_and_metadata_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
+) -> None:
+    # Create a criticality_schema object on the default branch
+    crit_low = await Node.init(db=db, schema=criticality_schema)
+    await crit_low.new(db=db, name="low", level=4)
+    before_create = Timestamp()
+    await crit_low.save(db=db)
+    after_create = Timestamp()
+    # validate initial node-level metadata
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_create, after_create),
+        updated_by=SYSTEM_USER_ID,
+    )
+
+    # Set the value property on the object on the default branch
+    crit_low.name.value = "name1"
+    before_default_update = Timestamp()
+    await crit_low.save(db=db, user_id="first-update")
+    after_default_update = Timestamp()
+
+    # Retrieve the object from the database and validate that the value property is correct
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "name1"
+    assert before_create < refreshed_crit_low.name._get_created_at() < after_create
+    assert refreshed_crit_low.name._get_created_by() == SYSTEM_USER_ID
+    assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
+    assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    # validate node-level metadata after first update on default branch
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
+
+    # Create a branch
+    branch1 = await create_branch(branch_name="branch1", db=db)
+
+    # Update the value property on the branch
+    crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=branch1,
+    )
+    assert crit_low_branch.name.value == "name1"
+    assert before_create < crit_low_branch.name._get_created_at() < after_create
+    assert crit_low_branch.name._get_created_by() == SYSTEM_USER_ID
+    assert before_default_update < crit_low_branch.name._get_updated_at() < after_default_update
+    assert crit_low_branch.name._get_updated_by() == "first-update"
+
+    crit_low_branch.name.value = "name2"
+    before_branch_update = Timestamp()
+    await crit_low_branch.save(db=db, user_id="second-update")
+    after_branch_update = Timestamp()
+
+    # Retrieve the object on the branch and validate the value property
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=branch1,
+    )
+    assert refreshed_crit_low_branch.name.value == "name2"
+    assert before_branch_update < refreshed_crit_low_branch.name._get_updated_at() < after_branch_update
+    assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
+    assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
+
+    # retrieve and verify the properties and metadata on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "name1"
+    assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
+    assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
+
+    # Update the value property on the object on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    refreshed_crit_low.name.value = "name4"
+    before_default_update2 = Timestamp()
+    await refreshed_crit_low.save(db=db, user_id="fourth-update")
+    after_default_update2 = Timestamp()
+
+    # Retrieve the object on the default branch and validate the value property
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "name4"
+    assert before_default_update2 < refreshed_crit_low.name._get_updated_at() < after_default_update2
+    assert refreshed_crit_low.name._get_updated_by() == "fourth-update"
+    assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch after second update
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update2, after_default_update2),
+        updated_by="fourth-update",
+    )
+
+    # Retrieve the object on the branch and validate the value property
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        db=db,
+        branch=branch1,
+    )
+    assert refreshed_crit_low_branch.name.value == "name2"
+    assert before_branch_update < refreshed_crit_low_branch.name._get_updated_at() < after_branch_update
+    assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
+    assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate that the node-level metadata on the branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
+
+    await verify_no_duplicate_paths(db=db)
+
+
+async def test_attribute_is_protected_flag_and_metadata_on_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
+) -> None:
+    # Create a criticality_schema object on the default branch
+    crit_low = await Node.init(db=db, schema=criticality_schema)
+    await crit_low.new(db=db, name="low", level=4)
+    before_create = Timestamp()
+    await crit_low.save(db=db)
+    after_create = Timestamp()
+    # validate initial node-level metadata
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_create, after_create),
+        updated_by=SYSTEM_USER_ID,
+    )
+
+    # Set the is_protected flag on the object on the default branch
+    crit_low.name.is_protected = True
+    before_default_update = Timestamp()
+    await crit_low.save(db=db, user_id="first-update")
+    after_default_update = Timestamp()
+
+    # Retrieve the object from the database and validate that the is_protected flag is correct
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.is_protected is True
+    assert before_create < refreshed_crit_low.name._get_created_at() < after_create
+    assert refreshed_crit_low.name._get_created_by() == SYSTEM_USER_ID
+    assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
+    assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    # validate node-level metadata after first update on default branch
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
+
+    # Create a branch
+    branch1 = await create_branch(branch_name="branch1", db=db)
+
+    # Update the is_protected flag on the branch
+    crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=branch1,
+    )
+    assert crit_low_branch.name.is_protected is True
+    assert before_create < crit_low_branch.name._get_created_at() < after_create
+    assert crit_low_branch.name._get_created_by() == SYSTEM_USER_ID
+    assert before_default_update < crit_low_branch.name._get_updated_at() < after_default_update
+    assert crit_low_branch.name._get_updated_by() == "first-update"
+
+    crit_low_branch.name.is_protected = False
+    before_branch_update = Timestamp()
+    await crit_low_branch.save(db=db, user_id="second-update")
+    after_branch_update = Timestamp()
+
+    # Retrieve the object on the branch and validate the is_protected flag
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=branch1,
+    )
+    assert refreshed_crit_low_branch.name.value == "low"
+    assert refreshed_crit_low_branch.name.is_protected is False
+    assert before_branch_update < refreshed_crit_low_branch.name._get_updated_at() < after_branch_update
+    assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
+    assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch after branch update
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
+
+    # retrieve and verify the properties and metadata on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.is_protected is True
+    assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
+    assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
+
+    # Update the is_protected flag on the object on the default branch
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    refreshed_crit_low.name.is_protected = False
+    before_default_update2 = Timestamp()
+    await refreshed_crit_low.save(db=db, user_id="fourth-update")
+    after_default_update2 = Timestamp()
+
+    # Retrieve the object on the default branch and validate the is_protected flag
+    refreshed_crit_low = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataQueryOptions(
+            attribute_level=MetadataOptions.USER_TIMESTAMPS | MetadataOptions.LINKED_NODES
+        ),
+        db=db,
+        branch=default_branch,
+    )
+    assert refreshed_crit_low.name.value == "low"
+    assert refreshed_crit_low.name.is_protected is False
+    assert before_default_update2 < refreshed_crit_low.name._get_updated_at() < after_default_update2
+    assert refreshed_crit_low.name._get_updated_by() == "fourth-update"
+    assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch after second update
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update2, after_default_update2),
+        updated_by="fourth-update",
+    )
+
+    # Retrieve the object on the branch and validate the is_protected flag
+    refreshed_crit_low_branch = await NodeManager.get_one(
+        id=crit_low.id,
+        include_metadata=MetadataOptions.LINKED_NODES | MetadataOptions.USER_TIMESTAMPS,
+        db=db,
+        branch=branch1,
+    )
+    assert refreshed_crit_low_branch.name.value == "low"
+    assert refreshed_crit_low_branch.name.is_protected is False
+    assert before_branch_update < refreshed_crit_low_branch.name._get_updated_at() < after_branch_update
+    assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
+    assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
+    assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
+
+    await verify_no_duplicate_paths(db=db)
 
 
 async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch) -> None:
