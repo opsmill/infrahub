@@ -1627,6 +1627,32 @@ async def test_removing_mandatory_relationship_not_allowed(
     assert len(result.errors) == 1
     assert result.errors[0].message == "Too few relationships, min 1 at owner"
 
+    query = """
+    query {
+        TestDog(ids: ["%(animal_id)s"]) {
+            edges {
+                node {
+                    owner {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }""" % {"animal_id": dog1.id}
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.data["TestDog"]["edges"][0]["node"]["owner"]["node"] is not None
+    retrieved_owner_id = result.data["TestDog"]["edges"][0]["node"]["owner"]["node"]["id"]
+    assert retrieved_owner_id == person1.id
+
 
 async def test_updating_relationship_when_peer_side_is_required(
     db: InfrahubDatabase, default_branch, animal_person_schema
