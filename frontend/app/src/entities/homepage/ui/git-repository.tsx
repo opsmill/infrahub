@@ -1,10 +1,11 @@
 import { ListBoxItem } from "react-aria-components";
 
 import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames, getTextColor } from "@/shared/utils/common";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export const GitRepositoryItem = ({
   id,
@@ -14,7 +15,7 @@ export const GitRepositoryItem = ({
 }: CoreRepository) => {
   return (
     <ListBoxItem
-      href={constructPath(`objects/${__typename}/${id}`)}
+      href={getObjectDetailsUrl(__typename, id)}
       className={classNames(
         focusVisibleStyle,
         "flex items-center justify-between p-4 text-sm",
