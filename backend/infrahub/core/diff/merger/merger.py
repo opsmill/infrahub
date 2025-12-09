@@ -6,11 +6,11 @@ from infrahub.core import registry
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.merge import (
+    DiffMergeMetadataQuery,
     DiffMergeMigratedKindsQuery,
     DiffMergePropertiesQuery,
     DiffMergeQuery,
     DiffMergeRollbackQuery,
-    MergeMetadataQuery,
 )
 from infrahub.log import get_logger
 
@@ -27,6 +27,8 @@ log = get_logger()
 
 
 class DiffMerger:
+    metadata_batch_size = 500
+
     def __init__(
         self,
         db: InfrahubDatabase,
@@ -111,14 +113,17 @@ class DiffMerger:
         affected_node_uuids = [n.uuid for n in enriched_diff.nodes]
         self._affected_node_uuids = affected_node_uuids
         if affected_node_uuids:
-            finalize_query = await MergeMetadataQuery.init(
-                db=self.db,
-                branch=self.source_branch,
-                at=at,
-                target_branch=self.destination_branch,
-                node_uuids=affected_node_uuids,
-            )
-            await finalize_query.execute(db=self.db)
+            for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
+                batch_uuids = affected_node_uuids[i : i + self.metadata_batch_size]
+                log.info(f"Updating metadata for batch {i // self.metadata_batch_size + 1} ({len(batch_uuids)} nodes)")
+                finalize_query = await DiffMergeMetadataQuery.init(
+                    db=self.db,
+                    branch=self.source_branch,
+                    at=at,
+                    target_branch=self.destination_branch,
+                    node_uuids=batch_uuids,
+                )
+                await finalize_query.execute(db=self.db)
 
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
