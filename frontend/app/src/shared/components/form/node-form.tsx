@@ -6,6 +6,7 @@ import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { shouldAllowEmptySubmission } from "@/shared/components/form/utils/shouldAllowEmptySubmission";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
@@ -79,7 +80,7 @@ export const NodeForm = ({
     const isObjectEmpty = Object.keys(newObject).length === 0;
     const isProfilesEmpty = !profiles || profiles.length === 0;
 
-    if (isObjectEmpty && isProfilesEmpty) {
+    if (isObjectEmpty && isProfilesEmpty && !shouldAllowEmptySubmission(schema)) {
       return;
     }
 
