@@ -28,9 +28,7 @@ if TYPE_CHECKING:
 
 class ManyRelationshipResolver:
     def __init__(self) -> None:
-        self._data_loader_instances: dict[
-            QueryPeerParams, PeerRelationshipsDataLoader
-        ] = {}
+        self._data_loader_instances: dict[QueryPeerParams, PeerRelationshipsDataLoader] = {}
 
     async def get_descendant_ids(
         self,
@@ -74,9 +72,7 @@ class ManyRelationshipResolver:
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
             )
 
-    def _get_metadata_to_include(
-        self, property_fields: dict[str, Any]
-    ) -> MetadataOptions:
+    def _get_metadata_to_include(self, property_fields: dict[str, Any]) -> MetadataOptions:
         include_metadata = MetadataOptions.NONE
         if "created_at" in property_fields:
             include_metadata |= MetadataOptions.CREATED_AT
@@ -185,9 +181,7 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
-        relationships_include_metadata = self._get_metadata_to_include(
-            property_fields=property_fields
-        )
+        relationships_include_metadata = self._get_metadata_to_include(property_fields=property_fields)
         if metadata_fields.get("relationship_metadata"):
             relationships_include_metadata |= self._get_metadata_to_include(
                 property_fields=metadata_fields["relationship_metadata"]
@@ -243,16 +237,12 @@ class ManyRelationshipResolver:
                 if metadata_fields.get("node_metadata"):
                     peer = await rel.get_peer(db=db)
                     if peer:
-                        entry["node_metadata"] = await peer._build_meta_response(
-                            "node_metadata", edges
-                        )
+                        entry["node_metadata"] = await peer._build_meta_response("node_metadata", edges)
 
                 if metadata_fields.get("relationship_metadata"):
-                    entry["relationship_metadata"] = (
-                        self._build_relationship_meta_response(
-                            relationship=rel,
-                            metadata_fields=metadata_fields["relationship_metadata"],
-                        )
+                    entry["relationship_metadata"] = self._build_relationship_meta_response(
+                        relationship=rel,
+                        metadata_fields=metadata_fields["relationship_metadata"],
                     )
 
                 entries.append(entry)
