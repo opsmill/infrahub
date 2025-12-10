@@ -409,7 +409,7 @@ def gen_config_env(
             subset.__class__,
             env_prefix=subset.model_config.get("env_prefix"),
         )
-        for field_name, field in subset.model_fields.items():
+        for field_name, field in subset.__class__.model_fields.items():
             field_inst = getattr(subset, field_name)
             if issubclass(field_inst.__class__, BaseSettings):
                 fetch_fields(field_inst)

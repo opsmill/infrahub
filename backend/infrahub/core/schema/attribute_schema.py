@@ -168,7 +168,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     def update_from_generic(self, other: AttributeSchema) -> None:
         fields_to_exclude = ("id", "order_weight", "branch", "inherited")
-        for name in self.model_fields:
+        for name in self.__class__.model_fields:
             if name in fields_to_exclude:
                 continue
             if getattr(self, name) != getattr(other, name):

@@ -271,7 +271,7 @@ class StandardNode(BaseModel):
         else:
             data["uuid"] = str(self.uuid)
 
-        for attr_name, field_info in self.model_fields.items():
+        for attr_name, field_info in self.__class__.model_fields.items():
             if attr_name in self._exclude_attrs:
                 continue
 
