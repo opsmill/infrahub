@@ -22,7 +22,7 @@ export default function TabProfile() {
     error: objectError,
     isPending: isObjectPending,
   } = useGetObject(
-    { objectSchema: schema!, objectId: accountId },
+    { objectSchema: schema!, objectId: accountId+1 },
     { enabled: !!(schema && accountId) }
   );
 
@@ -41,15 +41,7 @@ export default function TabProfile() {
   }
 
   if (objectError || permissionError) {
-    return <ErrorScreen message="Something went wrong when fetching user details." />;
-  }
-
-  if (!objectData) {
-    return (
-      <div className="column flex justify-center">
-        <NoDataFound message="No user found for that id." />
-      </div>
-    );
+    return <ErrorScreen message={objectError?.message|| permissionError?.message} />;
   }
 
   return <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />;
