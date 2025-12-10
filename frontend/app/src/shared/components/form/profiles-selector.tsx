@@ -24,7 +24,10 @@ import { classNames } from "@/shared/utils/common";
 
 import { getProfiles } from "@/entities/nodes/api/getProfiles";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+} from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { NodeSchema } from "@/entities/schema/types";
 
@@ -61,7 +64,7 @@ export const ProfilesSelector = ({
   // The profiles should include the current object profile + all generic profiles
   const kindList = [schema.kind, ...nodeGenericsProfiles];
 
-  // Add attributes for each profile to get the values in the form
+  // Add attributes and relationships for each profile to get the values in the form
   const profilesList = kindList
     .map((profile) => {
       // Get the profile schema for the current kind
@@ -72,12 +75,16 @@ export const ProfilesSelector = ({
       // Get attributes for query + form data
       const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
 
-      if (!attributes.length) return null;
+      // Get relationships for query + form data
+      const relationships = getObjectRelationships({ schema: profileSchema, forProfiles: true });
+
+      if (!attributes.length && !relationships.length) return null;
 
       return {
         name: profileSchema?.kind,
         schema: profileSchema,
         attributes,
+        relationships,
       };
     })
     .filter(Boolean);

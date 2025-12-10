@@ -1,10 +1,12 @@
 import {
   attributesKindForDetailsViewExclude,
+  relationshipKindForForm,
   relationshipsForDetailsView,
   relationshipsForListView,
 } from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
+import type { RelationshipKind } from "@/entities/nodes/types";
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
 import type { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
@@ -47,12 +49,14 @@ type tgetObjectRelationships = {
   schema?: ModelSchema;
   forListView?: boolean;
   forQuery?: boolean;
+  forProfiles?: boolean;
 };
 
 export const getObjectRelationships = ({
   schema,
   forListView,
   forQuery,
+  forProfiles,
 }: tgetObjectRelationships) => {
   if (!schema) {
     return [];
@@ -61,12 +65,20 @@ export const getObjectRelationships = ({
   const kinds = forListView ? relationshipsForListView : relationshipsForDetailsView;
 
   const relationships = (schema.relationships || [])
-    .filter(
-      (relationship) =>
+    .filter((relationship) => {
+      if (forProfiles) {
+        // For profiles, include optional relationships that are form-eligible
+        return (
+          relationship.optional &&
+          relationshipKindForForm.includes(relationship.kind as RelationshipKind)
+        );
+      }
+      return (
         (forQuery ? relationship.read_only : true) &&
         relationship.cardinality &&
         kinds[relationship.cardinality].includes(relationship.kind ?? "")
-    )
+      );
+    })
     .map((relationship) => ({
       isRelationship: true,
       paginated: relationship.cardinality === "many",
