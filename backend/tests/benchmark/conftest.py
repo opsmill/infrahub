@@ -8,12 +8,12 @@ from pytest_benchmark.fixture import BenchmarkFixture
 
 
 @pytest.fixture
-async def exec_async(event_loop: asyncio.AbstractEventLoop) -> Callable[..., Any]:
+async def exec_async() -> Callable[..., Any]:
     def _wrapper(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         if inspect.iscoroutinefunction(func):
 
             def _() -> Any:
-                return event_loop.run_until_complete(func(*args, **kwargs))
+                return asyncio.get_event_loop().run_until_complete(func(*args, **kwargs))
 
             return _()
 
@@ -23,13 +23,13 @@ async def exec_async(event_loop: asyncio.AbstractEventLoop) -> Callable[..., Any
 
 
 @pytest.fixture
-async def aio_benchmark(benchmark: BenchmarkFixture, event_loop: asyncio.AbstractEventLoop) -> Callable[..., Any]:
+async def aio_benchmark(benchmark: BenchmarkFixture) -> Callable[..., Any]:
     def _wrapper(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         if inspect.iscoroutinefunction(func):
 
             @benchmark
             def _() -> Any:
-                return event_loop.run_until_complete(func(*args, **kwargs))
+                return asyncio.get_event_loop().run_until_complete(func(*args, **kwargs))
         else:
             return benchmark(func, *args, **kwargs)
 
