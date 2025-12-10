@@ -118,7 +118,7 @@ class RelationshipAdd(Mutation):
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
-                    await rel.save(db=db)
+                    await rel.save(db=db, user_id=graphql_context.assigned_user_id)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
@@ -242,7 +242,7 @@ class RelationshipRemove(Mutation):
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.delete_relationship(relationship=rel)
-                    await rel.delete(db=db)
+                    await rel.delete(db=db, user_id=graphql_context.assigned_user_id)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:

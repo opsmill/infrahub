@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
 from infrahub.core.constants import (
+    SYSTEM_USER_ID,
     InfrahubKind,
     MetadataOptions,
     RelationshipCardinality,
@@ -1415,6 +1416,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         at: Timestamp | None = None,
         cascade_delete: bool = True,
+        user_id: str = SYSTEM_USER_ID,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
@@ -1429,7 +1431,7 @@ class NodeManager:
                 nodes_to_delete += list(node_map.values())
 
         for node in nodes_to_delete:
-            await node.delete(db=db, at=at)
+            await node.delete(db=db, at=at, user_id=user_id)
 
         return nodes_to_delete
 

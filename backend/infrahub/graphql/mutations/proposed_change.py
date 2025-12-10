@@ -292,7 +292,7 @@ class ProposedChangeReview(Mutation):
                     current_user=current_user,
                     context=graphql_context,
                 )
-                await proposed_change.save(db=db)
+                await proposed_change.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
                 if event:
                     event_service = await get_event_service()
@@ -426,7 +426,7 @@ class ProposedChangeMerge(Mutation):
 
         async with graphql_context.db.start_session() as db:
             proposed_change.state.value = ProposedChangeState.MERGING.value
-            await proposed_change.save(db=db)
+            await proposed_change.save(db=db, user_id=graphql_context.assigned_user_id)
 
         if wait_until_completion:
             await graphql_context.service.workflow.execute_workflow(
