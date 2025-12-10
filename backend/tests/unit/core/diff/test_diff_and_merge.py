@@ -5,7 +5,13 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, MetadataOptions, RelationshipHierarchyDirection, SchemaPathType
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    DiffAction,
+    MetadataOptions,
+    RelationshipHierarchyDirection,
+    SchemaPathType,
+)
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -54,18 +60,41 @@ class TestDiffAndMerge:
     ) -> None:
         new_node = await Node.init(db=db, schema=all_attribute_types_schema.kind)
         await new_node.new(db=db, mylist=["a", "b", 1, 2])
-        await new_node.save(db=db)
+        before_create = Timestamp()
+        await new_node.save(db=db, user_id="main-user")
+        after_create = Timestamp()
+
         branch2 = await create_branch(db=db, branch_name="branch2")
         branch_node = await NodeManager.get_one(db=db, branch=branch2, id=new_node.id)
         branch_node.mylist.value = ["c", "d", 3, 4]
-        await branch_node.save(db=db)
+        await branch_node.save(db=db, user_id="branch-user")
+
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=Timestamp())
+        merge_at = Timestamp()
+        await diff_merger.merge_graph(at=merge_at)
 
-        updated_node = await NodeManager.get_one(db=db, branch=default_branch, id=new_node.id)
+        updated_node = await NodeManager.get_one(
+            db=db, branch=default_branch, id=new_node.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
         assert updated_node.mylist.value == ["c", "d", 3, 4]
+
+        # Verify Node vertex metadata
+        # created_at/created_by should reflect the original creation on main
+        assert before_create < updated_node._get_created_at() < after_create
+        assert updated_node._get_created_by() == "main-user"
+        assert updated_node._get_updated_at() == merge_at
+        assert updated_node._get_updated_by() == "branch-user"
+
+        # Verify Attribute vertex metadata
+        mylist_attr = updated_node.mylist
+        # created_at/created_by should reflect original creation on main
+        assert before_create < mylist_attr._get_created_at() < after_create
+        assert mylist_attr._get_created_by() == "main-user"
+        # updated_at/updated_by should reflect the merge
+        assert mylist_attr._get_updated_at() == merge_at
+        assert mylist_attr._get_updated_by() == "branch-user"
         await verify_no_duplicate_paths(db=db)
 
     async def test_diff_and_merge_schema_with_default_values(
@@ -139,12 +168,14 @@ class TestDiffAndMerge:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.value = "John-main"
-        await john_main.save(db=db)
+        before_main_update = Timestamp()
+        await john_main.save(db=db, user_id="main-user")
+        after_main_update = Timestamp()
         john_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
         john_branch.name.value = "John-branch"
-        await john_branch.save(db=db)
+        await john_branch.save(db=db, user_id="branch-user")
 
-        at = Timestamp()
+        merge_at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
@@ -157,16 +188,45 @@ class TestDiffAndMerge:
         for conflict in conflicts_map.values():
             await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=merge_at)
 
-        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id)
+        updated_john = await NodeManager.get_one(
+            db=db, id=person_john_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
         assert updated_john.name.value == expected_value["name"]
         assert await updated_john.get_hfid(db=db) == expected_value["hfid"]
+        assert updated_john._get_created_at() < before_main_update
+        assert updated_john._get_created_by() == SYSTEM_USER_ID
+        assert updated_john.name._get_created_at() < before_main_update
+        assert updated_john.name._get_created_by() == SYSTEM_USER_ID
 
-        await diff_merger.rollback(at=at)
+        # Verify Node and Attribute metadata
+        if conflict_selection == ConflictSelection.DIFF_BRANCH:
+            # Branch changes were merged
+            assert updated_john._get_updated_at() == merge_at
+            assert updated_john._get_updated_by() == "branch-user"
+            # Attribute metadata should reflect the merge
+            assert updated_john.name._get_updated_at() == merge_at
+            assert updated_john.name._get_updated_by() == "branch-user"
+        else:
+            # Base branch was kept, no changes merged
+            assert before_main_update < updated_john._get_updated_at() < after_main_update
+            # Attribute metadata should reflect main branch update
+            assert before_main_update < updated_john.name._get_updated_at() < after_main_update
+            assert updated_john.name._get_updated_by() == "main-user"
 
-        rolled_back_john = await NodeManager.get_one(db=db, id=person_john_main.id)
+        await diff_merger.rollback(at=merge_at)
+
+        rolled_back_john = await NodeManager.get_one(
+            db=db, id=person_john_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
         assert rolled_back_john.name.value == "John-main"
+        # After rollback, Node metadata should be restored
+        assert before_main_update < rolled_back_john._get_updated_at() < after_main_update
+        assert rolled_back_john._get_updated_by() == "main-user"
+        # After rollback, Attribute metadata should be restored
+        assert before_main_update < rolled_back_john.name._get_updated_at() < after_main_update
+        assert rolled_back_john.name._get_updated_by() == "main-user"
         await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize(
@@ -188,12 +248,14 @@ class TestDiffAndMerge:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data=person_alfred_main)
-        await car_main.save(db=db)
+        before_main_update = Timestamp()
+        await car_main.save(db=db, user_id="main-user")
+        after_main_update = Timestamp()
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
         await car_branch.owner.update(db=db, data=person_jane_main)
-        await car_branch.save(db=db)
+        await car_branch.save(db=db, user_id="branch-user")
 
-        at = Timestamp()
+        merge_at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
@@ -206,20 +268,46 @@ class TestDiffAndMerge:
         conflict = next(iter(conflicts_map.values()))
         await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=merge_at)
 
-        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        updated_car = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
         owner_rel = await updated_car.owner.get(db=db)
         if conflict_selection is ConflictSelection.BASE_BRANCH:
             assert owner_rel.peer_id == person_alfred_main.id
+            # Base branch was kept, no changes merged - Node metadata should reflect main update
+            assert before_main_update < updated_car._get_updated_at() < after_main_update
+            assert updated_car._get_updated_by() == "main-user"
+            # Relationship metadata should reflect main branch update
+            assert before_main_update < owner_rel._get_updated_at() < after_main_update
+            assert owner_rel._get_updated_by() == "main-user"
+            assert before_main_update < owner_rel._get_created_at() < after_main_update
+            assert owner_rel._get_created_by() == "main-user"
         if conflict_selection is ConflictSelection.DIFF_BRANCH:
             assert owner_rel.peer_id == person_jane_main.id
+            # Branch changes were merged - Node metadata should reflect the merge
+            assert updated_car._get_updated_at() == merge_at
+            assert updated_car._get_updated_by() == "branch-user"
+            # Relationship metadata should reflect the merge
+            assert owner_rel._get_created_at() == merge_at
+            assert owner_rel._get_created_by() == "branch-user"
+            assert owner_rel._get_updated_at() == merge_at
+            assert owner_rel._get_updated_by() == "branch-user"
 
-        await diff_merger.rollback(at=at)
+        await diff_merger.rollback(at=merge_at)
 
-        rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        rolled_back_car = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_alfred_main.id
+        # After rollback, Node metadata should be restored to pre-merge state
+        assert before_main_update < rolled_back_car._get_updated_at() < after_main_update
+        assert rolled_back_car._get_updated_by() == "main-user"
+        # After rollback, Relationship metadata should be restored
+        assert before_main_update < owner_rel._get_updated_at() < after_main_update
+        assert owner_rel._get_updated_by() == "main-user"
         await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize(
@@ -240,12 +328,14 @@ class TestDiffAndMerge:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.source = person_alfred_main
-        await john_main.save(db=db)
+        before_main_update = Timestamp()
+        await john_main.save(db=db, user_id="main-user")
+        after_main_update = Timestamp()
         john_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
         john_branch.name.source = person_jane_main
-        await john_branch.save(db=db)
+        await john_branch.save(db=db, user_id="branch-user")
 
-        at = Timestamp()
+        merge_at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
@@ -258,23 +348,47 @@ class TestDiffAndMerge:
         conflict = next(iter(conflicts_map.values()))
         await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=merge_at)
 
-        updated_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE)
+        updated_john = await NodeManager.get_one(
+            db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE | MetadataOptions.USER_TIMESTAMPS
+        )
+        assert updated_john._get_created_at() < before_main_update
+        assert updated_john._get_created_by() == SYSTEM_USER_ID
+        assert updated_john.name._get_created_at() < before_main_update
+        assert updated_john.name._get_created_by() == SYSTEM_USER_ID
 
         attr_source = await updated_john.name.get_source(db=db)
         if conflict_selection is ConflictSelection.BASE_BRANCH:
             assert attr_source.id == person_alfred_main.id
+            # Base branch was kept, no changes merged - Node metadata
+            assert before_main_update < updated_john._get_updated_at() < after_main_update
+            assert updated_john._get_updated_by() == "main-user"
+            # Attribute metadata should reflect main branch update
+            assert before_main_update < updated_john.name._get_updated_at() < after_main_update
+            assert updated_john.name._get_updated_by() == "main-user"
         if conflict_selection is ConflictSelection.DIFF_BRANCH:
             assert attr_source.id == person_jane_main.id
+            # Branch changes were merged - Node metadata
+            assert updated_john._get_updated_at() == merge_at
+            assert updated_john._get_updated_by() == "branch-user"
+            # Attribute metadata should reflect the merge
+            assert updated_john.name._get_updated_at() == merge_at
+            assert updated_john.name._get_updated_by() == "branch-user"
 
-        await diff_merger.rollback(at=at)
+        await diff_merger.rollback(at=merge_at)
 
         rolled_back_john = await NodeManager.get_one(
-            db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE
+            db=db, id=person_john_main.id, include_metadata=MetadataOptions.SOURCE | MetadataOptions.USER_TIMESTAMPS
         )
         attr_source = await rolled_back_john.name.get_source(db=db)
         assert attr_source.id == person_alfred_main.id
+        # After rollback, Node metadata should be restored to pre-merge state
+        assert before_main_update < rolled_back_john._get_updated_at() < after_main_update
+        assert rolled_back_john._get_updated_by() == "main-user"
+        # After rollback, Attribute metadata should be restored
+        assert before_main_update < rolled_back_john.name._get_updated_at() < after_main_update
+        assert rolled_back_john.name._get_updated_by() == "main-user"
         await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize(
@@ -298,12 +412,14 @@ class TestDiffAndMerge:
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data={"id": person_john_main.id, "_relation__owner": person_alfred_main.id})
-        await car_main.save(db=db)
+        before_main_update = Timestamp()
+        await car_main.save(db=db, user_id="main-user")
+        after_main_update = Timestamp()
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
         await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__owner": person_jane_main.id})
-        await car_branch.save(db=db)
+        await car_branch.save(db=db, user_id="branch-user")
 
-        at = Timestamp()
+        merge_at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
@@ -317,15 +433,39 @@ class TestDiffAndMerge:
         for conflict in conflicts_map.values():
             await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=merge_at)
 
-        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER)
+        updated_car_with_metadata = await NodeManager.get_one(
+            db=db,
+            id=car_accord_main.id,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
+            prefetch_relationships=True,
+        )
+        owner_rel_with_metadata = await updated_car_with_metadata.owner.get(db=db)
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
         owner_rel = await updated_car.owner.get(db=db)
         owner_prop = await owner_rel.get_owner(db=db)
+
+        assert updated_car_with_metadata._get_created_at() < before_main_update
+        assert updated_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel_with_metadata._get_created_at() < before_main_update
+        assert owner_rel_with_metadata._get_created_by() == SYSTEM_USER_ID
         if conflict_selection is ConflictSelection.BASE_BRANCH:
             assert owner_prop.id == person_alfred_main.id
+            # Base branch was kept, no changes merged - Node metadata should reflect main update
+            assert before_main_update < updated_car_with_metadata._get_updated_at() < after_main_update
+            assert updated_car_with_metadata._get_updated_by() == "main-user"
+            # Relationship metadata should reflect main branch update
+            assert before_main_update < owner_rel_with_metadata._get_updated_at() < after_main_update
+            assert owner_rel_with_metadata._get_updated_by() == "main-user"
         if conflict_selection is ConflictSelection.DIFF_BRANCH:
             assert owner_prop.id == person_jane_main.id
+            # Branch changes were merged - Node metadata should reflect the merge
+            assert updated_car_with_metadata._get_updated_at() == merge_at
+            assert updated_car_with_metadata._get_updated_by() == "branch-user"
+            # Relationship metadata should reflect the merge
+            assert owner_rel_with_metadata._get_updated_at() == merge_at
+            assert owner_rel_with_metadata._get_updated_by() == "branch-user"
 
         john_car_count = await NodeManager.count_peers(
             db=db,
@@ -337,14 +477,17 @@ class TestDiffAndMerge:
         )
         assert john_car_count == 1
 
-        await diff_merger.rollback(at=at)
+        await diff_merger.rollback(at=merge_at)
 
         rolled_back_car = await NodeManager.get_one(
-            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.OWNER | MetadataOptions.USER_TIMESTAMPS
         )
         owner_rel = await rolled_back_car.owner.get(db=db)
         owner_prop = await owner_rel.get_owner(db=db)
         assert owner_prop.id == person_alfred_main.id
+        # After rollback, Node metadata should be restored to pre-merge state
+        assert before_main_update < rolled_back_car._get_updated_at() < after_main_update
+        assert rolled_back_car._get_updated_by() == "main-user"
         await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize("new_height", (0, 1000, None))
@@ -357,10 +500,17 @@ class TestDiffAndMerge:
         person_jane_main,
         new_height,
     ) -> None:
+        # Capture initial metadata before any changes
+        person_before = await NodeManager.get_one(
+            db=db, id=person_jane_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
+        person_created_at = person_before._get_created_at()
+        person_created_by = person_before._get_created_by()
+
         branch2 = await create_branch(db=db, branch_name="branch2")
         person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_jane_main.id)
         person_branch.height.value = new_height
-        await person_branch.save(db=db)
+        await person_branch.save(db=db, user_id="branch-user")
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
@@ -373,10 +523,37 @@ class TestDiffAndMerge:
         assert node.action is DiffAction.UPDATED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=Timestamp())
+        at = Timestamp()
+        await diff_merger.merge_graph(at=at)
 
-        updated_person = await NodeManager.get_one(db=db, id=person_jane_main.id)
+        updated_person = await NodeManager.get_one(
+            db=db, id=person_jane_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
         assert updated_person.height.value == new_height
+
+        # Validate Node metadata
+        # created_at/created_by should be unchanged (from fixture creation)
+        assert updated_person._get_created_at() == person_created_at
+        assert updated_person._get_created_by() == person_created_by
+        # updated_at/updated_by should reflect the merge
+        assert updated_person._get_updated_at() == at
+        assert updated_person._get_updated_by() == "branch-user"
+
+        # Validate the height attribute metadata
+        height_attr = updated_person.height
+        assert height_attr._get_created_at() == person_created_at
+        assert height_attr._get_created_by() == person_created_by
+        assert height_attr._get_updated_at() == at
+        assert height_attr._get_updated_by() == "branch-user"
+
+        # Validate other attributes were NOT updated (name attribute)
+        name_attr = updated_person.name
+        assert name_attr._get_created_at() == person_created_at
+        assert name_attr._get_created_by() == person_created_by
+        # name attribute should not have been updated by the merge
+        assert name_attr._get_updated_at() == person_created_at
+        assert name_attr._get_updated_by() == person_created_by
+
         await verify_no_duplicate_paths(db=db)
 
     async def test_one_many_relationship_added(
@@ -388,10 +565,17 @@ class TestDiffAndMerge:
         person_jane_main,
         car_camry_main,
     ) -> None:
+        # Capture person_jane's updated_at before adding the relationship
+        person_jane_before = await NodeManager.get_one(
+            db=db, id=person_jane_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
+        person_jane_updated_at_before = person_jane_before._get_updated_at()
+        person_jane_updated_by_before = person_jane_before._get_updated_by()
+
         branch2 = await create_branch(db=db, branch_name="branch2")
         branch_car = await Node.init(db=db, schema="TestCar", branch=branch2)
         await branch_car.new(db=db, name="new camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
-        await branch_car.save(db=db)
+        await branch_car.save(db=db, user_id="branch-user")
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
@@ -406,14 +590,71 @@ class TestDiffAndMerge:
         assert person_node.action is DiffAction.UPDATED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=Timestamp())
+        merge_at = Timestamp()
+        await diff_merger.merge_graph(at=merge_at)
 
-        updated_car = await NodeManager.get_one(db=db, id=branch_car.id)
+        # Verify car node and owner relationship metadata
+        updated_car = await NodeManager.get_one(
+            db=db, id=branch_car.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
         assert updated_car.name.value == "new camry"
         assert updated_car.nbr_seats.value == 5
         assert updated_car.is_electric.value is False
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person_jane_main.id
+
+        # Car Node metadata - created on branch, merged to main
+        assert updated_car._get_created_at() == merge_at
+        assert updated_car._get_created_by() == "branch-user"
+        assert updated_car._get_updated_at() == merge_at
+        assert updated_car._get_updated_by() == "branch-user"
+        # Car owner relationship metadata
+        assert owner_rel._get_created_at() == merge_at
+        assert owner_rel._get_created_by() == "branch-user"
+        assert owner_rel._get_updated_at() == merge_at
+        assert owner_rel._get_updated_by() == "branch-user"
+
+        # Verify person_jane node and cars relationship metadata
+        updated_person = await NodeManager.get_one(
+            db=db, id=person_jane_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
+        cars_rels = await updated_person.cars.get_relationships(db=db)
+        # Find the relationship to the new car
+        new_car_rel = next((r for r in cars_rels if r.peer_id == branch_car.id), None)
+        assert new_car_rel is not None
+
+        # Person Node metadata - updated_at should reflect the merge (rollup from new relationship)
+        assert updated_person._get_created_at() == person_jane_updated_at_before
+        assert updated_person._get_created_by() == SYSTEM_USER_ID
+        assert updated_person._get_updated_at() == merge_at
+        assert updated_person._get_updated_by() == "branch-user"
+        # Person cars relationship metadata (the new relationship to branch_car)
+        assert new_car_rel._get_created_at() == merge_at
+        assert new_car_rel._get_created_by() == "branch-user"
+        assert new_car_rel._get_updated_at() == merge_at
+        assert new_car_rel._get_updated_by() == "branch-user"
+
+        await verify_no_duplicate_paths(db=db)
+
+        # Rollback the merge
+        await diff_merger.rollback(at=merge_at)
+
+        # Car should no longer exist on main after rollback
+        rolled_back_car = await NodeManager.get_one(db=db, id=branch_car.id)
+        assert rolled_back_car is None
+
+        # Person should be restored to pre-merge state
+        rolled_back_person = await NodeManager.get_one(
+            db=db, id=person_jane_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
+        # Person Node metadata should be restored
+        assert rolled_back_person._get_updated_at() == person_jane_updated_at_before
+        assert rolled_back_person._get_updated_by() == person_jane_updated_by_before
+        # The cars relationship to the new car should no longer exist
+        rolled_back_cars_rels = await rolled_back_person.cars.get_relationships(db=db)
+        rolled_back_new_car_rel = next((r for r in rolled_back_cars_rels if r.peer_id == branch_car.id), None)
+        assert rolled_back_new_car_rel is None
+
         await verify_no_duplicate_paths(db=db)
 
     async def test_relationship_set_to_null(
@@ -421,18 +662,22 @@ class TestDiffAndMerge:
     ) -> None:
         person_main = await Node.init(db=db, schema="TestPerson")
         await person_main.new(db=db, name="Dude")
-        await person_main.save(db=db)
+        await person_main.save(db=db, user_id="main-user-person")
         friend_main = await Node.init(db=db, schema="TestPerson")
         await friend_main.new(db=db, name="Friend")
-        await friend_main.save(db=db)
+        before_friend_create = Timestamp()
+        await friend_main.save(db=db, user_id="main-user-friend")
+        after_friend_create = Timestamp()
         dog_main = await Node.init(db=db, schema="TestDog")
         await dog_main.new(db=db, name="good dog", breed="mixed", owner=person_main, best_friend=friend_main)
-        await dog_main.save(db=db)
+        before_dog_create = Timestamp()
+        await dog_main.save(db=db, user_id="main-user-dog")
+        after_dog_create = Timestamp()
 
         branch2 = await create_branch(db=db, branch_name="branch2")
         dog_branch = await NodeManager.get_one(db=db, branch=branch2, id=dog_main.id)
-        await dog_branch.best_friend.update(db=db, data=None)
-        await dog_branch.save(db=db)
+        await dog_branch.best_friend.update(db=db, data=None, user_id="branch-user")
+        await dog_branch.save(db=db, user_id="branch-user")
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
@@ -447,14 +692,62 @@ class TestDiffAndMerge:
         assert friend_node.action is DiffAction.UPDATED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=Timestamp())
+        merge_at = Timestamp()
+        await diff_merger.merge_graph(at=merge_at)
 
-        updated_dog = await NodeManager.get_one(db=db, id=dog_main.id)
+        # Verify dog node metadata - relationship was removed, so dog should be updated
+        updated_dog = await NodeManager.get_one(
+            db=db, id=dog_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
         best_friend_rels = await updated_dog.best_friend.get_relationships(db=db)
         assert len(best_friend_rels) == 0
-        updated_friend = await NodeManager.get_one(db=db, id=friend_main.id)
+        assert before_dog_create < updated_dog._get_created_at() < after_dog_create
+        assert updated_dog._get_created_by() == "main-user-dog"
+        assert updated_dog._get_updated_at() == merge_at
+        assert updated_dog._get_updated_by() == "branch-user"
+
+        # Verify friend node metadata - relationship was removed from their side too
+        updated_friend = await NodeManager.get_one(
+            db=db, id=friend_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
         best_friend_rels = await updated_friend.best_friends.get_relationships(db=db)
         assert len(best_friend_rels) == 0
+        assert before_friend_create < updated_friend._get_created_at() < after_friend_create
+        assert updated_friend._get_created_by() == "main-user-friend"
+        assert updated_friend._get_updated_at() == merge_at
+        assert updated_friend._get_updated_by() == "branch-user"
+
+        await verify_no_duplicate_paths(db=db)
+
+        # Rollback the merge
+        await diff_merger.rollback(at=merge_at)
+
+        # Verify dog metadata after rollback
+        rolled_back_dog = await NodeManager.get_one(
+            db=db, id=dog_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
+        # Dog's best_friend relationship should be restored
+        rolled_back_best_friend_rels = await rolled_back_dog.best_friend.get_relationships(db=db)
+        assert len(rolled_back_best_friend_rels) == 1
+        assert rolled_back_best_friend_rels[0].peer_id == friend_main.id
+        # Dog Node metadata should be restored to pre-merge state
+        assert before_dog_create < rolled_back_dog._get_updated_at() < after_dog_create
+        assert rolled_back_dog._get_updated_by() == "main-user-dog"
+
+        # Verify friend metadata after rollback
+        rolled_back_friend = await NodeManager.get_one(
+            db=db, id=friend_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
+        # Friend's best_friends relationship should be restored
+        rolled_back_best_friends_rels = await rolled_back_friend.best_friends.get_relationships(db=db)
+        assert len(rolled_back_best_friends_rels) == 1
+        assert rolled_back_best_friends_rels[0].peer_id == dog_main.id
+        # Friend Node metadata should be restored to pre-merge state
+        assert before_friend_create < rolled_back_friend._get_created_at() < after_friend_create
+        assert rolled_back_friend._get_created_by() == "main-user-friend"
+        assert before_friend_create < rolled_back_friend._get_updated_at() < after_friend_create
+        assert rolled_back_friend._get_updated_by() == "main-user-friend"
+
         await verify_no_duplicate_paths(db=db)
 
     async def test_local_and_aware_nodes_added_on_branch(
@@ -467,10 +760,12 @@ class TestDiffAndMerge:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
         await person.new(db=db, name="Guy", height=180)
-        await person.save(db=db)
+        await person.save(db=db, user_id="branch-user-person")
         car = await Node.init(db=db, schema="TestCar", branch=branch2)
         await car.new(db=db, name="camry", owner=person.id)
-        await car.save(db=db)
+        before_car_create = Timestamp()
+        await car.save(db=db, user_id="branch-user-car")
+        after_car_create = Timestamp()
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
@@ -486,12 +781,29 @@ class TestDiffAndMerge:
             get_one_diff_node(diff_root=enriched_diff, node_uuid=car.id)
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=Timestamp())
+        merge_at = Timestamp()
+        await diff_merger.merge_graph(at=merge_at)
 
-        # validate person update on main
-        updated_person = await NodeManager.get_one(db=db, id=person.id)
+        # validate person update on main with metadata
+        updated_person = await NodeManager.get_one(
+            db=db, id=person.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
         assert updated_person.height.value == 180
         assert updated_person.name.value == "Guy"
+        # Person Node metadata - created on branch, merged to main
+        assert updated_person._get_created_at() == merge_at
+        assert updated_person._get_created_by() == "branch-user-person"
+        assert updated_person._get_updated_at() == merge_at
+        assert updated_person._get_updated_by() == "branch-user-person"
+        # Person Attribute metadata
+        assert updated_person.name._get_created_at() == merge_at
+        assert updated_person.name._get_created_by() == "branch-user-person"
+        assert updated_person.name._get_updated_at() == merge_at
+        assert updated_person.name._get_updated_by() == "branch-user-person"
+        assert updated_person.height._get_created_at() == merge_at
+        assert updated_person.height._get_created_by() == "branch-user-person"
+        assert updated_person.height._get_updated_at() == merge_at
+        assert updated_person.height._get_updated_by() == "branch-user-person"
         # validate car (branch=local) not merged to main
         updated_car = await NodeManager.get_one(db=db, id=car.id)
         assert updated_car is None
@@ -527,9 +839,14 @@ class TestDiffAndMerge:
             schema=owner_rel_schema,
             filters={},
             fetch_peers=True,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
         )
         assert len(owner_rels) == 1
         assert owner_rels[0].peer_id == person.id
+        assert before_car_create < owner_rels[0]._get_created_at() < after_car_create
+        assert owner_rels[0]._get_created_by() == "branch-user-car"
+        assert before_car_create < owner_rels[0]._get_updated_at() < after_car_create
+        assert owner_rels[0]._get_updated_by() == "branch-user-car"
         await verify_no_duplicate_paths(db=db)
 
     async def test_agnostic_and_aware_nodes_added_on_branch(
@@ -538,10 +855,14 @@ class TestDiffAndMerge:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
         await person.new(db=db, name="Guy", height=180)
-        await person.save(db=db)
+        before_person_create = Timestamp()
+        await person.save(db=db, user_id="branch-user-person")
+        after_person_create = Timestamp()
         car = await Node.init(db=db, schema="TestCar", branch=branch2)
         await car.new(db=db, name="camry", nbr_seats=3, is_electric=False, owner=person.id)
-        await car.save(db=db)
+        before_car_create = Timestamp()
+        await car.save(db=db, user_id="branch-user-car")
+        after_car_create = Timestamp()
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
@@ -556,37 +877,90 @@ class TestDiffAndMerge:
         assert diff_car.action is DiffAction.ADDED
 
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=Timestamp())
+        merge_at = Timestamp()
+        await diff_merger.merge_graph(at=merge_at)
 
-        # validate person (agnostic) exists on main
-        updated_person = await NodeManager.get_one(db=db, id=person.id)
+        # validate person (agnostic) exists on main with metadata
+        updated_person = await NodeManager.get_one(
+            db=db, id=person.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
         assert updated_person.height.value == 180
         assert updated_person.name.value == "Guy"
-        cars_rels = await updated_person.cars.get(db=db)
+        # Person Node metadata - updated_at reflects merge (relationship added)
+        assert before_person_create < updated_person._get_created_at() < after_person_create
+        assert updated_person._get_created_by() == "branch-user-person"
+        assert updated_person._get_updated_at() == merge_at
+        assert updated_person._get_updated_by() == "branch-user-car"
+
+        cars_rels = await updated_person.cars.get_relationships(db=db)
         assert len(cars_rels) == 1
         assert cars_rels[0].peer_id == car.id
-        # validate car merged to main
-        updated_car = await NodeManager.get_one(db=db, id=car.id)
+        # Person cars relationship metadata
+        assert cars_rels[0]._get_created_at() == merge_at
+        assert cars_rels[0]._get_created_by() == "branch-user-car"
+        assert cars_rels[0]._get_updated_at() == merge_at
+        assert cars_rels[0]._get_updated_by() == "branch-user-car"
+
+        # validate car merged to main with metadata
+        updated_car = await NodeManager.get_one(
+            db=db, id=car.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
         assert updated_car.name.value == "camry"
         assert updated_car.nbr_seats.value == 3
         assert updated_car.is_electric.value is False
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person.id
+        # Car Node metadata - created on branch, merged to main
+        assert updated_car._get_created_at() == merge_at
+        assert updated_car._get_created_by() == "branch-user-car"
+        assert updated_car._get_updated_at() == merge_at
+        assert updated_car._get_updated_by() == "branch-user-car"
+        # Car owner relationship metadata
+        assert owner_rel._get_created_at() == merge_at
+        assert owner_rel._get_created_by() == "branch-user-car"
+        assert owner_rel._get_updated_at() == merge_at
+        assert owner_rel._get_updated_by() == "branch-user-car"
+        # Car Attribute metadata
+        assert updated_car.name._get_created_at() == merge_at
+        assert updated_car.name._get_created_by() == "branch-user-car"
 
+        # validate relationships on default branch
         person_schema = registry.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         cars_rels = await NodeManager.query_peers(
-            db=db, ids=[person.id], source_kind="TestPerson", schema=cars_rel_schema, filters={}, fetch_peers=True
+            db=db,
+            ids=[person.id],
+            source_kind="TestPerson",
+            schema=cars_rel_schema,
+            filters={},
+            fetch_peers=True,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
         )
         assert len(cars_rels) == 1
         assert cars_rels[0].peer_id == car.id
+        assert cars_rels[0]._get_created_at() == merge_at
+        assert cars_rels[0]._get_created_by() == "branch-user-car"
+        assert cars_rels[0]._get_updated_at() == merge_at
+        assert cars_rels[0]._get_updated_by() == "branch-user-car"
+
         car_schema = registry.schema.get(name="TestCar", duplicate=False)
         owner_rel_schema = car_schema.get_relationship(name="owner")
         owner_rels = await NodeManager.query_peers(
-            db=db, ids=[car.id], source_kind="TestCar", schema=owner_rel_schema, filters={}, fetch_peers=True
+            db=db,
+            ids=[car.id],
+            source_kind="TestCar",
+            schema=owner_rel_schema,
+            filters={},
+            fetch_peers=True,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
         )
         assert len(owner_rels) == 1
         assert owner_rels[0].peer_id == person.id
+        assert owner_rels[0]._get_created_at() == merge_at
+        assert owner_rels[0]._get_created_by() == "branch-user-car"
+        assert owner_rels[0]._get_updated_at() == merge_at
+        assert owner_rels[0]._get_updated_by() == "branch-user-car"
+
         # validate relationship still exists on branch
         cars_rels = await NodeManager.query_peers(
             db=db,
@@ -596,9 +970,15 @@ class TestDiffAndMerge:
             schema=cars_rel_schema,
             filters={},
             fetch_peers=True,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
         )
         assert len(cars_rels) == 1
         assert cars_rels[0].peer_id == car.id
+        assert before_car_create < cars_rels[0]._get_created_at() < after_car_create
+        assert cars_rels[0]._get_created_by() == "branch-user-car"
+        assert before_car_create < cars_rels[0]._get_updated_at() < after_car_create
+        assert cars_rels[0]._get_updated_by() == "branch-user-car"
+
         owner_rels = await NodeManager.query_peers(
             db=db,
             branch=branch2,
@@ -607,9 +987,14 @@ class TestDiffAndMerge:
             schema=owner_rel_schema,
             filters={},
             fetch_peers=True,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
         )
         assert len(owner_rels) == 1
         assert owner_rels[0].peer_id == person.id
+        assert before_car_create < owner_rels[0]._get_created_at() < after_car_create
+        assert owner_rels[0]._get_created_by() == "branch-user-car"
+        assert before_car_create < owner_rels[0]._get_updated_at() < after_car_create
+        assert owner_rels[0]._get_updated_by() == "branch-user-car"
         await verify_no_duplicate_paths(db=db)
 
     async def test_update_individual_relationship_properties_one_at_a_time(
@@ -621,31 +1006,46 @@ class TestDiffAndMerge:
         car_accord_main,
         car_camry_main,
     ) -> None:
+        before_test_start = Timestamp()
         person_schema = db.schema.get(name="TestPerson", duplicate=False)
         cars_rel_schema = person_schema.get_relationship(name="cars")
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
         await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": True})
-        await car_branch.save(db=db)
+        await car_branch.save(db=db, user_id="branch-user-one")
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
 
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
-        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": True})
-        await car_branch.save(db=db)
+        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": False})
+        await car_branch.save(db=db, user_id="branch-user-two")
 
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
 
-        at = Timestamp()
+        merge_at = Timestamp()
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=merge_at)
 
         # validate that the properties were correctly updated
         updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is True
+
+        # validate metadata separately
+        updated_car_with_metadata = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
+        owner_rel_with_metadata = await updated_car_with_metadata.owner.get(db=db)
+        assert updated_car_with_metadata._get_created_at() < before_test_start
+        assert updated_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert updated_car_with_metadata._get_updated_at() == merge_at
+        assert updated_car_with_metadata._get_updated_by() == "branch-user-two"
+        assert owner_rel_with_metadata._get_created_at() < before_test_start
+        assert owner_rel_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel_with_metadata._get_updated_at() == merge_at
+        assert owner_rel_with_metadata._get_updated_by() == "branch-user-two"
 
         john_car_count = await NodeManager.count_peers(
             db=db,
@@ -657,13 +1057,28 @@ class TestDiffAndMerge:
         )
         assert john_car_count == 1
 
-        await diff_merger.rollback(at=at)
+        await diff_merger.rollback(at=merge_at)
 
         # validate that the properties were correctly rolled back
-        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
-        owner_rel = await updated_car.owner.get(db=db)
+        rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False
+
+        # validate metadata separately
+        rolled_back_car_with_metadata = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
+        )
+        # Car Node metadata should be restored
+        assert rolled_back_car_with_metadata._get_created_at() < before_test_start
+        assert rolled_back_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert rolled_back_car_with_metadata._get_updated_at() < before_test_start
+        assert rolled_back_car_with_metadata._get_updated_by() == SYSTEM_USER_ID
+        owner_rel_with_metadata = await rolled_back_car_with_metadata.owner.get(db=db)
+        assert owner_rel_with_metadata._get_created_at() < before_test_start
+        assert owner_rel_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel_with_metadata._get_updated_at() < before_test_start
+        assert owner_rel_with_metadata._get_updated_by() == SYSTEM_USER_ID
         await verify_no_duplicate_paths(db=db)
 
     async def test_branch_delete_with_added_base_relationship(
@@ -677,6 +1092,12 @@ class TestDiffAndMerge:
         car_accord_main,
         car_camry_main,
     ) -> None:
+        # Capture initial metadata before any changes
+        car_before = await NodeManager.get_one(
+            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
+        car_created_at = car_before._get_created_at()
+
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data={"id": person_alfred_main.id, "_relation__is_protected": True})

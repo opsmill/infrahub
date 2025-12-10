@@ -993,7 +993,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         if self._human_friendly_id:
             if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
-                 db=db, user_id=user_id, at=delete_at,
+                db=db,
+                user_id=user_id,
+                at=delete_at,
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 

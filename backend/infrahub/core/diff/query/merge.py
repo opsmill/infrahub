@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -115,6 +116,8 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             CREATE (root)
                 <-[:IS_PART_OF { branch: $target_branch, branch_level: $branch_level, from: $at, status: node_rel_status, from_user_id: source_from_user_id }]
                 -(n)
+            WITH node_rel_status
+            WHERE node_rel_status = "active"
             SET n.created_at = $at, n.created_by = source_from_user_id
         }
         // ------------------------------
@@ -147,7 +150,6 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             AND rel2.from <= $at
             SET rel1.to = $at, rel1.to_user_id = source_from_user_id
             SET rel2.to = $at, rel2.to_user_id = source_from_user_id
-            SET attr_rel.new_updated_at = $at, attr_rel.new_updated_by = source_from_user_id
             // ------------------------------
             // and delete HAS_OWNER and HAS_SOURCE edges to this node if the node is deleted
             // ------------------------------
@@ -208,7 +210,6 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             WITH n, attr_rel_status, a, attr_source_from_user_id
             // ------------------------------
             // set HAS_ATTRIBUTE.to on target branch if necessary
-            // set Attribute.new_updated_at/by if deleting
             // set Attribute.created_at/by vertex when adding
             // ------------------------------
             CALL (n, attr_rel_status, a, attr_source_from_user_id) {
@@ -218,12 +219,11 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                 WHERE attr_rel_status = "deleted"
                 AND target_r_attr.from <= $at AND target_r_attr.to IS NULL
                 SET target_r_attr.to = $at, target_r_attr.to_user_id = attr_source_from_user_id
-                SET a.new_updated_at = $at, a.new_updated_by = attr_source_from_user_id
             }
             WITH n, attr_rel_status, a, attr_source_from_user_id
             // ------------------------------
             // conditionally create new HAS_ATTRIBUTE relationship on target_branch, if necessary
-            // also set created_at/created_by and new_updated_at/updated_by on Attribute vertex when adding
+            // also set created_at/created_by on Attribute vertex when adding
             // ------------------------------
             CALL (n, attr_rel_status, a, attr_source_from_user_id) {
                 WITH n, attr_rel_status, a, attr_source_from_user_id
@@ -235,7 +235,9 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                 WITH a, r_attr, attr_source_from_user_id
                 WHERE r_attr IS NULL
                 CREATE (n)-[:HAS_ATTRIBUTE { branch: $target_branch, branch_level: $branch_level, from: $at, status: attr_rel_status, from_user_id: attr_source_from_user_id }]->(a)
-                SET a.created_at = $at, a.created_by = attr_source_from_user_id, a.new_updated_at = $at, a.new_updated_by = attr_source_from_user_id
+                WITH attr_rel_status
+                WHERE attr_rel_status = "active"
+                SET a.created_at = $at, a.created_by = attr_source_from_user_id
             }
             RETURN 1 AS done
         }
@@ -305,7 +307,6 @@ CALL (n, node_diff_map, is_node_kind_migration) {
             WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, r1_from_user_id, r2_from_user_id, rel_name, rel_peer, related_rel_status
             // ------------------------------
             // set IS_RELATED.to on target branch when deleting relationship
-            // also set new_updated_at/updated_by on Relationship vertex
             // ------------------------------
             CALL (n, r, rel_name, rel_peer, related_rel_status, r1_from_user_id, r2_from_user_id) {
                 OPTIONAL MATCH (n)
@@ -318,12 +319,11 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                 AND target_r_rel_2.from <= $at AND target_r_rel_2.to IS NULL
                 SET target_r_rel_1.to = $at, target_r_rel_1.to_user_id = r1_from_user_id
                 SET target_r_rel_2.to = $at, target_r_rel_2.to_user_id = r2_from_user_id
-                SET r.new_updated_at = $at, r.new_updated_by = r1_from_user_id
             }
             WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, r1_from_user_id, r2_from_user_id, rel_name, rel_peer, related_rel_status
             // ------------------------------
             // conditionally create new IS_RELATED relationships on target_branch, if necessary
-            // also set created_at/created_by and new_updated_at/updated_by on Relationship vertex when adding
+            // also set created_at/created_by on Relationship vertex when adding
             // ------------------------------
             CALL (n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, r1_from_user_id, r2_from_user_id, rel_name, rel_peer, related_rel_status) {
                 OPTIONAL MATCH (n)
@@ -338,8 +338,6 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                 WITH r, rel_peer, r_rel_1, r_rel_2, r1_from_user_id, r2_from_user_id
                 WHERE r_rel_1 IS NULL
                 AND r_rel_2 IS NULL
-                // set Relationship vertex metadata when adding
-                SET r.created_at = $at, r.created_by = r1_from_user_id, r.new_updated_at = $at, r.new_updated_by = r1_from_user_id
                 WITH n, r, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy, related_rel_status, r1_from_user_id, r2_from_user_id
                 // ------------------------------
                 // create IS_RELATED relationships with directions maintained from source
@@ -372,6 +370,10 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                         <-[:IS_RELATED {branch: $target_branch, branch_level: $branch_level, from: $at, status: related_rel_status, hierarchy: r2_hierarchy, from_user_id: r2_from_user_id}]
                         -(rel_peer)
                 }
+                // set Relationship vertex metadata when adding
+                WITH r
+                WHERE r.created_at IS NULL
+                SET r.created_at = $at, r.created_by = r1_from_user_id
             }
         }
     }
@@ -516,7 +518,6 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
         }
         // ------------------------------
         // set property edge.to, optionally, on target branch
-        // also set new_updated_at/updated_by on Attribute/Relationship vertex
         // ------------------------------
         CALL (attr_rel, prop_type, prop_node, prop_source_from_user_id) {
             MATCH (attr_rel)-[target_r_prop {branch: $target_branch}]->(target_prop)
@@ -524,7 +525,6 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
             AND target_prop <> prop_node
             AND target_r_prop.from < $at AND target_r_prop.to IS NULL
             SET target_r_prop.to = $at, target_r_prop.to_user_id = prop_source_from_user_id
-            SET attr_rel.new_updated_at = $at, attr_rel.new_updated_by = prop_source_from_user_id
         }
         // ------------------------------
         // check for existing edge on target_branch
@@ -539,8 +539,6 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
         }
         WITH attr_rel, prop_rel_status, prop_type, prop_node, r_prop, prop_source_from_user_id
         WHERE r_prop IS NULL
-        // set updated_at/updated_by on Attribute/Relationship vertex when creating property edges
-        SET attr_rel.new_updated_at = $at, attr_rel.new_updated_by = prop_source_from_user_id
         WITH attr_rel, prop_rel_status, prop_type, prop_node, prop_source_from_user_id
         // ------------------------------
         // create new edge to prop_node on target_branch, if necessary
@@ -663,7 +661,7 @@ CALL (n) {
         CREATE (n)-[new_edge:IS_RELATED]->(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
-        SET peer.created_at = $at, peer.created_by = user_id, peer.new_updated_at = $at, peer.new_updated_by = user_id
+        SET peer.created_at = $at, peer.created_by = user_id
     }
     CALL (n, latest_source_edge, peer, edge_type, user_id) {
         WITH peer, user_id, edge_type
@@ -671,7 +669,7 @@ CALL (n) {
         CREATE (n)-[new_edge:HAS_ATTRIBUTE]->(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
-        SET peer.created_at = $at, peer.created_by = user_id, peer.new_updated_at = $at, peer.new_updated_by = user_id
+        SET peer.created_at = $at, peer.created_by = user_id
     }
     // --------------
     // do all of this again for inbound edges
@@ -714,7 +712,6 @@ CALL (n) {
         AND latest_target_edge.status = "active"
         AND latest_target_edge.to IS NULL
         SET latest_target_edge.to = $at, latest_target_edge.to_user_id = user_id
-        SET peer.new_updated_at = $at, peer.new_updated_by = user_id
     }
     // --------------
     // create the inbound edges on the target branch, one subquery per possible type
@@ -726,7 +723,7 @@ CALL (n) {
         CREATE (n)<-[new_edge:IS_RELATED]-(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
-        SET peer.created_at = $at, peer.created_by = user_id, peer.new_updated_at = $at, peer.new_updated_by = user_id
+        SET peer.created_at = $at, peer.created_by = user_id
     }
     CALL (n, latest_source_edge, peer, edge_type, user_id) {
         WITH peer, user_id, edge_type
@@ -734,7 +731,6 @@ CALL (n) {
         CREATE (n)<-[new_edge:HAS_OWNER]-(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
-        SET peer.new_updated_at = $at, peer.new_updated_by = user_id
     }
     CALL (n, latest_source_edge, peer, edge_type, user_id) {
         WITH peer, user_id, edge_type
@@ -742,21 +738,31 @@ CALL (n) {
         CREATE (n)<-[new_edge:HAS_SOURCE]-(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
-        SET peer.new_updated_at = $at, peer.new_updated_by = user_id
     }
 }
         """
         self.add_to_query(query)
 
 
-class MergeMetadataQuery(Query):
-    """Finalize metadata on affected nodes after merge.
+class DiffMergeMetadataQuery(Query):
+    """Set metadata properties on Nodes, Attributes, and Relationships included in this merge
 
-    For all Node, Attribute, and Relationship vertices, set the updated_at/by metadata properties in the following order
-        1. previous_updated_at/by = updated_at/by
-        2. updated_at/by = new_updated_at/by
-        3. new_updated_at/by = NULL
-    For all Nodes affected by this merge, set updated_at/by to the latest updated_at/by pair from the linked Attributes and Relationships
+    Each Node, Attribute, and Relationship should have its current updated_at/by (if it exists) saved in the
+    previous_updated_at/by properties to support a rollback.
+    For Attributes and Relationships (let's call them fields), set updated_by to the user_id of the latest change on
+        the field on the branch being merged
+    For Nodes, set the updated_by to the user_id of the latest change on any associated fields on this branch
+    For Nodes, Attributes, and Relationships, set updated_at to the merge time.
+
+    The logic in pseudocode
+        For each Node we care about:
+        a. For each Attribute/Relationship (let's call them "fields") linked to the Node
+            i. filter to only fields updated on the source branch
+            ii. previous_updated_at/by = updated_at/by
+            iii. identify the latest update and set updated_by = the associated user_id
+            iv. set updated_at = $at
+        b. set Node.updated_by to the user_id associated with the latest change of ALL the Node's fields
+        c. set Node.updated_at = $at
     """
 
     name = "merge_metadata"
@@ -780,45 +786,98 @@ class MergeMetadataQuery(Query):
             "node_uuids": self.node_uuids,
             "at": self.at.to_string(),
             "target_branch": self.target_branch.name,
+            "source_branch": self.branch.name,
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "branched_from": self.branch.get_branched_from(),
         }
+        # ruff: noqa: E501
         query = """
-// Match all affected nodes
-MATCH (n:Node)
-WHERE n.uuid IN $node_uuids
-// ------------------------------------
-// set latest updated at and by for Node using its Attribute and Relationship vertices
-// Save current values to previous_updated_at/by for rollback support
-// ------------------------------------
-CALL (n) {
-    MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED {branch: $target_branch}]-(attr_rel:Attribute|Relationship)
-    WHERE attr_rel.new_updated_at IS NOT NULL
-    RETURN
-        attr_rel.new_updated_at AS latest_updated_at,
-        attr_rel.new_updated_by AS latest_updated_by,
-        attr_rel.new_updated_by STARTS WITH "__" AS is_system
-    ORDER BY latest_updated_at DESC, is_system ASC
+// --------------------
+// Match all affected nodes, accounting for nodes with migrated kind
+// for each UUID, get the latest Node that was active on this branch
+// --------------------
+UNWIND $node_uuids AS node_uuid
+CALL (node_uuid) {
+    MATCH (n:Node {uuid: node_uuid})-[e:IS_PART_OF]->(:Root)
+    WHERE e.branch IN [$source_branch, $target_branch, $global_branch]
+    AND (
+        (e.branch = $target_branch AND e.from <= $branched_from)
+        OR (e.branch IN [$source_branch, $global_branch] AND e.from <= $at)
+    )
+    RETURN n
+    ORDER BY e.from DESC
     LIMIT 1
 }
-SET n.previous_updated_at = n.updated_at, n.previous_updated_by = n.updated_by
-SET n.updated_at = latest_updated_at, n.updated_by = latest_updated_by
-// ------------------------------------
-// Find all connected Attribute and Relationship vertices with new_* properties
-// Save current values to previous_* for rollback support
-// Set previous_* = *, * = new_*, new_* = NULL
-// ------------------------------------
-WITH n
-CALL (n) {
-    MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED {branch: $target_branch}]-(attr_rel:Attribute|Relationship)
-    WHERE (attr_rel.new_updated_at IS NOT NULL)
-    WITH DISTINCT attr_rel
-    // Save current values for rollback
-    SET attr_rel.previous_updated_at = attr_rel.updated_at, attr_rel.previous_updated_by = attr_rel.updated_by
-    // Finalize Attribute vertex metadata
-    SET attr_rel.updated_at = COALESCE(attr_rel.new_updated_at, attr_rel.updated_at)
-    SET attr_rel.updated_by = COALESCE(attr_rel.new_updated_by, attr_rel.updated_by)
-    // Clear new_* properties
-    SET attr_rel.new_updated_at = NULL, attr_rel.new_updated_by = NULL
+// --------------------
+// Get all the Attributes and Relationships for this Node that were active on this branch at some point
+// --------------------
+MATCH (n)-[e:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WHERE e.branch IN [$source_branch, $target_branch, $global_branch]
+AND (
+    (e.branch = $target_branch AND e.from <= $branched_from)
+    OR (e.branch IN [$source_branch, $global_branch] AND e.from <= $at)
+)
+
+// --------------------
+// For each field, only include it if it has an update at $at on the target branch
+// to prevent updating metadata for conflicts in which the base branch version was accepted
+// --------------------
+WITH DISTINCT n, field
+WHERE exists((field)-[{branch: $target_branch, from: $at}]-())
+OR exists((field)-[{branch: $target_branch, to: $at}]-())
+
+// --------------------
+// For each changed field, find the latest time and user_id that updated it on the source branch
+// Check both from (creation) and to (deletion) timestamps
+// Prefer non-system users (those not starting with "__")
+// --------------------
+CALL (field) {
+    MATCH ()-[edge {branch: $source_branch}]-(field)
+    WHERE edge.from <= $at
+    // Collect both from and to timestamps as potential "change times"
+    WITH edge,
+         edge.from AS from_time,
+         edge.from_user_id AS from_user,
+         edge.to AS to_time,
+         edge.to_user_id AS to_user
+    // Create rows for each type of change
+    UNWIND [
+        CASE WHEN from_time <= $at THEN {time: from_time, user_id: from_user} ELSE NULL END,
+        CASE WHEN to_time IS NOT NULL AND to_time <= $at THEN {time: to_time, user_id: to_user} ELSE NULL END
+    ] AS change
+    WITH change WHERE change IS NOT NULL AND change.user_id IS NOT NULL
+    // Sort by time DESC, then prefer non-system users (is_system ASC puts false before true)
+    WITH change.user_id AS change_user_id, change.time AS change_time, change.user_id STARTS WITH "__" AS is_system
+    RETURN change_user_id, change_time
+    ORDER BY change_time DESC, is_system ASC
+    LIMIT 1
 }
+
+// Save current field values for rollback, then update field metadata
+WITH n, field, change_user_id, change_time
+WHERE change_user_id IS NOT NULL
+// --------------------
+// make sure not to set the previous_updated_at multiple times
+// --------------------
+CALL (field, change_user_id) {
+    WITH field
+    WHERE field.updated_at <> $at
+    SET field.previous_updated_at = field.updated_at, field.previous_updated_by = field.updated_by
+    SET field.updated_at = $at, field.updated_by = change_user_id
+}
+
+// Aggregate to find the latest change across all fields for Node-level metadata
+WITH n, change_user_id, change_time, change_user_id STARTS WITH "__" AS is_system
+ORDER BY change_time DESC, is_system ASC
+WITH n, collect(change_user_id)[0] AS node_updated_by
+
+// ------------------------------------
+// Update Node metadata with latest change across all its fields
+// ------------------------------------
+WITH n, node_updated_by
+WHERE node_updated_by IS NOT NULL
+SET n.previous_updated_at = n.updated_at, n.previous_updated_by = n.updated_by
+SET n.updated_at = $at, n.updated_by = node_updated_by
         """
         self.add_to_query(query=query)
 

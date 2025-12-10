@@ -116,14 +116,14 @@ class DiffMerger:
             for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
                 batch_uuids = affected_node_uuids[i : i + self.metadata_batch_size]
                 log.info(f"Updating metadata for batch {i // self.metadata_batch_size + 1} ({len(batch_uuids)} nodes)")
-                finalize_query = await DiffMergeMetadataQuery.init(
+                metadata_query = await DiffMergeMetadataQuery.init(
                     db=self.db,
                     branch=self.source_branch,
                     at=at,
                     target_branch=self.destination_branch,
                     node_uuids=batch_uuids,
                 )
-                await finalize_query.execute(db=self.db)
+                await metadata_query.execute(db=self.db)
 
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
