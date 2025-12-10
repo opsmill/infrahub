@@ -20,7 +20,7 @@ class RemoveIsVisibleRelationshipQuery(Query):
         query = """
         MATCH ()-[rel:IS_VISIBLE]->()
         CALL (rel) {
-          DELETE rel6
+          DELETE rel
         } IN TRANSACTIONS
         """
         self.add_to_query(query)
