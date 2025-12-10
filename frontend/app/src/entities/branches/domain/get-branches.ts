@@ -25,10 +25,10 @@ type InfrahubBranchResponse = {
   };
 };
 
-export type GetBranches = () => Promise<Array<Branch>>;
+export type GetBranches = (branchName?: string) => Promise<Array<Branch>>;
 
-export const getBranches: GetBranches = async () => {
-  const { data, errors } = await getBranchesFromApi();
+export const getBranches: GetBranches = async (branchName?: string) => {
+  const { data, errors } = await getBranchesFromApi(branchName);
 
   if (errors) {
     throw new Error(errors.map((e) => e.message).join("; "));
