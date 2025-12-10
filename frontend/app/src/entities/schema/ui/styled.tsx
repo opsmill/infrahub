@@ -16,6 +16,7 @@ interface AccordionStyleProps extends AccordionProps {
   isUnique?: boolean;
   isReadOnly?: boolean;
   isComputed?: boolean;
+  isDeprecated?: boolean;
 }
 
 export const AccordionStyled = ({
@@ -27,6 +28,7 @@ export const AccordionStyled = ({
   isUnique,
   isReadOnly,
   isComputed,
+  isDeprecated,
   ...props
 }: AccordionStyleProps) => (
   <Accordion
@@ -38,6 +40,7 @@ export const AccordionStyled = ({
           </div>
 
           <div className="space-x-1">
+            {isDeprecated && <Badge variant="yellow">deprecated</Badge>}
             {isOptional && <Badge variant="yellow">optional</Badge>}
             {isUnique && <Badge variant="red">unique</Badge>}
             {isReadOnly && <Badge variant="blue">read-only</Badge>}
