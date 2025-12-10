@@ -41,7 +41,7 @@ export default function TabProfile() {
   }
 
   if (objectError || permissionError) {
-    return <ErrorScreen message={objectError?.message|| permissionError?.message} />;
+    return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
   return <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />;
