@@ -16,8 +16,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "neo4j>=6.0.3,<6.0.4",
-    "neo4j-rust-ext>=6.0.3,<6.0.4",
     "pydantic>=2.12,<2.13",
     "pydantic-settings>=2.8,<2.9",
     "pytest>=9.0,<9.1",
@@ -37,7 +35,6 @@ dependencies = [
     "pyyaml>=6,<7",
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.1",
-
     # Dependencies specific to the API Server
     "fastapi==0.121.1",
     "fastapi-storages>=0.3,<0.4",
@@ -45,10 +42,10 @@ dependencies = [
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
-    "python-multipart==0.0.18",                            # Required by FastAPI to upload large files
-    "asgi-correlation-id==4.2.0",                          # Middleware for FastAPI to generate ID per request
-    "bcrypt>=4.1,<4.2",                                    # Used to hash and validate password
-    "pyjwt>=2.8,<2.9",                                     # Used to manage JWT tokens
+    "python-multipart==0.0.18", # Required by FastAPI to upload large files
+    "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
+    "bcrypt>=4.1,<4.2", # Used to hash and validate password
+    "pyjwt>=2.8,<2.9", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.60b0",
     "opentelemetry-instrumentation-fastapi==0.60b0",
@@ -60,7 +57,6 @@ dependencies = [
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
-
     # Dependencies specific to the SDK
     "rich>=13,<14",
     "pyarrow>=14",
@@ -69,6 +65,7 @@ dependencies = [
     "whenever==0.9.3",
     "netutils==1.12.0",
     "ariadne-codegen==0.15.3",
+    "neo4j-rust-ext",
 ]
 
 [project.urls]
@@ -80,6 +77,8 @@ Documentation = "https://docs.infrahub.app/"
 infrahub-server = { workspace = true }
 infrahub-sdk = { path = "python_sdk", editable = true }
 infrahub-testcontainers = { path = "python_testcontainers", editable = true }
+neo4j = { git = "https://github.com/fatih-acar/neo4j-python-driver", rev = "fdd474e7f7d6341598a5f506235417ecadd49436" }
+neo4j-rust-ext = { git = "https://github.com/neo4j/neo4j-python-driver-rust-ext", rev = "7ad0686def31ee0702598d8e041294678dc86f05" }
 
 [dependency-groups]
 dev = [
