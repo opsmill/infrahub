@@ -3950,3 +3950,80 @@ async def test_identify_object_templates_with_generics() -> None:
         TestKind.SFP,
         TestKind.VIRTUAL_INTERFACE,
     }
+
+
+async def test_template_generation_with_parent_relationship_cardinality() -> None:
+    """Test that templates generated from nodes with Parent relationships handle cardinality constraints correctly.
+    
+    This test verifies the fix for issue where template generation incorrectly validates parent relationship
+    cardinality constraints. When a node with generate_template: true has a parent relationship with
+    cardinality: one, the auto-generated template should allow the parent relationship to be optional
+    since the parent object doesn't exist at template definition time.
+    """
+    from infrahub.core.constants import RelationshipCardinality
+
+    # Define parent schema (the stack)
+    STACK_SCHEMA = {
+        "name": "SwitchStack",
+        "namespace": "Stack",
+        "generate_template": True,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {
+                "name": "stack_members",
+                "peer": "StackStackMember",
+                "cardinality": "many",
+                "kind": "Component",
+            }
+        ],
+    }
+
+    # Define child schema with parent relationship that has min_count: 1
+    STACK_MEMBER_SCHEMA = {
+        "name": "StackMember",
+        "namespace": "Stack",
+        "generate_template": True,
+        "attributes": [
+            {"name": "name", "kind": "Text"},
+            {"name": "stack_member_id", "kind": "Number"},
+        ],
+        "relationships": [
+            {
+                "name": "stack",
+                "peer": "StackSwitchStack",
+                "optional": True,
+                "cardinality": "one",
+                "kind": "Parent",
+                "min_count": 1,
+            }
+        ],
+    }
+
+    # Load schemas
+    copy_core_models = copy.deepcopy(core_models)
+    copy_core_models["nodes"].extend([STACK_SCHEMA, STACK_MEMBER_SCHEMA])
+    schema = SchemaRoot(**copy_core_models)
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+    schema_branch.process_pre_validation()
+    
+    # Generate templates
+    schema_branch.manage_object_template_schemas()
+    
+    # Get the generated template for StackMember
+    template_stack_member = schema_branch.get(name="TemplateStackStackMember", duplicate=False)
+    
+    # Find the parent relationship on the template
+    stack_rel = template_stack_member.get_relationship(name="stack")
+    
+    # Verify the relationship properties
+    assert stack_rel.cardinality == RelationshipCardinality.ONE
+    assert stack_rel.kind == RelationshipKind.PARENT
+    # The key assertion: Parent relationships on templates should be optional to allow min_count/max_count != 1
+    assert stack_rel.optional is True
+    
+    # This should not raise ValueError about cardinality.ONE with incorrect min_count/max_count
+    schema_branch.validate_count_against_cardinality()
