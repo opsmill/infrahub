@@ -113,7 +113,7 @@ const GraphqlQueryPropertyList = ({
           <div className="flex items-center justify-between">
             <ObjectAttributeValue
               attributeSchema={attributeSchema}
-              attributeValue={graphqlQueryAttribute}
+              attributeData={graphqlQueryAttribute}
             />
 
             <div className="flex items-center">

@@ -4,38 +4,40 @@ import { Icon } from "@iconify-icon/react";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 
-import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import {
+  type AttributeType,
+  ObjectAttributeValue,
+} from "@/entities/nodes/getObjectItemDisplayValue";
 import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
 import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
-import type { Permission } from "@/entities/permission/types";
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
-
 import {
   getObjectAttributes,
   getObjectRelationships,
-} from "../../object-items/getSchemaObjectColumns";
-import type { NodeObject } from "../../types";
+} from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import type { NodeObject } from "@/entities/nodes/types";
+import type { Permission } from "@/entities/permission/types";
+import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
-type ObjectDetailsContentProps = {
-  schema: ModelSchema;
-  objectDetailsData: NodeObject;
+interface ObjectDataDisplayProps {
+  objectSchema: ModelSchema;
+  objectData: NodeObject;
   permission: Permission;
   onClickMetadata?: (attribute: AttributeSchema) => void;
-};
+}
 
-export function ObjectDetailsContent({
-  schema,
-  objectDetailsData,
+export function ObjectDataDisplay({
+  objectSchema,
+  objectData,
   permission,
   onClickMetadata,
-}: ObjectDetailsContentProps) {
-  const attributes = getObjectAttributes({ schema });
-  const relationships = getObjectRelationships({ schema });
+}: ObjectDataDisplayProps) {
+  const attributes = getObjectAttributes({ schema: objectSchema });
+  const relationships = getObjectRelationships({ schema: objectSchema });
 
   return (
     <div className="divide-y divide-gray-200">
       {attributes.map((attribute) => {
-        if (!objectDetailsData[attribute.name]) {
+        if (!objectData[attribute.name]) {
           return null;
         }
 
@@ -47,16 +49,16 @@ export function ObjectDetailsContent({
               <>
                 <ObjectAttributeValue
                   attributeSchema={attribute}
-                  attributeValue={objectDetailsData[attribute.name]}
+                  attributeData={objectData[attribute.name] as AttributeType}
                 />
 
-                {objectDetailsData[attribute.name] && (
+                {objectData[attribute.name] && (
                   <MetaDetailsTooltip
-                    updatedAt={objectDetailsData[attribute.name]?.updated_at}
-                    source={objectDetailsData[attribute.name]?.source}
-                    owner={objectDetailsData[attribute.name]?.owner}
-                    isFromProfile={objectDetailsData[attribute.name]?.is_from_profile}
-                    isProtected={objectDetailsData[attribute.name]?.is_protected}
+                    updatedAt={objectData[attribute.name]?.updated_at}
+                    source={objectData[attribute.name]?.source}
+                    owner={objectData[attribute.name]?.owner}
+                    isFromProfile={objectData[attribute.name]?.is_from_profile}
+                    isProtected={objectData[attribute.name]?.is_protected}
                     header={
                       !attribute.read_only && (
                         <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
@@ -83,9 +85,7 @@ export function ObjectDetailsContent({
                   />
                 )}
 
-                {objectDetailsData[attribute.name]?.is_protected && (
-                  <LockClosedIcon className="h-4 w-4" />
-                )}
+                {objectData[attribute.name]?.is_protected && <LockClosedIcon className="h-4 w-4" />}
               </>
             }
           />
@@ -93,19 +93,19 @@ export function ObjectDetailsContent({
       })}
 
       {relationships?.map((relationship: any) => {
-        const relationshipSchema = schema?.relationships?.find(
+        const relationshipSchema = objectSchema?.relationships?.find(
           (relation) => relation?.name === relationship?.name
         );
 
         const relationshipData = relationship?.paginated
-          ? objectDetailsData[relationship.name]?.edges
-          : objectDetailsData[relationship.name];
+          ? objectData[relationship.name]?.edges
+          : objectData[relationship.name];
 
         return (
           <RelationshipDetails
-            parentNode={objectDetailsData}
+            parentNode={objectData}
             mode="DESCRIPTION-LIST"
-            parentSchema={schema}
+            parentSchema={objectSchema}
             key={relationship.name}
             relationshipsData={relationshipData}
             relationshipSchema={relationshipSchema}

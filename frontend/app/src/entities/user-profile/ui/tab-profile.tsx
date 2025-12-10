@@ -8,7 +8,7 @@ import { parseJwt } from "@/shared/utils/common";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import { ObjectItemDetails } from "@/entities/nodes/object-item-details/object-item-details";
+import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export default function TabProfile() {
@@ -39,10 +39,6 @@ export default function TabProfile() {
   }
 
   return (
-    <ObjectItemDetails
-      objectSchema={schema}
-      objectData={objectDetailsData}
-      permission={permission}
-    />
+    <ObjectDetails objectSchema={schema} objectData={objectDetailsData} permission={permission} />
   );
 }

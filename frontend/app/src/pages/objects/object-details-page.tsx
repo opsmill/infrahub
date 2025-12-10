@@ -6,8 +6,8 @@ import Content from "@/shared/components/layout/content";
 import { GRAPHQL_QUERY_OBJECT, MENU_EXCLUDELIST } from "@/shared/config/constants";
 
 import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
-import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
-import { ObjectDetailsHeader } from "@/entities/nodes/object/ui/object-details-header";
+import { ObjectDetailsBody } from "@/entities/nodes/object/ui/object-details/object-details-body";
+import { ObjectDetailsHeader } from "@/entities/nodes/object/ui/object-details/object-details-header";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -44,7 +44,11 @@ function ObjectDetailsPage() {
                 permission={permission}
               />
             ) : (
-              <ObjectDetails objectSchema={schema} objectId={objectId} permission={permission} />
+              <ObjectDetailsBody
+                objectSchema={schema}
+                objectId={objectId}
+                permission={permission}
+              />
             )}
           </>
         )}
