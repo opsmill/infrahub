@@ -1092,12 +1092,6 @@ class TestDiffAndMerge:
         car_accord_main,
         car_camry_main,
     ) -> None:
-        # Capture initial metadata before any changes
-        car_before = await NodeManager.get_one(
-            db=db, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
-        )
-        car_created_at = car_before._get_created_at()
-
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data={"id": person_alfred_main.id, "_relation__is_protected": True})
