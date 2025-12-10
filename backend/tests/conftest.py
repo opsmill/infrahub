@@ -136,7 +136,7 @@ async def db(
             assert memgraph is not None
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
-    async def _db(singleton: bool) -> InfrahubDatabase:
+    async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)
 
     with provider.scope(build_database, _db):
