@@ -22,7 +22,7 @@ export default function TabProfile() {
     error: objectError,
     isPending: isObjectPending,
   } = useGetObject(
-    { objectSchema: schema!, objectId: accountId+1 },
+    { objectSchema: schema!, objectId: accountId },
     { enabled: !!(schema && accountId) }
   );
 
