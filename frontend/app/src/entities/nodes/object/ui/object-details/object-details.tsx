@@ -17,7 +17,7 @@ interface ObjectDetailsProps {
   permission: Permission;
 }
 
-export function ObjectItemDetails({ objectSchema, objectData, permission }: ObjectDetailsProps) {
+export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDetailsProps) {
   const [qspTab] = useQueryState(QSP.TAB);
   useTitle(`${getNodeLabel(objectData)} details`);
 

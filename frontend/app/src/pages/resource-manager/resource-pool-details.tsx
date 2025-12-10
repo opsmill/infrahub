@@ -126,7 +126,7 @@ const ResourcePoolContent = ({
         value: (
           <ObjectAttributeValue
             attributeSchema={schemaAttribute}
-            attributeValue={resourcePool[schemaAttribute.name] as AttributeType}
+            attributeData={resourcePool[schemaAttribute.name] as AttributeType}
           />
         ),
       };
