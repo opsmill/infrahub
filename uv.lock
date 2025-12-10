@@ -21,14 +21,14 @@ wheels = [
 
 [[package]]
 name = "aiodataloader"
-version = "0.4.0"
+version = "0.4.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e8/dd/e92b21d0c0d09bad4d41ce39def76deef63248c65e4ddc7ac2245ae0b2cc/aiodataloader-0.4.0.tar.gz", hash = "sha256:6de9ca0eb75c4eef686754679981ebd45a933391b40473f92419b8a747504169", size = 1629645, upload-time = "2023-02-23T12:43:06.04Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/83/1f86948638cb076969526c944b3d5f6aa1997d140dc3cff1011a821245d3/aiodataloader-0.4.3.tar.gz", hash = "sha256:b8c07ed7fddfdccc2d6298c247b1e5fe9779e5b1c38f2e6ec541a041683ef7e8", size = 14025, upload-time = "2025-11-29T10:14:10.918Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/11/72e151269095f4ca73416526b017b2b7ddbcbe5181ca7b0176e3ffd09db3/aiodataloader-0.4.0-py3-none-any.whl", hash = "sha256:2775d8607e1b68ded82efc93c839846d0ae9d9e0421085e444f3c1c541f3c2b6", size = 10937, upload-time = "2023-02-23T12:43:03.412Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/29/80a0a91bd35b46bf31dc53a620780ee7c5b48b4dab7e60fdc4979641846a/aiodataloader-0.4.3-py3-none-any.whl", hash = "sha256:f2d57675e4c7a5cf7efc4c42697d307b951e1a9f40c22df3531a4b9cb7758229", size = 11029, upload-time = "2025-11-29T10:14:09.417Z" },
 ]
 
 [[package]]
@@ -1488,7 +1488,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aio-pika", specifier = ">=9.4,<9.5" },
-    { name = "aiodataloader", specifier = "==0.4.0" },
+    { name = "aiodataloader", specifier = "==0.4.3" },
     { name = "ariadne-codegen", specifier = "==0.15.3" },
     { name = "asgi-correlation-id", specifier = "==4.2.0" },
     { name = "asyncpg", specifier = "==0.31.0" },
