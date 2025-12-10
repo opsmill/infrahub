@@ -150,7 +150,7 @@ class TestInfrahubApp(TestInfrahub):
         # the app is being initialized.
         # NOTE 2: FastAPI does not have an asynchronous TestClient, thus we rely on httpx.AsyncClient which does not trigger
         # lifespan events (see https://fastapi.tiangolo.com/advanced/async-tests/#in-detail).
-        async def _db(singleton: bool) -> InfrahubDatabase:
+        async def _db(singleton: bool = True) -> InfrahubDatabase:
             return await build_database(singleton=False)
 
         with dependency_provider.scope(build_database, _db):

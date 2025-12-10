@@ -19,7 +19,7 @@ def client(dependency_provider: Provider, nats, redis):
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
     from infrahub.server import app
 
-    async def _db(singleton: bool) -> InfrahubDatabase:
+    async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)
 
     with dependency_provider.scope(build_database, _db):
