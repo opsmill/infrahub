@@ -1,28 +1,32 @@
 import { ListBoxItem } from "react-aria-components";
 
-import type { CoreRepository } from "@/shared/api/graphql/generated/graphql";
+import type { Dropdown } from "@/shared/api/graphql/generated/graphql";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
-export const GitRepositoryItem = ({
-  id,
-  display_label,
-  sync_status,
-  __typename,
-}: CoreRepository) => {
+export type GitRepositoryData = {
+  id: string;
+  display_label?: string | null;
+  sync_status?: Dropdown | null;
+};
+
+export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryData }) => {
+  const { id, display_label, sync_status } = repository;
+
   return (
     <ListBoxItem
-      href={getObjectDetailsUrl(__typename, id)}
+      href={getObjectDetailsUrl(GENERIC_REPOSITORY_KIND, id ?? undefined)}
       className={classNames(
         focusVisibleStyle,
         "flex items-center justify-between p-4 text-sm",
         "border border-transparent",
         "hover:bg-neutral-100"
       )}
-      textValue={display_label ?? id}
+      textValue={display_label ?? id ?? undefined}
     >
       {display_label}
 
