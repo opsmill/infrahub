@@ -172,7 +172,7 @@ class BranchUpdate(Mutation):
                 setattr(obj, field_name, data[field_name])
 
         async with graphql_context.db.start_transaction() as db:
-            await obj.save(db=db)
+            await obj.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
         return cls(ok=True)
 

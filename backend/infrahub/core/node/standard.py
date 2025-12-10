@@ -7,9 +7,9 @@ from uuid import UUID
 
 import ujson
 from infrahub_sdk.uuidt import UUIDT
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from infrahub.core.constants import NULL_VALUE
+from infrahub.core.constants import NULL_VALUE, SYSTEM_USER_ID
 from infrahub.core.query.standard_node import (
     StandardNodeCreateQuery,
     StandardNodeDeleteQuery,
@@ -18,6 +18,7 @@ from infrahub.core.query.standard_node import (
     StandardNodeQuery,
     StandardNodeUpdateQuery,
 )
+from infrahub.core.timestamp import current_timestamp
 from infrahub.exceptions import Error, InitializationError
 
 if TYPE_CHECKING:
@@ -32,6 +33,9 @@ if TYPE_CHECKING:
 class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
+    created_by: str = Field(default=SYSTEM_USER_ID)
+    updated_by: Optional[str] = Field(default=None)
+    updated_at: Optional[str] = Field(default=None, validate_default=True)
 
     _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
@@ -85,13 +89,13 @@ class StandardNode(BaseModel):
 
         return response
 
-    async def save(self, db: InfrahubDatabase) -> bool:
+    async def save(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create or Update the Node in the database."""
 
         if self.id:
-            return await self.update(db=db)
+            return await self.update(db=db, user_id=user_id)
 
-        return await self.create(db=db)
+        return await self.create(db=db, user_id=user_id)
 
     async def delete(self, db: InfrahubDatabase) -> None:
         """Delete the Node in the database."""
@@ -99,9 +103,9 @@ class StandardNode(BaseModel):
         query: Query = await StandardNodeDeleteQuery.init(db=db, node=self)
         await query.execute(db=db)
 
-    async def create(self, db: InfrahubDatabase) -> bool:
+    async def create(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create a new node in the database."""
-
+        self.created_by = user_id
         query: Query = await self._query.init(db=db, node=self)
         await query.execute(db=db)
 
@@ -115,9 +119,10 @@ class StandardNode(BaseModel):
 
         return True
 
-    async def update(self, db: InfrahubDatabase) -> bool:
+    async def update(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Update the node in the database if needed."""
-
+        self.updated_by = user_id
+        self.updated_at = current_timestamp()
         query: Query = await StandardNodeUpdateQuery.init(db=db, node=self)
         await query.execute(db=db)
         result = query.get_result()

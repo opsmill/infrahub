@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
+from infrahub.core.branch import Branch
 from infrahub.core.constants import HashableModelState, RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.artifact import core_artifact_target
 from infrahub.core.schema.definitions.core.lineage import lineage_owner, lineage_source
-from tests.helpers.schema import CAR_SCHEMA, load_schema
+from tests.helpers.schema import CAR_SCHEMA, SNOW_TICKET_SCHEMA, load_schema
 from tests.helpers.schema.car import CAR
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
     from infrahub_sdk.node.node import InfrahubNode
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
 
 
@@ -176,3 +177,26 @@ class TestLoadOnBranchAndMain(TestInfrahubApp):
             await fresh_car.partner_car.fetch()
             partner_car = cars[0] if car.id == cars[1].id else cars[1]
             assert fresh_car.partner_car.id == partner_car.id
+
+    async def test_load_schema_on_branch_alternate_user(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        bot_client: InfrahubClient,
+        load_schema,
+        admin_account: CoreAccount,
+        bot_account: CoreAccount,
+    ) -> None:
+        branch_name = "user_feature_branch"
+        await client.branch.create(branch_name=branch_name)
+
+        schema_root = SNOW_TICKET_SCHEMA.duplicate()
+        schema_root.version = "1.0"
+
+        response = await bot_client.schema.load(schemas=[schema_root.model_dump()], branch=branch_name)
+        assert len(response.errors) == 0, response.errors
+
+        async with db.start_session() as dbs:
+            feature_branch = await Branch.get_by_name(db=dbs, name=branch_name)
+        assert feature_branch.created_by == admin_account.id
+        assert feature_branch.updated_by == bot_account.id

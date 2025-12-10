@@ -165,7 +165,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
-                await obj.rebase(db=dbt)
+                await obj.rebase(db=dbt, user_id=context.account.account_id)
                 log.info("Branch successfully rebased")
 
             if obj.has_schema_changes:
@@ -182,7 +182,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 )
                 registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
                 obj.update_schema_hash()
-                await obj.save(db=db)
+                await obj.save(db=db, user_id=context.account.account_id)
 
                 # Execute the migrations
                 migrations = await merger.calculate_migrations(target_schema=updated_schema)
@@ -426,7 +426,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             new_schema = origin_schema.duplicate(name=obj.name)
             registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
             obj.update_schema_hash()
-            await obj.save(db=db)
+            await obj.save(db=db, user_id=context.account.account_id)
 
             # Add Branch to registry
             registry.branch[obj.name] = obj
