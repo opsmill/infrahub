@@ -1,5 +1,3 @@
-import { NetworkStatus } from "@apollo/client";
-
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -7,8 +5,9 @@ import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 import { parseJwt } from "@/shared/utils/common";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
-import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
+import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export default function TabProfile() {
@@ -18,27 +17,32 @@ export default function TabProfile() {
   const tokenData = parseJwt(localToken);
   const accountId = tokenData?.sub;
 
-  const { data, error, networkStatus, permission } = useObjectDetails(schema!, accountId);
+  const {
+    data: objectData,
+    error: objectError,
+    isPending: isObjectPending,
+  } = useGetObject(
+    { objectSchema: schema!, objectId: accountId },
+    { enabled: !!(schema && accountId) }
+  );
 
-  const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
+  const {
+    data: permission,
+    error: permissionError,
+    isPending: isPermissionPending,
+  } = useGetObjectPermissions(ACCOUNT_GENERIC_OBJECT);
 
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching user details." />;
+  if (!schema) {
+    return <NoDataFound message={`Schema ${ACCOUNT_GENERIC_OBJECT} not found`} />;
   }
 
-  if (networkStatus === NetworkStatus.loading) {
+  if (isObjectPending || isPermissionPending) {
     return <LoadingIndicator className="h-[244px]" />;
   }
 
-  if (!objectDetailsData) {
-    return (
-      <div className="column flex justify-center">
-        <NoDataFound message="No user found for that id." />
-      </div>
-    );
+  if (objectError || permissionError) {
+    return <ErrorScreen message={objectError?.message || permissionError?.message} />;
   }
 
-  return (
-    <ObjectDetails objectSchema={schema} objectData={objectDetailsData} permission={permission} />
-  );
+  return <ObjectDetails objectSchema={schema} objectData={objectData} permission={permission} />;
 }
