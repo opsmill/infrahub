@@ -6,8 +6,7 @@ import {
 } from "@apollo/client";
 import { useAtomValue } from "jotai";
 
-import { CONFIG } from "@/config/config";
-
+import { CONFIG } from "@/shared/config/config";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { currentBranchAtom } from "@/entities/branches/stores";

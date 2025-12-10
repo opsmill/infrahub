@@ -1,4 +1,4 @@
-import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/config/constants";
+import { PROPOSED_CHANGES_THREAD_OBJECT } from "@/shared/config/constants";
 
 import {
   getProposedChangeThreadFromApi,

@@ -51,4 +51,4 @@ class GenericSchema(GeneratedGenericSchema):
     def _get_field_names_for_diff(self) -> list[str]:
         """Exclude used_by from the diff for generic nodes"""
         fields = super()._get_field_names_for_diff()
-        return [field for field in fields if field not in ["used_by"]]
+        return [field for field in fields if field != "used_by"]

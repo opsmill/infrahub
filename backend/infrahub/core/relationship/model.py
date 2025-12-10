@@ -24,7 +24,7 @@ from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, InfrahubKind, MetadataOptions, RelationshipKind
 from infrahub.core.metadata.interface import MetadataInterface
-from infrahub.core.metadata.model import MetadataInfo
+from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -989,6 +989,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: type[PeerType],
         branch_agnostic: bool = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> Mapping[str, PeerType]: ...
 
     @overload
@@ -997,6 +998,7 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: None = None,
         branch_agnostic: bool = ...,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> Mapping[str, Node]: ...
 
     async def get_peers(
@@ -1004,11 +1006,16 @@ class RelationshipManager:
         db: InfrahubDatabase,
         peer_type: type[PeerType] | None = None,  # noqa: ARG002
         branch_agnostic: bool = False,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
         nodes = await registry.manager.get_many(
-            db=db, ids=peer_ids, branch=self.branch, branch_agnostic=branch_agnostic
+            db=db,
+            ids=peer_ids,
+            branch=self.branch,
+            branch_agnostic=branch_agnostic,
+            include_metadata=include_metadata,
         )
         return nodes
 

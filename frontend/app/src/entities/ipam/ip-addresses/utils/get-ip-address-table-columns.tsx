@@ -18,6 +18,7 @@ import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/c
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
 import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -43,11 +44,12 @@ export const getIpAddressTableColumns = (
           />
         );
       },
-      cell: ({ cell, row, table }) => {
-        const displayLabel: string = cell.getValue() ?? "-";
+      cell: ({ row, table }) => {
+        const value: string = getNodeLabel(row.original) ?? "-";
+        const ipAdressNode = row.original;
 
-        if (row.original.__typename === IP_ADDRESS_AVAILABLE_KIND) {
-          const ipAddressAvailableNode = row.original as IpAddressAvailableNode;
+        if (ipAdressNode.__typename === IP_ADDRESS_AVAILABLE_KIND) {
+          const ipAddressAvailableNode = ipAdressNode as IpAddressAvailableNode;
 
           return (
             <>
@@ -58,7 +60,7 @@ export const getIpAddressTableColumns = (
               </StickyLeftCell>
 
               <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
-                {displayLabel}
+                {ipAdressNode.display_label}
               </TableCell>
             </>
           );
@@ -66,9 +68,9 @@ export const getIpAddressTableColumns = (
 
         return (
           <TableIdentifierCell
-            objectKind={row.original.__typename as string}
-            objectId={row.original.id as string}
-            label={displayLabel}
+            objectKind={ipAdressNode.__typename as string}
+            objectId={ipAdressNode.id as string}
+            label={value}
             isSelected={row.getIsSelected()}
             onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
           />

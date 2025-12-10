@@ -526,7 +526,7 @@ CALL (n_uuid, vertex_element_ids) {
                     deduplicated_attr.branch_properties_map[branch] = {}
                 for property_type_map in attr_branch_dict["property_type_maps"]:
                     property_type = DatabaseEdgeType(property_type_map["property_type"])
-                    property_type = cast(PropertyTypes, property_type)
+                    property_type = cast("PropertyTypes", property_type)
                     if property_type not in deduplicated_attr.branch_properties_map[branch]:
                         deduplicated_attr.branch_properties_map[branch][property_type] = set()
                     for property_value_statuses in property_type_map["property_value_maps"]:
@@ -560,7 +560,7 @@ CALL (n_uuid, vertex_element_ids) {
                     dedup_rel.branch_properties_map[branch] = {}
                 for property_type_map in rel_branch_details["property_type_maps"]:
                     property_type = DatabaseEdgeType(property_type_map["property_type"])
-                    property_type = cast(PropertyTypes, property_type)
+                    property_type = cast("PropertyTypes", property_type)
                     if property_type not in dedup_rel.branch_properties_map[branch]:
                         dedup_rel.branch_properties_map[branch][property_type] = set()
                     for property_value_statuses in property_type_map["property_value_maps"]:

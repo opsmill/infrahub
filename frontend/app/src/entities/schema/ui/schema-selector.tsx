@@ -4,11 +4,10 @@ import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import * as R from "remeda";
 
-import { QSP } from "@/config/qsp";
-
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import {

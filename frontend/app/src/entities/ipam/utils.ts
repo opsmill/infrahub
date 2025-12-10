@@ -1,6 +1,5 @@
-import { QSP } from "@/config/qsp";
-
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
+import { QSP } from "@/shared/config/qsp";
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import { AVAILABLE_IP_FILTER_NAME, IPAM_QSP } from "@/entities/ipam/constants";

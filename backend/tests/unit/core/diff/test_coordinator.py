@@ -1,3 +1,4 @@
+import contextlib
 from typing import Any
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -396,10 +397,8 @@ class TestDiffCoordinator:
 
         # delete the schema on the branch, it might not exist b/c it was just deleted above
         branch_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        try:
+        with contextlib.suppress(SchemaNotFoundError):
             branch_schema_branch.delete(name="TestPerson")
-        except SchemaNotFoundError:
-            pass
 
         # calculate the diff
         diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)

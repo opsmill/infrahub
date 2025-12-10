@@ -1,15 +1,15 @@
 import { Icon } from "@iconify-icon/react";
-import { BookOpen, ExternalLink, FileText } from "lucide-react";
+import { BookOpen, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Separator } from "@/shared/components/aria/separator";
 import { LinkButton, type LinkButtonProps } from "@/shared/components/buttons/button-primitive";
 import { HomeCard } from "@/shared/components/ui/home-card";
 
-export const GettingStarted = () => {
+export const GettingStarted = ({ className }: { className?: string }) => {
   return (
-    <HomeCard>
-      <HomeCard.Title className="flex items-center justify-between">
+    <HomeCard className={className}>
+      <HomeCard.Title>
         <span>Getting Started with Infrahub</span>
 
         <div className="flex items-center gap-3">
@@ -23,18 +23,9 @@ export const GettingStarted = () => {
             <BookOpen className="size-4 text-gray-400" /> Documentation
             <ExternalLink className="size-4 text-gray-400" />
           </LinkButton>
-          <LinkButton
-            variant={"outline"}
-            className="flex items-center gap-2"
-            to={"https://docs.infrahub.app/tutorials/getting-started/"}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <FileText className="size-4 text-gray-400" /> Tutorials
-            <ExternalLink className="size-4 text-gray-400" />
-          </LinkButton>
         </div>
       </HomeCard.Title>
+
       <HomeCard.Content>
         <div className="grid grid-cols-1 lg:grid-cols-2">
           <GettingStartedContentItem>

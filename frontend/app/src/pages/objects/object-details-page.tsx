@@ -1,14 +1,13 @@
 import { Navigate, useParams } from "react-router";
 
-import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
+import { GRAPHQL_QUERY_OBJECT, MENU_EXCLUDELIST } from "@/shared/config/constants";
 
 import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery/graphql-query-details";
-import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
-import { ObjectDetailsHeader } from "@/entities/nodes/object-header";
+import { ObjectDetailsBody } from "@/entities/nodes/object/ui/object-details/object-details-body";
+import { ObjectDetailsHeader } from "@/entities/nodes/object/ui/object-details/object-details-header";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -22,6 +21,10 @@ function ObjectDetailsPage() {
 
   if (!objectId) {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
+  }
+
+  if (MENU_EXCLUDELIST.includes(schema.kind!)) {
+    return <Navigate to={constructPath("/")} />;
   }
 
   return (
@@ -41,7 +44,11 @@ function ObjectDetailsPage() {
                 permission={permission}
               />
             ) : (
-              <ObjectDetails objectSchema={schema} objectId={objectId} permission={permission} />
+              <ObjectDetailsBody
+                objectSchema={schema}
+                objectId={objectId}
+                permission={permission}
+              />
             )}
           </>
         )}

@@ -207,6 +207,14 @@ class MainSettings(BaseSettings):
     def convert_to_path(cls, value: Path | str) -> Path:
         return Path(value) if isinstance(value, str) else value
 
+    @property
+    def infrahub_address(self) -> str:
+        """This is the address that the Prefect worker will use to connect to Infrahub API."""
+        if self.internal_address:
+            return self.internal_address
+
+        raise InitializationError()
+
 
 class FileSystemStorageSettings(BaseSettings):
     # Make variable lookup case-sensitive to avoid fetching $PATH value
@@ -327,7 +335,7 @@ class DevelopmentSettings(BaseSettings):
         description="Allow enterprise configuration in development mode, this will not enable the features just allow the configuration.",
     )
     git_credential_helper: str = Field(
-        default="/usr/local/bin/infrahub-git-credential",
+        default="infrahub-git-credential",
         description="Location of git credential helper",
     )
 
@@ -407,6 +415,11 @@ class WorkflowSettings(BaseSettings):
     )
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
+    )
+    flow_run_count_cache_threshold: int = Field(
+        default=100_000,
+        ge=0,
+        description="Threshold for caching flow run counts (0 to always cache, higher values to disable)",
     )
 
     @property
@@ -580,11 +593,14 @@ class SecurityOIDCBaseSettings(BaseSettings):
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
+    pkce_enabled: bool = Field(
+        default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
+    )
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
-    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
     discovery_url: str = Field(..., description="The OIDC discovery URL xyz/.well-known/openid-configuration")
     scopes: list[str] = Field(default_factory=_default_scopes)
 
@@ -632,13 +648,16 @@ class SecurityOAuth2BaseSettings(BaseSettings):
 
     icon: str = Field(default="mdi:account-key")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
+    pkce_enabled: bool = Field(
+        default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
+    )
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
     """Common base for Oauth2 providers"""
 
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
-    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
     authorization_url: str = Field(...)
     token_url: str = Field(...)
     userinfo_url: str = Field(...)

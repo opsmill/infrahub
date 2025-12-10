@@ -10,6 +10,7 @@ import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants
 import { constructPathForIpam } from "@/entities/ipam/utils";
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/domain/get-object-ancestors.query";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { isRelationshipVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import type { NodeCoreWithParent, NodeRelationshipOne } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -145,7 +146,7 @@ function RecursiveAncestorBreadcrumb({
       <IpamBreadcrumbSeparator />
 
       <IpamBreadcrumbLink to={getObjectDetailsUrl(currentObject.__typename, currentObject.id)}>
-        {currentObject.display_label}
+        {getNodeLabel(currentObject)}
       </IpamBreadcrumbLink>
     </>
   );
@@ -189,7 +190,7 @@ function IpAddressBreadcrumb({ objectSchema, objectId }: IpAddressBreadcrumbProp
       <IpamBreadcrumbSeparator />
 
       <IpamBreadcrumbLink to={getObjectDetailsUrl(data.__typename, data.id)}>
-        {data.display_label}
+        {getNodeLabel(data)}
       </IpamBreadcrumbLink>
     </>
   );

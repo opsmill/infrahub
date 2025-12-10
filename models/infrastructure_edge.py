@@ -1520,7 +1520,7 @@ async def generate_site(
         management_ip = await client.allocate_next_ip_address(
             resource_pool=management_pool, identifier=device_name, data={"interface": intf.id}, branch=branch
         )
-        management_ip = cast(IpamIPAddress, management_ip)
+        management_ip = cast("IpamIPAddress", management_ip)
 
         # set the IP address of the device to the management interface IP address
         obj.primary_address = management_ip  # type: ignore[assignment]
@@ -1903,7 +1903,7 @@ async def branch_scenario_add_upstream(
     subnet = await client.allocate_next_ip_prefix(
         resource_pool=external_pool, identifier=device_name, branch=new_branch_name
     )
-    subnet = cast(IpamIPPrefix, subnet)
+    subnet = cast("IpamIPPrefix", subnet)
     subnet_hosts = subnet.prefix.value.hosts()
     address = f"{str(next(subnet_hosts))}/29"
     peer_address = f"{str(next(subnet_hosts))}/29"
@@ -2368,7 +2368,7 @@ async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str,
     )
     organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
     for asn in ASNS:
-        organization_type = organizations_dict.get(asn.organization, None)
+        organization_type = organizations_dict.get(asn.organization)
         asn_name = f"AS{asn.asn}"
         data_asn = {
             "name": {"value": asn.name, "source": account_crm.id, "owner": account_chloe.id},

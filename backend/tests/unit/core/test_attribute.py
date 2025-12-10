@@ -475,6 +475,19 @@ async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch
     assert attr.owner_id == "yetotheruuid"
 
 
+async def _validate_node_metadata(
+    db: InfrahubDatabase,
+    branch: Branch,
+    node_id: str,
+    update_time_range: tuple[Timestamp, Timestamp],
+    updated_by: str,
+) -> None:
+    """Validate Node-level _get_updated_at and _get_updated_by metadata."""
+    node = await NodeManager.get_one(db=db, branch=branch, id=node_id, include_metadata=MetadataOptions.USER_TIMESTAMPS)
+    assert update_time_range[0] < node._get_updated_at() < update_time_range[1]
+    assert node._get_updated_by() == updated_by
+
+
 async def test_attribute_properties_and_metadata_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -488,12 +501,20 @@ async def test_attribute_properties_and_metadata_on_branch(
     before_create = Timestamp()
     await crit_low.save(db=db)
     after_create = Timestamp()
+    # validate initial node-level metadata
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_create, after_create),
+        updated_by=SYSTEM_USER_ID,
+    )
 
     # Set the source and owner properties on the object on the default branch
     crit_low.name.source = first_account
     crit_low.name.owner = second_account
     before_default_update = Timestamp()
-    await crit_low.name.save(db=db, user_id="first-update")
+    await crit_low.save(db=db, user_id="first-update")
     after_default_update = Timestamp()
 
     # Retrieve the object from the database and validate that the source and owner properties are correct
@@ -512,6 +533,14 @@ async def test_attribute_properties_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_created_by() == SYSTEM_USER_ID
     assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
     assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    # validate node-level metadata after first update on default branch
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
 
     # Create a branch
     branch1 = await create_branch(branch_name="branch1", db=db)
@@ -535,7 +564,7 @@ async def test_attribute_properties_and_metadata_on_branch(
     crit_low_branch.name.source = second_account
     crit_low_branch.name.owner = first_account
     before_branch_update = Timestamp()
-    await crit_low_branch.name.save(db=db, user_id="second-update")
+    await crit_low_branch.save(db=db, user_id="second-update")
     after_branch_update = Timestamp()
 
     # Retrieve the object on the branch and validate the source and owner properties
@@ -554,6 +583,14 @@ async def test_attribute_properties_and_metadata_on_branch(
     assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
     assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch after branch update
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
 
     # retrieve and verify the properties and metadata on the default branch
     refreshed_crit_low = await NodeManager.get_one(
@@ -571,12 +608,20 @@ async def test_attribute_properties_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_updated_by() == "first-update"
     assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
 
     # Delete the source and owner properties on the object on the branch
     refreshed_crit_low_branch.name.clear_source()
     refreshed_crit_low_branch.name.clear_owner()
     before_branch_clear = Timestamp()
-    await refreshed_crit_low_branch.name.save(db=db, user_id="third-update")
+    await refreshed_crit_low_branch.save(db=db, user_id="third-update")
     after_branch_clear = Timestamp()
 
     # Retrieve the object on the branch and validate the source and owner properties
@@ -593,6 +638,14 @@ async def test_attribute_properties_and_metadata_on_branch(
     assert refreshed_crit_low_branch.name._get_updated_by() == "third-update"
     assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch after clearing source/owner
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_clear, after_branch_clear),
+        updated_by="third-update",
+    )
 
     # retrieve and verify the properties and metadata on the default branch
     refreshed_crit_low = await NodeManager.get_one(
@@ -610,6 +663,14 @@ async def test_attribute_properties_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_updated_by() == "first-update"
     assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
 
     # Delete the source and owner properties on the object on the default branch
     refreshed_crit_low = await NodeManager.get_one(
@@ -623,7 +684,7 @@ async def test_attribute_properties_and_metadata_on_branch(
     refreshed_crit_low.name.clear_source()
     refreshed_crit_low.name.clear_owner()
     before_default_clear = Timestamp()
-    await refreshed_crit_low.name.save(db=db, user_id="fourth-update")
+    await refreshed_crit_low.save(db=db, user_id="fourth-update")
     after_default_clear = Timestamp()
 
     # Retrieve the object on the default branch and validate the source and owner properties
@@ -642,6 +703,14 @@ async def test_attribute_properties_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_updated_by() == "fourth-update"
     assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch after clearing source/owner
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_clear, after_default_clear),
+        updated_by="fourth-update",
+    )
 
     await verify_no_duplicate_paths(db=db)
 
@@ -659,11 +728,19 @@ async def test_attribute_value_and_metadata_on_branch(
     before_create = Timestamp()
     await crit_low.save(db=db)
     after_create = Timestamp()
+    # validate initial node-level metadata
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_create, after_create),
+        updated_by=SYSTEM_USER_ID,
+    )
 
     # Set the value property on the object on the default branch
     crit_low.name.value = "name1"
     before_default_update = Timestamp()
-    await crit_low.name.save(db=db, user_id="first-update")
+    await crit_low.save(db=db, user_id="first-update")
     after_default_update = Timestamp()
 
     # Retrieve the object from the database and validate that the value property is correct
@@ -680,6 +757,14 @@ async def test_attribute_value_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_created_by() == SYSTEM_USER_ID
     assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
     assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    # validate node-level metadata after first update on default branch
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
 
     # Create a branch
     branch1 = await create_branch(branch_name="branch1", db=db)
@@ -701,7 +786,7 @@ async def test_attribute_value_and_metadata_on_branch(
 
     crit_low_branch.name.value = "name2"
     before_branch_update = Timestamp()
-    await crit_low_branch.name.save(db=db, user_id="second-update")
+    await crit_low_branch.save(db=db, user_id="second-update")
     after_branch_update = Timestamp()
 
     # Retrieve the object on the branch and validate the value property
@@ -718,6 +803,13 @@ async def test_attribute_value_and_metadata_on_branch(
     assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
     assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
 
     # retrieve and verify the properties and metadata on the default branch
     refreshed_crit_low = await NodeManager.get_one(
@@ -733,6 +825,14 @@ async def test_attribute_value_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_updated_by() == "first-update"
     assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
 
     # Update the value property on the object on the default branch
     refreshed_crit_low = await NodeManager.get_one(
@@ -745,7 +845,7 @@ async def test_attribute_value_and_metadata_on_branch(
     )
     refreshed_crit_low.name.value = "name4"
     before_default_update2 = Timestamp()
-    await refreshed_crit_low.name.save(db=db, user_id="fourth-update")
+    await refreshed_crit_low.save(db=db, user_id="fourth-update")
     after_default_update2 = Timestamp()
 
     # Retrieve the object on the default branch and validate the value property
@@ -762,6 +862,14 @@ async def test_attribute_value_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_updated_by() == "fourth-update"
     assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch after second update
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update2, after_default_update2),
+        updated_by="fourth-update",
+    )
 
     # Retrieve the object on the branch and validate the value property
     refreshed_crit_low_branch = await NodeManager.get_one(
@@ -775,6 +883,14 @@ async def test_attribute_value_and_metadata_on_branch(
     assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
     assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate that the node-level metadata on the branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
 
     await verify_no_duplicate_paths(db=db)
 
@@ -792,11 +908,19 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
     before_create = Timestamp()
     await crit_low.save(db=db)
     after_create = Timestamp()
+    # validate initial node-level metadata
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_create, after_create),
+        updated_by=SYSTEM_USER_ID,
+    )
 
     # Set the is_protected flag on the object on the default branch
     crit_low.name.is_protected = True
     before_default_update = Timestamp()
-    await crit_low.name.save(db=db, user_id="first-update")
+    await crit_low.save(db=db, user_id="first-update")
     after_default_update = Timestamp()
 
     # Retrieve the object from the database and validate that the is_protected flag is correct
@@ -814,6 +938,14 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_created_by() == SYSTEM_USER_ID
     assert before_default_update < refreshed_crit_low.name._get_updated_at() < after_default_update
     assert refreshed_crit_low.name._get_updated_by() == "first-update"
+    # validate node-level metadata after first update on default branch
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
 
     # Create a branch
     branch1 = await create_branch(branch_name="branch1", db=db)
@@ -835,7 +967,7 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
 
     crit_low_branch.name.is_protected = False
     before_branch_update = Timestamp()
-    await crit_low_branch.name.save(db=db, user_id="second-update")
+    await crit_low_branch.save(db=db, user_id="second-update")
     after_branch_update = Timestamp()
 
     # Retrieve the object on the branch and validate the is_protected flag
@@ -853,6 +985,14 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
     assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
     assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch after branch update
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
 
     # retrieve and verify the properties and metadata on the default branch
     refreshed_crit_low = await NodeManager.get_one(
@@ -869,6 +1009,14 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_updated_by() == "first-update"
     assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update, after_default_update),
+        updated_by="first-update",
+    )
 
     # Update the is_protected flag on the object on the default branch
     refreshed_crit_low = await NodeManager.get_one(
@@ -881,7 +1029,7 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
     )
     refreshed_crit_low.name.is_protected = False
     before_default_update2 = Timestamp()
-    await refreshed_crit_low.name.save(db=db, user_id="fourth-update")
+    await refreshed_crit_low.save(db=db, user_id="fourth-update")
     after_default_update2 = Timestamp()
 
     # Retrieve the object on the default branch and validate the is_protected flag
@@ -899,6 +1047,14 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
     assert refreshed_crit_low.name._get_updated_by() == "fourth-update"
     assert refreshed_crit_low.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on default branch after second update
+    await _validate_node_metadata(
+        db=db,
+        branch=default_branch,
+        node_id=crit_low.id,
+        update_time_range=(before_default_update2, after_default_update2),
+        updated_by="fourth-update",
+    )
 
     # Retrieve the object on the branch and validate the is_protected flag
     refreshed_crit_low_branch = await NodeManager.get_one(
@@ -913,6 +1069,14 @@ async def test_attribute_is_protected_flag_and_metadata_on_branch(
     assert refreshed_crit_low_branch.name._get_updated_by() == "second-update"
     assert refreshed_crit_low_branch.name._get_created_at() == crit_low.name._get_created_at()
     assert refreshed_crit_low_branch.name._get_created_by() == crit_low.name._get_created_by()
+    # validate node-level metadata on branch remains unchanged
+    await _validate_node_metadata(
+        db=db,
+        branch=branch1,
+        node_id=crit_low.id,
+        update_time_range=(before_branch_update, after_branch_update),
+        updated_by="second-update",
+    )
 
     await verify_no_duplicate_paths(db=db)
 

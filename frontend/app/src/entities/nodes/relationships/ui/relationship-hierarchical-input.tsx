@@ -20,6 +20,7 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import {
@@ -75,7 +76,7 @@ export const RelationshipHierarchicalInput = forwardRef<
   return (
     <Combobox open={open} onOpenChange={setOpen}>
       <ComboboxTrigger ref={ref} {...props}>
-        {value?.display_label}
+        {value ? getNodeLabel(value) : ""}
       </ComboboxTrigger>
 
       <RelationshipHierarchicalContent peer={peer} onSelect={handleSelect} value={value} />
@@ -112,19 +113,19 @@ export const RelationshipHierarchicalManyInput = forwardRef<
           )}
         >
           <div className="flex grow flex-wrap gap-2">
-            {value?.map(({ id, display_label }) => (
-              <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                {display_label}
+            {value?.map((node) => (
+              <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
+                {getNodeLabel(node)}
 
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onChange(value?.filter((item) => item.id !== id));
+                    onChange(value?.filter((item) => item.id !== node.id));
                   }}
                   className="h-4 w-4 text-gray-500 hover:text-gray-800"
-                  aria-label={`Remove ${display_label}`}
+                  aria-label={`Remove ${getNodeLabel(node)}`}
                   data-testid="remove-option"
                 >
                   &times;

@@ -4,12 +4,17 @@ import type React from "react";
 import { Col, type ColProps } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
-export const TaskHomepageColumn = ({ className, ...props }: ColProps) => {
+export const TaskHomepageColumn = ({ className, children, ...props }: ColProps) => {
   return (
     <Col
-      className={classNames("items-start gap-1.5 rounded-xl bg-gray-50 p-2", className)}
+      className={classNames(
+        "min-h-0 flex-1 items-start gap-1.5 overflow-hidden rounded-xl bg-gray-50 p-2",
+        className
+      )}
       {...props}
-    />
+    >
+      {children}
+    </Col>
   );
 };
 

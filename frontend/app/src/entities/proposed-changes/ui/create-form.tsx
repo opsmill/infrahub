@@ -5,9 +5,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
@@ -26,6 +23,8 @@ import {
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";

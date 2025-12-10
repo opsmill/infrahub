@@ -337,6 +337,11 @@ class RelationshipCreateQuery(RelationshipWriteQuery):
             r1,
             r2,
         )
+        if self.branch.is_default or self.branch.is_global:
+            query_create += """
+        SET s.updated_at = $at, s.updated_by = $user_id
+        SET d.updated_at = $at, d.updated_by = $user_id
+            """
 
         self.add_to_query(query_create)
         self.return_labels = ["s", "d", "rl", "r1", "r2", "r3"]
@@ -393,6 +398,8 @@ CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "ac
 class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
     name = "relationship_property_update"
     type = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
 
     def __init__(
         self,
@@ -407,7 +414,7 @@ class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
-        self.params["rel_node_id"] = self.rel_id
+        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["user_id"] = self.user_id
@@ -419,7 +426,7 @@ class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
         if self.branch.is_default or self.branch.is_global:
             rel_query += """
             SET rl.updated_at = $at, rl.updated_by = $user_id
-            WITH *
+            WITH rl
             """
         self.add_to_query(rel_query)
 
@@ -449,6 +456,33 @@ WITH rl
         self.query_add_all_node_property_create(branch_filter=branch_filter)
         self.query_add_all_flag_property_create()
 
+        # Update peer node metadata at the end (only on default/global branch)
+        if self.branch.is_default or self.branch.is_global:
+            peer_metadata_query = """
+WITH rl
+CALL (rl) {
+    MATCH (peer:Node)-[r_rel:IS_RELATED]-(rl)
+    WHERE r_rel.branch_level = 1
+    WITH DISTINCT peer, rl
+    CALL (peer, rl) {
+        MATCH (peer)-[r_rel:IS_RELATED]-(rl)
+        WHERE r_rel.branch_level = 1
+        ORDER BY r_rel.from DESC, r_rel.status ASC
+        LIMIT 1
+        WITH peer, r_rel
+        WHERE r_rel.status = "active" AND r_rel.to IS NULL
+        MATCH (peer)-[r_part:IS_PART_OF]->(:Root)
+        WHERE r_part.branch_level = 1
+        ORDER BY r_part.from DESC, r_part.status ASC
+        LIMIT 1
+        WITH peer, r_part
+        WHERE r_part.status = "active" AND r_part.to IS NULL
+        SET peer.updated_at = $at, peer.updated_by = $user_id
+    }
+}
+            """
+            self.add_to_query(peer_metadata_query)
+
     def query_add_all_flag_property_merge(self) -> None:
         for prop_name, prop_value in self.flag_properties_to_update.items():
             self.query_add_flag_property_merge(name=prop_name, value=prop_value)
@@ -456,7 +490,6 @@ WITH rl
     def query_add_flag_property_merge(self, name: str, value: bool) -> None:
         self.add_to_query("MERGE (prop_%s:Boolean { value: $prop_%s })" % (name, name))
         self.params[f"prop_{name}"] = value
-        self.return_labels.append(f"prop_{name}")
 
     def query_add_all_node_property_merge(self, branch_filter: str) -> None:
         for prop_name, prop_value in self.node_properties_to_update.items():
@@ -481,7 +514,6 @@ WITH rl
             WHERE $prop_%(prop_name)s IS NULL OR r_%(prop_name)s.status = "active"
                 """ % {"branch_filter": branch_filter, "prop_name": prop_name}
             self.add_to_query(node_query)
-            self.return_labels.append(f"prop_{prop_name}")
 
     def query_add_all_flag_property_create(self) -> None:
         for prop_name in self.flag_properties_to_update:
@@ -580,7 +612,9 @@ class RelationshipDeleteQuery(RelationshipWriteQuery):
         }
         if self.branch.is_default or self.branch.is_global:
             rel_match_query += """
-            SET rl.updated_at = $at, rl.updated_by = $user_id
+        SET rl.updated_at = $at, rl.updated_by = $user_id
+        SET s.updated_at = $at, s.updated_by = $user_id
+        SET d.updated_at = $at, d.updated_by = $user_id
             """
         self.add_to_query(rel_match_query)
 
@@ -770,38 +804,51 @@ CALL (rels) {
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
         if not (self.include_metadata & (MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY)):
             return
+        self.update_return_labels(["updated_at", "updated_by"])
         if self.branch.is_default or self.branch.is_global:
             last_updated_query = """
 WITH *, rl.updated_at AS updated_at, rl.updated_by AS updated_by
             """
+            self.add_to_query(last_updated_query)
+            return
+
+        # query for non-default, non-global branches
+        if self.branch_agnostic:
+            time_details = """
+WITH [r.from, r.from_user_id] AS from_details, [r.to, r.to_user_id] AS to_details
+            """
         else:
-            last_updated_query = """
+            time_details = """
+WITH CASE
+    WHEN $is_branch_agnostic THEN [r.from, r.from_user_id]
+    WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
+    WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
+    ELSE [NULL, NULL]
+END AS from_details,
+CASE
+    WHEN $is_branch_agnostic THEN [r.to, r.to_user_id]
+    WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to, r.to_user_id]
+    WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
+    ELSE [NULL, NULL]
+END AS to_details
+            """
+        last_updated_query = """
 CALL (rl) {
-    MATCH (rl)-[r]-(property)
-    WHERE %(branch_filter)s
-    WITH CASE
-        WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
-        WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
-        ELSE [NULL, NULL]
-    END AS from_details,
-    CASE
-        WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to, r.to_user_id]
-        WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
-        ELSE [NULL, NULL]
-    END AS to_details
-    WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
-    WITH from_details_list + to_details_list AS details_list
-    UNWIND details_list AS one_details
-    WITH one_details[0] AS updated_at, one_details[1] AS updated_by
-    WHERE updated_at IS NOT NULL
-    WITH updated_at, updated_by
-    ORDER BY updated_at DESC
-    LIMIT 1
-    RETURN updated_at, updated_by
+MATCH (rl)-[r]-(property)
+WHERE %(branch_filter)s
+%(time_details)s
+WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
+WITH from_details_list + to_details_list AS details_list
+UNWIND details_list AS one_details
+WITH one_details[0] AS updated_at, one_details[1] AS updated_by
+WHERE updated_at IS NOT NULL
+WITH updated_at, updated_by
+ORDER BY updated_at DESC
+LIMIT 1
+RETURN updated_at, updated_by
 }
-            """ % {"branch_filter": branch_filter_str}
+        """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
-        self.update_return_labels(["updated_at", "updated_by"])
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -812,6 +859,7 @@ CALL (rl) {
 
         peer_schema = self.schema.get_peer_schema(db=db, branch=self.branch)
 
+        self.params["is_branch_agnostic"] = self.branch_agnostic
         self.params["source_ids"] = self.source_ids
         self.params["rel_identifier"] = self.schema.identifier
         self.params["peer_kind"] = self.schema.peer
@@ -1218,6 +1266,10 @@ class RelationshipDeleteAllQuery(Query):
                 self.add_to_query(sub_query)
 
         # We only want to return uuid/kind of `Node` connected through `IS_RELATED` edges.
+        peer_node_metadata_update = ""
+        if self.branch.is_default or self.branch.is_global:
+            peer_node_metadata_update = "SET n.updated_at = $at, n.updated_by = $user_id"
+
         query = """
         CALL (rl) {
             MATCH (rl)-[active_edge:IS_RELATED]->(n)
@@ -1228,6 +1280,7 @@ class RelationshipDeleteAllQuery(Query):
             WHERE active_edge.status = "active"
             CREATE (rl)-[deleted_edge:IS_RELATED $rel_prop]->(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
+            %(peer_node_metadata_update)s
             WITH rl, active_edge, n
             WHERE active_edge.branch = $branch AND active_edge.to IS NULL
             SET active_edge.to = $at, active_edge.to_user_id = $user_id
@@ -1247,6 +1300,7 @@ class RelationshipDeleteAllQuery(Query):
             WHERE active_edge.status = "active"
             CREATE (rl)<-[deleted_edge:IS_RELATED $rel_prop]-(n)
             SET deleted_edge.hierarchy = active_edge.hierarchy
+            %(peer_node_metadata_update)s
             WITH rl, active_edge, n
             WHERE active_edge.branch = $branch AND active_edge.to IS NULL
             SET active_edge.to = $at, active_edge.to_user_id = $user_id
@@ -1257,7 +1311,11 @@ class RelationshipDeleteAllQuery(Query):
                 "inbound" as rel_direction
         }
         RETURN DISTINCT uuid, kind, rel_identifier, rel_direction
-        """ % {"active_rel_filter": active_rel_filter, "id_func": db.get_id_function_name()}
+        """ % {
+            "active_rel_filter": active_rel_filter,
+            "id_func": db.get_id_function_name(),
+            "peer_node_metadata_update": peer_node_metadata_update,
+        }
         self.add_to_query(query)
 
     def get_deleted_relationships_changelog(

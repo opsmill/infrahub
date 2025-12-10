@@ -1,3 +1,5 @@
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { useGetTasksHomepage } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage.query";
 import { TaskHomepageItem } from "@/entities/tasks/ui/tasks-homepage/task-homepage-item";
@@ -7,9 +9,15 @@ const TASK_LIMIT = 5;
 
 interface TaskHomepageStateProps {
   states: string[];
+  emptyTitle?: string;
+  emptySubtitle?: string;
 }
 
-export const TaskHomepageState = ({ states }: TaskHomepageStateProps) => {
+export const TaskHomepageState = ({
+  states,
+  emptyTitle = "No tasks",
+  emptySubtitle = "Nothing to display",
+}: TaskHomepageStateProps) => {
   const { data, error, isPending } = useGetTasksHomepage({ states, limit: TASK_LIMIT });
 
   if (isPending) {
@@ -21,7 +29,7 @@ export const TaskHomepageState = ({ states }: TaskHomepageStateProps) => {
       <EmptyHomeCard
         title="An error occurred"
         subtitle={error.message}
-        className="w-full text-center text-gray-500"
+        className="w-full text-center"
       />
     );
   }
@@ -29,14 +37,20 @@ export const TaskHomepageState = ({ states }: TaskHomepageStateProps) => {
   if (!data.length) {
     return (
       <EmptyHomeCard
-        title="No tasks"
-        subtitle="Tasks will appear here after you start a migration or assign a workflow"
+        title={emptyTitle}
+        subtitle={emptySubtitle}
         className="w-full text-center text-gray-400"
       />
     );
   }
 
-  return data.map((task) => {
-    return <TaskHomepageItem key={task.id} {...task} />;
-  });
+  return (
+    <ScrollArea className="h-full w-full">
+      <div className="flex flex-col gap-1.5">
+        {data.map((task) => {
+          return <TaskHomepageItem key={task.id} {...task} />;
+        })}
+      </div>
+    </ScrollArea>
+  );
 };

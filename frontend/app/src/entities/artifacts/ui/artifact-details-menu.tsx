@@ -1,26 +1,27 @@
-import { ARTIFACT_OBJECT } from "@/config/constants";
-
 import { CopyToClipboardMenuItem } from "@/shared/components/aria/menu";
-import {
-  ObjectDetailsButton,
-  type ObjectDetailsButtonProps,
-} from "@/shared/components/menu/object-details-button";
+import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 
-export interface ArtifactDetailsMenuProps extends ObjectDetailsButtonProps {
-  checksum?: string;
-  storageId?: string;
+import type { ArtifactObject } from "@/entities/artifacts/types";
+import { ObjectDetailsButton } from "@/entities/nodes/object/ui/object-details-button";
+
+export interface ArtifactDetailsMenuProps {
+  artifact: ArtifactObject;
 }
 
-export function ArtifactDetailsMenu({ id, hfid, checksum, storageId }: ArtifactDetailsMenuProps) {
+export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
   return (
-    <ObjectDetailsButton id={id} hfid={hfid} objectKind={ARTIFACT_OBJECT}>
-      {checksum && (
-        <CopyToClipboardMenuItem textToCopy={checksum}>Copy Checksum</CopyToClipboardMenuItem>
-      )}
+    <ObjectDetailsButton
+      id={artifact.id}
+      hfid={artifact.hfid?.toString()}
+      objectKind={ARTIFACT_OBJECT}
+    >
+      <CopyToClipboardMenuItem textToCopy={artifact.checksum.value}>
+        Copy Checksum
+      </CopyToClipboardMenuItem>
 
-      {storageId && (
-        <CopyToClipboardMenuItem textToCopy={storageId}>Copy Storage ID</CopyToClipboardMenuItem>
-      )}
+      <CopyToClipboardMenuItem textToCopy={artifact.storage_id.value}>
+        Copy Storage ID
+      </CopyToClipboardMenuItem>
     </ObjectDetailsButton>
   );
 }

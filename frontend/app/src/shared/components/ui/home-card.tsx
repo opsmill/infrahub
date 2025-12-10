@@ -11,13 +11,16 @@ interface HomeCardProps {
 }
 
 const HomeCardRoot = ({ className, ...props }: HomeCardProps) => {
-  return <Card className={classNames("p-0", className)} {...props} />;
+  return <Card className={classNames("flex flex-col p-0", className)} {...props} />;
 };
 
 const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
   return (
     <header
-      className={classNames("rounded-t border-gray-200 border-b p-3 font-bold", className)}
+      className={classNames(
+        "flex items-center justify-between rounded-t border-gray-200 border-b p-3 font-bold",
+        className
+      )}
       {...props}
     />
   );

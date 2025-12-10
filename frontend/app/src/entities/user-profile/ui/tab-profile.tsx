@@ -1,27 +1,24 @@
 import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
-
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 import { parseJwt } from "@/shared/utils/common";
 
+import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
-import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export default function TabProfile() {
-  const nodes = useAtomValue(genericSchemasAtom);
-  const schema = nodes.find(({ kind }) => kind === ACCOUNT_GENERIC_OBJECT);
+  const { schema } = useSchema(ACCOUNT_GENERIC_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   const tokenData = parseJwt(localToken);
   const accountId = tokenData?.sub;
 
-  const { data, error, networkStatus, permission } = useObjectDetails(schema, accountId);
+  const { data, error, networkStatus, permission } = useObjectDetails(schema!, accountId);
 
   const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
 
@@ -42,11 +39,6 @@ export default function TabProfile() {
   }
 
   return (
-    <ObjectItemDetails
-      schema={schema}
-      objectDetailsData={objectDetailsData}
-      permission={permission}
-      hideHeaders
-    />
+    <ObjectDetails objectSchema={schema} objectData={objectDetailsData} permission={permission} />
   );
 }

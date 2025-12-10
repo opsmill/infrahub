@@ -117,7 +117,7 @@ test.describe("/resource-manager - Number Pool Tests", () => {
 
     await test.step("Verify pool assignment", async () => {
       await page.getByRole("searchbox", { name: "Search" }).fill("interface with pool");
-      await page.getByRole("link", { name: "atl1-core1, test interface" }).click();
+      await page.getByRole("link", { name: "test interface with pool" }).click();
       await page.getByText("Speed1").getByTestId("view-metadata-button").click();
       await expect(page.getByRole("link", { name: "number pool test for generic" })).toBeVisible();
     });

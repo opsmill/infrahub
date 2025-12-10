@@ -790,11 +790,38 @@ You should see that:
 
 :::
 
+## Using profiles with templates
+
+When both `generate_template` and `generate_profile` are configured on a schema node, you can assign profiles to templates for powerful configuration management. This allows you to:
+
+- **Define structure with templates**: Templates define which components exist (e.g., which interfaces are present)
+- **Configure values with profiles**: Profiles define the configuration settings for those components
+- **Bulk updates**: Modify profile values to update all objects created from templates using those profiles
+
+### How template-profile integration works
+
+When you assign a profile to a template and then create objects from that template:
+
+1. The object is created based on the template structure
+2. The template's profiles are automatically assigned to the created object
+3. Template values (when explicitly configured) take precedence over profile values
+4. Profiles provide values for attributes not explicitly set on the template
+5. You can assign multiple profiles to a template with proper priority handling
+
+This enables you to update configuration values in bulk by modifying the profile, while the template ensures structural consistency and can override specific values when needed.
+
+For more information, see:
+
+- [Creating an object template guide](../guides/object-template.mdx) - Step-by-step guide for creating templates
+- [Object templates topic](../topics/object-template.mdx) - Understanding template and profile integration
+
 ## Related resources
 
 - [Understanding profiles in Infrahub](../topics/profiles.mdx) - Detailed explanation of profile concepts, inheritance rules, and design decisions
 - [Metadata](../topics/metadata.mdx) - Learn how Infrahub tracks data lineage and attribute sources
 - [Creating a schema](../guides/create-schema.mdx) - Learn to create schemas that generate profile support
+- [Creating an object template](../guides/object-template.mdx) - Learn how to combine templates with profiles for powerful configuration management
+- [Object templates topic](../topics/object-template.mdx) - Understanding how profiles integrate with templates
 - [Node schema reference](../reference/schema/node.mdx) - Complete reference for node configuration including the `generate_profile` option
 - [Schema validation](../reference/schema-validation.mdx) - Validate your schemas before loading
 - [GraphQL API](../topics/graphql.mdx) - Overview of Infrahub's GraphQL API

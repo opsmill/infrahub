@@ -2,12 +2,11 @@ import { Icon } from "@iconify-icon/react";
 import { ListBoxItem } from "react-aria-components";
 import { Link } from "react-router";
 
-import { CHECK_OBJECT } from "@/config/constants";
-
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { CHECK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import type { ProposedChangeItem } from "@/entities/proposed-changes/domain/get-proposed-changes";

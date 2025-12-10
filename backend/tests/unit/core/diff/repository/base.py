@@ -81,8 +81,7 @@ class DiffRepositoryTestBase:
             this_node = nodes_to_check.pop(0)
             all_nodes.add(this_node)
             for rel in this_node.relationships:
-                for parent_node in rel.nodes:
-                    nodes_to_check.append(parent_node)
+                nodes_to_check.extend(rel.nodes)
         return all_nodes
 
     async def _save_single_diff(

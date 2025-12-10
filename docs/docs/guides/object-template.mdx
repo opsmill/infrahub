@@ -296,3 +296,24 @@ Heading back to the main menu we will create a device object.
 When viewing your newly created device object, navigate to the Interfaces tab to see a **list of interfaces pre-populated based on the template you defined**. Keep in mind that **any modifications made to the template will not retroactively apply to objects that have already been created from it**.
 
 :::
+
+## Using profiles with templates
+
+When both `generate_template` and `generate_profile` are configured on a schema node, you can assign profiles to templates to enable bulk configuration updates. Objects created from templates automatically inherit the profiles assigned to those templates, allowing you to update values in bulk by modifying the profile.
+
+:::info Profile and template integration
+
+When a profile is assigned to a template:
+
+- Objects created from the template automatically inherit the template's profiles
+- Template values (when explicitly configured) take precedence over profile values
+- Profiles provide values for attributes not explicitly set on the template
+- Multiple profiles can be assigned to a template with proper priority handling
+- This enables consistent configuration management across templated objects
+
+:::
+
+For more information about profiles and templates, see:
+
+- [Creating and assigning profiles](../guides/profiles.mdx) - Guide for working with profiles
+- [Understanding profiles in Infrahub](../topics/profiles.mdx) - Deep dive into profile concepts

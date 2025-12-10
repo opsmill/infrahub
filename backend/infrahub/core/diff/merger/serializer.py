@@ -328,7 +328,7 @@ class DiffMergeSerializer:
                 # handled above
                 continue
             python_value_type: type = str
-            if property_diff.property_type in (DatabaseEdgeType.IS_PROTECTED,):
+            if property_diff.property_type is DatabaseEdgeType.IS_PROTECTED:
                 python_value_type = bool
             actions_and_values = self._get_property_actions_and_values(
                 property_diff=property_diff, python_value_type=python_value_type

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, cast
 from graphene import InputObjectType, Mutation
 from typing_extensions import Self
 
-from infrahub.core.protocols import CoreNodeTriggerAttributeMatch, CoreNodeTriggerRelationshipMatch, CoreNodeTriggerRule
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
 
@@ -16,6 +15,11 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import (
+        CoreNodeTriggerAttributeMatch,
+        CoreNodeTriggerRelationshipMatch,
+        CoreNodeTriggerRule,
+    )
     from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
 
@@ -104,9 +108,11 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
             trigger_match, result = await super().mutate_create(
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )
-            trigger_match_model = cast(CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch, trigger_match)
+            trigger_match_model = cast(
+                "CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch", trigger_match
+            )
             node_trigger_rule = await trigger_match_model.trigger.get_peer(db=dbt, raise_on_error=True)
-            node_trigger_rule_model = cast(CoreNodeTriggerRule, node_trigger_rule)
+            node_trigger_rule_model = cast("CoreNodeTriggerRule", node_trigger_rule)
             node_schema = dbt.schema.get_node_schema(name=node_trigger_rule_model.node_kind.value, duplicate=False)
             _validate_node_kind_field(data=data, node_schema=node_schema)
 
@@ -124,9 +130,11 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
         graphql_context: GraphqlContext = info.context
         async with graphql_context.db.start_transaction() as dbt:
             trigger_match, result = await super().mutate_update(info=info, data=data, branch=branch, database=dbt)
-            trigger_match_model = cast(CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch, trigger_match)
+            trigger_match_model = cast(
+                "CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch", trigger_match
+            )
             node_trigger_rule = await trigger_match_model.trigger.get_peer(db=dbt, raise_on_error=True)
-            node_trigger_rule_model = cast(CoreNodeTriggerRule, node_trigger_rule)
+            node_trigger_rule_model = cast("CoreNodeTriggerRule", node_trigger_rule)
             node_schema = dbt.schema.get_node_schema(name=node_trigger_rule_model.node_kind.value, duplicate=False)
             _validate_node_kind_field(data=data, node_schema=node_schema)
 
@@ -134,7 +142,7 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
 
 
 def _validate_node_kind(data: InputObjectType, db: InfrahubDatabase) -> None:
-    input_data = cast(dict[str, dict[str, Any]], data)
+    input_data = cast("dict[str, dict[str, Any]]", data)
     if node_kind := input_data.get("node_kind"):
         value = node_kind.get("value")
         if isinstance(value, str):
@@ -149,7 +157,7 @@ def _validate_node_kind(data: InputObjectType, db: InfrahubDatabase) -> None:
 
 
 def _validate_node_kind_field(data: InputObjectType, node_schema: NodeSchema) -> None:
-    input_data = cast(dict[str, dict[str, Any]], data)
+    input_data = cast("dict[str, dict[str, Any]]", data)
     if attribute_name := input_data.get("attribute_name"):
         value = attribute_name.get("value")
         if isinstance(value, str):

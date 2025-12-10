@@ -1,8 +1,7 @@
 import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
-import { QSP } from "@/config/qsp";
-
+import { QSP } from "@/shared/config/qsp";
 import useFilters, { type Filter, FilterSchema } from "@/shared/hooks/useFilters";
 
 import type { Permission } from "@/entities/permission/types";

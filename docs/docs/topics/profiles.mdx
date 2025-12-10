@@ -72,7 +72,7 @@ Profile inheritance follows a sophisticated model:
 ```text
 Node Creation/Update
        ↓
-Check if profiles assigned
+Check if profiles assigned (If created from a template, inherit its profiles)
        ↓
 For each attribute:
   - Is value explicitly set on node? → Use node value
@@ -271,6 +271,7 @@ The system's design anticipates future needs while providing immediate value thr
 - [How to use profiles for consistent configuration](../guides/profiles.mdx) - Step-by-step guide for creating and using profiles
 - [Creating a schema](../guides/create-schema.mdx) - Learn how to create schemas that support profiles
 - [Managing groups](../guides/groups.mdx) - Understand how groups complement profiles for organization
+- [Creating an object template](../guides/object-template.mdx) - Learn how templates can be combined with profiles
 
 ### Topics
 
@@ -278,6 +279,7 @@ The system's design anticipates future needs while providing immediate value thr
 - [GraphQL](../topics/graphql.mdx) - Understanding Infrahub's GraphQL API for profile operations
 - [Metadata](../topics/metadata.mdx) - Learn about metadata tracking and data lineage
 - [Version control](../topics/version-control.mdx) - How profiles work with branches and version control
+- [Object templates](../topics/object-template.mdx) - How profiles integrate with templates for powerful configuration management
 
 ### Reference
 
