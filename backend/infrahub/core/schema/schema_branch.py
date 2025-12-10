@@ -2164,7 +2164,7 @@ class SchemaBranch:
         profile.relationships = [r for r in profile.relationships if r.kind == RelationshipKind.PROFILE]
 
         for relationship in node.relationships:
-            if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]:
+            if not relationship.support_profiles:
                 continue
 
             # Ignore relationship if it is part of a uniqueness constraint

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 
 from infrahub import config
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipDirection, RelationshipKind
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.exceptions import InitializationError
@@ -35,6 +35,14 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     @property
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
+
+    @property
+    def support_profiles(self) -> bool:
+        return (
+            self.read_only is False
+            and self.optional is True
+            and self.kind in {RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE}
+        )
 
     def to_dict(self) -> dict:
         data = self.model_dump(exclude_unset=True, exclude_none=True)

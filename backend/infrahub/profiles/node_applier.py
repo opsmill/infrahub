@@ -50,7 +50,7 @@ class NodeProfilesApplier:
 
         rel_names_for_profiles: list[str] = []
         for rel_schema in node_schema.relationships:
-            if rel_schema.kind not in [RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE]:
+            if not rel_schema.support_profiles:
                 continue
 
             rel_name = rel_schema.name
