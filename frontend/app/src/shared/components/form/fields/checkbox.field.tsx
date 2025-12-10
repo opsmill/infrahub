@@ -10,6 +10,7 @@ export interface CheckboxFieldProps extends FormFieldProps {}
 const CheckboxField = ({
   defaultValue = { source: null, value: false },
   attribute,
+  deprecation,
   isBulkUpdate,
   description,
   label,
@@ -56,6 +57,7 @@ const CheckboxField = ({
                 label={label}
                 unique={unique}
                 required={!!rules?.required}
+                deprecation={deprecation}
                 description={description}
                 fieldData={fieldData}
               />

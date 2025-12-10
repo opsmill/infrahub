@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { FileBoxIcon } from "lucide-react";
+import { FileBoxIcon, TriangleAlertIcon } from "lucide-react";
 import type { ControllerRenderProps } from "react-hook-form";
 import { Link } from "react-router";
 
@@ -30,6 +30,7 @@ export const InputUniqueTips = ({ className }: { className: string }) => (
 
 interface LabelFormFieldProps extends LabelProps {
   className?: string;
+  deprecation?: string;
   label?: string;
   required?: boolean;
   unique?: boolean;
@@ -39,6 +40,7 @@ interface LabelFormFieldProps extends LabelProps {
 
 export const LabelFormField = ({
   className,
+  deprecation,
   label,
   required,
   unique,
@@ -51,6 +53,13 @@ export const LabelFormField = ({
       <FormLabel variant={variant}>
         {label} {required && "*"}
       </FormLabel>
+      {deprecation && (
+        <Tooltip enabled content={deprecation}>
+          <span className="text-yellow-600">
+            <TriangleAlertIcon className="size-4" />
+          </span>
+        </Tooltip>
+      )}
       {unique && <InputUniqueTips className="mb-px self-end" />}
       {description && <QuestionMark message={description} className="ml-1" />}
 

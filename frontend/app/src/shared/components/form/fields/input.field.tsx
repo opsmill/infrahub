@@ -22,6 +22,7 @@ export interface InputFieldProps
 const InputField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   attribute,
+  deprecation,
   description,
   label,
   name,
@@ -51,6 +52,7 @@ const InputField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
             />

@@ -125,6 +125,7 @@ export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 export type FormFieldProps = {
   attribute: AttributeSchema;
   defaultValue?: FormAttributeValue;
+  deprecation?: string;
   description?: string;
   disabled?: boolean;
   label?: string;

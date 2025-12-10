@@ -21,6 +21,7 @@ import { LabelFormField, ResetAction } from "./common";
 
 export function NodeKindField({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
+  deprecation,
   isBulkUpdate,
   attribute,
   label,
@@ -43,7 +44,7 @@ export function NodeKindField({
 
         return (
           <div className="flex flex-col gap-2">
-            <LabelFormField label={label} description={description} required={rules.required} />
+            <LabelFormField label={label} deprecation={deprecation} description={description} required={rules.required} />
 
             <Combobox open={open} onOpenChange={setOpen}>
               <FormInput>

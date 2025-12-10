@@ -64,6 +64,7 @@ export const getFormFieldFromAttribute = ({
       isFilterForm,
     }),
     description: attributeSchema.description ?? undefined,
+    deprecation: attributeSchema.deprecation ?? undefined,
     isBulkUpdate,
     attribute: attributeSchema,
     disabled: isFieldDisabled({

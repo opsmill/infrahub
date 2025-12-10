@@ -9,6 +9,7 @@ import { PasswordInput } from "@/shared/components/ui/password-input";
 const PasswordInputField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   attribute,
+  deprecation,
   isBulkUpdate,
   description,
   label,
@@ -34,6 +35,7 @@ const PasswordInputField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
             />

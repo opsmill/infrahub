@@ -9,6 +9,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 const ListField = ({
   defaultValue = DEFAULT_FORM_FIELD_VALUE,
   attribute,
+  deprecation,
   isBulkUpdate,
   description,
   label,
@@ -45,6 +46,7 @@ const ListField = ({
               label={label}
               unique={unique}
               required={!!rules?.required}
+              deprecation={deprecation}
               description={description}
               fieldData={fieldData}
             />
