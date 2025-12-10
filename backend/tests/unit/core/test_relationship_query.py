@@ -1335,7 +1335,7 @@ async def test_query_RelationshipGetPeerQuery_branch_agnostic(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
     )
     await query.execute(db=db)
 
@@ -1356,7 +1356,7 @@ async def test_query_RelationshipGetPeerQuery_branch_agnostic(
         rel=Relationship,
         branch=default_branch,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
     )
     await query.execute(db=db)
 
@@ -1378,7 +1378,7 @@ async def test_query_RelationshipGetPeerQuery_branch_agnostic(
         branch=branch,
         branch_agnostic=True,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
     )
     await query.execute(db=db)
 
