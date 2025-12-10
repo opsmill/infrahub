@@ -19,7 +19,7 @@ export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryDat
 
   return (
     <ListBoxItem
-      href={getObjectDetailsUrl(GENERIC_REPOSITORY_KIND, id ?? undefined)}
+      href={getObjectDetailsUrl(GENERIC_REPOSITORY_KIND, id)}
       className={classNames(
         focusVisibleStyle,
         "flex items-center justify-between p-4 text-sm",
