@@ -26,7 +26,7 @@ export const GitRepositoryItem = ({ repository }: { repository: GitRepositoryDat
         "border border-transparent",
         "hover:bg-neutral-100"
       )}
-      textValue={display_label ?? id ?? undefined}
+      textValue={display_label ?? id}
     >
       {display_label}
 
