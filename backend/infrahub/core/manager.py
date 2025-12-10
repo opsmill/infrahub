@@ -75,13 +75,8 @@ def get_schema[SchemaProtocol](
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
         return db.schema.get(name=node_schema, branch=branch.name, duplicate=duplicate)
-    if (
-        hasattr(node_schema, "_is_runtime_protocol")
-        and node_schema._is_runtime_protocol
-    ):
-        return db.schema.get(
-            name=node_schema.__name__, branch=branch.name, duplicate=duplicate
-        )
+    if hasattr(node_schema, "_is_runtime_protocol") and node_schema._is_runtime_protocol:
+        return db.schema.get(name=node_schema.__name__, branch=branch.name, duplicate=duplicate)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
 
@@ -213,9 +208,7 @@ class NodeManager:
             # This is a workaround to ensure we are querying the right fields for permissions
             # The identifier for permissions needs the same fields as the display label
             schema_branch = db.schema.get_schema_branch(name=branch.name)
-            display_label_fields = schema_branch.generate_fields_for_display_label(
-                name=node_schema.kind
-            )
+            display_label_fields = schema_branch.generate_fields_for_display_label(name=node_schema.kind)
             if display_label_fields:
                 deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
@@ -237,12 +230,7 @@ class NodeManager:
     async def count(
         cls,
         db: InfrahubDatabase,
-        schema: type[SchemaProtocol]
-        | NodeSchema
-        | GenericSchema
-        | ProfileSchema
-        | TemplateSchema
-        | str,
+        schema: type[SchemaProtocol] | NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | str,
         filters: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
@@ -358,9 +346,7 @@ class NodeManager:
                 InfrahubKind.OBJECTPERMISSION,
             ]:
                 schema_branch = db.schema.get_schema_branch(name=branch.name)
-                display_label_fields = schema_branch.generate_fields_for_display_label(
-                    name=peer_schema.kind
-                )
+                display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
                 if display_label_fields:
                     deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
@@ -660,9 +646,7 @@ class NodeManager:
         kind_str = node_schema.kind
 
         if not node_schema.default_filter:
-            raise NodeNotFoundError(
-                branch_name=branch.name, node_type=kind_str, identifier=id
-            )
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=id)
 
         items = await NodeManager.query(
             db=db,
@@ -839,9 +823,7 @@ class NodeManager:
 
         filters = {}
         for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
-            path = node_schema.parse_schema_path(
-                path=key, schema=registry.schema.get_schema_branch(name=branch.name)
-            )
+            path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
 
             if path.is_type_relationship and path.related_schema:
                 rel_schema = path.related_schema
@@ -851,9 +833,7 @@ class NodeManager:
                     schema=registry.schema.get_schema_branch(name=branch.name),
                 )
 
-            filters[key] = (
-                path.active_attribute_schema.get_class().deserialize_from_string(item)
-            )
+            filters[key] = path.active_attribute_schema.get_class().deserialize_from_string(item)
 
         items = await NodeManager.query(
             db=db,
@@ -872,9 +852,7 @@ class NodeManager:
 
         if len(items) < 1:
             if raise_on_error:
-                raise NodeNotFoundError(
-                    branch_name=branch.name, node_type=kind_str, identifier=hfid_str
-                )
+                raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
             return None
 
         if len(items) > 1:
@@ -962,9 +940,7 @@ class NodeManager:
             branch_agnostic=branch_agnostic,
         )
         if not node:
-            raise NodeNotFoundError(
-                branch_name=branch.name, node_type=kind, identifier=id
-            )
+            raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
         return node
 
     @overload
@@ -1141,9 +1117,7 @@ class NodeManager:
 
         if not result:
             if raise_on_error:
-                raise NodeNotFoundError(
-                    branch_name=branch.name, node_type=kind, identifier=id
-                )
+                raise NodeNotFoundError(branch_name=branch.name, node_type=kind, identifier=id)
             return None
 
         node = result[id]
@@ -1160,8 +1134,7 @@ class NodeManager:
         ]
 
         if kind_validation and (
-            node_schema.kind != kind_validation
-            and kind_validation not in node_schema.inherit_from
+            node_schema.kind != kind_validation and kind_validation not in node_schema.inherit_from
         ):
             for item in kind_validation_exceptions:
                 if item[0] == kind_validation and item[1] == node.get_kind():
@@ -1199,10 +1172,8 @@ class NodeManager:
 
         if fields or metadata_fields:
             metadata_determiner = MetadataDeterminer()
-            include_metadata_for_fields = (
-                await metadata_determiner.determine_metadata_for_fields(
-                    node_fields=fields or {}, metadata_fields=metadata_fields
-                )
+            include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(
+                node_fields=fields or {}, metadata_fields=metadata_fields
             )
             if isinstance(include_metadata, MetadataQueryOptions):
                 include_metadata |= include_metadata_for_fields
@@ -1212,9 +1183,7 @@ class NodeManager:
 
         # Query all nodes
         node_metadata_options = (
-            include_metadata.node_level
-            if isinstance(include_metadata, MetadataQueryOptions)
-            else include_metadata
+            include_metadata.node_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
         )
         query = await NodeListGetInfoQuery.init(
             db=db,
@@ -1225,15 +1194,11 @@ class NodeManager:
             include_metadata=node_metadata_options,
         )
         await query.execute(db=db)
-        nodes_info_by_id: dict[str, NodeToProcess] = {
-            node.node_uuid: node async for node in query.get_nodes(db=db)
-        }
+        nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
 
         # Query list of all Attributes
         attribute_metadata_options = (
-            include_metadata.attribute_level
-            if isinstance(include_metadata, MetadataQueryOptions)
-            else include_metadata
+            include_metadata.attribute_level if isinstance(include_metadata, MetadataQueryOptions) else include_metadata
         )
         query = await NodeListGetAttributeQuery.init(
             db=db,
@@ -1275,9 +1240,7 @@ class NodeManager:
 
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
-            item = await node_class.init(
-                schema=node.schema, branch=node_branch, at=at, db=db
-            )
+            item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
             await item.load(**new_node_data, db=db)
             item._set_created_at(node.created_at)
             item._set_created_by(node.created_by)
@@ -1319,24 +1282,18 @@ class NodeManager:
     ) -> None:
         if not prefetch_relationships and not fields:
             return
-        cardinality_one_identifiers_by_kind: (
-            dict[str, dict[str, RelationshipDirection]] | None
-        ) = None
+        cardinality_one_identifiers_by_kind: dict[str, dict[str, RelationshipDirection]] | None = None
         outbound_identifiers: set[str] | None = None
         inbound_identifiers: set[str] | None = None
         bidirectional_identifiers: set[str] | None = None
         if not prefetch_relationships:
-            cardinality_one_identifiers_by_kind = (
-                _get_cardinality_one_identifiers_by_kind(
-                    nodes=nodes_by_id.values(), fields=fields or {}
-                )
+            cardinality_one_identifiers_by_kind = _get_cardinality_one_identifiers_by_kind(
+                nodes=nodes_by_id.values(), fields=fields or {}
             )
             outbound_identifiers = set()
             inbound_identifiers = set()
             bidirectional_identifiers = set()
-            for (
-                identifier_direction_map
-            ) in cardinality_one_identifiers_by_kind.values():
+            for identifier_direction_map in cardinality_one_identifiers_by_kind.values():
                 for identifier, direction in identifier_direction_map.items():
                     if direction is RelationshipDirection.OUTBOUND:
                         outbound_identifiers.add(identifier)
@@ -1348,15 +1305,9 @@ class NodeManager:
         query = await NodeListGetRelationshipsQuery.init(
             db=db,
             ids=list(nodes_by_id.keys()),
-            outbound_identifiers=None
-            if outbound_identifiers is None
-            else list(outbound_identifiers),
-            inbound_identifiers=None
-            if inbound_identifiers is None
-            else list(inbound_identifiers),
-            bidirectional_identifiers=None
-            if bidirectional_identifiers is None
-            else list(bidirectional_identifiers),
+            outbound_identifiers=None if outbound_identifiers is None else list(outbound_identifiers),
+            inbound_identifiers=None if inbound_identifiers is None else list(inbound_identifiers),
+            bidirectional_identifiers=None if bidirectional_identifiers is None else list(bidirectional_identifiers),
             branch=branch,
             at=at,
             branch_agnostic=branch_agnostic,
@@ -1398,8 +1349,7 @@ class NodeManager:
         node: Node,
         grouped_peer_nodes: GroupedPeerNodes,
         nodes_by_id: dict[str, Node],
-        cardinality_one_identifiers_by_kind: dict[str, dict[str, RelationshipDirection]]
-        | None,
+        cardinality_one_identifiers_by_kind: dict[str, dict[str, RelationshipDirection]] | None,
         insert_peer_node: bool,
     ) -> None:
         if not grouped_peer_nodes.has_node(node_id=node.get_id()):
@@ -1424,18 +1374,15 @@ class NodeManager:
                         rel_peers.append(peer)
             # if only getting some relationships, make sure we want THIS relationship for THIS node schema
             elif cardinality_one_identifiers_by_kind:
-                required_direction = cardinality_one_identifiers_by_kind.get(
-                    node_schema.kind, {}
-                ).get(rel_schema.get_identifier())
+                required_direction = cardinality_one_identifiers_by_kind.get(node_schema.kind, {}).get(
+                    rel_schema.get_identifier()
+                )
                 if required_direction is not rel_schema.direction:
                     continue
                 rel_peers = list(peer_ids)
             else:
                 continue
-            if (
-                rel_schema.cardinality is RelationshipCardinality.ONE
-                and len(rel_peers) > 1
-            ):
+            if rel_schema.cardinality is RelationshipCardinality.ONE and len(rel_peers) > 1:
                 raise ValueError("At most, one relationship expected")
 
             rel_peers_with_metadata: list[PeerWithRelationshipMetadata] = []
@@ -1451,18 +1398,10 @@ class NodeManager:
                 if not metadata_map:
                     rel_peers_with_metadata.append(peer_with_metadata)
                     continue
-                peer_with_metadata.created_at = metadata_map.get(
-                    MetadataOptions.CREATED_AT
-                )
-                peer_with_metadata.created_by = metadata_map.get(
-                    MetadataOptions.CREATED_BY
-                )
-                peer_with_metadata.updated_at = metadata_map.get(
-                    MetadataOptions.UPDATED_AT
-                )
-                peer_with_metadata.updated_by = metadata_map.get(
-                    MetadataOptions.UPDATED_BY
-                )
+                peer_with_metadata.created_at = metadata_map.get(MetadataOptions.CREATED_AT)
+                peer_with_metadata.created_by = metadata_map.get(MetadataOptions.CREATED_BY)
+                peer_with_metadata.updated_at = metadata_map.get(MetadataOptions.UPDATED_AT)
+                peer_with_metadata.updated_by = metadata_map.get(MetadataOptions.UPDATED_BY)
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
@@ -1482,15 +1421,11 @@ class NodeManager:
         nodes_to_delete = copy(nodes)
         if cascade_delete:
             node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
-            ids_to_delete = await node_delete_validator.get_ids_to_delete(
-                nodes=nodes, at=at
-            )
+            ids_to_delete = await node_delete_validator.get_ids_to_delete(nodes=nodes, at=at)
             node_ids = {node.get_id() for node in nodes}
             missing_ids_to_delete = ids_to_delete - node_ids
             if missing_ids_to_delete:
-                node_map = await cls.get_many(
-                    db=db, ids=list(missing_ids_to_delete), branch=branch, at=at
-                )
+                node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
                 nodes_to_delete += list(node_map.values())
 
         for node in nodes_to_delete:
@@ -1516,12 +1451,9 @@ def _get_cardinality_one_identifiers_by_kind(
         cardinality_one_rel_identifiers_in_fields = {
             rel_schema.identifier: rel_schema.direction
             for rel_schema in node_schema.relationships
-            if rel_schema.cardinality is RelationshipCardinality.ONE
-            and rel_schema.name in field_names_set
+            if rel_schema.cardinality is RelationshipCardinality.ONE and rel_schema.name in field_names_set
         }
-        cardinality_one_fields_by_kind[node_schema.kind] = (
-            cardinality_one_rel_identifiers_in_fields
-        )
+        cardinality_one_fields_by_kind[node_schema.kind] = cardinality_one_rel_identifiers_in_fields
     return cardinality_one_fields_by_kind
 
 
