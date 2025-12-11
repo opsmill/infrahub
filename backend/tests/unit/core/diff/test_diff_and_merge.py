@@ -1163,7 +1163,7 @@ class TestDiffAndMerge:
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
 
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
-        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": False})
+        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__source": car_camry_main.id})
         await car_branch.save(db=db, user_id="branch-user-two")
 
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
@@ -1177,6 +1177,8 @@ class TestDiffAndMerge:
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is True
+        owner_rel_source = await owner_rel.get_source(db=db)
+        assert owner_rel_source.id == car_camry_main.id
 
         # validate metadata separately
         updated_car_with_metadata = await NodeManager.get_one(
@@ -1377,9 +1379,6 @@ class TestDiffAndMerge:
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False
-<<<<<<< HEAD
-=======
-        assert owner_rel.is_visible is True
 
         # Validate metadata after rollback - car should have metadata from before merge
         # The car was modified on main (twice: first to alfred, then back to john)
@@ -1392,7 +1391,6 @@ class TestDiffAndMerge:
         assert rolled_back_car_with_metadata._get_created_at() == car_created_at
         assert rolled_back_car_with_metadata._get_updated_by() == "main-user-2"
         assert before_owner_rel_resolved < rolled_back_car_with_metadata._get_updated_at() < after_owner_rel_resolved
->>>>>>> d0b4d3025 (update unit tests some more)
         await verify_no_duplicate_paths(db=db)
 
     async def test_base_delete_with_added_branch_relationship(
