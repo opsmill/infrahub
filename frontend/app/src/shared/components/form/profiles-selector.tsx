@@ -1,12 +1,9 @@
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useEffect, useId } from "react";
+import { useEffect, useId, useMemo } from "react";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import type { ProfileData } from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -22,12 +19,13 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { getProfiles } from "@/entities/nodes/api/getProfiles";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
   getObjectAttributes,
   getObjectRelationships,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { useGetProfiles } from "@/entities/profiles/domain/get-profiles.query";
+import type { ProfileData, ProfileQueryParams } from "@/entities/profiles/types";
 import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { NodeSchema } from "@/entities/schema/types";
 
@@ -65,57 +63,44 @@ export const ProfilesSelector = ({
   const kindList = [schema.kind, ...nodeGenericsProfiles];
 
   // Add attributes and relationships for each profile to get the values in the form
-  const profilesList = kindList
-    .map((profile) => {
-      // Get the profile schema for the current kind
-      const profileSchema = profileSchemas.find(
-        (profileSchema) => profileSchema.name === profile?.replace("Template", "")
-      );
+  const profilesQueryParams = useMemo<ProfileQueryParams[]>(() => {
+    return kindList
+      .map((profile) => {
+        // Get the profile schema for the current kind
+        const profileSchema = profileSchemas.find(
+          (profileSchema) => profileSchema.name === profile?.replace("Template", "")
+        );
 
-      // Get attributes for query + form data
-      const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
+        if (!profileSchema?.kind) return null;
 
-      // Get relationships for query + form data
-      const relationships = getObjectRelationships({ schema: profileSchema, forProfiles: true });
+        // Get attributes for query + form data
+        const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
 
-      if (!attributes.length && !relationships.length) return null;
+        // Get relationships for query + form data
+        const relationships = getObjectRelationships({ schema: profileSchema, forProfiles: true });
 
-      return {
-        name: profileSchema?.kind,
-        schema: profileSchema,
-        attributes,
-        relationships,
-      };
-    })
-    .filter(Boolean);
+        if (!attributes.length && !relationships.length) return null;
 
-  if (!profilesList.length)
-    return <ErrorScreen message="Something went wrong while fetching profiles" />;
+        return {
+          name: profileSchema.kind,
+          attributes: attributes.map((attr) => ({ name: attr.name, kind: attr.kind })),
+          relationships: relationships.map((rel) => ({
+            name: rel.name,
+            paginated: rel.cardinality === "many",
+          })),
+        };
+      })
+      .filter((profile): profile is ProfileQueryParams => profile !== null);
+  }, [kindList, profileSchemas]);
 
-  const queryString = getProfiles({ profiles: profilesList });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { data, error, loading } = useQuery(query);
-
-  // Get all profiles name to retrieve the information from the result
-  const profilesNameList: string[] = profilesList
-    .map((profile) => profile?.name ?? "")
-    .filter(Boolean);
-
-  // Get data for each profile in the query result
-  const profiles = profilesNameList.reduce<Array<ProfileData>>(
-    (acc, profile) => [
-      ...acc,
-      ...(data?.[profile!]?.edges.map((edge: { node: ProfileData }) => edge.node) ?? []),
-    ],
-    []
-  );
+  const {
+    data: profiles = [],
+    error,
+    isLoading,
+  } = useGetProfiles({ profiles: profilesQueryParams });
 
   useEffect(() => {
-    if (!value && defaultValue && profiles.length && !loading) {
+    if (!value && defaultValue && profiles.length && !isLoading) {
       const defaultProfiles = defaultValue
         .map((defaultProfile) => {
           return profiles.find((profile) => {
@@ -128,9 +113,12 @@ export const ProfilesSelector = ({
 
       onChange(defaultProfiles);
     }
-  }, [defaultValue, loading, profiles, value, onChange]);
+  }, [defaultValue, isLoading, profiles, value, onChange]);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
+  if (!profilesQueryParams.length)
+    return <ErrorScreen message="Something went wrong while fetching profiles" />;
+
+  if (isLoading) return <LoadingIndicator className="p-4" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
@@ -183,7 +171,7 @@ export const ProfilesSelector = ({
               ))}
             </div>
 
-            {loading && <Spinner className="ml-auto" />}
+            {isLoading && <Spinner className="ml-auto" />}
 
             <button id={id} type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
               <Icon icon="mdi:unfold-more-horizontal" />
