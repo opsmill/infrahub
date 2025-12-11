@@ -324,7 +324,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         <div className="p-2">
                           <MetaDetailsTooltip
                             updatedAt={properties.updated_at}
-                            source={properties._relation__source}
+                            source={properties.source}
                             owner={properties.owner}
                             isProtected={properties.is_protected}
                           />
