@@ -10,13 +10,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
   updatedAt: AnyAttribute["updated_at"];
-  source: AnyAttribute["source"] & { __typename: string };
-  owner: AnyAttribute["owner"] & { __typename: string };
+  source?: NodeCore | null;
+  owner?: NodeCore | null;
   isFromProfile?: AnyAttribute["is_from_profile"];
   isProtected: AnyAttribute["is_protected"];
 }
