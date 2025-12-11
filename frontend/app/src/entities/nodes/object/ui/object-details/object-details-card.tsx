@@ -11,13 +11,13 @@ import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/obj
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 
 interface ObjectDetailsCardProps {
   objectSchema: ModelSchema;
-  objectData: NodeObject;
+  objectData: NodeObjectWithMetadata;
   permission: Permission;
   className?: string;
 }
