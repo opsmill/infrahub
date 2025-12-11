@@ -632,7 +632,7 @@ class TestDiffAndMerge:
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
 
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
-        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_visible": False})
+        await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": True})
         await car_branch.save(db=db)
 
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
@@ -646,7 +646,6 @@ class TestDiffAndMerge:
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is True
-        assert owner_rel.is_visible is False
 
         john_car_count = await NodeManager.count_peers(
             db=db,
@@ -665,7 +664,6 @@ class TestDiffAndMerge:
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False
-        assert owner_rel.is_visible is True
         await verify_no_duplicate_paths(db=db)
 
     async def test_branch_delete_with_added_base_relationship(
@@ -734,7 +732,6 @@ class TestDiffAndMerge:
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False
-        assert owner_rel.is_visible is True
         await verify_no_duplicate_paths(db=db)
 
     async def test_base_delete_with_added_branch_relationship(

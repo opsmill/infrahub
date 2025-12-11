@@ -7,7 +7,7 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
-import { ObjectDetailsContent } from "@/entities/nodes/object/ui/object-details-content";
+import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
@@ -47,9 +47,9 @@ export function ObjectDetailsCard({
       <Card className={className} data-testid="object-details">
         <CardWithBorder.Title className="border-gray-200 border-b">Details</CardWithBorder.Title>
 
-        <ObjectDetailsContent
-          schema={objectSchema}
-          objectDetailsData={objectData}
+        <ObjectDataDisplay
+          objectSchema={objectSchema}
+          objectData={objectData}
           permission={permission}
           onClickMetadata={handleMetadataClick}
         />

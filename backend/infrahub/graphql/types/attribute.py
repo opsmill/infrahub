@@ -22,7 +22,6 @@ class RelatedNodeInput(InputObjectType):
     hfid = Field(List(of_type=String), required=False)
     kind = String(required=False)  # Only used to resolve hfid of a related node on a generic relationship, see #4649
     from_pool = Field(GenericPoolInput, required=False)
-    _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
     _relation__source = String(required=False)
@@ -41,7 +40,6 @@ class IPPrefixPoolInput(GenericPoolInput):
 class RelatedIPAddressNodeInput(InputObjectType):
     id = String(required=False)
     from_pool = Field(IPAddressPoolInput, required=False)
-    _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
     _relation__source = String(required=False)
@@ -51,7 +49,6 @@ class RelatedIPPrefixNodeInput(InputObjectType):
     id = String(required=False)
     hfid = Field(List(of_type=String), required=False)
     from_pool = Field(IPPrefixPoolInput, required=False)
-    _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)
     _relation__source = String(required=False)
@@ -65,7 +62,6 @@ class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
     is_inherited = Field(Boolean)
     is_protected = Field(Boolean)
-    is_visible = Field(Boolean)
     updated_at = Field(DateTime)
     # Since source and owner are using a Type that is generated dynamically
     # these 2 fields will be dynamically inserted when we generate the GraphQL Schema

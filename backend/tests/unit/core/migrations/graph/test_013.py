@@ -203,7 +203,7 @@ async def test_migration_013_query_01(
     assert query.stats.get_counter(name="nodes_created") == 6 * 2
 
     nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after == nbr_rels_before + (19 * 2)
+    assert nbr_rels_after == nbr_rels_before + (16 * 2)
 
     creds = await NodeManager.query(db=db, schema=PASSWORD_CRED, branch=default_branch)
 
@@ -282,7 +282,7 @@ async def test_migration_013_add_internal_status_data(
 
     nbr_rels_after = await count_relationships(db=db)
 
-    assert nbr_rels_after == nbr_rels_before + (3 * 4)
+    assert nbr_rels_after == nbr_rels_before + (3 * 3)
 
 
 async def test_migration_013(
@@ -307,4 +307,4 @@ async def test_migration_013(
     nbr_nodes_after = await count_nodes(db=db)
 
     assert nbr_nodes_after == nbr_nodes_before + (6 * 2) + (3 + 1)
-    assert nbr_rels_after == nbr_rels_before + (19 * 2) + (2 * 3) + (3 * 4) + 2
+    assert nbr_rels_after == nbr_rels_before + (16 * 2) + (2 * 3) + (3 * 3) + 2

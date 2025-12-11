@@ -80,7 +80,7 @@ async def car_smart_properties_main(db: InfrahubDatabase, default_branch: Branch
         name="smart",
         nbr_seats=2,
         is_electric=True,
-        owner={"id": person_john_main.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        owner={"id": person_john_main.id, "_relation__is_protected": True},
     )
     await car.save(db=db)
 
@@ -106,7 +106,7 @@ async def test_relationship_load_existing(
         branch=branch,
         at=Timestamp(),
         rel=rel,
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
+        include_metadata=MetadataOptions.IS_PROTECTED,
     )
     await query.execute(db=db)
 
@@ -120,7 +120,6 @@ async def test_relationship_load_existing(
     assert rel.db_id == peers[0].rel_node_db_id
 
     assert rel.is_protected is True
-    assert rel.is_visible is False
 
 
 async def test_relationship_peer(

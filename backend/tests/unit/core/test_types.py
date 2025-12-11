@@ -35,7 +35,6 @@ def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field])
         "is_from_profile",
         "is_inherited",
         "is_protected",
-        "is_visible",
         "owner",
         "source",
         "permissions",

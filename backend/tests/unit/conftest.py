@@ -322,21 +322,17 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m20}]->(c1av11)
     CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c1av12)
     CREATE (c1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c1at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(c1av21)
     CREATE (c1at2)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(c1av22)
     CREATE (c1at2)-[:IS_PROTECTED {branch: $main_branch,branch_level: 1,  status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
-    CREATE (c1at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atvt)
     CREATE (c1at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c1at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atv44)
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c2:Node:TestCar { uuid: "c2", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
@@ -355,19 +351,15 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (c2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av11)
     CREATE (c2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c2at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av21)
     CREATE (c2at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c2at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atvf)
     CREATE (c2at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c2at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atv44)
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c3:Node:TestCar { uuid: "c3", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
@@ -386,19 +378,15 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (c3at1)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(c3av11)
     CREATE (c3at1)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (c3at2)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(c3av21)
     CREATE (c3at2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (c3at3)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atvf)
     CREATE (c3at3)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at3)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (c3at4)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atv44)
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (p1:Node:TestPerson { uuid: "p1", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
@@ -407,7 +395,6 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p1av11:AttributeValue { value: "John Doe", is_default: false })
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
     CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p2:Node:TestPerson { uuid: "p2", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
@@ -416,7 +403,6 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p2av11:AttributeValue { value: "Jane Doe", is_default: false })
     CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
     CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p3:Node:TestPerson { uuid: "p3", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p3)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
@@ -425,21 +411,17 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p3av11:AttributeValue { value: "Bill", is_default: false })
     CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m30 }]->(bool_true)
-    CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
-    CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
     CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
     CREATE (r2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (r2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     RETURN c1, c2, c3
     """
@@ -542,21 +524,17 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m20}]->(c1av11)
     CREATE (c1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c1av12)
     CREATE (c1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c1at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m20 }]->(c1av21)
     CREATE (c1at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c1av22)
     CREATE (c1at2)-[:IS_PROTECTED {branch: $global_branch,branch_level: 1,  status: "active", from: $time_m60, to: $time_m20 }]->(bool_false)
     CREATE (c1at2)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
-    CREATE (c1at2)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c1at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atvt)
     CREATE (c1at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c1at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(atv44)
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (c2:Node:TestCar { uuid: "c2", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
@@ -575,19 +553,15 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (c2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av11)
     CREATE (c2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c2at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(c2av21)
     CREATE (c2at2)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at2)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c2at3)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atvf)
     CREATE (c2at3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c2at4)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(atv44)
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     CREATE (c3:Node:TestCar { uuid: "c3", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
@@ -606,19 +580,15 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     CREATE (c3at1)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(c3av11)
     CREATE (c3at1)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (c3at2)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40 }]->(c3av21)
     CREATE (c3at2)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at2)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (c3at3)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atvf)
     CREATE (c3at3)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at3)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (c3at4)-[:HAS_VALUE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(atv44)
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
-    CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
     CREATE (p1:Node:TestPerson { uuid: "p1", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p1)-[:IS_PART_OF { branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
@@ -627,7 +597,6 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p1av11:AttributeValue { value: "John Doe", is_default: false })
     CREATE (p1at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
     CREATE (p1at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p1at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p2:Node:TestPerson { uuid: "p2", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p2)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
@@ -636,7 +605,6 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p2av11:AttributeValue { value: "Jane Doe", is_default: false })
     CREATE (p2at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
     CREATE (p2at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p2at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (p3:Node:TestPerson { uuid: "p3", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p3)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
@@ -645,21 +613,17 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p3av11:AttributeValue { value: "Bill", is_default: false })
     CREATE (p3at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
     CREATE (p3at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
-    CREATE (p3at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
     CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson", branch_support: "agnostic"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m30 }]->(bool_true)
-    CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
-    CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
     CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson", branch_support: "agnostic"})
     CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
 
     RETURN c1, c2, c3
     """
@@ -824,7 +788,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 
     CREATE (t1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(blue)
     CREATE (t1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (t1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 2 - RED
     CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag", branch_support: "aware" })
@@ -835,7 +798,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 
     CREATE (t2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(red)
     CREATE (t2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (t2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 3 - GREEN
     CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag", branch_support: "aware" })
@@ -846,7 +808,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 
     CREATE (t3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(green)
     CREATE (t3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (t3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     RETURN t1, t2, t3
     """
@@ -910,11 +871,9 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m40 }]->(thu)
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m40 }]->(fri)
     CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     CREATE (p1at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(jan)
     CREATE (p1at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p1at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person1 (p1) and Tag Blue (t1) >> relp1t1
     CREATE (relp1t1:Relationship { uuid: "relp1t1", name: "person__tag", branch_support: "aware"})
@@ -922,7 +881,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t1)
 
     CREATE (relp1t1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp1t1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person1 (p1) and Tag Green (t3) >> relp1t3
     CREATE (relp1t3:Relationship { uuid: "relp1t3", name: "person__tag", branch_support: "aware"})
@@ -930,7 +888,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t3)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t3)
 
     CREATE (relp1t3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp1t3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "primary_tag" between Person1 (p1) and Tag Blue (t1) >> relp1pri
     CREATE (relp1pri:Relationship { uuid: "relp1pri", name: "person_primary_tag", branch_support: "aware"})
@@ -938,7 +895,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1pri)
 
     CREATE (relp1pri)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp1pri)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
     """
 
     query3 = """
@@ -962,12 +918,10 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (p2at1)-[:HAS_VALUE {branch: $branch2, branch_level: 2, status: "active", from: $time_m20 }]->(thu)
 
     CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     CREATE (p2at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(feb)
     CREATE (p2at2)-[:HAS_VALUE {branch: $branch2, branch_level: 2, status: "active", from: $time_m80 }]->(mar)
     CREATE (p2at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p2at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person2 (p2) and Tag Green (t3) >> relp2t3
     CREATE (relp2t3:Relationship { uuid: "relp2t3", name: "person__tag", branch_support: "aware"})
@@ -975,7 +929,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t3)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp2t3)
 
     CREATE (relp2t3)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp2t3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
     """
 
     query4 = """
@@ -994,11 +947,9 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 
     CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(tue)
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     CREATE (p3at2)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(feb)
     CREATE (p3at2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (p3at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "primary_tag" between Person3 (p3) and Tag Red (t2) >> relp3pri
     CREATE (relp3pri:Relationship { uuid: "relp3pri", name: "person_primary_tag", branch_support: "aware"})
@@ -1006,7 +957,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp3pri)
 
     CREATE (relp3pri)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_false)
-    CREATE (relp3pri)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     RETURN t1, t2, t3
     """

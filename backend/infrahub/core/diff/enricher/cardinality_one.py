@@ -28,7 +28,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
      - the peer_id property of the element will be the latest non-null peer ID for this element
      - the element MUST have an EnrichedDiffProperty of property_type=IS_RELATED that correctly records
         the previous and new values of the peer ID for this element
-     - changes to properties (IS_VISIBLE, etc) of a cardinality=one relationship are consolidated as well
+     - changes to properties (IS_PROTECTED, etc) of a cardinality=one relationship are consolidated as well
     """
 
     def __init__(self, db: InfrahubDatabase):
