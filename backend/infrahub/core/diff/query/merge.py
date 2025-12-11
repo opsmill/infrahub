@@ -861,7 +861,7 @@ WHERE change_user_id IS NOT NULL
 // --------------------
 CALL (field, change_user_id) {
     WITH field
-    WHERE field.updated_at <> $at
+    WHERE field.updated_at <> $at OR field.updated_at IS NULL
     SET field.previous_updated_at = field.updated_at, field.previous_updated_by = field.updated_by
     SET field.updated_at = $at, field.updated_by = change_user_id
 }
