@@ -384,7 +384,7 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-        state.data["time_after_intf_update_branch1"] = Instant.now().format_common_iso()
+        state.data["time_after_intf_update_branch1"] = Instant.now().format_iso()
 
     async def test_update_intf_description_main(
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
@@ -805,7 +805,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                     "intf_name": intf_name,
                 },
             },
-            params={"at": state.data["time_start"].format_common_iso()},
+            params={"at": state.data["time_start"].format_iso()},
             headers=headers,
         )
         assert response.status_code == 200
