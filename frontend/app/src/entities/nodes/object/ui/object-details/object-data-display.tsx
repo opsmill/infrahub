@@ -50,38 +50,36 @@ export function ObjectDataDisplay({
               <>
                 <ObjectAttributeValue attributeSchema={attribute} attributeData={attributeData} />
 
-                {attributeData && (
-                  <MetaDetailsTooltip
-                    updatedAt={attributeData.updated_at}
-                    source={attributeData.source}
-                    owner={attributeData.owner}
-                    isFromProfile={attributeData.is_from_profile}
-                    isProtected={attributeData.is_protected}
-                    header={
-                      !attribute.read_only && (
-                        <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
-                          <div className="font-semibold">{attribute.label}</div>
-                          {onClickMetadata && (
-                            <ButtonWithTooltip
-                              disabled={!permission.update.isAllowed}
-                              tooltipEnabled={!permission.update.isAllowed}
-                              tooltipContent={permission.update.message}
-                              onClick={() => {
-                                onClickMetadata(attribute);
-                              }}
-                              variant="ghost"
-                              size="icon"
-                              data-testid="edit-metadata-button"
-                              data-cy="metadata-edit-button"
-                            >
-                              <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                            </ButtonWithTooltip>
-                          )}
-                        </div>
-                      )
-                    }
-                  />
-                )}
+                <MetaDetailsTooltip
+                  updatedAt={attributeData.updated_at}
+                  source={attributeData.source}
+                  owner={attributeData.owner}
+                  isFromProfile={attributeData.is_from_profile}
+                  isProtected={attributeData.is_protected}
+                  header={
+                    !attribute.read_only && (
+                      <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
+                        <div className="font-semibold">{attribute.label}</div>
+                        {onClickMetadata && (
+                          <ButtonWithTooltip
+                            disabled={!permission.update.isAllowed}
+                            tooltipEnabled={!permission.update.isAllowed}
+                            tooltipContent={permission.update.message}
+                            onClick={() => {
+                              onClickMetadata(attribute);
+                            }}
+                            variant="ghost"
+                            size="icon"
+                            data-testid="edit-metadata-button"
+                            data-cy="metadata-edit-button"
+                          >
+                            <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                          </ButtonWithTooltip>
+                        )}
+                      </div>
+                    )
+                  }
+                />
 
                 {attributeData.is_protected && <LockClosedIcon className="h-4 w-4" />}
               </>
