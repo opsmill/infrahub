@@ -16,24 +16,28 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
 
 interface ObjectDetailsTabsProps {
-  schema: ModelSchema;
+  objectSchema: ModelSchema;
   objectData: NodeObject;
   permission: Permission;
 }
 
-export function ObjectDetailsTabs({ schema, objectData, permission }: ObjectDetailsTabsProps) {
+export function ObjectDetailsTabs({
+  objectSchema,
+  objectData,
+  permission,
+}: ObjectDetailsTabsProps) {
   const [qspTab] = useQueryState(QSP.TAB);
 
   const objectId = objectData.id;
   const objectKind = objectData.__typename;
-  const relationshipsTabs = getRelationshipsVisibleInTab(schema.relationships ?? []);
+  const relationshipsTabs = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
 
   return (
     <header className="flex items-center border-gray-200 border-b px-2">
       <ScrollArea scrollX scrollBarClassName="hidden" className="grow">
         <div className="flex grow gap-8 px-4" data-testid="object-details-tabs">
           <ObjectDetailsTab isActive={!qspTab} to={getObjectDetailsUrl(objectKind, objectData.id)}>
-            {schema.label}
+            {objectSchema.label}
           </ObjectDetailsTab>
           {relationshipsTabs.map((tab) => {
             return (
@@ -45,14 +49,14 @@ export function ObjectDetailsTabs({ schema, objectData, permission }: ObjectDeta
               />
             );
           })}
-          {isOfKind(TASK_TARGET, schema) && <ObjectTaskTab objectId={objectId} />}
-          {isOfKind(GENERIC_REPOSITORY_KIND, schema) && (
+          {isOfKind(TASK_TARGET, objectSchema) && <ObjectTaskTab objectId={objectId} />}
+          {isOfKind(GENERIC_REPOSITORY_KIND, objectSchema) && (
             <RepositoryObjectsTab objectId={objectId} />
           )}
         </div>
       </ScrollArea>
 
-      <ActionButtons schema={schema} objectDetailsData={objectData} permission={permission} />
+      <ActionButtons schema={objectSchema} objectDetailsData={objectData} permission={permission} />
     </header>
   );
 }

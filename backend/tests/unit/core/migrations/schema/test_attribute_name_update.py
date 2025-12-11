@@ -41,8 +41,8 @@ async def test_query_default_branch(
 
     assert query.get_nbr_migrations_executed() == 3
 
-    # We expect 12 more relationships because there are 3 attributes with 4 relationships each
-    assert await count_relationships(db=db) == count_rels + 12
+    # We expect 9 more relationships because there are 3 attributes with 3 relationships each
+    assert await count_relationships(db=db) == count_rels + 9
     assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
 
     # Re-execute the query once to ensure that it won't change anything
@@ -51,7 +51,7 @@ async def test_query_default_branch(
     assert query.get_nbr_migrations_executed() == 0
 
     assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
-    assert await count_relationships(db=db) == count_rels + 12
+    assert await count_relationships(db=db) == count_rels + 9
 
 
 async def test_query_branch1(
@@ -82,8 +82,8 @@ async def test_query_branch1(
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 3
 
-    # We expect 24 more relationships because there are 3 attributes with 8 relationships each
-    assert await count_relationships(db=db) == count_rels + 24
+    # We expect 18 more relationships because there are 3 attributes with 6 relationships each
+    assert await count_relationships(db=db) == count_rels + 18
     assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
 
     # Re-execute the query once to ensure that it won't change anything
@@ -92,7 +92,7 @@ async def test_query_branch1(
     assert query.get_nbr_migrations_executed() == 0
 
     assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
-    assert await count_relationships(db=db) == count_rels + 24
+    assert await count_relationships(db=db) == count_rels + 18
 
 
 async def test_migration(
@@ -123,4 +123,4 @@ async def test_migration(
     assert execution_result.nbr_migrations_executed == 3
 
     assert await count_nodes(db=db, label="Attribute") == count_attr_node + 3
-    assert await count_relationships(db=db) == count_rels + 12
+    assert await count_relationships(db=db) == count_rels + 9

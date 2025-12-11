@@ -108,13 +108,6 @@ CALL (a, branch, status, from, to, b, e_id_to_keep) {
         self.add_to_query(query)
 
 
-class DeleteDuplicateIsVisibleEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
-    name = "delete_duplicate_is_visible_edges"
-    type = QueryType.WRITE
-    insert_return = False
-    edge_type = DatabaseEdgeType.IS_VISIBLE
-
-
 class DeleteDuplicateIsProtectedEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
     name = "delete_duplicate_is_protected_edges"
     type = QueryType.WRITE
@@ -144,7 +137,6 @@ class Migration020(GraphMigration):
     minimum_version: int = 19
     queries: Sequence[type[Query]] = [
         DeleteDuplicateHasValueEdgesQuery,
-        DeleteDuplicateIsVisibleEdgesQuery,
         DeleteDuplicateIsProtectedEdgesQuery,
     ]
 

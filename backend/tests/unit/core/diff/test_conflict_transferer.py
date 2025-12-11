@@ -58,17 +58,17 @@ class TestDiffConflictsTransferer:
         )
         prop_early_only_2 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_RELATED, conflict=None)
         conflict_later_only = EnrichedConflictFactory.build()
-        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_PROTECTED, conflict=None)
+        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE, conflict=None)
         prop_later_only_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_later_only
+            property_type=DatabaseEdgeType.HAS_VALUE, conflict=conflict_later_only
         )
         conflict_transfer_1 = EnrichedConflictFactory.build(selected_branch=ConflictSelection.DIFF_BRANCH)
         conflict_transfer_2 = replace(conflict_transfer_1, selected_branch=None)
         prop_transfer_1 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_1
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_1
         )
         prop_transfer_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_2
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_2
         )
 
         attr_early = EnrichedAttributeFactory.build(properties={prop_early_only_1, prop_later_only_1, prop_transfer_1})
@@ -128,17 +128,17 @@ class TestDiffConflictsTransferer:
         )
         prop_early_only_2 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_RELATED, conflict=None)
         conflict_later_only = EnrichedConflictFactory.build()
-        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_PROTECTED, conflict=None)
+        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE, conflict=None)
         prop_later_only_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_later_only
+            property_type=DatabaseEdgeType.HAS_VALUE, conflict=conflict_later_only
         )
         conflict_transfer_1 = EnrichedConflictFactory.build(selected_branch=ConflictSelection.DIFF_BRANCH)
         conflict_transfer_2 = replace(conflict_transfer_1, selected_branch=None)
         prop_transfer_1 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_1
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_1
         )
         prop_transfer_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_2
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_2
         )
 
         element_early = EnrichedRelationshipElementFactory.build(

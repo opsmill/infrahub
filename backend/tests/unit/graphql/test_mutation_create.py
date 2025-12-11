@@ -395,7 +395,7 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
         TestPersonCreate(
             data: {
                 name: { value: "John", is_protected: true }
-                height: { value: 182, is_visible: false }
+                height: { value: 182 }
             }
         ) {
             ok
@@ -431,9 +431,6 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
                             value
                             is_protected
                         }
-                        height {
-                            is_visible
-                        }
                     }
                 }
             }
@@ -452,7 +449,6 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
     assert result1.errors is None
     assert result1.data
     assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_protected"] is True
-    assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["is_visible"] is False
 
 
 async def test_create_object_with_node_property(

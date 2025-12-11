@@ -299,3 +299,55 @@ When a NodeSchema's `name`, `namespace`, or `inherit_from` changes, labels must 
 **Result:** Multiple Node vertices with same UUID exist, but only one is active per branch/time.
 
 **Important:** All UUID-based queries must account for duplicate-UUID nodes by filtering for the active one.
+
+## Finding Active Nodes on Default/Global Branch
+
+When querying for Node vertices that are active on the default or global branch (e.g., to update metadata), you must verify that the relevant edges are active. This is especially important when multiple Node vertices with the same UUID may exist due to schema migrations.
+
+### Pattern: Active Node via Edge Path
+
+To find Nodes that are currently active on `branch_level = 1`:
+
+1. Filter edges by `branch_level = 1`
+2. Order by `from DESC, status ASC` to get the latest edge
+3. Take the first result with `LIMIT 1`
+4. Verify the edge has `status = "active"` and `to IS NULL`
+
+### Example: Active Peer Nodes for a Relationship
+
+When a Relationship vertex may have IS_RELATED edges to more than 2 Node vertices (due to schema migrations), find only the active peer nodes:
+
+```cypher
+// Get distinct peer nodes connected via branch_level = 1 edges
+CALL (rl) {
+    MATCH (peer:Node)-[r_rel:IS_RELATED]-(rl)
+    WHERE r_rel.branch_level = 1
+    RETURN DISTINCT peer
+}
+WITH rl, peer
+// For each peer, verify IS_RELATED edge is active
+CALL (peer, rl) {
+    MATCH (peer)-[r_rel:IS_RELATED]-(rl)
+    WHERE r_rel.branch_level = 1
+    ORDER BY r_rel.from DESC, r_rel.status ASC
+    LIMIT 1
+    WITH peer, r_rel
+    WHERE r_rel.status = "active" AND r_rel.to IS NULL
+    // Also verify IS_PART_OF edge is active (node exists)
+    MATCH (peer)-[r_part:IS_PART_OF]->(:Root)
+    WHERE r_part.branch_level = 1
+    ORDER BY r_part.from DESC, r_part.status ASC
+    LIMIT 1
+    WITH peer, r_part
+    WHERE r_part.status = "active" AND r_part.to IS NULL
+    // Node is confirmed active, safe to update
+    SET peer.updated_at = $at, peer.updated_by = $user_id
+}
+```
+
+### Key Points
+
+- **Two-edge validation**: Verify both the connecting edge (e.g., IS_RELATED) AND the IS_PART_OF edge to Root
+- **DISTINCT first**: When multiple vertices may match, get DISTINCT nodes first, then validate each
+- **Order then filter**: Always `ORDER BY ... LIMIT 1` first, then `WHERE status = "active"` to handle the case where the latest edge is a deletion
+- **No `to` timestamp**: `to IS NULL` ensures the edge is currently valid (not expired)
