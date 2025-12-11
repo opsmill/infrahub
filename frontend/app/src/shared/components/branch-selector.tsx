@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
-import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 
@@ -19,8 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
-import { branchesState } from "@/entities/branches/stores";
+import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
+import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 
@@ -38,7 +37,7 @@ export default function BranchSelector() {
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
 
   useEffect(() => {
-    if (isOpen) queryClient.invalidateQueries(getBranchesQueryOptions());
+    if (isOpen) queryClient.invalidateQueries(branchesQueryKeys.all);
   }, [isOpen]);
 
   return (
@@ -90,7 +89,7 @@ function BranchSelect({
   setPopoverOpen: (open: boolean) => void;
   setFormOpen: (displayForm: DisplayForm) => void;
 }) {
-  const branches = useAtomValue(branchesState);
+  const { data: branches = [] } = useGetBranches();
   const { setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
 
