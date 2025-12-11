@@ -13,20 +13,23 @@ export type GetProfiles = (schema: GetProfilesParams) => Promise<ProfileData[]>;
 export const getProfiles: GetProfiles = async ({ schema, branchName, atDate }) => {
   const inheritedKinds = schema.inherit_from ?? [];
 
-  const inheritedProfileSchemas = [schema.kind, ...inheritedKinds]
-    .map((kind) => getSchema(kind).schema as GenericSchema | null)
+  const profileSchemasToQuery = [schema.kind, ...inheritedKinds]
+    .map((kind) => {
+      const normalizedKind = kind?.replace("Template", "") // Remove prefix to query template profiles correctly
+      return getSchema(normalizedKind).schema as GenericSchema | null
+    })
     .filter((genericSchema) => genericSchema?.generate_profile)
     .map(
       (genericSchema) => getSchema(`Profile${genericSchema!.kind}`).schema as ProfileSchema | null
     )
     .filter((profileSchema) => !!profileSchema);
 
-  if (inheritedProfileSchemas.length === 0) {
+  if (profileSchemasToQuery.length === 0) {
     return [];
   }
 
   const { data, errors } = await getProfilesFromApi({
-    profileSchemas: inheritedProfileSchemas,
+    profileSchemas: profileSchemasToQuery,
     branchName,
     atDate,
   });
@@ -35,7 +38,7 @@ export const getProfiles: GetProfiles = async ({ schema, branchName, atDate }) =
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  return inheritedProfileSchemas.reduce((acc, profileSchema) => {
+  return profileSchemasToQuery.reduce((acc, profileSchema) => {
     const profilesData =
       data[profileSchema.kind!]?.edges?.map((edge: { node: ProfileData }) => edge.node) ?? [];
     return [...acc, ...profilesData];
