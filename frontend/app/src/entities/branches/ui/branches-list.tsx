@@ -48,9 +48,7 @@ export default function BranchesList() {
         aria-label="Branches list"
         className="m-2 flex flex-col divide-y rounded-lg border border-gray-200"
       >
-        <Collection items={branches}>
-          {(branch) => <BranchListItem branch={branch} />}
-        </Collection>
+        <Collection items={branches}>{(branch) => <BranchListItem branch={branch} />}</Collection>
 
         {hasNextPage && (
           <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage}>
