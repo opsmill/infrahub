@@ -122,6 +122,17 @@ async def test_query_NodeListGetInfoQuery(
         assert node.updated_at == node.created_at
         assert node.updated_by == SYSTEM_USER_ID
 
+    query_with_metadata = await NodeListGetInfoQuery.init(
+        db=db, branch=branch, branch_agnostic=True, ids=ids, include_metadata=MetadataOptions.USER_TIMESTAMPS
+    )
+    await query_with_metadata.execute(db=db)
+    async for node in query_with_metadata.get_nodes(db=db, duplicate=False):
+        assert node.node_uuid in ids
+        assert node.created_at < right_now
+        assert node.created_by == SYSTEM_USER_ID
+        assert node.updated_at == node.created_at
+        assert node.updated_by == SYSTEM_USER_ID
+
 
 async def test_query_NodeListGetInfoQuery_renamed(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
