@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -52,6 +53,30 @@ class TestExtractProfileIdentifiersFromInput:
         result = _extract_profile_identifiers_from_input(profiles_data=profiles_data)
         assert result.ids == ["uuid1"]
         assert result.hfids == []  # hfid is ignored when id is present
+
+    def test_list_of_strings(self) -> None:
+        """Profiles can be specified as a list of UUID strings."""
+        profiles_data = ["uuid1", "uuid2", "uuid3"]
+        result = _extract_profile_identifiers_from_input(profiles_data=profiles_data)
+        assert result.ids == ["uuid1", "uuid2", "uuid3"]
+        assert result.hfids == []
+
+    def test_mixed_strings_and_dicts(self) -> None:
+        """Profiles can be a mix of UUID strings and dicts."""
+        profiles_data = ["uuid1", {"id": "uuid2"}, {"hfid": ["profile_name"]}]
+        result = _extract_profile_identifiers_from_input(profiles_data=profiles_data)
+        assert result.ids == ["uuid1", "uuid2"]
+        assert result.hfids == [["profile_name"]]
+
+    def test_objects_with_id_attribute(self) -> None:
+        """Profiles can be Node objects with an 'id' attribute."""
+
+        node1 = MagicMock(spec=Node, id="uuid1")
+        node2 = MagicMock(spec=Node, id="uuid2")
+
+        result = _extract_profile_identifiers_from_input(profiles_data=[node1, node2])
+        assert result.ids == ["uuid1", "uuid2"]
+        assert result.hfids == []
 
 
 @pytest.fixture

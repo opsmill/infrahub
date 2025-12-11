@@ -1,21 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query.node import NodeGetByHFIDQuery
 
 from .queries.get_profile_data import GetProfileDataQuery, RelationshipFilter
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
-
-
-class ProfileInput(TypedDict, total=False):
-    id: str
-    hfid: list[str]
 
 
 @dataclass
@@ -24,7 +21,7 @@ class ProfileIdentifiers:
     hfids: list[list[str]]
 
 
-def _extract_profile_identifiers_from_input(profiles_data: list[ProfileInput] | None) -> ProfileIdentifiers:
+def _extract_profile_identifiers_from_input(profiles_data: Sequence[Any] | None) -> ProfileIdentifiers:
     """Extract profile IDs and HFIDs from input data."""
     if not profiles_data:
         return ProfileIdentifiers(ids=[], hfids=[])
@@ -32,10 +29,18 @@ def _extract_profile_identifiers_from_input(profiles_data: list[ProfileInput] | 
     ids: list[str] = []
     hfids: list[list[str]] = []
     for item in profiles_data:
-        if profile_id := item.get("id"):
-            ids.append(profile_id)
-        elif profile_hfid := item.get("hfid"):
-            hfids.append(profile_hfid)
+        if isinstance(item, str):
+            # IDs
+            ids.append(item)
+        elif isinstance(item, dict):
+            # Dicts with `id` or `hfid` keys
+            if profile_id := item.get("id"):
+                ids.append(profile_id)
+            elif profile_hfid := item.get("hfid"):
+                hfids.append(profile_hfid)
+        elif hasattr(item, "id"):
+            # Avoid circular import by not importing Node directly
+            ids.append(item.id)
 
     return ProfileIdentifiers(ids=ids, hfids=hfids)
 
@@ -52,12 +57,12 @@ async def get_mandatory_fields_from_profiles(
     db: InfrahubDatabase,
     branch: Branch,
     schema: NodeSchema,
-    profiles_data: list[ProfileInput] | None,
+    profiles_data: Sequence[Any] | None,
     mandatory_attr_names: list[str],
     mandatory_rel_names: list[str],
 ) -> tuple[set[str], set[str]]:
     """Get mandatory attributes and relationships that are provided by profiles."""
-    identifiers = _extract_profile_identifiers_from_input(profiles_data)
+    identifiers = _extract_profile_identifiers_from_input(profiles_data=profiles_data)
 
     profile_ids = list(identifiers.ids)
     if identifiers.hfids:
