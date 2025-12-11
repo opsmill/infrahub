@@ -115,7 +115,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         flag_name: str,
         **kwargs: Any,
     ) -> None:
-        SUPPORTED_FLAGS = ["is_visible", "is_protected"]
+        SUPPORTED_FLAGS = ["is_protected"]
 
         if flag_name not in SUPPORTED_FLAGS:
             raise ValueError(f"Only {SUPPORTED_FLAGS} are supported for now.")
@@ -325,7 +325,6 @@ CALL (a) {
 UNWIND [
     ["HAS_ATTRIBUTE", "in"],
     ["HAS_VALUE", "out"],
-    ["IS_VISIBLE", "out"],
     ["IS_PROTECTED", "out"],
     ["HAS_SOURCE", "out"],
     ["HAS_OWNER", "out"]

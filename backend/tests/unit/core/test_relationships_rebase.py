@@ -105,36 +105,6 @@ class TestRelationshipsWithRebase:
         expected_path_tuples = {
             (
                 car_uuid,
-                ("IS_RELATED", "main", "active", False, False),
-                ("IS_RELATED", "main", "active", False, False),
-                main_peer_id,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", "main", "active", False, False),
-                ("IS_VISIBLE", "main", "active", False, False),
-                True,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", "main", "active", False, False),
-                ("IS_PROTECTED", "main", "active", False, False),
-                False,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", branch_name, "deleted", True, False),
-                ("IS_RELATED", branch_name, "deleted", True, False),
-                main_peer_id,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", branch_name, "deleted", True, False),
-                ("IS_VISIBLE", branch_name, "deleted", True, False),
-                True,
-            ),
-            (
-                car_uuid,
                 ("IS_RELATED", branch_name, "deleted", True, False),
                 ("IS_PROTECTED", branch_name, "deleted", True, False),
                 False,
@@ -148,14 +118,26 @@ class TestRelationshipsWithRebase:
             (
                 car_uuid,
                 ("IS_RELATED", branch_name, "active", True, False),
-                ("IS_VISIBLE", branch_name, "active", True, False),
-                True,
+                ("IS_PROTECTED", branch_name, "active", True, False),
+                False,
             ),
             (
                 car_uuid,
-                ("IS_RELATED", branch_name, "active", True, False),
-                ("IS_PROTECTED", branch_name, "active", True, False),
+                ("IS_RELATED", branch_name, "deleted", True, False),
+                ("IS_RELATED", branch_name, "deleted", True, False),
+                main_peer_id,
+            ),
+            (
+                car_uuid,
+                ("IS_RELATED", "main", "active", False, False),
+                ("IS_PROTECTED", "main", "active", False, False),
                 False,
+            ),
+            (
+                car_uuid,
+                ("IS_RELATED", "main", "active", False, False),
+                ("IS_RELATED", "main", "active", False, False),
+                main_peer_id,
             ),
         }
 
@@ -251,7 +233,6 @@ class TestRelationshipsWithRebase:
                     )
                     for edge_type, peer_or_value in (
                         ("IS_RELATED", car_id),
-                        ("IS_VISIBLE", True),
                         ("IS_PROTECTED", False),
                     )
                 )
@@ -264,7 +245,6 @@ class TestRelationshipsWithRebase:
                     )
                     for edge_type, peer_or_value in (
                         ("IS_RELATED", car_id),
-                        ("IS_VISIBLE", True),
                         ("IS_PROTECTED", False),
                     )
                 )
@@ -280,7 +260,6 @@ class TestRelationshipsWithRebase:
                     )
                     for edge_type, peer_or_value in (
                         ("IS_RELATED", car_id),
-                        ("IS_VISIBLE", True),
                         ("IS_PROTECTED", False),
                     )
                 )

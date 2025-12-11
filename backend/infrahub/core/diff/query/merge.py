@@ -427,12 +427,12 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
             WHERE property_diff.property_type IN ["HAS_SOURCE", "HAS_OWNER"]
             AND (peer_db_id IS NULL OR %(id_func)s(peer) = peer_db_id)
             // ------------------------------
-            // the serialized diff might not include the values for IS_VISIBLE and IS_PROTECTED in
+            // the serialized diff might not include the values for IS_PROTECTED in
             // some cases, so we need to figure them out here
             // ------------------------------
             CALL (attr_rel, property_diff) {
                 OPTIONAL MATCH (attr_rel)-[r_vis_pro]->(bool:Boolean)
-                WHERE property_diff.property_type IN ["IS_VISIBLE", "IS_PROTECTED"]
+                WHERE property_diff.property_type = "IS_PROTECTED"
                 AND r_vis_pro.branch IN [$source_branch, $target_branch]
                 AND type(r_vis_pro) = property_diff.property_type
                 AND (property_diff.value IS NULL OR bool.value = property_diff.value)
@@ -505,11 +505,6 @@ CALL (attr_rel_prop_diff, node_db_id, peer_db_id) {
             WITH attr_rel, prop_rel_status, prop_type, prop_node
             WHERE prop_type = "HAS_OWNER"
             CREATE (attr_rel)-[:HAS_OWNER { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
-        }
-        CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
-            WITH attr_rel, prop_rel_status, prop_type, prop_node
-            WHERE prop_type = "IS_VISIBLE"
-            CREATE (attr_rel)-[:IS_VISIBLE { branch: $target_branch, branch_level: $branch_level, from: $at, status: prop_rel_status }]->(prop_node)
         }
         CALL (attr_rel, prop_rel_status, prop_type, prop_node) {
             WITH attr_rel, prop_rel_status, prop_type, prop_node

@@ -302,7 +302,6 @@ class RelationshipCreateQuery(RelationshipWriteQuery):
         self.params["at"] = self.at.to_string()
 
         self.params["is_protected"] = self.rel.is_protected
-        self.params["is_visible"] = self.rel.is_visible
         self.params["user_id"] = self.user_id
 
         self.add_source_match_to_query(source_branch=self.source.get_branch_based_on_support_type())
@@ -333,9 +332,7 @@ class RelationshipCreateQuery(RelationshipWriteQuery):
         CREATE (s)%s(rl)
         CREATE (rl)%s(d)
         MERGE (ip:Boolean { value: $is_protected })
-        MERGE (iv:Boolean { value: $is_visible })
         CREATE (rl)-[r3:IS_PROTECTED $rel_prop ]->(ip)
-        CREATE (rl)-[r4:IS_VISIBLE $rel_prop ]->(iv)
         """ % (
             r1,
             r2,
@@ -347,7 +344,7 @@ class RelationshipCreateQuery(RelationshipWriteQuery):
             """
 
         self.add_to_query(query_create)
-        self.return_labels = ["s", "d", "rl", "r1", "r2", "r3", "r4"]
+        self.return_labels = ["s", "d", "rl", "r1", "r2", "r3"]
         self.query_add_all_node_property_create()
 
     def query_add_all_node_property_match(self) -> None:
@@ -653,7 +650,7 @@ class RelationshipDeleteQuery(RelationshipWriteQuery):
         }
         WITH rl
 
-        OPTIONAL MATCH (rl)-[edge:IS_VISIBLE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(peer)
+        OPTIONAL MATCH (rl)-[edge:IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(peer)
         WHERE %(rel_filter)s
         ORDER BY type(edge), edge.branch_level DESC, edge.from DESC, edge.status ASC
         WITH rl, type(edge) AS edge_type, head(collect(edge)) AS edge, head(collect(peer)) AS peer
@@ -734,21 +731,6 @@ class RelationshipGetPeerQuery(Query):
             self.at = Timestamp(at)
 
         super().__init__(**kwargs)
-
-    def _add_is_visible_query(self, branch_filter: str) -> None:
-        if not (self.include_metadata & MetadataOptions.IS_VISIBLE):
-            return
-        query = """
-CALL (rl) {
-    MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
-    WHERE %(branch_filter)s
-    RETURN r AS rel_is_visible, is_visible
-    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-    LIMIT 1
-}
-        """ % {"branch_filter": branch_filter}
-        self.add_to_query(query)
-        self.update_return_labels(["rel_is_visible", "is_visible"])
 
     def _add_is_protected_query(self, branch_filter: str) -> None:
         if not (self.include_metadata & MetadataOptions.IS_PROTECTED):
@@ -966,7 +948,6 @@ RETURN updated_at, updated_by
         # add metadata
         # ----------------------------------------------------------------------------
         self._add_is_protected_query(branch_filter)
-        self._add_is_visible_query(branch_filter)
         self._add_has_owner_query(branch_filter)
         self._add_has_source_query(branch_filter)
         self._add_created_metadata_to_query()
@@ -1044,21 +1025,16 @@ RETURN updated_at, updated_by
                 properties={},
             )
 
-            for prop, metadata_option in [
-                ("is_protected", MetadataOptions.IS_PROTECTED),
-                ("is_visible", MetadataOptions.IS_VISIBLE),
-            ]:
-                if not self.include_metadata & metadata_option:
-                    continue
+            prop, metadata_option = ("is_protected", MetadataOptions.IS_PROTECTED)
+            if self.include_metadata & metadata_option:
                 prop_node = result.get(prop)
-                if not prop_node:
-                    continue
-                data.properties[prop] = FlagPropertyData(
-                    name=prop,
-                    prop_db_id=prop_node.element_id,
-                    rel=RelData.from_db(result.get(f"rel_{prop}")),
-                    value=prop_node.get("value"),
-                )
+                if prop_node:
+                    data.properties[prop] = FlagPropertyData(
+                        name=prop,
+                        prop_db_id=prop_node.element_id,
+                        rel=RelData.from_db(result.get(f"rel_{prop}")),
+                        value=prop_node.get("value"),
+                    )
 
             for prop, metadata_option in [("owner", MetadataOptions.OWNER), ("source", MetadataOptions.SOURCE)]:
                 if not self.include_metadata & metadata_option:
@@ -1263,7 +1239,6 @@ class RelationshipDeleteAllQuery(Query):
         self.add_to_query(rel_match_query)
 
         edge_types = [
-            DatabaseEdgeType.IS_VISIBLE.value,
             DatabaseEdgeType.IS_PROTECTED.value,
             DatabaseEdgeType.HAS_OWNER.value,
             DatabaseEdgeType.HAS_SOURCE.value,

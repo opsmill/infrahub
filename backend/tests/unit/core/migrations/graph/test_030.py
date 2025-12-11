@@ -17,7 +17,6 @@ MERGE (attr_val:AttributeValue {value: "good"})
 MERGE (bool_true:Boolean {value: true})
 WITH attr, attr_val, bool_true LIMIT 1
 CREATE (attr)-[:HAS_VALUE {branch: $branch_name, branch_level: $branch_level, status: "active", from: $at}]->(attr_val)
-CREATE (attr)-[:IS_VISIBLE {branch: $branch_name, branch_level: $branch_level, status: "active", from: $at}]->(bool_true)
     """
     await db.execute_query(
         query=query,

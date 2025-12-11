@@ -615,7 +615,6 @@ class GraphQLSchemaManager:
         }
 
         main_attrs = {
-            "is_visible": graphene.Boolean(required=False),
             "is_protected": graphene.Boolean(required=False),
             "updated_at": graphene.DateTime(required=False),
             "source": graphene.Field(data_source),

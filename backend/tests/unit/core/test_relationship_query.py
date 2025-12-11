@@ -67,7 +67,7 @@ async def get_relationship_properties(
     MATCH (s {uuid: $source_uuid})-[:IS_RELATED]-(r:Relationship)-[:IS_RELATED]-(d {uuid: $destination_uuid})
     WITH DISTINCT r
     MATCH (r)-[edge]-(p)
-    WHERE type(edge) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"]
+    WHERE type(edge) IN ["IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"]
     RETURN r, edge, p
     """
 
@@ -725,12 +725,10 @@ async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, ta
     )
 
     expected_relationships = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships) == 4
+    assert len(database_relationships) == 2
     assert {dr.to_comparison_tuple() for dr in database_relationships} == expected_relationships
     for database_rel in database_relationships:
         if database_rel.status == "active":
@@ -761,12 +759,10 @@ async def test_branch_delete_with_updated_main_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_blue_main.get_id()
     )
     expected_relationships_tag_blue = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships_tag_blue) == 4
+    assert len(database_relationships_tag_blue) == 2
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_blue} == expected_relationships_tag_blue
     for database_rel in database_relationships_tag_blue:
         if database_rel.status == "active":
@@ -780,10 +776,9 @@ async def test_branch_delete_with_updated_main_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_black_main.get_id()
     )
     expected_relationships_tag_black = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
         ("IS_PROTECTED", default_branch.name, "active", True, True),
     }
-    assert len(database_relationships_tag_black) == 2
+    assert len(database_relationships_tag_black) == 1
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_black} == expected_relationships_tag_black
     for database_rel in database_relationships_tag_black:
         assert not database_rel.end_at
@@ -812,14 +807,11 @@ async def test_main_delete_with_updated_branch_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_blue_main.get_id()
     )
     expected_relationships_tag_blue = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", default_branch.name, "deleted", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", default_branch.name, "deleted", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships_tag_blue) == 6
+    assert len(database_relationships_tag_blue) == 3
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_blue} == expected_relationships_tag_blue
     for database_rel in database_relationships_tag_blue:
         if database_rel.status == "active" and database_rel.branch == default_branch.name:
@@ -842,10 +834,9 @@ async def test_main_delete_with_updated_branch_relationship(
         db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_black_main.get_id()
     )
     expected_relationships_tag_black = {
-        ("IS_VISIBLE", branch.name, "active", True, True),
         ("IS_PROTECTED", branch.name, "active", True, True),
     }
-    assert len(database_relationships_tag_black) == 2
+    assert len(database_relationships_tag_black) == 1
     assert {dr.to_comparison_tuple() for dr in database_relationships_tag_black} == expected_relationships_tag_black
     for database_rel in database_relationships_tag_black:
         assert not database_rel.end_at
@@ -871,12 +862,10 @@ async def test_relationship_update_with_delete_peer(
         db=db, source_uuid=person.get_id(), destination_uuid=tag_blue_main.get_id()
     )
     expected_relationships = {
-        ("IS_VISIBLE", default_branch.name, "active", True, True),
-        ("IS_VISIBLE", branch.name, "deleted", True, True),
         ("IS_PROTECTED", default_branch.name, "active", False, True),
         ("IS_PROTECTED", branch.name, "deleted", False, True),
     }
-    assert len(database_relationships) == 4
+    assert len(database_relationships) == 2
     assert {dr.to_comparison_tuple() for dr in database_relationships} == expected_relationships
     for database_rel in database_relationships:
         if database_rel.status == "active":
@@ -898,7 +887,7 @@ async def test_query_RelationshipGetPeerQuery(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE,
+        include_metadata=MetadataOptions.IS_PROTECTED,
     )
     await query.execute(db=db)
 
@@ -907,8 +896,7 @@ async def test_query_RelationshipGetPeerQuery(
     assert len(peers[0].rels) == 2
     assert isinstance(peers[0].rel_node_db_id, str)
     assert isinstance(peers[0].rel_node_id, str)
-    assert set(peers[0].properties.keys()) == {"is_visible", "is_protected"}
-    assert peers[0].properties["is_visible"].value is True
+    assert set(peers[0].properties.keys()) == {"is_protected"}
     assert peers[0].properties["is_protected"].value is False
     assert peers[0].properties["is_protected"].prop_db_id == peers[1].properties["is_protected"].prop_db_id
     assert isinstance(peers[0].properties["is_protected"].prop_db_id, str)
@@ -1347,7 +1335,7 @@ async def test_query_RelationshipGetPeerQuery_branch_agnostic(
         rel=Relationship,
         branch=branch,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
     )
     await query.execute(db=db)
 
@@ -1368,7 +1356,7 @@ async def test_query_RelationshipGetPeerQuery_branch_agnostic(
         rel=Relationship,
         branch=default_branch,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
     )
     await query.execute(db=db)
 
@@ -1390,7 +1378,7 @@ async def test_query_RelationshipGetPeerQuery_branch_agnostic(
         branch=branch,
         branch_agnostic=True,
         at=Timestamp(),
-        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.IS_VISIBLE | MetadataOptions.USER_TIMESTAMPS,
+        include_metadata=MetadataOptions.IS_PROTECTED | MetadataOptions.USER_TIMESTAMPS,
     )
     await query.execute(db=db)
 

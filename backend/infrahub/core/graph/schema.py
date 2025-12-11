@@ -95,9 +95,6 @@ class GraphRelationshipRelationships(BaseModel):
     HAS_OWNER: GraphRelationship = Field(
         GraphRelationship(peer="Node", direction=GraphRelDirection.OUTBOUND), description=""
     )
-    IS_VISIBLE: GraphRelationship = Field(
-        GraphRelationship(peer="Boolean", direction=GraphRelDirection.OUTBOUND), description=""
-    )
     IS_PROTECTED: GraphRelationship = Field(
         GraphRelationship(peer="Boolean", direction=GraphRelDirection.OUTBOUND), description=""
     )
@@ -132,9 +129,6 @@ class GraphAttributeRelationships(BaseModel):
     )
     HAS_OWNER: GraphRelationship = Field(
         GraphRelationship(peer="Node", direction=GraphRelDirection.OUTBOUND), description=""
-    )
-    IS_VISIBLE: GraphRelationship = Field(
-        GraphRelationship(peer="Boolean", direction=GraphRelDirection.OUTBOUND), description=""
     )
     IS_PROTECTED: GraphRelationship = Field(
         GraphRelationship(peer="Boolean", direction=GraphRelDirection.OUTBOUND), description=""
@@ -208,9 +202,6 @@ class GraphBooleanProperties(BaseModel):
 
 
 class GraphBooleanRelationships(BaseModel):
-    IS_VISIBLE: GraphRelationship = Field(
-        GraphRelationship(peer="Attribute|Relationship", direction=GraphRelDirection.INBOUND), description=""
-    )
     IS_PROTECTED: GraphRelationship = Field(
         GraphRelationship(peer="Attribute|Relationship", direction=GraphRelDirection.INBOUND), description=""
     )
@@ -265,7 +256,6 @@ def get_graph_schema() -> dict[str, dict[str, Any]]:
             "IS_RELATED": GraphRelationshipDefault,
             "HAS_SOURCE": GraphRelationshipDefault,
             "HAS_OWNER": GraphRelationshipDefault,
-            "IS_VISIBLE": GraphRelationshipDefault,
             "IS_PROTECTED": GraphRelationshipDefault,
         },
     }
