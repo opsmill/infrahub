@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { ProfileData } from "@/shared/components/form/object-form";
 import {
@@ -33,15 +33,6 @@ const buildRelationshipOneData = (override: Partial<RelationshipOneType>): Relat
   },
   ...override,
 });
-
-vi.mock("@/entities/schema/domain/get-schema", () => ({
-  getSchema: vi.fn(() => ({
-    schema: generateNodeSchema(),
-    isGeneric: false,
-    isNode: true,
-    isProfile: false,
-  })),
-}));
 
 describe("getRelationshipDefaultValue", () => {
   describe("when cardinality one", () => {
@@ -171,6 +162,11 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns relationship from template when no relationship data is provided", () => {
       // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({ kind: "TemplateType", display_labels: ["label"] }),
+        generateNodeSchema({ kind: "TemplateRelationship", display_labels: ["label"] }),
+      ]);
+
       const relationshipData = undefined;
       const relationshipName = "testRelationship";
       const objectTemplate: NodeObject = {
@@ -428,7 +424,7 @@ describe("getRelationshipDefaultValue", () => {
             ],
           },
         },
-      ] as ProfileData[];
+      ] as unknown as ProfileData[];
 
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
@@ -463,6 +459,11 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns relationships from template with cardinality many", () => {
       // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({ kind: "TemplateType", display_labels: ["label"] }),
+        generateNodeSchema({ kind: "TemplateRelationship", display_labels: ["label"] }),
+      ]);
+
       const relationshipData = undefined;
       const relationshipName = "manyRelationship";
       const objectTemplate: NodeObject = {
@@ -716,6 +717,11 @@ describe("getRelationshipDefaultValue", () => {
 
     it("prioritizes template over profile", () => {
       // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({ kind: "TemplateType", display_labels: ["label"] }),
+        generateNodeSchema({ kind: "TemplateRelationship", display_labels: ["label"] }),
+      ]);
+
       const relationshipData = undefined;
       const objectTemplate: NodeObject = {
         id: "template-id" as any,
