@@ -15,8 +15,8 @@ export const getProfiles: GetProfiles = async ({ schema, branchName, atDate }) =
 
   const profileSchemasToQuery = [schema.kind, ...inheritedKinds]
     .map((kind) => {
-      const normalizedKind = kind?.replace("Template", "") // Remove prefix to query template profiles correctly
-      return getSchema(normalizedKind).schema as GenericSchema | null
+      const normalizedKind = kind?.replace("Template", ""); // Remove prefix to query template profiles correctly
+      return getSchema(normalizedKind).schema as GenericSchema | null;
     })
     .filter((genericSchema) => genericSchema?.generate_profile)
     .map(
