@@ -70,25 +70,6 @@ export const addRelationshipsToRequest = (
   relationships: Array<RelationshipSchema>,
   { relationshipFragment, withMetadata }: AddAttributesToRequestOptions = {}
 ) => {
-  const baseMetadata = {
-    properties: {
-      is_protected: true,
-      updated_at: true,
-      source: {
-        id: true,
-        hfid: true,
-        display_label: true,
-        __typename: true,
-      },
-      owner: {
-        id: true,
-        hfid: true,
-        display_label: true,
-        __typename: true,
-      },
-    },
-  };
-
   const baseFragment = {
     node: {
       id: true,
@@ -96,7 +77,24 @@ export const addRelationshipsToRequest = (
       display_label: true,
       ...(relationshipFragment ?? {}),
     },
-    ...(withMetadata && baseMetadata),
+    ...(withMetadata && {
+      properties: {
+        is_protected: true,
+        updated_at: true,
+        source: {
+          id: true,
+          hfid: true,
+          display_label: true,
+          __typename: true,
+        },
+        owner: {
+          id: true,
+          hfid: true,
+          display_label: true,
+          __typename: true,
+        },
+      },
+    }),
   };
 
   return relationships.reduce((acc, relationship) => {
