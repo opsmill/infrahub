@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from typing import Any
 
@@ -271,16 +272,16 @@ class ChildThingFixtures:
 
 
 @pytest.fixture
-async def child_and_thing_schema(db: InfrahubDatabase, branch: Branch) -> SchemaRoot:
-    THING.relationships[0].optional = True
-    schema_root = SchemaRoot(nodes=[CHILD, THING])
+async def child_and_thing_schema(db: InfrahubDatabase, branch: Branch) -> None:
+    thing_copy = copy.deepcopy(THING)
+    thing_copy.relationships[0].optional = True
+    schema_root = SchemaRoot(nodes=[CHILD, thing_copy])
     await load_schema(db=db, schema=schema_root, branch_name=branch.name)
-    return schema_root
 
 
 @pytest.fixture
 async def child_and_thing_nodes(
-    db: InfrahubDatabase, branch: Branch, child_and_thing_schema: SchemaRoot
+    db: InfrahubDatabase, branch: Branch, child_and_thing_schema: None
 ) -> ChildThingFixtures:
     child_node_schema = registry.schema.get_node_schema(name=CHILD.kind, branch=branch, duplicate=False)
     thing_node_schema = registry.schema.get_node_schema(name=THING.kind, branch=branch, duplicate=False)

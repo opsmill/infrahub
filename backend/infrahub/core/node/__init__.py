@@ -40,6 +40,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.models import NumberPoolLockDefinition
+from infrahub.profiles.mandatory_fields_checker import get_mandatory_fields_from_profiles
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -96,6 +97,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._owner: Node | None = None
         self._is_protected: bool = None
         self._computed_jinja2_attributes: list[str] = []
+        self._profile_provided_attrs: set[str] = set()
+        self._profile_provided_rels: set[str] = set()
 
         self._display_label: DisplayLabel | None = None
         self._human_friendly_id: HumanFriendlyIdentifier | None = None
@@ -519,6 +522,26 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             elif relationship_peers := await relationship.get_peers(db=db):
                 fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
+    async def _get_profile_provided_mandatory_fields(
+        self, db: InfrahubDatabase, fields: dict[str, Any]
+    ) -> tuple[set[str], set[str]]:
+        if not isinstance(self._schema, NodeSchema) or "profiles" not in fields:
+            return set(), set()
+
+        mandatory_attrs_to_check = [a for a in self._schema.mandatory_attribute_names if a not in fields.keys()]
+        mandatory_rels_to_check = [r for r in self._schema.mandatory_relationship_names if r not in fields.keys()]
+        if not mandatory_attrs_to_check and not mandatory_rels_to_check:
+            return set(), set()
+
+        return await get_mandatory_fields_from_profiles(
+            db=db,
+            branch=self._branch,
+            schema=self._schema,
+            profiles_data=fields.get("profiles"),
+            mandatory_attr_names=mandatory_attrs_to_check,
+            mandatory_rel_names=mandatory_rels_to_check,
+        )
+
     async def _process_fields(self, fields: dict, db: InfrahubDatabase, process_pools: bool = True) -> None:
         errors = []
 
@@ -540,10 +563,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Backfill fields with the ones from the template if there's one
         await self.handle_object_template(fields=fields, db=db, errors=errors)
 
-        # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self._existing:
+            (
+                self._profile_provided_attrs,
+                self._profile_provided_rels,
+            ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
+
             for mandatory_attr in self._schema.mandatory_attribute_names:
-                if mandatory_attr not in fields.keys():
+                if mandatory_attr not in fields.keys() and mandatory_attr not in self._profile_provided_attrs:
                     if self._schema.is_node_schema:
                         mandatory_attribute = self._schema.get_attribute(name=mandatory_attr)
                         if (
@@ -561,7 +588,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     )
 
             for mandatory_rel in self._schema.mandatory_relationship_names:
-                if mandatory_rel not in fields.keys():
+                if mandatory_rel not in fields.keys() and mandatory_rel not in self._profile_provided_rels:
                     errors.append(
                         ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
                     )
@@ -638,6 +665,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
                     await self.handle_pool(db=db, attribute=attribute, errors=errors, allocate_resources=process_pools)
+
+                    if attr_schema.name in self._profile_provided_attrs:
+                        continue
 
                     if process_pools or attribute.from_pool is None:
                         attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
