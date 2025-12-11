@@ -29,7 +29,6 @@ CARDINALITY_ONE = "ONE"
 CARDINALITY_MANY = "MANY"
 IS_RELATED_TYPE = "IS_RELATED"
 IS_PROTECTED_TYPE = "IS_PROTECTED"
-IS_VISIBLE_TYPE = "IS_VISIBLE"
 
 DIFF_TREE_QUERY = """
 query GetDiffTree($branch: String){
@@ -515,7 +514,7 @@ async def test_diff_tree_one_relationship_change(
         "conflict": None,
     }
     owner_properties_by_type = {p["property_type"]: p for p in owner_properties}
-    assert set(owner_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_PROTECTED_TYPE, IS_VISIBLE_TYPE}
+    assert set(owner_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_PROTECTED_TYPE}
     owner_prop = owner_properties_by_type[IS_RELATED_TYPE]
     owner_prop_changed_at = owner_prop["last_changed_at"]
     assert before_change_datetime < Timestamp(owner_prop_changed_at) < after_change_datetime
@@ -587,11 +586,10 @@ async def test_diff_tree_one_relationship_change(
         "conflict": None,
     }
     cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
-    assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
+    assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_PROTECTED_TYPE}
     for property_type, previous_value, previous_label in [
         (IS_RELATED_TYPE, car_accord_main.id, accord_label),
         (IS_PROTECTED_TYPE, "False", None),
-        (IS_VISIBLE_TYPE, "True", None),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
@@ -651,11 +649,10 @@ async def test_diff_tree_one_relationship_change(
         "conflict": None,
     }
     cars_properties_by_type = {p["property_type"]: p for p in cars_properties}
-    assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_VISIBLE_TYPE, IS_PROTECTED_TYPE}
+    assert set(cars_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_PROTECTED_TYPE}
     for property_type, new_value, new_label in [
         (IS_RELATED_TYPE, car_accord_main.id, accord_label),
         (IS_PROTECTED_TYPE, "False", None),
-        (IS_VISIBLE_TYPE, "True", None),
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]

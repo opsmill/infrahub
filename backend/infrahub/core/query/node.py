@@ -307,11 +307,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)-[:HAS_ATTRIBUTE %(attr_edge)s]->(a)
             CREATE (a)-[:HAS_VALUE %(attr_edge)s]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            WITH a, ip, iv
+            WITH a, ip
             LIMIT 1
             CREATE (a)-[:IS_PROTECTED %(attr_edge)s]->(ip)
-            CREATE (a)-[:IS_VISIBLE %(attr_edge)s]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE %(attr_edge)s]->(peer)
@@ -333,9 +331,7 @@ class NodeCreateAllQuery(NodeQuery):
             LIMIT 1
             CREATE (a)-[:HAS_VALUE %(attr_edge)s]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
             CREATE (a)-[:IS_PROTECTED %(attr_edge)s]->(ip)
-            CREATE (a)-[:IS_VISIBLE %(attr_edge)s]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE %(attr_edge)s]->(peer)
@@ -357,11 +353,9 @@ class NodeCreateAllQuery(NodeQuery):
             LIMIT 1
             CREATE (a)-[:HAS_VALUE %(attr_edge)s]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            WITH a, ip, iv
+            WITH a, ip
             LIMIT 1
             CREATE (a)-[:IS_PROTECTED %(attr_edge)s]->(ip)
-            CREATE (a)-[:IS_VISIBLE %(attr_edge)s]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE %(attr_edge)s]->(peer)
@@ -388,11 +382,9 @@ class NodeCreateAllQuery(NodeQuery):
             LIMIT 1
             CREATE (a)-[:HAS_VALUE %(attr_edge)s]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
-            MERGE (iv:Boolean { value: attr.is_visible })
-            WITH a, ip, iv
+            WITH a, ip
             LIMIT 1
             CREATE (a)-[:IS_PROTECTED %(attr_edge)s]->(ip)
-            CREATE (a)-[:IS_VISIBLE %(attr_edge)s]->(iv)
             FOREACH ( prop IN attr.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_SOURCE %(attr_edge)s]->(peer)
@@ -454,11 +446,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)-[:IS_RELATED %(rel_edge_hierarchy)s ]->(rl)
             CREATE (dest_node)-[:IS_RELATED %(rel_edge_hierarchy)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            WITH rl, ip, iv
+            WITH rl, ip
             LIMIT 1
             CREATE (rl)-[:IS_PROTECTED %(rel_edge)s]->(ip)
-            CREATE (rl)-[:IS_VISIBLE %(rel_edge)s]->(iv)
             FOREACH ( prop IN rel.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_SOURCE %(rel_edge)s]->(peer)
@@ -484,11 +474,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)-[:IS_RELATED %(rel_edge_hierarchy)s ]->(rl)
             CREATE (dest_node)<-[:IS_RELATED %(rel_edge_hierarchy)s ]-(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            WITH rl, ip, iv
+            WITH rl, ip
             LIMIT 1
             CREATE (rl)-[:IS_PROTECTED %(rel_edge)s]->(ip)
-            CREATE (rl)-[:IS_VISIBLE %(rel_edge)s]->(iv)
             FOREACH ( prop IN rel.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_SOURCE %(rel_edge)s]->(peer)
@@ -514,11 +502,9 @@ class NodeCreateAllQuery(NodeQuery):
             CREATE (n)<-[:IS_RELATED %(rel_edge_hierarchy)s ]-(rl)
             CREATE (dest_node)-[:IS_RELATED %(rel_edge_hierarchy)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
-            MERGE (iv:Boolean { value: rel.is_visible })
-            WITH rl, ip, iv
+            WITH rl, ip
             LIMIT 1
             CREATE (rl)-[:IS_PROTECTED %(rel_edge)s]->(ip)
-            CREATE (rl)-[:IS_VISIBLE %(rel_edge)s]->(iv)
             FOREACH ( prop IN rel.source_prop |
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_SOURCE %(rel_edge)s]->(peer)
@@ -694,7 +680,6 @@ class NodeListGetAttributeQuery(Query):
         "HAS_OWNER": ("rel_owner", "owner"),
         "HAS_SOURCE": ("rel_source", "source"),
         "IS_PROTECTED": ("rel_isp", "isp"),
-        "IS_VISIBLE": ("rel_isv", "isv"),
     }
 
     def __init__(
@@ -867,15 +852,8 @@ WHERE r2.status = "active"
 
         self.return_labels = ["n", "a", "av", "r1", "r2", "is_from_profile"]
 
-        # Add Is_Protected and Is_visible
+        # Add Is_Protected
         query = """
-CALL (a) {
-    MATCH (a)-[r:IS_VISIBLE]-(isv:Boolean)
-    WHERE (%(branch_filter)s)
-    RETURN r AS rel_isv, isv
-    ORDER BY rel_isv.branch_level DESC, rel_isv.from DESC, rel_isv.status ASC
-    LIMIT 1
-}
 CALL (a) {
     MATCH (a)-[r:IS_PROTECTED]-(isp:Boolean)
     WHERE (%(branch_filter)s)
@@ -886,7 +864,7 @@ CALL (a) {
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
 
-        self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
+        self.return_labels.extend(["isp", "rel_isp"])
 
         self._add_source_to_query(branch_filter_str=branch_filter)
         self._add_owner_to_query(branch_filter_str=branch_filter)
@@ -935,7 +913,6 @@ CALL (a) {
             branch=self.branch.name,
             flag_properties={
                 "is_protected": result.get("isp").get("value"),
-                "is_visible": result.get("isv").get("value"),
             },
         )
 

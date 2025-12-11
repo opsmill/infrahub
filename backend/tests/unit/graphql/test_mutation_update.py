@@ -205,15 +205,12 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     query = (
         """
     mutation {
-        TestPersonUpdate(data: {id: "%s", name: { is_protected: true }, height: { is_visible: false}}) {
+        TestPersonUpdate(data: {id: "%s", name: { is_protected: true }}) {
             ok
             object {
                 id
                 name {
                     is_protected
-                }
-                height {
-                    is_visible
                 }
             }
         }
@@ -238,7 +235,6 @@ async def test_update_object_with_flag_property(db: InfrahubDatabase, person_joh
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     assert obj1.name.is_protected is True
     assert obj1.height.value == 180
-    assert obj1.height.is_visible is False
 
 
 async def test_update_all_attributes(
