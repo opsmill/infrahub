@@ -11,16 +11,14 @@ import type {
   RelationshipValueFromUser,
   TemplateSource,
 } from "@/shared/components/form/type";
-import { store } from "@/shared/stores";
 
 import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { isSourceFromProfile } from "@/entities/schema/utils/is-source-from-profile";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
@@ -118,10 +116,9 @@ export const getRelationshipDefaultValueFromData = (
 
     if (edgesWithSource.length > 0 && edgesWithSource.length === relationshipData.edges.length) {
       // All edges have a source - check if they're all from profiles
-      const profileSchemas = store.get(profileSchemasAtom);
       const allFromProfile = edgesWithSource.every((edge) => {
-        const sourceKind = edge.properties?.source?.__typename;
-        return isSourceFromProfile(sourceKind, profileSchemas);
+        const { isProfile } = getSchema(edge.properties?.source?.__typename);
+        return isProfile;
       });
 
       if (allFromProfile) {
@@ -164,12 +161,9 @@ export const getRelationshipDefaultValueFromData = (
   }
 
   const source = relationshipData.properties.source;
-  const sourceKind = source.__typename;
+  const { schema: sourceSchema, isProfile, isGeneric } = getSchema(source.__typename);
 
-  const nodes = store.get(nodeSchemasAtom);
-  const sourceSchema = nodes.find(({ kind }) => kind === sourceKind);
-
-  if (sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
+  if (!isGeneric && sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
     if (!relationshipData.node) {
       console.error("Source is a pool but node is null on relationship", relationshipData);
       return { source: null, value: null };
@@ -186,10 +180,7 @@ export const getRelationshipDefaultValueFromData = (
     };
   }
 
-  // Check if source is a profile
-  const profileSchemas = store.get(profileSchemasAtom);
-
-  if (isSourceFromProfile(sourceKind, profileSchemas)) {
+  if (isProfile) {
     return {
       source: {
         type: "profile",
