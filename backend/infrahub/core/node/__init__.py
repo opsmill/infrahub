@@ -1130,7 +1130,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
-                changed |= await rel.update(db=db, data=value)
+                changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
 
