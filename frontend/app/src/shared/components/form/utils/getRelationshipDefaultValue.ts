@@ -20,7 +20,7 @@ import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
+import { isSourceFromProfile } from "@/entities/schema/utils/is-source-from-profile";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
@@ -121,9 +121,7 @@ export const getRelationshipDefaultValueFromData = (
       const profileSchemas = store.get(profileSchemasAtom);
       const allFromProfile = edgesWithSource.every((edge) => {
         const sourceKind = edge.properties?.source?.__typename;
-        if (!sourceKind) return false;
-        const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
-        return profileSchema && isProfileSchema(profileSchema);
+        return isSourceFromProfile(sourceKind, profileSchemas);
       });
 
       if (allFromProfile) {
@@ -190,9 +188,8 @@ export const getRelationshipDefaultValueFromData = (
 
   // Check if source is a profile
   const profileSchemas = store.get(profileSchemasAtom);
-  const profileSchema = profileSchemas.find(({ kind }) => kind === sourceKind);
 
-  if (profileSchema && isProfileSchema(profileSchema)) {
+  if (isSourceFromProfile(sourceKind, profileSchemas)) {
     return {
       source: {
         type: "profile",
