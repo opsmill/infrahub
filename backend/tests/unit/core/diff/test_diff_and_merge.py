@@ -1331,7 +1331,7 @@ class TestDiffAndMerge:
         assert before_owner_rel_resolved < resolved_conflict_rel_to_john.created_at < after_owner_rel_resolved
         assert resolved_conflict_rel_to_john.updated_by == "main-user-2"
         assert before_owner_rel_resolved < resolved_conflict_rel_to_john.updated_at < after_owner_rel_resolved
-        # original is actually updated later b/c it happens durign the merge
+        # original is actually updated later b/c it happens during the merge
         original_rel_to_john = car_rels_to_john[1]
         assert original_rel_to_john.is_deleted is True
         assert original_rel_to_john.created_by == SYSTEM_USER_ID
@@ -1353,7 +1353,7 @@ class TestDiffAndMerge:
         assert before_owner_rel_resolved < resolved_conflict_rel_to_car.created_at < after_owner_rel_resolved
         assert resolved_conflict_rel_to_car.updated_by == "main-user-2"
         assert before_owner_rel_resolved < resolved_conflict_rel_to_car.updated_at < after_owner_rel_resolved
-        # original is actually updated later b/c it happens durign the merge
+        # original is actually updated later b/c it happens during the merge
         original_rel_to_car = john_rels_to_car[1]
         assert original_rel_to_car.is_deleted is True
         assert original_rel_to_car.created_by == SYSTEM_USER_ID
