@@ -82,8 +82,7 @@ type AnyAttribute implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: GenericScalar
 }
 
@@ -153,7 +152,6 @@ type Branch {
   is_default: Boolean
   is_isolated: Boolean @deprecated(reason: "non isolated mode is not supported anymore")
   name: String!
-  node_metadata: InfrahubNodeMetaObject
   origin_branch: String
   status: BranchStatus!
   sync_with_git: Boolean
@@ -570,8 +568,7 @@ type CheckboxAttribute implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: Boolean
 }
 
@@ -6481,8 +6478,7 @@ type Dropdown implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: String
 }
 
@@ -7200,8 +7196,7 @@ type IPHost implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: String
   version: Int
   with_hostmask: String
@@ -7227,8 +7222,7 @@ type IPNetwork implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: String
   version: Int
   with_hostmask: String
@@ -7340,7 +7334,6 @@ input InfrahubAccountTokenDeleteInput {
 
 type InfrahubAccountTokenType {
   id: String!
-  node_metadata: InfrahubNodeMetaObject
   token: ValueType
 }
 
@@ -7362,7 +7355,6 @@ type InfrahubBranch {
   is_default: NonRequiredBooleanValueField
   is_isolated: NonRequiredBooleanValueField @deprecated(reason: "non isolated mode is not supported anymore")
   name: RequiredStringValueField!
-  node_metadata: InfrahubNodeMetaObject
   origin_branch: NonRequiredStringValueField
   status: StatusField!
   sync_with_git: NonRequiredBooleanValueField
@@ -7370,6 +7362,7 @@ type InfrahubBranch {
 
 type InfrahubBranchEdge {
   node: InfrahubBranch!
+  node_metadata: InfrahubStandardNodeMetaData!
 }
 
 type InfrahubBranchType {
@@ -7424,21 +7417,6 @@ type InfrahubMutatedRelationship {
   peer: RelatedNode!
 }
 
-type InfrahubNodeMetaObject {
-  """Date/Time the object has been created"""
-  created_at: DateTime
-  """
-  UUID of the user that created the object, even if the user is later deleted
-  """
-  created_by: String
-  """Date/Time when the object was last modified by a user or a system task"""
-  updated_at: DateTime
-  """
-  UUID of the user that last modified the object, even if the user is later deleted
-  """
-  updated_by: String
-}
-
 """Defines node metadata information"""
 type InfrahubNodeMetadata {
   created_at: DateTime
@@ -7457,6 +7435,20 @@ type InfrahubRelationshipMetadata {
   created_by: CoreGenericAccount
   updated_at: DateTime
   updated_by: CoreGenericAccount
+}
+
+type InfrahubStandardNodeMetaAccount {
+  display_name: String
+  id: String!
+}
+
+type InfrahubStandardNodeMetaData {
+  """Date/Time the object has been created"""
+  created_at: DateTime
+  created_by: InfrahubStandardNodeMetaAccount
+  """Date/Time when the object was last modified by a user or a system task"""
+  updated_at: DateTime
+  updated_by: InfrahubStandardNodeMetaAccount
 }
 
 """Token for User Account"""
@@ -7636,8 +7628,7 @@ type JSONAttribute implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: GenericScalar
 }
 
@@ -7688,8 +7679,7 @@ type ListAttribute implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: GenericScalar
 }
 
@@ -7735,8 +7725,7 @@ type MacAddress implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: String
   version: Int
 }
@@ -9740,32 +9729,14 @@ type NodeMutatedEvent implements EventNodeInterface {
 }
 
 type NonRequiredBooleanValueField {
-  """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
-  """
-  updated_at: DateTime
-  """User that last modified the attribute or relationship"""
-  updated_by: String
   value: Boolean
 }
 
 type NonRequiredIntValueField {
-  """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
-  """
-  updated_at: DateTime
-  """User that last modified the attribute or relationship"""
-  updated_by: String
   value: Int
 }
 
 type NonRequiredStringValueField {
-  """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
-  """
-  updated_at: DateTime
-  """User that last modified the attribute or relationship"""
-  updated_by: String
   value: String
 }
 
@@ -9783,8 +9754,7 @@ type NumberAttribute implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: BigInt
 }
 
@@ -11298,12 +11268,6 @@ type Relationships {
 }
 
 type RequiredStringValueField {
-  """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
-  """
-  updated_at: DateTime
-  """User that last modified the attribute or relationship"""
-  updated_by: String
   value: String!
 }
 
@@ -11401,12 +11365,6 @@ type Status {
 }
 
 type StatusField {
-  """
-  Date/Time when the attribute or relationship was last modified by a user or a system task
-  """
-  updated_at: DateTime
-  """User that last modified the attribute or relationship"""
-  updated_by: String
   value: BranchStatus!
 }
 
@@ -11501,8 +11459,7 @@ type TextAttribute implements AttributeInterface {
   Date/Time when the attribute was last modified by a user or a system task
   """
   updated_at: DateTime
-  """User that last modified the attribute"""
-  updated_by: String
+  updated_by: CoreGenericAccount
   value: String
 }
 

@@ -70,7 +70,8 @@ class AttributeInterface(InfrahubInterface):
 
 
 class InfrahubAttributeMetaObject(ObjectType):
-    updated_by = String(required=False, description="User that last modified the attribute")
+    # updated_by is dynamically added in GraphQLSchemaManager.generate_object_types()
+    # to use the account_type (CoreGenericAccount) instead of a plain String
     updated_at = DateTime(
         required=False,
         description="Date/Time when the attribute was last modified by a user or a system task",

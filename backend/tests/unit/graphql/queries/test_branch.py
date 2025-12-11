@@ -356,23 +356,17 @@ class TestBranchQuery(TestInfrahubApp):
             query {
                 InfrahubBranch {
                     edges {
+                        node_metadata {
+                            created_at
+                            updated_at
+                        }
                         node {
-                            node_metadata {
-                                created_by
-                                created_at
-                                updated_by
-                                updated_at
-                            }
                             id
                             name {
                                 value
-                                updated_by
-                                updated_at
                             }
                             description {
                                 value
-                                updated_by
-                                updated_at
                             }
                         }
                     }
@@ -391,11 +385,5 @@ class TestBranchQuery(TestInfrahubApp):
 
         for branch in all_branches.data["InfrahubBranch"]["edges"]:
             assert branch["node"]["name"]["value"]
-            assert branch["node"]["name"]["updated_at"] is None
-            assert branch["node"]["name"]["updated_by"] is None
-
             assert branch["node"]["description"]["value"]
-            assert branch["node"]["description"]["updated_at"] is None
-            assert branch["node"]["description"]["updated_by"] is None
-
-            assert branch["node"]["node_metadata"]["created_at"]
+            assert branch["node_metadata"]["created_at"]

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import inspect
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
 from uuid import UUID
 
 import ujson
 from infrahub_sdk.uuidt import UUIDT
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from infrahub.core.constants import NULL_VALUE, SYSTEM_USER_ID
 from infrahub.core.query.standard_node import (
@@ -30,9 +31,16 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+@dataclass(slots=True)
+class StandardNodeQueryFields:
+    node: dict[str, Any] = field(default_factory=dict)
+    node_metadata: dict[str, Any] = field(default_factory=dict)
+
+
 class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
+    created_at: Optional[str] = Field(default=None, validate_default=True)
     created_by: str = Field(default=SYSTEM_USER_ID)
     updated_by: Optional[str] = Field(default=None)
     updated_at: Optional[str] = Field(default=None, validate_default=True)
@@ -48,6 +56,11 @@ class StandardNode(BaseModel):
         if not self.id:
             raise ValueError("id isn't defined yet")
         return self.id
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def set_created_at(cls, value: str) -> str:
+        return Timestamp(value).to_string()
 
     @staticmethod
     def guess_field_type(field: FieldInfo) -> Any:
@@ -72,7 +85,14 @@ class StandardNode(BaseModel):
 
         raise InitializationError("The root node has not been initialized with a uuid")
 
-    async def to_graphql(self, fields: dict) -> dict:
+    async def to_graphql_flat(self, fields: dict) -> dict:
+        """Returns the GraphQL representation of the object with only top-level fields.
+
+        This method does not handle nested fields and is only used for the old `Branch` query which
+        will be deprecated in the future and replaced by the `InfrahubBranch` query.
+        It's also used for the old style of Branch mutations that will be deprecated in the future,
+        when we introduce InfrahubBranch muations for consistency.
+        """
         response: dict[str, Any] = {"id": self.uuid}
 
         for field_name in fields.keys():
@@ -80,15 +100,6 @@ class StandardNode(BaseModel):
                 continue
             if field_name == "__typename":
                 response[field_name] = self.get_type()
-                continue
-            if field_name == "node_metadata" and isinstance(fields.get("node_metadata"), dict):
-                _result = {}
-                for meta_field in fields.get(field_name, {}).keys():
-                    if meta_field == "created_at":
-                        _result[meta_field] = Timestamp(self.created_at).to_datetime() if self.created_at else None  # type: ignore[attr-defined]
-                        continue
-                    _result[meta_field] = getattr(self, meta_field, None)
-                response[field_name] = _result
                 continue
             field = getattr(self, field_name, None)
             if field is None:
@@ -106,6 +117,47 @@ class StandardNode(BaseModel):
             response[field_name] = field
 
         return response
+
+    async def to_graphql(self, fields: StandardNodeQueryFields) -> dict:
+        node_response: dict[str, Any] = {}
+        meta_response: dict[str, Any] = {}
+
+        for field_name in fields.node.keys():
+            if field_name == "id":
+                node_response["id"] = self.uuid
+                continue
+            if field_name == "__typename":
+                node_response[field_name] = self.get_type()
+                continue
+            field = getattr(self, field_name, None)
+            if field is None:
+                node_response[field_name] = None
+                continue
+            if isinstance(fields.node.get(field_name), dict):
+                result = {}
+                for nested_field in fields.node.get(field_name, {}).keys():
+                    if nested_field == "value":
+                        result[nested_field] = field
+                        continue
+                node_response[field_name] = result
+                continue
+
+            node_response[field_name] = field
+
+        for field_name in fields.node_metadata.keys():
+            match field_name:
+                case "created_at":
+                    meta_response["created_at"] = Timestamp(self.created_at).to_datetime() if self.created_at else None
+                case "updated_at":
+                    meta_response["updated_at"] = Timestamp(self.updated_at).to_datetime() if self.updated_at else None
+                case "created_by":
+                    if self.created_by and self.created_by != SYSTEM_USER_ID:
+                        meta_response["created_by"] = {"id": self.created_by}
+                case "updated_by":
+                    if self.updated_by and self.updated_by != SYSTEM_USER_ID:
+                        meta_response["updated_by"] = {"id": self.updated_by}
+
+        return {"node": node_response, "node_metadata": meta_response}
 
     async def save(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create or Update the Node in the database."""
@@ -210,7 +262,7 @@ class StandardNode(BaseModel):
         else:
             data["uuid"] = str(self.uuid)
 
-        for attr_name, field in self.model_fields.items():
+        for attr_name, field_info in self.model_fields.items():
             if attr_name in self._exclude_attrs:
                 continue
 
@@ -218,7 +270,7 @@ class StandardNode(BaseModel):
             if isinstance(attr_value, Enum):
                 attr_value = attr_value.value
 
-            field_type = self.guess_field_type(field)
+            field_type = self.guess_field_type(field_info)
 
             if attr_value is None:
                 data[attr_name] = NULL_VALUE

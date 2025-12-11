@@ -20,6 +20,7 @@ from infrahub.core.constants import (
     SYSTEM_USER_ID,
     AttributeDBNodeType,
     BranchSupportType,
+    InfrahubKind,
     MetadataOptions,
 )
 from infrahub.core.metadata.interface import MetadataInterface
@@ -524,11 +525,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         for field_name in field_names:
             if field_name == "updated_at":
                 updated_at = self._get_updated_at()
-                response[field_name] = updated_at.to_graphql() if updated_at else None
+                response[field_name] = await updated_at.to_graphql() if updated_at else None
                 continue
 
             if field_name == "updated_by":
-                response[field_name] = self._get_updated_by()
+                response[field_name] = (
+                    {
+                        "id": self._get_updated_by(),
+                        "__kind__": InfrahubKind.ACCOUNT,
+                    }
+                    if self._get_updated_by()
+                    else None
+                )
                 continue
 
             if field_name == "__typename":

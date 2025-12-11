@@ -1073,10 +1073,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
-            if field_name == "node_metadata" and isinstance(fields.get("node_metadata"), dict):
-                response[field_name] = await self._build_meta_response(field_name, fields)
-                continue
-
             field: BaseAttribute | None = getattr(self, field_name, None)
 
             if not field:

@@ -37,7 +37,6 @@ class Branch(StandardNode):
     origin_branch: str = "main"
     branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
-    created_at: Optional[str] = Field(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
@@ -92,11 +91,6 @@ class Branch(StandardNode):
         if not self.branched_from:
             raise RuntimeError(f"branched_from not set for branch {self.name}")
         return self.branched_from
-
-    @field_validator("created_at", mode="before")
-    @classmethod
-    def set_created_at(cls, value: str) -> str:
-        return Timestamp(value).to_string()
 
     def get_created_at(self) -> str:
         if not self.created_at:

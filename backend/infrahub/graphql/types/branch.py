@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, DateTime, Field, Int, List, NonNull, ObjectType, String
+from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.branch import Branch
+from infrahub.core.node.standard import StandardNodeQueryFields
 
 from ...exceptions import BranchNotFoundError
 from .enums import InfrahubBranchStatus
+from .metadata import InfrahubStandardNodeMetaData
 from .standard_node import InfrahubObjectType
 
 if TYPE_CHECKING:
@@ -33,64 +35,35 @@ class BranchType(InfrahubObjectType):
         name = "Branch"
         model = Branch
 
-    @staticmethod
-    async def _map_fields_to_graphql(objs: list[Branch], fields: dict) -> list[dict[str, Any]]:
-        return [await obj.to_graphql(fields=fields) for obj in objs]
-
     @classmethod
     async def get_list(
         cls,
-        fields: dict,
+        fields: StandardNodeQueryFields,
         graphql_context: GraphqlContext,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
         async with graphql_context.db.start_session(read_only=True) as db:
             objs = await Branch.get_list(db=db, **kwargs)
-
-            if not objs:
-                return []
-
-            return await cls._map_fields_to_graphql(objs=objs, fields=fields)
-
-    @classmethod
-    async def get_by_name(
-        cls,
-        fields: dict,
-        graphql_context: GraphqlContext,
-        name: str,
-    ) -> dict[str, Any]:
-        branch_responses = await cls.get_list(fields=fields, graphql_context=graphql_context, name=name)
-
-        if branch_responses:
-            return branch_responses[0]
-        raise BranchNotFoundError(f"Branch with name '{name}' not found")
+            return [await obj.to_graphql_flat(fields=fields.node) for obj in objs]
 
 
-class InfrahubBranchMetaObject(ObjectType):
-    updated_by = String(required=False, description="User that last modified the attribute or relationship")
-    updated_at = DateTime(
-        required=False,
-        description="Date/Time when the attribute or relationship was last modified by a user or a system task",
-    )
-
-
-class RequiredStringValueField(InfrahubBranchMetaObject):
+class RequiredStringValueField(ObjectType):
     value = String(required=True)
 
 
-class NonRequiredStringValueField(InfrahubBranchMetaObject):
+class NonRequiredStringValueField(ObjectType):
     value = String(required=False)
 
 
-class NonRequiredIntValueField(InfrahubBranchMetaObject):
+class NonRequiredIntValueField(ObjectType):
     value = Int(required=False)
 
 
-class NonRequiredBooleanValueField(InfrahubBranchMetaObject):
+class NonRequiredBooleanValueField(ObjectType):
     value = Boolean(required=False)
 
 
-class StatusField(InfrahubBranchMetaObject):
+class StatusField(ObjectType):
     value = InfrahubBranchStatus(required=True)
 
 
@@ -108,6 +81,32 @@ class InfrahubBranch(BranchType):
     )
     has_schema_changes = Field(NonRequiredBooleanValueField, required=False)
 
+    @classmethod
+    async def get_list(
+        cls,
+        fields: StandardNodeQueryFields,
+        graphql_context: GraphqlContext,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        async with graphql_context.db.start_session(read_only=True) as db:
+            objs = await Branch.get_list(db=db, **kwargs)
+            return [await obj.to_graphql(fields=fields) for obj in objs]
+
+    @classmethod
+    async def get_by_name(
+        cls,
+        fields: dict,
+        graphql_context: GraphqlContext,
+        name: str,
+    ) -> dict[str, Any]:
+        branch_responses = await cls.get_list(
+            fields=StandardNodeQueryFields(node=fields), graphql_context=graphql_context, name=name
+        )
+
+        if branch_responses:
+            return branch_responses[0]
+        raise BranchNotFoundError(f"Branch with name '{name}' not found")
+
     class Meta:
         description = "InfrahubBranch"
         name = "InfrahubBranch"
@@ -115,6 +114,7 @@ class InfrahubBranch(BranchType):
 
 class InfrahubBranchEdge(ObjectType):
     node = Field(InfrahubBranch, required=True)
+    node_metadata = Field(InfrahubStandardNodeMetaData, required=True)
 
 
 class InfrahubBranchType(ObjectType):

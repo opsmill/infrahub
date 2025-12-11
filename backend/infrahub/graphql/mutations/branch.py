@@ -98,7 +98,11 @@ class BranchCreate(Mutation):
         # Retrieve created branch
         obj = await Branch.get_by_name(db=graphql_context.db, name=model.name)
         fields = extract_graphql_fields(info=info)
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
+        return cls(
+            object=await obj.to_graphql_flat(fields=fields.get("object", {})),
+            ok=True,
+            task=task,
+        )
 
 
 class BranchNameInput(InputObjectType):
@@ -218,7 +222,7 @@ class BranchRebase(Mutation):
         fields = extract_graphql_fields(info=info)
         ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchValidate(Mutation):
@@ -260,7 +264,7 @@ class BranchValidate(Mutation):
 
         fields = extract_graphql_fields(info=info)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchMerge(Mutation):
@@ -315,4 +319,4 @@ class BranchMerge(Mutation):
         fields = extract_graphql_fields(info=info)
         ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)

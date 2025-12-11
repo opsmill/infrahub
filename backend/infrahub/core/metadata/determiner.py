@@ -14,8 +14,6 @@ class MetadataDeterminer:
         Args:
             node_fields: The node fields requested in the query.
             metadata_fields: The metadata fields requested for the node (e.g., created_at, updated_at).
-
-        All attribute-level metadata is combined and all relationship-level metadata is combined.
         """
         node_metadata_options = MetadataOptions.NONE
         metadata_fields = metadata_fields or {}

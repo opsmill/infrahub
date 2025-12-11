@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import DateTime, Field, ObjectType, String
+from graphene import ObjectType
 from graphene.types.objecttype import ObjectTypeOptions
 
 from infrahub import config
 
 if TYPE_CHECKING:
+    from infrahub.core.node.standard import StandardNodeQueryFields
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -15,24 +16,7 @@ class InfrahubObjectTypeOptions(ObjectTypeOptions):
     model = None
 
 
-class InfrahubNodeMetaObject(ObjectType):
-    created_at = DateTime(required=False, description="Date/Time the object has been created")
-    created_by = String(
-        required=False, description="UUID of the user that created the object, even if the user is later deleted"
-    )
-    updated_by = String(
-        required=False, description="UUID of the user that last modified the object, even if the user is later deleted"
-    )
-    updated_at = DateTime(
-        required=False, description="Date/Time when the object was last modified by a user or a system task"
-    )
-
-
-class InfrahubNodeMeta(ObjectType):
-    node_metadata = Field(InfrahubNodeMetaObject, required=False)
-
-
-class InfrahubObjectType(InfrahubNodeMeta):
+class InfrahubObjectType(ObjectType):
     @classmethod
     def __init_subclass_with_meta__(cls, model=None, interfaces=(), _meta=None, **options) -> None:
         if not _meta:
@@ -43,7 +27,9 @@ class InfrahubObjectType(InfrahubNodeMeta):
         super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
 
     @classmethod
-    async def get_list(cls, fields: dict[str, Any], graphql_context: GraphqlContext, **kwargs) -> list[dict[str, Any]]:
+    async def get_list(
+        cls, fields: StandardNodeQueryFields, graphql_context: GraphqlContext, **kwargs
+    ) -> list[dict[str, Any]]:
         async with graphql_context.db.session(database=config.SETTINGS.database.database_name) as db:
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 

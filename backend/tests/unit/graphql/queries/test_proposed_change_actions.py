@@ -39,12 +39,16 @@ PROPOSED_CHANGE_META_DATA_QUERY = """
                     id
                     name {
                         value
-                        updated_by
+                        updated_by {
+                            id
+                        }
                         updated_at
                     }
                     description {
                         value
-                        updated_by
+                        updated_by {
+                            id
+                        }
                         updated_at
                     }
                     reviewers {
@@ -56,12 +60,16 @@ PROPOSED_CHANGE_META_DATA_QUERY = """
                             node {
                                 name {
                                     value
-                                    updated_by
+                                    updated_by {
+                                        id
+                                    }
                                     updated_at
                                 }
                                 description {
                                     value
-                                    updated_by
+                                    updated_by {
+                                        id
+                                    }
                                     updated_at
                                 }
                             }
@@ -298,6 +306,9 @@ async def test_proposed_change_query_meta_data(
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
 
+    initial_user = "bob"
+    update_user = "alice"
+
     proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
     await proposed_change.new(
         db=db,
@@ -307,7 +318,9 @@ async def test_proposed_change_query_meta_data(
         source_branch=branch_name,
         state="open",
     )
-    await proposed_change.save(db=db)
+    await proposed_change.save(db=db, user_id=initial_user)
+    proposed_change.description.value = "updated description"
+    await proposed_change.save(db=db, user_id=update_user)
 
     service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
 
@@ -323,11 +336,11 @@ async def test_proposed_change_query_meta_data(
 
     for prc in response.data["CoreProposedChange"]["edges"]:
         assert prc["node"]["name"]["value"]
-        assert prc["node"]["name"]["updated_by"]
+        assert prc["node"]["name"]["updated_by"]["id"] == initial_user
         assert prc["node"]["name"]["updated_at"]
 
         assert prc["node"]["description"]["value"]
-        assert prc["node"]["description"]["updated_by"]
+        assert prc["node"]["description"]["updated_by"]["id"] == update_user
         assert prc["node"]["description"]["updated_at"]
 
         assert prc["node_metadata"]["created_at"]

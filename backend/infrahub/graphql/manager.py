@@ -23,6 +23,7 @@ from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutatio
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
+from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
@@ -336,8 +337,8 @@ class GraphQLSchemaManager:
         account_type = self.get_type(name=InfrahubKind.GENERICACCOUNT)
         self.define_node_metadata(account_type=account_type)
         self.define_relationship_metadata(account_type=account_type)
-        node_metadata = self.get_type(name="InfrahubNodeMetadata")
-        relationship_metadata = self.get_type(name="InfrahubRelationshipMetadata")
+        node_metadata = self.get_type(name=NODE_METADATA_TYPE)
+        relationship_metadata = self.get_type(name=RELATIONSHIP_METADATA_TYPE)
 
         # Complete the CoreNode interface (edged/paginated) now that node_metadata exists
         self._complete_node_interface(node_metadata=node_metadata)
@@ -347,6 +348,7 @@ class GraphQLSchemaManager:
             gql_type = self.get_type(name=data_type.get_graphql_type_name())
             gql_type._meta.fields["source"] = graphene.Field(data_source)
             gql_type._meta.fields["owner"] = graphene.Field(data_owner)
+            gql_type._meta.fields["updated_by"] = graphene.Field(account_type, required=False)
 
         # Pass 2: Generate edged/paginated objects for all GenericSchema interfaces
         for node_schema in full_schema.values():
@@ -659,10 +661,8 @@ class GraphQLSchemaManager:
         self.set_type(name=type_name, graphql_type=relationship_property)
 
     def define_node_metadata(self, account_type: type[InfrahubObject]) -> None:
-        type_name = "InfrahubNodeMetadata"
-
         meta_attrs = {
-            "name": type_name,
+            "name": NODE_METADATA_TYPE,
             "description": "Defines node metadata information",
         }
 
@@ -674,15 +674,13 @@ class GraphQLSchemaManager:
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
-        node_metadata = type(type_name, (graphene.ObjectType,), main_attrs)
+        node_metadata = type(NODE_METADATA_TYPE, (graphene.ObjectType,), main_attrs)
 
-        self.set_type(name=type_name, graphql_type=node_metadata)
+        self.set_type(name=NODE_METADATA_TYPE, graphql_type=node_metadata)
 
     def define_relationship_metadata(self, account_type: type[InfrahubObject]) -> None:
-        type_name = "InfrahubRelationshipMetadata"
-
         meta_attrs = {
-            "name": type_name,
+            "name": RELATIONSHIP_METADATA_TYPE,
             "description": "Defines relationship metadata information",
         }
 
@@ -694,9 +692,9 @@ class GraphQLSchemaManager:
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
-        relationship_metadata = type(type_name, (graphene.ObjectType,), main_attrs)
+        relationship_metadata = type(RELATIONSHIP_METADATA_TYPE, (graphene.ObjectType,), main_attrs)
 
-        self.set_type(name=type_name, graphql_type=relationship_metadata)
+        self.set_type(name=RELATIONSHIP_METADATA_TYPE, graphql_type=relationship_metadata)
 
     def generate_graphql_mutations(
         self,
