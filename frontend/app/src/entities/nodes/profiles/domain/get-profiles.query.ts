@@ -1,34 +1,29 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
+import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { type GetProfilesParams, getProfiles } from "@/entities/profiles/domain/get-profiles";
-import { profilesQueryKeys } from "@/entities/profiles/domain/profiles.query-keys";
-import type { ProfileQueryParams } from "@/entities/profiles/types";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { type GetProfilesParams, getProfiles } from "@/entities/nodes/profiles/domain/get-profiles";
 
 export function getProfilesQueryOptions(params: GetProfilesParams) {
   return queryOptions({
-    queryKey: profilesQueryKeys.list(params),
+    queryKey: objectQueryKeys.profiles({ ...params, objectKind: params.schema.kind! }),
     queryFn: () => getProfiles(params),
-    enabled: params.profiles.length > 0,
   });
 }
 
-export interface UseGetProfilesParams {
-  profiles: ProfileQueryParams[];
-}
-
-export const useGetProfiles = (params: UseGetProfilesParams) => {
+export const useGetProfiles = (params: Omit<GetProfilesParams, keyof ContextParams>) => {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
     getProfilesQueryOptions({
-      ...params,
       branchName: currentBranch.name,
       atDate: timeMachineDate,
+      ...params,
     })
   );
 };

@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
-import { useEffect, useId, useMemo } from "react";
+import { useEffect, useId } from "react";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -20,13 +19,8 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-} from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { useGetProfiles } from "@/entities/profiles/domain/get-profiles.query";
-import type { ProfileData, ProfileQueryParams } from "@/entities/profiles/types";
-import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useGetProfiles } from "@/entities/nodes/profiles/domain/get-profiles.query";
+import type { ProfileData } from "@/entities/nodes/profiles/types";
 import type { NodeSchema } from "@/entities/schema/types";
 
 type ProfilesSelectorProps = {
@@ -43,64 +37,10 @@ export const ProfilesSelector = ({
   onChange,
 }: ProfilesSelectorProps) => {
   const id = useId();
-
-  const genericSchemas = useAtomValue(genericSchemasAtom);
-  const profileSchemas = useAtomValue(profileSchemasAtom);
-
-  const nodeGenerics = schema?.inherit_from ?? [];
-
-  // Get all available generic profiles
-  const nodeGenericsProfiles = nodeGenerics
-    // Find all generic schema
-    .map((nodeGeneric) => genericSchemas.find((generic) => generic.kind === nodeGeneric))
-    // Filter for generate_profile ones
-    .filter((generic) => generic?.generate_profile)
-    // Get only the kind
-    .map((generic) => generic?.kind)
-    .filter(Boolean);
-
-  // The profiles should include the current object profile + all generic profiles
-  const kindList = [schema.kind, ...nodeGenericsProfiles];
-
-  // Add attributes and relationships for each profile to get the values in the form
-  const profilesQueryParams = useMemo<ProfileQueryParams[]>(() => {
-    return kindList
-      .map((profile) => {
-        // Get the profile schema for the current kind
-        const profileSchema = profileSchemas.find(
-          (profileSchema) => profileSchema.name === profile?.replace("Template", "")
-        );
-
-        if (!profileSchema?.kind) return null;
-
-        // Get attributes for query + form data
-        const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
-
-        // Get relationships for query + form data
-        const relationships = getObjectRelationships({ schema: profileSchema, forProfiles: true });
-
-        if (!attributes.length && !relationships.length) return null;
-
-        return {
-          name: profileSchema.kind,
-          attributes: attributes.map((attr) => ({ name: attr.name, kind: attr.kind })),
-          relationships: relationships.map((rel) => ({
-            name: rel.name,
-            paginated: rel.cardinality === "many",
-          })),
-        };
-      })
-      .filter((profile): profile is ProfileQueryParams => profile !== null);
-  }, [kindList, profileSchemas]);
-
-  const {
-    data: profiles = [],
-    error,
-    isLoading,
-  } = useGetProfiles({ profiles: profilesQueryParams });
+  const { data: profiles = [], error, isPending } = useGetProfiles({ schema });
 
   useEffect(() => {
-    if (!value && defaultValue && profiles.length && !isLoading) {
+    if (!value && defaultValue && profiles.length && !isPending) {
       const defaultProfiles = defaultValue
         .map((defaultProfile) => {
           return profiles.find((profile) => {
@@ -113,12 +53,9 @@ export const ProfilesSelector = ({
 
       onChange(defaultProfiles);
     }
-  }, [defaultValue, isLoading, profiles, value, onChange]);
+  }, [defaultValue, isPending, profiles, value, onChange]);
 
-  if (!profilesQueryParams.length)
-    return <ErrorScreen message="Something went wrong while fetching profiles" />;
-
-  if (isLoading) return <LoadingIndicator className="p-4" />;
+  if (isPending) return <LoadingIndicator className="p-4" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
@@ -171,7 +108,7 @@ export const ProfilesSelector = ({
               ))}
             </div>
 
-            {isLoading && <Spinner className="ml-auto" />}
+            {isPending && <Spinner className="ml-auto" />}
 
             <button id={id} type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
               <Icon icon="mdi:unfold-more-horizontal" />

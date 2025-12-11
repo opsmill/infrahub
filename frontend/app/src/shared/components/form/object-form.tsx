@@ -18,8 +18,8 @@ import {
 } from "@/shared/config/constants";
 
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { ProfileData } from "@/entities/nodes/profiles/types";
 import type { NodeObject } from "@/entities/nodes/types";
-import type { ProfileData } from "@/entities/profiles/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
