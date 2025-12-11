@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
-import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 
@@ -20,7 +19,7 @@ import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
-import { branchesState } from "@/entities/branches/stores";
+import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 
@@ -90,7 +89,7 @@ function BranchSelect({
   setPopoverOpen: (open: boolean) => void;
   setFormOpen: (displayForm: DisplayForm) => void;
 }) {
-  const branches = useAtomValue(branchesState);
+  const { data: branches = [] } = useGetBranches();
   const { setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
 
