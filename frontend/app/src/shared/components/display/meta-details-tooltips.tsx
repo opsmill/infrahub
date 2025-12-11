@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
 import type { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
@@ -13,15 +13,13 @@ import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { isSourceFromProfile } from "@/entities/schema/utils/is-source-from-profile";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface MetaDetailsTooltipProps {
   header?: React.ReactNode;
   updatedAt: AnyAttribute["updated_at"];
   source?: NodeCore | null;
   owner?: NodeCore | null;
-  isFromProfile?: AnyAttribute["is_from_profile"];
   isProtected: AnyAttribute["is_protected"];
 }
 
@@ -30,24 +28,22 @@ export default function MetaDetailsTooltip({
   updatedAt,
   source,
   owner,
-  isFromProfile,
   isProtected,
 }: MetaDetailsTooltipProps) {
-  const profileSchemas = useAtomValue(profileSchemasAtom);
-
-  // If isFromProfile is not provided, derive it from the source's __typename by checking against profile schemas
-  const sourceFromProfile =
-    isFromProfile ?? isSourceFromProfile(source?.__typename, profileSchemas);
+  const { isProfile, isTemplate } = useSchema(source?.__typename);
 
   const items = [
     {
       name: "Source",
       value: source ? (
         <Link to={getObjectDetailsUrl(source.__typename, source.id)}>
-          {sourceFromProfile ? (
+          {isProfile ? (
             <Badge variant="green" className="font-normal hover:underline">
-              <Icon icon="mdi:shape-plus-outline" className="mr-1" />
-              {getNodeLabel(source)}
+              <Icon icon="mdi:shape-plus-outline" className="mr-1" /> {getNodeLabel(source)}
+            </Badge>
+          ) : isTemplate ? (
+            <Badge variant="blue" className="font-normal hover:underline">
+              <FileBoxIcon className="mr-1 size-3" /> {getNodeLabel(source)}
             </Badge>
           ) : (
             getNodeLabel(source)
