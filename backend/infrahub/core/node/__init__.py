@@ -988,18 +988,20 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+            if deleted_attribute := await attr.delete(db=db, at=delete_at, user_id=user_id):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._human_friendly_id:
             if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db,
+                user_id=user_id,
+                at=delete_at,
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._display_label:
             if deleted_attribute := await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db, at=delete_at, user_id=user_id
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 

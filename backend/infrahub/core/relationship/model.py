@@ -1159,6 +1159,7 @@ class RelationshipManager:
         | None,
         db: InfrahubDatabase,
         process_delete: bool = True,
+        user_id: str = SYSTEM_USER_ID,
     ) -> bool:
         """Replace and Update the list of relationships with this one."""
         if not isinstance(data, list):
@@ -1189,7 +1190,7 @@ class RelationshipManager:
                 if previous_relationships:
                     if process_delete:
                         for rel in previous_relationships.values():
-                            await rel.delete(db=db)
+                            await rel.delete(db=db, user_id=user_id)
                     changed = True
                 continue
 

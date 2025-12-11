@@ -122,6 +122,17 @@ async def test_query_NodeListGetInfoQuery(
         assert node.updated_at == node.created_at
         assert node.updated_by == SYSTEM_USER_ID
 
+    query_with_metadata = await NodeListGetInfoQuery.init(
+        db=db, branch=branch, branch_agnostic=True, ids=ids, include_metadata=MetadataOptions.USER_TIMESTAMPS
+    )
+    await query_with_metadata.execute(db=db)
+    async for node in query_with_metadata.get_nodes(db=db, duplicate=False):
+        assert node.node_uuid in ids
+        assert node.created_at < right_now
+        assert node.created_by == SYSTEM_USER_ID
+        assert node.updated_at == node.created_at
+        assert node.updated_by == SYSTEM_USER_ID
+
 
 async def test_query_NodeListGetInfoQuery_renamed(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
@@ -251,6 +262,38 @@ async def test_query_NodeListGetAttributeQuery(db: InfrahubDatabase, base_datase
     assert len(list(query.get_results())) == 2
 
 
+async def test_query_NodeListGetAttributeQuery_branch_agnostic(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_john_main,
+    person_jim_main,
+) -> None:
+    right_now = Timestamp()
+    ids = [person_john_main.id, person_jim_main.id]
+
+    # Test without metadata first
+    query = await NodeListGetAttributeQuery.init(db=db, ids=ids, branch=default_branch, branch_agnostic=True)
+    await query.execute(db=db)
+    assert sorted(query.get_attributes_group_by_node().keys()) == sorted(ids)
+
+    # Test with updated metadata
+    query_with_metadata = await NodeListGetAttributeQuery.init(
+        db=db,
+        ids=ids,
+        branch=default_branch,
+        branch_agnostic=True,
+        include_metadata=MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY,
+    )
+    await query_with_metadata.execute(db=db)
+    attrs_by_node = query_with_metadata.get_attributes_group_by_node()
+    for node_id in ids:
+        assert node_id in attrs_by_node
+        for attr in attrs_by_node[node_id].attrs.values():
+            assert attr.updated_at is not None
+            assert attr.updated_at < right_now
+            assert attr.updated_by == SYSTEM_USER_ID
+
+
 async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, base_dataset_02) -> None:
     default_branch = await registry.get_branch(db=db, branch="main")
     branch1 = await registry.get_branch(db=db, branch="branch1")
@@ -312,6 +355,50 @@ async def test_query_NodeListGetRelationshipsQuery(
         node_id=person_jack_tags_main.id, rel_name="builtintag__testperson", direction=RelationshipDirection.INBOUND
     )
     assert peer_ids == {tag_blue_main.id, tag_red_main.id}
+
+
+async def test_query_NodeListGetRelationshipsQuery_branch_agnostic(
+    db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main, tag_blue_main, tag_red_main
+) -> None:
+    right_now = Timestamp()
+
+    # Test without metadata first
+    query = await NodeListGetRelationshipsQuery.init(
+        db=db,
+        ids=[person_jack_tags_main.id],
+        branch=default_branch,
+        branch_agnostic=True,
+    )
+    await query.execute(db=db)
+    grouped_peer_nodes = query.get_peers_group_by_node()
+    assert grouped_peer_nodes.has_node(person_jack_tags_main.id)
+    peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=person_jack_tags_main.id, rel_name="builtintag__testperson", direction=RelationshipDirection.INBOUND
+    )
+    assert peer_ids == {tag_blue_main.id, tag_red_main.id}
+
+    # Test with updated metadata
+    query_with_metadata = await NodeListGetRelationshipsQuery.init(
+        db=db,
+        ids=[person_jack_tags_main.id],
+        branch=default_branch,
+        branch_agnostic=True,
+        include_metadata=MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY,
+    )
+    await query_with_metadata.execute(db=db)
+    grouped_peer_nodes = query_with_metadata.get_peers_group_by_node()
+    assert grouped_peer_nodes.has_node(person_jack_tags_main.id)
+    for tag in [tag_blue_main, tag_red_main]:
+        metadata_map = grouped_peer_nodes.get_metadata_map(
+            node_id=person_jack_tags_main.id,
+            rel_name="builtintag__testperson",
+            direction=RelationshipDirection.INBOUND,
+            peer_id=tag.id,
+        )
+        assert MetadataOptions.UPDATED_AT in metadata_map
+        assert metadata_map[MetadataOptions.UPDATED_AT] < right_now
+        assert MetadataOptions.UPDATED_BY in metadata_map
+        assert metadata_map[MetadataOptions.UPDATED_BY] == SYSTEM_USER_ID
 
 
 async def test_query_NodeListGetRelationshipsQuery_hierarchical(

@@ -47,11 +47,11 @@ class MetadataDeterminer:
             if not (field_metadata_options & MetadataOptions.CREATED_BY) and "created_by" in metadata_properties_dict:
                 field_metadata_options |= MetadataOptions.CREATED_BY
             if not (field_metadata_options & MetadataOptions.SOURCE) and (
-                "source" in metadata_properties_dict or "_relation__owner" in metadata_properties_dict
+                "source" in metadata_properties_dict or "_relation__source" in metadata_properties_dict
             ):
                 field_metadata_options |= MetadataOptions.SOURCE
             if not (field_metadata_options & MetadataOptions.OWNER) and (
-                "owner" in metadata_properties_dict or "_relation__source" in metadata_properties_dict
+                "owner" in metadata_properties_dict or "_relation__owner" in metadata_properties_dict
             ):
                 field_metadata_options |= MetadataOptions.OWNER
             if is_relationship:
