@@ -21,6 +21,10 @@ export const getProfiles: GetProfiles = async ({ schema, branchName, atDate }) =
     )
     .filter((profileSchema) => !!profileSchema);
 
+  if (inheritedProfileSchemas.length === 0) {
+    return [];
+  }
+
   const { data, errors } = await getProfilesFromApi({
     profileSchemas: inheritedProfileSchemas,
     branchName,
