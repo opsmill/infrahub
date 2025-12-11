@@ -394,3 +394,21 @@ async def account_bill(db: InfrahubDatabase, default_branch: Branch) -> Node:
     await bill.new(db=db, name="bill", password=str(uuid4()))
     await bill.save(db=db)
     return bill
+
+
+@pytest.fixture
+def branch_partial_match_query() -> str:
+    return """
+    query($name: String, $partial_match: Boolean = false) {
+      InfrahubBranch(name__value: $name, partial_match: $partial_match) {
+        count
+        edges {
+          node {
+            name {
+              value
+            }
+          }
+        }
+      }
+    }
+    """

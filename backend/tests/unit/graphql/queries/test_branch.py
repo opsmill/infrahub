@@ -1,5 +1,7 @@
 import operator
 
+import pytest
+
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -387,3 +389,68 @@ class TestBranchQuery(TestInfrahubApp):
             assert branch["node"]["name"]["value"]
             assert branch["node"]["description"]["value"]
             assert branch["node_metadata"]["created_at"]
+
+    @pytest.mark.parametrize(
+        "search_term,partial_match,expected_count",
+        [
+            ("match", True, 10),
+            ("branch-zzz", True, 0),
+            ("auth", False, 0),
+            ("main", False, 1),
+            ("MAIN", False, 0),
+            ("MaTcH", True, 10),
+        ],
+    )
+    async def test_partial_match_filter(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        branch_partial_match_query,
+        service,
+        search_term: str,
+        session_admin,
+        partial_match: bool,
+        expected_count: int,
+    ) -> None:
+        for i in range(10):
+            create_branch_query = """
+            mutation($branch_name: String!, $branch_description: String!) {
+                BranchCreate(data: { name: $branch_name, description: $branch_description }) {
+                    ok
+                    object {
+                        id
+                        name
+                    }
+                }
+            }
+            """
+
+            gql_params = await prepare_graphql_params(
+                db=db,
+                branch=default_branch,
+                account_session=session_admin,
+                service=service,
+            )
+
+            branch_name = f"match-branch-{i}"
+            await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"branch_name": branch_name, "branch_description": f"sample description {i}"},
+            )
+
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+
+        result = await graphql(
+            schema=gql_params.schema,
+            source=branch_partial_match_query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"name": search_term, "partial_match": partial_match},
+        )
+
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubBranch"]["count"] == expected_count

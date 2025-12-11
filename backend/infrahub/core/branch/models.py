@@ -158,8 +158,15 @@ class Branch(StandardNode):
         name: str | None = None,
         **kwargs: Any,
     ) -> list[Self]:
+        partial_match: bool = kwargs.pop("partial_match", False)
         query: Query = await BranchNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+            db=db,
+            node_class=cls,
+            ids=ids,
+            node_name=name,
+            limit=limit,
+            partial_match=partial_match,
+            **kwargs,
         )
         await query.execute(db=db)
 
@@ -172,10 +179,18 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
+        partial_match: bool = False,
         **kwargs: Any,
     ) -> int:
         query: Query = await BranchNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, exclude_global=True, **kwargs
+            db=db,
+            node_class=cls,
+            ids=ids,
+            node_name=name,
+            limit=limit,
+            exclude_global=True,
+            partial_match=partial_match,
+            **kwargs,
         )
         return await query.count(db=db)
 
