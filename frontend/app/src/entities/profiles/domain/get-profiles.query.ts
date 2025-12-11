@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getProfiles, type GetProfilesParams } from "@/entities/profiles/domain/get-profiles";
+import { type GetProfilesParams, getProfiles } from "@/entities/profiles/domain/get-profiles";
 import { profilesQueryKeys } from "@/entities/profiles/domain/profiles.query-keys";
 import type { ProfileQueryParams } from "@/entities/profiles/types";
 
