@@ -8,7 +8,7 @@ import type { GenericSchema, NodeSchema, ProfileSchema } from "@/entities/schema
 export interface GetProfilesParams extends ContextParams {
   schema: NodeSchema;
 }
-export type GetProfiles = (schema: GetProfilesParams) => Promise<ProfileData[]>;
+export type GetProfiles = (params: GetProfilesParams) => Promise<ProfileData[]>;
 
 export const getProfiles: GetProfiles = async ({ schema, branchName, atDate }) => {
   const inheritedKinds = schema.inherit_from ?? [];
