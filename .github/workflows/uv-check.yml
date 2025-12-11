@@ -22,7 +22,7 @@ jobs:
       - name: "Set up Python"
         uses: "actions/setup-python@v6"
         with:
-          python-version: "3.14"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
