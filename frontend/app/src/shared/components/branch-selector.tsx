@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
+import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
 import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
@@ -38,7 +38,7 @@ export default function BranchSelector() {
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
 
   useEffect(() => {
-    if (isOpen) queryClient.invalidateQueries(getBranchesQueryOptions());
+    if (isOpen) queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
   }, [isOpen]);
 
   return (
