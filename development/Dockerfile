@@ -1,7 +1,7 @@
 # ****************************************************************
 # STAGE : Base Python Image
 # ****************************************************************
-ARG PYTHON_VER=3.14
+ARG PYTHON_VER=3.14.2
 ARG UV_VER
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 

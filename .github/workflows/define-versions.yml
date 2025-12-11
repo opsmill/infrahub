@@ -6,6 +6,8 @@ on:
     outputs:
       UV_VERSION:
         value: "0.9.9"
+      PYTHON_VERSION:
+        value: "3.14.2"
 
 jobs:
   prepare:

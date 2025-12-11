@@ -1,4 +1,4 @@
-FROM python:3.14-bookworm
+FROM python:3.14.2
 
 RUN apt-get remove -yq docker.io docker-doc docker-compose podman-docker containerd runc 2>&1 || true
 
