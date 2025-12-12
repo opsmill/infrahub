@@ -39,6 +39,7 @@ def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field])
         "source",
         "permissions",
         "updated_at",
+        "updated_by",
     ]
     included = ["binary_address"] if include_binary_address else []
     for name in fields.keys():

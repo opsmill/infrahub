@@ -164,8 +164,9 @@ async def default_paginated_list_resolver(
             key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
         }
 
-        edges = fields.get("edges", {})
+        edges: dict[str, Any] = fields.get("edges", {})
         node_fields = edges.get("node", {})
+        metadata_fields: dict[str, Any] = edges.get("node_metadata", {})
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
 
@@ -190,6 +191,7 @@ async def default_paginated_list_resolver(
                 schema=schema,
                 filters=filters or None,
                 fields=node_fields,
+                metadata_fields=metadata_fields,
                 at=graphql_context.at,
                 branch=graphql_context.branch,
                 limit=limit,
@@ -221,7 +223,8 @@ async def default_paginated_list_resolver(
                         fields=node_fields,
                         related_node_ids=graphql_context.related_node_ids,
                         permissions=permission_set,
-                    )
+                    ),
+                    "node_metadata": await obj._build_meta_response("node_metadata", edges),
                 }
                 for obj in objs
             ]

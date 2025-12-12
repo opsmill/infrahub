@@ -10,6 +10,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
+from infrahub.graphql.types.node import InfrahubObjectWithoutMeta
 
 
 async def test_input_type_registration() -> None:
@@ -129,11 +130,11 @@ async def test_generate_object_types(
     relationship_property = gqlm.get_type(name="RelationshipProperty")
 
     assert issubclass(car, InfrahubObject)
-    assert issubclass(edged_car, InfrahubObject)
-    assert issubclass(nested_edged_car, InfrahubObject)
+    assert issubclass(edged_car, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_car, InfrahubObjectWithoutMeta)
     assert issubclass(person, InfrahubObject)
-    assert issubclass(edged_person, InfrahubObject)
-    assert issubclass(nested_edged_person, InfrahubObject)
+    assert issubclass(edged_person, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_person, InfrahubObjectWithoutMeta)
     assert issubclass(relationship_property, graphene.ObjectType)
 
     assert sorted(car._meta.fields.keys()) == [
@@ -153,9 +154,14 @@ async def test_generate_object_types(
         "transmission",
     ]
 
-    assert sorted(edged_car._meta.fields.keys()) == ["node"]
+    assert sorted(edged_car._meta.fields.keys()) == ["node", "node_metadata"]
     assert str(edged_car._meta.fields["node"].type) == "TestCar"
-    assert sorted(nested_edged_car._meta.fields.keys()) == ["node", "properties"]
+    assert sorted(nested_edged_car._meta.fields.keys()) == [
+        "node",
+        "node_metadata",
+        "properties",
+        "relationship_metadata",
+    ]
     assert str(nested_edged_car._meta.fields["node"].type) == "TestCar"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
@@ -172,9 +178,14 @@ async def test_generate_object_types(
         "profiles",
         "subscriber_of_groups",
     ]
-    assert sorted(edged_person._meta.fields.keys()) == ["node"]
+    assert sorted(edged_person._meta.fields.keys()) == ["node", "node_metadata"]
     assert str(edged_person._meta.fields["node"].type) == "TestPerson"
-    assert sorted(nested_edged_person._meta.fields.keys()) == ["node", "properties"]
+    assert sorted(nested_edged_person._meta.fields.keys()) == [
+        "node",
+        "node_metadata",
+        "properties",
+        "relationship_metadata",
+    ]
     assert str(nested_edged_person._meta.fields["node"].type) == "TestPerson"
     assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
     assert sorted(relationship_property._meta.fields.keys()) == [

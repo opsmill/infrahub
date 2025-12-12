@@ -8,6 +8,7 @@ from graphene.types.objecttype import ObjectTypeOptions
 from infrahub import config
 
 if TYPE_CHECKING:
+    from infrahub.core.node.standard import StandardNodeQueryFields
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -26,7 +27,9 @@ class InfrahubObjectType(ObjectType):
         super().__init_subclass_with_meta__(_meta=_meta, interfaces=interfaces, **options)
 
     @classmethod
-    async def get_list(cls, fields: dict[str, Any], graphql_context: GraphqlContext, **kwargs) -> list[dict[str, Any]]:
+    async def get_list(
+        cls, fields: StandardNodeQueryFields, graphql_context: GraphqlContext, **kwargs
+    ) -> list[dict[str, Any]]:
         async with graphql_context.db.session(database=config.SETTINGS.database.database_name) as db:
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 

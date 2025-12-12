@@ -6,19 +6,24 @@ from infrahub.core.metadata.model import MetadataQueryOptions
 
 
 class MetadataDeterminer:
-    async def determine_metadata_for_fields(self, node_fields: dict[str, Any]) -> MetadataQueryOptions:
-        """Determine metadata required based on fields requested
+    async def determine_metadata_for_fields(
+        self, node_fields: dict[str, Any], metadata_fields: dict[str, Any] | None = None
+    ) -> MetadataQueryOptions:
+        """Determine metadata required based on fields requested.
 
-        All attribute-level metadata is combined and all relationship-level metadata is combined
+        Args:
+            node_fields: The node fields requested in the query.
+            metadata_fields: The metadata fields requested for the node (e.g., created_at, updated_at).
         """
         node_metadata_options = MetadataOptions.NONE
-        if "_updated_at" in node_fields or "updated_at" in node_fields:
+        metadata_fields = metadata_fields or {}
+        if "_updated_at" in metadata_fields or "updated_at" in metadata_fields:
             node_metadata_options |= MetadataOptions.UPDATED_AT
-        if "updated_by" in node_fields:
+        if "updated_by" in metadata_fields:
             node_metadata_options |= MetadataOptions.UPDATED_BY
-        if "created_at" in node_fields:
+        if "created_at" in metadata_fields:
             node_metadata_options |= MetadataOptions.CREATED_AT
-        if "created_by" in node_fields:
+        if "created_by" in metadata_fields:
             node_metadata_options |= MetadataOptions.CREATED_BY
 
         attribute_metadata_options = MetadataOptions.NONE

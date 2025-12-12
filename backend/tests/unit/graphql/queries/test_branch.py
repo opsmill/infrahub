@@ -9,7 +9,7 @@ from tests.helpers.test_app import TestInfrahubApp
 
 
 def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
-    exempted_fields = ("id", "created_at")
+    exempted_fields = ("id", "created_at", "node_metadata")
     for field_name, field_value in BranchType._meta.fields.items():
         if field_name in exempted_fields:
             continue
@@ -342,3 +342,48 @@ class TestBranchQuery(TestInfrahubApp):
         assert all_branches.errors
         assert len(all_branches.errors)
         assert all_branches.errors[0].message == "limit must be >= 1"
+
+    async def test_paginated_branch_query_meta_data(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema,
+        session_admin,
+        client,
+        service,
+    ) -> None:
+        query = """
+            query {
+                InfrahubBranch {
+                    edges {
+                        node_metadata {
+                            created_at
+                            updated_at
+                        }
+                        node {
+                            id
+                            name {
+                                value
+                            }
+                            description {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        all_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+        assert all_branches.errors is None
+        assert all_branches.data
+
+        for branch in all_branches.data["InfrahubBranch"]["edges"]:
+            assert branch["node"]["name"]["value"]
+            assert branch["node"]["description"]["value"]
+            assert branch["node_metadata"]["created_at"]

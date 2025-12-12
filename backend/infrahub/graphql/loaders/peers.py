@@ -21,6 +21,7 @@ class QueryPeerParams:
     schema: RelationshipSchema
     filters: dict[str, Any]
     fields: dict | None = None
+    metadata_fields: dict | None = None
     at: Timestamp | str | None = None
     branch_agnostic: bool = False
     include_metadata: MetadataOptions = MetadataOptions.NONE
@@ -29,12 +30,16 @@ class QueryPeerParams:
         frozen_fields: frozenset | None = None
         if self.fields:
             frozen_fields = to_frozen_set(self.fields)
+        frozen_metadata_fields: frozenset | None = None
+        if self.metadata_fields:
+            frozen_metadata_fields = to_frozen_set(self.metadata_fields)
         frozen_filters = to_frozen_set(self.filters)
         timestamp = Timestamp(self.at)
         branch = self.branch.name if isinstance(self.branch, Branch) else self.branch
         hash_str = "|".join(
             [
                 str(hash(frozen_fields)),
+                str(hash(frozen_metadata_fields)),
                 str(hash(frozen_filters)),
                 timestamp.to_string(),
                 branch,
@@ -62,6 +67,7 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
                 schema=self.query_params.schema,
                 filters=self.query_params.filters,
                 fields=self.query_params.fields,
+                metadata_fields=self.query_params.metadata_fields,
                 at=self.query_params.at,
                 branch=self.query_params.branch,
                 branch_agnostic=self.query_params.branch_agnostic,

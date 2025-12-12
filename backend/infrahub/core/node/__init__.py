@@ -1048,10 +1048,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
-        if fields and isinstance(fields, dict):
-            field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
-        else:
-            field_names = self._schema.attribute_names + ["__typename", "display_label"]
+        field_names = (
+            [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+            if fields and isinstance(fields, dict)
+            else self._schema.attribute_names + ["__typename", "display_label"]
+        )
 
         for field_name in field_names:
             if field_name == "__typename":
@@ -1119,6 +1120,28 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 continue
 
         return response
+
+    async def _build_meta_response(self, field_name: str, fields: dict) -> dict:
+        data = {}
+        for meta_field in fields.get(field_name, {}).keys():
+            if meta_field == "created_at":
+                created_at = self._get_created_at()
+                data["created_at"] = created_at.to_datetime() if created_at else None
+
+            if meta_field == "created_by":
+                data["created_by"] = (
+                    {"id": self._get_created_by(), "__kind__": "CoreAccount"} if self._get_created_by() else None
+                )
+
+            if meta_field == "updated_by":
+                data["updated_by"] = (
+                    {"id": self._get_updated_by(), "__kind__": "CoreAccount"} if self._get_updated_by() else None
+                )
+
+            if meta_field == "updated_at":
+                updated_at = self._get_updated_at()
+                data["updated_at"] = updated_at.to_datetime() if updated_at else None
+        return data
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import ID, Field, Int, List, NonNull, String
 
+from infrahub.core.node.standard import StandardNodeQueryFields
 from infrahub.core.registry import registry
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
@@ -19,7 +20,9 @@ async def branch_resolver(
     **kwargs: Any,
 ) -> list[dict[str, Any]]:
     fields = extract_graphql_fields(info)
-    return await BranchType.get_list(graphql_context=info.context, fields=fields, exclude_global=True, **kwargs)
+    return await BranchType.get_list(
+        graphql_context=info.context, fields=StandardNodeQueryFields(node=fields), exclude_global=True, **kwargs
+    )
 
 
 BranchQueryList = Field(
@@ -48,27 +51,32 @@ async def infrahub_branch_resolver(
     fields = extract_graphql_fields(info)
     result: dict[str, Any] = {}
     if "edges" in fields:
+        query_fields = StandardNodeQueryFields(
+            node=fields.get("edges", {}).get("node", {}),
+            node_metadata=fields.get("edges", {}).get("node_metadata", {}),
+        )
         branches = await InfrahubBranch.get_list(
             graphql_context=info.context,
-            fields=fields.get("edges", {}).get("node", {}),
+            fields=query_fields,
             limit=limit,
             offset=offset,
             name=name__value,
             ids=ids,
             exclude_global=True,
         )
-        result["edges"] = [{"node": branch} for branch in branches]
+        result["edges"] = branches
     if "count" in fields:
         result["count"] = await InfrahubBranchType.get_list_count(
             graphql_context=info.context, name=name__value, ids=ids
         )
 
     if "default_branch" in fields:
-        result["default_branch"] = await InfrahubBranch.get_by_name(
+        default_branch = await InfrahubBranch.get_by_name(
             graphql_context=info.context,
             fields=fields["default_branch"],
             name=registry.default_branch,
         )
+        result["default_branch"] = default_branch["node"]
 
     return result
 

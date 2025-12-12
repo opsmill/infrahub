@@ -69,7 +69,16 @@ class AttributeInterface(InfrahubInterface):
     # owner = Field("DataOwner")
 
 
-class BaseAttribute(ObjectType):
+class InfrahubAttributeMetaObject(ObjectType):
+    # updated_by is dynamically added in GraphQLSchemaManager.generate_object_types()
+    # to use the account_type (CoreGenericAccount) instead of a plain String
+    updated_at = DateTime(
+        required=False,
+        description="Date/Time when the attribute was last modified by a user or a system task",
+    )
+
+
+class BaseAttribute(InfrahubAttributeMetaObject):
     id = Field(String)
     is_from_profile = Field(Boolean)
     permissions = Field(PermissionType, required=False)
