@@ -2,10 +2,12 @@ import operator
 
 import pytest
 
+from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.types import BranchType, InfrahubBranch
+from infrahub.services import InfrahubServices
 from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -405,10 +407,10 @@ class TestBranchQuery(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        branch_partial_match_query,
-        service,
+        branch_partial_match_query: str,
+        service: InfrahubServices,
         search_term: str,
-        session_admin,
+        session_admin: AccountSession,
         partial_match: bool,
         expected_count: int,
     ) -> None:
@@ -433,13 +435,17 @@ class TestBranchQuery(TestInfrahubApp):
             )
 
             branch_name = f"match-branch-{i}"
-            await graphql(
+            branch_result = await graphql(
                 schema=gql_params.schema,
                 source=create_branch_query,
                 context_value=gql_params.context,
                 root_value=None,
                 variable_values={"branch_name": branch_name, "branch_description": f"sample description {i}"},
             )
+            assert branch_result.errors is None
+            assert branch_result.data
+            assert branch_result.data["BranchCreate"]["ok"] is True
+            assert branch_result.data["BranchCreate"]["object"]["name"] == branch_name
 
         gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
 
