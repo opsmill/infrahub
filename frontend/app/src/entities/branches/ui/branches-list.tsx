@@ -9,7 +9,10 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { sortByName } from "@/shared/utils/common";
 
 import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
-import { useGetBranchesPaginated } from "@/entities/branches/domain/get-branches.query";
+import {
+  useGetBranchesCount,
+  useGetBranchesPaginated,
+} from "@/entities/branches/domain/get-branches.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 
@@ -50,16 +53,8 @@ function BranchesListToolbar() {
 
 function BranchesListContent() {
   const [search] = useSearch();
-  const {
-    data,
-    refetch,
-    isPending,
-    error,
-    isRefetching,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useGetBranchesPaginated(search || undefined);
+  const { data, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useGetBranchesPaginated({ branchName: search || undefined });
 
   if (isPending) {
     return <LoadingIndicator />;

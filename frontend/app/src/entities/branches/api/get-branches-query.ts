@@ -36,3 +36,11 @@ query GetBranches($branchName: String, $limit: Int, $offset: Int) {
     }
   }
 `;
+
+export const GET_BRANCHES_COUNT = gql`
+query GetBranchesCount($branchName: String) {
+    InfrahubBranch(name__value: $branchName) {
+      count
+    }
+  }
+`;

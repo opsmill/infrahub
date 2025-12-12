@@ -17,6 +17,7 @@ export type InfrahubBranchNode = {
 
 export type InfrahubBranchResponse = {
   InfrahubBranch?: {
+    count?: number;
     edges: Array<{ node: InfrahubBranchNode }>;
   };
 };

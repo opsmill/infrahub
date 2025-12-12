@@ -13,6 +13,7 @@ import {
   type GetBranchesParams,
   getAllBranches,
   getBranches,
+  getBranchesCount,
 } from "@/entities/branches/domain/get-branches";
 
 type GetBranchesInfiniteQueryOptionsParams = Omit<GetBranchesParams, keyof PaginationParams>;
@@ -53,4 +54,16 @@ export function getAllBranchesQueryOptions() {
 
 export function useGetBranches() {
   return useQuery(getAllBranchesQueryOptions());
+}
+
+// Count query for branches list header badge
+export function getBranchesCountQueryOptions(branchName?: string) {
+  return queryOptions({
+    queryKey: branchesQueryKeys.count(branchName),
+    queryFn: () => getBranchesCount(branchName),
+  });
+}
+
+export function useGetBranchesCount(branchName?: string) {
+  return useQuery(getBranchesCountQueryOptions(branchName));
 }
