@@ -43,6 +43,7 @@ jobs:
             redis_image: "redis:7.2.11"
             rabbitmq_image: "rabbitmq:3.13.7-management"
             postgres_image: "postgres:16-alpine"
+            postgres_datadir: "/var/lib/postgresql/data"
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
@@ -83,6 +84,7 @@ jobs:
           MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
           CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
           POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Initialize Demo
         id: init-demo
@@ -93,6 +95,7 @@ jobs:
           MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
           CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
           POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Check Demo Status
         run: uv run invoke demo.status
@@ -101,6 +104,7 @@ jobs:
           MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
           CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
           POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Load Infra Data
         run: uv run invoke demo.load-infra-data
@@ -110,6 +114,7 @@ jobs:
           MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
           CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
           POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Run infra data patch scripts
         run: uv run invoke demo.run-infra-patch-scripts
@@ -119,6 +124,7 @@ jobs:
           MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
           CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
           POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Set infrahub address
         run: |
