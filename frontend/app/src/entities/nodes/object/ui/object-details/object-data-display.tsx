@@ -81,7 +81,7 @@ function NodeAttributeRow({
   onClickMetadata,
   permission,
 }: NodeAttributeRowProps) {
-  const attributeLabel = attribute.label ?? attribute.name
+  const attributeLabel = attribute.label ?? attribute.name;
   return (
     <ObjectAttributeRow
       name={attributeLabel}
