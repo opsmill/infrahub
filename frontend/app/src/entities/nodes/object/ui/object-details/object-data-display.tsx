@@ -23,7 +23,7 @@ interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
   permission: Permission;
-  onClickMetadata: (attribute: AttributeSchema) => void;
+  onClickMetadata?: (attribute: AttributeSchema) => void;
 }
 
 export function ObjectDataDisplay({
@@ -39,7 +39,7 @@ export function ObjectDataDisplay({
   return (
     <div className="divide-y divide-gray-200">
       {fields.map((field) => {
-        const fieldName = field.name
+        const fieldName = field.name;
         const fieldData = objectData[fieldName];
         if (!fieldData) return null;
 
@@ -72,7 +72,7 @@ interface NodeAttributeRowProps {
   attribute: AttributeSchema;
   attributeData: NodeAttributeWithMetadata;
   permission: Permission;
-  onClickMetadata: (attribute: AttributeSchema) => void;
+  onClickMetadata?: (attribute: AttributeSchema) => void;
 }
 
 function NodeAttributeRow({
