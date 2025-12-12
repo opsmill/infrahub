@@ -158,7 +158,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=prefect
     volumes:
-      - workflow_db:/var/lib/postgresql/data
+      - workflow_db:/var/lib/postgresql/18/docker
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]

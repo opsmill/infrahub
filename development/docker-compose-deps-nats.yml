@@ -47,7 +47,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=prefect
     volumes:
-      - workflow_db:/var/lib/postgresql/data
+      - "workflow_db:${POSTGRES_DATADIR:-/var/lib/postgresql/18/docker}"
     healthcheck:
       test:
         - "CMD-SHELL"
