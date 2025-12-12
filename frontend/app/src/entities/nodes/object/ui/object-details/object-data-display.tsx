@@ -39,13 +39,14 @@ export function ObjectDataDisplay({
   return (
     <div className="divide-y divide-gray-200">
       {fields.map((field) => {
-        const fieldData = objectData[field.name];
+        const fieldName = field.name
+        const fieldData = objectData[fieldName];
         if (!fieldData) return null;
 
         if ("peer" in field) {
           return (
             <NodeRelationshipRow
-              key={field.id}
+              key={fieldName}
               objectSchema={objectSchema}
               objectData={objectData}
               relationship={field}
@@ -55,7 +56,7 @@ export function ObjectDataDisplay({
 
         return (
           <NodeAttributeRow
-            key={field.id}
+            key={fieldName}
             attribute={field}
             attributeData={fieldData as NodeAttributeWithMetadata}
             permission={permission}
