@@ -199,6 +199,6 @@ class InfrahubProfilesRefresh(Mutation):
         node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
         updated_fields = await node_profiles_applier.apply_profiles(node=obj)
         if updated_fields:
-            await obj.save(db=db, fields=updated_fields)
+            await obj.save(db=db, fields=updated_fields, user_id=graphql_context.assigned_user_id)
 
         return cls(ok=True)

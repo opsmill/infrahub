@@ -93,7 +93,7 @@ class UpdateDisplayLabel(Mutation):
             await target_node.set_display_label(value=str(data.value))
 
             async with graphql_context.db.start_transaction() as dbt:
-                await target_node.save(db=dbt, fields=["display_label"])
+                await target_node.save(db=dbt, fields=["display_label"], user_id=graphql_context.assigned_user_id)
 
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
