@@ -255,6 +255,213 @@ More details on the `.infrahub.yml` file format can be found in [.infrahub.yml t
 
 Stored GraphQL queries can be executed by using the `/api/query/{query_id}` REST API endpoint. The `{query_id}` can be the name or the id of the `GraphQLQuery` node in the database. More information can be found in the [Swagger documentation](http://localhost:8000/api/docs).
 
+## Single-target query pattern
+
+When writing GraphQL queries for [transforms](./transformation.mdx), [generators](./generator.mdx), [artifacts](./artifact.mdx), and [computed attributes](./computed-attribute.mdx), it's critical to use a **single-target query pattern** to ensure optimal artifact generation and system performance.
+
+### What is a single-target query?
+
+A single-target query is a GraphQL query that targets a **unique node** using either an ID or a unique attribute (HFID - Human-Friendly Identifier). This pattern enables Infrahub to identify exactly which objects are affected by a change, allowing it to selectively regenerate only the necessary artifacts instead of regenerating all of them.
+
+### Why is this important?
+
+Without single-target queries, Infrahub cannot determine which specific artifacts need regeneration when data changes. This can lead to excessive artifact generation that significantly impacts performance.
+
+**Real-world impact:** In one production scenario, a proposed change pipeline generated 600 artifacts when only 5 actually required regeneration. Properly using single-target queries resolved this issue.
+
+### Requirements for a valid single-target query
+
+For a query to be recognized as single-target, it must meet **all** of these criteria:
+
+1. **Filter on a unique identifier**: Use either `id` or a unique attribute like `name__value`
+2. **Use a required variable or static value**: The filter must use a required variable (e.g., `$name: String!`) or a hardcoded value
+3. **Use exact match filters**: Use singular filters (e.g., `name__value: $name`), **not** list filters (e.g., `name__values: $name`)
+
+### Valid single-target query examples
+
+**Using a unique attribute with required variable:**
+
+```graphql
+query DeviceConfig($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        interfaces {
+          edges {
+            node {
+              name {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Using ID with required variable:**
+
+```graphql
+query DeviceById($device_id: String!) {
+  InfraDevice(ids: [$device_id]) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+**Using HFID with required variable:**
+
+```graphql
+query DeviceByHFID($device_hfid: String!) {
+  InfraDevice(hfid: [$device_hfid]) {
+    edges {
+      node {
+        id
+        hfid
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+### Invalid query examples (will cause excessive artifact generation)
+
+**Missing filter (queries all objects):**
+
+```graphql
+query AllDevices {
+  InfraDevice {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+**Using optional variable:**
+
+```graphql
+query DeviceConfig($device_name: String) {  # NOT required (no !)
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
+```
+
+**Using list filter instead of exact match:**
+
+```graphql
+query DeviceConfig($device_name: String!) {
+  InfraDevice(name__values: $device_name) {  # name__values instead of name__value
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
+```
+
+**Filtering on non-unique attribute:**
+
+```graphql
+query DevicesByRole($role: String!) {
+  InfraDevice(role__value: $role) {  # role is not unique
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
+```
+
+### Verifying your query is single-target
+
+You can verify whether your query qualifies as single-target using the `InfrahubGraphQLQueryAnalyzer` in the Infrahub shell:
+
+```python
+from infrahub.core.registry import registry
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import prepare_graphql_params
+
+# Get the default branch and schema
+default_branch = await registry.get_branch(db=db)
+schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+# Your query to test
+query = """
+query DeviceConfig($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+"""
+
+# Analyze the query
+analyzer = InfrahubGraphQLQueryAnalyzer(
+    query=query,
+    branch=default_branch,
+    schema_branch=schema_branch,
+)
+
+# Check if it's a valid single-target query
+print(f"Valid single-target: {analyzer.query_report.only_has_unique_targets}")
+```
+
+### When single-target queries are required
+
+Single-target queries are **required** for:
+
+- **Python transforms** - See [Creating a Python transform](../guides/python-transform.mdx)
+- **Jinja2 transforms** - See [Creating a Jinja transform](../guides/jinja2-transform.mdx)
+- **Generators** - See [Generators](./generator.mdx)
+- **Artifact definitions** - See [Artifacts](./artifact.mdx)
+- **Computed attributes** - See [Computed attributes](./computed-attribute.mdx)
+
+### When single-target queries are NOT required
+
+You do **not** need single-target queries for:
+
+- **Ad-hoc queries** via the GraphQL interface or API
+- **Reporting queries** that intentionally fetch multiple objects
+- **Dashboard queries** for UI components
+- **Bulk data exports**
+
+In these cases, you can freely query multiple objects without unique filters.
+
 ## Working with groups in GraphQL
 
 [Groups](./groups.mdx) are first-class objects in Infrahub that can be queried and manipulated through GraphQL. Groups provide powerful ways to organize and operate on collections of infrastructure objects.

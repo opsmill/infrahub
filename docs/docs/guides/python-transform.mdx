@@ -68,6 +68,60 @@ mutation CreateDevice {
 
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
+:::warning Single-target query requirement
+For proper artifact detection, your query must target a **unique node** using either an ID or a unique attribute (HFID). This ensures Infrahub only regenerates the necessary artifacts instead of regenerating all of them excessively.
+
+**Requirements for a valid single-target query:**
+- Must filter on a unique identifier (ID or unique attribute like `name`)
+- Must use a required variable (e.g., `$name: String!`) or a static value
+- Must use exact match filters (e.g., `name__value: $name`), not list filters (e.g., `name__values: $name`)
+
+**Valid example:**
+```graphql
+query BuiltinTag($name: String!) {
+  BuiltinTag(name__value: $name) {
+    edges { node { id } }
+  }
+}
+```
+
+**Invalid example (will cause excessive artifact generation):**
+```graphql
+query BuiltinTag {
+  BuiltinTag {
+    edges { node { id } }
+  }
+}
+```
+
+To verify your query is valid, you can use the `InfrahubGraphQLQueryAnalyzer` in the Infrahub shell:
+
+```python
+from infrahub.core.registry import registry
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import prepare_graphql_params
+
+default_branch = await registry.get_branch(db=db)
+schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+query = """
+query BuiltinTag($name: String!) {
+  BuiltinTag(name__value: $name) {
+    edges { node { name { value } } }
+  }
+}
+"""
+
+analyzer = InfrahubGraphQLQueryAnalyzer(
+    query=query,
+    branch=default_branch,
+    schema_branch=schema_branch,
+)
+
+print(f"Valid single-target: {analyzer.query_report.only_has_unique_targets}")
+```
+:::
+
 :::info Convert query to Infrahub SDK objects
 We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
 
