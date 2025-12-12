@@ -5,9 +5,13 @@ import useFilters from "@/shared/hooks/useFilters";
 
 import type { ModelSchema } from "@/entities/schema/types";
 
-export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
+type ObjectTableEmptyProps =
+  | { schema: ModelSchema; label?: never }
+  | { schema?: never; label: string };
+
+export function ObjectTableEmpty({ schema, label }: ObjectTableEmptyProps) {
   const [filters, setFilters] = useFilters();
-  const schemaLabel = schema.label ?? schema.name;
+  const schemaLabel = label ?? schema?.label ?? schema?.name ?? "items";
 
   const handleClearFilters = () => {
     setFilters([]);
