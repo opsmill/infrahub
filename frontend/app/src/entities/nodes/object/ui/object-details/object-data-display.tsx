@@ -54,7 +54,6 @@ export function ObjectDataDisplay({
                   updatedAt={attributeData.updated_at}
                   source={attributeData.source}
                   owner={attributeData.owner}
-                  isFromProfile={attributeData.is_from_profile}
                   isProtected={attributeData.is_protected}
                   header={
                     !attribute.read_only && (

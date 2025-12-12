@@ -17,6 +17,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
+    RelationshipCardinality,
     RelationshipDeleteBehavior,
     RelationshipKind,
     SchemaPathType,
@@ -720,8 +721,10 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
     assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
     assert set(node_profile.attribute_names) == {"profile_name", "profile_priority", "description", "mybool"}
+    assert set(node_profile.relationship_names) == {"badges", "related_nodes", "status", "tags"}
     generic_profile = schema.get(name="ProfileInfraGenericInterface", duplicate=False)
     assert set(generic_profile.attribute_names) == {"profile_name", "profile_priority", "mybool"}
+    assert set(generic_profile.relationship_names) == {"badges", "related_nodes", "status"}
     core_profile_schema = schema.get("CoreProfile")
     core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {
@@ -791,6 +794,44 @@ async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one)
         "ProfileBuiltinBadge",
         "ProfileInfraTinySchema",
     }
+
+
+async def test_schema_branch_add_profile_schema_exclude_relationships_in_uniqueness_constraint(
+    schema_all_in_one,
+) -> None:
+    """Test that relationships included in uniqueness constraints are not added to profile schemas."""
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
+    schema_all_in_one["generics"].append(core_profile_schema)
+
+    test_node_schema = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+        "relationships": [
+            {
+                "name": "status",
+                "peer": "BuiltinStatus",
+                "optional": False,
+                "cardinality": RelationshipCardinality.ONE,
+            },
+            {
+                "name": "primary_tag",
+                "peer": InfrahubKind.TAG,
+                "optional": True,
+                "cardinality": RelationshipCardinality.ONE,
+            },
+        ],
+        "uniqueness_constraints": [["status", "name__value"]],
+    }
+    schema_all_in_one["nodes"].append(test_node_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process()
+
+    profile_schema = schema.get(name="ProfileTestCriticality", duplicate=False)
+    assert "status" not in profile_schema.relationship_names
+    assert "primary_tag" in profile_schema.relationship_names
 
 
 async def test_schema_branch_generate_identifiers(schema_all_in_one) -> None:

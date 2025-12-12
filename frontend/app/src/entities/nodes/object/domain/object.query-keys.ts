@@ -44,6 +44,8 @@ export const objectQueryKeys = {
   count: (params: ObjectKeysBaseParams) => [...objectQueryKeys.lists(params), "count"] as const,
   list: (params: ObjectListKeysParams) =>
     [...objectQueryKeys.lists(params), params.filters] as const,
+  profiles: (params: ObjectKeysBaseParams) =>
+    [...objectQueryKeys.lists(params), "profiles"] as const,
   detail: (params: ObjectDetailKeysParams) =>
     [
       ...objectQueryKeys.lists(params),

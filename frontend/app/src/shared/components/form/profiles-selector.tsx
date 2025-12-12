@@ -1,12 +1,8 @@
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
 import { useEffect, useId } from "react";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import type { ProfileData } from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -22,10 +18,9 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { getProfiles } from "@/entities/nodes/api/getProfiles";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useGetProfiles } from "@/entities/nodes/profiles/domain/get-profiles.query";
+import type { ProfileData } from "@/entities/nodes/profiles/types";
 import type { NodeSchema } from "@/entities/schema/types";
 
 type ProfilesSelectorProps = {
@@ -42,73 +37,10 @@ export const ProfilesSelector = ({
   onChange,
 }: ProfilesSelectorProps) => {
   const id = useId();
-
-  const genericSchemas = useAtomValue(genericSchemasAtom);
-  const profileSchemas = useAtomValue(profileSchemasAtom);
-
-  const nodeGenerics = schema?.inherit_from ?? [];
-
-  // Get all available generic profiles
-  const nodeGenericsProfiles = nodeGenerics
-    // Find all generic schema
-    .map((nodeGeneric) => genericSchemas.find((generic) => generic.kind === nodeGeneric))
-    // Filter for generate_profile ones
-    .filter((generic) => generic?.generate_profile)
-    // Get only the kind
-    .map((generic) => generic?.kind)
-    .filter(Boolean);
-
-  // The profiles should include the current object profile + all generic profiles
-  const kindList = [schema.kind, ...nodeGenericsProfiles];
-
-  // Add attributes for each profile to get the values in the form
-  const profilesList = kindList
-    .map((profile) => {
-      // Get the profile schema for the current kind
-      const profileSchema = profileSchemas.find(
-        (profileSchema) => profileSchema.name === profile?.replace("Template", "")
-      );
-
-      // Get attributes for query + form data
-      const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
-
-      if (!attributes.length) return null;
-
-      return {
-        name: profileSchema?.kind,
-        schema: profileSchema,
-        attributes,
-      };
-    })
-    .filter(Boolean);
-
-  if (!profilesList.length)
-    return <ErrorScreen message="Something went wrong while fetching profiles" />;
-
-  const queryString = getProfiles({ profiles: profilesList });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { data, error, loading } = useQuery(query);
-
-  // Get all profiles name to retrieve the information from the result
-  const profilesNameList: string[] = profilesList
-    .map((profile) => profile?.name ?? "")
-    .filter(Boolean);
-
-  // Get data for each profile in the query result
-  const profiles = profilesNameList.reduce<Array<ProfileData>>(
-    (acc, profile) => [
-      ...acc,
-      ...(data?.[profile!]?.edges.map((edge: { node: ProfileData }) => edge.node) ?? []),
-    ],
-    []
-  );
+  const { data: profiles = [], error, isPending } = useGetProfiles({ schema });
 
   useEffect(() => {
-    if (!value && defaultValue && profiles.length && !loading) {
+    if (!value && defaultValue && profiles.length && !isPending) {
       const defaultProfiles = defaultValue
         .map((defaultProfile) => {
           return profiles.find((profile) => {
@@ -121,9 +53,9 @@ export const ProfilesSelector = ({
 
       onChange(defaultProfiles);
     }
-  }, [defaultValue, loading, profiles, value, onChange]);
+  }, [defaultValue, isPending, profiles, value, onChange]);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
+  if (isPending) return <LoadingIndicator className="p-4" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
@@ -176,7 +108,7 @@ export const ProfilesSelector = ({
               ))}
             </div>
 
-            {loading && <Spinner className="ml-auto" />}
+            {isPending && <Spinner className="ml-auto" />}
 
             <button id={id} type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
               <Icon icon="mdi:unfold-more-horizontal" />
