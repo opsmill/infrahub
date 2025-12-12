@@ -81,10 +81,10 @@ function NodeAttributeRow({
   onClickMetadata,
   permission,
 }: NodeAttributeRowProps) {
+  const attributeLabel = attribute.label ?? attribute.name
   return (
     <ObjectAttributeRow
-      key={attribute.name}
-      name={attribute.label ?? attribute.name}
+      name={attributeLabel}
       value={
         <>
           <ObjectAttributeValue attributeSchema={attribute} attributeData={attributeData} />
@@ -97,7 +97,7 @@ function NodeAttributeRow({
             header={
               !attribute.read_only && (
                 <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
-                  <div className="font-semibold">{attribute.label}</div>
+                  <div className="font-semibold">{attributeLabel}</div>
                   {onClickMetadata && (
                     <ButtonWithTooltip
                       disabled={!permission.update.isAllowed}
