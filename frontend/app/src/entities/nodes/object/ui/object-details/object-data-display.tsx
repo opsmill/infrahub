@@ -147,7 +147,6 @@ function NodeRelationshipRow({ relationship, objectSchema, objectData }: NodeRel
       parentNode={objectData}
       mode="DESCRIPTION-LIST"
       parentSchema={objectSchema}
-      key={relationship.name}
       relationshipsData={relationshipData}
       relationshipSchema={relationshipSchema}
     />
