@@ -1,4 +1,4 @@
-import { ListBox } from "react-aria-components";
+import { Collection, ListBox, ListBoxLoadMoreItem } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -9,7 +9,7 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { sortByName } from "@/shared/utils/common";
 
 import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
-import { useGetBranches, useGetBranchesCount } from "@/entities/branches/domain/get-branches.query";
+import { useGetBranchesPaginated } from "@/entities/branches/domain/get-branches.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 
@@ -50,7 +50,16 @@ function BranchesListToolbar() {
 
 function BranchesListContent() {
   const [search] = useSearch();
-  const { data: storedBranches, isPending, error } = useGetBranches(search || undefined);
+  const {
+    data,
+    refetch,
+    isPending,
+    error,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useGetBranchesPaginated(search || undefined);
 
   if (isPending) {
     return <LoadingIndicator />;
@@ -60,16 +69,22 @@ function BranchesListContent() {
     return <ErrorScreen message={error.message} />;
   }
 
-  const sortedBranches = sortByName(storedBranches.filter((b) => b.name !== "main"));
-  const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
+  const allBranches = data.pages.flat();
+  const sortedBranches = sortByName(allBranches.filter((b) => b.name !== "main"));
+  const branches = [...allBranches.filter((b) => b.name === "main"), ...sortedBranches];
 
   return (
     <ListBox
       aria-label="Branches list"
-      items={branches}
       className="m-2 flex flex-col divide-y rounded-lg border border-gray-200"
     >
-      {(branch) => <BranchListItem branch={branch} />}
+      <Collection items={branches}>{(branch) => <BranchListItem branch={branch} />}</Collection>
+
+      {hasNextPage && (
+        <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage}>
+          <LoadingIndicator />
+        </ListBoxLoadMoreItem>
+      )}
     </ListBox>
   );
 }

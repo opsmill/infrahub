@@ -5,7 +5,7 @@ import type {
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
-import { GET_BRANCHES } from "@/entities/branches/api/query/get-branches-query";
+import { GET_BRANCHES } from "@/entities/branches/api/get-branches-query";
 
 export interface GetBranchDetailsFromApiParams extends BranchContextParams {}
 

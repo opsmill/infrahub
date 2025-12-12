@@ -11,7 +11,8 @@ export function useCreateBranchMutation() {
     onSuccess: async (branchCreated) => {
       if (!branchCreated) return;
 
-      await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+      // Wait for refetch to complete before allowing navigation to the new branch
+      await queryClient.refetchQueries({ queryKey: branchesQueryKeys.all });
     },
   });
 }

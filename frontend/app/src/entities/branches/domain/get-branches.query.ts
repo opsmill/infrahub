@@ -1,30 +1,56 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  queryOptions,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 
+import type { PaginationParams } from "@/shared/api/types";
+
+import { BRANCHES_PER_PAGE } from "@/entities/branches/api/get-branches-from-api";
 import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
+import {
+  type GetBranchesParams,
+  getAllBranches,
+  getBranches,
+} from "@/entities/branches/domain/get-branches";
 
-import { getBranches } from "./get-branches";
+type GetBranchesInfiniteQueryOptionsParams = Omit<GetBranchesParams, keyof PaginationParams>;
 
-export function getBranchesQueryOptions(search?: string) {
-  return queryOptions({
-    queryKey: branchesQueryKeys.list(search),
-    queryFn: () => getBranches(search),
-  });
-}
-
-export function useGetBranches(search?: string) {
-  return useQuery(getBranchesQueryOptions(search));
-}
-
-export function getBranchesCountQueryOptions(search?: string) {
-  return queryOptions({
-    queryKey: branchesQueryKeys.count(search),
-    queryFn: async () => {
-      const branches = await getBranches(search);
-      return branches.length;
+// Paginated query for branches list view
+export function getBranchesInfiniteQueryOptions(
+  params: GetBranchesInfiniteQueryOptionsParams = {}
+) {
+  return infiniteQueryOptions({
+    queryKey: branchesQueryKeys.list(params),
+    queryFn: ({ pageParam }) => {
+      return getBranches({
+        ...params,
+        offset: pageParam,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (lastPage.length < BRANCHES_PER_PAGE) {
+        return;
+      }
+      return lastPageParam + BRANCHES_PER_PAGE;
     },
   });
 }
 
-export function useGetBranchesCount(search?: string) {
-  return useQuery(getBranchesCountQueryOptions(search));
+export function useGetBranchesPaginated(params: GetBranchesInfiniteQueryOptionsParams = {}) {
+  return useInfiniteQuery(getBranchesInfiniteQueryOptions(params));
+}
+
+// Non-paginated query for branch selector and provider (fetches all branches)
+export function getAllBranchesQueryOptions() {
+  return queryOptions({
+    queryKey: branchesQueryKeys.all,
+    queryFn: getAllBranches,
+  });
+}
+
+export function useGetBranches() {
+  return useQuery(getAllBranchesQueryOptions());
 }
