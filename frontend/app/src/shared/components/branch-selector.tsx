@@ -1,10 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
 import { useQueryState } from "nuqs";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
-import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
@@ -18,7 +17,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
@@ -35,10 +33,6 @@ export default function BranchSelector() {
   const { currentBranch } = useCurrentBranch();
   const [isOpen, setIsOpen] = useState(false);
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
-
-  useEffect(() => {
-    if (isOpen) queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
-  }, [isOpen]);
 
   return (
     <Popover
