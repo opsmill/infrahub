@@ -44,6 +44,7 @@ export function useGetBranchesPaginated(params: GetBranchesInfiniteQueryOptionsP
 }
 
 // Non-paginated query for branch selector and provider (fetches all branches)
+// TODO: can be removed once we remove branchesState atom to use pagination within selectors
 export function getAllBranchesQueryOptions() {
   return queryOptions({
     queryKey: branchesQueryKeys.all,
