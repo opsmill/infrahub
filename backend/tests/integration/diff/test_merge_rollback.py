@@ -34,13 +34,14 @@ mutation($branch: String!) {
 class BrokenBranchMerger:
     def __init__(self, *args, **kwargs) -> None:
         self.real_merger = BranchMerger(*args, **kwargs)
+        self.real_merge_graph = self.real_merger.diff_merger.merge_graph
         self.real_merger.diff_merger.merge_graph = self.merge_graph  # type: ignore
 
     async def merge(self, at=None) -> None:
         await self.real_merger.merge(at=at)
 
     async def merge_graph(self, at) -> Never:
-        await self.real_merger.diff_merger.merge_graph(at=at)
+        await self.real_merge_graph(at=at)
         raise ValueError("This is broken on purpose")
 
     async def rollback(self) -> None:
