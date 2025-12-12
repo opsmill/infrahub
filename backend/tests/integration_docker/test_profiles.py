@@ -376,7 +376,6 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         assert device_with_profiles.manufacturer.id == manufacturer_initial.id
 
-    @pytest.mark.xfail(reason="Profile deletion validation not yet implemented")
     async def test_cannot_delete_profile_when_device_inherits_required_attribute(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-constraint-attr")
 
@@ -411,7 +410,6 @@ class TestProfiles(TestInfrahubDockerClient):
 
         assert "inherits required attribute 'part_number'" in str(exc_info.value)
 
-    @pytest.mark.xfail(reason="Profile deletion validation not yet implemented")
     async def test_cannot_delete_profile_when_device_inherits_required_relationship(
         self, client: InfrahubClient
     ) -> None:
@@ -451,7 +449,6 @@ class TestProfiles(TestInfrahubDockerClient):
         assert "inherits required relationship 'manufacturer'" in str(exc_info.value)
 
     async def test_can_delete_profile_after_user_sets_required_attribute(self, client: InfrahubClient) -> None:
-        """Test that deleting a profile is allowed after user sets the required attribute."""
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-user-attr")
 
         profile = await client.create(
@@ -499,7 +496,6 @@ class TestProfiles(TestInfrahubDockerClient):
         assert not device_after_delete.part_number.is_from_profile
 
     async def test_can_delete_profile_after_user_sets_required_relationship(self, client: InfrahubClient) -> None:
-        """Test that deleting a profile is allowed after user sets the required relationship."""
         manufacturer_from_profile = await self._create_manufacturer(client=client, name="Manufacturer-from-profile")
         manufacturer_from_user = await self._create_manufacturer(client=client, name="Manufacturer-from-user")
 

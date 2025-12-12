@@ -140,3 +140,29 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
         if relm.name == "related_nodes" and isinstance(node_schema, ProfileSchema):
             await self._check_profile_related_nodes_removal(relm=relm, profile_schema=node_schema, profile=node)
             return
+
+    async def validate_profile_deletion(self, profile: Node, profile_schema: ProfileSchema) -> None:
+        related_nodes_rels = await profile.related_nodes.get_relationships(db=self.db)  # type: ignore[attr-defined]
+        related_node_ids = [rel.peer_id for rel in related_nodes_rels if rel.peer_id]
+
+        if not related_node_ids:
+            return
+
+        target_kind = profile_schema.get_relationship(name="related_nodes").peer
+        target_schema = self.schema_branch.get_node(name=target_kind, duplicate=False)
+
+        required_attr_names = self._get_required_attributes_names(schema=target_schema)
+        required_rel_names = self._get_required_relationship_names(schema=target_schema)
+        if not required_attr_names and not required_rel_names:
+            return
+
+        nodes = await NodeManager.get_many(
+            db=self.db, branch=self.branch, ids=related_node_ids, include_metadata=MetadataOptions.SOURCE
+        )
+        for node in nodes.values():
+            await self._validate_profile_removal(
+                node=node,
+                profile_id=profile.get_id(),
+                required_attr_names=required_attr_names,
+                required_rel_names=required_rel_names,
+            )
