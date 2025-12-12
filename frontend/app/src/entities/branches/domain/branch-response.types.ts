@@ -1,27 +1,14 @@
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
-
-// Type for the new InfrahubBranch query response structure
-// TODO: Remove once codegen is regenerated with the new schema
-export type InfrahubBranchNode = {
-  id: string;
-  name: { value: string };
-  description?: { value?: string | null } | null;
-  origin_branch?: { value?: string | null } | null;
-  branched_from?: { value?: string | null } | null;
-  status?: { value?: string | null } | null;
-  created_at?: string | null;
-  sync_with_git?: { value?: boolean | null } | null;
-  is_default?: { value?: boolean | null } | null;
-  has_schema_changes?: { value?: boolean | null } | null;
-};
+import type {
+  Branch,
+  InfrahubBranch,
+  InfrahubBranchType,
+} from "@/shared/api/graphql/generated/graphql";
 
 export type InfrahubBranchResponse = {
-  InfrahubBranch?: {
-    edges: Array<{ node: InfrahubBranchNode }>;
-  };
+  InfrahubBranch?: InfrahubBranchType;
 };
 
-export function mapInfrahubBranchNodeToBranch(node: InfrahubBranchNode): Branch {
+export function mapInfrahubBranchNodeToBranch(node: InfrahubBranch): Branch {
   return {
     id: node.id,
     name: node.name.value,
