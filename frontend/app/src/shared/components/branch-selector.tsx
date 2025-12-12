@@ -83,7 +83,7 @@ function BranchSelect({
   setPopoverOpen: (open: boolean) => void;
   setFormOpen: (displayForm: DisplayForm) => void;
 }) {
-  const { data: branches = [] } = useGetBranches();
+  const { data: branches, isPending } = useGetBranches();
   const { setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
 
@@ -117,13 +117,20 @@ function BranchSelect({
             onSelect={(defaultBranchName) => setFormOpen({ open: true, defaultBranchName })}
           />
 
-          {branchesToSelectOptions(branches).map((branch) => (
-            <BranchOption
-              key={branch.name}
-              branch={branch}
-              onChange={() => handleBranchChange(branch)}
-            />
-          ))}
+          {branches &&
+            branchesToSelectOptions(branches).map((branch) => (
+              <BranchOption
+                key={branch.name}
+                branch={branch}
+                onChange={() => handleBranchChange(branch)}
+              />
+            ))}
+
+          {isPending && (
+            <CommandItem disabled className="justify-center text-neutral-500">
+              Loading branches...
+            </CommandItem>
+          )}
         </CommandList>
       </Command>
       <div className="-mx-2 mt-2 border-neutral-200 border-t p-2 pb-0">
