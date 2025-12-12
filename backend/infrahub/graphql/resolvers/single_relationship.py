@@ -6,12 +6,14 @@ from graphql.type.definition import GraphQLNonNull
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType, MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
 from ..loaders.node import GetManyParams, NodeDataLoader
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -25,24 +27,6 @@ if TYPE_CHECKING:
 class SingleRelationshipResolver:
     def __init__(self) -> None:
         self._data_loader_instances: dict[GetManyParams, NodeDataLoader] = {}
-
-    def _get_metadata_to_include(self, property_fields: dict[str, Any]) -> MetadataOptions:
-        include_metadata = MetadataOptions.NONE
-        if "created_at" in property_fields:
-            include_metadata |= MetadataOptions.CREATED_AT
-        if "created_by" in property_fields:
-            include_metadata |= MetadataOptions.CREATED_BY
-        if "updated_at" in property_fields:
-            include_metadata |= MetadataOptions.UPDATED_AT
-        if "updated_by" in property_fields:
-            include_metadata |= MetadataOptions.UPDATED_BY
-        if "source" in property_fields:
-            include_metadata |= MetadataOptions.SOURCE
-        if "owner" in property_fields:
-            include_metadata |= MetadataOptions.OWNER
-        if "is_protected" in property_fields:
-            include_metadata |= MetadataOptions.IS_PROTECTED
-        return include_metadata
 
     def _build_relationship_meta_response(
         self, relationship: Relationship, metadata_fields: dict[str, Any]
@@ -103,11 +87,15 @@ class SingleRelationshipResolver:
         peer_node: Node | None = None
 
         if requires_relationship_properties or requires_relationship_metadata:
-            include_metadata = self._get_metadata_to_include(property_fields=property_fields)
-            if requires_relationship_metadata:
-                include_metadata |= self._get_metadata_to_include(
-                    property_fields=metadata_fields["relationship_metadata"]
-                )
+            include_metadata = build_metadata_query_options(
+                node_metadata_fields=metadata_fields.get("node_metadata"),
+                relationship_metadata_fields=metadata_fields.get("relationship_metadata"),
+                node_fields=node_fields,
+            )
+            # Add relationship properties metadata to relationship_level
+            include_metadata |= MetadataQueryOptions(
+                relationship_level=get_metadata_options_from_fields(property_fields)
+            )
             relationship = await self._get_entities_simple(
                 db=graphql_context.db,
                 branch=graphql_context.branch,
@@ -117,11 +105,14 @@ class SingleRelationshipResolver:
                 source_kind=node_schema.kind,
                 rel_schema=node_rel,
                 node_fields=node_fields,
-                metadata_fields=metadata_fields,
                 include_metadata=include_metadata,
                 **kwargs,
             )
         else:
+            include_metadata = build_metadata_query_options(
+                node_metadata_fields=metadata_fields.get("node_metadata"),
+                node_fields=node_fields,
+            )
             peer_node = await self._get_entities_with_data_loader(
                 db=graphql_context.db,
                 branch=graphql_context.branch,
@@ -129,7 +120,7 @@ class SingleRelationshipResolver:
                 rel_schema=node_rel,
                 parent=parent,
                 node_fields=node_fields,
-                metadata_fields=metadata_fields,
+                include_metadata=include_metadata,
             )
 
         if not relationship and not peer_node:
@@ -173,8 +164,7 @@ class SingleRelationshipResolver:
         source_kind: str,
         rel_schema: RelationshipSchema,
         node_fields: dict[str, Any],
-        metadata_fields: dict[str, dict[str, Any]],
-        include_metadata: MetadataOptions,
+        include_metadata: MetadataQueryOptions,
         **kwargs: Any,
     ) -> Relationship | None:
         filters = {
@@ -190,7 +180,6 @@ class SingleRelationshipResolver:
                 schema=rel_schema,
                 filters=filters,
                 fields=node_fields,
-                metadata_fields=metadata_fields.get("node_metadata"),
                 at=at,
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
@@ -209,7 +198,7 @@ class SingleRelationshipResolver:
         rel_schema: RelationshipSchema,
         parent: dict[str, Any],
         node_fields: dict[str, Any],
-        metadata_fields: dict[str, dict[str, Any]],
+        include_metadata: MetadataQueryOptions,
     ) -> Node | None:
         try:
             peer_id: str = parent[rel_schema.name][0]["node"]["id"]
@@ -219,12 +208,12 @@ class SingleRelationshipResolver:
         if node_fields and "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
 
+        include_metadata |= MetadataQueryOptions(attribute_level=MetadataOptions.LINKED_NODES)
         query_params = GetManyParams(
             fields=node_fields,
-            metadata_fields=metadata_fields.get("node_metadata"),
             at=at,
             branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
+            include_metadata=include_metadata,
             prefetch_relationships=False,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
         )

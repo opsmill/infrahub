@@ -5,10 +5,10 @@ from graphql import GraphQLResolveInfo
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import (
     BranchSupportType,
-    MetadataOptions,
     RelationshipHierarchyDirection,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema.node_schema import NodeSchema
@@ -16,6 +16,7 @@ from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -71,24 +72,6 @@ class ManyRelationshipResolver:
                 branch=branch,
                 branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
             )
-
-    def _get_metadata_to_include(self, property_fields: dict[str, Any]) -> MetadataOptions:
-        include_metadata = MetadataOptions.NONE
-        if "created_at" in property_fields:
-            include_metadata |= MetadataOptions.CREATED_AT
-        if "created_by" in property_fields:
-            include_metadata |= MetadataOptions.CREATED_BY
-        if "updated_at" in property_fields:
-            include_metadata |= MetadataOptions.UPDATED_AT
-        if "updated_by" in property_fields:
-            include_metadata |= MetadataOptions.UPDATED_BY
-        if "source" in property_fields or "_relation__owner" in property_fields:
-            include_metadata |= MetadataOptions.SOURCE
-        if "owner" in property_fields or "_relation__source" in property_fields:
-            include_metadata |= MetadataOptions.OWNER
-        if "is_protected" in property_fields:
-            include_metadata |= MetadataOptions.IS_PROTECTED
-        return include_metadata
 
     def _build_relationship_meta_response(
         self, relationship: Relationship, metadata_fields: dict[str, Any]
@@ -181,11 +164,13 @@ class ManyRelationshipResolver:
         if not node_fields:
             return response
 
-        relationships_include_metadata = self._get_metadata_to_include(property_fields=property_fields)
-        if metadata_fields.get("relationship_metadata"):
-            relationships_include_metadata |= self._get_metadata_to_include(
-                property_fields=metadata_fields["relationship_metadata"]
-            )
+        include_metadata = build_metadata_query_options(
+            node_metadata_fields=metadata_fields.get("node_metadata"),
+            relationship_metadata_fields=metadata_fields.get("relationship_metadata"),
+            node_fields=node_fields,
+        )
+        # Add relationship properties metadata to relationship_level
+        include_metadata |= MetadataQueryOptions(relationship_level=get_metadata_options_from_fields(property_fields))
 
         if offset or limit:
             relationships = await self._get_entities_simple(
@@ -197,8 +182,7 @@ class ManyRelationshipResolver:
                 rel_schema=node_rel,
                 filters=filters,
                 node_fields=node_fields,
-                metadata_fields=metadata_fields,
-                include_metadata=relationships_include_metadata,
+                include_metadata=include_metadata,
                 offset=offset,
                 limit=limit,
             )
@@ -212,8 +196,7 @@ class ManyRelationshipResolver:
                 rel_schema=node_rel,
                 filters=filters,
                 node_fields=node_fields,
-                metadata_fields=metadata_fields,
-                include_metadata=relationships_include_metadata,
+                include_metadata=include_metadata,
             )
 
         if not relationships:
@@ -260,8 +243,7 @@ class ManyRelationshipResolver:
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
         node_fields: dict[str, Any],
-        metadata_fields: dict[str, dict[str, Any]],
-        include_metadata: MetadataOptions,
+        include_metadata: MetadataQueryOptions,
         offset: int | None = None,
         limit: int | None = None,
     ) -> list[Relationship] | None:
@@ -273,7 +255,6 @@ class ManyRelationshipResolver:
                 schema=rel_schema,
                 filters=filters,
                 fields=node_fields,
-                metadata_fields=metadata_fields.get("node_metadata"),
                 offset=offset,
                 limit=limit,
                 at=at,
@@ -296,8 +277,7 @@ class ManyRelationshipResolver:
         rel_schema: RelationshipSchema,
         filters: dict[str, Any],
         node_fields: dict[str, Any],
-        metadata_fields: dict[str, dict[str, Any]],
-        include_metadata: MetadataOptions,
+        include_metadata: MetadataQueryOptions,
     ) -> list[Relationship] | None:
         if node_fields and "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
@@ -308,7 +288,6 @@ class ManyRelationshipResolver:
             schema=rel_schema,
             filters=filters,
             fields=node_fields,
-            metadata_fields=metadata_fields.get("node_metadata"),
             at=at,
             branch_agnostic=rel_schema.branch is BranchSupportType.AGNOSTIC,
             include_metadata=include_metadata,
