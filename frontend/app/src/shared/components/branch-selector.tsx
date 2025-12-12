@@ -37,7 +37,7 @@ export default function BranchSelector() {
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
 
   useEffect(() => {
-    if (isOpen) queryClient.invalidateQueries(branchesQueryKeys.all);
+    if (isOpen) queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
   }, [isOpen]);
 
   return (
