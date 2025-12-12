@@ -375,7 +375,7 @@ async def load_schema(
                 branch.is_isolated = True
                 log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
 
-            await branch.save(db=dbt)
+            await branch.save(db=dbt, user_id=account_session.account_id)
             updated_branch = registry.schema.get_schema_branch(name=branch.name)
             updated_hash = updated_branch.get_hash()
 

@@ -150,7 +150,8 @@ class InfrahubMutationMixin:
         database: InfrahubDatabase | None = None,
         override_data: dict[str, Any] | None = None,
     ) -> tuple[Node, Self]:
-        db = database or info.context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
         schema = cls._meta.active_schema
 
         create_data = dict(data)
@@ -161,6 +162,7 @@ class InfrahubMutationMixin:
             db=db,
             branch=branch,
             schema=schema,
+            user_id=graphql_context.assigned_user_id,
         )
 
         graphql_response = await build_graphql_response(info=info, db=db, obj=obj)
@@ -239,12 +241,13 @@ class InfrahubMutationMixin:
     async def mutate_update_object(
         cls,
         db: InfrahubDatabase,
-        info: GraphQLResolveInfo,  # noqa: ARG003
+        info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
         obj: Node,
         skip_uniqueness_check: bool = False,
     ) -> Node:
+        graphql_context: GraphqlContext = info.context
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
@@ -264,7 +267,7 @@ class InfrahubMutationMixin:
             node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
             updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
             fields += updated_field_names
-        await obj.save(db=db, fields=fields)
+        await obj.save(db=db, fields=fields, user_id=graphql_context.assigned_user_id)
 
         return obj
 
@@ -381,7 +384,9 @@ class InfrahubMutationMixin:
     async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:
         db = graphql_context.db
         async with db.start_transaction() as dbt:
-            deleted = await NodeManager.delete(db=dbt, branch=branch, nodes=[obj])
+            deleted = await NodeManager.delete(
+                db=dbt, branch=branch, nodes=[obj], user_id=graphql_context.assigned_user_id
+            )
         deleted_str = ", ".join([f"{d.get_kind()}({d.get_id()})" for d in deleted])
         log.info(f"nodes deleted: {deleted_str}")
         return deleted

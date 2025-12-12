@@ -42,7 +42,6 @@ const PropertiesPopover = ({
         updatedAt={properties.updated_at}
         source={properties.source}
         owner={properties.owner}
-        isFromProfile={properties.is_from_profile}
         isProtected={properties.is_protected}
         header={
           !hideHeader &&

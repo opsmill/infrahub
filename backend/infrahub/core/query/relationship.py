@@ -12,7 +12,7 @@ from infrahub.core.changelog.models import (
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
 )
-from infrahub.core.constants import MetadataOptions, RelationshipDirection, RelationshipStatus
+from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
@@ -104,6 +104,9 @@ class RelationshipPeerData:
     created_by: str | None = None
     updated_at: Timestamp | None = None
     updated_by: str | None = None
+
+    is_from_profile: bool = False
+    profile_id: UUID | None = None
 
     def rel_ids_per_branch(self) -> dict[str, list[str | int]]:
         response = defaultdict(list)
@@ -1048,6 +1051,10 @@ RETURN updated_at, updated_by
                     rel=RelData.from_db(result.get(f"rel_{prop}")),
                     value=prop_node.get("uuid"),
                 )
+
+                if prop == "source" and InfrahubKind.PROFILE in prop_node.labels:
+                    data.is_from_profile = True
+                    data.profile_id = prop_node._properties["uuid"]
 
             yield data
 

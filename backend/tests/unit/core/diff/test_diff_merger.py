@@ -648,7 +648,8 @@ class TestMergeDiff:
             id=person_node_main.id,
             include_metadata=MetadataOptions.OWNER | MetadataOptions.UPDATED_AT,
         )
-        assert updated_person._get_updated_at() < at
+        # Node's updated_at is rolled up to the latest updated_at of its Attribute/Relationship children
+        assert updated_person._get_updated_at() == at
         assert updated_person.height.value == person_node_main.height.value + 1
         owner_node = await updated_person.height.get_owner(db=db)
         assert owner_node.id == person_node_main.id

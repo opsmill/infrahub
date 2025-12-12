@@ -23,7 +23,7 @@ from infrahub.core.query.relationship import (
     RelationshipPeerData,
 )
 from infrahub.core.relationship import Relationship
-from infrahub.database import retry_db_transaction
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
@@ -33,12 +33,14 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.groups.ancestors import collect_ancestors
 from infrahub.permissions import get_global_permission_for_kind
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ..types import RelatedNodeInput
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipManager
     from infrahub.core.schema.relationship_schema import RelationshipSchema
@@ -92,7 +94,7 @@ class RelationshipAdd(Mutation):
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
-        display_label: str = await source.get_display_label(db=graphql_context.db) or ""
+        display_label = await source.get_display_label(db=graphql_context.db)
         node_changelog = NodeChangelog(
             node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
         )
@@ -118,7 +120,14 @@ class RelationshipAdd(Mutation):
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
-                    await rel.save(db=db)
+                    await rel.save(db=db, user_id=graphql_context.assigned_user_id)
+
+            if relationship_name == "profiles":
+                await _apply_profiles(node=source, db=db, branch=graphql_context.branch)
+
+            if source.get_schema().is_profile_schema and relationship_name == "related_nodes":
+                for node in nodes.values():
+                    await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
@@ -242,7 +251,14 @@ class RelationshipRemove(Mutation):
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.delete_relationship(relationship=rel)
-                    await rel.delete(db=db)
+                    await rel.delete(db=db, user_id=graphql_context.assigned_user_id)
+
+            if relationship_name == "profiles":
+                await _apply_profiles(node=source, db=db, branch=graphql_context.branch)
+
+            if source.get_schema().is_profile_schema and relationship_name == "related_nodes":
+                for node in nodes.values():
+                    await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
@@ -480,3 +496,11 @@ def _get_group_event_type(
             # Modifying the membership of the current node
             group_event_type = GroupUpdateType.MEMBER_OF_GROUPS
     return group_event_type
+
+
+async def _apply_profiles(node: Node, db: InfrahubDatabase, branch: Branch) -> None:
+    refreshed_node = await NodeManager.get_one(db=db, id=node.get_id(), branch=branch)
+    node_profiles_applier = NodeProfilesApplier(db=db, branch=branch)
+    updated_fields = await node_profiles_applier.apply_profiles(node=refreshed_node)
+    if updated_fields:
+        await refreshed_node.save(db=db, fields=updated_fields)

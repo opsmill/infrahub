@@ -5,7 +5,13 @@ from typing import TYPE_CHECKING, Any, Iterable, Literal, TypeVar, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
-from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipCardinality, RelationshipDirection
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    InfrahubKind,
+    MetadataOptions,
+    RelationshipCardinality,
+    RelationshipDirection,
+)
 from infrahub.core.metadata.determiner import MetadataDeterminer
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
@@ -87,6 +93,7 @@ class NodeManager:
         schema: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | str,
         filters: dict | None = ...,
         fields: dict | None = ...,
+        metadata_fields: dict | None = ...,
         offset: int | None = ...,
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
@@ -107,6 +114,7 @@ class NodeManager:
         schema: type[SchemaProtocol],
         filters: dict | None = ...,
         fields: dict | None = ...,
+        metadata_fields: dict | None = ...,
         offset: int | None = ...,
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
@@ -126,6 +134,7 @@ class NodeManager:
         schema: type[SchemaProtocol] | MainSchemaTypes | str,
         filters: dict | None = None,
         fields: dict | None = None,
+        metadata_fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
         at: Timestamp | str | None = None,
@@ -207,6 +216,7 @@ class NodeManager:
         response = await cls.get_many(
             ids=node_ids,
             fields=fields,
+            metadata_fields=metadata_fields,
             branch=branch,
             at=at,
             include_metadata=include_metadata,
@@ -295,6 +305,7 @@ class NodeManager:
         schema: RelationshipSchema,
         filters: dict,
         fields: dict | None = None,
+        metadata_fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
         at: Timestamp | str | None = None,
@@ -350,12 +361,17 @@ class NodeManager:
                 branch=branch,
                 branch_agnostic=branch_agnostic,
                 include_metadata=include_metadata,
+                metadata_fields=metadata_fields,
             )
 
         results = []
         for peer in peers_info:
             result = Relationship(
-                schema=schema, branch=branch, source_kind=peer.source_kind, at=at, node_id=peer.source_id
+                schema=schema,
+                branch=branch,
+                source_kind=peer.source_kind,
+                at=at,
+                node_id=peer.source_id,
             ).load(
                 db=db,
                 id=peer.rel_node_id,
@@ -430,7 +446,12 @@ class NodeManager:
             return {}
 
         return await cls.get_many(
-            db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_metadata=MetadataOptions.LINKED_NODES
+            db=db,
+            ids=peers_ids,
+            fields=fields,
+            at=at,
+            branch=branch,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
 
     @overload
@@ -809,7 +830,8 @@ class NodeManager:
                 rel_schema = path.related_schema
                 # Keep the relationship attribute path and parse it
                 path = rel_schema.parse_schema_path(
-                    path=key.split("__", maxsplit=1)[1], schema=registry.schema.get_schema_branch(name=branch.name)
+                    path=key.split("__", maxsplit=1)[1],
+                    schema=registry.schema.get_schema_branch(name=branch.name),
                 )
 
             filters[key] = path.active_attribute_schema.get_class().deserialize_from_string(item)
@@ -1134,6 +1156,7 @@ class NodeManager:
         db: InfrahubDatabase,
         ids: list[str],
         fields: dict | None = None,
+        metadata_fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
@@ -1148,9 +1171,11 @@ class NodeManager:
         if not ids:
             return {}
 
-        if fields:
+        if fields or metadata_fields:
             metadata_determiner = MetadataDeterminer()
-            include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(node_fields=fields)
+            include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(
+                node_fields=fields or {}, metadata_fields=metadata_fields
+            )
             if isinstance(include_metadata, MetadataQueryOptions):
                 include_metadata |= include_metadata_for_fields
             else:
@@ -1334,7 +1359,9 @@ class NodeManager:
         node_schema = node.get_schema()
         for rel_schema in node_schema.relationships:
             peer_ids = grouped_peer_nodes.get_peer_ids(
-                node_id=node.get_id(), rel_name=rel_schema.get_identifier(), direction=rel_schema.direction
+                node_id=node.get_id(),
+                rel_name=rel_schema.get_identifier(),
+                direction=rel_schema.direction,
             )
             if not peer_ids:
                 continue
@@ -1389,6 +1416,7 @@ class NodeManager:
         branch: Branch | str | None = None,
         at: Timestamp | None = None,
         cascade_delete: bool = True,
+        user_id: str = SYSTEM_USER_ID,
     ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
@@ -1403,7 +1431,7 @@ class NodeManager:
                 nodes_to_delete += list(node_map.values())
 
         for node in nodes_to_delete:
-            await node.delete(db=db, at=at)
+            await node.delete(db=db, at=at, user_id=user_id)
 
         return nodes_to_delete
 

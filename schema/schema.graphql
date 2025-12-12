@@ -78,7 +78,11 @@ type AnyAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: GenericScalar
 }
 
@@ -560,7 +564,11 @@ type CheckboxAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: Boolean
 }
 
@@ -6466,7 +6474,11 @@ type Dropdown implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: String
 }
 
@@ -6480,16 +6492,19 @@ type DropdownFields {
 """IPv4 or IPv6 address"""
 type EdgedBuiltinIPAddress {
   node: BuiltinIPAddress
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A generic container for IP prefixes and IP addresses"""
 type EdgedBuiltinIPNamespace {
   node: BuiltinIPNamespace
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """IPv4 or IPv6 prefix also referred as network"""
 type EdgedBuiltinIPPrefix {
   node: BuiltinIPPrefix
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6497,175 +6512,211 @@ Standard Tag object to attach to other objects to provide some context.
 """
 type EdgedBuiltinTag {
   node: BuiltinTag
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """User Account for Infrahub"""
 type EdgedCoreAccount {
   node: CoreAccount
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A group of users to manage common permissions"""
 type EdgedCoreAccountGroup {
   node: CoreAccountGroup
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A role defines a set of permissions to grant to a group of accounts"""
 type EdgedCoreAccountRole {
   node: CoreAccountRole
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """An action that can be executed by a trigger"""
 type EdgedCoreAction {
   node: CoreAction
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type EdgedCoreArtifact {
   node: CoreArtifact
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A check related to an artifact"""
 type EdgedCoreArtifactCheck {
   node: CoreArtifactCheck
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type EdgedCoreArtifactDefinition {
   node: CoreArtifactDefinition
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Extend a node to be associated with artifacts"""
 type EdgedCoreArtifactTarget {
   node: CoreArtifactTarget
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A thread related to an artifact on a proposed change"""
 type EdgedCoreArtifactThread {
   node: CoreArtifactThread
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A validator related to the artifacts"""
 type EdgedCoreArtifactValidator {
   node: CoreArtifactValidator
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A permission grants right to an account"""
 type EdgedCoreBasePermission {
   node: CoreBasePermission
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A comment on proposed change"""
 type EdgedCoreChangeComment {
   node: CoreChangeComment
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A thread on proposed change"""
 type EdgedCoreChangeThread {
   node: CoreChangeThread
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type EdgedCoreCheck {
   node: CoreCheck
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type EdgedCoreCheckDefinition {
   node: CoreCheckDefinition
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A comment on a Proposed Change"""
 type EdgedCoreComment {
   node: CoreComment
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A credential that could be referenced to access external services."""
 type EdgedCoreCredential {
   node: CoreCredential
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A webhook that connects to an external integration"""
 type EdgedCoreCustomWebhook {
   node: CoreCustomWebhook
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A check related to some Data"""
 type EdgedCoreDataCheck {
   node: CoreDataCheck
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A check to validate the data integrity between two branches"""
 type EdgedCoreDataValidator {
   node: CoreDataValidator
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A check related to a file in a Git Repository"""
 type EdgedCoreFileCheck {
   node: CoreFileCheck
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A thread related to a file on a proposed change"""
 type EdgedCoreFileThread {
   node: CoreFileThread
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """An action that runs a generator definition once triggered"""
 type EdgedCoreGeneratorAction {
   node: CoreGeneratorAction
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Group of nodes that are created by a generator. (Aware)"""
 type EdgedCoreGeneratorAwareGroup {
   node: CoreGeneratorAwareGroup
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A check related to a Generator instance"""
 type EdgedCoreGeneratorCheck {
   node: CoreGeneratorCheck
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type EdgedCoreGeneratorDefinition {
   node: CoreGeneratorDefinition
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Group of nodes that are created by a generator. (local)"""
 type EdgedCoreGeneratorGroup {
   node: CoreGeneratorGroup
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type EdgedCoreGeneratorInstance {
   node: CoreGeneratorInstance
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A validator related to generators"""
 type EdgedCoreGeneratorValidator {
   node: CoreGeneratorValidator
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """User Account for Infrahub"""
 type EdgedCoreGenericAccount {
   node: CoreGenericAccount
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A Git Repository integrated with Infrahub"""
 type EdgedCoreGenericRepository {
   node: CoreGenericRepository
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A permission that grants global rights to perform actions in Infrahub"""
 type EdgedCoreGlobalPermission {
   node: CoreGlobalPermission
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A pre-defined GraphQL Query"""
 type EdgedCoreGraphQLQuery {
   node: CoreGraphQLQuery
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Group of nodes associated with a given GraphQLQuery."""
 type EdgedCoreGraphQLQueryGroup {
   node: CoreGraphQLQueryGroup
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Generic Group Object."""
 type EdgedCoreGroup {
   node: CoreGroup
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6673,6 +6724,7 @@ A group action that adds or removes members from a group once triggered
 """
 type EdgedCoreGroupAction {
   node: CoreGroupAction
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6680,36 +6732,43 @@ A trigger rule that matches against updates to memberships within groups
 """
 type EdgedCoreGroupTriggerRule {
   node: CoreGroupTriggerRule
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A pool of IP address resources"""
 type EdgedCoreIPAddressPool {
   node: CoreIPAddressPool
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A pool of IP prefix resources"""
 type EdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Element of the Menu"""
 type EdgedCoreMenu {
   node: CoreMenu
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Menu Item"""
 type EdgedCoreMenuItem {
   node: CoreMenuItem
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Base Node in Infrahub."""
 type EdgedCoreNode {
   node: CoreNode
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A trigger match that matches against attribute changes on a node"""
 type EdgedCoreNodeTriggerAttributeMatch {
   node: CoreNodeTriggerAttributeMatch
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6717,11 +6776,13 @@ A trigger match condition related to changes to nodes within the Infrahub databa
 """
 type EdgedCoreNodeTriggerMatch {
   node: CoreNodeTriggerMatch
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A trigger match that matches against relationship changes on a node"""
 type EdgedCoreNodeTriggerRelationshipMatch {
   node: CoreNodeTriggerRelationshipMatch
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6729,46 +6790,55 @@ A trigger rule that evaluates modifications to nodes within the Infrahub databas
 """
 type EdgedCoreNodeTriggerRule {
   node: CoreNodeTriggerRule
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A pool of number resources"""
 type EdgedCoreNumberPool {
   node: CoreNumberPool
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Component template to create pre-shaped objects."""
 type EdgedCoreObjectComponentTemplate {
   node: CoreObjectComponentTemplate
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A permission that grants rights to perform actions on objects"""
 type EdgedCoreObjectPermission {
   node: CoreObjectPermission
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Template to create pre-shaped objects."""
 type EdgedCoreObjectTemplate {
   node: CoreObjectTemplate
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A thread related to an object on a proposed change"""
 type EdgedCoreObjectThread {
   node: CoreObjectThread
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Username/Password based credential"""
 type EdgedCorePasswordCredential {
   node: CorePasswordCredential
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Base Profile in Infrahub."""
 type EdgedCoreProfile {
   node: CoreProfile
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Metadata related to a proposed change"""
 type EdgedCoreProposedChange {
   node: CoreProposedChange
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6776,21 +6846,25 @@ A Git Repository integrated with Infrahub, Git-side will not be updated
 """
 type EdgedCoreReadOnlyRepository {
   node: CoreReadOnlyRepository
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A Git Repository integrated with Infrahub"""
 type EdgedCoreRepository {
   node: CoreRepository
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Group of nodes associated with a given repository."""
 type EdgedCoreRepositoryGroup {
   node: CoreRepositoryGroup
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A Validator related to a specific repository"""
 type EdgedCoreRepositoryValidator {
   node: CoreRepositoryValidator
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6798,61 +6872,73 @@ The resource manager contains pools of resources to allow for automatic assignme
 """
 type EdgedCoreResourcePool {
   node: CoreResourcePool
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A check related to the schema"""
 type EdgedCoreSchemaCheck {
   node: CoreSchemaCheck
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A validator related to the schema"""
 type EdgedCoreSchemaValidator {
   node: CoreSchemaValidator
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A standard check"""
 type EdgedCoreStandardCheck {
   node: CoreStandardCheck
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Group of nodes of any kind."""
 type EdgedCoreStandardGroup {
   node: CoreStandardGroup
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A webhook that connects to an external integration"""
 type EdgedCoreStandardWebhook {
   node: CoreStandardWebhook
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Extend a node to be associated with tasks"""
 type EdgedCoreTaskTarget {
   node: CoreTaskTarget
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A thread on a Proposed Change"""
 type EdgedCoreThread {
   node: CoreThread
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A comment on thread within a Proposed Change"""
 type EdgedCoreThreadComment {
   node: CoreThreadComment
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A file rendered from a Jinja2 template"""
 type EdgedCoreTransformJinja2 {
   node: CoreTransformJinja2
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A transform function written in Python"""
 type EdgedCoreTransformPython {
   node: CoreTransformPython
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Generic Transformation Object."""
 type EdgedCoreTransformation {
   node: CoreTransformation
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6860,20 +6946,24 @@ A rule that allows you to define a trigger and map it to an action that runs onc
 """
 type EdgedCoreTriggerRule {
   node: CoreTriggerRule
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A Validator related to a user defined checks in a repository"""
 type EdgedCoreUserValidator {
   node: CoreUserValidator
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type EdgedCoreValidator {
   node: CoreValidator
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A webhook that connects to an external integration"""
 type EdgedCoreWebhook {
   node: CoreWebhook
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6881,11 +6971,13 @@ Resource to be used in a pool, its weight is used to determine its priority on a
 """
 type EdgedCoreWeightedPoolResource {
   node: CoreWeightedPoolResource
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Token for User Account"""
 type EdgedInternalAccountToken {
   node: InternalAccountToken
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """
@@ -6893,51 +6985,61 @@ IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
 type EdgedInternalIPPrefixAvailable {
   node: InternalIPPrefixAvailable
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Range of IPv4 or IPv6 addresses which has not been allocated yet"""
 type EdgedInternalIPRangeAvailable {
   node: InternalIPRangeAvailable
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Refresh Token"""
 type EdgedInternalRefreshToken {
   node: InternalRefreshToken
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """A namespace that segments IPAM"""
 type EdgedIpamNamespace {
   node: IpamNamespace
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Any Entities that is responsible for some data."""
 type EdgedLineageOwner {
   node: LineageOwner
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Any Entities that stores or produces data."""
 type EdgedLineageSource {
   node: LineageSource
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Profile for BuiltinIPAddress"""
 type EdgedProfileBuiltinIPAddress {
   node: ProfileBuiltinIPAddress
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Profile for BuiltinIPPrefix"""
 type EdgedProfileBuiltinIPPrefix {
   node: ProfileBuiltinIPPrefix
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Profile for BuiltinTag"""
 type EdgedProfileBuiltinTag {
   node: ProfileBuiltinTag
+  node_metadata: InfrahubNodeMetadata!
 }
 
 """Profile for IpamNamespace"""
 type EdgedProfileIpamNamespace {
   node: ProfileIpamNamespace
+  node_metadata: InfrahubNodeMetadata!
 }
 
 interface EventNodeInterface {
@@ -7090,7 +7192,11 @@ type IPHost implements AttributeInterface {
   permissions: PermissionType
   prefixlen: Int
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: String
   version: Int
   with_hostmask: String
@@ -7112,7 +7218,11 @@ type IPNetwork implements AttributeInterface {
   permissions: PermissionType
   prefixlen: Int
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: String
   version: Int
   with_hostmask: String
@@ -7252,6 +7362,7 @@ type InfrahubBranch {
 
 type InfrahubBranchEdge {
   node: InfrahubBranch!
+  node_metadata: InfrahubStandardNodeMetaData!
 }
 
 type InfrahubBranchType {
@@ -7306,8 +7417,38 @@ type InfrahubMutatedRelationship {
   peer: RelatedNode!
 }
 
+"""Defines node metadata information"""
+type InfrahubNodeMetadata {
+  created_at: DateTime
+  created_by: CoreGenericAccount
+  updated_at: DateTime
+  updated_by: CoreGenericAccount
+}
+
 type InfrahubProfilesRefresh {
   ok: Boolean
+}
+
+"""Defines relationship metadata information"""
+type InfrahubRelationshipMetadata {
+  created_at: DateTime
+  created_by: CoreGenericAccount
+  updated_at: DateTime
+  updated_by: CoreGenericAccount
+}
+
+type InfrahubStandardNodeMetaAccount {
+  display_name: String
+  id: String!
+}
+
+type InfrahubStandardNodeMetaData {
+  """Date/Time the object has been created"""
+  created_at: DateTime
+  created_by: InfrahubStandardNodeMetaAccount
+  """Date/Time when the object was last modified by a user or a system task"""
+  updated_at: DateTime
+  updated_by: InfrahubStandardNodeMetaAccount
 }
 
 """Token for User Account"""
@@ -7483,7 +7624,11 @@ type JSONAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: GenericScalar
 }
 
@@ -7530,7 +7675,11 @@ type ListAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: GenericScalar
 }
 
@@ -7572,7 +7721,11 @@ type MacAddress implements AttributeInterface {
   source: LineageSource
   """Format used by PostgreSQL"""
   split_notation: String
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: String
   version: Int
 }
@@ -8160,21 +8313,27 @@ type Mutation {
 type NestedEdgedBuiltinIPAddress {
   _updated_at: DateTime
   node: BuiltinIPAddress
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A generic container for IP prefixes and IP addresses"""
 type NestedEdgedBuiltinIPNamespace {
   _updated_at: DateTime
   node: BuiltinIPNamespace
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """IPv4 or IPv6 prefix also referred as network"""
 type NestedEdgedBuiltinIPPrefix {
   _updated_at: DateTime
   node: BuiltinIPPrefix
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8182,220 +8341,292 @@ Standard Tag object to attach to other objects to provide some context.
 """
 type NestedEdgedBuiltinTag {
   node: BuiltinTag
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """User Account for Infrahub"""
 type NestedEdgedCoreAccount {
   node: CoreAccount
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A group of users to manage common permissions"""
 type NestedEdgedCoreAccountGroup {
   node: CoreAccountGroup
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A role defines a set of permissions to grant to a group of accounts"""
 type NestedEdgedCoreAccountRole {
   node: CoreAccountRole
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """An action that can be executed by a trigger"""
 type NestedEdgedCoreAction {
   _updated_at: DateTime
   node: CoreAction
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 type NestedEdgedCoreArtifact {
   node: CoreArtifact
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A check related to an artifact"""
 type NestedEdgedCoreArtifactCheck {
   node: CoreArtifactCheck
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 type NestedEdgedCoreArtifactDefinition {
   node: CoreArtifactDefinition
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Extend a node to be associated with artifacts"""
 type NestedEdgedCoreArtifactTarget {
   _updated_at: DateTime
   node: CoreArtifactTarget
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A thread related to an artifact on a proposed change"""
 type NestedEdgedCoreArtifactThread {
   node: CoreArtifactThread
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A validator related to the artifacts"""
 type NestedEdgedCoreArtifactValidator {
   node: CoreArtifactValidator
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A permission grants right to an account"""
 type NestedEdgedCoreBasePermission {
   _updated_at: DateTime
   node: CoreBasePermission
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A comment on proposed change"""
 type NestedEdgedCoreChangeComment {
   node: CoreChangeComment
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A thread on proposed change"""
 type NestedEdgedCoreChangeThread {
   node: CoreChangeThread
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 type NestedEdgedCoreCheck {
   _updated_at: DateTime
   node: CoreCheck
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 type NestedEdgedCoreCheckDefinition {
   node: CoreCheckDefinition
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A comment on a Proposed Change"""
 type NestedEdgedCoreComment {
   _updated_at: DateTime
   node: CoreComment
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A credential that could be referenced to access external services."""
 type NestedEdgedCoreCredential {
   _updated_at: DateTime
   node: CoreCredential
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A webhook that connects to an external integration"""
 type NestedEdgedCoreCustomWebhook {
   node: CoreCustomWebhook
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A check related to some Data"""
 type NestedEdgedCoreDataCheck {
   node: CoreDataCheck
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A check to validate the data integrity between two branches"""
 type NestedEdgedCoreDataValidator {
   node: CoreDataValidator
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A check related to a file in a Git Repository"""
 type NestedEdgedCoreFileCheck {
   node: CoreFileCheck
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A thread related to a file on a proposed change"""
 type NestedEdgedCoreFileThread {
   node: CoreFileThread
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """An action that runs a generator definition once triggered"""
 type NestedEdgedCoreGeneratorAction {
   node: CoreGeneratorAction
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Group of nodes that are created by a generator. (Aware)"""
 type NestedEdgedCoreGeneratorAwareGroup {
   node: CoreGeneratorAwareGroup
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A check related to a Generator instance"""
 type NestedEdgedCoreGeneratorCheck {
   node: CoreGeneratorCheck
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 type NestedEdgedCoreGeneratorDefinition {
   node: CoreGeneratorDefinition
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Group of nodes that are created by a generator. (local)"""
 type NestedEdgedCoreGeneratorGroup {
   node: CoreGeneratorGroup
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 type NestedEdgedCoreGeneratorInstance {
   node: CoreGeneratorInstance
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A validator related to generators"""
 type NestedEdgedCoreGeneratorValidator {
   node: CoreGeneratorValidator
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """User Account for Infrahub"""
 type NestedEdgedCoreGenericAccount {
   _updated_at: DateTime
   node: CoreGenericAccount
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A Git Repository integrated with Infrahub"""
 type NestedEdgedCoreGenericRepository {
   _updated_at: DateTime
   node: CoreGenericRepository
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A permission that grants global rights to perform actions in Infrahub"""
 type NestedEdgedCoreGlobalPermission {
   node: CoreGlobalPermission
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A pre-defined GraphQL Query"""
 type NestedEdgedCoreGraphQLQuery {
   node: CoreGraphQLQuery
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Group of nodes associated with a given GraphQLQuery."""
 type NestedEdgedCoreGraphQLQueryGroup {
   node: CoreGraphQLQueryGroup
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Generic Group Object."""
 type NestedEdgedCoreGroup {
   _updated_at: DateTime
   node: CoreGroup
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8403,7 +8634,9 @@ A group action that adds or removes members from a group once triggered
 """
 type NestedEdgedCoreGroupAction {
   node: CoreGroupAction
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8411,45 +8644,59 @@ A trigger rule that matches against updates to memberships within groups
 """
 type NestedEdgedCoreGroupTriggerRule {
   node: CoreGroupTriggerRule
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A pool of IP address resources"""
 type NestedEdgedCoreIPAddressPool {
   node: CoreIPAddressPool
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A pool of IP prefix resources"""
 type NestedEdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Element of the Menu"""
 type NestedEdgedCoreMenu {
   _updated_at: DateTime
   node: CoreMenu
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Menu Item"""
 type NestedEdgedCoreMenuItem {
   node: CoreMenuItem
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Base Node in Infrahub."""
 type NestedEdgedCoreNode {
   _updated_at: DateTime
   node: CoreNode
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A trigger match that matches against attribute changes on a node"""
 type NestedEdgedCoreNodeTriggerAttributeMatch {
   node: CoreNodeTriggerAttributeMatch
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8458,13 +8705,17 @@ A trigger match condition related to changes to nodes within the Infrahub databa
 type NestedEdgedCoreNodeTriggerMatch {
   _updated_at: DateTime
   node: CoreNodeTriggerMatch
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A trigger match that matches against relationship changes on a node"""
 type NestedEdgedCoreNodeTriggerRelationshipMatch {
   node: CoreNodeTriggerRelationshipMatch
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8472,58 +8723,76 @@ A trigger rule that evaluates modifications to nodes within the Infrahub databas
 """
 type NestedEdgedCoreNodeTriggerRule {
   node: CoreNodeTriggerRule
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A pool of number resources"""
 type NestedEdgedCoreNumberPool {
   node: CoreNumberPool
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Component template to create pre-shaped objects."""
 type NestedEdgedCoreObjectComponentTemplate {
   _updated_at: DateTime
   node: CoreObjectComponentTemplate
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A permission that grants rights to perform actions on objects"""
 type NestedEdgedCoreObjectPermission {
   node: CoreObjectPermission
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Template to create pre-shaped objects."""
 type NestedEdgedCoreObjectTemplate {
   _updated_at: DateTime
   node: CoreObjectTemplate
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A thread related to an object on a proposed change"""
 type NestedEdgedCoreObjectThread {
   node: CoreObjectThread
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Username/Password based credential"""
 type NestedEdgedCorePasswordCredential {
   node: CorePasswordCredential
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Base Profile in Infrahub."""
 type NestedEdgedCoreProfile {
   _updated_at: DateTime
   node: CoreProfile
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Metadata related to a proposed change"""
 type NestedEdgedCoreProposedChange {
   node: CoreProposedChange
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8531,25 +8800,33 @@ A Git Repository integrated with Infrahub, Git-side will not be updated
 """
 type NestedEdgedCoreReadOnlyRepository {
   node: CoreReadOnlyRepository
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A Git Repository integrated with Infrahub"""
 type NestedEdgedCoreRepository {
   node: CoreRepository
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Group of nodes associated with a given repository."""
 type NestedEdgedCoreRepositoryGroup {
   node: CoreRepositoryGroup
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A Validator related to a specific repository"""
 type NestedEdgedCoreRepositoryValidator {
   node: CoreRepositoryValidator
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8558,76 +8835,100 @@ The resource manager contains pools of resources to allow for automatic assignme
 type NestedEdgedCoreResourcePool {
   _updated_at: DateTime
   node: CoreResourcePool
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A check related to the schema"""
 type NestedEdgedCoreSchemaCheck {
   node: CoreSchemaCheck
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A validator related to the schema"""
 type NestedEdgedCoreSchemaValidator {
   node: CoreSchemaValidator
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A standard check"""
 type NestedEdgedCoreStandardCheck {
   node: CoreStandardCheck
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Group of nodes of any kind."""
 type NestedEdgedCoreStandardGroup {
   node: CoreStandardGroup
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A webhook that connects to an external integration"""
 type NestedEdgedCoreStandardWebhook {
   node: CoreStandardWebhook
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Extend a node to be associated with tasks"""
 type NestedEdgedCoreTaskTarget {
   _updated_at: DateTime
   node: CoreTaskTarget
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A thread on a Proposed Change"""
 type NestedEdgedCoreThread {
   _updated_at: DateTime
   node: CoreThread
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A comment on thread within a Proposed Change"""
 type NestedEdgedCoreThreadComment {
   node: CoreThreadComment
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A file rendered from a Jinja2 template"""
 type NestedEdgedCoreTransformJinja2 {
   node: CoreTransformJinja2
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A transform function written in Python"""
 type NestedEdgedCoreTransformPython {
   node: CoreTransformPython
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Generic Transformation Object."""
 type NestedEdgedCoreTransformation {
   _updated_at: DateTime
   node: CoreTransformation
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8636,26 +8937,34 @@ A rule that allows you to define a trigger and map it to an action that runs onc
 type NestedEdgedCoreTriggerRule {
   _updated_at: DateTime
   node: CoreTriggerRule
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A Validator related to a user defined checks in a repository"""
 type NestedEdgedCoreUserValidator {
   node: CoreUserValidator
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 type NestedEdgedCoreValidator {
   _updated_at: DateTime
   node: CoreValidator
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A webhook that connects to an external integration"""
 type NestedEdgedCoreWebhook {
   _updated_at: DateTime
   node: CoreWebhook
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8664,13 +8973,17 @@ Resource to be used in a pool, its weight is used to determine its priority on a
 type NestedEdgedCoreWeightedPoolResource {
   _updated_at: DateTime
   node: CoreWeightedPoolResource
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Token for User Account"""
 type NestedEdgedInternalAccountToken {
   node: InternalAccountToken
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """
@@ -8678,63 +8991,83 @@ IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
 type NestedEdgedInternalIPPrefixAvailable {
   node: InternalIPPrefixAvailable
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Range of IPv4 or IPv6 addresses which has not been allocated yet"""
 type NestedEdgedInternalIPRangeAvailable {
   node: InternalIPRangeAvailable
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Refresh Token"""
 type NestedEdgedInternalRefreshToken {
   node: InternalRefreshToken
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """A namespace that segments IPAM"""
 type NestedEdgedIpamNamespace {
   node: IpamNamespace
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Any Entities that is responsible for some data."""
 type NestedEdgedLineageOwner {
   _updated_at: DateTime
   node: LineageOwner
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Any Entities that stores or produces data."""
 type NestedEdgedLineageSource {
   _updated_at: DateTime
   node: LineageSource
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Profile for BuiltinIPAddress"""
 type NestedEdgedProfileBuiltinIPAddress {
   node: ProfileBuiltinIPAddress
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Profile for BuiltinIPPrefix"""
 type NestedEdgedProfileBuiltinIPPrefix {
   node: ProfileBuiltinIPPrefix
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Profile for BuiltinTag"""
 type NestedEdgedProfileBuiltinTag {
   node: ProfileBuiltinTag
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """Profile for IpamNamespace"""
 type NestedEdgedProfileIpamNamespace {
   node: ProfileIpamNamespace
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata!
 }
 
 """IPv4 or IPv6 address"""
@@ -9417,7 +9750,11 @@ type NumberAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: BigInt
 }
 
@@ -10164,6 +10501,7 @@ type ProfileBuiltinIPAddress implements CoreNode & CoreProfile & LineageSource {
   hfid: [String!]
   """Unique identifier"""
   id: String!
+  ip_namespace: NestedEdgedBuiltinIPNamespace!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   profile_name: TextAttribute
@@ -10182,6 +10520,7 @@ type ProfileBuiltinIPAddressCreate {
 input ProfileBuiltinIPAddressCreateInput {
   description: TextAttributeCreate
   id: String
+  ip_namespace: RelatedNodeInput
   member_of_groups: [RelatedNodeInput]
   profile_name: TextAttributeCreate
   profile_priority: NumberAttributeCreate
@@ -10204,6 +10543,7 @@ input ProfileBuiltinIPAddressUpdateInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
+  ip_namespace: RelatedNodeInput
   member_of_groups: [RelatedNodeInput]
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
@@ -10221,6 +10561,7 @@ input ProfileBuiltinIPAddressUpsertInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
+  ip_namespace: RelatedNodeInput
   member_of_groups: [RelatedNodeInput]
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
@@ -10238,6 +10579,7 @@ type ProfileBuiltinIPPrefix implements CoreNode & CoreProfile & LineageSource {
   hfid: [String!]
   """Unique identifier"""
   id: String!
+  ip_namespace: NestedEdgedBuiltinIPNamespace!
   """All IP addresses within this prefix are considered usable"""
   is_pool: CheckboxAttribute
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -10260,6 +10602,7 @@ type ProfileBuiltinIPPrefixCreate {
 input ProfileBuiltinIPPrefixCreateInput {
   description: TextAttributeCreate
   id: String
+  ip_namespace: RelatedNodeInput
   """All IP addresses within this prefix are considered usable"""
   is_pool: CheckboxAttributeCreate
   member_of_groups: [RelatedNodeInput]
@@ -10285,6 +10628,7 @@ input ProfileBuiltinIPPrefixUpdateInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
+  ip_namespace: RelatedNodeInput
   """All IP addresses within this prefix are considered usable"""
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
@@ -10305,6 +10649,7 @@ input ProfileBuiltinIPPrefixUpsertInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
+  ip_namespace: RelatedNodeInput
   """All IP addresses within this prefix are considered usable"""
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
@@ -10399,6 +10744,8 @@ type ProfileIpamNamespace implements CoreNode & CoreProfile & LineageSource {
   hfid: [String!]
   """Unique identifier"""
   id: String!
+  ip_addresses(address__is_protected: Boolean, address__owner__id: ID, address__source__id: ID, address__value: String, address__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedBuiltinIPAddress!
+  ip_prefixes(broadcast_address__is_protected: Boolean, broadcast_address__owner__id: ID, broadcast_address__source__id: ID, broadcast_address__value: String, broadcast_address__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hostmask__is_protected: Boolean, hostmask__owner__id: ID, hostmask__source__id: ID, hostmask__value: String, hostmask__values: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], is_top_level__is_protected: Boolean, is_top_level__owner__id: ID, is_top_level__source__id: ID, is_top_level__value: Boolean, is_top_level__values: [Boolean], isnull: Boolean, limit: Int, member_type__is_protected: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], netmask__is_protected: Boolean, netmask__owner__id: ID, netmask__source__id: ID, netmask__value: String, netmask__values: [String], network_address__is_protected: Boolean, network_address__owner__id: ID, network_address__source__id: ID, network_address__value: String, network_address__values: [String], offset: Int, order: OrderInput, prefix__is_protected: Boolean, prefix__owner__id: ID, prefix__source__id: ID, prefix__value: String, prefix__values: [String], utilization__is_protected: Boolean, utilization__owner__id: ID, utilization__source__id: ID, utilization__value: BigInt, utilization__values: [BigInt]): NestedPaginatedBuiltinIPPrefix!
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None (required)"""
   profile_name: TextAttribute
@@ -10417,6 +10764,8 @@ type ProfileIpamNamespaceCreate {
 input ProfileIpamNamespaceCreateInput {
   description: TextAttributeCreate
   id: String
+  ip_addresses: [RelatedIPAddressNodeInput]
+  ip_prefixes: [RelatedIPPrefixNodeInput]
   member_of_groups: [RelatedNodeInput]
   profile_name: TextAttributeCreate
   profile_priority: NumberAttributeCreate
@@ -10439,6 +10788,8 @@ input ProfileIpamNamespaceUpdateInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
+  ip_addresses: [RelatedIPAddressNodeInput]
+  ip_prefixes: [RelatedIPPrefixNodeInput]
   member_of_groups: [RelatedNodeInput]
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
@@ -10456,6 +10807,8 @@ input ProfileIpamNamespaceUpsertInput {
   description: TextAttributeUpdate
   hfid: [String]
   id: String
+  ip_addresses: [RelatedIPAddressNodeInput]
+  ip_prefixes: [RelatedIPPrefixNodeInput]
   member_of_groups: [RelatedNodeInput]
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
@@ -10828,10 +11181,10 @@ type Query {
   IpamNamespace(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], default__is_protected: Boolean, default__isnull: Boolean, default__owner__id: ID, default__source__id: ID, default__value: Boolean, default__values: [Boolean], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], ip_addresses__address__is_protected: Boolean, ip_addresses__address__owner__id: ID, ip_addresses__address__source__id: ID, ip_addresses__address__value: String, ip_addresses__address__values: [String], ip_addresses__description__is_protected: Boolean, ip_addresses__description__owner__id: ID, ip_addresses__description__source__id: ID, ip_addresses__description__value: String, ip_addresses__description__values: [String], ip_addresses__ids: [ID], ip_addresses__isnull: Boolean, ip_prefixes__broadcast_address__is_protected: Boolean, ip_prefixes__broadcast_address__owner__id: ID, ip_prefixes__broadcast_address__source__id: ID, ip_prefixes__broadcast_address__value: String, ip_prefixes__broadcast_address__values: [String], ip_prefixes__description__is_protected: Boolean, ip_prefixes__description__owner__id: ID, ip_prefixes__description__source__id: ID, ip_prefixes__description__value: String, ip_prefixes__description__values: [String], ip_prefixes__hostmask__is_protected: Boolean, ip_prefixes__hostmask__owner__id: ID, ip_prefixes__hostmask__source__id: ID, ip_prefixes__hostmask__value: String, ip_prefixes__hostmask__values: [String], ip_prefixes__ids: [ID], ip_prefixes__is_pool__is_protected: Boolean, ip_prefixes__is_pool__owner__id: ID, ip_prefixes__is_pool__source__id: ID, ip_prefixes__is_pool__value: Boolean, ip_prefixes__is_pool__values: [Boolean], ip_prefixes__is_top_level__is_protected: Boolean, ip_prefixes__is_top_level__owner__id: ID, ip_prefixes__is_top_level__source__id: ID, ip_prefixes__is_top_level__value: Boolean, ip_prefixes__is_top_level__values: [Boolean], ip_prefixes__isnull: Boolean, ip_prefixes__member_type__is_protected: Boolean, ip_prefixes__member_type__owner__id: ID, ip_prefixes__member_type__source__id: ID, ip_prefixes__member_type__value: String, ip_prefixes__member_type__values: [String], ip_prefixes__netmask__is_protected: Boolean, ip_prefixes__netmask__owner__id: ID, ip_prefixes__netmask__source__id: ID, ip_prefixes__netmask__value: String, ip_prefixes__netmask__values: [String], ip_prefixes__network_address__is_protected: Boolean, ip_prefixes__network_address__owner__id: ID, ip_prefixes__network_address__source__id: ID, ip_prefixes__network_address__value: String, ip_prefixes__network_address__values: [String], ip_prefixes__prefix__is_protected: Boolean, ip_prefixes__prefix__owner__id: ID, ip_prefixes__prefix__source__id: ID, ip_prefixes__prefix__value: String, ip_prefixes__prefix__values: [String], ip_prefixes__utilization__is_protected: Boolean, ip_prefixes__utilization__owner__id: ID, ip_prefixes__utilization__source__id: ID, ip_prefixes__utilization__value: BigInt, ip_prefixes__utilization__values: [BigInt], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], name__is_protected: Boolean, name__isnull: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profiles__ids: [ID], profiles__isnull: Boolean, profiles__profile_name__is_protected: Boolean, profiles__profile_name__owner__id: ID, profiles__profile_name__source__id: ID, profiles__profile_name__value: String, profiles__profile_name__values: [String], profiles__profile_priority__is_protected: Boolean, profiles__profile_priority__owner__id: ID, profiles__profile_priority__source__id: ID, profiles__profile_priority__value: BigInt, profiles__profile_priority__values: [BigInt], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedIpamNamespace!
   LineageOwner(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], ids: [ID], limit: Int, offset: Int, order: OrderInput, partial_match: Boolean): PaginatedLineageOwner!
   LineageSource(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], ids: [ID], limit: Int, offset: Int, order: OrderInput, partial_match: Boolean): PaginatedLineageSource!
-  ProfileBuiltinIPAddress(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__address__is_protected: Boolean, related_nodes__address__owner__id: ID, related_nodes__address__source__id: ID, related_nodes__address__value: String, related_nodes__address__values: [String], related_nodes__description__is_protected: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__ids: [ID], related_nodes__isnull: Boolean, subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileBuiltinIPAddress!
-  ProfileBuiltinIPPrefix(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], is_pool__is_protected: Boolean, is_pool__isnull: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], member_type__is_protected: Boolean, member_type__isnull: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__broadcast_address__is_protected: Boolean, related_nodes__broadcast_address__owner__id: ID, related_nodes__broadcast_address__source__id: ID, related_nodes__broadcast_address__value: String, related_nodes__broadcast_address__values: [String], related_nodes__description__is_protected: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__hostmask__is_protected: Boolean, related_nodes__hostmask__owner__id: ID, related_nodes__hostmask__source__id: ID, related_nodes__hostmask__value: String, related_nodes__hostmask__values: [String], related_nodes__ids: [ID], related_nodes__is_pool__is_protected: Boolean, related_nodes__is_pool__owner__id: ID, related_nodes__is_pool__source__id: ID, related_nodes__is_pool__value: Boolean, related_nodes__is_pool__values: [Boolean], related_nodes__is_top_level__is_protected: Boolean, related_nodes__is_top_level__owner__id: ID, related_nodes__is_top_level__source__id: ID, related_nodes__is_top_level__value: Boolean, related_nodes__is_top_level__values: [Boolean], related_nodes__isnull: Boolean, related_nodes__member_type__is_protected: Boolean, related_nodes__member_type__owner__id: ID, related_nodes__member_type__source__id: ID, related_nodes__member_type__value: String, related_nodes__member_type__values: [String], related_nodes__netmask__is_protected: Boolean, related_nodes__netmask__owner__id: ID, related_nodes__netmask__source__id: ID, related_nodes__netmask__value: String, related_nodes__netmask__values: [String], related_nodes__network_address__is_protected: Boolean, related_nodes__network_address__owner__id: ID, related_nodes__network_address__source__id: ID, related_nodes__network_address__value: String, related_nodes__network_address__values: [String], related_nodes__prefix__is_protected: Boolean, related_nodes__prefix__owner__id: ID, related_nodes__prefix__source__id: ID, related_nodes__prefix__value: String, related_nodes__prefix__values: [String], related_nodes__utilization__is_protected: Boolean, related_nodes__utilization__owner__id: ID, related_nodes__utilization__source__id: ID, related_nodes__utilization__value: BigInt, related_nodes__utilization__values: [BigInt], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileBuiltinIPPrefix!
+  ProfileBuiltinIPAddress(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], ip_namespace__description__is_protected: Boolean, ip_namespace__description__owner__id: ID, ip_namespace__description__source__id: ID, ip_namespace__description__value: String, ip_namespace__description__values: [String], ip_namespace__ids: [ID], ip_namespace__isnull: Boolean, ip_namespace__name__is_protected: Boolean, ip_namespace__name__owner__id: ID, ip_namespace__name__source__id: ID, ip_namespace__name__value: String, ip_namespace__name__values: [String], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__address__is_protected: Boolean, related_nodes__address__owner__id: ID, related_nodes__address__source__id: ID, related_nodes__address__value: String, related_nodes__address__values: [String], related_nodes__description__is_protected: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__ids: [ID], related_nodes__isnull: Boolean, subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileBuiltinIPAddress!
+  ProfileBuiltinIPPrefix(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], ip_namespace__description__is_protected: Boolean, ip_namespace__description__owner__id: ID, ip_namespace__description__source__id: ID, ip_namespace__description__value: String, ip_namespace__description__values: [String], ip_namespace__ids: [ID], ip_namespace__isnull: Boolean, ip_namespace__name__is_protected: Boolean, ip_namespace__name__owner__id: ID, ip_namespace__name__source__id: ID, ip_namespace__name__value: String, ip_namespace__name__values: [String], is_pool__is_protected: Boolean, is_pool__isnull: Boolean, is_pool__owner__id: ID, is_pool__source__id: ID, is_pool__value: Boolean, is_pool__values: [Boolean], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], member_type__is_protected: Boolean, member_type__isnull: Boolean, member_type__owner__id: ID, member_type__source__id: ID, member_type__value: String, member_type__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__broadcast_address__is_protected: Boolean, related_nodes__broadcast_address__owner__id: ID, related_nodes__broadcast_address__source__id: ID, related_nodes__broadcast_address__value: String, related_nodes__broadcast_address__values: [String], related_nodes__description__is_protected: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__hostmask__is_protected: Boolean, related_nodes__hostmask__owner__id: ID, related_nodes__hostmask__source__id: ID, related_nodes__hostmask__value: String, related_nodes__hostmask__values: [String], related_nodes__ids: [ID], related_nodes__is_pool__is_protected: Boolean, related_nodes__is_pool__owner__id: ID, related_nodes__is_pool__source__id: ID, related_nodes__is_pool__value: Boolean, related_nodes__is_pool__values: [Boolean], related_nodes__is_top_level__is_protected: Boolean, related_nodes__is_top_level__owner__id: ID, related_nodes__is_top_level__source__id: ID, related_nodes__is_top_level__value: Boolean, related_nodes__is_top_level__values: [Boolean], related_nodes__isnull: Boolean, related_nodes__member_type__is_protected: Boolean, related_nodes__member_type__owner__id: ID, related_nodes__member_type__source__id: ID, related_nodes__member_type__value: String, related_nodes__member_type__values: [String], related_nodes__netmask__is_protected: Boolean, related_nodes__netmask__owner__id: ID, related_nodes__netmask__source__id: ID, related_nodes__netmask__value: String, related_nodes__netmask__values: [String], related_nodes__network_address__is_protected: Boolean, related_nodes__network_address__owner__id: ID, related_nodes__network_address__source__id: ID, related_nodes__network_address__value: String, related_nodes__network_address__values: [String], related_nodes__prefix__is_protected: Boolean, related_nodes__prefix__owner__id: ID, related_nodes__prefix__source__id: ID, related_nodes__prefix__value: String, related_nodes__prefix__values: [String], related_nodes__utilization__is_protected: Boolean, related_nodes__utilization__owner__id: ID, related_nodes__utilization__source__id: ID, related_nodes__utilization__value: BigInt, related_nodes__utilization__values: [BigInt], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileBuiltinIPPrefix!
   ProfileBuiltinTag(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__description__is_protected: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__ids: [ID], related_nodes__isnull: Boolean, related_nodes__name__is_protected: Boolean, related_nodes__name__owner__id: ID, related_nodes__name__source__id: ID, related_nodes__name__value: String, related_nodes__name__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileBuiltinTag!
-  ProfileIpamNamespace(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__default__is_protected: Boolean, related_nodes__default__owner__id: ID, related_nodes__default__source__id: ID, related_nodes__default__value: Boolean, related_nodes__default__values: [Boolean], related_nodes__description__is_protected: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__ids: [ID], related_nodes__isnull: Boolean, related_nodes__name__is_protected: Boolean, related_nodes__name__owner__id: ID, related_nodes__name__source__id: ID, related_nodes__name__value: String, related_nodes__name__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileIpamNamespace!
+  ProfileIpamNamespace(any__is_protected: Boolean, any__owner__id: ID, any__source__id: ID, any__value: String, any__values: [String], description__is_protected: Boolean, description__isnull: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], hfid: [String], ids: [ID], ip_addresses__address__is_protected: Boolean, ip_addresses__address__owner__id: ID, ip_addresses__address__source__id: ID, ip_addresses__address__value: String, ip_addresses__address__values: [String], ip_addresses__description__is_protected: Boolean, ip_addresses__description__owner__id: ID, ip_addresses__description__source__id: ID, ip_addresses__description__value: String, ip_addresses__description__values: [String], ip_addresses__ids: [ID], ip_addresses__isnull: Boolean, ip_prefixes__broadcast_address__is_protected: Boolean, ip_prefixes__broadcast_address__owner__id: ID, ip_prefixes__broadcast_address__source__id: ID, ip_prefixes__broadcast_address__value: String, ip_prefixes__broadcast_address__values: [String], ip_prefixes__description__is_protected: Boolean, ip_prefixes__description__owner__id: ID, ip_prefixes__description__source__id: ID, ip_prefixes__description__value: String, ip_prefixes__description__values: [String], ip_prefixes__hostmask__is_protected: Boolean, ip_prefixes__hostmask__owner__id: ID, ip_prefixes__hostmask__source__id: ID, ip_prefixes__hostmask__value: String, ip_prefixes__hostmask__values: [String], ip_prefixes__ids: [ID], ip_prefixes__is_pool__is_protected: Boolean, ip_prefixes__is_pool__owner__id: ID, ip_prefixes__is_pool__source__id: ID, ip_prefixes__is_pool__value: Boolean, ip_prefixes__is_pool__values: [Boolean], ip_prefixes__is_top_level__is_protected: Boolean, ip_prefixes__is_top_level__owner__id: ID, ip_prefixes__is_top_level__source__id: ID, ip_prefixes__is_top_level__value: Boolean, ip_prefixes__is_top_level__values: [Boolean], ip_prefixes__isnull: Boolean, ip_prefixes__member_type__is_protected: Boolean, ip_prefixes__member_type__owner__id: ID, ip_prefixes__member_type__source__id: ID, ip_prefixes__member_type__value: String, ip_prefixes__member_type__values: [String], ip_prefixes__netmask__is_protected: Boolean, ip_prefixes__netmask__owner__id: ID, ip_prefixes__netmask__source__id: ID, ip_prefixes__netmask__value: String, ip_prefixes__netmask__values: [String], ip_prefixes__network_address__is_protected: Boolean, ip_prefixes__network_address__owner__id: ID, ip_prefixes__network_address__source__id: ID, ip_prefixes__network_address__value: String, ip_prefixes__network_address__values: [String], ip_prefixes__prefix__is_protected: Boolean, ip_prefixes__prefix__owner__id: ID, ip_prefixes__prefix__source__id: ID, ip_prefixes__prefix__value: String, ip_prefixes__prefix__values: [String], ip_prefixes__utilization__is_protected: Boolean, ip_prefixes__utilization__owner__id: ID, ip_prefixes__utilization__source__id: ID, ip_prefixes__utilization__value: BigInt, ip_prefixes__utilization__values: [BigInt], limit: Int, member_of_groups__description__value: String, member_of_groups__description__values: [String], member_of_groups__group_type__value: String, member_of_groups__group_type__values: [String], member_of_groups__ids: [ID], member_of_groups__isnull: Boolean, member_of_groups__label__value: String, member_of_groups__label__values: [String], member_of_groups__name__value: String, member_of_groups__name__values: [String], offset: Int, order: OrderInput, partial_match: Boolean, profile_name__is_protected: Boolean, profile_name__isnull: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__isnull: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt], related_nodes__default__is_protected: Boolean, related_nodes__default__owner__id: ID, related_nodes__default__source__id: ID, related_nodes__default__value: Boolean, related_nodes__default__values: [Boolean], related_nodes__description__is_protected: Boolean, related_nodes__description__owner__id: ID, related_nodes__description__source__id: ID, related_nodes__description__value: String, related_nodes__description__values: [String], related_nodes__ids: [ID], related_nodes__isnull: Boolean, related_nodes__name__is_protected: Boolean, related_nodes__name__owner__id: ID, related_nodes__name__source__id: ID, related_nodes__name__value: String, related_nodes__name__values: [String], subscriber_of_groups__description__value: String, subscriber_of_groups__description__values: [String], subscriber_of_groups__group_type__value: String, subscriber_of_groups__group_type__values: [String], subscriber_of_groups__ids: [ID], subscriber_of_groups__isnull: Boolean, subscriber_of_groups__label__value: String, subscriber_of_groups__label__values: [String], subscriber_of_groups__name__value: String, subscriber_of_groups__name__values: [String]): PaginatedProfileIpamNamespace!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
 }
 
@@ -10877,6 +11230,12 @@ type Relationship {
   id: String
   identifier: String
   peers: [RelationshipPeer!]
+  """
+  Date/Time when the relationship was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  """User that last modified the relationship"""
+  updated_by: String
 }
 
 type RelationshipAdd {
@@ -11112,7 +11471,11 @@ type TextAttribute implements AttributeInterface {
   owner: LineageOwner
   permissions: PermissionType
   source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
   updated_at: DateTime
+  updated_by: CoreGenericAccount
   value: String
 }
 
