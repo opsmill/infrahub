@@ -51,10 +51,12 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
         self.params["branch_name"] = self.branch.name
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["user_id"] = self.user_id
 
         self.params["rel_props"] = {
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         node_remove_query = self.render_node_remove_query(branch_filter=branch_filter)
@@ -108,7 +110,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         }
         WITH p2 as peer_node, rel_inband, active_node
         FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_inband.to = $current_time
+            SET rel_inband.to = $current_time, rel_inband.to_user_id = $user_id
         )
         """ % {"sub_query": sub_query, "sub_query_args": sub_query_args, "branch_filter": branch_filter}
         return query
@@ -154,7 +156,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
             %(sub_query)s
         }
         FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_outband.to = $current_time
+            SET rel_outband.to = $current_time, rel_outband.to_user_id = $user_id
         )
         """ % {"sub_query": sub_query, "sub_query_args": sub_query_args, "branch_filter": branch_filter}
 

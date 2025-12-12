@@ -40,7 +40,6 @@ class NodeDuplicateQuery(Query):
     ) -> None:
         self.previous_node = previous_node
         self.new_node = new_node
-
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
@@ -140,14 +139,18 @@ class NodeDuplicateQuery(Query):
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["branch_support"] = self.new_node.branch_support
 
+        self.params["user_id"] = self.user_id
+
         self.params["rel_props_new"] = {
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         self.params["rel_props_prev"] = {
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         sub_query_out, sub_query_out_args = self._render_sub_query_out()
@@ -185,7 +188,7 @@ class NodeDuplicateQuery(Query):
         }
         WITH p2 as peer_node, rel_outband, active_node, new_node
         FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_outband.to = $current_time
+            SET rel_outband.to = $current_time, rel_outband.to_user_id = $user_id
         )
         WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
@@ -205,7 +208,7 @@ class NodeDuplicateQuery(Query):
         }
         WITH p2 as peer_node, rel_inband, active_node, new_node
         FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_inband.to = $current_time
+            SET rel_inband.to = $current_time, rel_inband.to_user_id = $user_id
         )
 
         RETURN DISTINCT new_node

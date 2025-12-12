@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.constants import TestKind
@@ -226,3 +227,49 @@ async def test_inheritance_migration_on_branch_and_main(
     assert not execution_result_default.errors
 
     await verify_no_duplicate_paths(db=db)
+
+
+async def test_migration_with_user_id(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    """Test that the user_id passed to migration.execute() is correctly set on the duplicated node edges."""
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema.duplicate()
+    car_schema = candidate_schema.get(name="TestCar")
+    candidate_schema.delete(name="TestCar")
+    car_schema.name = "NewCar"
+    car_schema.namespace = "Test2"
+    candidate_schema.set(name="Test2NewCar", schema=car_schema)
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+
+    test_user_id = "test-kind-migration-user"
+    migration_time = Timestamp()
+    execution_result = await migration.execute(db=db, branch=default_branch, at=migration_time, user_id=test_user_id)
+
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 2
+
+    # Query for the new node edges created by the migration and verify user_id metadata
+    # The migration duplicates nodes with new labels, so we check edges on the new label
+    query = """
+    MATCH (n:Test2NewCar {uuid: $car_uuid})
+    MATCH (n)-[r {status: "active", from: $migration_time}]-()
+    RETURN DISTINCT r.from_user_id as from_user_id
+    """
+    results = await db.execute_query(
+        query=query,
+        params={
+            "car_uuid": car_accord_main.id,
+            "migration_time": migration_time.to_string(),
+        },
+    )
+
+    # All active edges created during the migration should have the test user_id
+    assert len(results) > 0, "Expected at least one active edge on duplicated node"
+    for record in results:
+        assert record["from_user_id"] == test_user_id

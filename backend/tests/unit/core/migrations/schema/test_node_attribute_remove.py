@@ -10,6 +10,7 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 
@@ -121,3 +122,41 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
     assert execution_result.nbr_migrations_executed == 2
     assert await count_nodes(db=db, label="Attribute") == count_attr_node
     assert await count_relationships(db=db) == count_rels + 6
+
+
+async def test_migration_with_user_id(db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node) -> None:
+    """Test that the user_id passed to migration.execute() is correctly set on the created deleted edges."""
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema.duplicate()
+    car_schema = candidate_schema.get(name="TestCar")
+    attr = car_schema.get_attribute(name="color")
+    attr.state = HashableModelState.ABSENT
+
+    migration = NodeAttributeRemoveMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+    )
+
+    test_user_id = "test-remove-migration-user"
+    migration_time = Timestamp()
+    execution_result = await migration.execute(db=db, branch=default_branch, at=migration_time, user_id=test_user_id)
+
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 1
+
+    # Query for the deleted edges created by the migration and verify user_id metadata
+    query = """
+    MATCH (n:TestCar {uuid: $car_uuid})-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "color"})
+    MATCH (attr)-[r {branch: $branch, status: "deleted"}]-()
+    RETURN r.from_user_id as from_user_id, r.from as from_time
+    """
+    results = await db.execute_query(
+        query=query, params={"car_uuid": car_accord_main.id, "branch": default_branch.name}
+    )
+
+    # All deleted edges created during the migration should have the test user_id
+    assert len(results) > 0, "Expected at least one deleted edge"
+    for record in results:
+        assert record["from_user_id"] == test_user_id
+        assert record["from_time"] == migration_time.to_string()

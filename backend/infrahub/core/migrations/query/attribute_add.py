@@ -47,11 +47,14 @@ class AttributeAddQuery(Query):
         else:
             self.params["attr_value"] = NULL_VALUE
 
+        self.params["user_id"] = self.user_id
+
         self.params["rel_props"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         self.params["is_protected_default"] = False
@@ -104,7 +107,7 @@ class AttributeAddQuery(Query):
         CREATE (a)-[:IS_PROTECTED $rel_props]->(is_protected_value)
         %(uuid_generation)s
         FOREACH (i in CASE WHEN has_attr_e.status = "deleted" THEN [1] ELSE [] END |
-            SET has_attr_e.to = $current_time
+            SET has_attr_e.to = $current_time, has_attr_e.to_user_id = $user_id
         )
         """ % {
             "match_query": match_query,

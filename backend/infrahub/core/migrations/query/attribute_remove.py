@@ -53,11 +53,14 @@ class AttributeRemoveQuery(Query):
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
 
+        self.params["user_id"] = self.user_id
+
         self.params["rel_props"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         def render_sub_query_per_rel_type(rel_type: str, rel_def: FieldInfo) -> str:
@@ -123,7 +126,7 @@ class AttributeRemoveQuery(Query):
         }
         WITH p2 as peer_node, rb, active_attr
         FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
-            SET rb.to = $current_time
+            SET rb.to = $current_time, rb.to_user_id = $user_id
         )
         RETURN DISTINCT active_attr
         """ % {

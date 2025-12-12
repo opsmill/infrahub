@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -26,6 +27,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
         self.params["attr_name"] = self.migration.previous_attribute_schema.name
+        self.params["user_id"] = self.user_id
         new_attr_value_labels = "AttributeValue"
         if needs_index:
             new_attr_value_labels += ":AttributeValueIndexed"
@@ -109,6 +111,7 @@ CALL (attr, has_value_e, av) {
     SET new_has_value_e.branch = $branch
     SET new_has_value_e.branch_level = $branch_level
     SET new_has_value_e.from = $at
+    SET new_has_value_e.from_user_id = $user_id
     SET new_has_value_e.to = NULL
 
     // ------------
@@ -123,6 +126,7 @@ CALL (attr, has_value_e, av) {
     SET deleted_has_value_e.branch = $branch
     SET deleted_has_value_e.branch_level = $branch_level
     SET deleted_has_value_e.from = $at
+    SET deleted_has_value_e.from_user_id = $user_id
     SET deleted_has_value_e.to = NULL
 }
 
@@ -133,7 +137,7 @@ CALL (attr, has_value_e, av) {
 CALL (has_value_e) {
     WITH has_value_e
     WHERE has_value_e.branch = $branch
-    SET has_value_e.to = $at
+    SET has_value_e.to = $at, has_value_e.to_user_id = $user_id
 }
         """ % {
             "schema_kind": self.migration.previous_schema.kind,
@@ -153,10 +157,11 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
         branch: Branch,
         at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
         is_indexed_previous = is_large_attribute_type(self.previous_attribute_schema.kind)
         is_indexed_new = is_large_attribute_type(self.new_attribute_schema.kind)
         if is_indexed_previous is is_indexed_new:
             return MigrationResult()
 
-        return await super().execute(db=db, branch=branch, at=at, queries=queries)
+        return await super().execute(db=db, branch=branch, at=at, queries=queries, user_id=user_id)

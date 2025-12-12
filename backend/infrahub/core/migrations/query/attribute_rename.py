@@ -32,7 +32,6 @@ class AttributeRenameQuery(Query):
     ) -> None:
         self.previous_attr = previous_attr
         self.new_attr = new_attr
-
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
@@ -94,11 +93,14 @@ class AttributeRenameQuery(Query):
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
 
+        self.params["user_id"] = self.user_id
+
         self.params["rel_props_create"] = {
             "branch": self.branch.name,
             "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         self.params["rel_props_delete"] = {
@@ -106,6 +108,7 @@ class AttributeRenameQuery(Query):
             "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
         }
 
         sub_queries_create = [
@@ -175,7 +178,7 @@ class AttributeRenameQuery(Query):
         else:
             query = """
             FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
-                SET rb.to = $current_time
+                SET rb.to = $current_time, rb.to_user_id = $user_id
             )
             RETURN DISTINCT new_attr
             """

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.node import Node
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
@@ -65,10 +66,11 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         branch: Branch,
         at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
         if self.new_attribute_schema.inherited is True:
             return MigrationResult()
-        return await super().execute(db=db, branch=branch, at=at, queries=queries)
+        return await super().execute(db=db, branch=branch, at=at, queries=queries, user_id=user_id)
 
     async def execute_post_queries(
         self,
@@ -76,6 +78,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         result: MigrationResult,
         branch: Branch,
         at: Timestamp,  # noqa: ARG002
+        user_id: str,  # noqa: ARG002
     ) -> MigrationResult:
         if self.new_attribute_schema.kind != "NumberPool":
             return result

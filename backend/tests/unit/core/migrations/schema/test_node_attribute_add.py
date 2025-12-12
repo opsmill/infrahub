@@ -13,6 +13,7 @@ from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
     NodeAttributeRemoveMigrationQuery01,
 )
+from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
@@ -153,3 +154,43 @@ async def test_migration(db: InfrahubDatabase, default_branch, init_database, sc
     assert execution_result.nbr_migrations_executed == 5
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 5
+
+
+async def test_migration_with_user_id(db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node) -> None:
+    """Test that the user_id passed to migration.execute() is correctly set on the created attribute's metadata."""
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema = schema.get_node(name="TestCar")
+
+    # Remove the color attribute first so we can re-add it with a specific user_id
+    remove_migration = NodeAttributeRemoveMigration(
+        previous_node_schema=car_schema,
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+    )
+    await remove_migration.execute(db=db, branch=default_branch)
+
+    test_user_id = "test-migration-user"
+    migration = NodeAttributeAddMigration(
+        new_node_schema=car_schema,
+        previous_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+    )
+    migration_time = Timestamp()
+    execution_result = await migration.execute(db=db, branch=default_branch, at=migration_time, user_id=test_user_id)
+
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 1
+
+    # Verify directly via Cypher that from_user_id is set on the edges
+    query = """
+    MATCH (n:TestCar {uuid: $car_uuid})-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "color"})
+    MATCH (attr)-[r {status: "active", from: $migration_time}]-()
+    RETURN r.from_user_id as from_user_id
+    """
+    results = await db.execute_query(
+        query=query,
+        params={"car_uuid": car_accord_main.id, "migration_time": migration_time.to_string()},
+    )
+    assert len(results) > 0, "Expected at least one active edge on added attribute"
+    for record in results:
+        assert record["from_user_id"] == test_user_id

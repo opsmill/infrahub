@@ -7,6 +7,7 @@ from rich.console import Console
 from typing_extensions import Self
 
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema, SchemaRoot, internal_schema
@@ -62,6 +63,7 @@ class SchemaMigration(BaseModel):
         result: MigrationResult,
         branch: Branch,  # noqa: ARG002
         at: Timestamp,  # noqa: ARG002
+        user_id: str,  # noqa: ARG002
     ) -> MigrationResult:
         return result
 
@@ -71,6 +73,7 @@ class SchemaMigration(BaseModel):
         result: MigrationResult,
         branch: Branch,  # noqa: ARG002
         at: Timestamp,  # noqa: ARG002
+        user_id: str,  # noqa: ARG002
     ) -> MigrationResult:
         return result
 
@@ -81,10 +84,11 @@ class SchemaMigration(BaseModel):
         branch: Branch,
         at: Timestamp,
         queries: Sequence[type[MigrationBaseQuery]],
+        user_id: str,
     ) -> MigrationResult:
         for migration_query in queries:
             try:
-                query = await migration_query.init(db=db, branch=branch, at=at, migration=self)
+                query = await migration_query.init(db=db, branch=branch, at=at, migration=self, user_id=user_id)
                 await query.execute(db=db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
             except Exception as exc:
@@ -99,15 +103,18 @@ class SchemaMigration(BaseModel):
         branch: Branch,
         at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
         async with db.start_transaction() as ts:
             result = MigrationResult()
             at = Timestamp(at)
 
-            await self.execute_pre_queries(db=ts, result=result, branch=branch, at=at)
+            await self.execute_pre_queries(db=ts, result=result, branch=branch, at=at, user_id=user_id)
             queries_to_execute = queries or self.queries
-            await self.execute_queries(db=ts, result=result, branch=branch, at=at, queries=queries_to_execute)
-            await self.execute_post_queries(db=ts, result=result, branch=branch, at=at)
+            await self.execute_queries(
+                db=ts, result=result, branch=branch, at=at, queries=queries_to_execute, user_id=user_id
+            )
+            await self.execute_post_queries(db=ts, result=result, branch=branch, at=at, user_id=user_id)
 
         return result
 
@@ -209,14 +216,14 @@ class InternalSchemaMigration(BaseModel):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:
         result = MigrationResult()
 
         default_branch = registry.get_branch_from_registry()
 
         for migration in self.migrations:
             try:
-                execution_result = await migration.execute(db=db, branch=default_branch)
+                execution_result = await migration.execute(db=db, branch=default_branch, user_id=user_id)
                 result.errors.extend(execution_result.errors)
             except Exception as exc:
                 result.errors.append(str(exc))
