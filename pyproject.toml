@@ -331,7 +331,6 @@ disable_error_code = [
     "operator",
     "union-attr",
     "valid-type",
-    "var-annotated",
 ]
 
 [[tool.mypy.overrides]]
