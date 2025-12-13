@@ -1,6 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 
+import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -15,9 +16,14 @@ export function getSchemaHashQueryOptions({ branchName, atDate }: GetSchemaHashP
   });
 }
 
-export function useGetSchemaHash() {
+export type UseGetSchemaHashConfig = QueryConfig<typeof getSchemaHashQueryOptions>;
+
+export function useGetSchemaHash(config?: UseGetSchemaHashConfig) {
   const { currentBranch } = useCurrentBranch();
   const atDate = useAtomValue(datetimeAtom);
 
-  return useQuery(getSchemaHashQueryOptions({ branchName: currentBranch.name, atDate }));
+  return useQuery({
+    ...getSchemaHashQueryOptions({ branchName: currentBranch.name, atDate }),
+    ...config,
+  });
 }
