@@ -111,6 +111,9 @@ class AttributeRenameQuery(Query):
             "from_user_id": self.user_id,
         }
 
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
+
         sub_queries_create = [
             self._render_sub_query_per_rel_type_create_new(rel_type, rel_def)
             for rel_type, rel_def in GraphAttributeRelationships.model_fields.items()
@@ -148,8 +151,9 @@ class AttributeRenameQuery(Query):
         WHERE rb.status = "active"
         CREATE (new_attr:Attribute { name: $new_attr.name, branch_support: $new_attr.branch_support })
         %(add_uuid)s
-        WITH active_attr, new_attr
+        WITH active_node, active_attr, new_attr
         MATCH (active_attr)-[]-(peer)
+        WITH DISTINCT active_node, active_attr, new_attr, peer
         CALL (active_attr, peer) {
             MATCH (active_attr)-[r]-(peer)
             WHERE %(branch_filter)s
@@ -157,12 +161,12 @@ class AttributeRenameQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH a1 as active_attr, r1 as rb, p1 as peer_node, new_attr
+        WITH active_node, a1 as active_attr, r1 as rb, p1 as peer_node, new_attr
         WHERE rb.status = "active"
         CALL (peer_node, rb, active_attr, new_attr){
             %(sub_query_create_all)s
         }
-        WITH p2 as peer_node, rb, new_attr, active_attr
+        WITH p2 as peer_node, rb, new_attr, active_attr, active_node
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid, "sub_query_create_all": sub_query_create_all}
         self.add_to_query(query)
 
@@ -180,6 +184,15 @@ class AttributeRenameQuery(Query):
             FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
                 SET rb.to = $current_time, rb.to_user_id = $user_id
             )
+            WITH new_attr, active_node
+            // Set metadata on new Attribute and Node vertices if on default/global branch
+            CALL (new_attr, active_node) {
+                WITH new_attr, active_node
+                WHERE $set_metadata
+                SET new_attr.created_at = $current_time, new_attr.created_by = $user_id
+                SET new_attr.updated_at = $current_time, new_attr.updated_by = $user_id
+                SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            }
             RETURN DISTINCT new_attr
             """
             self.add_to_query(query)

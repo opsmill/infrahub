@@ -59,6 +59,9 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
             "from_user_id": self.user_id,
         }
 
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
+
         node_remove_query = self.render_node_remove_query(branch_filter=branch_filter)
 
         query = """
@@ -74,6 +77,13 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
         WITH n1 as active_node, r1 as rb
         WHERE rb.status = "active"
         %(node_remove_query)s
+        WITH active_node
+        // Set metadata on Node vertex if on default/global branch
+        CALL (active_node) {
+            WITH active_node
+            WHERE $set_metadata
+            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+        }
         RETURN DISTINCT active_node
         """ % {
             "branch_filter": branch_filter,
@@ -105,6 +115,11 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         }
         WITH n1 as active_node, rel_inband1 as rel_inband, p1 as peer_node
         WHERE rel_inband.status = "active"
+        CALL (peer_node) {
+            WITH peer_node
+            WHERE $set_metadata
+            SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        }
         CALL (%(sub_query_args)s) {
             %(sub_query)s
         }
@@ -152,6 +167,11 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         }
         WITH n1 as active_node, rel_outband1 as rel_outband, p1 as peer_node
         WHERE rel_outband.status = "active"
+        CALL (peer_node) {
+            WITH peer_node
+            WHERE $set_metadata
+            SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        }
         CALL (%(sub_query_args)s) {
             %(sub_query)s
         }

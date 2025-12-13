@@ -28,6 +28,10 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
         self.params["at"] = self.at.to_string()
         self.params["attr_name"] = self.migration.previous_attribute_schema.name
         self.params["user_id"] = self.user_id
+
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
+
         new_attr_value_labels = "AttributeValue"
         if needs_index:
             new_attr_value_labels += ":AttributeValueIndexed"
@@ -138,6 +142,16 @@ CALL (has_value_e) {
     WITH has_value_e
     WHERE has_value_e.branch = $branch
     SET has_value_e.to = $at, has_value_e.to_user_id = $user_id
+}
+
+// ------------
+// Set metadata on Attribute and Node vertices if on default/global branch
+// ------------
+CALL (attr, n) {
+    WITH attr, n
+    WHERE $set_metadata
+    SET attr.updated_at = $at, attr.updated_by = $user_id
+    SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {
             "schema_kind": self.migration.previous_schema.kind,

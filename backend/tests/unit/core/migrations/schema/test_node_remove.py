@@ -144,41 +144,56 @@ async def test_migration_agnostic_relationship(
     await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())
 
 
-async def test_migration_with_user_id(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-) -> None:
-    """Test that the user_id passed to migration.execute() is correctly set on the deleted edges."""
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
+    """Test that metadata is set correctly when removing a node."""
+    schema = registry.schema.get_schema_branch(name=branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
+
+    test_user_id = "test-metadata-user"
+    migration_time = Timestamp()
 
     migration = NodeRemoveMigration(
         previous_node_schema=schema.get(name="TestCar"),
         new_node_schema=None,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
     )
-
-    test_user_id = "test-remove-node-migration-user"
-    migration_time = Timestamp()
-    execution_result = await migration.execute(db=db, branch=default_branch, at=migration_time, user_id=test_user_id)
-
+    execution_result = await migration.execute(db=db, branch=branch, at=migration_time, user_id=test_user_id)
     assert not execution_result.errors
-    assert execution_result.nbr_migrations_executed == 2
 
-    # Query for the deleted edges created by the migration and verify user_id metadata
+    # Query for the deleted Node and its edge metadata
     query = """
-    MATCH (n:TestCar {uuid: $car_uuid})-[r {status: "deleted", from: $migration_time}]-()
-    RETURN DISTINCT r.from_user_id as from_user_id
+    MATCH (n:TestCar {uuid: $node_uuid})-[r:IS_PART_OF {branch: $branch, status: "deleted"}]->(:Root)
+    RETURN r.from_user_id as from_user_id, r.from as from_time, n.updated_at as updated_at, n.updated_by as updated_by
     """
     results = await db.execute_query(
         query=query,
-        params={
-            "car_uuid": car_accord_main.id,
-            "migration_time": migration_time.to_string(),
-        },
+        params={"node_uuid": car_accord_main.id, "branch": branch.name},
     )
+    assert len(results) == 1, "Expected exactly one deleted IS_PART_OF edge"
+    assert results[0]["from_user_id"] == test_user_id
+    assert results[0]["from_time"] == migration_time.to_string()
+    if branch.is_default:
+        assert results[0]["updated_at"] == migration_time.to_string()
+        assert results[0]["updated_by"] == test_user_id
 
-    # All deleted edges created during the migration should have the test user_id
-    assert len(results) > 0, "Expected at least one deleted edge"
-    for record in results:
-        assert record["from_user_id"] == test_user_id
+    # Query for the deleted Attributes/Relationships
+    query = """
+    MATCH (n:TestCar {uuid: $node_uuid})
+    MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED {branch: $branch, status: "deleted"}]->(field)
+    RETURN r.from_user_id as from_user_id, r.from as from_time,
+        field.updated_at as updated_at, field.updated_by as updated_by,
+        field.name AS name, field.uuid AS uuid
+    """
+    results = await db.execute_query(
+        query=query,
+        params={"node_uuid": car_accord_main.id, "branch": branch.name},
+    )
+    for result in results:
+        name = result["name"]
+        uuid = result["uuid"]
+        assert result["from_user_id"] == test_user_id, f"Wrong from_user_id on edge to {name} ({uuid})"
+        assert result["from_time"] == migration_time.to_string(), f"Wrong from_time on edge to {name} ({uuid})"
+        if branch.is_default:
+            assert result["updated_at"] == migration_time.to_string(), f"Wrong updated_at on {name} ({uuid})"
+            assert result["updated_by"] == test_user_id, f"Wrong updated_by on {name} ({uuid})"

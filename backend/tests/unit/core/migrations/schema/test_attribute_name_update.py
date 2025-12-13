@@ -2,10 +2,12 @@ import uuid
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions, SchemaPathType
 from infrahub.core.initialization import (
     create_branch,
 )
+from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.attribute_name_update import (
     AttributeNameUpdateMigration,
     AttributeNameUpdateMigrationQuery01,
@@ -128,43 +130,50 @@ async def test_migration(
     assert await count_relationships(db=db) == count_rels + 9
 
 
-async def test_migration_with_user_id(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_profile1_main: Node
-) -> None:
-    """Test that the user_id passed to migration.execute() is correctly set on the renamed attribute's metadata."""
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
+async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
+    """Test that metadata is set correctly when renaming an attribute."""
+    schema = registry.schema.get_schema_branch(name=branch.name)
     prev_car_schema = schema.get(name="TestCar")
     prev_attr = prev_car_schema.get_attribute(name="color")
     prev_attr.id = str(uuid.uuid4())
     candidate_schema = schema.duplicate()
     new_car_schema = candidate_schema.get(name="TestCar")
     new_attr = new_car_schema.get_attribute(name="color")
-    new_attr.name = "new-color"
+    new_attr.name = "new_color"
     new_attr.id = prev_attr.id
+
+    test_user_id = "test-metadata-user"
+    migration_time = Timestamp()
 
     migration = AttributeNameUpdateMigration(
         previous_node_schema=prev_car_schema,
         new_node_schema=new_car_schema,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new-color"),
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new_color"),
     )
-
-    test_user_id = "test-rename-migration-user"
-    migration_time = Timestamp()
-    execution_result = await migration.execute(db=db, branch=default_branch, at=migration_time, user_id=test_user_id)
-
+    execution_result = await migration.execute(db=db, branch=branch, at=migration_time, user_id=test_user_id)
     assert not execution_result.errors
-    assert execution_result.nbr_migrations_executed == 2
 
-    # Query for the new attribute edges created by the migration and verify user_id metadata
-    query = """
-    MATCH (n:TestCar {uuid: $car_uuid})-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "new-color"})
-    MATCH (attr)-[r {status: "active"}]-()
-    RETURN r.from_user_id as from_user_id, r.from as from_time
-    """
-    results = await db.execute_query(query=query, params={"car_uuid": car_accord_main.id})
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    car_schema = schema_branch.get(name="TestCar", duplicate=False)
+    color_attr = car_schema.get_attribute(name="color")
+    color_attr.name = "new_color"
 
-    # All active edges on the renamed attribute should have the test user_id
-    assert len(results) > 0, "Expected at least one active edge on renamed attribute"
-    for record in results:
-        assert record["from_user_id"] == test_user_id
-        assert record["from_time"] == migration_time.to_string()
+    updated_car = await NodeManager.get_one(
+        db=db,
+        branch=branch,
+        id=car_accord_main.id,
+        include_metadata=MetadataQueryOptions(
+            node_level=MetadataOptions.USER_TIMESTAMPS, attribute_level=MetadataOptions.USER_TIMESTAMPS
+        ),
+        fields={"new_color": True},
+    )
+    assert updated_car._get_created_at() < migration_time
+    assert updated_car._get_created_by() == SYSTEM_USER_ID
+    assert updated_car._get_updated_at() == migration_time
+    assert updated_car._get_updated_by() == test_user_id
+
+    new_attr = updated_car.new_color
+    assert new_attr._get_created_at() == migration_time
+    assert new_attr._get_created_by() == test_user_id
+    assert new_attr._get_updated_at() == migration_time
+    assert new_attr._get_updated_by() == test_user_id
