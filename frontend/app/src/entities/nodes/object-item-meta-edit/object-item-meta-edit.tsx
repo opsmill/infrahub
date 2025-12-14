@@ -13,11 +13,11 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 interface Props {
   row: any;
-  schema: NodeSchema;
+  schema: ModelSchema;
   type: "attribute" | "relationship";
   attributeOrRelationshipToEdit: any;
   attributeOrRelationshipName: any;

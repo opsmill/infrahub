@@ -1,15 +1,23 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
+import { useAtom } from "jotai";
 
+import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import SlideOver from "@/shared/components/display/slide-over";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
 import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
+import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
+import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import type {
   NodeAttributeWithMetadata,
   NodeObjectWithMetadata,
@@ -23,15 +31,27 @@ interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
   permission: Permission;
-  onClickMetadata?: (attribute: AttributeSchema) => void;
 }
 
 export function ObjectDataDisplay({
   objectSchema,
   objectData,
   permission,
-  onClickMetadata,
 }: ObjectDataDisplayProps) {
+  const { currentBranch } = useCurrentBranch();
+  const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
+  const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
+
+  const onClickMetadata = (attribute: AttributeSchema) => {
+    setMetaEditFieldDetails({
+      type: "attribute",
+      attributeOrRelationshipName: attribute.name,
+      label: attribute.label || attribute.name,
+    });
+
+    setShowMetaEditModal(true);
+  };
+
   const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
   const relationships = getRelationshipsVisibleInDetailedView(objectSchema.relationships ?? []);
   const fields = sortByOrderWeight([...attributes, ...relationships]);
@@ -64,6 +84,39 @@ export function ObjectDataDisplay({
           />
         );
       })}
+
+      <SlideOver
+        title={
+          <div className="space-y-2">
+            <div className="flex w-full items-center">
+              <span className="mr-3 font-semibold text-lg">{metaEditFieldDetails?.label}</span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <Icon icon={"mdi:layers-triple"} />
+                <div className="ml-1.5 pb-1">{currentBranch.name}</div>
+              </div>
+            </div>
+            <div className="text-gray-500">Metadata</div>
+          </div>
+        }
+        open={showMetaEditModal}
+        setOpen={setShowMetaEditModal}
+      >
+        <ObjectItemMetaEdit
+          closeDrawer={() => setShowMetaEditModal(false)}
+          onUpdateComplete={async () => {
+            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+          }}
+          attributeOrRelationshipToEdit={
+            objectData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
+            objectData[metaEditFieldDetails?.attributeOrRelationshipName]
+          }
+          schema={objectSchema}
+          attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
+          type={metaEditFieldDetails?.type!}
+          row={objectData}
+        />
+      </SlideOver>
     </div>
   );
 }
