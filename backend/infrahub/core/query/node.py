@@ -755,7 +755,7 @@ WITH *, a.created_at AS created_at, a.created_by AS created_by
             # use the "lower" (:Attribute)-[]->() edge to handle the case when the attribute
             # is on a migrated-kind node
             last_created_query = """
-WITH *, r2.from AS created_at, r2.from_user_id AS created_by
+WITH *, r1.from AS created_at, r1.from_user_id AS created_by
             """
         self.add_to_query(last_created_query)
         self.return_labels.extend(["created_at", "created_by"])
