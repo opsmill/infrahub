@@ -623,6 +623,23 @@ PROFILE_REFRESH = WorkflowDefinition(
 )
 
 
+PROFILE_REFRESH_SETUP = WorkflowDefinition(
+    name="profile-refresh-setup",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="profile_refresh_setup",
+)
+
+
+PROFILE_REFRESH_PROCESS = WorkflowDefinition(
+    name="profile-refresh-process",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="profile_refresh_process",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
 CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     name="clean-up-deadlocks",
     type=WorkflowType.INTERNAL,
@@ -685,6 +702,8 @@ WORKFLOWS = [
     IPAM_RECONCILIATION,
     PROFILE_REFRESH,
     PROFILE_REFRESH_MULTIPLE,
+    PROFILE_REFRESH_PROCESS,
+    PROFILE_REFRESH_SETUP,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
     REMOVE_ADD_NODE_FROM_GROUP,

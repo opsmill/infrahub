@@ -685,7 +685,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     steps:
       - name: Check out repository code
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
@@ -882,9 +882,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: 3.12
-
-      - name: Install Invoke
-        run: pip install invoke
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
@@ -914,21 +917,21 @@ jobs:
       - name: Build Demo
         run: |
           echo "::group::Build infrahub container"
-          invoke dev.build
+          uv run invoke dev.build
           echo "::endgroup::"
 
       - name: Initialize Demo
         id: init-demo
-        run: invoke dev.start dev.load-infra-schema
+        run: uv run invoke dev.start dev.load-infra-schema
 
       - name: Check Demo Status
-        run: invoke dev.status
+        run: uv run invoke dev.status
 
       - name: Load Data
-        run: invoke dev.load-infra-data
+        run: uv run invoke dev.load-infra-data
 
       - name: Git Repository
-        run: invoke dev.infra-git-import dev.infra-git-create
+        run: uv run invoke dev.infra-git-import dev.infra-git-create
 
       - name: Set infrahub address
         run: |
@@ -955,7 +958,7 @@ jobs:
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && invoke dev.start
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && uv run invoke dev.start
         env:
           INFRAHUB_MISC_RESPONSE_DELAY: 1
 
@@ -1015,7 +1018,7 @@ jobs:
 
       - name: Display server status
         if: always()
-        run: invoke demo.status
+        run: uv run invoke demo.status
 
       - name: "Clear docker environment and force vmagent to stop"
         if: always()
@@ -1031,6 +1034,7 @@ jobs:
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
     needs:
+      - prepare-environment
       - javascript-lint
       - files-changed
       - yaml-lint
@@ -1054,11 +1058,13 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
-
-      - name: Install Invoke
-        run: |
-          pip install invoke
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
@@ -1075,7 +1081,7 @@ jobs:
       - name: Run 'invoke demo'
         run: |
           unset INFRAHUB_IMAGE_VER
-          invoke demo.start demo.load-infra-schema demo.load-infra-data
+          uv run invoke demo.start demo.load-infra-schema demo.load-infra-data
 
       - name: Display server logs
         if: always()

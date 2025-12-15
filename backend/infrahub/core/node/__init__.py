@@ -158,6 +158,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             raise ValueError(f"{name} is not a relationship of {self.get_kind()}")
         return relationship
 
+    def get_relationship_by_identifier(self, identifier: str) -> RelationshipManager:
+        for rel_schema in self._schema.relationships:
+            if rel_schema.identifier == identifier:
+                return self.get_relationship(rel_schema.name)
+        raise ValueError(f"Unable to find the relationship with the identifier {identifier} for {self.get_kind()}")
+
     def uses_profiles(self) -> bool:
         for attr_name in self.get_schema().attribute_names:
             try:
@@ -988,18 +994,20 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            if deleted_attribute := await attr.delete(at=delete_at, db=db):
+            if deleted_attribute := await attr.delete(db=db, at=delete_at, user_id=user_id):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._human_friendly_id:
             if deleted_attribute := await self._human_friendly_id.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db,
+                user_id=user_id,
+                at=delete_at,
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
         if self._display_label:
             if deleted_attribute := await self._display_label.get_node_attribute(node=self, at=delete_at).delete(
-                at=delete_at, db=db
+                db=db, at=delete_at, user_id=user_id
             ):
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
@@ -1046,10 +1054,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
-        if fields and isinstance(fields, dict):
-            field_names = [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
-        else:
-            field_names = self._schema.attribute_names + ["__typename", "display_label"]
+        field_names = (
+            [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+            if fields and isinstance(fields, dict)
+            else self._schema.attribute_names + ["__typename", "display_label"]
+        )
 
         for field_name in field_names:
             if field_name == "__typename":
@@ -1118,6 +1127,28 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return response
 
+    async def _build_meta_response(self, field_name: str, fields: dict) -> dict:
+        data = {}
+        for meta_field in fields.get(field_name, {}).keys():
+            if meta_field == "created_at":
+                created_at = self._get_created_at()
+                data["created_at"] = created_at.to_datetime() if created_at else None
+
+            if meta_field == "created_by":
+                data["created_by"] = (
+                    {"id": self._get_created_by(), "__kind__": "CoreAccount"} if self._get_created_by() else None
+                )
+
+            if meta_field == "updated_by":
+                data["updated_by"] = (
+                    {"id": self._get_updated_by(), "__kind__": "CoreAccount"} if self._get_updated_by() else None
+                )
+
+            if meta_field == "updated_at":
+                updated_at = self._get_updated_at()
+                data["updated_at"] = updated_at.to_datetime() if updated_at else None
+        return data
+
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""
 
@@ -1130,7 +1161,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
-                changed |= await rel.update(db=db, data=value)
+                changed |= await rel.update(db=db, data=value, process_delete=process_pools)
 
         return changed
 

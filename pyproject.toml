@@ -63,9 +63,8 @@ dependencies = [
     "pyarrow>=14,<15",
     "numpy==1.26.2",
     "dulwich==0.22.7",
-    "whenever==0.7.3",
+    "whenever==0.9.3",
     "netutils==1.12.0",
-    "copier==9.8.0",
     "ariadne-codegen==0.15.3",
 ]
 

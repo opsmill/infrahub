@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
 from pydantic import Field, field_validator
 
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
@@ -37,7 +37,6 @@ class Branch(StandardNode):
     origin_branch: str = "main"
     branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
-    created_at: Optional[str] = Field(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
@@ -92,11 +91,6 @@ class Branch(StandardNode):
         if not self.branched_from:
             raise RuntimeError(f"branched_from not set for branch {self.name}")
         return self.branched_from
-
-    @field_validator("created_at", mode="before")
-    @classmethod
-    def set_created_at(cls, value: str) -> str:
-        return Timestamp(value).to_string()
 
     def get_created_at(self) -> str:
         if not self.created_at:
@@ -281,9 +275,9 @@ class Branch(StandardNode):
 
         return start, end
 
-    async def create(self, db: InfrahubDatabase) -> bool:
+    async def create(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         self.graph_version = GRAPH_VERSION
-        return await super().create(db=db)
+        return await super().create(db=db, user_id=user_id)
 
     async def delete(self, db: InfrahubDatabase) -> None:
         if self.is_default:
@@ -494,7 +488,9 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None) -> None:
+    async def rebase(
+        self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
         """Rebase the current Branch with its origin branch"""
 
         at = Timestamp(at)
@@ -510,7 +506,7 @@ class Branch(StandardNode):
         #   Otherwise we could endup with a complicated situation
         self.branched_from = at.to_string()
         self.status = BranchStatus.OPEN
-        await self.save(db=db)
+        await self.save(db=db, user_id=user_id)
 
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self

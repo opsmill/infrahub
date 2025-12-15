@@ -768,10 +768,12 @@ WITH *, r1.from AS created_at, r1.from_user_id AS created_by
 WITH *, a.updated_at AS updated_at, a.updated_by AS updated_by
             """
         else:
-            last_updated_query = """
-CALL (a) {
-    MATCH (a)-[r]-(property)
-    WHERE %(branch_filter)s
+            if self.branch_agnostic:
+                time_details = """
+    WITH [r.from, r.from_user_id] AS from_details, [r.to, r.to_user_id] AS to_details
+                """
+            else:
+                time_details = """
     WITH CASE
         WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
         WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
@@ -782,6 +784,12 @@ CALL (a) {
         WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
         ELSE [NULL, NULL]
     END AS to_details
+                """
+            last_updated_query = """
+CALL (a) {
+    MATCH (a)-[r]-(property)
+    WHERE %(branch_filter)s
+    %(time_details)s
     WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
     WITH from_details_list + to_details_list AS details_list
     UNWIND details_list AS one_details
@@ -792,7 +800,7 @@ CALL (a) {
     LIMIT 1
     RETURN updated_at, updated_by
 }
-            """ % {"branch_filter": branch_filter_str}
+            """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
         self.return_labels.extend(["updated_at", "updated_by"])
 
@@ -1045,10 +1053,12 @@ WITH *, created_details[0] AS created_at, created_details[1] AS created_by
 WITH *, rel.updated_at AS updated_at, rel.updated_by AS updated_by
             """
         else:
-            last_updated_query = """
-CALL (rel) {
-    MATCH (rel)-[r]-(property)
-    WHERE %(branch_filter)s
+            if self.branch_agnostic:
+                time_details = """
+    WITH [r.from, r.from_user_id] AS from_details, [r.to, r.to_user_id] AS to_details
+                """
+            else:
+                time_details = """
     WITH CASE
         WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
         WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
@@ -1059,6 +1069,12 @@ CALL (rel) {
         WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
         ELSE [NULL, NULL]
     END AS to_details
+                """
+            last_updated_query = """
+CALL (rel) {
+    MATCH (rel)-[r]-(property)
+    WHERE %(branch_filter)s
+    %(time_details)s
     WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
     WITH from_details_list + to_details_list AS details_list
     UNWIND details_list AS one_details
@@ -1069,7 +1085,7 @@ CALL (rel) {
     LIMIT 1
     RETURN updated_at, updated_by
 }
-            """ % {"branch_filter": branch_filter_str}
+            """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
         self.return_labels.extend(["updated_at", "updated_by"])
 
@@ -1266,6 +1282,23 @@ class NodeListGetInfoQuery(Query):
 WITH *, n.updated_at AS updated_at, n.updated_by AS updated_by
             """
         else:
+            if self.branch_agnostic:
+                time_details = """
+    WITH [r.from, r.from_user_id] AS from_details, [r.to, r.to_user_id] AS to_details
+                """
+            else:
+                time_details = """
+    WITH CASE
+        WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
+        WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
+        ELSE [NULL, NULL]
+    END AS from_details,
+    CASE
+        WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to, r.to_user_id]
+        WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
+        ELSE [NULL, NULL]
+    END AS to_details
+                """
             last_update_query = """
 MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
 WHERE %(branch_filter)s
@@ -1282,16 +1315,7 @@ WHERE is_active = TRUE
 CALL (field) {
     MATCH (field)-[r]-(property)
     WHERE %(branch_filter)s
-    WITH CASE
-        WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from, r.from_user_id]
-        WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from, r.from_user_id]
-        ELSE [NULL, NULL]
-    END AS from_details,
-    CASE
-        WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to, r.to_user_id]
-        WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to, r.to_user_id]
-        ELSE [NULL, NULL]
-    END AS to_details
+    %(time_details)s
     WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
     WITH from_details_list + to_details_list AS details_list
     UNWIND details_list AS one_details
@@ -1306,7 +1330,7 @@ WITH n, r_is_part_of, updated_at, updated_by
 // updated_by ordering preferences non "__system__" users
 ORDER BY elementId(n), updated_at DESC, updated_by DESC
 WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(updated_by)) AS updated_by
-            """ % {"branch_filter": branch_filter_str}
+            """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_update_query)
         self.return_labels.extend(["updated_at", "updated_by"])
 

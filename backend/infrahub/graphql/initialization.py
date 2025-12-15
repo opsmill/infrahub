@@ -7,6 +7,7 @@ from starlette.background import BackgroundTasks
 
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
 from infrahub.graphql.registry import registry as graphql_registry
@@ -74,6 +75,13 @@ class GraphqlContext:
 
     def get_context(self) -> InfrahubContext:
         return InfrahubContext.init(branch=self.branch, account=self.active_account_session)
+
+    @property
+    def assigned_user_id(self) -> str:
+        """Return the user ID to be used for assignments in this context."""
+        if self.account_session and self.account_session.account_id:
+            return self.account_session.account_id
+        return SYSTEM_USER_ID
 
 
 async def prepare_graphql_params(

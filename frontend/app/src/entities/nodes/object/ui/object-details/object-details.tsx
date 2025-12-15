@@ -7,13 +7,13 @@ import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/
 import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { ObjectDetailsTabContent } from "@/entities/nodes/relationships/ui/object-details-tab-content";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
 interface ObjectDetailsProps {
   objectSchema: ModelSchema;
-  objectData: NodeObject;
+  objectData: NodeObjectWithMetadata;
   permission: Permission;
 }
 

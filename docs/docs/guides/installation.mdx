@@ -218,6 +218,19 @@ It's possible to deploy Infrahub on Kubernetes using Helm charts. This method is
 - A Kubernetes cluster
 - [Helm](https://helm.sh/docs/intro/install/) installed on your system
 
+:::warning Storage persistence for testing and lab environments
+
+By default, the Helm chart disables storage persistence on all components (Neo4j, RabbitMQ, Redis) to enable quicker deployments using `emptyDir` storage and reduce requirements for test installations.
+
+However, if pods get rescheduled on the Kubernetes cluster for any reason, all data will be lost. This can happen unexpectedly due to node maintenance, resource pressure, or cluster updates.
+
+For long-running tests or lab environments, you should either:
+
+- Enable storage persistence for the Neo4j database at minimum (but also on the other components if possible)
+- Use Docker Compose instead, which provides more predictable behavior for non-production environments
+
+:::
+
 #### Production deployment requirements
 
 The following are required for production deployments using Helm:
