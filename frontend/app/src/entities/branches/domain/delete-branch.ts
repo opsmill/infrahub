@@ -1,22 +1,21 @@
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-
-import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
+import { deleteBranchFromApi } from "@/entities/branches/api/delete-branch-from-api";
 
 export type DeleteBranchParams = {
   name: string;
 };
 
-export type DeleteBranch = (params: DeleteBranchParams) => Promise<boolean>;
+export type DeleteBranch = (params: DeleteBranchParams) => Promise<string | null>;
 
 export const deleteBranch: DeleteBranch = async ({ name }) => {
-  const { data, errors } = await graphqlClient.mutate({
-    mutation: BRANCH_DELETE,
-    variables: { name },
-  });
+  const { data, errors } = await deleteBranchFromApi({ name });
 
   if (errors) {
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  return data?.BranchDelete?.ok ?? false;
+  if (!data?.BranchDelete?.ok) {
+    return null;
+  }
+
+  return name;
 };

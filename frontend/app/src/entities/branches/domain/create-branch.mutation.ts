@@ -8,7 +8,6 @@ import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches
 export function useCreateBranchMutation() {
   return useMutation({
     mutationFn: createBranch,
-
     onSuccess: async (branchCreated) => {
       if (!branchCreated) return;
 
