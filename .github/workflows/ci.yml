@@ -198,7 +198,7 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v21
+        uses: DavidAnson/markdownlint-cli2-action@v22
         with:
           config: .markdownlint.yaml
           globs: |
