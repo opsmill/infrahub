@@ -13,7 +13,16 @@ export function useCreateBranchMutation() {
       if (!branchCreated) return;
 
       const { queryKey } = getBranchesInfiniteQueryOptions();
-      queryClient.setQueryData(queryKey, (oldBranches) => [...(oldBranches ?? []), branchCreated]);
+      queryClient.setQueryData(queryKey, (oldData) => {
+        if (!oldData) return oldData;
+
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page, index) =>
+            index === 0 ? [branchCreated, ...page] : page
+          ),
+        };
+      });
 
       await queryClient.refetchQueries({ queryKey: branchesQueryKeys.all });
     },
