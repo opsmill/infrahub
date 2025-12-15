@@ -135,11 +135,12 @@ class StandardNodeGetListQuery(Query):
     raw_filter: str | None = None
 
     def __init__(
-        self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, **kwargs: Any
+            self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, partial_match: bool = False, **kwargs: Any
     ) -> None:
         self.ids = ids
         self.node_name = node_name
         self.node_class = node_class
+        self.partial_match = partial_match
 
         super().__init__(**kwargs)
 
@@ -148,8 +149,11 @@ class StandardNodeGetListQuery(Query):
         if self.ids:
             filters.append("n.uuid in $ids_value")
             self.params["ids_value"] = self.ids
-        if self.node_name:
+        if self.node_name and not self.partial_match:
             filters.append("n.name = $name")
+            self.params["name"] = self.node_name
+        if self.node_name and self.partial_match:
+            filters.append("toLower(toString(n.name)) CONTAINS toLower(toString($name))")
             self.params["name"] = self.node_name
         if self.raw_filter:
             filters.append(self.raw_filter)

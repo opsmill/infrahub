@@ -156,9 +156,9 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
+        partial_match: bool = False,
         **kwargs: Any,
     ) -> list[Self]:
-        partial_match: bool = kwargs.pop("partial_match", False)
         query: Query = await BranchNodeGetListQuery.init(
             db=db,
             node_class=cls,

@@ -151,19 +151,10 @@ class RebaseBranchDeleteRelationshipQuery(Query):
 
 
 class BranchNodeGetListQuery(StandardNodeGetListQuery):
-    def __init__(self, exclude_global: bool = False, partial_match: bool = False, **kwargs: Any) -> None:
-        name: str | None = None
+    def __init__(self, exclude_global: bool = False, **kwargs: Any) -> None:
         self.raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
 
-        if partial_match:
-            name = kwargs.pop("node_name", None)
-            if not name:
-                raise ValueError("partial_match=True requires node_name to be provided")
-            self.raw_filter += " AND toLower(toString(n.name)) CONTAINS toLower(toString($name))"
         if exclude_global:
             self.raw_filter += f" AND n.name <> '{GLOBAL_BRANCH_NAME}'"
 
         super().__init__(**kwargs)
-
-        if partial_match:
-            self.params["name"] = name
