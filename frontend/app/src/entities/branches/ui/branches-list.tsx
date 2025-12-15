@@ -33,7 +33,7 @@ function BranchesListHeader() {
   return (
     <Content.CardTitle
       title="Branches"
-      badgeContent={isPending && !isError ? "..." : count}
+      badgeContent={isPending ? "..." : isError ? "-" : count}
       isReloadLoading={isRefetching}
       reload={refetchBranches}
     />
