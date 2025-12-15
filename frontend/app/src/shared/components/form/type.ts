@@ -205,7 +205,6 @@ export interface DynamicRelationshipFieldProps
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  schema: ModelSchema;
   peerField?: string;
 }
 
