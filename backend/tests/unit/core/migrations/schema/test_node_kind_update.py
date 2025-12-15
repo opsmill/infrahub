@@ -232,6 +232,7 @@ async def test_inheritance_migration_on_branch_and_main(
 
 async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
     """Test that metadata is set correctly when updating node kind."""
+    car_created_at = car_accord_main._get_created_at()
     schema = registry.schema.get_schema_branch(name=branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
@@ -264,19 +265,19 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
         ),
         prefetch_relationships=True,
     )
-    assert updated_car._get_created_at() < migration_time
+    assert updated_car._get_created_at() == car_created_at
     assert updated_car._get_created_by() == SYSTEM_USER_ID
     assert updated_car._get_updated_at() == migration_time
     assert updated_car._get_updated_by() == test_user_id
     for attr_name in car_schema.attribute_names:
         attr = updated_car.get_attribute(name=attr_name)
-        assert attr._get_created_at() < migration_time
+        assert attr._get_created_at() == car_created_at
         assert attr._get_created_by() == SYSTEM_USER_ID
         assert attr._get_updated_at() == attr._get_created_at()
         assert attr._get_updated_by() == SYSTEM_USER_ID
     rel_manager = updated_car.get_relationship(name="owner")
     rel = await rel_manager.get(db=db)
-    assert rel._get_created_at() < migration_time
+    assert rel._get_created_at() == car_created_at
     assert rel._get_created_by() == SYSTEM_USER_ID
     assert rel._get_updated_at() == rel._get_created_at()
     assert rel._get_updated_by() == SYSTEM_USER_ID

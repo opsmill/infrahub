@@ -752,10 +752,13 @@ WITH *,
 WITH *, a.created_at AS created_at, a.created_by AS created_by
             """
         else:
-            # use the "lower" (:Attribute)-[]->() edge to handle the case when the attribute
-            # is on a migrated-kind node
             last_created_query = """
-WITH *, r1.from AS created_at, r1.from_user_id AS created_by
+CALL (a) {
+    MATCH ()-[e:HAS_ATTRIBUTE {status: "active"}]->(a)
+    RETURN e.from AS created_at, e.from_user_id AS created_by
+    ORDER BY e.from ASC
+    LIMIT 1
+}
             """
         self.add_to_query(last_created_query)
         self.return_labels.extend(["created_at", "created_by"])
