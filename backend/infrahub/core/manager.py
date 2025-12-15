@@ -12,7 +12,6 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipDirection,
 )
-from infrahub.core.metadata.determiner import MetadataDeterminer
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
@@ -93,7 +92,6 @@ class NodeManager:
         schema: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | str,
         filters: dict | None = ...,
         fields: dict | None = ...,
-        metadata_fields: dict | None = ...,
         offset: int | None = ...,
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
@@ -114,7 +112,6 @@ class NodeManager:
         schema: type[SchemaProtocol],
         filters: dict | None = ...,
         fields: dict | None = ...,
-        metadata_fields: dict | None = ...,
         offset: int | None = ...,
         limit: int | None = ...,
         at: Timestamp | str | None = ...,
@@ -134,7 +131,6 @@ class NodeManager:
         schema: type[SchemaProtocol] | MainSchemaTypes | str,
         filters: dict | None = None,
         fields: dict | None = None,
-        metadata_fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
         at: Timestamp | str | None = None,
@@ -216,7 +212,6 @@ class NodeManager:
         response = await cls.get_many(
             ids=node_ids,
             fields=fields,
-            metadata_fields=metadata_fields,
             branch=branch,
             at=at,
             include_metadata=include_metadata,
@@ -305,18 +300,22 @@ class NodeManager:
         schema: RelationshipSchema,
         filters: dict,
         fields: dict | None = None,
-        metadata_fields: dict | None = None,
         offset: int | None = None,
         limit: int | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
-        include_metadata: MetadataOptions = MetadataOptions.NONE,
+        include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
+        relationship_metadata_options = (
+            include_metadata.relationship_level
+            if isinstance(include_metadata, MetadataQueryOptions)
+            else include_metadata
+        )
         query = await RelationshipGetPeerQuery.init(
             db=db,
             branch=branch,
@@ -329,7 +328,7 @@ class NodeManager:
             limit=limit,
             at=at,
             branch_agnostic=branch_agnostic,
-            include_metadata=include_metadata,
+            include_metadata=relationship_metadata_options,
         )
         await query.execute(db=db)
 
@@ -361,7 +360,6 @@ class NodeManager:
                 branch=branch,
                 branch_agnostic=branch_agnostic,
                 include_metadata=include_metadata,
-                metadata_fields=metadata_fields,
             )
 
         results = []
@@ -1156,7 +1154,6 @@ class NodeManager:
         db: InfrahubDatabase,
         ids: list[str],
         fields: dict | None = None,
-        metadata_fields: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
@@ -1170,17 +1167,6 @@ class NodeManager:
 
         if not ids:
             return {}
-
-        if fields or metadata_fields:
-            metadata_determiner = MetadataDeterminer()
-            include_metadata_for_fields = await metadata_determiner.determine_metadata_for_fields(
-                node_fields=fields or {}, metadata_fields=metadata_fields
-            )
-            if isinstance(include_metadata, MetadataQueryOptions):
-                include_metadata |= include_metadata_for_fields
-            else:
-                include_metadata_for_fields.node_level |= include_metadata
-            include_metadata = include_metadata_for_fields
 
         # Query all nodes
         node_metadata_options = (

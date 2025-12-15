@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
-export const GET_TASKS = gql`
-query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $state: [StateType], $relatedNodes: [String]) {
+export const GET_TASK_ITEMS = gql`
+query GET_TASK_ITEMS($offset: Int, $limit: Int, $search: String, $branch: String, $state: [StateType], $relatedNodes: [String]) {
   InfrahubTask(
     offset: $offset
     limit: $limit
