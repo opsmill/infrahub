@@ -1,6 +1,5 @@
 from infrahub import lock
 from infrahub.core.branch import Branch
-from infrahub.core.constants.infrahubkind import REPOSITORYVALIDATOR, USERVALIDATOR
 from infrahub.core.convert_object_type.object_conversion import (
     ConversionFieldInput,
     convert_object_type,
@@ -8,7 +7,7 @@ from infrahub.core.convert_object_type.object_conversion import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository, CoreRepositoryValidator, CoreUserValidator
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -35,11 +34,11 @@ async def convert_repository_type(
 
             # Fetch validators before deleting the repository otherwise validator-repository would no longer exist
             user_validators = await NodeManager.query(
-                db=dbt, schema=USERVALIDATOR, prefetch_relationships=True, filters={"repository__id": repository.id}
+                db=dbt, schema=CoreUserValidator, prefetch_relationships=True, filters={"repository__id": repository.id}
             )
             repository_validators = await NodeManager.query(
                 db=dbt,
-                schema=REPOSITORYVALIDATOR,
+                schema=CoreRepositoryValidator,
                 prefetch_relationships=True,
                 filters={"repository__id": repository.id},
             )

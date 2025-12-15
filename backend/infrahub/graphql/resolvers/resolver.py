@@ -9,6 +9,7 @@ from infrahub.core.constants import BranchSupportType, InfrahubKind, Relationshi
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.metadata import build_metadata_query_options
 
 from ..models import OrderModel
 from ..parser import extract_selection
@@ -166,7 +167,11 @@ async def default_paginated_list_resolver(
 
         edges: dict[str, Any] = fields.get("edges", {})
         node_fields = edges.get("node", {})
-        metadata_fields: dict[str, Any] = edges.get("node_metadata", {})
+        node_metadata_fields: dict[str, Any] = edges.get("node_metadata", {})
+        include_metadata = build_metadata_query_options(
+            node_metadata_fields=node_metadata_fields,
+            node_fields=node_fields,
+        )
         if "hfid" in node_fields:
             node_fields["human_friendly_id"] = None
 
@@ -191,7 +196,7 @@ async def default_paginated_list_resolver(
                 schema=schema,
                 filters=filters or None,
                 fields=node_fields,
-                metadata_fields=metadata_fields,
+                include_metadata=include_metadata,
                 at=graphql_context.at,
                 branch=graphql_context.branch,
                 limit=limit,
