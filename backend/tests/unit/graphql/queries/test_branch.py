@@ -1,8 +1,5 @@
 import operator
-
 from dataclasses import dataclass
-
-import pytest
 
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
@@ -47,7 +44,6 @@ def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
 
 
 class TestBranchQuery(TestInfrahubApp):
-
     async def test_branch_query(
         self,
         db: InfrahubDatabase,
@@ -425,7 +421,6 @@ class TestBranchQuery(TestInfrahubApp):
         service: InfrahubServices,
         session_admin: AccountSession,
     ) -> None:
-
         branch_map = {}
         for i in range(10):
             create_branch_query = """
@@ -469,13 +464,11 @@ class TestBranchQuery(TestInfrahubApp):
             BranchPartialTestCaseData(search_term="main", partial_match=False, expected_count=1),
             BranchPartialTestCaseData(search_term="MAIN", partial_match=False, expected_count=0),
             BranchPartialTestCaseData(search_term="MaTcH", partial_match=True, expected_count=10),
-         
         ]
 
         gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
 
         for test_case in test_cases:
-
             result = await graphql(
                 schema=gql_params.schema,
                 source=BRANCH_PARTIAL_MATCH_QUERY,

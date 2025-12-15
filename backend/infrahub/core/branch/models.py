@@ -156,7 +156,6 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
-        partial_match: bool = False,
         **kwargs: Any,
     ) -> list[Self]:
         query: Query = await BranchNodeGetListQuery.init(
@@ -165,7 +164,6 @@ class Branch(StandardNode):
             ids=ids,
             node_name=name,
             limit=limit,
-            partial_match=partial_match,
             **kwargs,
         )
         await query.execute(db=db)

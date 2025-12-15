@@ -135,7 +135,12 @@ class StandardNodeGetListQuery(Query):
     raw_filter: str | None = None
 
     def __init__(
-            self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, partial_match: bool = False, **kwargs: Any
+        self,
+        node_class: StandardNode,
+        ids: list[str] | None = None,
+        node_name: str | None = None,
+        partial_match: bool = False,
+        **kwargs: Any,
     ) -> None:
         self.ids = ids
         self.node_name = node_name
