@@ -37,12 +37,14 @@ class SingleRelationshipResolver:
                 created_at = relationship._get_created_at()
                 data["created_at"] = created_at.to_datetime() if created_at else None
             elif meta_field == "created_by":
-                data["created_by"] = relationship._get_created_by()
+                account_id = relationship._get_created_by()
+                data["created_by"] = {"id": account_id} if account_id else None
             elif meta_field == "updated_at":
                 updated_at = relationship._get_updated_at()
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
             elif meta_field == "updated_by":
-                data["updated_by"] = relationship._get_updated_by()
+                account_id = relationship._get_updated_by()
+                data["updated_by"] = {"id": account_id} if account_id else None
         return data
 
     async def resolve(self, parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
