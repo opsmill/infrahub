@@ -13,8 +13,8 @@ import {
   type GetBranchesParams,
   getAllBranches,
   getBranches,
-  getBranchesCount,
 } from "@/entities/branches/domain/get-branches";
+import { getBranchesCount } from "@/entities/branches/domain/get-branches-count";
 
 type GetBranchesInfiniteQueryOptionsParams = Omit<GetBranchesParams, keyof PaginationParams>;
 

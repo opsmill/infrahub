@@ -9,10 +9,8 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { sortByName } from "@/shared/utils/common";
 
 import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
-import {
-  useGetBranchesCount,
-  useGetBranchesPaginated,
-} from "@/entities/branches/domain/get-branches.query";
+import { useGetBranchesPaginated } from "@/entities/branches/domain/get-branches.query";
+import { useGetBranchesCount } from "@/entities/branches/domain/get-branches-count.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
