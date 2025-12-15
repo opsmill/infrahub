@@ -9,7 +9,7 @@ import {
 import {
   type InfrahubBranchResponse,
   mapInfrahubBranchNodeToBranch,
-} from "@/entities/branches/domain/branch-response.types";
+} from "@/entities/branches/domain/branch.mappers";
 import { branchesState } from "@/entities/branches/stores";
 
 export type GetBranchesParams = GetBranchesFromApiParams;

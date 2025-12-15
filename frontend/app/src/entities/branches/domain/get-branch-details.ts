@@ -7,7 +7,7 @@ import {
 import {
   type InfrahubBranchResponse,
   mapInfrahubBranchNodeToBranch,
-} from "@/entities/branches/domain/branch-response.types";
+} from "@/entities/branches/domain/branch.mappers";
 
 export type GetBranchDetailsParams = GetBranchDetailsFromApiParams;
 
