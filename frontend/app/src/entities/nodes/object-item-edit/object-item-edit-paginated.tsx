@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";

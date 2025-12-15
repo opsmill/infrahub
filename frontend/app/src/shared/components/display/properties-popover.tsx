@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai/index";
+import { useAtom } from "jotai";
 import { useState } from "react";
 
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
