@@ -1,5 +1,7 @@
 import operator
 
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.auth import AccountSession
@@ -12,6 +14,29 @@ from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
 
+@dataclass
+class BranchPartialTestCaseData:
+    search_term: str
+    partial_match: bool
+    expected_count: int
+
+
+BRANCH_PARTIAL_MATCH_QUERY = """
+query($name: String, $partial_match: Boolean = false) {
+  InfrahubBranch(name__value: $name, partial_match: $partial_match) {
+    count
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+"""
+
+
 def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
     exempted_fields = ("id", "created_at", "node_metadata")
     for field_name, field_value in BranchType._meta.fields.items():
@@ -22,6 +47,7 @@ def test_check_branch_type_has_corresponding_infrahub_branch_value_field():
 
 
 class TestBranchQuery(TestInfrahubApp):
+
     async def test_branch_query(
         self,
         db: InfrahubDatabase,
@@ -392,28 +418,15 @@ class TestBranchQuery(TestInfrahubApp):
             assert branch["node"]["description"]["value"]
             assert branch["node_metadata"]["created_at"]
 
-    @pytest.mark.parametrize(
-        "search_term,partial_match,expected_count",
-        [
-            ("match", True, 10),
-            ("branch-zzz", True, 0),
-            ("auth", False, 0),
-            ("main", False, 1),
-            ("MAIN", False, 0),
-            ("MaTcH", True, 10),
-        ],
-    )
     async def test_partial_match_filter(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        branch_partial_match_query: str,
         service: InfrahubServices,
-        search_term: str,
         session_admin: AccountSession,
-        partial_match: bool,
-        expected_count: int,
     ) -> None:
+
+        branch_map = {}
         for i in range(10):
             create_branch_query = """
             mutation($branch_name: String!, $branch_description: String!) {
@@ -444,19 +457,33 @@ class TestBranchQuery(TestInfrahubApp):
             )
             assert branch_result.errors is None
             assert branch_result.data
-            assert branch_result.data["BranchCreate"]["ok"] is True
+            branch_id = branch_result.data["BranchCreate"]["object"]["id"]
             assert branch_result.data["BranchCreate"]["object"]["name"] == branch_name
+            assert branch_id
+            branch_map[branch_name] = branch_id
+
+        test_cases = [
+            BranchPartialTestCaseData(search_term="match", partial_match=True, expected_count=10),
+            BranchPartialTestCaseData(search_term="branch-zzz", partial_match=True, expected_count=0),
+            BranchPartialTestCaseData(search_term="auth", partial_match=False, expected_count=0),
+            BranchPartialTestCaseData(search_term="main", partial_match=False, expected_count=1),
+            BranchPartialTestCaseData(search_term="MAIN", partial_match=False, expected_count=0),
+            BranchPartialTestCaseData(search_term="MaTcH", partial_match=True, expected_count=10),
+         
+        ]
 
         gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
 
-        result = await graphql(
-            schema=gql_params.schema,
-            source=branch_partial_match_query,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={"name": search_term, "partial_match": partial_match},
-        )
+        for test_case in test_cases:
 
-        assert result.errors is None
-        assert result.data
-        assert result.data["InfrahubBranch"]["count"] == expected_count
+            result = await graphql(
+                schema=gql_params.schema,
+                source=BRANCH_PARTIAL_MATCH_QUERY,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"name": test_case.search_term, "partial_match": test_case.partial_match},
+            )
+
+            assert result.errors is None
+            assert result.data
+            assert result.data["InfrahubBranch"]["count"] == test_case.expected_count
