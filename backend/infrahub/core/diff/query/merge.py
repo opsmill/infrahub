@@ -646,8 +646,7 @@ CALL (n) {
         SET latest_target_edge.to = $at, latest_target_edge.to_user_id = user_id
     }
     // --------------
-    // create the outbound edges on the target branch, one subquery per possible type
-    // from_user_id is copied from source edge via properties(latest_source_edge)
+    // get the earliest created time to handle migrated kind/inheritance Nodes
     // --------------
     CALL (n) {
         MATCH (earliest_n:Node {uuid: n.uuid})
@@ -656,6 +655,10 @@ CALL (n) {
         LIMIT 1
     }
     WITH *, COALESCE(node_created_at, $at) AS node_created_at, COALESCE(node_created_by, user_id) AS node_created_by
+    // --------------
+    // create the outbound edges on the target branch, one subquery per possible type
+    // from_user_id is copied from source edge via properties(latest_source_edge)
+    // --------------
     CALL (n, latest_source_edge, peer, edge_type, node_created_at, node_created_by) {
         WITH edge_type WHERE edge_type = "IS_PART_OF"
         CREATE (n)-[new_edge:IS_PART_OF]->(peer)
@@ -826,6 +829,7 @@ CALL (node_uuid) {
 }
 // --------------------
 // Special handling for the new version of a migrated kind/inheritance Node
+// set updated_at/by to the time/user that created the new version of the Node
 // --------------------
 CALL (n, is_part_of_e) {
     WITH n, is_part_of_e
@@ -856,6 +860,8 @@ OR exists((field)-[{branch: $target_branch, to: $at}]-())
 // Prefer non-system users (those not starting with "__")
 // --------------------
 CALL (field) {
+    // ignore HAS_ATTRIBUTE and IS_RELATED b/c these show when an Attribute/Relationship was created/deleted
+    // not when it was updated
     MATCH ()-[edge:!HAS_ATTRIBUTE&!IS_RELATED {branch: $source_branch}]-(field)
     WHERE edge.from <= $at
     // Collect both from and to timestamps as potential "change times"
