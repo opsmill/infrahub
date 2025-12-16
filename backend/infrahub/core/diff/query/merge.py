@@ -237,6 +237,7 @@ CALL (n, node_diff_map, is_node_kind_migration) {
                 CREATE (n)-[:HAS_ATTRIBUTE { branch: $target_branch, branch_level: $branch_level, from: $at, status: attr_rel_status, from_user_id: attr_source_from_user_id }]->(a)
                 WITH attr_rel_status
                 WHERE attr_rel_status = "active"
+                AND a.created_at IS NULL
                 SET a.created_at = $at, a.created_by = attr_source_from_user_id
             }
             RETURN 1 AS done
@@ -645,15 +646,27 @@ CALL (n) {
         SET latest_target_edge.to = $at, latest_target_edge.to_user_id = user_id
     }
     // --------------
+    // get the earliest created time to handle migrated kind/inheritance Nodes
+    // --------------
+    CALL (n) {
+        MATCH (earliest_n:Node {uuid: n.uuid})
+        RETURN earliest_n.created_at AS node_created_at, earliest_n.created_by AS node_created_by
+        ORDER BY earliest_n.created_at ASC
+        LIMIT 1
+    }
+    WITH *, COALESCE(node_created_at, $at) AS node_created_at, COALESCE(node_created_by, user_id) AS node_created_by
+    // --------------
     // create the outbound edges on the target branch, one subquery per possible type
     // from_user_id is copied from source edge via properties(latest_source_edge)
     // --------------
-    CALL (n, latest_source_edge, peer, edge_type, user_id) {
+    CALL (n, latest_source_edge, peer, edge_type, node_created_at, node_created_by) {
         WITH edge_type WHERE edge_type = "IS_PART_OF"
         CREATE (n)-[new_edge:IS_PART_OF]->(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
-        SET n.created_at = $at, n.created_by = user_id
+        WITH n
+        WHERE n.created_at IS NULL
+        SET n.created_at = node_created_at, n.created_by = node_created_by
     }
     CALL (n, latest_source_edge, peer, edge_type, user_id) {
         WITH peer, user_id, edge_type
@@ -661,6 +674,8 @@ CALL (n) {
         CREATE (n)-[new_edge:IS_RELATED]->(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
+        WITH peer
+        WHERE peer.created_at IS NULL
         SET peer.created_at = $at, peer.created_by = user_id
     }
     CALL (n, latest_source_edge, peer, edge_type, user_id) {
@@ -669,6 +684,8 @@ CALL (n) {
         CREATE (n)-[new_edge:HAS_ATTRIBUTE]->(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
+        WITH peer
+        WHERE peer.created_at IS NULL
         SET peer.created_at = $at, peer.created_by = user_id
     }
     // --------------
@@ -723,6 +740,8 @@ CALL (n) {
         CREATE (n)<-[new_edge:IS_RELATED]-(peer)
         SET new_edge = properties(latest_source_edge)
         SET new_edge.from = $at, new_edge.branch_level = $branch_level, new_edge.branch = $target_branch
+        WITH peer
+        WHERE peer.created_at IS NULL
         SET peer.created_at = $at, peer.created_by = user_id
     }
     CALL (n, latest_source_edge, peer, edge_type, user_id) {
@@ -799,14 +818,23 @@ class DiffMergeMetadataQuery(Query):
 UNWIND $node_uuids AS node_uuid
 CALL (node_uuid) {
     MATCH (n:Node {uuid: node_uuid})-[e:IS_PART_OF]->(:Root)
-    WHERE e.branch IN [$source_branch, $target_branch, $global_branch]
+    WHERE e.branch IN [$target_branch, $global_branch]
     AND (
-        (e.branch = $target_branch AND e.from <= $branched_from)
-        OR (e.branch IN [$source_branch, $global_branch] AND e.from <= $at)
+        (e.branch = $target_branch AND (e.from <= $branched_from OR e.from = $at))
+        OR (e.branch = $global_branch AND e.from <= $at)
     )
-    RETURN n
-    ORDER BY e.from DESC
+    RETURN n, e AS is_part_of_e
+    ORDER BY e.from DESC, e.status ASC
     LIMIT 1
+}
+// --------------------
+// Special handling for the new version of a migrated kind/inheritance Node
+// set updated_at/by to the time/user that created the new version of the Node
+// --------------------
+CALL (n, is_part_of_e) {
+    WITH n, is_part_of_e
+    WHERE n.updated_at IS NULL
+    SET n.updated_at = is_part_of_e.from, n.updated_by = is_part_of_e.from_user_id
 }
 // --------------------
 // Get all the Attributes and Relationships for this Node that were active on this branch at some point
@@ -832,7 +860,9 @@ OR exists((field)-[{branch: $target_branch, to: $at}]-())
 // Prefer non-system users (those not starting with "__")
 // --------------------
 CALL (field) {
-    MATCH ()-[edge {branch: $source_branch}]-(field)
+    // ignore HAS_ATTRIBUTE and IS_RELATED b/c these show when an Attribute/Relationship was created/deleted
+    // not when it was updated
+    MATCH ()-[edge:!HAS_ATTRIBUTE&!IS_RELATED {branch: $source_branch}]-(field)
     WHERE edge.from <= $at
     // Collect both from and to timestamps as potential "change times"
     WITH edge,

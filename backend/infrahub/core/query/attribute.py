@@ -27,7 +27,6 @@ class AttributeQuery(Query):
     def __init__(
         self,
         attr: BaseAttribute,
-        user_id: str,
         attr_id: str | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | None = None,
@@ -35,7 +34,6 @@ class AttributeQuery(Query):
     ):
         self.attr = attr
         self.attr_id = attr_id or attr.db_id
-        self.user_id = user_id
 
         if at:
             self.at = Timestamp(at)
