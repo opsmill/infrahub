@@ -622,6 +622,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     artifact_definition = await client.get(
         kind=CoreArtifactDefinition,
@@ -781,6 +782,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)
 
     client = get_client()
+    client.request_context = context.to_request_context()
     log = get_run_logger()
 
     repository = await get_initialized_repo(
@@ -859,7 +861,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     if check:
         check.created_at.value = Timestamp().to_string()
         check.conclusion.value = conclusion.value
-        await check.save()
+        await check.save(request_context=context.to_request_context())
     else:
         check = await client.create(
             kind=InfrahubKind.GENERATORCHECK,
@@ -925,6 +927,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
