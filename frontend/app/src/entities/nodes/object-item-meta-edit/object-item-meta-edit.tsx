@@ -1,8 +1,10 @@
+import { toast } from "react-toastify";
 import { mapValues } from "remeda";
 
 import { queryClient } from "@/shared/api/rest/client";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
@@ -48,6 +50,7 @@ export default function ObjectItemMetaEdit({
         data: updatedObject,
       });
       await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Metadata updated" />);
       onSuccess?.();
     } catch (e) {
       console.error("Something went wrong while updating the meetadata", e);
