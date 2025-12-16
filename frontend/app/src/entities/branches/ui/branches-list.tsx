@@ -1,6 +1,7 @@
 import { Collection, ListBox, ListBoxLoadMoreItem } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -40,13 +41,13 @@ function BranchesListHeader() {
 
 function BranchesListToolbar() {
   return (
-    <div className="flex flex-col gap-2">
+    <Col className="flex flex-col gap-2">
       <BranchesListHeader />
 
       <div className="max-w-56 px-3">
         <FilterSearchInput placeholder="Search branches" />
       </div>
-    </div>
+    </Col>
   );
 }
 
