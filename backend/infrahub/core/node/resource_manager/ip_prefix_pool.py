@@ -3,18 +3,15 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Any
 
-from netaddr import IPSet
-
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
-from infrahub.core.query.ipam import get_next_free_prefix, get_subnets
+from infrahub.core.query.ipam import get_next_free_prefix
 from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
 from infrahub.exceptions import ValidationError
-from infrahub.pools.prefix import get_next_available_prefix
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
@@ -105,37 +102,15 @@ class CoreIPPrefixPool(Node):
         for resource in weighted_resources:
             resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
 
-            if resource_prefix.version == 4:
-                next_available = await get_next_free_prefix(
-                    db=db,
-                    ip_prefix=resource_prefix,
-                    target_prefix_length=prefixlen,
-                    namespace=ip_namespace,
-                    branch=self._branch,
-                    branch_agnostic=True,
-                )
-                if next_available:
-                    return next_available
-                continue
-
-            subnets = await get_subnets(
+            next_available = await get_next_free_prefix(
                 db=db,
                 ip_prefix=resource_prefix,
+                target_prefix_length=prefixlen,
                 namespace=ip_namespace,
                 branch=self._branch,
                 branch_agnostic=True,
             )
-
-            pool = IPSet([resource.prefix.value])
-            for subnet in subnets:
-                pool.remove(addr=str(subnet.prefix))
-
-            try:
-                next_available = get_next_available_prefix(
-                    pool=pool, prefix_length=prefixlen, prefix_ver=resource_prefix.version
-                )
+            if next_available:
                 return next_available
-            except ValueError:
-                continue
 
         raise IndexError("No more resources available")

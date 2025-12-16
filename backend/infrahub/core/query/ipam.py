@@ -244,6 +244,126 @@ class IPPrefixSubnetFetchFree(Query):
         self.limit = 1
 
 
+class IPv6PrefixSubnetFetchFree(Query):
+    """Query to find the next free IPv6 prefix within a parent prefix.
+
+    This query uses binary string operations to handle IPv6's 128-bit address space,
+    as the integer values would overflow Neo4j's 64-bit integer type.
+    """
+
+    name = "ipv6prefix_subnet_fetch_free"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        obj: IPNetworkType,
+        target_prefixlen: int,
+        namespace: Node | str | None = None,
+        **kwargs,
+    ):
+        self.obj = obj
+        self.target_prefixlen = target_prefixlen
+        self.namespace_id = _get_namespace_id(namespace)
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["ns_id"] = self.namespace_id
+
+        prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
+        self.params["prefix_binary"] = prefix_bin
+        self.params["maxprefixlen"] = self.obj.prefixlen
+        self.params["ip_version"] = self.obj.version
+        self.params["target_prefixlen"] = self.target_prefixlen
+        # Binary representation of parent network and broadcast addresses
+        self.params["parent_start_bin"] = convert_ip_to_binary_str(self.obj)
+        self.params["parent_end_bin"] = format(int(self.obj.broadcast_address), "0128b")
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
+
+        # ruff: noqa: E501
+        query = """
+        // First match on IPNAMESPACE
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN ns AS ns1, r AS r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r1 AS r
+        WHERE r.status = "active"
+        WITH ns
+        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
+        WHERE ns_rel.name = "ip_namespace__ip_prefix"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen > $maxprefixlen
+            AND av.version = $ip_version
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
+        WITH
+            collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw,
+            $target_prefixlen AS target_prefixlen,
+            $parent_start_bin AS parent_start_bin,
+            $parent_end_bin AS parent_end_bin
+        // Create ranges with binary start/end strings truncated to target prefix length
+        WITH target_prefixlen, parent_start_bin, parent_end_bin,
+            [r IN ranges_raw WHERE r.binary IS NOT NULL |
+                {
+                    // Network address: binary with bits after prefixlen set to 0
+                    start: left(r.binary, r.prefixlen) + reduce(s = "", i IN range(1, 128 - r.prefixlen) | s + "0"),
+                    // Broadcast address: binary with bits after prefixlen set to 1
+                    end_bin: left(r.binary, r.prefixlen) + reduce(s = "", i IN range(1, 128 - r.prefixlen) | s + "1")
+                }
+            ] AS ranges
+        UNWIND CASE WHEN size(ranges) = 0 THEN [{start: null, end_bin: null}] ELSE ranges END AS r
+        WITH target_prefixlen, parent_start_bin, parent_end_bin, r
+        ORDER BY r.start ASC
+        WITH target_prefixlen, parent_start_bin, parent_end_bin, collect(r) AS ranges_sorted_raw
+        WITH target_prefixlen, parent_start_bin, parent_end_bin,
+            [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
+        // Find first available slot using binary string comparison
+        WITH target_prefixlen, parent_start_bin, parent_end_bin,
+            reduce(acc = {cursor: left(parent_start_bin, target_prefixlen), found: null}, r IN ranges_sorted |
+                CASE
+                    WHEN acc.found IS NOT NULL THEN acc
+                    // Range ends before cursor, skip it
+                    WHEN left(r.end_bin, target_prefixlen) < acc.cursor THEN acc
+                    // Gap found before range starts
+                    WHEN acc.cursor < left(r.start, target_prefixlen) THEN {cursor: acc.cursor, found: acc.cursor}
+                    // Advance cursor past this range, aligning to block boundary
+                    ELSE
+                        {
+                            cursor: left(r.end_bin, target_prefixlen - 1) + "1",
+                            found: null
+                        }
+                END
+            ) AS res
+        WITH res, target_prefixlen, parent_end_bin
+        // Check if we found a slot or if there's space after all ranges
+        WITH CASE
+            WHEN res.found IS NOT NULL THEN res.found
+            WHEN res.cursor <= left(parent_end_bin, target_prefixlen) THEN res.cursor
+            ELSE NULL
+        END AS free_start_partial, target_prefixlen
+        WHERE free_start_partial IS NOT NULL
+        // Pad the partial binary to full 128 bits
+        WITH free_start_partial + reduce(s = "", i IN range(1, 128 - target_prefixlen) | s + "0") AS free_start_bin, target_prefixlen
+        """ % {
+            "ns_label": InfrahubKind.IPNAMESPACE,
+            "node_label": InfrahubKind.IPPREFIX,
+            "branch_filter": branch_filter,
+        }
+
+        self.add_to_query(query)
+        self.return_labels = ["free_start_bin", "target_prefixlen"]
+        self.limit = 1
+
+
 class IPPrefixIPAddressFetch(Query):
     name = "ipprefix_ipaddress_fetch"
     type = QueryType.READ
@@ -477,8 +597,51 @@ async def get_next_free_prefix(
     at: Timestamp | str | None = None,
     branch_agnostic: bool = False,
 ) -> IPNetworkType | None:
-    if ip_prefix.version != 4:
-        return None
+    """Get the next available free prefix of specified length within a parent prefix.
+
+    Args:
+        db: Database connection
+        ip_prefix: Parent prefix to allocate from
+        target_prefix_length: Desired prefix length for the new allocation
+        namespace: IP namespace to use
+        branch: Branch to query
+        at: Point in time for the query
+        branch_agnostic: Whether to ignore branch boundaries
+
+    Returns:
+        The next available prefix, or None if no space is available
+    """
+    if ip_prefix.version == 4:
+        return await _get_next_free_ipv4_prefix(
+            db=db,
+            ip_prefix=ip_prefix,
+            target_prefix_length=target_prefix_length,
+            namespace=namespace,
+            branch=branch,
+            at=at,
+            branch_agnostic=branch_agnostic,
+        )
+    return await _get_next_free_ipv6_prefix(
+        db=db,
+        ip_prefix=ip_prefix,
+        target_prefix_length=target_prefix_length,
+        namespace=namespace,
+        branch=branch,
+        at=at,
+        branch_agnostic=branch_agnostic,
+    )
+
+
+async def _get_next_free_ipv4_prefix(
+    db: InfrahubDatabase,
+    ip_prefix: IPNetworkType,
+    target_prefix_length: int,
+    namespace: Node | str | None = None,
+    branch: Branch | str | None = None,
+    at: Timestamp | str | None = None,
+    branch_agnostic: bool = False,
+) -> IPNetworkType | None:
+    """Get the next available free IPv4 prefix."""
     if target_prefix_length < 0 or target_prefix_length > 32:
         return None
     if target_prefix_length < ip_prefix.prefixlen:
@@ -501,6 +664,43 @@ async def get_next_free_prefix(
 
     start_value = result.get_as_type("free_start", return_type=int)
     network_address = ipaddress.IPv4Address(start_value)
+    return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
+
+
+async def _get_next_free_ipv6_prefix(
+    db: InfrahubDatabase,
+    ip_prefix: IPNetworkType,
+    target_prefix_length: int,
+    namespace: Node | str | None = None,
+    branch: Branch | str | None = None,
+    at: Timestamp | str | None = None,
+    branch_agnostic: bool = False,
+) -> IPNetworkType | None:
+    """Get the next available free IPv6 prefix."""
+    if target_prefix_length < 0 or target_prefix_length > 128:
+        return None
+    if target_prefix_length < ip_prefix.prefixlen:
+        return None
+
+    branch = await registry.get_branch(db=db, branch=branch)
+    query = await IPv6PrefixSubnetFetchFree.init(
+        db=db,
+        branch=branch,
+        obj=ip_prefix,
+        target_prefixlen=target_prefix_length,
+        namespace=namespace,
+        at=at,
+        branch_agnostic=branch_agnostic,
+    )
+    await query.execute(db=db)
+    result = query.get_result()
+    if not result:
+        return None
+
+    free_start_bin = result.get_as_type("free_start_bin", return_type=str)
+    # Convert binary string to IPv6 address
+    addr_int = int(free_start_bin, 2)
+    network_address = ipaddress.IPv6Address(addr_int)
     return ipaddress.ip_network(f"{network_address}/{target_prefix_length}")
 
 
