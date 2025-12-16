@@ -9,7 +9,7 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.models import SchemaBranchHash  # noqa: TC001
-from infrahub.core.node.standard import StandardNode
+from infrahub.core.node.standard import StandardNode, StandardNodeOrdering
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import (
     BranchNodeGetListQuery,
@@ -156,14 +156,17 @@ class Branch(StandardNode):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
+        node_ordering: StandardNodeOrdering | None = None,
         **kwargs: Any,
     ) -> list[Self]:
+        node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await BranchNodeGetListQuery.init(
             db=db,
             node_class=cls,
             ids=ids,
             node_name=name,
             limit=limit,
+            node_ordering=node_ordering,
             **kwargs,
         )
         await query.execute(db=db)

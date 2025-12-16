@@ -1,6 +1,18 @@
 from __future__ import annotations
 
-from graphene import DateTime, ObjectType
+from graphene import Boolean, DateTime, Field, InputObjectType, ObjectType
+
+from infrahub.graphql.types.enums import InfrahubOrderDirection
+
+
+class InfrahubNodeMetadataOrder(InputObjectType):
+    created_at = Field(InfrahubOrderDirection, required=False, description="Order by creation timestamp")
+    updated_at = Field(InfrahubOrderDirection, required=False, description="Order by updated timestamp")
+
+
+class OrderInput(InputObjectType):
+    disable = Boolean(required=False)
+    node_metadata = Field(InfrahubNodeMetadataOrder, required=False, description="Order settings for branch metadata")
 
 
 class InfrahubStandardNodeMetaData(ObjectType):
