@@ -43,6 +43,7 @@ from .mutations.resource_manager import (
 )
 from .mutations.webhook import InfrahubWebhookMutation
 from .registry import registry
+from .resolvers.account_metadata import account_metadata_resolver
 from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.resolver import (
     account_resolver,
@@ -365,7 +366,9 @@ class GraphQLSchemaManager:
             gql_type = self.get_type(name=data_type.get_graphql_type_name())
             gql_type._meta.fields["source"] = graphene.Field(data_source)
             gql_type._meta.fields["owner"] = graphene.Field(data_owner)
-            gql_type._meta.fields["updated_by"] = graphene.Field(account_type, required=False)
+            gql_type._meta.fields["updated_by"] = graphene.Field(
+                account_type, required=False, resolver=account_metadata_resolver
+            )
 
         # Pass 2: Generate edged/paginated objects for all GenericSchema interfaces
         for node_schema in full_schema.values():
@@ -685,9 +688,9 @@ class GraphQLSchemaManager:
 
         main_attrs = {
             "created_at": graphene.DateTime(required=False),
-            "created_by": graphene.Field(account_type, required=False),
+            "created_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "updated_at": graphene.DateTime(required=False),
-            "updated_by": graphene.Field(account_type, required=False),
+            "updated_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
@@ -703,9 +706,9 @@ class GraphQLSchemaManager:
 
         main_attrs = {
             "created_at": graphene.DateTime(required=False),
-            "created_by": graphene.Field(account_type, required=False),
+            "created_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "updated_at": graphene.DateTime(required=False),
-            "updated_by": graphene.Field(account_type, required=False),
+            "updated_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 

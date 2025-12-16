@@ -236,8 +236,8 @@ class SchemaBranch:
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
 
-        reversed_map_local = dict(map(reversed, local_kind_id_map.items()))
-        reversed_map_other = dict(map(reversed, other_kind_id_map.items()))
+        reversed_map_local: dict[str | None, str] = {v: k for k, v in local_kind_id_map.items()}
+        reversed_map_other: dict[str | None, str] = {v: k for k, v in other_kind_id_map.items()}
 
         for shared_id in shared_ids:
             local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)

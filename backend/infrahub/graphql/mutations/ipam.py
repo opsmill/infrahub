@@ -433,7 +433,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             data.get("id"), graphql_context.db, branch=branch, prefetch_relationships=True
         )
         if not prefix:
-            raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
+            raise NodeNotFoundError(node_type=cls._meta.schema.kind, identifier=data.get("id"), branch_name=branch.name)
 
         namespace_rels = await prefix.ip_namespace.get_relationships(db=db)
         namespace_id = namespace_rels[0].peer_id

@@ -48,10 +48,14 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         await load_schema(db=db, schema=CAR_SCHEMA)
 
     @pytest.fixture(scope="class")
-    async def context(self) -> InfrahubContext:
+    async def context(self, db: InfrahubDatabase) -> InfrahubContext:
         """Placeholder context for now, would be good to implement some auth and permissions here"""
+        admin_account = await NodeManager.get_one_by_hfid(
+            db=db, kind=InfrahubKind.ACCOUNT, hfid=["admin"], raise_on_error=True
+        )
+
         return InfrahubContext(
-            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            account=AccountSession(authenticated=True, account_id=admin_account.id, auth_type=AuthType.API),
             branch=BranchContext(name="main", id="d18808fe-70c8-4782-bd55-144d6980036f"),
         )
 

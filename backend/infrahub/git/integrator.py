@@ -1421,7 +1421,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         artifact.status.value = ArtifactStatus.READY.value
         if artifact.name.value != message.artifact_name:
             artifact.name.value = message.artifact_name
-        await artifact.save()
+        await artifact.save(request_context=message.context.to_request_context())
 
         event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
 

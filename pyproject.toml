@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.6.0"
+version = "1.6.1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.13"
@@ -331,7 +331,6 @@ disable_error_code = [
     "operator",
     "union-attr",
     "valid-type",
-    "var-annotated",
 ]
 
 [[tool.mypy.overrides]]
@@ -384,7 +383,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.ipam"
 disable_error_code = [
-    "arg-type",
     "attr-defined",
     "list-item",
     "union-attr",
@@ -414,8 +412,6 @@ module = "infrahub.graphql.mutations.repository"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "no-redef",
-    "no-untyped-def",
     "union-attr",
 ]
 

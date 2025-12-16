@@ -80,7 +80,6 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
       label: "Reviewers",
       type: "relationship",
       relationship: { cardinality: "many", peer: ACCOUNT_GENERIC_OBJECT } as any,
-      schema: {} as any,
       defaultValue: {
         source: { type: "user" },
         value:
