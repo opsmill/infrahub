@@ -193,6 +193,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                         new_schema=candidate_schema,
                         previous_schema=schema_in_main_before,
                         migrations=migrations,
+                        user_id=context.account.account_id,
                     )
                 )
                 for error in errors:
@@ -297,6 +298,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                     new_schema=merger.destination_schema,
                     previous_schema=merger.initial_source_schema,
                     migrations=merger.migrations,
+                    user_id=context.account.account_id,
                 )
             )
             for error in errors:

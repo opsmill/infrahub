@@ -6,9 +6,12 @@ import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
 
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
+from infrahub.core.query.node import MetadataOptions
 from infrahub.core.registry import registry
 from infrahub.core.schema import core_models
 from infrahub.core.schema.basenode_schema import OPTIONAL_TEXT_FIELDS
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.helpers.test_app import TestInfrahubApp
@@ -19,6 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
     from tests.conftest import TestHelper
@@ -56,6 +60,68 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         updated_relationship_count = await count_relationships(db=db)
 
         assert first_relationship_count == updated_relationship_count
+
+    async def test_schema_migration_updates_node_metadata(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """Test that schema migrations update node metadata (updated_at/by) correctly."""
+        # Load initial schema
+        await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
+
+        # Create a TestDevice node
+        device = await client.create(
+            kind="TestDevice",
+            name="metadata-test-device",
+            type="router",
+            role="router",
+            status="active",
+        )
+        await device.save()
+        device_id = device.id
+
+        # Record time before schema change
+        time_before_migration = Timestamp()
+
+        # Modify schema to add a new attribute to TestDevice
+        updated_schema = helper.schema_file("infra_simple_01.json")
+        for node in updated_schema["nodes"]:
+            if node["name"] == "Device" and node["namespace"] == "Test":
+                node["attributes"].append({"name": "location", "kind": "Text", "optional": True})
+                break
+
+        # Load updated schema - this should trigger a migration
+        update_result = await client.schema.load(schemas=[updated_schema])
+        assert update_result.schema_updated
+
+        # Query the node with metadata
+        nodes = await NodeManager.get_many(
+            db=db,
+            ids=[device_id],
+            branch=default_branch,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+        )
+        node = nodes[device_id]
+
+        # Verify node metadata was updated by the migration
+        assert node._get_created_at() < time_before_migration
+        assert node._get_created_by() == admin_account.id
+        assert node._get_updated_at() > time_before_migration
+        assert node._get_updated_by() == admin_account.id
+
+        # Verify the new attribute exists and has proper metadata
+        assert node.location._get_created_at() > time_before_migration
+        assert node.location._get_created_by() == admin_account.id
+        assert node.location._get_updated_at() == node.location._get_created_at()
+        assert node.location._get_updated_by() == admin_account.id
 
     async def test_schema_load_with_absent_schema(
         self,
