@@ -387,6 +387,7 @@ async def load_schema(
             new_schema=candidate_schema,
             previous_schema=origin_schema,
             migrations=result.migrations,
+            user_id=account_session.account_id,
         )
         migration_error_msgs = await service.workflow.execute_workflow(
             workflow=SCHEMA_APPLY_MIGRATION,
