@@ -384,7 +384,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.ipam"
 disable_error_code = [
-    "arg-type",
     "attr-defined",
     "list-item",
     "union-attr",
@@ -414,8 +413,6 @@ module = "infrahub.graphql.mutations.repository"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "no-redef",
-    "no-untyped-def",
     "union-attr",
 ]
 
