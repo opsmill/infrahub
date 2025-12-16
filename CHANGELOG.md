@@ -11,6 +11,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.5.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.4) - 2025-12-16
+
+### Fixed
+
+- Fix an issue where removing a mandatory relationship was allowed. (#7853)
+
 ## [Infrahub - v1.5.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.3) - 2025-11-24
 
 ### Fixed
