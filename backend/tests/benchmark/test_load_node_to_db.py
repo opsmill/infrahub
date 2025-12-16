@@ -34,4 +34,4 @@ def test_load_node_to_db_node_schema(
     }
     node = NodeSchema(**SCHEMA)
 
-    aio_benchmark(registry.schema.load_node_to_db, node=node, db=db, branch=default_branch)
+    aio_benchmark(registry.schema.load_node_to_db, node=node, db=db, branch=default_branch, user_id="user-id")
