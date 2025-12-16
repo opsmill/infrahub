@@ -16,7 +16,7 @@ interface ObjectItemMetaEditProps {
   schema: ModelSchema;
   type: "attribute" | "relationship";
   attributeOrRelationshipToEdit: any;
-  attributeOrRelationshipName: any;
+  attributeOrRelationshipName: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -53,7 +53,7 @@ export default function ObjectItemMetaEdit({
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Metadata updated" />);
       onSuccess?.();
     } catch (e) {
-      console.error("Something went wrong while updating the meetadata", e);
+      console.error("Something went wrong while updating the metadata", e);
     }
   }
 
