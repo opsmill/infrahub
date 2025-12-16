@@ -7,7 +7,7 @@ const BranchesEmptyText = () => {
   return (
     <>
       <div className="font-medium text-lg">No branches found</div>
-      <div className="text-sm">Create a new branche to see it here</div>
+      <div className="text-sm">Create a new branch to see it here</div>
     </>
   );
 };
