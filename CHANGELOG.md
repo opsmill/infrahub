@@ -11,6 +11,25 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.6.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.1) - 2025-12-11
+
+### Added
+
+- Add support for PKCE within Oauth2 and OIDC authentications. With this change the client_secret for Oauth2 and OIDC have been switched to being optional. PKCE is enabled by default but can be switched off in the configuration if required. ([#7400](https://github.com/opsmill/infrahub/issues/7400))
+
+### Changed
+
+- Upgrade infrahub-sdk to v1.17.0 ([#7870](https://github.com/opsmill/infrahub/pull/7870))
+
+### Fixed
+
+- Fix `display_label` not having a NULL value in the database when not set in the schema ([#7704](https://github.com/opsmill/infrahub/issues/7704))
+- Fixed schema cache issue when adding or removing dropdown/enum options via the UI, which causes intermittent "incorrect hash" errors after page refreshes. ([#7780](https://github.com/opsmill/infrahub/issues/7780))
+- Fix an issue where removing a mandatory relationship was allowed. ([#7853](https://github.com/opsmill/infrahub/issues/7853))
+- Fix breadcrumb display on CoreArtifactDefinition details page.
+- Fixed form submission for schemas with only read-only attributes
+- Improve branch creation and repository sync performance when having a lot of branches.
+
 ## [Infrahub - v1.6.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.6.0) - 2025-12-01
 
 We're excited to announce the release of Infrahub v1.6.0! This release brings significant improvements to Git integration, UI navigation, branch management, Profiles in Object Templates and introduces a new dashboard landing page.
