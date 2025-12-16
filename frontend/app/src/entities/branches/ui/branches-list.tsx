@@ -66,7 +66,7 @@ function BranchesListContent() {
 
   const allBranches = data.pages.flat();
 
-  if (allBranches.length === 0 || true) {
+  if (allBranches.length === 0) {
     return <BranchesEmpty />;
   }
 
