@@ -38,7 +38,6 @@ describe("getFormFieldFromRelationship", () => {
         required: false,
         validate: expect.any(Function),
       },
-      schema,
     });
   });
 });

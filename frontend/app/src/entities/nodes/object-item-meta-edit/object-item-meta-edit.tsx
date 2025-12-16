@@ -86,7 +86,6 @@ export default function ObjectItemMetaEdit(props: Props) {
             label: "Owner",
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageOwner" } as any,
-            schema,
             defaultValue: getRelationshipDefaultValue({
               relationshipData: { node: attributeOrRelationshipToEdit.owner },
             }),
@@ -97,7 +96,6 @@ export default function ObjectItemMetaEdit(props: Props) {
             label: "Source",
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageSource" } as any,
-            schema,
             defaultValue: getRelationshipDefaultValue({
               relationshipData: { node: attributeOrRelationshipToEdit.source },
             }),
