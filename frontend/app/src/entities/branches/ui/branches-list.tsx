@@ -13,8 +13,8 @@ import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys"
 import { useGetBranchesPaginated } from "@/entities/branches/domain/get-branches.query";
 import { useGetBranchesCount } from "@/entities/branches/domain/get-branches-count.query";
 import { BranchListItem } from "@/entities/branches/ui/branch-list-item/branch-list-item";
+import { BranchesEmpty } from "@/entities/branches/ui/branches-empty";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
-import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 
 function BranchesListHeader() {
   const [search] = useSearch();
@@ -66,8 +66,8 @@ function BranchesListContent() {
 
   const allBranches = data.pages.flat();
 
-  if (allBranches.length === 0) {
-    return <ObjectTableEmpty label="branches" />;
+  if (allBranches.length === 0 || true) {
+    return <BranchesEmpty />;
   }
 
   const sortedBranches = sortByName(allBranches.filter((b) => b.name !== "main"));
