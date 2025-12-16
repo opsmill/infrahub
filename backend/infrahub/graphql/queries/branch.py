@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ID, Field, Int, List, NonNull, String
+from graphene import ID, Boolean, Field, Int, List, NonNull, String
 
 from infrahub.core.node.standard import StandardNodeQueryFields
 from infrahub.core.registry import registry
@@ -42,6 +42,7 @@ async def infrahub_branch_resolver(
     offset: int | None = None,
     name__value: str | None = None,
     ids: list[str] | None = None,
+    partial_match: bool = False,
 ) -> dict[str, Any]:
     if isinstance(limit, int) and limit < 1:
         raise ValidationError("limit must be >= 1")
@@ -63,11 +64,12 @@ async def infrahub_branch_resolver(
             name=name__value,
             ids=ids,
             exclude_global=True,
+            partial_match=partial_match,
         )
         result["edges"] = branches
     if "count" in fields:
         result["count"] = await InfrahubBranchType.get_list_count(
-            graphql_context=info.context, name=name__value, ids=ids
+            graphql_context=info.context, name=name__value, ids=ids, partial_match=partial_match
         )
 
     if "default_branch" in fields:
@@ -87,6 +89,7 @@ InfrahubBranchQueryList = Field(
     limit=Int(),
     name__value=String(),
     ids=List(ID),
+    partial_match=Boolean(default_value=False),
     description="Retrieve paginated information about active branches.",
     resolver=infrahub_branch_resolver,
     required=True,
