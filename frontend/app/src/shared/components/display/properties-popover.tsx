@@ -16,7 +16,6 @@ interface PropertiesEditTriggerProps {
   type: "attribute" | "relationship";
   properties: any;
   attributeSchema: any;
-  refetch?: () => Promise<unknown>;
   data: any;
   schema: any;
   hideHeader?: boolean;
@@ -27,7 +26,6 @@ const PropertiesPopover = ({
   type,
   properties,
   attributeSchema,
-  refetch,
   data,
   schema,
   hideHeader,
@@ -85,8 +83,8 @@ const PropertiesPopover = ({
         setOpen={setShowMetaEditModal}
       >
         <ObjectItemMetaEdit
-          closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => refetch && refetch()}
+          onCancel={() => setShowMetaEditModal(false)}
+          onSuccess={() => setShowMetaEditModal(false)}
           attributeOrRelationshipToEdit={
             (data as any)[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             (data as any)[metaEditFieldDetails?.attributeOrRelationshipName]

@@ -18,7 +18,7 @@ export function GraphqlQueryDetails({
   graphqlQuerySchema: ModelSchema;
   permission: Permission;
 }) {
-  const { isPending, error, data, refetch } = useGetObject({
+  const { isPending, error, data } = useGetObject({
     objectSchema: graphqlQuerySchema,
     objectId: graphqlQueryId,
   });
@@ -41,7 +41,6 @@ export function GraphqlQueryDetails({
         <GraphqlQueryDetailsCard
           data={graphqlQuery}
           schema={graphqlQuerySchema}
-          refetch={refetch}
           permission={permission}
         />
 
