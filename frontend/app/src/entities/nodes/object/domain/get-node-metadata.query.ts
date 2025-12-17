@@ -5,9 +5,11 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-
-import { type GetNodeMetadataParams, getNodeMetadata } from "./get-node-metadata";
-import { objectQueryKeys } from "./object.query-keys";
+import {
+  type GetNodeMetadataParams,
+  getNodeMetadata,
+} from "@/entities/nodes/object/domain/get-node-metadata";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 
 export function getNodeMetadataQueryOptions(params: GetNodeMetadataParams) {
   return queryOptions({
