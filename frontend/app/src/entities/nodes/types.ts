@@ -65,9 +65,9 @@ export type NodeObjectWithMetadata = NodeCore & {
 };
 
 export interface NodeMetadata {
-  created_at: string;
+  created_at: string | null;
   created_by: NodeCore | null;
-  updated_at: string;
+  updated_at: string | null;
   updated_by: NodeCore | null;
 }
 

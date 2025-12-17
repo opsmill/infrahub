@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { nodeMetadataFragment } from "@/shared/api/graphql/fragments";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
@@ -17,24 +18,7 @@ const getNodeMetadataQuery = ({ objectId, objectKind }: GetNodeMetadataQueryPara
         __args: {
           ids: [objectId],
         },
-        edges: {
-          node_metadata: {
-            created_at: true,
-            created_by: {
-              id: true,
-              display_label: true,
-              hfid: true,
-              __typename: true,
-            },
-            updated_at: true,
-            updated_by: {
-              id: true,
-              display_label: true,
-              hfid: true,
-              __typename: true,
-            },
-          },
-        },
+        edges: nodeMetadataFragment,
       },
     },
   };

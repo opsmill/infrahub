@@ -50,22 +50,24 @@ export function NodeMetadata({ objectKind, objectId }: NodeMetadataProps) {
     return <ErrorScreen className="p-4" message="No metadata available" />;
   }
 
+  const { created_at, created_by, updated_at, updated_by } = data;
+
   const items = [
     {
       name: "Created at",
-      value: formatFullDate(data.created_at),
+      value: created_at ? formatFullDate(created_at) : "-",
     },
     {
       name: "Created by",
-      value: <UserLink user={data.created_by} />,
+      value: <UserLink user={created_by} />,
     },
     {
       name: "Updated at",
-      value: formatFullDate(data.updated_at),
+      value: updated_at ? formatFullDate(updated_at) : "-",
     },
     {
       name: "Updated by",
-      value: <UserLink user={data.updated_by} />,
+      value: <UserLink user={updated_by} />,
     },
   ];
 
