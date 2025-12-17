@@ -3,13 +3,12 @@ import * as R from "remeda";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
-  EmptyFieldValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
   RelationshipValueFromProfile,
   RelationshipValueFromTemplate,
   RelationshipValueFromUser,
-  TemplateSource,
+  TemplateSource
 } from "@/shared/components/form/type";
 
 import type { Node, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -157,111 +156,6 @@ const getRelationshipValueFromParent = (
   }
 
   return null;
-};
-
-export const getRelationshipDefaultValueFromData = (
-  relationshipData: RelationshipType,
-  peerField?: string
-):
-  | RelationshipValueFromUser
-  | RelationshipValueFromPool
-  | RelationshipValueFromProfile
-  | EmptyFieldValue
-  | null => {
-  if ("edges" in relationshipData) {
-    // If edges are empty, return null to allow profile fallback
-    if (relationshipData.edges.length === 0) {
-      return null;
-    }
-
-    const values = relationshipData.edges
-      .map(({ node }) =>
-        node
-          ? {
-              id: node.id,
-              display_label: node.display_label,
-              __typename: node.__typename,
-              ...(peerField && (node as Record<string, unknown>)[peerField] !== undefined
-                ? { [peerField]: (node as Record<string, unknown>)[peerField] }
-                : {}),
-            }
-          : null
-      )
-      .filter((n) => !!n);
-
-    // Check if all edges have a profile source
-    const edgesWithSource = relationshipData.edges.filter(
-      (edge) => edge.properties?.source?.__typename
-    );
-
-    if (edgesWithSource.length > 0 && edgesWithSource.length === relationshipData.edges.length) {
-      // All edges have a source - check if they're all from profiles
-      const allFromProfile = edgesWithSource.every((edge) => {
-        const { isProfile } = getSchema(edge.properties?.source?.__typename);
-        return isProfile;
-      });
-
-      if (allFromProfile) {
-        // Return null to allow profile fallback logic to handle this
-        // The profile may have been removed, so we should re-evaluate from current profiles
-        return null;
-      }
-    }
-
-    return {
-      source: {
-        type: "user",
-      },
-      value: values,
-    };
-  }
-
-  // If node is null, return null to allow profile fallback
-  if (!relationshipData.node) {
-    return null;
-  }
-
-  if (!relationshipData.properties?.source?.__typename) {
-    return {
-      source: {
-        type: "user",
-      },
-      value: relationshipData.node,
-    };
-  }
-
-  const source = relationshipData.properties.source;
-  const { schema: sourceSchema, isProfile, isGeneric } = getSchema(source.__typename);
-
-  if (!isGeneric && sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
-    if (!relationshipData.node) {
-      console.error("Source is a pool but node is null on relationship", relationshipData);
-      return { source: null, value: null };
-    }
-
-    return {
-      source: {
-        type: "pool",
-        label: source.display_label ?? null,
-        id: source.id as string,
-        kind: source.__typename as string,
-      },
-      value: relationshipData.node,
-    };
-  }
-
-  if (isProfile) {
-    // Return null to allow profile fallback logic to handle this
-    // The profile may have been removed, so we should re-evaluate from current profiles
-    return null;
-  }
-
-  return {
-    source: {
-      type: "user",
-    },
-    value: relationshipData.node,
-  };
 };
 
 export const getRelationshipDefaultValueFromTemplate = (
