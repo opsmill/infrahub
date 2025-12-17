@@ -112,7 +112,7 @@ CALL (r, do_update) {
     WITH r, do_update
     WHERE do_update = TRUE
     SET r.from = $at
-} IN TRANSACTIONS
+}
 
 // --------------
 // Delete the edges
@@ -121,7 +121,7 @@ WITH r, s, d, do_update
 WHERE do_update = FALSE
 CALL (r, s, d) {
     DELETE r
-} IN TRANSACTIONS
+}
 // --------------
 // Clean up any orpahned nodes edges
 // --------------
@@ -132,7 +132,7 @@ CALL (n) {
     MATCH (n)
     WHERE NOT exists((n)--())
     DELETE n
-} IN TRANSACTIONS
+}
         """
         self.add_to_query(query=query)
 
