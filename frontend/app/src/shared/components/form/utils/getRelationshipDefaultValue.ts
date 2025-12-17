@@ -269,7 +269,7 @@ export const getRelationshipDefaultValueFromProfiles = (
   const source = {
     type: "profile" as const,
     id: profileWithDefaultValueForField.id,
-    label: profileWithDefaultValueForField.display_label,
+    label: profileWithDefaultValueForField.display_label ?? null,
     kind: profileWithDefaultValueForField.__typename,
   };
 
