@@ -667,6 +667,7 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
       const parentSchema = generateNodeSchema({
         kind: "TestParent",
+        display_labels: ["name__value"],
         relationships: [
           {
             ...generateRelationshipSchema(),
@@ -694,6 +695,9 @@ describe("getRelationshipDefaultValue", () => {
         __typename: "TestParent",
       };
 
+      // Register the parent schema so getNodeLabel can resolve the display_label
+      store.set(nodeSchemasAtom, [parentSchema]);
+
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
         relationshipData,
@@ -709,7 +713,11 @@ describe("getRelationshipDefaultValue", () => {
         source: {
           type: "user",
         },
-        value: parentData,
+        value: {
+          id: parentData.id,
+          display_label: parentData.display_label,
+          __typename: parentData.__typename,
+        },
       });
     });
   });
