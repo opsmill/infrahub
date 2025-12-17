@@ -366,6 +366,7 @@ async def load_schema(
                 diff=result.diff,
                 limit=result.diff.all,
                 update_db=True,
+                user_id=account_session.account_id,
             )
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)

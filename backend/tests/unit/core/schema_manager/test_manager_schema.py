@@ -17,11 +17,13 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
+    MetadataOptions,
     RelationshipCardinality,
     RelationshipDeleteBehavior,
     RelationshipKind,
     SchemaPathType,
 )
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
@@ -37,6 +39,7 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
@@ -2598,7 +2601,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
         ],
         relationships=[RelationshipSchema(name="others", peer="BuiltinCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, user_id="user-id")
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
@@ -2621,7 +2624,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, user_id="user-id")
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -2673,7 +2676,7 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch)
+    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch, user_id="user-id")
 
     node = registry.schema.get(name="BuiltinCriticality", branch=default_branch)
 
@@ -2682,7 +2685,7 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch)
+    await registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch, user_id="user-id")
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
 
@@ -2748,6 +2751,211 @@ async def test_load_schema_to_db_simple_01(
         schema=node_schema, filters={"name__value": "Device"}, db=db, branch=default_branch
     )
     assert len(results) == 1
+
+
+async def test_load_schema_to_db_includes_metadata(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_internal_models_schema: SchemaBranch,
+    branch: Branch,
+    schema_criticality_tag: dict,
+) -> None:
+    """Verify that SchemaNode, SchemaAttribute, and SchemaRelationship metadata is properly set."""
+    test_user_id = "test-user-id-12345"
+
+    # Record time window around schema load
+    time_before = Timestamp()
+
+    # Register and load the schema with a specific user_id
+    schema = SchemaRoot(**schema_criticality_tag)
+    new_schema = registry.schema.register_schema(schema=schema, branch=branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=branch, user_id=test_user_id)
+
+    time_after = Timestamp()
+
+    # Query the SchemaNode (BuiltinCriticality) with metadata
+    node_schema = registry.schema.get(name="SchemaNode")
+    results = await SchemaManager.query(
+        schema=node_schema,
+        filters={"name__value": "Criticality"},
+        db=db,
+        branch=branch,
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+    )
+    assert len(results) == 1
+
+    schema_node = results[0]
+
+    # Verify SchemaNode metadata with time window
+    assert time_before < schema_node._get_created_at() < time_after
+    assert schema_node._get_created_by() == test_user_id
+    assert time_before < schema_node._get_updated_at() < time_after
+    assert schema_node._get_updated_by() == test_user_id
+
+    # Get attribute Relationship edges and peers using query_peers with fetch_peers=True
+    attributes_rel_schema = node_schema.get_relationship(name="attributes")
+    attr_edge_results = await NodeManager.query_peers(
+        db=db,
+        branch=branch,
+        ids=[schema_node.id],
+        source_kind="SchemaNode",
+        schema=attributes_rel_schema,
+        filters={},
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+        fetch_peers=True,
+    )
+    assert len(attr_edge_results) > 0
+
+    # Verify metadata on the first attribute edge (Relationship object)
+    first_attr_edge = attr_edge_results[0]
+    assert time_before < first_attr_edge._get_created_at() < time_after
+    assert first_attr_edge._get_created_by() == test_user_id
+    assert time_before < first_attr_edge._get_updated_at() < time_after
+    assert first_attr_edge._get_updated_by() == test_user_id
+
+    # Verify metadata on the peer (SchemaAttribute node) retrieved from the relationship
+    first_attr = await first_attr_edge.get_peer(db=db)
+    assert time_before < first_attr._get_created_at() < time_after
+    assert first_attr._get_created_by() == test_user_id
+    assert time_before < first_attr._get_updated_at() < time_after
+    assert first_attr._get_updated_by() == test_user_id
+
+    # Verify metadata on an attribute of first_attr (SchemaAttribute.name)
+    first_attr_name = first_attr.get_attribute("name")
+    assert time_before < first_attr_name._get_created_at() < time_after
+    assert first_attr_name._get_created_by() == test_user_id
+    assert time_before < first_attr_name._get_updated_at() < time_after
+    assert first_attr_name._get_updated_by() == test_user_id
+
+    # Get relationship Relationship edges and peers using query_peers with fetch_peers=True
+    relationships_rel_schema = node_schema.get_relationship(name="relationships")
+    rel_edge_results = await NodeManager.query_peers(
+        db=db,
+        branch=branch,
+        ids=[schema_node.id],
+        source_kind="SchemaNode",
+        schema=relationships_rel_schema,
+        filters={},
+        include_metadata=MetadataOptions.USER_TIMESTAMPS,
+        fetch_peers=True,
+    )
+    assert len(rel_edge_results) > 0
+
+    # Verify metadata on the first relationship edge (Relationship object)
+    first_rel_edge = rel_edge_results[0]
+    assert time_before < first_rel_edge._get_created_at() < time_after
+    assert first_rel_edge._get_created_by() == test_user_id
+    assert time_before < first_rel_edge._get_updated_at() < time_after
+    assert first_rel_edge._get_updated_by() == test_user_id
+
+    # Verify metadata on the peer (SchemaRelationship node) retrieved from the relationship
+    first_rel = await first_rel_edge.get_peer(db=db)
+    assert time_before < first_rel._get_created_at() < time_after
+    assert first_rel._get_created_by() == test_user_id
+    assert time_before < first_rel._get_updated_at() < time_after
+    assert first_rel._get_updated_by() == test_user_id
+
+    # Verify metadata on an attribute of first_rel (SchemaRelationship.name)
+    first_rel_name = first_rel.get_attribute("name")
+    assert time_before < first_rel_name._get_created_at() < time_after
+    assert first_rel_name._get_created_by() == test_user_id
+    assert time_before < first_rel_name._get_updated_at() < time_after
+    assert first_rel_name._get_updated_by() == test_user_id
+
+    time_before_str = time_before.to_string()
+    time_after_str = time_after.to_string()
+
+    query_params = {
+        "branch": branch.name,
+        "time_before": time_before_str,
+        "time_after": time_after_str,
+        "user_id": test_user_id,
+    }
+    find_illegal_schema_edges_query = """
+// ------------
+// Start with all SchemaNode, SchemaAttribute, and SchemaRelationship vertices
+// and check all linked edges
+// ------------
+MATCH (n:SchemaNode|SchemaAttribute|SchemaRelationship)
+CALL (n) {
+    OPTIONAL MATCH (n)-[r]-(peer)
+    WHERE r.status <> "active"
+    OR r.branch <> $branch
+    OR r.from < $time_before
+    OR r.from > $time_after
+    OR r.from_user_id <> $user_id
+    RETURN r, peer
+}
+WITH n, collect(
+    CASE WHEN r IS NOT NULL OR peer IS NOT NULL THEN {
+        edge_type: type(r),
+        edge_from: r.from,
+        edge_from_user_id: r.from_user_id,
+        peer_labels: labels(peer),
+        peer_uuid: peer.uuid
+    }
+    ELSE NULL
+    END
+) AS illegal_node_edges
+// ------------
+// For each SchemaNode, SchemaAttribute, and SchemaRelationship, check all linked Attribute/Relationship vertices
+// and their linked edges
+// ------------
+MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WITH DISTINCT n, illegal_node_edges, field
+CALL (field) {
+    OPTIONAL MATCH (field)-[r]-(prop)
+    WHERE r.status <> "active"
+    OR r.branch <> $branch
+    OR r.from < $time_before
+    OR r.from > $time_after
+    OR r.from_user_id <> $user_id
+    RETURN r, prop
+}
+WITH n, illegal_node_edges, collect (
+    CASE WHEN r IS NOT NULL OR prop IS NOT NULL THEN {
+        edge_type: type(r),
+        edge_from: r.from,
+        edge_from_user_id: r.from_user_id,
+        peer_labels: labels(prop),
+        peer_value: COALESCE(prop.uuid, prop.value)
+    }
+    ELSE NULL
+    END
+) AS illegal_field_edges
+WITH n, illegal_node_edges, illegal_field_edges
+WHERE size(illegal_node_edges) > 0 OR size(illegal_field_edges) > 0
+RETURN n.uuid AS node_uuid, n.kind AS node_kind, illegal_node_edges, illegal_field_edges
+    """
+
+    records = await db.execute_query(query=find_illegal_schema_edges_query, params=query_params)
+
+    # The query only returns records with illegal edges, so any results indicate a failure
+    error_messages = []
+    for record in records:
+        node_uuid = record.get("node_uuid")
+        node_kind = record.get("node_kind")
+
+        illegal_node_edges = [e for e in record.get("illegal_node_edges", []) if e is not None]
+        illegal_field_edges = [e for e in record.get("illegal_field_edges", []) if e is not None]
+
+        for edge in illegal_node_edges:
+            error_messages.append(
+                f"Illegal edge on {node_kind} '{node_uuid}': "
+                f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
+                f"from_user_id={edge.get('edge_from_user_id')}, "
+                f"peer_labels={edge.get('peer_labels')}, peer_uuid={edge.get('peer_uuid')}"
+            )
+
+        for edge in illegal_field_edges:
+            error_messages.append(
+                f"Illegal field edge on {node_kind} '{node_uuid}': "
+                f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
+                f"from_user_id={edge.get('edge_from_user_id')}, "
+                f"peer_labels={edge.get('peer_labels')}, peer_value={edge.get('peer_value')}"
+            )
+
+    assert not error_messages, "Found illegal edges:\n" + "\n".join(error_messages)
 
 
 async def test_load_schema_to_db_w_generics_01(

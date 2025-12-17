@@ -27,7 +27,7 @@ class Migration017(InternalSchemaMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:  # noqa: ARG002
+    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:
         """
         Load CoreProfile schema node in db.
         """
@@ -36,6 +36,8 @@ class Migration017(InternalSchemaMigration):
         manager.set_schema_branch(name=default_branch.name, schema=self.get_internal_schema())
 
         db.add_schema(manager.get_schema_branch(default_branch.name))
-        await manager.load_node_to_db(node=core_profile_schema_definition, db=db, branch=default_branch)
+        await manager.load_node_to_db(
+            node=core_profile_schema_definition, db=db, branch=default_branch, user_id=user_id
+        )
 
         return MigrationResult()
