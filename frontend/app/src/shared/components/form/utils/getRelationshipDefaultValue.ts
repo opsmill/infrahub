@@ -8,7 +8,7 @@ import type {
   RelationshipValueFromProfile,
   RelationshipValueFromTemplate,
   RelationshipValueFromUser,
-  TemplateSource
+  TemplateSource,
 } from "@/shared/components/form/type";
 
 import type { Node, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
