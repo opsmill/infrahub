@@ -42,7 +42,11 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName: "testRelationship",
+      });
 
       // THEN
       expect(defaultValue).to.deep.equal({ source: null, value: null });
@@ -54,7 +58,11 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName: "testRelationship",
+      });
 
       // THEN
       expect(defaultValue).to.deep.equal({
@@ -85,7 +93,11 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName: "testRelationship",
+      });
 
       // THEN
       expect(defaultValue).to.deep.equal({
