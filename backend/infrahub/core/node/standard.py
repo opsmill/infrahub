@@ -176,6 +176,8 @@ class StandardNode(BaseModel):
     async def create(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create a new node in the database."""
         self.created_by = user_id
+        self.updated_by = self.created_by
+        self.updated_at = self.created_at
         query: Query = await self._query.init(db=db, node=self)
         await query.execute(db=db)
 

@@ -379,9 +379,11 @@ async def test_branch_update_description(
 
     branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
-    assert not branch4.updated_at
+    assert branch4.updated_at == branch4.created_at
     assert branch4_updated.description == "testing"
+    assert branch4.updated_at
     assert branch4_updated.updated_at
+    assert branch4_updated.updated_at > branch4.updated_at
     assert branch4_updated.updated_by == session_admin.account_id
 
 
