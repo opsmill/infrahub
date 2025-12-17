@@ -1,10 +1,10 @@
 import { gql } from "@apollo/client";
 
-export const GET_BRANCHES = gql`
-query GetBranches($branchSearch: String, $limit: Int, $offset: Int) {
-    InfrahubBranch(name__value: $branchSearch, limit: $limit, offset: $offset, partial_match: true) {
+export const GET_BRANCH_DETAILS = gql`
+  query GetBranchDetails($branchName: String!) {
+    InfrahubBranch(name__value: $branchName) {
       edges {
-        node{
+        node {
           id
           name {
             value
