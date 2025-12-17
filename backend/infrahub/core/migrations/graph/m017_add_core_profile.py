@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.manager import SchemaManager
@@ -26,7 +27,7 @@ class Migration017(InternalSchemaMigration):
 
         return result
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:  # noqa: ARG002
         """
         Load CoreProfile schema node in db.
         """

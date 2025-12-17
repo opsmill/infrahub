@@ -13,7 +13,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from opentelemetry import trace
 
 from infrahub import config
-from infrahub.core.constants import PermissionLevel
+from infrahub.core.constants import SYSTEM_USER_ID, PermissionLevel
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import QueryError
 
@@ -352,6 +352,7 @@ class Query(ABC):
         offset: int | None = None,
         order_by: list[str] | None = None,
         branch_agnostic: bool = False,
+        user_id: str = SYSTEM_USER_ID,
     ):
         if branch:
             self.branch = branch
@@ -367,6 +368,7 @@ class Query(ABC):
         self.limit = limit
         self.offset = offset
         self.order_by = order_by
+        self.user_id = user_id
 
         # Initialize internal variables
         self.params: dict = {}

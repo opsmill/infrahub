@@ -107,7 +107,6 @@ class PeerInfo:
 class NodeQuery(Query):
     def __init__(
         self,
-        user_id: str,
         node: Node | None = None,
         node_id: str | None = None,
         node_db_id: int | None = None,
@@ -115,7 +114,6 @@ class NodeQuery(Query):
         branch: Branch | None = None,
         **kwargs,
     ) -> None:
-        self.user_id = user_id
         self.node = node
         self.node_id = node_id or id
         self.node_db_id = node_db_id
@@ -755,7 +753,12 @@ WITH *, a.created_at AS created_at, a.created_by AS created_by
             """
         else:
             last_created_query = """
-WITH *, r1.from AS created_at, r1.from_user_id AS created_by
+CALL (a) {
+    MATCH ()-[e:HAS_ATTRIBUTE {status: "active"}]->(a)
+    RETURN e.from AS created_at, e.from_user_id AS created_by
+    ORDER BY e.from ASC
+    LIMIT 1
+}
             """
         self.add_to_query(last_created_query)
         self.return_labels.extend(["created_at", "created_by"])
@@ -787,7 +790,7 @@ WITH *, a.updated_at AS updated_at, a.updated_by AS updated_by
                 """
             last_updated_query = """
 CALL (a) {
-    MATCH (a)-[r]-(property)
+    MATCH (a)-[r]->(property)
     WHERE %(branch_filter)s
     %(time_details)s
     WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
@@ -1072,7 +1075,9 @@ WITH *, rel.updated_at AS updated_at, rel.updated_by AS updated_by
                 """
             last_updated_query = """
 CALL (rel) {
-    MATCH (rel)-[r]-(property)
+    // don't use IS_RELATED edges to handle the case when at least one of the
+    // peers is a migrated-kind node
+    MATCH (rel)-[r:!IS_RELATED]->(property)
     WHERE %(branch_filter)s
     %(time_details)s
     WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
@@ -1276,6 +1281,24 @@ class NodeListGetInfoQuery(Query):
     def _needs_user_timestamp_metadata(self) -> bool:
         return bool(self.include_metadata & MetadataOptions.USER_TIMESTAMPS)
 
+    def _add_created_metadata_to_query(self, branch_filter_str: str) -> None:
+        if self.branch.is_default or self.branch.is_global:
+            created_metadata_query = """
+WITH *, n.created_at AS created_at, n.created_by AS created_by
+            """
+        else:
+            created_metadata_query = """
+CALL (n) {
+    MATCH (:Node {uuid: n.uuid})-[r:IS_PART_OF {status: "active"}]->(:Root)
+    WHERE %(branch_filter)s
+    RETURN r.from AS created_at, r.from_user_id AS created_by
+    ORDER BY r.from ASC
+    LIMIT 1
+}
+            """ % {"branch_filter": branch_filter_str}
+        self.add_to_query(created_metadata_query)
+        self.return_labels.extend(["created_at", "created_by"])
+
     def _add_updated_metadata_to_query(self, branch_filter_str: str) -> None:
         if self.branch.is_default or self.branch.is_global:
             last_update_query = """
@@ -1303,15 +1326,6 @@ WITH *, n.updated_at AS updated_at, n.updated_by AS updated_by
 MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
 WHERE %(branch_filter)s
 WITH DISTINCT n, r_is_part_of, field
-CALL (n, field) {
-    MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field)
-    WHERE %(branch_filter)s
-    RETURN r.status = "active" AS is_active
-    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-    LIMIT 1
-}
-WITH n, r_is_part_of, field
-WHERE is_active = TRUE
 CALL (field) {
     MATCH (field)-[r]-(property)
     WHERE %(branch_filter)s
@@ -1364,9 +1378,8 @@ WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(upda
         ]
 
         if self._needs_user_timestamp_metadata():
-            self.return_labels.append("r_is_part_of.from AS created_at")
-            self.return_labels.append("r_is_part_of.from_user_id AS created_by")
             self._add_updated_metadata_to_query(branch_filter_str=branch_filter)
+            self._add_created_metadata_to_query(branch_filter_str=branch_filter)
 
     async def get_nodes(self, db: InfrahubDatabase, duplicate: bool = False) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""

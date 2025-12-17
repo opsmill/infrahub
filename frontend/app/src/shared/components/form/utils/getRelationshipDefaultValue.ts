@@ -22,7 +22,7 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
-  objectTemplate: NodeObject | null | undefined;
+  objectTemplate?: NodeObject | null | undefined;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
   relationshipName?: string;

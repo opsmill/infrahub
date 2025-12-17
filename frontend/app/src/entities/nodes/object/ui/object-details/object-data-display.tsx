@@ -2,7 +2,6 @@ import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
@@ -10,7 +9,6 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import { ObjectAttributeRow } from "@/entities/nodes/object-item-details/object-attribute-row";
@@ -103,10 +101,8 @@ export function ObjectDataDisplay({
         setOpen={setShowMetaEditModal}
       >
         <ObjectItemMetaEdit
-          closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-          }}
+          onCancel={() => setShowMetaEditModal(false)}
+          onSuccess={() => setShowMetaEditModal(false)}
           attributeOrRelationshipToEdit={
             objectData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectData[metaEditFieldDetails?.attributeOrRelationshipName]

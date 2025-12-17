@@ -21,8 +21,8 @@ const getMutationMetaDetailsFromFormData = (
   schema: ModelSchema,
   data: any,
   row: any,
-  type: any,
-  attributeOrRelationshipName: any,
+  type: "attribute" | "relationship",
+  attributeOrRelationshipName: string,
   attributeOrRelationshipToEdit: any
 ) => {
   const cleanedData = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
