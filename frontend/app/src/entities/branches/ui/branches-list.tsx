@@ -18,12 +18,7 @@ import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-sea
 
 function BranchesListHeader() {
   const [search] = useSearch();
-  const {
-    data: count,
-    isPending,
-    isRefetching,
-    isError,
-  } = useGetBranchesCount(search || undefined);
+  const { data: count, isPending, isRefetching, isError } = useGetBranchesCount(search);
 
   const refetchBranches = async () => {
     await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
@@ -54,10 +49,10 @@ function BranchesListToolbar() {
 function BranchesListContent() {
   const [search] = useSearch();
   const { data, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGetBranchesPaginated({ branchName: search || undefined });
+    useGetBranchesPaginated({ branchSearch: search });
 
   if (isPending) {
-    return <LoadingIndicator />;
+    return <LoadingIndicator className="py-8" />;
   }
 
   if (error) {
