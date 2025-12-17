@@ -94,7 +94,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("Edit a relationship", async () => {
         await page.getByRole("link", { name: "Loopback0", exact: true }).click();
-        await expect(page.getByText('NameLoopback0')).toBeVisible();
+        await expect(page.getByText("NameLoopback0")).toBeVisible();
 
         await page.getByTestId("edit-button").click();
         await expect(page.getByText("Device *")).toBeVisible();
