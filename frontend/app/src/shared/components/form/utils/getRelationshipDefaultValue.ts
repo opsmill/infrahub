@@ -11,7 +11,7 @@ import type {
   TemplateSource,
 } from "@/shared/components/form/type";
 
-import type { Node, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -151,7 +151,11 @@ const getRelationshipValueFromParent = (
   if (relationshipToParent && relationshipFromParent) {
     return {
       source: { type: "user" },
-      value: parentData as Node,
+      value: {
+        id: parentData.id,
+        display_label: getNodeLabel(parentData),
+        __typename: parentData.__typename,
+      },
     };
   }
 
