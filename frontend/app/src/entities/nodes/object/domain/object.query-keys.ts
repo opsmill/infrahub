@@ -55,6 +55,8 @@ export const objectQueryKeys = {
     ] as const,
   ancestors: (params: ObjectDetailKeysParams) =>
     [...objectQueryKeys.detail(params), "ancestors"] as const,
+  metadata: (params: ObjectDetailKeysParams) =>
+    [...objectQueryKeys.lists(params), params.objectId, "metadata"] as const,
   tree: ({ parentObjectId, ...params }: ObjectTreeKeysParams) =>
     [...objectQueryKeys.lists(params), "tree", parentObjectId] as const,
 };

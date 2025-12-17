@@ -4,6 +4,7 @@ import { Skeleton } from "@/shared/components/skeleton";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsButton } from "@/entities/nodes/object/ui/object-details-button";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -30,7 +31,7 @@ export function ObjectDetailsHeader({ schema, objectId }: ObjectDetailsHeaderPro
   ) : (
     <div className="flex items-center gap-3">
       {objectDetailsData ? getNodeLabel(objectDetailsData) : `${schema.label} not found`}
-
+      <NodeMetadataPopover objectId={objectId} objectKind={schema.kind!} />
       <ObjectDetailsButton
         id={objectId}
         objectKind={schema.kind!}

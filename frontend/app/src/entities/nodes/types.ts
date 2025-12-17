@@ -64,6 +64,13 @@ export type NodeObjectWithMetadata = NodeCore & {
   [key: string]: NodeAttributeWithMetadata | NodeRelationshipWithMetadata;
 };
 
+export interface NodeMetadata {
+  created_at: string;
+  created_by: NodeCore | null;
+  updated_at: string;
+  updated_by: NodeCore | null;
+}
+
 export interface NodeCoreWithChildrenCount extends NodeCore {
   children: {
     count: number;
