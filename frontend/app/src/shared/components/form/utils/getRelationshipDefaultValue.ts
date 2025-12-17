@@ -136,7 +136,7 @@ const getRelationshipValueFromParent = (
   schema: ModelSchema | null | undefined,
   parentSchema: ModelSchema | null | undefined,
   parentData: NodeObject | null | undefined,
-  relationshipName: string | undefined
+  relationshipName: string
 ): RelationshipValueFromUser | null => {
   if (!parentSchema || !parentData || !schema) return null;
 
