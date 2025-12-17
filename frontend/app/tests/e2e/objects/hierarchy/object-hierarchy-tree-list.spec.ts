@@ -47,6 +47,7 @@ test.describe("Object hierarchy tree lite - Focused tree view", () => {
     });
 
     await page.getByTestId("breadcrumb-navigation").getByRole("link", { name: "Country" }).click();
+    await expect(page.getByRole("link", { name: "Australia" })).toBeVisible();
 
     await test.step("add a sibling node - lite tree should refresh", async () => {
       await page.getByTestId("create-object-button").click();
