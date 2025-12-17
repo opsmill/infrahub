@@ -268,17 +268,7 @@ class RelationshipQuery(Query):
         self.add_to_query(destination_query_match)
 
 
-class RelationshipWriteQuery(RelationshipQuery):
-    def __init__(
-        self,
-        user_id: str,
-        **kwargs,
-    ):
-        self.user_id = user_id
-        super().__init__(**kwargs)
-
-
-class RelationshipCreateQuery(RelationshipWriteQuery):
+class RelationshipCreateQuery(RelationshipQuery):
     name = "relationship_create"
 
     type: QueryType = QueryType.WRITE
@@ -398,7 +388,7 @@ CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "ac
         self.add_to_query(query)
 
 
-class RelationshipUpdatePropertyQuery(RelationshipWriteQuery):
+class RelationshipUpdatePropertyQuery(RelationshipQuery):
     name = "relationship_property_update"
     type = QueryType.WRITE
     insert_return = False
@@ -561,7 +551,7 @@ CALL (rl) {
         self.add_to_query(query)
 
 
-class RelationshipDeleteQuery(RelationshipWriteQuery):
+class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
     type = QueryType.WRITE
     insert_return = False
@@ -1208,9 +1198,8 @@ class RelationshipDeleteAllQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, node_id: str, user_id: str, **kwargs):
+    def __init__(self, node_id: str, **kwargs):
         self.node_id = node_id
-        self.user_id = user_id
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:

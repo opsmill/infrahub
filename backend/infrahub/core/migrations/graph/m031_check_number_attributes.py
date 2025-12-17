@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Sequence
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import SYSTEM_USER_ID, SchemaPathType
 from infrahub.core.initialization import initialization
 from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationResult, SchemaMigration
 from infrahub.core.path import SchemaPath
@@ -35,7 +35,7 @@ class Migration031(InternalSchemaMigration):
     minimum_version: int = 30
     migrations: Sequence[SchemaMigration] = []
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:  # noqa: ARG002
         """Retrieve all number attributes that have a min/max/excluded_values
         For any of these attributes, check if corresponding existing nodes are valid."""
 

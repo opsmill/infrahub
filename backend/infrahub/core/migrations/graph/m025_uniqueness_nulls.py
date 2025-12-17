@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.log import get_logger
 
@@ -22,5 +23,5 @@ class Migration025(InternalSchemaMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:  # noqa: ARG002
         return await validate_nulls_in_uniqueness_constraints(db=db)

@@ -19,6 +19,7 @@ from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.metadata.query.node_metadata import NodeMetadataDefaultBranchQuery
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
@@ -1855,7 +1856,6 @@ class TestDiffAndMerge:
 
         await verify_no_duplicate_paths(db=db)
 
-    @pytest.mark.skip(reason="Waiting on updates to include metadata in schema migrations")
     async def test_diff_and_merge_with_migrated_node_kind(
         self,
         db: InfrahubDatabase,
@@ -1865,11 +1865,13 @@ class TestDiffAndMerge:
         car_person_schema: SchemaBranch,
         car_accord_main: Node,
         car_camry_main: Node,
+        car_yaris_main: Node,
         person_jane_main: Node,
         person_john_main: Node,
     ) -> None:
         car_accord_created_at = car_accord_main._get_created_at()
         car_camry_created_at = car_camry_main._get_created_at()
+        car_yaris_created_at = car_yaris_main._get_created_at()
 
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.update_schema_branch(db=db, branch=default_branch, schema=schema_main, update_db=True)
@@ -1900,10 +1902,11 @@ class TestDiffAndMerge:
                 path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"
             ),
         )
-        execution_result = await migration.execute(db=db, branch=branch2)
+        migration_at = Timestamp()
+        execution_result = await migration.execute(db=db, branch=branch2, at=migration_at, user_id="migration-user")
         assert not execution_result.errors
 
-        # update car owner
+        # update car owner and color
         migrated_car = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
         await migrated_car.owner.update(db=db, data=person_jane_main.id)
         new_color = "#654321"
@@ -1951,32 +1954,70 @@ class TestDiffAndMerge:
 
         # Validate node-level metadata on migrated car after merge
         migrated_car_with_metadata = await NodeManager.get_one(
-            db=db, branch=default_branch, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+            db=db,
+            branch=default_branch,
+            id=car_accord_main.id,
+            include_metadata=MetadataOptions.USER_TIMESTAMPS,
+            prefetch_relationships=True,
         )
-        # Node was created at merge time (migrated kind)
-        assert migrated_car_with_metadata._get_created_at() == merge_at
+        # Node created_at is from migration time (when the new kind was created on branch)
+        assert migrated_car_with_metadata._get_created_at() == car_accord_created_at
         assert migrated_car_with_metadata._get_created_by() == SYSTEM_USER_ID
-        # Node was updated by branch-user-update (the last user to modify this node on branch)
+        # Node was updated by branch-user-update at the branch update time
         assert migrated_car_with_metadata._get_updated_at() == merge_at
         assert migrated_car_with_metadata._get_updated_by() == "branch-user-update"
 
         # Validate attribute-level metadata on migrated car after merge
         # Color attribute was updated by branch-user-update
-        assert migrated_car_with_metadata.color._get_created_at() == merge_at
+        assert migrated_car_with_metadata.color._get_created_at() == car_accord_created_at
         assert migrated_car_with_metadata.color._get_created_by() == SYSTEM_USER_ID
         assert migrated_car_with_metadata.color._get_updated_at() == merge_at
         assert migrated_car_with_metadata.color._get_updated_by() == "branch-user-update"
 
-        # Other attributes should have been migrated but not updated by user
-        assert migrated_car_with_metadata.name._get_created_at() == merge_at
-        assert migrated_car_with_metadata.name._get_created_by() == SYSTEM_USER_ID
-        assert migrated_car_with_metadata.name._get_updated_at() == merge_at
-        assert migrated_car_with_metadata.name._get_updated_by() == SYSTEM_USER_ID
+        # Other attributes should have migration created_at, updated_at from migration
+        for attr_name in ("name", "nbr_seats"):
+            attr = migrated_car_with_metadata.get_attribute(name=attr_name)
+            assert attr._get_created_at() == car_accord_created_at
+            assert attr._get_created_by() == SYSTEM_USER_ID
+            assert attr._get_updated_at() == car_accord_created_at
+            assert attr._get_updated_by() == SYSTEM_USER_ID
 
-        assert migrated_car_with_metadata.nbr_seats._get_created_at() == merge_at
-        assert migrated_car_with_metadata.nbr_seats._get_created_by() == SYSTEM_USER_ID
-        assert migrated_car_with_metadata.nbr_seats._get_updated_at() == merge_at
-        assert migrated_car_with_metadata.nbr_seats._get_updated_by() == SYSTEM_USER_ID
+        owner_rel = await migrated_car_with_metadata.owner.get(db=db)
+        assert owner_rel._get_created_at() == merge_at
+        assert owner_rel._get_created_by() == "branch-user-update"
+        assert owner_rel._get_updated_at() == merge_at
+        assert owner_rel._get_updated_by() == "branch-user-update"
+
+        # Validate metadata on migrated car with no updates
+        unchanged_car_with_metadata = await NodeManager.get_one(
+            db=db,
+            branch=default_branch,
+            id=car_yaris_main.id,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+                relationship_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+            prefetch_relationships=True,
+        )
+        assert unchanged_car_with_metadata._get_created_at() == car_yaris_created_at
+        assert unchanged_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert unchanged_car_with_metadata._get_updated_at() == merge_at
+        assert unchanged_car_with_metadata._get_updated_by() == "migration-user"
+
+        for attr_name in ("name", "nbr_seats"):
+            attr = unchanged_car_with_metadata.get_attribute(name=attr_name)
+            assert attr._get_created_at() == car_yaris_created_at
+            assert attr._get_created_by() == SYSTEM_USER_ID
+            assert attr._get_updated_at() == car_yaris_created_at
+            assert attr._get_updated_by() == SYSTEM_USER_ID
+
+        owner_rel_manager = unchanged_car_with_metadata.get_relationship(name="owner")
+        owner_rel = await owner_rel_manager.get(db=db)
+        assert owner_rel._get_created_at() == car_yaris_created_at
+        assert owner_rel._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel._get_updated_at() == car_yaris_created_at
+        assert owner_rel._get_updated_by() == SYSTEM_USER_ID
 
         # Validate metadata on deleted car using NodeMetadataDefaultBranchQuery
         node_metadata_query = await NodeMetadataDefaultBranchQuery.init(
@@ -1991,8 +2032,8 @@ class TestDiffAndMerge:
         deleted_car_meta = node_metadatas[0]
         assert deleted_car_meta.uuid == car_camry_main.id
         assert deleted_car_meta.is_deleted is True
-        # Deleted car should have merge_at timestamp and branch-user-delete as updater
-        assert deleted_car_meta.created_at == merge_at
+        # Deleted car should have migration created_at, updated_at from branch user delete
+        assert deleted_car_meta.created_at == car_camry_created_at
         assert deleted_car_meta.created_by == SYSTEM_USER_ID
         assert deleted_car_meta.updated_at == merge_at
         assert deleted_car_meta.updated_by == "branch-user-delete"
@@ -2000,10 +2041,17 @@ class TestDiffAndMerge:
         # Validate deleted car's attributes metadata
         for attr in deleted_car_meta.attributes:
             assert attr.is_deleted is True
-            assert attr.created_at == merge_at
+            assert attr.created_at == car_camry_created_at
             assert attr.created_by == SYSTEM_USER_ID
             assert attr.updated_at == merge_at
             assert attr.updated_by == "branch-user-delete"
+
+        for rel in deleted_car_meta.relationships:
+            assert rel.is_deleted is True
+            assert rel.created_at == car_camry_created_at
+            assert rel.created_by == SYSTEM_USER_ID
+            assert rel.updated_at == merge_at
+            assert rel.updated_by == "branch-user-delete"
 
         await verify_no_duplicate_paths(db=db)
 
@@ -2067,7 +2115,6 @@ class TestDiffAndMerge:
         assert undeleted_car_with_metadata.color._get_updated_at() == car_camry_created_at
         assert undeleted_car_with_metadata.color._get_updated_by() == SYSTEM_USER_ID
 
-    @pytest.mark.skip(reason="Waiting on updates to include metadata in schema migrations")
     async def test_diff_and_merge_with_migrated_node_kind_and_migrated_inheritance(
         self,
         db: InfrahubDatabase,
@@ -2106,6 +2153,7 @@ class TestDiffAndMerge:
             nbr_engine=1,
             owner=person_2,
         )
+        e_car_1_created_at = e_car_1._get_created_at()
         e_car_2 = await create_and_save(
             db=db,
             branch=default_branch,
@@ -2115,6 +2163,7 @@ class TestDiffAndMerge:
             nbr_engine=2,
             owner=person_3,
         )
+        e_car_2_created_at = e_car_2._get_created_at()
         original_e_car_1_owner = person_2
 
         # new branch
@@ -2143,7 +2192,10 @@ class TestDiffAndMerge:
                 path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewElectricCar", field_name="namespace"
             ),
         )
-        execution_result = await migration.execute(db=db, branch=branch2)
+        migration1_at = Timestamp()
+        execution_result = await migration.execute(
+            db=db, branch=branch2, at=migration1_at, user_id="migration-user-one"
+        )
         assert not execution_result.errors
 
         # update car owner
@@ -2169,18 +2221,21 @@ class TestDiffAndMerge:
                 path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewElectricCar", field_name="inherit_from"
             ),
         )
-        execution_result = await migration.execute(db=db, branch=branch2)
+        migration2_at = Timestamp()
+        execution_result = await migration.execute(
+            db=db, branch=branch2, at=migration2_at, user_id="migration-user-two"
+        )
         assert not execution_result.errors
 
         # delete a car
         migrated_car_to_delete = await NodeManager.get_one(db=db, branch=branch2, id=e_car_2.id)
-        await migrated_car_to_delete.delete(db=db, user_id="branch-user")
+        await migrated_car_to_delete.delete(db=db, user_id="branch-user-delete")
 
-        at = Timestamp()
+        merge_at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=merge_at)
 
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
@@ -2208,16 +2263,84 @@ class TestDiffAndMerge:
         with pytest.raises(NodeNotFoundError):
             await NodeManager.get_one(db=db, branch=branch2, id=e_car_2.id, raise_on_error=True)
 
-        # Validate metadata on migrated car - should have updated_at from merge
+        # Validate node-level metadata on migrated car after merge
         migrated_car_with_metadata = await NodeManager.get_one(
-            db=db, branch=default_branch, id=e_car_1.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+            db=db,
+            branch=default_branch,
+            id=e_car_1.id,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+                relationship_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+            prefetch_relationships=True,
         )
-        assert migrated_car_with_metadata._get_updated_at() == at
+        # Node created_at is from first migration time (when the new kind was created on branch)
+        assert migrated_car_with_metadata._get_created_at() == e_car_1_created_at
+        assert migrated_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        # Node was updated by branch-user at branch update time
+        assert migrated_car_with_metadata._get_updated_at() == merge_at
         assert migrated_car_with_metadata._get_updated_by() == "branch-user"
+
+        # Validate attribute-level metadata on migrated car after merge
+        # Color attribute was updated by branch-user
+        assert migrated_car_with_metadata.color._get_created_at() == e_car_1_created_at
+        assert migrated_car_with_metadata.color._get_created_by() == SYSTEM_USER_ID
+        assert migrated_car_with_metadata.color._get_updated_at() == merge_at
+        assert migrated_car_with_metadata.color._get_updated_by() == "branch-user"
+
+        # Other attributes should have migration1 created_at, updated_at from last migration
+        assert migrated_car_with_metadata.name._get_created_at() == e_car_1_created_at
+        assert migrated_car_with_metadata.name._get_created_by() == SYSTEM_USER_ID
+        assert migrated_car_with_metadata.name._get_updated_at() == e_car_1_created_at
+        assert migrated_car_with_metadata.name._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate relationship-level metadata on migrated car after merge
+        # Owner relationship was updated by branch-user
+        owner_rel = await migrated_car_with_metadata.owner.get(db=db)
+        assert owner_rel._get_created_at() == merge_at
+        assert owner_rel._get_created_by() == "branch-user"
+        assert owner_rel._get_updated_at() == merge_at
+        assert owner_rel._get_updated_by() == "branch-user"
+
+        # Validate metadata on deleted car using NodeMetadataDefaultBranchQuery
+        node_metadata_query = await NodeMetadataDefaultBranchQuery.init(
+            db=db,
+            branch=default_branch,
+            node_uuids=[e_car_2.id],
+        )
+        await node_metadata_query.execute(db=db)
+        node_metadatas = node_metadata_query.get_metadatas()
+        assert len(node_metadatas) == 1
+
+        deleted_car_meta = node_metadatas[0]
+        assert deleted_car_meta.uuid == e_car_2.id
+        assert deleted_car_meta.is_deleted is True
+        # Deleted car should have migration1 created_at, updated_at from branch user delete
+        assert deleted_car_meta.created_at == e_car_2_created_at
+        assert deleted_car_meta.created_by == SYSTEM_USER_ID
+        assert deleted_car_meta.updated_at == merge_at
+        assert deleted_car_meta.updated_by == "branch-user-delete"
+
+        # Validate deleted car's attributes metadata
+        for attr in deleted_car_meta.attributes:
+            assert attr.is_deleted is True
+            assert attr.created_at == e_car_2_created_at
+            assert attr.created_by == SYSTEM_USER_ID
+            assert attr.updated_at == merge_at
+            assert attr.updated_by == "branch-user-delete"
+
+        # Validate deleted car's relationships metadata
+        for rel in deleted_car_meta.relationships:
+            assert rel.is_deleted is True
+            assert rel.created_at == e_car_2_created_at
+            assert rel.created_by == SYSTEM_USER_ID
+            assert rel.updated_at == merge_at
+            assert rel.updated_by == "branch-user-delete"
 
         await verify_no_duplicate_paths(db=db)
 
-        await diff_merger.rollback(at=at)
+        await diff_merger.rollback(at=merge_at)
 
         rolled_back_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         registry.schema.set_schema_branch(name=default_branch.name, schema=rolled_back_schema_branch)
@@ -2236,7 +2359,76 @@ class TestDiffAndMerge:
         undeleted_car = await NodeManager.get_one(db=db, branch=default_branch, id=e_car_2.id)
         assert undeleted_car.get_kind() == "TestElectricCar"
 
-    @pytest.mark.skip(reason="Waiting on updates to include metadata in schema migrations")
+        # Validate node-level metadata after rollback for e_car_1
+        rolled_back_car_with_metadata = await NodeManager.get_one(
+            db=db,
+            branch=default_branch,
+            id=e_car_1.id,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+                relationship_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+            prefetch_relationships=True,
+        )
+        # After rollback, should have original created_at and no user updates
+        assert rolled_back_car_with_metadata._get_created_at() == e_car_1_created_at
+        assert rolled_back_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert rolled_back_car_with_metadata._get_updated_at() == e_car_1_created_at
+        assert rolled_back_car_with_metadata._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate attribute-level metadata after rollback
+        assert rolled_back_car_with_metadata.color._get_created_at() == e_car_1_created_at
+        assert rolled_back_car_with_metadata.color._get_created_by() == SYSTEM_USER_ID
+        assert rolled_back_car_with_metadata.color._get_updated_at() == e_car_1_created_at
+        assert rolled_back_car_with_metadata.color._get_updated_by() == SYSTEM_USER_ID
+
+        assert rolled_back_car_with_metadata.name._get_created_at() == e_car_1_created_at
+        assert rolled_back_car_with_metadata.name._get_created_by() == SYSTEM_USER_ID
+        assert rolled_back_car_with_metadata.name._get_updated_at() == e_car_1_created_at
+        assert rolled_back_car_with_metadata.name._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate relationship-level metadata after rollback for e_car_1
+        # After rollback, owner relationship should have original timestamps restored
+        owner_rel_manager = rolled_back_car_with_metadata.get_relationship(name="owner")
+        owner_rel = await owner_rel_manager.get(db=db)
+        assert owner_rel._get_created_at() == e_car_1_created_at
+        assert owner_rel._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel._get_updated_at() == e_car_1_created_at
+        assert owner_rel._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate undeleted car (e_car_2) metadata after rollback
+        undeleted_car_with_metadata = await NodeManager.get_one(
+            db=db,
+            branch=default_branch,
+            id=e_car_2.id,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+                relationship_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+            prefetch_relationships=True,
+        )
+        # Should have original timestamps restored
+        assert undeleted_car_with_metadata._get_created_at() == e_car_2_created_at
+        assert undeleted_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert undeleted_car_with_metadata._get_updated_at() == e_car_2_created_at
+        assert undeleted_car_with_metadata._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate attribute metadata on undeleted car
+        assert undeleted_car_with_metadata.color._get_created_at() == e_car_2_created_at
+        assert undeleted_car_with_metadata.color._get_created_by() == SYSTEM_USER_ID
+        assert undeleted_car_with_metadata.color._get_updated_at() == e_car_2_created_at
+        assert undeleted_car_with_metadata.color._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate relationship metadata on undeleted car after rollback
+        owner_rel_manager = undeleted_car_with_metadata.get_relationship(name="owner")
+        owner_rel = await owner_rel_manager.get(db=db)
+        assert owner_rel._get_created_at() == e_car_2_created_at
+        assert owner_rel._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel._get_updated_at() == e_car_2_created_at
+        assert owner_rel._get_updated_by() == SYSTEM_USER_ID
+
     async def test_diff_and_merge_with_migrated_node_kind_peer(
         self,
         db: InfrahubDatabase,
@@ -2249,6 +2441,8 @@ class TestDiffAndMerge:
         person_jane_main: Node,
         person_john_main: Node,
     ):
+        car_accord_created_at = car_accord_main._get_created_at()
+        car_camry_created_at = car_camry_main._get_created_at()
         original_car_owner = person_john_main
         main_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.update_schema_branch(
@@ -2289,7 +2483,10 @@ class TestDiffAndMerge:
                 path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"
             ),
         )
-        execution_result = await migration.execute(db=db, branch=default_branch)
+        migration_at = Timestamp()
+        execution_result = await migration.execute(
+            db=db, branch=default_branch, at=migration_at, user_id="migration-user"
+        )
         assert not execution_result.errors
 
         # create new branch
@@ -2304,13 +2501,13 @@ class TestDiffAndMerge:
 
         # delete a car
         migrated_car_to_delete = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
-        await migrated_car_to_delete.delete(db=db, user_id="branch-user")
+        await migrated_car_to_delete.delete(db=db, user_id="branch-user-delete")
 
-        at = Timestamp()
+        merge_at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
-        await diff_merger.merge_graph(at=at)
+        await diff_merger.merge_graph(at=merge_at)
 
         updated_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema_branch)
@@ -2335,14 +2532,84 @@ class TestDiffAndMerge:
 
         # Validate metadata on merged car - should have updated_at from merge
         merged_car_with_metadata = await NodeManager.get_one(
-            db=db, branch=default_branch, id=car_accord_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+            db=db,
+            branch=default_branch,
+            id=car_accord_main.id,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+                relationship_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+            prefetch_relationships=True,
         )
-        assert merged_car_with_metadata._get_updated_at() == at
+        assert merged_car_with_metadata._get_created_at() == car_accord_created_at
+        assert merged_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert merged_car_with_metadata._get_updated_at() == merge_at
         assert merged_car_with_metadata._get_updated_by() == "branch-user"
+
+        # Validate attribute-level metadata on merged car
+        assert merged_car_with_metadata.color._get_created_at() == car_accord_created_at
+        assert merged_car_with_metadata.color._get_created_by() == SYSTEM_USER_ID
+        assert merged_car_with_metadata.color._get_updated_at() == merge_at
+        assert merged_car_with_metadata.color._get_updated_by() == "branch-user"
+
+        # Other attributes should retain migration timestamps
+        assert merged_car_with_metadata.name._get_created_at() == car_accord_created_at
+        assert merged_car_with_metadata.name._get_created_by() == SYSTEM_USER_ID
+        assert merged_car_with_metadata.name._get_updated_at() == car_accord_created_at
+        assert merged_car_with_metadata.name._get_updated_by() == SYSTEM_USER_ID
+
+        assert merged_car_with_metadata.nbr_seats._get_created_at() == car_accord_created_at
+        assert merged_car_with_metadata.nbr_seats._get_created_by() == SYSTEM_USER_ID
+        assert merged_car_with_metadata.nbr_seats._get_updated_at() == car_accord_created_at
+        assert merged_car_with_metadata.nbr_seats._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate relationship-level metadata on merged car
+        # Owner relationship was updated by branch-user
+        owner_rel = await merged_car_with_metadata.owner.get(db=db)
+        assert owner_rel._get_created_at() == merge_at
+        assert owner_rel._get_created_by() == "branch-user"
+        assert owner_rel._get_updated_at() == merge_at
+        assert owner_rel._get_updated_by() == "branch-user"
+
+        # Validate metadata on deleted car using NodeMetadataDefaultBranchQuery
+        node_metadata_query = await NodeMetadataDefaultBranchQuery.init(
+            db=db,
+            branch=default_branch,
+            node_uuids=[car_camry_main.id],
+        )
+        await node_metadata_query.execute(db=db)
+        node_metadatas = node_metadata_query.get_metadatas()
+        assert len(node_metadatas) == 1
+
+        deleted_car_meta = node_metadatas[0]
+        assert deleted_car_meta.uuid == car_camry_main.id
+        assert deleted_car_meta.is_deleted is True
+        # Deleted car should have branch user delete timestamp
+        assert deleted_car_meta.created_at == car_camry_created_at
+        assert deleted_car_meta.created_by == SYSTEM_USER_ID
+        assert deleted_car_meta.updated_at == merge_at
+        assert deleted_car_meta.updated_by == "branch-user-delete"
+
+        # Validate deleted car's attributes metadata
+        for attr in deleted_car_meta.attributes:
+            assert attr.is_deleted is True
+            assert attr.created_at == car_camry_created_at
+            assert attr.created_by == SYSTEM_USER_ID
+            assert attr.updated_at == merge_at
+            assert attr.updated_by == "branch-user-delete"
+
+        # Validate deleted car's relationships metadata
+        for rel in deleted_car_meta.relationships:
+            assert rel.is_deleted is True
+            assert rel.created_at == car_camry_created_at
+            assert rel.created_by == SYSTEM_USER_ID
+            assert rel.updated_at == merge_at
+            assert rel.updated_by == "branch-user-delete"
 
         await verify_no_duplicate_paths(db=db)
 
-        await diff_merger.rollback(at=at)
+        await diff_merger.rollback(at=merge_at)
 
         retrieved_still_migrated_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
         assert retrieved_still_migrated_car.get_kind() == "Test2NewCar"
@@ -2352,3 +2619,74 @@ class TestDiffAndMerge:
         # get undeleted node
         undeleted_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_camry_main.id)
         assert undeleted_car.get_kind() == "Test2NewCar"
+
+        # Validate node-level metadata after rollback for car_accord
+        # Rollback only reverts data changes, not the schema migration
+        rolled_back_car_with_metadata = await NodeManager.get_one(
+            db=db,
+            branch=default_branch,
+            id=car_accord_main.id,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+                relationship_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+            prefetch_relationships=True,
+        )
+        # After rollback, should have post-migration timestamps (migration wasn't rolled back)
+        assert rolled_back_car_with_metadata._get_created_at() == car_accord_created_at
+        assert rolled_back_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert rolled_back_car_with_metadata._get_updated_at() == migration_at
+        assert rolled_back_car_with_metadata._get_updated_by() == "migration-user"
+
+        # Validate attribute-level metadata after rollback
+        assert rolled_back_car_with_metadata.color._get_created_at() == car_accord_created_at
+        assert rolled_back_car_with_metadata.color._get_created_by() == SYSTEM_USER_ID
+        assert rolled_back_car_with_metadata.color._get_updated_at() == car_accord_created_at
+        assert rolled_back_car_with_metadata.color._get_updated_by() == SYSTEM_USER_ID
+
+        assert rolled_back_car_with_metadata.name._get_created_at() == car_accord_created_at
+        assert rolled_back_car_with_metadata.name._get_created_by() == SYSTEM_USER_ID
+        assert rolled_back_car_with_metadata.name._get_updated_at() == car_accord_created_at
+        assert rolled_back_car_with_metadata.name._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate relationship-level metadata after rollback for car_accord
+        # After rollback, owner relationship should have post-migration timestamps restored
+        owner_rel_manager = rolled_back_car_with_metadata.get_relationship(name="owner")
+        owner_rel = await owner_rel_manager.get(db=db)
+        assert owner_rel._get_created_at() == car_accord_created_at
+        assert owner_rel._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel._get_updated_at() == car_accord_created_at
+        assert owner_rel._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate undeleted car (car_camry) metadata after rollback
+        undeleted_car_with_metadata = await NodeManager.get_one(
+            db=db,
+            branch=default_branch,
+            id=car_camry_main.id,
+            include_metadata=MetadataQueryOptions(
+                node_level=MetadataOptions.USER_TIMESTAMPS,
+                attribute_level=MetadataOptions.USER_TIMESTAMPS,
+                relationship_level=MetadataOptions.USER_TIMESTAMPS,
+            ),
+            prefetch_relationships=True,
+        )
+        # Should have post-migration timestamps restored
+        assert undeleted_car_with_metadata._get_created_at() == car_camry_created_at
+        assert undeleted_car_with_metadata._get_created_by() == SYSTEM_USER_ID
+        assert undeleted_car_with_metadata._get_updated_at() == migration_at
+        assert undeleted_car_with_metadata._get_updated_by() == "migration-user"
+
+        # Validate attribute metadata on undeleted car
+        assert undeleted_car_with_metadata.color._get_created_at() == car_camry_created_at
+        assert undeleted_car_with_metadata.color._get_created_by() == SYSTEM_USER_ID
+        assert undeleted_car_with_metadata.color._get_updated_at() == car_camry_created_at
+        assert undeleted_car_with_metadata.color._get_updated_by() == SYSTEM_USER_ID
+
+        # Validate relationship metadata on undeleted car after rollback
+        owner_rel_manager = undeleted_car_with_metadata.get_relationship(name="owner")
+        owner_rel = await owner_rel_manager.get(db=db)
+        assert owner_rel._get_created_at() == car_camry_created_at
+        assert owner_rel._get_created_by() == SYSTEM_USER_ID
+        assert owner_rel._get_updated_at() == car_camry_created_at
+        assert owner_rel._get_updated_by() == SYSTEM_USER_ID
