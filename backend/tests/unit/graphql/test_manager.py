@@ -205,6 +205,16 @@ async def test_generate_filters(
     person = schema.get(name="TestPerson")
     filters = gqlm.generate_filters(schema=person, top_level=True)
     expected_filters = [
+        "node_metadata__created_at",
+        "node_metadata__created_at__after",
+        "node_metadata__created_at__before",
+        "node_metadata__created_by__id",
+        "node_metadata__created_by__ids",
+        "node_metadata__updated_at",
+        "node_metadata__updated_at__after",
+        "node_metadata__updated_at__before",
+        "node_metadata__updated_by__id",
+        "node_metadata__updated_by__ids",
         "offset",
         "limit",
         "order",
