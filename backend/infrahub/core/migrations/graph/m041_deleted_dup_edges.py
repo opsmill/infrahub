@@ -87,14 +87,15 @@ CALL (node_uuid) {
     // ------------
     MATCH (n:Node {uuid: node_uuid})-[:IS_RELATED]-(rel:Relationship)
     WITH DISTINCT rel
-    MATCH (rel)-[e]->(peer)
+    MATCH (rel)-[e]-(peer)
     WITH
+        elementId(rel) AS rel_element_id,
         type(e) AS e_type,
         e.branch AS e_branch,
         e.from AS e_from,
         e.to AS e_to,
         e.status AS e_status,
-        e.peer AS e_peer,
+        elementId(peer) AS peer_element_id,
         CASE
             WHEN startNode(e) = rel THEN "out" ELSE "in"
         END AS direction,
