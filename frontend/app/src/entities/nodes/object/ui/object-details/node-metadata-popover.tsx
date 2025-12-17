@@ -16,7 +16,18 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 function UserLink({ user }: { user: NodeCore | null }) {
   if (!user) return <>-</>;
 
-  return <Link to={getObjectDetailsUrl(user.__typename, user.id)}>{getNodeLabel(user)}</Link>;
+  if (user.id === "__system__") {
+    return user.display_label;
+  }
+
+  return (
+    <Link
+      className="underline decoration-dotted hover:decoration-solid"
+      to={getObjectDetailsUrl(user.__typename, user.id)}
+    >
+      {getNodeLabel(user)}
+    </Link>
+  );
 }
 
 interface NodeMetadataProps {
