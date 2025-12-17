@@ -42,7 +42,11 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName: "testRelationship",
+      });
 
       // THEN
       expect(defaultValue).to.deep.equal({ source: null, value: null });
@@ -54,7 +58,11 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName: "testRelationship",
+      });
 
       // THEN
       expect(defaultValue).to.deep.equal({
@@ -85,7 +93,11 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName: "testRelationship",
+      });
 
       // THEN
       expect(defaultValue).to.deep.equal({
@@ -158,6 +170,37 @@ describe("getRelationshipDefaultValue", () => {
           __typename: "RelationshipOne",
         },
       });
+    });
+
+    it("returns empty value when profile source was removed from node", () => {
+      // GIVEN
+      store.set(profileSchemasAtom, [
+        { kind: "ProfileTestDevice", namespace: "Profile" } as ProfileSchema,
+      ]);
+
+      // Relationship data has a profile source, but the profile is no longer assigned to the node
+      const relationshipData = buildRelationshipOneData({
+        properties: {
+          source: {
+            id: "removed-profile-id",
+            display_label: "Removed Profile",
+            __typename: "ProfileTestDevice",
+          },
+        },
+      });
+      const objectTemplate = null;
+      const profiles: ProfileData[] = []; // Profile was removed
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        profiles,
+        relationshipName: "testRelationship",
+      });
+
+      // THEN - should be empty since the profile was removed
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
     });
 
     it("returns relationship from template when no relationship data is provided", () => {
@@ -457,6 +500,55 @@ describe("getRelationshipDefaultValue", () => {
       });
     });
 
+    it("returns empty value when profile source was removed from node with cardinality many", () => {
+      // GIVEN
+      store.set(profileSchemasAtom, [
+        { kind: "ProfileTestDevice", namespace: "Profile" } as ProfileSchema,
+      ]);
+
+      // Relationship data has a profile source, but the profile is no longer assigned to the node
+      const relationshipData: RelationshipManyType = {
+        edges: [
+          buildRelationshipOneData({
+            properties: {
+              source: {
+                id: "removed-profile-id",
+                display_label: "Removed Profile",
+                __typename: "ProfileTestDevice",
+              },
+            },
+          }),
+          buildRelationshipOneData({
+            node: {
+              id: "relationship-two-id",
+              display_label: "Relationship Two",
+              __typename: "RelationshipTwo",
+            },
+            properties: {
+              source: {
+                id: "removed-profile-id",
+                display_label: "Removed Profile",
+                __typename: "ProfileTestDevice",
+              },
+            },
+          }),
+        ],
+      };
+      const objectTemplate = null;
+      const profiles: ProfileData[] = []; // Profile was removed
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        profiles,
+        relationshipName: "manyRelationship",
+      });
+
+      // THEN - should be empty since the profile was removed
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
+
     it("returns relationships from template with cardinality many", () => {
       // GIVEN
       store.set(nodeSchemasAtom, [
@@ -575,6 +667,7 @@ describe("getRelationshipDefaultValue", () => {
       const objectTemplate = null;
       const parentSchema = generateNodeSchema({
         kind: "TestParent",
+        display_labels: ["name__value"],
         relationships: [
           {
             ...generateRelationshipSchema(),
@@ -602,6 +695,9 @@ describe("getRelationshipDefaultValue", () => {
         __typename: "TestParent",
       };
 
+      // Register the parent schema so getNodeLabel can resolve the display_label
+      store.set(nodeSchemasAtom, [parentSchema]);
+
       // WHEN
       const defaultValue = getRelationshipDefaultValue({
         relationshipData,
@@ -617,7 +713,11 @@ describe("getRelationshipDefaultValue", () => {
         source: {
           type: "user",
         },
-        value: parentData,
+        value: {
+          id: parentData.id,
+          display_label: parentData.display_label,
+          __typename: parentData.__typename,
+        },
       });
     });
   });
