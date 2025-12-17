@@ -82,7 +82,7 @@ test.describe("/objects/:objectKind/:objectId", () => {
 
       await page.getByRole("link", { name: "atl1-edge1" }).click();
 
-      await page.getByTestId("node-metadata-button").click();
+      await page.getByRole("button", { name: "View node metadata" }).click();
 
       await expect(page.getByText("Created at")).toBeVisible();
       await expect(page.getByText("Created by")).toBeVisible();

@@ -17,7 +17,7 @@ function UserLink({ user }: { user: NodeCore | null }) {
   if (!user) return <>-</>;
 
   if (user.id === "__system__") {
-    return user.display_label;
+    return <span>{user.display_label}</span>;
   }
 
   return (
@@ -82,7 +82,7 @@ export function NodeMetadataPopover(props: NodeMetadataProps) {
           size="icon"
           variant="ghost"
           className="text-gray-500"
-          data-testid="node-metadata-button"
+          aria-label="View node metadata"
         >
           <Icon icon="mdi:information-slab-circle-outline" />
         </Button>
