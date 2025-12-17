@@ -24,7 +24,7 @@ type GetRelationshipDefaultValueParams = {
   objectTemplate: NodeObject | null | undefined;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
-  relationshipName?: string;
+  relationshipName: string;
   schema?: ModelSchema | null;
   parentSchema?: ModelSchema | null;
   parentData?: NodeObject | null;
@@ -55,7 +55,7 @@ export const getRelationshipDefaultValue = ({
 
 const getRelationshipValueFromUser = (
   relationshipData: RelationshipType | undefined,
-  peerField?: string
+  peerField: string
 ): RelationshipValueFromUser | RelationshipValueFromPool | null => {
   if (!relationshipData) return null;
 
