@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
+import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate } from "@/shared/utils/date";
 
@@ -20,14 +20,7 @@ function UserLink({ user }: { user: NodeCore | null }) {
     return <span>{user.display_label}</span>;
   }
 
-  return (
-    <Link
-      className="underline decoration-dotted hover:decoration-solid"
-      to={getObjectDetailsUrl(user.__typename, user.id)}
-    >
-      {getNodeLabel(user)}
-    </Link>
-  );
+  return <Link to={getObjectDetailsUrl(user.__typename, user.id)}>{getNodeLabel(user)}</Link>;
 }
 
 interface NodeMetadataProps {
