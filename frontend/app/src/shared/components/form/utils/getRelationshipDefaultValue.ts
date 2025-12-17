@@ -122,19 +122,9 @@ export const getRelationshipDefaultValueFromData = (
       });
 
       if (allFromProfile) {
-        // Use the first edge's source as the profile source
-        const firstEdgeSource = edgesWithSource[0]?.properties?.source;
-        if (firstEdgeSource?.__typename) {
-          return {
-            source: {
-              type: "profile",
-              label: firstEdgeSource.display_label ?? null,
-              id: firstEdgeSource.id as string,
-              kind: firstEdgeSource.__typename,
-            },
-            value: values,
-          };
-        }
+        // Return null to allow profile fallback logic to handle this
+        // The profile may have been removed, so we should re-evaluate from current profiles
+        return null;
       }
     }
 
@@ -181,15 +171,9 @@ export const getRelationshipDefaultValueFromData = (
   }
 
   if (isProfile) {
-    return {
-      source: {
-        type: "profile",
-        label: source.display_label ?? null,
-        id: source.id as string,
-        kind: source.__typename as string,
-      },
-      value: relationshipData.node,
-    };
+    // Return null to allow profile fallback logic to handle this
+    // The profile may have been removed, so we should re-evaluate from current profiles
+    return null;
   }
 
   return {
