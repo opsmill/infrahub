@@ -21,9 +21,9 @@ export const getBranchDetails: GetBranchDetails = async (params) => {
   }
 
   const response = data as InfrahubBranchResponse;
-  const branch = response?.InfrahubBranch?.edges[0]?.node;
+  const result = response?.InfrahubBranch?.edges[0];
 
-  if (!branch) throw new Error(`Branch ${params.branchName} not found`);
+  if (!result?.node) throw new Error(`Branch ${params.branchName} not found`);
 
-  return mapInfrahubBranchNodeToBranch(branch);
+  return mapInfrahubBranchNodeToBranch(result);
 };
