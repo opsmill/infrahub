@@ -6492,19 +6492,19 @@ type DropdownFields {
 """IPv4 or IPv6 address"""
 type EdgedBuiltinIPAddress {
   node: BuiltinIPAddress
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A generic container for IP prefixes and IP addresses"""
 type EdgedBuiltinIPNamespace {
   node: BuiltinIPNamespace
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """IPv4 or IPv6 prefix also referred as network"""
 type EdgedBuiltinIPPrefix {
   node: BuiltinIPPrefix
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6512,211 +6512,211 @@ Standard Tag object to attach to other objects to provide some context.
 """
 type EdgedBuiltinTag {
   node: BuiltinTag
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """User Account for Infrahub"""
 type EdgedCoreAccount {
   node: CoreAccount
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A group of users to manage common permissions"""
 type EdgedCoreAccountGroup {
   node: CoreAccountGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A role defines a set of permissions to grant to a group of accounts"""
 type EdgedCoreAccountRole {
   node: CoreAccountRole
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """An action that can be executed by a trigger"""
 type EdgedCoreAction {
   node: CoreAction
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 type EdgedCoreArtifact {
   node: CoreArtifact
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A check related to an artifact"""
 type EdgedCoreArtifactCheck {
   node: CoreArtifactCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 type EdgedCoreArtifactDefinition {
   node: CoreArtifactDefinition
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Extend a node to be associated with artifacts"""
 type EdgedCoreArtifactTarget {
   node: CoreArtifactTarget
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A thread related to an artifact on a proposed change"""
 type EdgedCoreArtifactThread {
   node: CoreArtifactThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A validator related to the artifacts"""
 type EdgedCoreArtifactValidator {
   node: CoreArtifactValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A permission grants right to an account"""
 type EdgedCoreBasePermission {
   node: CoreBasePermission
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A comment on proposed change"""
 type EdgedCoreChangeComment {
   node: CoreChangeComment
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A thread on proposed change"""
 type EdgedCoreChangeThread {
   node: CoreChangeThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 type EdgedCoreCheck {
   node: CoreCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 type EdgedCoreCheckDefinition {
   node: CoreCheckDefinition
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A comment on a Proposed Change"""
 type EdgedCoreComment {
   node: CoreComment
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A credential that could be referenced to access external services."""
 type EdgedCoreCredential {
   node: CoreCredential
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A webhook that connects to an external integration"""
 type EdgedCoreCustomWebhook {
   node: CoreCustomWebhook
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A check related to some Data"""
 type EdgedCoreDataCheck {
   node: CoreDataCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A check to validate the data integrity between two branches"""
 type EdgedCoreDataValidator {
   node: CoreDataValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A check related to a file in a Git Repository"""
 type EdgedCoreFileCheck {
   node: CoreFileCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A thread related to a file on a proposed change"""
 type EdgedCoreFileThread {
   node: CoreFileThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """An action that runs a generator definition once triggered"""
 type EdgedCoreGeneratorAction {
   node: CoreGeneratorAction
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Group of nodes that are created by a generator. (Aware)"""
 type EdgedCoreGeneratorAwareGroup {
   node: CoreGeneratorAwareGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A check related to a Generator instance"""
 type EdgedCoreGeneratorCheck {
   node: CoreGeneratorCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 type EdgedCoreGeneratorDefinition {
   node: CoreGeneratorDefinition
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Group of nodes that are created by a generator. (local)"""
 type EdgedCoreGeneratorGroup {
   node: CoreGeneratorGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 type EdgedCoreGeneratorInstance {
   node: CoreGeneratorInstance
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A validator related to generators"""
 type EdgedCoreGeneratorValidator {
   node: CoreGeneratorValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """User Account for Infrahub"""
 type EdgedCoreGenericAccount {
   node: CoreGenericAccount
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A Git Repository integrated with Infrahub"""
 type EdgedCoreGenericRepository {
   node: CoreGenericRepository
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A permission that grants global rights to perform actions in Infrahub"""
 type EdgedCoreGlobalPermission {
   node: CoreGlobalPermission
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A pre-defined GraphQL Query"""
 type EdgedCoreGraphQLQuery {
   node: CoreGraphQLQuery
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Group of nodes associated with a given GraphQLQuery."""
 type EdgedCoreGraphQLQueryGroup {
   node: CoreGraphQLQueryGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Generic Group Object."""
 type EdgedCoreGroup {
   node: CoreGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6724,7 +6724,7 @@ A group action that adds or removes members from a group once triggered
 """
 type EdgedCoreGroupAction {
   node: CoreGroupAction
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6732,43 +6732,43 @@ A trigger rule that matches against updates to memberships within groups
 """
 type EdgedCoreGroupTriggerRule {
   node: CoreGroupTriggerRule
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A pool of IP address resources"""
 type EdgedCoreIPAddressPool {
   node: CoreIPAddressPool
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A pool of IP prefix resources"""
 type EdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Element of the Menu"""
 type EdgedCoreMenu {
   node: CoreMenu
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Menu Item"""
 type EdgedCoreMenuItem {
   node: CoreMenuItem
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Base Node in Infrahub."""
 type EdgedCoreNode {
   node: CoreNode
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A trigger match that matches against attribute changes on a node"""
 type EdgedCoreNodeTriggerAttributeMatch {
   node: CoreNodeTriggerAttributeMatch
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6776,13 +6776,13 @@ A trigger match condition related to changes to nodes within the Infrahub databa
 """
 type EdgedCoreNodeTriggerMatch {
   node: CoreNodeTriggerMatch
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A trigger match that matches against relationship changes on a node"""
 type EdgedCoreNodeTriggerRelationshipMatch {
   node: CoreNodeTriggerRelationshipMatch
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6790,55 +6790,55 @@ A trigger rule that evaluates modifications to nodes within the Infrahub databas
 """
 type EdgedCoreNodeTriggerRule {
   node: CoreNodeTriggerRule
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A pool of number resources"""
 type EdgedCoreNumberPool {
   node: CoreNumberPool
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Component template to create pre-shaped objects."""
 type EdgedCoreObjectComponentTemplate {
   node: CoreObjectComponentTemplate
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A permission that grants rights to perform actions on objects"""
 type EdgedCoreObjectPermission {
   node: CoreObjectPermission
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Template to create pre-shaped objects."""
 type EdgedCoreObjectTemplate {
   node: CoreObjectTemplate
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A thread related to an object on a proposed change"""
 type EdgedCoreObjectThread {
   node: CoreObjectThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Username/Password based credential"""
 type EdgedCorePasswordCredential {
   node: CorePasswordCredential
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Base Profile in Infrahub."""
 type EdgedCoreProfile {
   node: CoreProfile
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Metadata related to a proposed change"""
 type EdgedCoreProposedChange {
   node: CoreProposedChange
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6846,25 +6846,25 @@ A Git Repository integrated with Infrahub, Git-side will not be updated
 """
 type EdgedCoreReadOnlyRepository {
   node: CoreReadOnlyRepository
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A Git Repository integrated with Infrahub"""
 type EdgedCoreRepository {
   node: CoreRepository
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Group of nodes associated with a given repository."""
 type EdgedCoreRepositoryGroup {
   node: CoreRepositoryGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A Validator related to a specific repository"""
 type EdgedCoreRepositoryValidator {
   node: CoreRepositoryValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6872,73 +6872,73 @@ The resource manager contains pools of resources to allow for automatic assignme
 """
 type EdgedCoreResourcePool {
   node: CoreResourcePool
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A check related to the schema"""
 type EdgedCoreSchemaCheck {
   node: CoreSchemaCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A validator related to the schema"""
 type EdgedCoreSchemaValidator {
   node: CoreSchemaValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A standard check"""
 type EdgedCoreStandardCheck {
   node: CoreStandardCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Group of nodes of any kind."""
 type EdgedCoreStandardGroup {
   node: CoreStandardGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A webhook that connects to an external integration"""
 type EdgedCoreStandardWebhook {
   node: CoreStandardWebhook
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Extend a node to be associated with tasks"""
 type EdgedCoreTaskTarget {
   node: CoreTaskTarget
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A thread on a Proposed Change"""
 type EdgedCoreThread {
   node: CoreThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A comment on thread within a Proposed Change"""
 type EdgedCoreThreadComment {
   node: CoreThreadComment
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A file rendered from a Jinja2 template"""
 type EdgedCoreTransformJinja2 {
   node: CoreTransformJinja2
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A transform function written in Python"""
 type EdgedCoreTransformPython {
   node: CoreTransformPython
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Generic Transformation Object."""
 type EdgedCoreTransformation {
   node: CoreTransformation
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6946,24 +6946,24 @@ A rule that allows you to define a trigger and map it to an action that runs onc
 """
 type EdgedCoreTriggerRule {
   node: CoreTriggerRule
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A Validator related to a user defined checks in a repository"""
 type EdgedCoreUserValidator {
   node: CoreUserValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 type EdgedCoreValidator {
   node: CoreValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A webhook that connects to an external integration"""
 type EdgedCoreWebhook {
   node: CoreWebhook
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6971,13 +6971,13 @@ Resource to be used in a pool, its weight is used to determine its priority on a
 """
 type EdgedCoreWeightedPoolResource {
   node: CoreWeightedPoolResource
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Token for User Account"""
 type EdgedInternalAccountToken {
   node: InternalAccountToken
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """
@@ -6985,61 +6985,61 @@ IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
 type EdgedInternalIPPrefixAvailable {
   node: InternalIPPrefixAvailable
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Range of IPv4 or IPv6 addresses which has not been allocated yet"""
 type EdgedInternalIPRangeAvailable {
   node: InternalIPRangeAvailable
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Refresh Token"""
 type EdgedInternalRefreshToken {
   node: InternalRefreshToken
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """A namespace that segments IPAM"""
 type EdgedIpamNamespace {
   node: IpamNamespace
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Any Entities that is responsible for some data."""
 type EdgedLineageOwner {
   node: LineageOwner
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Any Entities that stores or produces data."""
 type EdgedLineageSource {
   node: LineageSource
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Profile for BuiltinIPAddress"""
 type EdgedProfileBuiltinIPAddress {
   node: ProfileBuiltinIPAddress
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Profile for BuiltinIPPrefix"""
 type EdgedProfileBuiltinIPPrefix {
   node: ProfileBuiltinIPPrefix
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Profile for BuiltinTag"""
 type EdgedProfileBuiltinTag {
   node: ProfileBuiltinTag
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 """Profile for IpamNamespace"""
 type EdgedProfileIpamNamespace {
   node: ProfileIpamNamespace
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
 }
 
 interface EventNodeInterface {
@@ -8308,7 +8308,7 @@ type NestedEdgedBuiltinIPAddress {
   node: BuiltinIPAddress
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A generic container for IP prefixes and IP addresses"""
@@ -8317,7 +8317,7 @@ type NestedEdgedBuiltinIPNamespace {
   node: BuiltinIPNamespace
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """IPv4 or IPv6 prefix also referred as network"""
@@ -8326,7 +8326,7 @@ type NestedEdgedBuiltinIPPrefix {
   node: BuiltinIPPrefix
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8334,33 +8334,33 @@ Standard Tag object to attach to other objects to provide some context.
 """
 type NestedEdgedBuiltinTag {
   node: BuiltinTag
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """User Account for Infrahub"""
 type NestedEdgedCoreAccount {
   node: CoreAccount
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A group of users to manage common permissions"""
 type NestedEdgedCoreAccountGroup {
   node: CoreAccountGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A role defines a set of permissions to grant to a group of accounts"""
 type NestedEdgedCoreAccountRole {
   node: CoreAccountRole
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """An action that can be executed by a trigger"""
@@ -8369,29 +8369,29 @@ type NestedEdgedCoreAction {
   node: CoreAction
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 type NestedEdgedCoreArtifact {
   node: CoreArtifact
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A check related to an artifact"""
 type NestedEdgedCoreArtifactCheck {
   node: CoreArtifactCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 type NestedEdgedCoreArtifactDefinition {
   node: CoreArtifactDefinition
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Extend a node to be associated with artifacts"""
@@ -8400,23 +8400,23 @@ type NestedEdgedCoreArtifactTarget {
   node: CoreArtifactTarget
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A thread related to an artifact on a proposed change"""
 type NestedEdgedCoreArtifactThread {
   node: CoreArtifactThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A validator related to the artifacts"""
 type NestedEdgedCoreArtifactValidator {
   node: CoreArtifactValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A permission grants right to an account"""
@@ -8425,23 +8425,23 @@ type NestedEdgedCoreBasePermission {
   node: CoreBasePermission
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A comment on proposed change"""
 type NestedEdgedCoreChangeComment {
   node: CoreChangeComment
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A thread on proposed change"""
 type NestedEdgedCoreChangeThread {
   node: CoreChangeThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 type NestedEdgedCoreCheck {
@@ -8449,14 +8449,14 @@ type NestedEdgedCoreCheck {
   node: CoreCheck
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 type NestedEdgedCoreCheckDefinition {
   node: CoreCheckDefinition
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A comment on a Proposed Change"""
@@ -8465,7 +8465,7 @@ type NestedEdgedCoreComment {
   node: CoreComment
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A credential that could be referenced to access external services."""
@@ -8474,101 +8474,101 @@ type NestedEdgedCoreCredential {
   node: CoreCredential
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A webhook that connects to an external integration"""
 type NestedEdgedCoreCustomWebhook {
   node: CoreCustomWebhook
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A check related to some Data"""
 type NestedEdgedCoreDataCheck {
   node: CoreDataCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A check to validate the data integrity between two branches"""
 type NestedEdgedCoreDataValidator {
   node: CoreDataValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A check related to a file in a Git Repository"""
 type NestedEdgedCoreFileCheck {
   node: CoreFileCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A thread related to a file on a proposed change"""
 type NestedEdgedCoreFileThread {
   node: CoreFileThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """An action that runs a generator definition once triggered"""
 type NestedEdgedCoreGeneratorAction {
   node: CoreGeneratorAction
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Group of nodes that are created by a generator. (Aware)"""
 type NestedEdgedCoreGeneratorAwareGroup {
   node: CoreGeneratorAwareGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A check related to a Generator instance"""
 type NestedEdgedCoreGeneratorCheck {
   node: CoreGeneratorCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 type NestedEdgedCoreGeneratorDefinition {
   node: CoreGeneratorDefinition
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Group of nodes that are created by a generator. (local)"""
 type NestedEdgedCoreGeneratorGroup {
   node: CoreGeneratorGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 type NestedEdgedCoreGeneratorInstance {
   node: CoreGeneratorInstance
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A validator related to generators"""
 type NestedEdgedCoreGeneratorValidator {
   node: CoreGeneratorValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """User Account for Infrahub"""
@@ -8577,7 +8577,7 @@ type NestedEdgedCoreGenericAccount {
   node: CoreGenericAccount
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A Git Repository integrated with Infrahub"""
@@ -8586,31 +8586,31 @@ type NestedEdgedCoreGenericRepository {
   node: CoreGenericRepository
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A permission that grants global rights to perform actions in Infrahub"""
 type NestedEdgedCoreGlobalPermission {
   node: CoreGlobalPermission
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A pre-defined GraphQL Query"""
 type NestedEdgedCoreGraphQLQuery {
   node: CoreGraphQLQuery
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Group of nodes associated with a given GraphQLQuery."""
 type NestedEdgedCoreGraphQLQueryGroup {
   node: CoreGraphQLQueryGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Generic Group Object."""
@@ -8619,7 +8619,7 @@ type NestedEdgedCoreGroup {
   node: CoreGroup
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8627,9 +8627,9 @@ A group action that adds or removes members from a group once triggered
 """
 type NestedEdgedCoreGroupAction {
   node: CoreGroupAction
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8637,25 +8637,25 @@ A trigger rule that matches against updates to memberships within groups
 """
 type NestedEdgedCoreGroupTriggerRule {
   node: CoreGroupTriggerRule
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A pool of IP address resources"""
 type NestedEdgedCoreIPAddressPool {
   node: CoreIPAddressPool
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A pool of IP prefix resources"""
 type NestedEdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Element of the Menu"""
@@ -8664,15 +8664,15 @@ type NestedEdgedCoreMenu {
   node: CoreMenu
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Menu Item"""
 type NestedEdgedCoreMenuItem {
   node: CoreMenuItem
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Base Node in Infrahub."""
@@ -8681,15 +8681,15 @@ type NestedEdgedCoreNode {
   node: CoreNode
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A trigger match that matches against attribute changes on a node"""
 type NestedEdgedCoreNodeTriggerAttributeMatch {
   node: CoreNodeTriggerAttributeMatch
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8700,15 +8700,15 @@ type NestedEdgedCoreNodeTriggerMatch {
   node: CoreNodeTriggerMatch
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A trigger match that matches against relationship changes on a node"""
 type NestedEdgedCoreNodeTriggerRelationshipMatch {
   node: CoreNodeTriggerRelationshipMatch
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8716,17 +8716,17 @@ A trigger rule that evaluates modifications to nodes within the Infrahub databas
 """
 type NestedEdgedCoreNodeTriggerRule {
   node: CoreNodeTriggerRule
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A pool of number resources"""
 type NestedEdgedCoreNumberPool {
   node: CoreNumberPool
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Component template to create pre-shaped objects."""
@@ -8735,15 +8735,15 @@ type NestedEdgedCoreObjectComponentTemplate {
   node: CoreObjectComponentTemplate
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A permission that grants rights to perform actions on objects"""
 type NestedEdgedCoreObjectPermission {
   node: CoreObjectPermission
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Template to create pre-shaped objects."""
@@ -8752,23 +8752,23 @@ type NestedEdgedCoreObjectTemplate {
   node: CoreObjectTemplate
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A thread related to an object on a proposed change"""
 type NestedEdgedCoreObjectThread {
   node: CoreObjectThread
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Username/Password based credential"""
 type NestedEdgedCorePasswordCredential {
   node: CorePasswordCredential
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Base Profile in Infrahub."""
@@ -8777,15 +8777,15 @@ type NestedEdgedCoreProfile {
   node: CoreProfile
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Metadata related to a proposed change"""
 type NestedEdgedCoreProposedChange {
   node: CoreProposedChange
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8793,33 +8793,33 @@ A Git Repository integrated with Infrahub, Git-side will not be updated
 """
 type NestedEdgedCoreReadOnlyRepository {
   node: CoreReadOnlyRepository
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A Git Repository integrated with Infrahub"""
 type NestedEdgedCoreRepository {
   node: CoreRepository
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Group of nodes associated with a given repository."""
 type NestedEdgedCoreRepositoryGroup {
   node: CoreRepositoryGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A Validator related to a specific repository"""
 type NestedEdgedCoreRepositoryValidator {
   node: CoreRepositoryValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8830,47 +8830,47 @@ type NestedEdgedCoreResourcePool {
   node: CoreResourcePool
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A check related to the schema"""
 type NestedEdgedCoreSchemaCheck {
   node: CoreSchemaCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A validator related to the schema"""
 type NestedEdgedCoreSchemaValidator {
   node: CoreSchemaValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A standard check"""
 type NestedEdgedCoreStandardCheck {
   node: CoreStandardCheck
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Group of nodes of any kind."""
 type NestedEdgedCoreStandardGroup {
   node: CoreStandardGroup
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A webhook that connects to an external integration"""
 type NestedEdgedCoreStandardWebhook {
   node: CoreStandardWebhook
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Extend a node to be associated with tasks"""
@@ -8879,7 +8879,7 @@ type NestedEdgedCoreTaskTarget {
   node: CoreTaskTarget
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A thread on a Proposed Change"""
@@ -8888,31 +8888,31 @@ type NestedEdgedCoreThread {
   node: CoreThread
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A comment on thread within a Proposed Change"""
 type NestedEdgedCoreThreadComment {
   node: CoreThreadComment
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A file rendered from a Jinja2 template"""
 type NestedEdgedCoreTransformJinja2 {
   node: CoreTransformJinja2
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A transform function written in Python"""
 type NestedEdgedCoreTransformPython {
   node: CoreTransformPython
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Generic Transformation Object."""
@@ -8921,7 +8921,7 @@ type NestedEdgedCoreTransformation {
   node: CoreTransformation
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8932,15 +8932,15 @@ type NestedEdgedCoreTriggerRule {
   node: CoreTriggerRule
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A Validator related to a user defined checks in a repository"""
 type NestedEdgedCoreUserValidator {
   node: CoreUserValidator
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 type NestedEdgedCoreValidator {
@@ -8948,7 +8948,7 @@ type NestedEdgedCoreValidator {
   node: CoreValidator
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A webhook that connects to an external integration"""
@@ -8957,7 +8957,7 @@ type NestedEdgedCoreWebhook {
   node: CoreWebhook
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8968,15 +8968,15 @@ type NestedEdgedCoreWeightedPoolResource {
   node: CoreWeightedPoolResource
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Token for User Account"""
 type NestedEdgedInternalAccountToken {
   node: InternalAccountToken
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """
@@ -8984,33 +8984,33 @@ IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
 type NestedEdgedInternalIPPrefixAvailable {
   node: InternalIPPrefixAvailable
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Range of IPv4 or IPv6 addresses which has not been allocated yet"""
 type NestedEdgedInternalIPRangeAvailable {
   node: InternalIPRangeAvailable
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Refresh Token"""
 type NestedEdgedInternalRefreshToken {
   node: InternalRefreshToken
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """A namespace that segments IPAM"""
 type NestedEdgedIpamNamespace {
   node: IpamNamespace
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Any Entities that is responsible for some data."""
@@ -9019,7 +9019,7 @@ type NestedEdgedLineageOwner {
   node: LineageOwner
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Any Entities that stores or produces data."""
@@ -9028,39 +9028,39 @@ type NestedEdgedLineageSource {
   node: LineageSource
   node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Profile for BuiltinIPAddress"""
 type NestedEdgedProfileBuiltinIPAddress {
   node: ProfileBuiltinIPAddress
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Profile for BuiltinIPPrefix"""
 type NestedEdgedProfileBuiltinIPPrefix {
   node: ProfileBuiltinIPPrefix
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Profile for BuiltinTag"""
 type NestedEdgedProfileBuiltinTag {
   node: ProfileBuiltinTag
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """Profile for IpamNamespace"""
 type NestedEdgedProfileIpamNamespace {
   node: ProfileIpamNamespace
-  node_metadata: InfrahubNodeMetadata!
+  node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
-  relationship_metadata: InfrahubRelationshipMetadata!
+  relationship_metadata: InfrahubRelationshipMetadata
 }
 
 """IPv4 or IPv6 address"""
