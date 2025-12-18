@@ -1075,14 +1075,14 @@ class GraphQLSchemaManager:
 
         main_attrs: dict[str, Any] = {
             "node": graphene.Field(node.reference, required=False),
-            "node_metadata": graphene.Field(node_metadata, required=True),
+            "node_metadata": graphene.Field(node_metadata, required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
         if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         graphql_edged_object = registry.get_edge_type(reference_hash=edge_hash, schema_hash=self.schema_hash)
         if not graphql_edged_object:
@@ -1165,7 +1165,7 @@ class GraphQLSchemaManager:
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
         if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         object_name = f"NestedEdged{schema.kind}"
         md5hash = hashlib.md5(usedforsecurity=False)
