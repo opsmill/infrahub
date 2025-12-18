@@ -5,7 +5,6 @@ import {
 
 export type CreateBranchParams = CreateBranchFromApiParams;
 
-// Returns the raw GraphQL Branch type from the mutation response
 export const createBranch = async (params: CreateBranchParams) => {
   const { data, errors } = await createBranchFromApi(params);
 
