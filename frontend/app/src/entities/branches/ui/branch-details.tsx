@@ -56,41 +56,39 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
       <div className="flex flex-col gap-4">
         <div>
           {branch?.name && (
-            <>
-              <div className="flex flex-1 flex-col gap-4 md:flex-row">
-                <BranchMergeButton branch={branch} />
+            <div className="flex flex-1 flex-col gap-4 md:flex-row">
+              <BranchMergeButton branch={branch} />
 
-                <LinkButton
-                  onClick={(event) => {
-                    if (!isAuthenticated || branch.is_default) {
-                      event?.preventDefault();
-                    }
-                  }}
-                  className={classNames(
-                    (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
-                  )}
-                  to={constructPath("/proposed-changes/new", [
-                    { name: QSP.SOURCE_BRANCH, value: branch?.name },
-                  ])}
-                >
-                  Propose change
-                  <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </LinkButton>
+              <LinkButton
+                onClick={(event) => {
+                  if (!isAuthenticated || branch.is_default) {
+                    event?.preventDefault();
+                  }
+                }}
+                className={classNames(
+                  (!isAuthenticated || branch.is_default) && "cursor-not-allowed opacity-50"
+                )}
+                to={constructPath("/proposed-changes/new", [
+                  { name: QSP.SOURCE_BRANCH, value: branch?.name },
+                ])}
+              >
+                Propose change
+                <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+              </LinkButton>
 
-                <BranchRebaseButton branch={branch} />
+              <BranchRebaseButton branch={branch} />
 
-                <BranchValidateButton branch={branch} />
+              <BranchValidateButton branch={branch} />
 
-                <Button
-                  disabled={!isAuthenticated || !!branch.is_default}
-                  onClick={() => setDisplayModal(true)}
-                  variant={"danger"}
-                >
-                  Delete
-                  <TrashIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
-            </>
+              <Button
+                disabled={!isAuthenticated || !!branch.is_default}
+                onClick={() => setDisplayModal(true)}
+                variant={"danger"}
+              >
+                Delete
+                <TrashIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
           )}
         </div>
 
