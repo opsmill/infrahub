@@ -20,7 +20,7 @@ type ProposedChangesItemLightProps = {
 export const ProposedChangesItemLight = ({ node }: ProposedChangesItemLightProps) => {
   return (
     <ListBoxItem className="flex items-center p-4">
-      <div className="grid flex-grow grid-cols-2 items-center">
+      <div className="grid grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
