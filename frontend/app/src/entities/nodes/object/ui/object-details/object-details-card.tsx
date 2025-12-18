@@ -1,6 +1,6 @@
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 
-import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display";
+import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
