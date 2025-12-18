@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 
 import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 

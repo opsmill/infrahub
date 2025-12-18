@@ -1,4 +1,4 @@
-import type { NodeSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
 const metadataFields = ["source", "owner", "is_protected"];
 
@@ -18,11 +18,11 @@ const isValueValid = (value: any) => {
 };
 
 const getMutationMetaDetailsFromFormData = (
-  schema: NodeSchema,
+  schema: ModelSchema,
   data: any,
   row: any,
-  type: any,
-  attributeOrRelationshipName: any,
+  type: "attribute" | "relationship",
+  attributeOrRelationshipName: string,
   attributeOrRelationshipToEdit: any
 ) => {
   const cleanedData = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {

@@ -7362,7 +7362,7 @@ type InfrahubBranch {
 
 type InfrahubBranchEdge {
   node: InfrahubBranch!
-  node_metadata: InfrahubStandardNodeMetaData!
+  node_metadata: InfrahubNodeMetadata!
 }
 
 type InfrahubBranchType {
@@ -7435,20 +7435,6 @@ type InfrahubRelationshipMetadata {
   created_by: CoreGenericAccount
   updated_at: DateTime
   updated_by: CoreGenericAccount
-}
-
-type InfrahubStandardNodeMetaAccount {
-  display_name: String
-  id: String!
-}
-
-type InfrahubStandardNodeMetaData {
-  """Date/Time the object has been created"""
-  created_at: DateTime
-  created_by: InfrahubStandardNodeMetaAccount
-  """Date/Time when the object was last modified by a user or a system task"""
-  updated_at: DateTime
-  updated_by: InfrahubStandardNodeMetaAccount
 }
 
 """Token for User Account"""
@@ -11143,7 +11129,7 @@ type Query {
   IPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable! @deprecated(reason: "This query has been renamed to 'InfrahubIPPrefixGetNextAvailable'. It will be removed in the next version of Infrahub.")
   InfrahubAccountToken(limit: Int, offset: Int): AccountTokenEdges!
   """Retrieve paginated information about active branches."""
-  InfrahubBranch(ids: [ID], limit: Int, name__value: String, offset: Int): InfrahubBranchType!
+  InfrahubBranch(ids: [ID], limit: Int, name__value: String, offset: Int, partial_match: Boolean = false): InfrahubBranchType!
   InfrahubEvent(
     """Filter the query to specific accounts"""
     account__ids: [String!]

@@ -115,6 +115,5 @@ export const getFormFieldFromRelationship = ({
         return isRequired(formFieldValue) || "Required";
       },
     },
-    schema,
   };
 };

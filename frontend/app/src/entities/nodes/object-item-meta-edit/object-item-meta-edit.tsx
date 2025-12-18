@@ -1,43 +1,36 @@
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
 import { mapValues } from "remeda";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
-import type { NodeSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 
-interface Props {
+interface ObjectItemMetaEditProps {
   row: any;
-  schema: NodeSchema;
+  schema: ModelSchema;
   type: "attribute" | "relationship";
   attributeOrRelationshipToEdit: any;
-  attributeOrRelationshipName: any;
-  closeDrawer: () => void;
-  onUpdateComplete: () => void;
+  attributeOrRelationshipName: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export default function ObjectItemMetaEdit(props: Props) {
-  const {
-    row,
-    type,
-    attributeOrRelationshipName,
-    schema,
-    attributeOrRelationshipToEdit,
-    onUpdateComplete,
-    closeDrawer,
-  } = props;
-
-  const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
+export default function ObjectItemMetaEdit({
+  row,
+  type,
+  attributeOrRelationshipName,
+  schema,
+  attributeOrRelationshipToEdit,
+  onSuccess,
+  onCancel,
+}: ObjectItemMetaEditProps) {
+  const { mutateAsync: updateObject } = useUpdateObjectMutation();
 
   async function onSubmit(data: any) {
     const updatedObject = getMutationMetaDetailsFromFormData(
@@ -49,31 +42,18 @@ export default function ObjectItemMetaEdit(props: Props) {
       attributeOrRelationshipToEdit
     );
 
-    if (Object.keys(updatedObject).length) {
-      try {
-        const mutationString = updateObjectWithId({
-          kind: schema.kind,
-          data: stringifyWithoutQuotes(updatedObject),
-        });
+    if (!Object.keys(updatedObject).length) return;
 
-        const mutation = gql`
-          ${mutationString}
-        `;
-
-        await graphqlClient.mutate({
-          mutation,
-          context: { branch: branch?.name, date },
-        });
-
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Metadata updated"} />);
-
-        onUpdateComplete();
-
-        closeDrawer();
-      } catch (e) {
-        console.error("Something went wrong while updating the meetadata", e);
-        return;
-      }
+    try {
+      await updateObject({
+        objectKind: schema.kind!,
+        data: updatedObject,
+      });
+      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Metadata updated" />);
+      onSuccess?.();
+    } catch (e) {
+      console.error("Something went wrong while updating the metadata", e);
     }
   }
 
@@ -86,7 +66,6 @@ export default function ObjectItemMetaEdit(props: Props) {
             label: "Owner",
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageOwner" } as any,
-            schema,
             defaultValue: getRelationshipDefaultValue({
               relationshipData: { node: attributeOrRelationshipToEdit.owner },
             }),
@@ -97,13 +76,13 @@ export default function ObjectItemMetaEdit(props: Props) {
             label: "Source",
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageSource" } as any,
-            schema,
             defaultValue: getRelationshipDefaultValue({
               relationshipData: { node: attributeOrRelationshipToEdit.source },
             }),
             parent: attributeOrRelationshipToEdit.source?.__typename,
           },
           {
+            attribute: undefined,
             name: "is_protected",
             label: "is protected",
             type: "Checkbox",
@@ -116,7 +95,7 @@ export default function ObjectItemMetaEdit(props: Props) {
             },
           },
         ]}
-        onCancel={closeDrawer}
+        onCancel={onCancel}
         onSubmit={async (data) => {
           await onSubmit(mapValues(data, (fieldData) => fieldData?.value));
         }}

@@ -10,7 +10,7 @@ import ujson
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field, field_validator
 
-from infrahub.core.constants import NULL_VALUE, SYSTEM_USER_ID
+from infrahub.core.constants import NULL_VALUE, SYSTEM_USER_ID, InfrahubKind
 from infrahub.core.query.standard_node import (
     StandardNodeCreateQuery,
     StandardNodeDeleteQuery,
@@ -152,10 +152,10 @@ class StandardNode(BaseModel):
                     meta_response["updated_at"] = Timestamp(self.updated_at).to_datetime() if self.updated_at else None
                 case "created_by":
                     if self.created_by and self.created_by != SYSTEM_USER_ID:
-                        meta_response["created_by"] = {"id": self.created_by}
+                        meta_response["created_by"] = {"id": self.created_by, "__kind__": InfrahubKind.ACCOUNT}
                 case "updated_by":
                     if self.updated_by and self.updated_by != SYSTEM_USER_ID:
-                        meta_response["updated_by"] = {"id": self.updated_by}
+                        meta_response["updated_by"] = {"id": self.updated_by, "__kind__": InfrahubKind.ACCOUNT}
 
         return {"node": node_response, "node_metadata": meta_response}
 
@@ -176,6 +176,8 @@ class StandardNode(BaseModel):
     async def create(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create a new node in the database."""
         self.created_by = user_id
+        self.updated_by = self.created_by
+        self.updated_at = self.created_at
         query: Query = await self._query.init(db=db, node=self)
         await query.execute(db=db)
 

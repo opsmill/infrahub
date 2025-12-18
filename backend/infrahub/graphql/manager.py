@@ -43,6 +43,7 @@ from .mutations.resource_manager import (
 )
 from .mutations.webhook import InfrahubWebhookMutation
 from .registry import registry
+from .resolvers.account_metadata import account_metadata_resolver
 from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.resolver import (
     account_resolver,
@@ -66,6 +67,7 @@ from .types import (
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
+from .types.branch import InfrahubBranchEdge
 from .types.context import ContextInput
 from .types.event import EVENT_TYPES
 from .types.node import InfrahubObjectWithoutMeta
@@ -263,6 +265,19 @@ class GraphQLSchemaManager:
         )
         self.generate_graphql_paginated_object(schema=node_interface_schema, edge=edged_interface, populate_cache=True)
 
+    def _patch_static_types(self, node_metadata: type[InfrahubObject]) -> None:
+        """Patch statically defined GraphQL types to use dynamically generated types.
+
+        Some GraphQL types like InfrahubBranchEdge are defined statically but need to
+        reference dynamically generated types (like node_metadata with GenericAccount).
+        This method patches those static types after the dynamic types are created.
+
+        The method checks if the patch has already been applied to avoid redundant updates.
+        """
+        current_field = InfrahubBranchEdge._meta.fields.get("node_metadata")
+        if current_field is None or current_field.type != node_metadata:
+            InfrahubBranchEdge._meta.fields["node_metadata"] = graphene.Field(node_metadata, required=True)
+
     def _load_all_enum_types(self, node_schemas: Iterable[MainSchemaTypes]) -> None:
         for node_schema in node_schemas:
             self._load_enum_type(node_schema=node_schema)
@@ -343,12 +358,17 @@ class GraphQLSchemaManager:
         # Complete the CoreNode interface (edged/paginated) now that node_metadata exists
         self._complete_node_interface(node_metadata=node_metadata)
 
+        # Patch statically defined types to use dynamically generated types
+        self._patch_static_types(node_metadata=node_metadata)
+
         relationship_property = self.get_type(name="RelationshipProperty")
         for data_type in ATTRIBUTE_TYPES.values():
             gql_type = self.get_type(name=data_type.get_graphql_type_name())
             gql_type._meta.fields["source"] = graphene.Field(data_source)
             gql_type._meta.fields["owner"] = graphene.Field(data_owner)
-            gql_type._meta.fields["updated_by"] = graphene.Field(account_type, required=False)
+            gql_type._meta.fields["updated_by"] = graphene.Field(
+                account_type, required=False, resolver=account_metadata_resolver
+            )
 
         # Pass 2: Generate edged/paginated objects for all GenericSchema interfaces
         for node_schema in full_schema.values():
@@ -668,9 +688,9 @@ class GraphQLSchemaManager:
 
         main_attrs = {
             "created_at": graphene.DateTime(required=False),
-            "created_by": graphene.Field(account_type, required=False),
+            "created_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "updated_at": graphene.DateTime(required=False),
-            "updated_by": graphene.Field(account_type, required=False),
+            "updated_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
@@ -686,9 +706,9 @@ class GraphQLSchemaManager:
 
         main_attrs = {
             "created_at": graphene.DateTime(required=False),
-            "created_by": graphene.Field(account_type, required=False),
+            "created_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "updated_at": graphene.DateTime(required=False),
-            "updated_by": graphene.Field(account_type, required=False),
+            "updated_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 

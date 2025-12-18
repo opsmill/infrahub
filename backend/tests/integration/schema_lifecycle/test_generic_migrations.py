@@ -1556,13 +1556,23 @@ class TestSchemaLifecycleGenericUpdatedWithLegacyDuplicates(SchemaLifecycleGener
             for attr_name in ("generic_attr_text", "generic_attr_num"):
                 attr = node_schema.get_attribute(attr_name)
                 new_attr = await registry.schema.create_attribute_in_db(
-                    db=db, branch=default_branch, schema=attribute_schema, parent=node_schema_instance, item=attr
+                    db=db,
+                    branch=default_branch,
+                    schema=attribute_schema,
+                    parent=node_schema_instance,
+                    item=attr,
+                    user_id="user-id",
                 )
                 attr.id = new_attr.id
             for rel_name in ("things", "favorite_thing"):
                 rel = node_schema.get_relationship(rel_name)
                 new_rel = await registry.schema.create_relationship_in_db(
-                    db=db, branch=default_branch, schema=relationship_schema, parent=node_schema_instance, item=rel
+                    db=db,
+                    branch=default_branch,
+                    schema=relationship_schema,
+                    parent=node_schema_instance,
+                    item=rel,
+                    user_id="user-id",
                 )
                 rel.id = new_rel.id
             main_schema_branch.set(name=schema_kind, schema=node_schema)

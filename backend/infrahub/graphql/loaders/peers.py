@@ -1,11 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from aiodataloader import DataLoader
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.relationship.model import Relationship
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -21,32 +21,27 @@ class QueryPeerParams:
     schema: RelationshipSchema
     filters: dict[str, Any]
     fields: dict | None = None
-    metadata_fields: dict | None = None
     at: Timestamp | str | None = None
     branch_agnostic: bool = False
-    include_metadata: MetadataOptions = MetadataOptions.NONE
+    include_metadata: MetadataQueryOptions = field(default_factory=MetadataQueryOptions)
 
     def __hash__(self) -> int:
         frozen_fields: frozenset | None = None
         if self.fields:
             frozen_fields = to_frozen_set(self.fields)
-        frozen_metadata_fields: frozenset | None = None
-        if self.metadata_fields:
-            frozen_metadata_fields = to_frozen_set(self.metadata_fields)
         frozen_filters = to_frozen_set(self.filters)
         timestamp = Timestamp(self.at)
         branch = self.branch.name if isinstance(self.branch, Branch) else self.branch
         hash_str = "|".join(
             [
                 str(hash(frozen_fields)),
-                str(hash(frozen_metadata_fields)),
                 str(hash(frozen_filters)),
                 timestamp.to_string(),
                 branch,
                 self.schema.name,
                 str(self.source_kind),
                 str(self.branch_agnostic),
-                str(self.include_metadata.value),
+                str(hash(self.include_metadata)),
             ]
         )
         return hash(hash_str)
@@ -67,7 +62,6 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
                 schema=self.query_params.schema,
                 filters=self.query_params.filters,
                 fields=self.query_params.fields,
-                metadata_fields=self.query_params.metadata_fields,
                 at=self.query_params.at,
                 branch=self.query_params.branch,
                 branch_agnostic=self.query_params.branch_agnostic,

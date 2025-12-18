@@ -126,12 +126,11 @@ class NodeMetadataDefaultBranchQuery(Query):
 // ------------------
 // Part 1: Get node metadata with deletion status
 // ------------------
-MATCH (n:Node)
-WHERE n.uuid IN $node_uuids
-CALL (n) {
-    MATCH (n)-[r_ipo:IS_PART_OF]->(root:Root)
+UNWIND $node_uuids AS node_uuid
+CALL (node_uuid) {
+    MATCH (n:Node {uuid: node_uuid})-[r_ipo:IS_PART_OF]->(root:Root)
     WHERE r_ipo.branch = $branch
-    RETURN r_ipo
+    RETURN n, r_ipo
     ORDER BY r_ipo.from DESC
     LIMIT 1
 }

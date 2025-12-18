@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core import registry
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.diff.payload_builder import get_display_labels_per_kind
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, internal_schema
@@ -95,5 +96,5 @@ class Migration018(InternalSchemaMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+    async def execute(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> MigrationResult:  # noqa: ARG002
         return await validate_nulls_in_uniqueness_constraints(db=db)

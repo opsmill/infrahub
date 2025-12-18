@@ -329,11 +329,11 @@ async def update_registry(
             log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
             async with db.start_transaction() as dbt:
                 await registry.schema.update_schema_branch(
-                    schema=tmp_schema, db=dbt, branch=branch.name, limit=diff.all, update_db=True
+                    schema=tmp_schema, db=dbt, branch=branch.name, limit=diff.all, update_db=True, user_id=account_id
                 )
                 branch.update_schema_hash()
                 log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
-                await branch.save(db=dbt)
+                await branch.save(db=dbt, user_id=account_id)
 
             await service.component.refresh_schema_hash(branches=[branch.name])
 

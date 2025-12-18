@@ -15,7 +15,7 @@ async def test_migration_017(
     item = registry.schema.get(name="CoreProfile")
     # Make sure to remove CoreProfile from database if it is there
     if item.id is not None:
-        _ = await registry.schema.delete_node_in_db(node=item, branch=default_branch, db=db)
+        _ = await registry.schema.delete_node_in_db(node=item, branch=default_branch, db=db, user_id="user-id")
 
     # Remove CoreProfile from registry
     schema_branch = registry.schema.get_schema_branch(default_branch.name)

@@ -1,9 +1,11 @@
 import { queryClient } from "@/shared/api/rest/client";
+import { Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { Skeleton } from "@/shared/components/skeleton";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsButton } from "@/entities/nodes/object/ui/object-details-button";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
@@ -28,16 +30,16 @@ export function ObjectDetailsHeader({ schema, objectId }: ObjectDetailsHeaderPro
   const title = isPending ? (
     <Skeleton className="h-6 w-60" />
   ) : (
-    <div className="flex items-center gap-3">
+    <Row>
       {objectDetailsData ? getNodeLabel(objectDetailsData) : `${schema.label} not found`}
-
+      <NodeMetadataPopover objectId={objectId} objectKind={schema.kind!} />
       <ObjectDetailsButton
         id={objectId}
         objectKind={schema.kind!}
         data-testid="object-details-button"
         hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}
       />
-    </div>
+    </Row>
   );
 
   return (

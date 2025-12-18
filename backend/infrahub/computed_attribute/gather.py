@@ -7,9 +7,9 @@ from prefect import task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
+from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
 from infrahub.git.utils import get_repositories_commit_per_branch
@@ -24,7 +24,6 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
     from infrahub.git.models import RepositoryData
 
 
@@ -48,9 +47,9 @@ async def gather_python_transform_attributes(
     if not transform_names:
         return []
 
-    transforms: list[CoreTransformPythonNode] = await NodeManager.query(
+    transforms = await NodeManager.query(
         db=db,
-        schema=InfrahubKind.TRANSFORMPYTHON,
+        schema=CoreTransformPythonNode,
         branch=branch_name,
         fields={"id": None, "name": None, "repository": None, "query": None},
         filters={"name__values": transform_names},

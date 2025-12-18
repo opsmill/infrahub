@@ -6,7 +6,7 @@ coverage.xml
 script.py
 **/*.local.*
 local/*
-.vscode/settings.json
+**/.vscode/settings.json
 node_modules/*
 development/docker-compose.override.yml
 development/docker-compose.dev-override.yml

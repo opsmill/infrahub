@@ -16,18 +16,18 @@ import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/add-relationships-from-api";
+import type { NodeObject } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import type { ModelSchema } from "@/entities/schema/types";
+import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface RelationshipsButtonsProps {
   permission: Permission;
   schema: ModelSchema;
-  objectDetailsData: Node & Record<string, AttributeType | RelationshipType>;
+  objectDetailsData: NodeObject;
 }
 
 export function RelationshipsButtons({
@@ -157,8 +157,11 @@ export function RelationshipsButtons({
                   name: "relation",
                   label: relationshipSchema?.label!,
                   type: "relationship",
-                  relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-                  schema: relationshipSchemaData,
+                  relationship: {
+                    ...relationshipSchema,
+                    cardinality: "one",
+                    inherited: true,
+                  } as RelationshipSchema,
                   options,
                 },
               ]}

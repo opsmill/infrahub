@@ -3,7 +3,6 @@ import * as R from "remeda";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { ProfileData } from "@/shared/components/form/object-form";
 import type {
-  EmptyFieldValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
   RelationshipValueFromProfile,
@@ -22,10 +21,10 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
-  objectTemplate: NodeObject | null | undefined;
+  objectTemplate?: NodeObject | null | undefined;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
-  relationshipName?: string;
+  relationshipName: string;
   schema?: ModelSchema | null;
   parentSchema?: ModelSchema | null;
   parentData?: NodeObject | null;
@@ -45,53 +44,36 @@ export const getRelationshipDefaultValue = ({
     return { source: null, value: null };
   }
 
-  if (relationshipData) {
-    const valueFromData = getRelationshipDefaultValueFromData(relationshipData, relationshipName);
-    if (valueFromData !== null) {
-      return valueFromData;
-    }
-    // If valueFromData is null (empty edges or null node), fall through to template/profile fallback
-  }
-
-  if (parentSchema && parentData && schema) {
-    const relationshipToParent = schema.relationships?.find((r) => {
-      return r.kind === "Parent" && r.name === relationshipName;
-    });
-
-    const relationshipFromParent = parentSchema.relationships?.find((r) => {
-      return r.kind === "Component" && isOfKind(r.peer, schema);
-    });
-
-    if (relationshipToParent && relationshipFromParent) {
-      return {
-        source: {
-          type: "user",
-        },
-        value: parentData,
-      };
-    }
-  }
-
   return (
+    getRelationshipValueFromUser(relationshipData, relationshipName) ??
+    getRelationshipValueFromParent(schema, parentSchema, parentData, relationshipName) ??
     getRelationshipDefaultValueFromTemplate(objectTemplate, relationshipName) ??
     getRelationshipDefaultValueFromProfiles(relationshipName, profiles) ??
     DEFAULT_FORM_FIELD_VALUE
   );
 };
 
-export const getRelationshipDefaultValueFromData = (
-  relationshipData: RelationshipType,
-  peerField?: string
-):
-  | RelationshipValueFromUser
-  | RelationshipValueFromPool
-  | RelationshipValueFromProfile
-  | EmptyFieldValue
-  | null => {
+const getRelationshipValueFromUser = (
+  relationshipData: RelationshipType | undefined,
+  peerField: string
+): RelationshipValueFromUser | RelationshipValueFromPool | null => {
+  if (!relationshipData) return null;
+
   if ("edges" in relationshipData) {
-    // If edges are empty, return null to allow profile fallback
-    if (relationshipData.edges.length === 0) {
-      return null;
+    if (relationshipData.edges.length === 0) return null;
+
+    // Check if all edges come from a profile source - if so, return null to allow profile fallback
+    const edgesWithSource = relationshipData.edges.filter(
+      (edge) => edge.properties?.source?.__typename
+    );
+
+    if (edgesWithSource.length > 0 && edgesWithSource.length === relationshipData.edges.length) {
+      const allFromProfile = edgesWithSource.every((edge) => {
+        const { isProfile } = getSchema(edge.properties?.source?.__typename);
+        return isProfile;
+      });
+
+      if (allFromProfile) return null;
     }
 
     const values = relationshipData.edges
@@ -109,66 +91,30 @@ export const getRelationshipDefaultValueFromData = (
       )
       .filter((n) => !!n);
 
-    // Check if all edges have a profile source
-    const edgesWithSource = relationshipData.edges.filter(
-      (edge) => edge.properties?.source?.__typename
-    );
-
-    if (edgesWithSource.length > 0 && edgesWithSource.length === relationshipData.edges.length) {
-      // All edges have a source - check if they're all from profiles
-      const allFromProfile = edgesWithSource.every((edge) => {
-        const { isProfile } = getSchema(edge.properties?.source?.__typename);
-        return isProfile;
-      });
-
-      if (allFromProfile) {
-        // Use the first edge's source as the profile source
-        const firstEdgeSource = edgesWithSource[0]?.properties?.source;
-        if (firstEdgeSource?.__typename) {
-          return {
-            source: {
-              type: "profile",
-              label: firstEdgeSource.display_label ?? null,
-              id: firstEdgeSource.id as string,
-              kind: firstEdgeSource.__typename,
-            },
-            value: values,
-          };
-        }
-      }
-    }
-
     return {
-      source: {
-        type: "user",
-      },
+      source: { type: "user" },
       value: values,
     };
   }
 
-  // If node is null, return null to allow profile fallback
-  if (!relationshipData.node) {
-    return null;
-  }
+  // Cardinality one
+  if (!relationshipData.node) return null;
 
-  if (!relationshipData.properties?.source?.__typename) {
+  const source = relationshipData.properties?.source;
+  if (!source?.__typename) {
     return {
-      source: {
-        type: "user",
-      },
+      source: { type: "user" },
       value: relationshipData.node,
     };
   }
 
-  const source = relationshipData.properties.source;
   const { schema: sourceSchema, isProfile, isGeneric } = getSchema(source.__typename);
 
-  if (!isGeneric && sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
-    if (!relationshipData.node) {
-      console.error("Source is a pool but node is null on relationship", relationshipData);
-      return { source: null, value: null };
-    }
+  // Return null for profile sources to allow profile fallback
+  if (isProfile) return null;
 
+  // Handle pool sources
+  if (!isGeneric && sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
     return {
       source: {
         type: "pool",
@@ -180,24 +126,40 @@ export const getRelationshipDefaultValueFromData = (
     };
   }
 
-  if (isProfile) {
+  return {
+    source: { type: "user" },
+    value: relationshipData.node,
+  };
+};
+
+const getRelationshipValueFromParent = (
+  schema: ModelSchema | null | undefined,
+  parentSchema: ModelSchema | null | undefined,
+  parentData: NodeObject | null | undefined,
+  relationshipName: string
+): RelationshipValueFromUser | null => {
+  if (!parentSchema || !parentData || !schema) return null;
+
+  const relationshipToParent = schema.relationships?.find((r) => {
+    return r.kind === "Parent" && r.name === relationshipName;
+  });
+
+  const relationshipFromParent = parentSchema.relationships?.find((r) => {
+    return r.kind === "Component" && isOfKind(r.peer, schema);
+  });
+
+  if (relationshipToParent && relationshipFromParent) {
     return {
-      source: {
-        type: "profile",
-        label: source.display_label ?? null,
-        id: source.id as string,
-        kind: source.__typename as string,
+      source: { type: "user" },
+      value: {
+        id: parentData.id,
+        display_label: getNodeLabel(parentData),
+        __typename: parentData.__typename,
       },
-      value: relationshipData.node,
     };
   }
 
-  return {
-    source: {
-      type: "user",
-    },
-    value: relationshipData.node,
-  };
+  return null;
 };
 
 export const getRelationshipDefaultValueFromTemplate = (
@@ -307,7 +269,7 @@ export const getRelationshipDefaultValueFromProfiles = (
   const source = {
     type: "profile" as const,
     id: profileWithDefaultValueForField.id,
-    label: profileWithDefaultValueForField.display_label,
+    label: profileWithDefaultValueForField.display_label ?? null,
     kind: profileWithDefaultValueForField.__typename,
   };
 

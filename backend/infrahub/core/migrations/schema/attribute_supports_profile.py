@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.query.attribute_remove import AttributeRemoveQuery
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
@@ -73,6 +74,7 @@ class AttributeSupportsProfileUpdateMigration(AttributeSchemaMigration):
         branch: Branch,
         at: Timestamp | str | None = None,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,  # noqa: ARG002
+        user_id: str = SYSTEM_USER_ID,
     ) -> MigrationResult:
         if (
             # no change in whether the attribute should be used on profiles
@@ -87,4 +89,4 @@ class AttributeSupportsProfileUpdateMigration(AttributeSchemaMigration):
         if not self.new_attribute_schema.support_profiles:
             profiles_queries.append(ProfilesAttributeRemoveMigrationQuery)
 
-        return await super().execute(db=db, branch=branch, at=at, queries=profiles_queries)
+        return await super().execute(db=db, branch=branch, at=at, queries=profiles_queries, user_id=user_id)

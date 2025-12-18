@@ -1,11 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from aiodataloader import DataLoader
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -17,9 +17,8 @@ from .shared import to_frozen_set
 class GetManyParams:
     branch: Branch | str
     fields: dict | None = None
-    metadata_fields: dict | None = None
     at: Timestamp | str | None = None
-    include_metadata: MetadataOptions = MetadataOptions.NONE
+    include_metadata: MetadataQueryOptions = field(default_factory=MetadataQueryOptions)
     prefetch_relationships: bool = False
     branch_agnostic: bool = False
 
@@ -27,18 +26,14 @@ class GetManyParams:
         frozen_fields: frozenset | None = None
         if self.fields:
             frozen_fields = to_frozen_set(self.fields)
-        frozen_metadata_fields: frozenset | None = None
-        if self.metadata_fields:
-            frozen_metadata_fields = to_frozen_set(self.metadata_fields)
         timestamp = Timestamp(self.at)
         branch = self.branch.name if isinstance(self.branch, Branch) else self.branch
         hash_str = "|".join(
             [
                 str(hash(frozen_fields)),
-                str(hash(frozen_metadata_fields)),
                 timestamp.to_string(),
                 branch,
-                str(self.include_metadata.value),
+                str(hash(self.include_metadata)),
                 str(self.prefetch_relationships),
                 str(self.branch_agnostic),
             ]
@@ -58,7 +53,6 @@ class NodeDataLoader(DataLoader[str, Node | None]):
                 db=db,
                 ids=keys,
                 fields=self.query_params.fields,
-                metadata_fields=self.query_params.metadata_fields,
                 at=self.query_params.at,
                 branch=self.query_params.branch,
                 include_metadata=self.query_params.include_metadata,

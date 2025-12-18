@@ -1,6 +1,7 @@
 import { Outlet, useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
@@ -17,6 +18,7 @@ import {
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -160,7 +162,12 @@ const ResourcePoolContent = ({
   return (
     <Content.Card>
       <Content.CardTitle
-        title={getNodeLabel(resourcePool)}
+        title={
+          <Row>
+            <span>{getNodeLabel(resourcePool)}</span>
+            <NodeMetadataPopover objectId={resourcePoolId} objectKind={resourcePoolKind} />
+          </Row>
+        }
         isReloadLoading={isRefetching}
         reload={handleRefetchAll}
         end={
