@@ -1,6 +1,5 @@
 import {
   BoxIcon,
-  CalendarIcon,
   CheckIcon,
   CircleIcon,
   GitCommitIcon,
@@ -64,14 +63,6 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
           </BranchAttributeValue>
         </>
       )}
-
-      <BranchAttributeLabel>
-        <CalendarIcon className="size-3.5" /> Created at
-      </BranchAttributeLabel>
-
-      <BranchAttributeValue>
-        <DateDisplay date={branch.created_at} className="text-sm" />
-      </BranchAttributeValue>
     </Card>
   );
 }
