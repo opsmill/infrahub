@@ -22,13 +22,8 @@ export function useCreateBranchMutation() {
 
       // Map mutation response to BranchListItem for cache update
       const branchListItem: BranchListItem = {
-        id: branchCreated.id,
-        name: branchCreated.name,
-        description: branchCreated.description,
-        branched_from: branchCreated.branched_from,
+        ...branchCreated,
         status: BRANCH_STATUS_OPEN,
-        sync_with_git: branchCreated.sync_with_git,
-        is_default: branchCreated.is_default,
         has_schema_changes: false,
         created_at: branchCreated.created_at ?? now,
         updated_at: now,
