@@ -16,10 +16,9 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.models import OrderModel
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
-
-from ..models import OrderModel
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -31,7 +30,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
-    from infrahub.graphql.models import OrderModel
 
 
 def _ip_range_display_label(node: Node) -> str:
@@ -311,7 +309,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     info: GraphQLResolveInfo,
     offset: int | None = None,
     limit: int | None = None,
-    order: OrderModel | None = None,
+    order: dict[str, Any] | None = None,
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
@@ -324,6 +322,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     if not isinstance(schema, GenericSchema) or schema.kind not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
         raise ValidationError(f"{schema.kind} is not {InfrahubKind.IPADDRESS} or {InfrahubKind.IPPREFIX}")
 
+    order_model = OrderModel.from_input(input_data=order)
     fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
     kinds_to_filter: list[str] = kwargs.pop("kinds", [])  # type: ignore[assignment]
@@ -402,7 +401,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 account=graphql_context.account_session,
                 include_metadata=MetadataOptions.LINKED_NODES,
                 partial_match=partial_match,
-                order=order,
+                order=order_model,
             )
 
             if fetch_first_node_context and len(objs) > 2:

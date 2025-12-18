@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, assert_never
 
+from infrahub.constants.enums import OrderByField
 from infrahub.core.query import Query, QueryType
 from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from infrahub.core.node.standard import StandardNode
+    from infrahub.core.node.standard import StandardNode, StandardNodeOrdering
     from infrahub.database import InfrahubDatabase
 
 
@@ -137,6 +138,7 @@ class StandardNodeGetListQuery(Query):
     def __init__(
         self,
         node_class: StandardNode,
+        node_ordering: StandardNodeOrdering,
         ids: list[str] | None = None,
         node_name: str | None = None,
         partial_match: bool = False,
@@ -146,6 +148,7 @@ class StandardNodeGetListQuery(Query):
         self.node_name = node_name
         self.node_class = node_class
         self.partial_match = partial_match
+        self.node_ordering = node_ordering
 
         super().__init__(**kwargs)
 
@@ -178,4 +181,12 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-        self.order_by = [f"{db.get_id_function_name()}(n)"]
+        match self.node_ordering.order_by:
+            case OrderByField.ID:
+                self.order_by = [f"{db.get_id_function_name()}(n)"]
+            case OrderByField.CREATED_AT:
+                self.order_by = [f"n.created_at {self.node_ordering.direction.value}"]
+            case OrderByField.UPDATED_AT:
+                self.order_by = [f"n.updated_at {self.node_ordering.direction.value}"]
+            case _:
+                assert_never(self.node_ordering.order_by)

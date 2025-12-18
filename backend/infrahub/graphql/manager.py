@@ -21,6 +21,7 @@ from infrahub.core.schema import (
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
+from infrahub.graphql.types.metadata import OrderInput
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
@@ -84,10 +85,6 @@ class DeleteInput(graphene.InputObjectType):
 
 
 GraphQLTypes = type[InfrahubMutation] | type[BaseAttributeType] | type[graphene.Interface] | type[graphene.ObjectType]
-
-
-class OrderInput(graphene.InputObjectType):
-    disable = graphene.Boolean(required=False)
 
 
 @dataclass
