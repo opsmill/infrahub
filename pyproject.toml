@@ -3,7 +3,7 @@ name = "infrahub-server"
 version = "1.6.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.12,<3.14"
 readme = "README.md"
 license = "Apache-2.0"
 
@@ -12,12 +12,11 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
 ]
 
 dependencies = [
-    "neo4j",
-    "neo4j-rust-ext",
+    "neo4j==6.0.3",
+    "neo4j-rust-ext==6.0.3.0",
     "pydantic>=2.12,<2.13",
     "pydantic-settings>=2.8,<2.9",
     "pytest>=9.0,<9.1",
@@ -30,7 +29,6 @@ dependencies = [
     "click==8.1.7",
     "prefect==3.5.0",
     "prefect-redis==0.2.7",
-    "asyncpg==0.31.0", # Remove me once Prefect upgrades asyncpg
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3,<4",
@@ -78,8 +76,6 @@ Documentation = "https://docs.infrahub.app/"
 infrahub-server = { workspace = true }
 infrahub-sdk = { path = "python_sdk", editable = true }
 infrahub-testcontainers = { path = "python_testcontainers", editable = true }
-neo4j = { git = "https://github.com/fatih-acar/neo4j-python-driver", rev = "fdd474e7f7d6341598a5f506235417ecadd49436" }
-neo4j-rust-ext = { git = "https://github.com/neo4j/neo4j-python-driver-rust-ext", rev = "7ad0686def31ee0702598d8e041294678dc86f05" }
 
 [dependency-groups]
 dev = [
