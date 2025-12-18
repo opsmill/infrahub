@@ -1,3 +1,4 @@
+import type { NodeMetadata } from "@/entities/nodes/types";
 import {
   getProposedChangeDetailsFromApi,
   type ProposedChangeDetailsFromApiParams,
@@ -8,6 +9,7 @@ export type GetProposedChangeDetailsParams = ProposedChangeDetailsFromApiParams;
 
 export type GetProposedChangeDetailsResponse = {
   tasksCount: number;
+  metadata: NodeMetadata;
   proposedChangeData: ProposedChangeDetailsFromApiResponse["CoreProposedChange"]["edges"][0]["node"];
 };
 
@@ -30,6 +32,7 @@ export const getProposedChangeDetails: GetProposedChangeDetails = async (params)
 
   return {
     proposedChangeData,
+    metadata: data.CoreProposedChange.edges?.[0]?.node_metadata,
     tasksCount: data.InfrahubTask.count,
   };
 };

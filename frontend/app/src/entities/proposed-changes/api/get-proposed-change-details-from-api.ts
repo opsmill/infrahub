@@ -2,13 +2,33 @@ import { gql } from "@apollo/client";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import type { NodeRelationshipMany, NodeRelationshipOne } from "@/entities/nodes/types";
+import type {
+  NodeMetadata,
+  NodeRelationshipMany,
+  NodeRelationshipOne,
+} from "@/entities/nodes/types";
 
 const GET_PROPOSED_CHANGE_DETAILS = gql`
   query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID, $taskNodeId: String) {
     CoreProposedChange(ids: [$proposedChangeId]) {
       count
       edges {
+        node_metadata {
+          created_at
+          created_by {
+            id
+            hfid
+            display_label
+            __typename
+          }
+          updated_at
+          updated_by {
+            id
+            hfid
+            display_label
+            __typename
+          }
+        }
         node {
           id
           display_label
@@ -82,6 +102,7 @@ export interface ProposedChangeDetailsFromApiResponse {
   CoreProposedChange: {
     count: number;
     edges: Array<{
+      node_metadata: NodeMetadata;
       node: {
         __typename: "CoreProposedChange";
         id: string;
