@@ -76,5 +76,18 @@ test.describe("/objects/:objectKind/:objectId", () => {
       const nodeSelector = page.getByLabel("Circuit Endpoint").getByTestId("select-value");
       await expect(nodeSelector).not.toBeEmpty(); // ID is in the input but it's dynamic
     });
+
+    test("should display node metadata popover", async ({ page }) => {
+      await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
+
+      await page.getByRole("link", { name: "atl1-edge1" }).click();
+
+      await page.getByRole("button", { name: "View node metadata" }).click();
+
+      await expect(page.getByText("Created at")).toBeVisible();
+      await expect(page.getByText("Created by")).toBeVisible();
+      await expect(page.getByText("Updated at")).toBeVisible();
+      await expect(page.getByText("Updated by")).toBeVisible();
+    });
   });
 });

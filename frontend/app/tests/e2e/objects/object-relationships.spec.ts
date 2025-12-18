@@ -6,7 +6,6 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
   test.describe.configure({ mode: "serial" });
-  test.slow();
   const BRANCH_NAME = generateRandomBranchName("object-relationships");
 
   test.beforeAll(async ({ request }) => {
@@ -95,6 +94,7 @@ test.describe("/objects/:objectKind/:objectId - relationship tab", () => {
 
       await test.step("Edit a relationship", async () => {
         await page.getByRole("link", { name: "Loopback0", exact: true }).click();
+        await expect(page.getByText("NameLoopback0")).toBeVisible();
 
         await page.getByTestId("edit-button").click();
         await expect(page.getByText("Device *")).toBeVisible();
