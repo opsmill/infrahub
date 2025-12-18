@@ -21,8 +21,6 @@ export function BranchListItem({
 	className,
 	...props
 }: BranchListItemProps) {
-	console.log("branch.created_by: ", branch.created_by);
-
 	return (
 		<ListBoxItem
 			textValue={branch.name}
