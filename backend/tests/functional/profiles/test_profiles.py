@@ -59,7 +59,7 @@ class TestProfiles(TestInfrahubApp):
         try:
             return await client.branch.get(branch_name=branch_name)
         except BranchNotFoundError:
-            return await client.branch.create(branch_name=branch_name, background_execution=None)
+            return await client.branch.create(branch_name=branch_name)
 
     @pytest.fixture(scope="class")
     async def load_schema(self, client: InfrahubClient, default_branch: Branch) -> None:
