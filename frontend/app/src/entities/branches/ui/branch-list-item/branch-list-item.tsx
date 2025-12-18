@@ -39,7 +39,7 @@ export function BranchListItem({
 		>
 			<Col className="gap-0 text-sm min-w-0">
 				<Row className="shrink-0">
-					<span className="font-semibold">{branch.name}</span>
+					<span className="font-semibold truncate">{branch.name}</span>
 
 					{branch.is_default ? (
 						<BranchDefaultBadge />
