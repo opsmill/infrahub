@@ -1,4 +1,5 @@
 import type {
+  BranchStatus,
   InfrahubBranch,
   InfrahubBranchType,
   InfrahubNodeMetadata,
@@ -17,7 +18,7 @@ interface BranchBase {
   name: string;
   description?: string | null;
   branched_from?: string | null;
-  status: string;
+  status: BranchStatus;
   sync_with_git?: boolean | null;
   is_default?: boolean | null;
 }
