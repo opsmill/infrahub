@@ -29,7 +29,7 @@ export function BranchListItem({
 			href={constructPath(`/branches/${branch.name}`)}
 			className={classNames(
 				focusVisibleStyle,
-				"flex flex-wrap items-center gap-6 px-6 py-4",
+				"grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-6 px-6 py-4",
 				"border border-transparent not-last:border-b-gray-200",
 				"first:rounded-t-lg last:rounded-b-lg",
 				"hover:bg-neutral-100",
@@ -37,7 +37,7 @@ export function BranchListItem({
 			)}
 			{...props}
 		>
-			<Col className="min-w-1/3 flex-1 gap-0 text-sm">
+			<Col className="gap-0 text-sm min-w-0">
 				<Row className="shrink-0">
 					<span className="font-semibold">{branch.name}</span>
 
@@ -53,33 +53,28 @@ export function BranchListItem({
 				<p className="truncate text-gray-600 text-xs">{branch.description}</p>
 			</Col>
 
-			{branch.sync_with_git && <BranchGitSyncBadge />}
+			<div className="flex items-center justify-end">
+				{branch.sync_with_git && <BranchGitSyncBadge />}
+			</div>
 
-			<Row className="gap-4">
-				<Col>
-					<BranchMetadata
-						label="last rebase"
-						value={
-							branch.branched_from ? formatFullDate(branch.branched_from) : "-"
-						}
-					/>
-					<BranchMetadata
-						label="last update"
-						value={branch.updated_at && formatFullDate(branch.updated_at)}
-					/>
-				</Col>
-
-				<Col>
-					<BranchMetadata
-						label="created at"
-						value={branch.created_at ? formatFullDate(branch.created_at) : "-"}
-					/>
-					<BranchMetadata
-						label="created by"
-						value={branch.created_by && getNodeLabel(branch.created_by)}
-					/>
-				</Col>
-			</Row>
+			<div className="grid grid-cols-[180px_180px] gap-x-4 gap-y-1 shrink-0">
+				<BranchMetadata
+					label="last rebase"
+					value={branch.branched_from && formatFullDate(branch.branched_from)}
+				/>
+				<BranchMetadata
+					label="created at"
+					value={branch.created_at && formatFullDate(branch.created_at)}
+				/>
+				<BranchMetadata
+					label="last update"
+					value={branch.updated_at && formatFullDate(branch.updated_at)}
+				/>
+				<BranchMetadata
+					label="created by"
+					value={branch.created_by && getNodeLabel(branch.created_by)}
+				/>
+			</div>
 		</ListBoxItem>
 	);
 }
