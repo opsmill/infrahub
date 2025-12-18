@@ -1,5 +1,5 @@
-import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
+import { LockIcon } from "lucide-react";
 
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { Row } from "@/shared/components/container";
@@ -110,7 +110,9 @@ function RelationshipOneRow({
                   )
                 }
               />
-              {relationshipProperties.is_protected && <LockClosedIcon className="size-4" />}
+              {relationshipProperties.is_protected && (
+                <LockIcon className="size-3.5 text-gray-600" />
+              )}
             </>
           )}
         </>
@@ -149,15 +151,16 @@ function RelationshipManyRow({ relationshipData, relationshipLabel }: Relationsh
                 </Link>
 
                 {edgeProperties && (
-                  <MetaDetailsTooltip
-                    updatedAt={edgeProperties.updated_at}
-                    source={edgeProperties.source}
-                    owner={edgeProperties.owner}
-                    isProtected={edgeProperties.is_protected}
-                  />
+                  <>
+                    <MetaDetailsTooltip
+                      updatedAt={edgeProperties.updated_at}
+                      source={edgeProperties.source}
+                      owner={edgeProperties.owner}
+                      isProtected={edgeProperties.is_protected}
+                    />
+                    {edgeProperties.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
+                  </>
                 )}
-
-                {edgeProperties?.is_protected && <LockClosedIcon className="size-4" />}
               </Row>
             );
           })}

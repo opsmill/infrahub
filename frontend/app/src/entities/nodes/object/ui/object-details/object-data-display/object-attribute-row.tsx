@@ -1,5 +1,5 @@
-import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
+import { LockIcon } from "lucide-react";
 
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
@@ -61,7 +61,7 @@ export function ObjectAttributeRow({
             }
           />
 
-          {attributeData.is_protected && <LockClosedIcon className="size-4" />}
+          {attributeData.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
         </>
       }
     />
