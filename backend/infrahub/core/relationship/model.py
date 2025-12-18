@@ -794,6 +794,10 @@ class RelationshipValidatorList:
         self._relationships_count -= 1
         return result
 
+    def replace(self, rel_to_insert: Relationship, rel_to_remove: Relationship) -> None:
+        self._relationships.remove(rel_to_remove)
+        self._relationships.append(rel_to_insert)
+
     def remove(self, value: Relationship) -> None:
         if self.min_count and self._relationships_count - 1 < self.min_count:
             self._raise_too_few()
