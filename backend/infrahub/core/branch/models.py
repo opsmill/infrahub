@@ -14,9 +14,7 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import (
     BranchNodeGetListQuery,
     DeleteBranchRelationshipsQuery,
-    GetAllBranchInternalRelationshipQuery,
-    RebaseBranchDeleteRelationshipQuery,
-    RebaseBranchUpdateRelationshipQuery,
+    RebaseBranchQuery,
 )
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
@@ -501,22 +499,13 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(
-        self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None, user_id: str = SYSTEM_USER_ID
-    ) -> None:
+    async def rebase(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> None:
         """Rebase the current Branch with its origin branch"""
 
-        at = Timestamp(at)
-
-        # Find all relationships with the name of the branch
-        # Delete all relationship that have a to date defined in the past
-        # Update the from time on all other relationships
-        # If conflict is set, ignore the one with Drop
+        at = Timestamp()
 
         await self.rebase_graph(db=db, at=at)
 
-        # FIXME, we must ensure that there is no conflict before rebasing a branch
-        #   Otherwise we could endup with a complicated situation
         self.branched_from = at.to_string()
         self.status = BranchStatus.OPEN
         await self.save(db=db, user_id=user_id)
@@ -524,46 +513,20 @@ class Branch(StandardNode):
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
-        at = Timestamp(at)
+    async def rebase_graph(self, db: InfrahubDatabase, at: Timestamp) -> None:
+        """Rebase all relationships on this branch to a new point in time.
 
-        query = await GetAllBranchInternalRelationshipQuery.init(db=db, branch=self)
+        This method updates the graph to reflect the state of the branch as if it had been created
+        at the specified timestamp. Relationships are processed as follows:
+
+        - Relationships with no `to` timestamp and `from` <= at: Updated to start from `at`
+        - Relationships with `to` < at: Deleted (ended before rebase point)
+        - Relationships with `to` >= at: Updated to start from `at`
+
+        Orphaned nodes (nodes with no remaining relationships) are also cleaned up.
+        """
+        query = await RebaseBranchQuery.init(db=db, branch=self, at=at)
         await query.execute(db=db)
-
-        rels_to_delete = []
-        rels_to_update = []
-        for result in query.get_results():
-            element_id = result.get("r").element_id
-
-            conflict_status = result.get("r").get("conflict", None)
-            if conflict_status and conflict_status == "drop":
-                rels_to_delete.append(element_id)
-                continue
-
-            time_to_str = result.get("r").get("to", None)
-            time_from_str = result.get("r").get("from")
-            time_from = Timestamp(time_from_str)
-
-            if not time_to_str and time_from_str and time_from <= at:
-                rels_to_update.append(element_id)
-                continue
-
-            if not time_to_str and time_from_str and time_from > at:
-                rels_to_delete.append(element_id)
-                continue
-
-            time_to = Timestamp(time_to_str)
-            if time_to < at:
-                rels_to_delete.append(element_id)
-                continue
-
-            rels_to_update.append(element_id)
-
-        update_query = await RebaseBranchUpdateRelationshipQuery.init(db=db, ids=rels_to_update, at=at)
-        await update_query.execute(db=db)
-
-        delete_query = await RebaseBranchDeleteRelationshipQuery.init(db=db, ids=rels_to_delete, at=at)
-        await delete_query.execute(db=db)
 
 
 registry.branch_object = Branch

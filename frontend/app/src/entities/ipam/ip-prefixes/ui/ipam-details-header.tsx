@@ -5,6 +5,7 @@ import { Row, type RowProps } from "@/shared/components/container";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
 import { getPrefixAttributesVisibleInListView } from "@/entities/ipam/ip-prefixes/utils/get-prefix-attributes-visible-in-list-view";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
@@ -46,9 +47,9 @@ export function IpamDetailsHeader({
 
   return (
     <Row className={classNames("relative", className)} {...props}>
-      <Row>
-        <h2 className="font-semibold text-lg">{getNodeLabel(ipPrefixNode)}</h2>
-
+      <h2 className="font-semibold text-lg">{getNodeLabel(ipPrefixNode)}</h2>
+      <Row className="gap-0">
+        <NodeMetadataPopover objectId={ipPrefixNode.id} objectKind={ipPrefixNode.__typename} />
         <ObjectDetailsMenu
           objectSchema={ipPrefixSchema}
           objectData={ipPrefixNode}

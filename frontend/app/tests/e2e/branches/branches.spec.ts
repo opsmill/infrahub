@@ -29,7 +29,6 @@ test.describe("Branches creation and deletion", () => {
 
   test.describe("when logged in as Admin", () => {
     test.describe.configure({ mode: "serial" });
-    test.slow();
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
     const BRANCH_NAME_1 = generateRandomBranchName();
@@ -61,6 +60,13 @@ test.describe("Branches creation and deletion", () => {
 
       await page.getByLabel("Branches list").getByText(BRANCH_NAME_1).click();
       await expect(page.getByText(`Name${BRANCH_NAME_1}`)).toBeVisible();
+
+      await page.getByRole("button", { name: "View node metadata" }).click();
+      await expect(page.getByText("Created at")).toBeVisible();
+      await expect(page.getByText("Created by")).toBeVisible();
+      await expect(page.getByText("Updated at")).toBeVisible();
+      await expect(page.getByText("Updated by")).toBeVisible();
+
       expect(page.url()).toContain(`/branches/${BRANCH_NAME_1}`);
     });
 
