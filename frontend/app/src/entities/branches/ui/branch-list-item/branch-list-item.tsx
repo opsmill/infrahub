@@ -6,14 +6,13 @@ import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";
 
+import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/branch.mappers";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchMetadata } from "@/entities/branches/ui/branch-list-item/branch-metadata";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-
-import type { BranchListItem as BranchListItemType } from "../../domain/branch.mappers";
 
 interface BranchListItemProps extends ListBoxItemProps {
   branch: BranchListItemType;
