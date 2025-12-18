@@ -28,8 +28,8 @@ export const getBranches: GetBranches = async (params = {}) => {
 
 	const response = data as InfrahubBranchResponse;
 	const branches: Branch[] =
-		response?.InfrahubBranch?.edges.map(({ node }) =>
-			mapInfrahubBranchNodeToBranch(node),
+		response?.InfrahubBranch?.edges.map((edge) =>
+			mapInfrahubBranchNodeToBranch(edge),
 		) ?? [];
 
 	return branches;
@@ -45,8 +45,8 @@ export const getAllBranches = async (): Promise<GetBranchesResult> => {
 
 	const response = data as InfrahubBranchResponse;
 	const branches: Branch[] =
-		response?.InfrahubBranch?.edges.map(({ node }) =>
-			mapInfrahubBranchNodeToBranch(node),
+		response?.InfrahubBranch?.edges.map(({ node, node_metadata }) =>
+			mapInfrahubBranchNodeToBranch({ node, node_metadata }),
 		) ?? [];
 
 	store.set(branchesState, branches);
