@@ -13,10 +13,10 @@ import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-ite
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
-import type { BranchWithMetadata } from "../../domain/branch.mappers";
+import type { BranchListItem as BranchListItemType } from "../../domain/branch.mappers";
 
 interface BranchListItemProps extends ListBoxItemProps {
-  branch: BranchWithMetadata;
+  branch: BranchListItemType;
 }
 
 export function BranchListItem({ branch, className, ...props }: BranchListItemProps) {

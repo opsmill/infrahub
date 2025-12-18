@@ -1,14 +1,12 @@
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
-
 import {
   type CreateBranchFromApiParams,
   createBranchFromApi,
 } from "@/entities/branches/api/create-branch-from-api";
 
 export type CreateBranchParams = CreateBranchFromApiParams;
-export type CreateBranch = (params: CreateBranchParams) => Promise<Branch | null>;
 
-export const createBranch: CreateBranch = async (params) => {
+// Returns the raw GraphQL Branch type from the mutation response
+export const createBranch = async (params: CreateBranchParams) => {
   const { data, errors } = await createBranchFromApi(params);
 
   if (errors) {

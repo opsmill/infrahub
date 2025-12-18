@@ -1,5 +1,4 @@
 import type {
-  Branch,
   InfrahubBranch,
   InfrahubBranchType,
   InfrahubNodeMetadata,
@@ -12,10 +11,30 @@ export type InfrahubBranchResponse = {
   InfrahubBranch: InfrahubBranchType;
 };
 
-export interface BranchWithMetadata
-  extends Omit<Branch, "created_at">,
-    Omit<InfrahubNodeMetadata, "__typename" | "created_by" | "updated_by"> {
+// Base fields present in both list and detail views
+interface BranchBase {
+  id: string;
+  name: string;
+  description?: string | null;
+  branched_from?: string | null;
+  status: string;
+  sync_with_git?: boolean | null;
+  is_default?: boolean | null;
+}
+
+// List view - includes node_metadata fields and has_schema_changes
+export interface BranchListItem extends BranchBase {
+  has_schema_changes?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   created_by?: NodeCore | null;
+}
+
+// Detail view - includes origin_branch, has_schema_changes, created_at (from node)
+export interface BranchDetail extends BranchBase {
+  origin_branch?: string | null;
+  has_schema_changes?: boolean | null;
+  created_at?: string | null;
 }
 
 function mapCreatedByToNodeCore(createdBy: InfrahubNodeMetadata["created_by"]): NodeCore | null {
@@ -29,15 +48,32 @@ function mapCreatedByToNodeCore(createdBy: InfrahubNodeMetadata["created_by"]): 
   };
 }
 
-interface MapInfrahubBranchNodeToBranchParams {
+interface MapToBranchListItemParams {
   node: InfrahubBranch;
   node_metadata?: InfrahubNodeMetadata;
 }
 
-export function mapInfrahubBranchNodeToBranch({
+export function mapToBranchListItem({
   node,
   node_metadata,
-}: MapInfrahubBranchNodeToBranchParams): BranchWithMetadata {
+}: MapToBranchListItemParams): BranchListItem {
+  return {
+    id: node.id,
+    name: node.name.value,
+    description: node.description?.value,
+    branched_from: node.branched_from?.value,
+    status: node.status.value,
+    sync_with_git: node.sync_with_git?.value,
+    is_default: node.is_default?.value,
+    has_schema_changes: node.has_schema_changes?.value,
+
+    created_at: node_metadata?.created_at,
+    updated_at: node_metadata?.updated_at,
+    created_by: mapCreatedByToNodeCore(node_metadata?.created_by),
+  };
+}
+
+export function mapToBranchDetail(node: InfrahubBranch): BranchDetail {
   return {
     id: node.id,
     name: node.name.value,
@@ -48,9 +84,6 @@ export function mapInfrahubBranchNodeToBranch({
     sync_with_git: node.sync_with_git?.value,
     is_default: node.is_default?.value,
     has_schema_changes: node.has_schema_changes?.value,
-
-    created_at: node_metadata?.created_at,
-    updated_at: node_metadata?.updated_at,
-    created_by: mapCreatedByToNodeCore(node_metadata?.created_by),
+    created_at: node.created_at,
   };
 }

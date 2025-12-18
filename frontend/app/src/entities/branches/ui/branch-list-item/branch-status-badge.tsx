@@ -1,18 +1,19 @@
 import { AlertTriangleIcon, LoaderIcon } from "lucide-react";
 
-import type { BranchStatus } from "@/shared/api/graphql/generated/graphql";
 import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
-import { classNames, warnUnexpectedType } from "@/shared/utils/common";
+import { classNames } from "@/shared/utils/common";
+
+import { BRANCH_STATUS_OPEN } from "@/entities/branches/constants";
 
 const pillStyle = "gap-1 rounded-full font-normal";
 
 interface BranchStatusBadgeProps extends BadgeProps {
-  status: BranchStatus;
+  status: string;
 }
 
 export function BranchStatusBadge({ status, className, ...props }: BranchStatusBadgeProps) {
   switch (status) {
-    case "OPEN": {
+    case BRANCH_STATUS_OPEN: {
       return null;
     }
     case "NEED_REBASE": {
@@ -37,7 +38,6 @@ export function BranchStatusBadge({ status, className, ...props }: BranchStatusB
       );
     }
     default: {
-      warnUnexpectedType(status);
       return null;
     }
   }

@@ -2,19 +2,19 @@ import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { toast } from "react-toastify";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { TASK_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { useRebaseBranch } from "@/entities/branches/domain/rebase-branch";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
 import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchRebaseButtonProps = {
-  branch: Branch;
+  branch: BranchDetail;
 };
 
 export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {

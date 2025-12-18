@@ -24,6 +24,9 @@ query GetBranches($branchSearch: String, $limit: Int, $offset: Int) {
           is_default {
             value
           }
+          has_schema_changes {
+            value
+          }
         }
         node_metadata {
           created_at
