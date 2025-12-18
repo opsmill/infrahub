@@ -140,7 +140,7 @@ test.describe("Branches creation and deletion", () => {
         page.getByRole("option", { name: "atl1-delete-upstream Delete" })
       ).not.toBeVisible();
 
-      await page.getByTestId("object-list-search-bar").click();
+      await page.getByRole("searchbox", { name: "Search" }).fill("");
       await expect(page.getByRole("option", { name: "atl1-delete-upstream Delete" })).toBeVisible();
     });
   });
