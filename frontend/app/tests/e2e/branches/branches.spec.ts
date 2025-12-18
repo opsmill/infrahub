@@ -123,5 +123,23 @@ test.describe("Branches creation and deletion", () => {
       await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
       expect(page.url()).not.toContain("/?branch=unknown-branch-for-testing");
     });
+
+    test("should search for a branch", async ({ page }) => {
+      await page.goto("/branches");
+      await expect(page.getByRole("option", { name: "main default Default Branch" })).toBeVisible();
+      await expect(
+        page.getByRole("option", { name: "den1-maintenance-conflict Put" })
+      ).toBeVisible();
+      await expect(page.getByRole("option", { name: "atl1-delete-upstream Delete" })).toBeVisible();
+      await page.getByRole("searchbox", { name: "Search" }).fill("main");
+      await expect(page.getByRole("option", { name: "main default Default Branch" })).toBeVisible();
+      await expect(
+        page.getByRole("option", { name: "den1-maintenance-conflict Put" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("option", { name: "atl1-delete-upstream Delete" })
+      ).not.toBeVisible();
+      await page.getByRole("button", { name: "Effacer la recherche" }).click();
+    });
   });
 });
