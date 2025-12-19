@@ -950,7 +950,7 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
             client=client,
             commit=model.commit,
             params=model.variables,
-        )  # type: ignore[misc]
+        )  # type: ignore[call-overload]
         if check_run.passed:
             conclusion = ValidatorConclusion.SUCCESS
             severity = "info"

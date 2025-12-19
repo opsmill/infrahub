@@ -233,7 +233,7 @@ class TransformWebhook(Webhook):
             convert_query_response=self.convert_query_response,
             data={"data": {"data": data, **context.model_dump()}},
             client=client,
-        )  # type: ignore[misc]
+        )  # type: ignore[call-overload]
 
     @classmethod
     def from_object(cls, obj: CoreCustomWebhook, transform: CoreTransformPython) -> Self:

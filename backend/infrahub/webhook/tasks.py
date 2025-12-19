@@ -118,7 +118,7 @@ async def configure_webhook_all() -> None:
         triggers = await gather_trigger_webhook(db=db)
 
     log.info(f"{len(triggers)} Webhooks automation configuration completed")
-    await setup_triggers_specific(gatherer=gather_trigger_webhook, db=database, trigger_type=TriggerType.WEBHOOK)  # type: ignore[misc]
+    await setup_triggers_specific(gatherer=gather_trigger_webhook, db=database, trigger_type=TriggerType.WEBHOOK)  # type: ignore[arg-type]
 
 
 @flow(name="webhook-setup-automation-one", flow_run_name="Configurate webhook for {webhook_name}")
