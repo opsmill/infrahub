@@ -50,6 +50,7 @@ from .m045_backfill_hfid_display_label_in_db_profile_template import Migration04
 from .m046_fill_agnostic_hfid_display_labels import Migration046
 from .m047_backfill_or_null_display_label import Migration047
 from .m048_remove_is_visible_relationship import Migration048
+from .m049_backfill_vertex_metadata import Migration049
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -104,6 +105,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration046,
     Migration047,
     Migration048,
+    Migration049,
 ]
 
 
