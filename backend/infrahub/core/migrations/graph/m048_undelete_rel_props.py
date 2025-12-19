@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
-from infrahub.core.migrations.shared import GraphMigration, MigrationResult
+from infrahub.core.migrations.graph.m041_deleted_dup_edges import DeleteDuplicatedRelationshipEdges
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -129,7 +130,7 @@ CALL (rel, latest_deleted_edge, has_protected) {
         self.add_to_query(query)
 
 
-class Migration048(GraphMigration):
+class Migration048(ArbitraryMigration):
     """
     Fix Relationship vertices that are missing IS_VISIBLE and/or IS_PROTECTED edges.
 
@@ -138,7 +139,23 @@ class Migration048(GraphMigration):
 
     name: str = "048_undelete_rel_props"
     minimum_version: int = 47
-    queries: Sequence[type[Query]] = [UndeleteRelationshipProperties]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
+        return MigrationResult()
+
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        console = get_migration_console()
+
+        console.log("Deleting duplicate edges for all Relationships", end="...")
+        delete_duplicate_edges_query = await DeleteDuplicatedRelationshipEdges.init(
+            db=db, migrated_kind_nodes_only=False
+        )
+        await delete_duplicate_edges_query.execute(db=db)
+        console.log("done")
+
+        console.log("Undeleting Relationship properties", end="...")
+        undelete_rel_props_query = await UndeleteRelationshipProperties.init(db=db)
+        await undelete_rel_props_query.execute(db=db)
+        console.log("done")
+
         return MigrationResult()

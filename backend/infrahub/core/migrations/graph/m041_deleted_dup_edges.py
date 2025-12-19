@@ -68,25 +68,40 @@ DELETE added_e
         self.add_to_query(query)
 
 
-class DeleteDuplicateEdgesForMigratedKindNodes(Query):
-    name = "delete_duplicate_edges_for_migrated_kind_nodes_query"
+class DeleteDuplicatedRelationshipEdges(Query):
+    name = "delete_duplicated_relationship_edges_query"
     type = QueryType.WRITE
     insert_return = False
 
+    def __init__(self, migrated_kind_nodes_only: bool = True, **kwargs: Any):
+        self.migrated_kind_nodes_only = migrated_kind_nodes_only
+        super().__init__(**kwargs)
+
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        query = """
+        if not self.migrated_kind_nodes_only:
+            relationship_filter_query = """
+MATCH (rel:Relationship)
+            """
+
+        else:
+            relationship_filter_query = """
 // ------------
 // get UUIDs for migrated kind/inheritance nodes
 // ------------
 MATCH (n:Node)
 WITH n.uuid AS node_uuid, count(*) AS num_nodes_with_uuid
 WHERE num_nodes_with_uuid > 1
-CALL (node_uuid) {
-    // ------------
-    // find any Relationships for these nodes
-    // ------------
-    MATCH (n:Node {uuid: node_uuid})-[:IS_RELATED]-(rel:Relationship)
-    WITH DISTINCT rel
+// ------------
+// find any Relationships for these nodes
+// ------------
+MATCH (n:Node {uuid: node_uuid})-[:IS_RELATED]-(rel:Relationship)
+WITH DISTINCT rel
+
+            """
+        self.add_to_query(relationship_filter_query)
+
+        query = """
+CALL (rel) {
     MATCH (rel)-[e]-(peer)
     WITH
         elementId(rel) AS rel_element_id,
@@ -143,7 +158,9 @@ class Migration041(ArbitraryMigration):
         rprint("done")
 
         rprint("Deleting duplicate edges for migrated kind/inheritance nodes", end="...")
-        delete_duplicate_edges_query = await DeleteDuplicateEdgesForMigratedKindNodes.init(db=db)
+        delete_duplicate_edges_query = await DeleteDuplicatedRelationshipEdges.init(
+            db=db, migrated_kind_nodes_only=True
+        )
         await delete_duplicate_edges_query.execute(db=db)
         rprint("done")
 
