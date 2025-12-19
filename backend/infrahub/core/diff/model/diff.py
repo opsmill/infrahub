@@ -26,7 +26,7 @@ class BaseDiffElement(BaseModel):
         """
         resp: dict[str, Any] = {}
         for key, value in self:
-            field_info = self.model_fields[key]
+            field_info = self.__class__.model_fields[key]
             if isinstance(value, BaseModel):
                 resp[key] = value.to_graphql()  # type: ignore[attr-defined]
             elif isinstance(value, dict):

@@ -146,7 +146,7 @@ async def default_paginated_list_resolver(
     info: GraphQLResolveInfo,
     offset: int | None = None,
     limit: int | None = None,
-    order: OrderModel | None = None,
+    order: dict | None = None,
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
@@ -155,6 +155,8 @@ async def default_paginated_list_resolver(
         if isinstance(info.return_type, GraphQLNonNull)
         else info.return_type.graphene_type._meta.schema
     )
+
+    order_model = OrderModel.from_input(input_data=order)
 
     fields = await extract_selection(info=info, schema=schema)
 
@@ -203,7 +205,7 @@ async def default_paginated_list_resolver(
                 offset=offset,
                 account=graphql_context.account_session,
                 partial_match=partial_match,
-                order=order,
+                order=order_model,
             )
 
         if "count" in fields:

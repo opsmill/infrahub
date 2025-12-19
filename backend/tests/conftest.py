@@ -1,4 +1,3 @@
-import asyncio
 import importlib
 import logging
 import os
@@ -11,6 +10,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
+import pytest_asyncio
 import ujson
 from fast_depends import Provider
 from fast_depends import dependency_provider as provider
@@ -47,7 +47,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
@@ -55,6 +55,7 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from infrahub.workers.dependencies import build_database, get_database
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
@@ -109,13 +110,11 @@ def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
+def pytest_collection_modifyitems(items):
+    pytest_asyncio_tests = (item for item in items if pytest_asyncio.is_async_test(item))
+    session_scope_marker = pytest.mark.asyncio(loop_scope="session")
+    for async_test in pytest_asyncio_tests:
+        async_test.add_marker(session_scope_marker, append=False)
 
 
 @pytest.fixture
@@ -135,12 +134,16 @@ async def db(
             assert memgraph is not None
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
-    driver = InfrahubDatabase(driver=await get_db(retry=5))
-    await add_indexes(db=driver)
+    async def _db(singleton: bool = True) -> InfrahubDatabase:
+        return await build_database(singleton=False)
 
-    yield driver
+    with provider.scope(build_database, _db):
+        driver = await get_database()
+        await add_indexes(db=driver)
 
-    await driver.close()
+        yield driver
+
+        await driver.close()
 
 
 @pytest.fixture
@@ -266,7 +269,7 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
         return None
 
     container = (
-        DockerContainer(image="rabbitmq:3.13.1-management")
+        DockerContainer(image="rabbitmq:4.2.1-management")
         .with_env("RABBITMQ_DEFAULT_USER", "infrahub")
         .with_env("RABBITMQ_DEFAULT_PASS", "infrahub")
         .with_exposed_ports(PORT_CLIENT_RABBITMQ, PORT_HTTP_RABBITMQ)
@@ -303,7 +306,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
-    container = DockerContainer(image="redis:7.2.11").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough

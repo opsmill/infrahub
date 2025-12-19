@@ -480,3 +480,287 @@ class TestBranchQuery(TestInfrahubApp):
             assert result.errors is None
             assert result.data
             assert result.data["InfrahubBranch"]["count"] == test_case.expected_count
+
+    async def test_order_by_created_at_ascending(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test that branches can be ordered by created_at in ascending order."""
+        branch_names = ["alpha-branch", "beta-branch", "gamma-branch"]
+        for branch_name in branch_names:
+            create_branch_query = """
+            mutation($branch_name: String!) {
+                BranchCreate(data: { name: $branch_name, description: "test" }) {
+                    ok
+                    object { id name }
+                }
+            }
+            """
+            gql_params = await prepare_graphql_params(
+                db=db, branch=default_branch, account_session=session_admin, service=service
+            )
+            result = await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"branch_name": branch_name},
+            )
+            assert result.errors is None
+
+        query = """
+        query {
+            InfrahubBranch(order: {node_metadata: {created_at: ASC}}) {
+                edges {
+                    node_metadata { created_at }
+                    node { name { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is None
+        assert result.data
+        edges = result.data["InfrahubBranch"]["edges"]
+
+        timestamps = [edge["node_metadata"]["created_at"] for edge in edges]
+        assert timestamps == sorted(timestamps), "Branches should be ordered by created_at ascending"
+
+        assert edges[0]["node"]["name"]["value"] == "main"
+
+    async def test_order_by_created_at_descending(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test that branches can be ordered by created_at in descending order."""
+        branch_names = ["delta-branch", "epsilon-branch", "zeta-branch"]
+        for branch_name in branch_names:
+            create_branch_query = """
+            mutation($branch_name: String!) {
+                BranchCreate(data: { name: $branch_name, description: "test" }) {
+                    ok
+                    object { id name }
+                }
+            }
+            """
+            gql_params = await prepare_graphql_params(
+                db=db, branch=default_branch, account_session=session_admin, service=service
+            )
+            result = await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"branch_name": branch_name},
+            )
+            assert result.errors is None
+
+        query = """
+        query InfrahubBranch($direction: OrderDirection!) {
+            InfrahubBranch(order: {node_metadata: {created_at: $direction}}) {
+                edges {
+                    node_metadata { created_at }
+                    node { name { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            variable_values={"direction": "DESC"},
+            root_value=None,
+        )
+
+        assert result.errors is None
+        assert result.data
+        edges = result.data["InfrahubBranch"]["edges"]
+
+        timestamps = [edge["node_metadata"]["created_at"] for edge in edges]
+        assert timestamps == sorted(timestamps, reverse=True), "Branches should be ordered by created_at descending"
+
+        assert edges[0]["node"]["name"]["value"] == "zeta-branch"
+        assert edges[1]["node"]["name"]["value"] == "epsilon-branch"
+        assert edges[2]["node"]["name"]["value"] == "delta-branch"
+
+    async def test_order_by_updated_at_ascending(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test that branches can be ordered by updated_at in ascending order."""
+        branch_names = ["eta-branch", "theta-branch", "iota-branch"]
+
+        for branch_name in branch_names:
+            create_branch_query = """
+            mutation($branch_name: String!) {
+                BranchCreate(data: { name: $branch_name, description: "initial" }) {
+                    ok
+                    object { id name }
+                }
+            }
+            """
+            gql_params = await prepare_graphql_params(
+                db=db, branch=default_branch, account_session=session_admin, service=service
+            )
+            result = await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"branch_name": branch_name},
+            )
+            assert result.errors is None
+
+        update_order = ["iota-branch", "theta-branch", "eta-branch"]
+        for branch_name in update_order:
+            branch = await Branch.get_by_name(name=branch_name, db=db)
+            branch.description = f"updated description for {branch_name}"
+            await branch.save(db=db)
+
+        query = """
+        query {
+            InfrahubBranch(order: {node_metadata: {updated_at: ASC}}) {
+                edges {
+                    node_metadata { updated_at }
+                    node { name { value } description { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is None
+        assert result.data
+        edges = result.data["InfrahubBranch"]["edges"]
+
+        test_branch_names = set(branch_names)
+        test_edges = [e for e in edges if e["node"]["name"]["value"] in test_branch_names]
+
+        timestamps = [edge["node_metadata"]["updated_at"] for edge in test_edges]
+        assert timestamps == sorted(timestamps), "Branches should be ordered by updated_at ascending"
+
+        result_branch_names = [e["node"]["name"]["value"] for e in test_edges]
+        assert result_branch_names == update_order, "Updated branches should appear in update order (ascending)"
+
+    async def test_order_by_updated_at_descending(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+        session_admin: AccountSession,
+    ) -> None:
+        """Test that branches can be ordered by updated_at in descending order."""
+        branch_names = ["kappa-branch", "lambda-branch", "mu-branch"]
+
+        # Create all branches first
+        for branch_name in branch_names:
+            create_branch_query = """
+            mutation($branch_name: String!) {
+                BranchCreate(data: { name: $branch_name, description: "initial" }) {
+                    ok
+                    object { id name }
+                }
+            }
+            """
+            gql_params = await prepare_graphql_params(
+                db=db, branch=default_branch, account_session=session_admin, service=service
+            )
+            result = await graphql(
+                schema=gql_params.schema,
+                source=create_branch_query,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"branch_name": branch_name},
+            )
+            assert result.errors is None
+
+        update_order = ["kappa-branch", "lambda-branch", "mu-branch"]
+        for branch_name in update_order:
+            branch = await Branch.get_by_name(name=branch_name, db=db)
+            branch.description = f"updated description for {branch_name}"
+            await branch.save(db=db)
+
+        query = """
+        query {
+            InfrahubBranch(order: {node_metadata: {updated_at: DESC}}) {
+                edges {
+                    node_metadata { updated_at }
+                    node { name { value } description { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is None
+        assert result.data
+        edges = result.data["InfrahubBranch"]["edges"]
+
+        test_branch_names = set(branch_names)
+        test_edges = [e for e in edges if e["node"]["name"]["value"] in test_branch_names]
+
+        timestamps = [edge["node_metadata"]["updated_at"] for edge in test_edges]
+        assert timestamps == sorted(timestamps, reverse=True), "Branches should be ordered by updated_at descending"
+
+        result_branch_names = [e["node"]["name"]["value"] for e in test_edges]
+        assert result_branch_names == list(reversed(update_order)), (
+            "Updated branches should appear in reverse update order (descending)"
+        )
+
+    async def test_order_by_only_one_field_allowed(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """Test that specifying both created_at and updated_at returns an error."""
+        query = """
+        query {
+            InfrahubBranch(order: {node_metadata: {created_at: ASC, updated_at: DESC}}) {
+                edges {
+                    node { name { value } }
+                }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is not None
+        assert len(result.errors) > 0
+        assert "created_at" in str(result.errors[0]) or "updated_at" in str(result.errors[0])

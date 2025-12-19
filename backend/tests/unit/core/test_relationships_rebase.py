@@ -168,8 +168,9 @@ class TestRelationshipsWithRebase:
         await car_branch.owner.update(db=db, data=person_jane_main)
         await car_branch.save(db=db)
 
-        rebase_time = Timestamp()
-        await branch_2.rebase(db=db, at=rebase_time)
+        await branch_2.rebase(db=db)
+        updated_branch2 = await Branch.get_by_name(db=db, name=branch_2.name)
+        rebase_time = Timestamp(updated_branch2.get_branched_from())
 
         rebased_car = await NodeManager.get_one(db=db, branch=branch_2, id=car_branch.id)
         owner_peer = await rebased_car.owner.get_peer(db=db)
@@ -301,8 +302,9 @@ class TestRelationshipsWithRebase:
                 await branch_car.save(db=db)
                 car_person_id_map_branch[car.id] = random_person.id
 
-        rebase_time = Timestamp()
-        await branch_2.rebase(db=db, at=rebase_time)
+        await branch_2.rebase(db=db)
+        updated_branch2 = await Branch.get_by_name(db=db, name=branch_2.name)
+        rebase_time = Timestamp(updated_branch2.get_branched_from())
 
         for person in people:
             main_person = await NodeManager.get_one(db=db, branch=default_branch, id=person.id)

@@ -5,7 +5,7 @@
 # https://docs.infrahub.app/reference/configuration
 services:
   message-queue:
-    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:4.2.1-management}
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: infrahub
@@ -20,7 +20,7 @@ services:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
   cache:
-    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.11}
+    image: ${CACHE_DOCKER_IMAGE:-redis:8.4.0}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
@@ -50,7 +50,7 @@ services:
         limits:
           cpus: ${INFRAHUB_TESTING_DB_CPU_LIMIT:-0.0}
           memory: ${INFRAHUB_TESTING_DB_MEMORY_LIMIT:-0}
-    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.03.0-community}
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:2025.10.1-community}
     restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/admin
@@ -151,14 +151,14 @@ services:
       PREFECT_SERVER_SERVICES_TASK_RUN_RECORDER_ENABLED: "true"
 
   task-manager-db:
-    image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
     command: postgres -c 'max_connections=${INFRAHUB_TESTING_TASK_MANAGER_DB_MAX_CONNECTIONS:-100}'
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=prefect
     volumes:
-      - workflow_db:/var/lib/postgresql/data
+      - workflow_db:/var/lib/postgresql/18/docker
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]

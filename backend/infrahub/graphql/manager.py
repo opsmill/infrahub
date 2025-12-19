@@ -21,6 +21,7 @@ from infrahub.core.schema import (
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
+from infrahub.graphql.types.metadata import OrderInput
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
@@ -84,10 +85,6 @@ class DeleteInput(graphene.InputObjectType):
 
 
 GraphQLTypes = type[InfrahubMutation] | type[BaseAttributeType] | type[graphene.Interface] | type[graphene.ObjectType]
-
-
-class OrderInput(graphene.InputObjectType):
-    disable = graphene.Boolean(required=False)
 
 
 @dataclass
@@ -1024,6 +1021,9 @@ class GraphQLSchemaManager:
             filters.update(get_attribute_type().get_graphql_filters(name="any"))
             filters["partial_match"] = graphene.Boolean()
 
+            # Add metadata filters for filtering by created_by, updated_by, created_at, updated_at
+            filters.update(self._generate_metadata_filters())
+
             if schema.kind in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
                 # This is only available for IPAM generics
                 filters["include_available"] = graphene.Boolean()
@@ -1049,6 +1049,47 @@ class GraphQLSchemaManager:
                 filters[f"{rel.name}__{key}"] = value
 
         return filters
+
+    def _generate_metadata_filters(self) -> dict[str, Any]:
+        """Generate GraphQL filters for object-level metadata fields.
+
+        These filters allow querying nodes based on their metadata:
+        - created_by: Filter by the account that created the node
+        - updated_by: Filter by the account that last updated the node
+        - created_at: Filter by creation timestamp
+        - updated_at: Filter by last update timestamp
+
+        Returns:
+            dict: Filter definitions with names as keys and graphene types as values
+        """
+        return {
+            # Account-based filters (created_by)
+            "node_metadata__created_by__id": graphene.ID(description="Filter by exact creator account UUID"),
+            "node_metadata__created_by__ids": graphene.List(
+                graphene.ID, description="Filter by list of creator account UUIDs"
+            ),
+            # Account-based filters (updated_by)
+            "node_metadata__updated_by__id": graphene.ID(description="Filter by exact updater account UUID"),
+            "node_metadata__updated_by__ids": graphene.List(
+                graphene.ID, description="Filter by list of updater account UUIDs"
+            ),
+            # DateTime-based filters (created_at)
+            "node_metadata__created_at": graphene.DateTime(description="Filter by exact creation timestamp"),
+            "node_metadata__created_at__before": graphene.DateTime(
+                description="Filter for objects created before this timestamp"
+            ),
+            "node_metadata__created_at__after": graphene.DateTime(
+                description="Filter for objects created after this timestamp"
+            ),
+            # DateTime-based filters (updated_at)
+            "node_metadata__updated_at": graphene.DateTime(description="Filter by exact update timestamp"),
+            "node_metadata__updated_at__before": graphene.DateTime(
+                description="Filter for objects updated before this timestamp"
+            ),
+            "node_metadata__updated_at__after": graphene.DateTime(
+                description="Filter for objects updated after this timestamp"
+            ),
+        }
 
     def generate_graphql_edged_object(
         self,
@@ -1078,14 +1119,14 @@ class GraphQLSchemaManager:
 
         main_attrs: dict[str, Any] = {
             "node": graphene.Field(node.reference, required=False),
-            "node_metadata": graphene.Field(node_metadata, required=True),
+            "node_metadata": graphene.Field(node_metadata, required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
         if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         graphql_edged_object = registry.get_edge_type(reference_hash=edge_hash, schema_hash=self.schema_hash)
         if not graphql_edged_object:
@@ -1168,7 +1209,7 @@ class GraphQLSchemaManager:
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
         if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         object_name = f"NestedEdged{schema.kind}"
         md5hash = hashlib.md5(usedforsecurity=False)

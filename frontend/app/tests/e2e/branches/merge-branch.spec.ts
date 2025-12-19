@@ -23,6 +23,7 @@ test.describe("Branch - Merge action", () => {
       await page.getByText("Tasks").click();
       await expect(page.getByText("Loading...Loading...")).toBeVisible();
       await expect(page.getByText("Loading...Loading...")).not.toBeVisible();
+      await expect(page.getByText("No task")).toBeVisible();
     });
 
     await test.step("Merge the branch and verify button state", async () => {

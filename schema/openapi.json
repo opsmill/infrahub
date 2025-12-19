@@ -982,6 +982,7 @@
                             "application/json": {
                                 "schema": {
                                     "type": "object",
+                                    "additionalProperties": true,
                                     "title": "Response Graphql Query Post Api Query  Query Id  Post"
                                 }
                             }
@@ -1093,6 +1094,7 @@
                             "application/json": {
                                 "schema": {
                                     "type": "object",
+                                    "additionalProperties": true,
                                     "title": "Response Graphql Query Get Api Query  Query Id  Get"
                                 }
                             }
@@ -3967,6 +3969,7 @@
                 "title": "ComputedAttribute"
             },
             "ComputedAttribute-Output": {
+                "additionalProperties": true,
                 "type": "object"
             },
             "ComputedAttributeKind": {
@@ -4505,6 +4508,7 @@
                     "properties": {
                         "anyOf": [
                             {
+                                "additionalProperties": true,
                                 "type": "object"
                             },
                             {
@@ -4517,10 +4521,12 @@
                     "items": {
                         "anyOf": [
                             {
+                                "additionalProperties": true,
                                 "type": "object"
                             },
                             {
                                 "items": {
+                                    "additionalProperties": true,
                                     "type": "object"
                                 },
                                 "type": "array"
@@ -4565,6 +4571,7 @@
                                 "type": "boolean"
                             },
                             {
+                                "additionalProperties": true,
                                 "type": "object"
                             },
                             {
@@ -5298,6 +5305,7 @@
             "QueryPayload": {
                 "properties": {
                     "variables": {
+                        "additionalProperties": true,
                         "type": "object",
                         "title": "Variables"
                     }

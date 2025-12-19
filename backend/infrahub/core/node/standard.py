@@ -10,6 +10,7 @@ import ujson
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field, field_validator
 
+from infrahub.constants.enums import OrderByField, OrderDirection
 from infrahub.core.constants import NULL_VALUE, SYSTEM_USER_ID, InfrahubKind
 from infrahub.core.query.standard_node import (
     StandardNodeCreateQuery,
@@ -29,6 +30,12 @@ if TYPE_CHECKING:
 
     from infrahub.core.query import Query
     from infrahub.database import InfrahubDatabase
+
+
+@dataclass
+class StandardNodeOrdering:
+    order_by: OrderByField = field(default=OrderByField.ID)
+    direction: OrderDirection = field(default=OrderDirection.ASC)
 
 
 @dataclass(slots=True)
@@ -264,7 +271,7 @@ class StandardNode(BaseModel):
         else:
             data["uuid"] = str(self.uuid)
 
-        for attr_name, field_info in self.model_fields.items():
+        for attr_name, field_info in self.__class__.model_fields.items():
             if attr_name in self._exclude_attrs:
                 continue
 
@@ -296,10 +303,12 @@ class StandardNode(BaseModel):
         limit: int = 1000,
         ids: list[str] | None = None,
         name: str | None = None,
+        node_ordering: StandardNodeOrdering | None = None,
         **kwargs: dict[str, Any],
     ) -> list[Self]:
+        node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await StandardNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, node_ordering=node_ordering, **kwargs
         )
         await query.execute(db=db)
 
