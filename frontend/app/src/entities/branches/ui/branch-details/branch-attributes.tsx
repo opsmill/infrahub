@@ -12,7 +12,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
-import { BRANCH_STATUS_OPEN } from "@/entities/branches/constants";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 
 interface BranchAttributesProps {
@@ -27,7 +27,7 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
       </BranchAttributeLabel>
       <BranchAttributeValue>{branch.name}</BranchAttributeValue>
 
-      {branch.status !== BRANCH_STATUS_OPEN && (
+      {branch.status !== BRANCH_STATUS.OPEN && (
         <>
           <BranchAttributeLabel>
             <CircleIcon className="size-3.5" /> Status

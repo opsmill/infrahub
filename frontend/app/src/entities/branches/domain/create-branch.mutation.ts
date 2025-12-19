@@ -4,7 +4,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_STATUS_OPEN } from "@/entities/branches/constants";
+import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
 import { createBranch } from "@/entities/branches/domain/create-branch";
@@ -23,7 +23,7 @@ export function useCreateBranchMutation() {
       // Map mutation response to BranchListItem for cache update
       const branchListItem: BranchListItem = {
         ...branchCreated,
-        status: BRANCH_STATUS_OPEN,
+        status: BRANCH_STATUS.OPEN,
         has_schema_changes: false,
         created_at: branchCreated.created_at ?? now,
         updated_at: now,

@@ -3,34 +3,34 @@ import { AlertTriangleIcon, LoaderIcon } from "lucide-react";
 import { Badge, type BadgeProps } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
-import { BRANCH_STATUS_OPEN } from "@/entities/branches/constants";
+import { BRANCH_STATUS, type BranchStatus } from "@/entities/branches/constants";
 
 const pillStyle = "gap-1 rounded-full font-normal";
 
 interface BranchStatusBadgeProps extends BadgeProps {
-  status: string;
+  status: BranchStatus;
 }
 
 export function BranchStatusBadge({ status, className, ...props }: BranchStatusBadgeProps) {
   switch (status) {
-    case BRANCH_STATUS_OPEN: {
+    case BRANCH_STATUS.OPEN: {
       return null;
     }
-    case "NEED_REBASE": {
+    case BRANCH_STATUS.NEED_REBASE: {
       return (
         <Badge className={classNames(pillStyle, className)} variant="yellow" {...props}>
           <AlertTriangleIcon className="size-3" /> Rebase needed
         </Badge>
       );
     }
-    case "NEED_UPGRADE_REBASE": {
+    case BRANCH_STATUS.NEED_UPGRADE_REBASE: {
       return (
         <Badge className={classNames(pillStyle, className)} variant="yellow" {...props}>
           <AlertTriangleIcon className="size-3" /> Rebase needed (upgrade)
         </Badge>
       );
     }
-    case "DELETING": {
+    case BRANCH_STATUS.DELETING: {
       return (
         <Badge className={classNames(pillStyle, className)} variant="red" {...props}>
           <LoaderIcon className="size-3 animate-spin" /> Deleting
