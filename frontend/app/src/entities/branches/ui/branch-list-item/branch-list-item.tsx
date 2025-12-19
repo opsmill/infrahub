@@ -2,9 +2,9 @@ import { ListBoxItem, type ListBoxItemProps } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Col, Row } from "@/shared/components/container";
+import { DateDisplay } from "@/shared/components/display/date-display";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
-import { formatFullDate } from "@/shared/utils/date";
 
 import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/branch.mappers";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
@@ -25,7 +25,7 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
       href={constructPath(`/branches/${branch.name}`)}
       className={classNames(
         focusVisibleStyle,
-        "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-6 px-6 py-4",
+        "grid grid-cols-[minmax(200px,1fr)_auto_1fr] items-center gap-4 px-6 py-4",
         "border border-transparent not-last:border-b-gray-200",
         "first:rounded-t-lg last:rounded-b-lg",
         "hover:bg-neutral-100",
@@ -49,22 +49,20 @@ export function BranchListItem({ branch, className, ...props }: BranchListItemPr
         <p className="truncate text-gray-600 text-xs">{branch.description}</p>
       </Col>
 
-      <div className="flex items-center justify-end">
-        {branch.sync_with_git && <BranchGitSyncBadge />}
-      </div>
+      <div className="min-w-8">{branch.sync_with_git && <BranchGitSyncBadge />}</div>
 
-      <div className="grid shrink-0 grid-cols-[180px_180px] gap-x-4 gap-y-1">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
         <BranchMetadata
           label="last rebase"
-          value={branch.branched_from && formatFullDate(branch.branched_from)}
+          value={branch.branched_from && <DateDisplay date={branch.branched_from} hideDefault />}
         />
         <BranchMetadata
           label="created at"
-          value={branch.created_at && formatFullDate(branch.created_at)}
+          value={branch.created_at && <DateDisplay date={branch.created_at} hideDefault />}
         />
         <BranchMetadata
           label="last update"
-          value={branch.updated_at && formatFullDate(branch.updated_at)}
+          value={branch.updated_at && <DateDisplay date={branch.updated_at} hideDefault />}
         />
         <BranchMetadata
           label="created by"
