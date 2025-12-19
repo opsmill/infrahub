@@ -1329,7 +1329,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.60b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.60b0" },
     { name = "prefect", specifier = "==3.6.7" },
-    { name = "prefect-redis", specifier = "==0.2.7" },
+    { name = "prefect-redis", specifier = "==0.2.8" },
     { name = "pyarrow", specifier = ">=14" },
     { name = "pydantic", specifier = ">=2.12,<2.13" },
     { name = "pydantic-settings", specifier = ">=2.8,<2.9" },
@@ -2490,15 +2490,15 @@ wheels = [
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.7"
+version = "0.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "prefect" },
     { name = "redis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/7e/9e276b53020fe1d63cbd84dc64ccaf0f9a33ef6d76ed3c7984468cbc352c/prefect_redis-0.2.7.tar.gz", hash = "sha256:8e262c01813661b7d5663fa008f4f412cad04f203b6be355beb670e67a5feaea", size = 37973, upload-time = "2025-11-26T16:33:50.94Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/2b/87c09bb00953456acd5c112bb4dc2d2ecb5b539b49bb5b1788dc0bb30251/prefect_redis-0.2.8.tar.gz", hash = "sha256:ca18498f1906ae63e0c72d42bdd0001617867f894792a442091aa5e7a14264d4", size = 38917, upload-time = "2025-12-19T16:08:57.467Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/ab/bcbab7741d6c3749b5d53bbed7b7c26c6c8fa2c7c3fba94a9d26bdc274e5/prefect_redis-0.2.7-py3-none-any.whl", hash = "sha256:dbdeb0b309298c2c2d7bf618d32095e5aa612cfc5bdd6a7d0e71ef19111d49f1", size = 25673, upload-time = "2025-11-26T16:33:49.616Z" },
+    { url = "https://files.pythonhosted.org/packages/40/00/03dfc9b7eb26b79aaaea7243100561a394c7f445db68930af34ba225eae1/prefect_redis-0.2.8-py3-none-any.whl", hash = "sha256:c1829f803f0e0850bbfc671fa495da390eeabfc588315f8df03a46f92ab7533f", size = 26081, upload-time = "2025-12-19T16:08:56.166Z" },
 ]
 
 [[package]]
