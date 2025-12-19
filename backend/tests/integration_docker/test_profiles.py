@@ -115,7 +115,6 @@ class TestProfiles(TestInfrahubDockerClient):
             profile_name="test-profile",
             profile_priority=1000,
             height=42,
-            part_number="PN-001",
             related_nodes=[device.id],
         )
         await profile.save()
@@ -127,12 +126,11 @@ class TestProfiles(TestInfrahubDockerClient):
         device_with_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
         assert device_with_profile.height.value == 42
         assert device_with_profile.height.is_from_profile
-        assert device_with_profile.part_number.value == "PN-001"
-        assert device_with_profile.part_number.is_from_profile
+        assert device_with_profile.part_number.value == "MF-PN-001"
+        assert not device_with_profile.part_number.is_from_profile
 
         profile_to_update = await client.get(kind="ProfileTestingDevice", id=profile.id)
         profile_to_update.height.value = 100
-        profile_to_update.part_number.value = "PN-002-UPDATED"
         await profile_to_update.save()
 
         await self.wait_for_attribute_value(
@@ -142,8 +140,6 @@ class TestProfiles(TestInfrahubDockerClient):
         device_with_updated_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
         assert device_with_updated_profile.height.value == 100
         assert device_with_updated_profile.height.is_from_profile
-        assert device_with_updated_profile.part_number.value == "PN-002-UPDATED"
-        assert device_with_updated_profile.part_number.is_from_profile
 
     async def test_profile_priority_change_triggers_refresh(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-priority")
@@ -283,6 +279,14 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await profile.save()
 
+        await self.wait_for_relationship_peer(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            relationship="manufacturer",
+            expected_peer_id=manufacturer1.id,
+        )
+
         device_after_profile = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
@@ -291,6 +295,14 @@ class TestProfiles(TestInfrahubDockerClient):
         profile_to_update = await client.get(kind="ProfileTestingDevice", id=profile.id, include=["manufacturer"])
         profile_to_update.manufacturer = manufacturer2
         await profile_to_update.save()
+
+        await self.wait_for_relationship_peer(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            relationship="manufacturer",
+            expected_peer_id=manufacturer2.id,
+        )
 
         device_after_update = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
@@ -378,6 +390,14 @@ class TestProfiles(TestInfrahubDockerClient):
             related_nodes=[device],
         )
         await profile_high.save()
+
+        await self.wait_for_relationship_peer(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            relationship="manufacturer",
+            expected_peer_id=manufacturer_high.id,
+        )
 
         device_with_profiles = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]

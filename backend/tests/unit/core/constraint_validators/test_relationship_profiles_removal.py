@@ -244,7 +244,7 @@ async def test_constraint_blocks_removing_node_from_profile_related_nodes_with_i
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
     with pytest.raises(ValidationError) as exc:
-        await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
+        await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
 
     assert "Cannot remove profile" in str(exc.value)
     assert "inherits required relationship 'owner'" in str(exc.value)
@@ -397,7 +397,6 @@ async def test_constraint_allows_removing_profile_when_user_set_required_attribu
     thing_required_color = copy.deepcopy(THING)
     thing_required_color.relationships[0].optional = True
     await load_schema(db=db, schema=SchemaRoot(nodes=[CHILD, thing_required_color]), branch_name=branch.name)
-    thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=branch, duplicate=False)
 
     thing = await NodeManager.get_one(db=db, branch=branch, id=thing.id)
     thing.color.value = "user-set-green"
@@ -408,7 +407,7 @@ async def test_constraint_allows_removing_profile_when_user_set_required_attribu
     await thing.profiles.update(db=db, data=[])
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
-    await constraint.check(relm=thing.profiles, node_schema=thing_schema, node=thing)
+    await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
 
 
 async def test_constraint_blocks_removing_node_from_profile_related_nodes_with_inherited_required_attribute(
@@ -452,7 +451,7 @@ async def test_constraint_blocks_removing_node_from_profile_related_nodes_with_i
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
     with pytest.raises(ValidationError) as exc:
-        await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
+        await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
 
     assert "Cannot remove profile" in str(exc.value)
     assert "inherits required attribute 'color'" in str(exc.value)
