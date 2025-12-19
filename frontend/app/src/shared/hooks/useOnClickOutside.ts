@@ -3,7 +3,7 @@ import React from "react";
 const events = ["mousedown", "touchstart"] as const;
 
 export function useOnClickOutside(
-  ref: React.RefObject<HTMLElement|null> | null,
+  ref: React.RefObject<HTMLElement | null> | null,
   handler: (event: PointerEvent | MouseEvent | TouchEvent | FocusEvent) => void
 ): void {
   const onOutsideClick = React.useEffectEvent(handler);
