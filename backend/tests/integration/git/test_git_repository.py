@@ -119,9 +119,9 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
-        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
 
@@ -129,11 +129,11 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
 
         config_file.schemas = [Path("schemas")]
-        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
 
@@ -141,17 +141,17 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
 
-        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         queries = await client.all(kind=CoreGraphQLQuery)
         assert len(queries) == 10
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -169,7 +169,7 @@ class TestInfrahubClient:
         )
         await obj.save(db=db)
 
-        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         modified_query = await client.get(kind=CoreGraphQLQuery, id=queries[0].id)
         assert modified_query.query.value == value_before_change
@@ -189,7 +189,7 @@ class TestInfrahubClient:
             await obj.save(db=db)
 
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
 
         await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
@@ -266,16 +266,16 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[misc]
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
         assert config_file
-        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         rfiles = await client.all(kind=CoreTransformJinja2)
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -296,7 +296,7 @@ class TestInfrahubClient:
         )
         await obj.save(db=db)
 
-        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[misc]
+        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         modified_rfile = await client.get(kind=CoreTransformJinja2, id=rfiles[0].id)
         assert modified_rfile.template_path.value == rfile_template_path_value_before_change
