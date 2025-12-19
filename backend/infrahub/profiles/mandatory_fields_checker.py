@@ -53,56 +53,64 @@ async def _resolve_hfids_to_ids(
     return query.get_node_uuids()
 
 
-async def get_mandatory_fields_from_profiles(
-    db: InfrahubDatabase,
-    branch: Branch,
-    schema: NodeSchema,
-    profiles_data: Sequence[Any] | None,
-    mandatory_attr_names: list[str],
-    mandatory_rel_names: list[str],
-) -> tuple[set[str], set[str]]:
-    """Get mandatory attributes and relationships that are provided by profiles."""
-    identifiers = _extract_profile_identifiers_from_input(profiles_data=profiles_data)
+class ProfilesMandatoryFieldGetter:
+    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+        self.db = db
+        self.branch = branch
 
-    profile_ids = list(identifiers.ids)
-    if identifiers.hfids:
-        resolved_ids = await _resolve_hfids_to_ids(
-            db=db, branch=branch, profile_kind=f"Profile{schema.kind}", hfids=identifiers.hfids
+    async def get_mandatory_fields_from_profiles(
+        self,
+        schema: NodeSchema,
+        profiles_data: Sequence[Any] | None,
+        mandatory_attr_names: list[str],
+        mandatory_rel_names: list[str],
+    ) -> tuple[set[str], set[str]]:
+        """Get mandatory attributes and relationships that are provided by profiles."""
+        identifiers = _extract_profile_identifiers_from_input(profiles_data=profiles_data)
+
+        profile_ids = list(identifiers.ids)
+        if identifiers.hfids:
+            resolved_ids = await _resolve_hfids_to_ids(
+                db=self.db, branch=self.branch, profile_kind=f"Profile{schema.kind}", hfids=identifiers.hfids
+            )
+            profile_ids.extend(resolved_ids)
+
+        if not profile_ids:
+            return set(), set()
+
+        rel_filters: list[RelationshipFilter] = []
+        rel_name_to_filter: dict[str, RelationshipFilter] = {}
+        for rel_name in mandatory_rel_names:
+            rel_schema = schema.get_relationship(name=rel_name)
+            if not rel_schema.support_profiles:
+                continue
+
+            rel_filter = RelationshipFilter(
+                relationship_identifier=f"profile_{rel_schema.get_identifier()}", direction=rel_schema.direction
+            )
+            rel_filters.append(rel_filter)
+            rel_name_to_filter[rel_name] = rel_filter
+
+        query = await GetProfileDataQuery.init(
+            db=self.db,
+            branch=self.branch,
+            profile_ids=profile_ids,
+            attr_names=mandatory_attr_names,
+            relationship_filters=rel_filters,
         )
-        profile_ids.extend(resolved_ids)
+        await query.execute(db=self.db)
+        profile_data_list = query.get_profile_data()
 
-    if not profile_ids:
-        return set(), set()
+        provided_attrs: set[str] = set()
+        provided_rels: set[str] = set()
 
-    rel_filters: list[RelationshipFilter] = []
-    rel_name_to_filter: dict[str, RelationshipFilter] = {}
-    for rel_name in mandatory_rel_names:
-        rel_schema = schema.get_relationship(name=rel_name)
-        if not rel_schema.support_profiles:
-            continue
+        for profile_data in profile_data_list:
+            for attr_name in mandatory_attr_names:
+                if profile_data.attribute_values.get(attr_name) is not None:
+                    provided_attrs.add(attr_name)
 
-        rel_filter = RelationshipFilter(
-            relationship_identifier=f"profile_{rel_schema.get_identifier()}", direction=rel_schema.direction
-        )
-        rel_filters.append(rel_filter)
-        rel_name_to_filter[rel_name] = rel_filter
+            for rel_name, rel_filter in rel_name_to_filter.items():
+                if profile_data.relationship_peers.get(rel_filter):
+                    provided_rels.add(rel_name)
 
-    query = await GetProfileDataQuery.init(
-        db=db, branch=branch, profile_ids=profile_ids, attr_names=mandatory_attr_names, relationship_filters=rel_filters
-    )
-    await query.execute(db=db)
-    profile_data_list = query.get_profile_data()
-
-    provided_attrs: set[str] = set()
-    provided_rels: set[str] = set()
-
-    for profile_data in profile_data_list:
-        for attr_name in mandatory_attr_names:
-            if profile_data.attribute_values.get(attr_name) is not None:
-                provided_attrs.add(attr_name)
-
-        for rel_name, rel_filter in rel_name_to_filter.items():
-            if profile_data.relationship_peers.get(rel_filter):
-                provided_rels.add(rel_name)
-
-    return provided_attrs, provided_rels
+        return provided_attrs, provided_rels

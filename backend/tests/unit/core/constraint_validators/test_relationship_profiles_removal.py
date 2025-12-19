@@ -244,7 +244,7 @@ async def test_constraint_blocks_removing_node_from_profile_related_nodes_with_i
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
     with pytest.raises(ValidationError) as exc:
-        await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
+        await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
 
     assert "Cannot remove profile" in str(exc.value)
     assert "inherits required relationship 'owner'" in str(exc.value)
@@ -281,7 +281,7 @@ async def test_constraint_allows_removing_node_from_profile_related_nodes_withou
     await profile.related_nodes.update(db=db, data=[])
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
-    await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
+    await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
 
 
 async def test_constraint_blocks_removing_profile_with_inherited_required_attribute(
@@ -400,7 +400,7 @@ async def test_constraint_allows_removing_profile_when_user_set_required_attribu
     thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=branch, duplicate=False)
 
     thing = await NodeManager.get_one(db=db, branch=branch, id=thing.id)
-    await thing.color.from_graphql(data={"value": "user-set-green"}, db=db)
+    thing.color.value = "user-set-green"
     await thing.save(db=db)
 
     thing = await NodeManager.get_one(db=db, branch=branch, id=thing.id)
@@ -452,7 +452,7 @@ async def test_constraint_blocks_removing_node_from_profile_related_nodes_with_i
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
     with pytest.raises(ValidationError) as exc:
-        await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
+        await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
 
     assert "Cannot remove profile" in str(exc.value)
     assert "inherits required attribute 'color'" in str(exc.value)
@@ -489,7 +489,7 @@ async def test_constraint_allows_removing_node_from_profile_related_nodes_withou
     await profile.related_nodes.update(db=db, data=[])
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
-    await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
+    await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)
 
 
 async def test_constraint_allows_adding_nodes_to_profile_related_nodes(db: InfrahubDatabase, branch: Branch) -> None:
@@ -517,4 +517,4 @@ async def test_constraint_allows_adding_nodes_to_profile_related_nodes(db: Infra
     await profile.related_nodes.update(db=db, data=[thing])
 
     constraint = RelationshipProfileRemovalConstraint(db=db, branch=branch)
-    await constraint.check(relm=profile.related_nodes, node_schema=profile_schema, node=profile)
+    await constraint.validate_profile_deletion(profile=profile, profile_schema=profile_schema)

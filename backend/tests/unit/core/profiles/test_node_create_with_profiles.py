@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
@@ -74,6 +75,9 @@ class TestNodeCreateWithMandatoryAttributeFromProfile:
         await node.new(db=db, profiles=[profile], name="user_provided")
         await node.save(db=db)
 
+        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        await applier.apply_profiles(node)
+
         assert node.id
         assert node.name.value == "user_provided"
 
@@ -116,6 +120,13 @@ class TestNodeCreateWithMandatoryRelationshipFromProfile:
         assert node.id
         assert node.name.value == "test_thing"
 
+        applier = NodeProfilesApplier(db=db, branch=default_branch)
+        await applier.apply_profiles(node)
+
+        node = await NodeManager.get_one(db=db, id=node.id)
+        peer = await node.owner.get_peer(db=db)
+        assert peer.id == child.id
+
 
 class TestNodeCreateWithMultipleProfiles:
     """Tests for creating nodes with multiple profiles providing mandatory fields."""
@@ -150,6 +161,9 @@ class TestNodeCreateWithMultipleProfiles:
         await applier.apply_profiles(node)
 
         assert node.color.value == "green"
+
+        peer = await node.owner.get_peer(db=db)
+        assert peer.id == child.id
 
     async def test_create_with_dict_profile_format(
         self, db: InfrahubDatabase, default_branch: Branch, schema: None

@@ -923,3 +923,132 @@ async def test_node_from_template_with_profile_precedence(
     # Node should get description from profile (template didn't define it)
     assert node.description.value == "From profile"
     assert node.description.source_id == crit_profile.id
+
+
+async def test_node_with_cardinality_one_relationship_profile_updated_on_profile_update(
+    db: InfrahubDatabase, default_branch, register_core_models_schema
+) -> None:
+    SCHEMA = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Testing",
+                "description": "Device for testing profiles with relationships",
+                "label": "Device",
+                "icon": "mdi:server",
+                "display_label": "name__value",
+                "uniqueness_constraints": [["name__value"]],
+                "human_friendly_id": ["name__value"],
+                "order_by": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "optional": False},
+                    {
+                        "name": "role",
+                        "kind": "Dropdown",
+                        "optional": True,
+                        "choices": [
+                            {"name": "switch"},
+                            {"name": "router"},
+                            {"name": "firewall"},
+                        ],
+                    },
+                ],
+                "relationships": [
+                    {
+                        "name": "manufacturer",
+                        "peer": "TestingManufacturer",
+                        "optional": False,
+                        "cardinality": "one",
+                        "kind": "Attribute",
+                    },
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "optional": True,
+                        "cardinality": "many",
+                        "kind": "Attribute",
+                    },
+                ],
+            },
+            {
+                "name": "Manufacturer",
+                "namespace": "Testing",
+                "description": "Manufacturer for devices",
+                "label": "Manufacturer",
+                "display_label": "name__value",
+                "human_friendly_id": ["name__value"],
+                "uniqueness_constraints": [["name__value"]],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "optional": False},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "device",
+                        "peer": "TestingDevice",
+                        "optional": True,
+                        "cardinality": "many",
+                        "kind": "Generic",
+                    }
+                ],
+            },
+        ],
+    }
+    schema_root = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    manufacturer_schema = registry.schema.get("TestingManufacturer", branch=default_branch.name)
+
+    cisco = await Node.init(db=db, branch=default_branch.name, schema=manufacturer_schema)
+    await cisco.new(db=db, name="Cisco")
+    await cisco.save(db=db)
+
+    juniper = await Node.init(db=db, branch=default_branch.name, schema=manufacturer_schema)
+    await juniper.new(db=db, name="Juniper")
+    await juniper.save(db=db)
+
+    device_profile_schema = registry.schema.get("ProfileTestingDevice", branch=default_branch.name)
+
+    device_profile = await Node.init(db=db, branch=default_branch, schema=device_profile_schema)
+    await device_profile.new(db=db, profile_name="device profile", manufacturer=cisco.id, profile_priority=1000)
+    await device_profile.save(db=db)
+
+    device_schema = registry.schema.get("TestingDevice", branch=default_branch.name)
+
+    device = await Node.init(db=db, branch=default_branch.name, schema=device_schema)
+    await device.new(db=db, name="Sample device", profiles=[device_profile.id])
+    await device.save(db=db)
+
+    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await node_applier.apply_profiles(node=device)
+
+    peer = await device.manufacturer.get_peer(db=db)
+    assert peer.id == cisco.id
+
+    device_profile = await NodeManager.get_one(db=db, id=device_profile.id, kind="ProfileTestingDevice")
+    await device_profile.manufacturer.update(db=db, data=juniper.id)
+    await device_profile.save(db=db)
+
+    peer = await device_profile.manufacturer.get_peer(db=db)
+    assert peer.id == juniper.id
+
+    device = await NodeManager.get_one(db=db, id=device.id, kind="TestingDevice")
+    node_applier = NodeProfilesApplier(db=db, branch=default_branch)
+    await node_applier.apply_profiles(node=device)
+    await device.save(db=db)
+
+    peer = await device.manufacturer.get_peer(db=db)
+    assert peer.id == juniper.id
+
+    updated_device = await NodeManager.get_one(db=db, id=device.id, kind="TestingDevice")
+    await _validate_node_profile_relationships(
+        db=db,
+        schema=device_schema,
+        original_node=device,
+        updated_node=updated_device,
+        expected_profile_relationships=[
+            ExpectedProfileRelationship(name="manufacturer", peers=[juniper], source_uuid=device_profile.id),
+        ],
+    )

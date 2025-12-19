@@ -10,8 +10,8 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.profiles.mandatory_fields_checker import (
     ProfileIdentifiers,
+    ProfilesMandatoryFieldGetter,
     _extract_profile_identifiers_from_input,
-    get_mandatory_fields_from_profiles,
 )
 from tests.constants import TestKind
 from tests.helpers.schema import CHILD, THING, load_schema
@@ -89,9 +89,8 @@ class TestGetMandatoryFieldsFromProfiles:
         """When no profiles are provided, returns empty sets"""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
 
-        provided_attrs, provided_rels = await get_mandatory_fields_from_profiles(
-            db=db,
-            branch=default_branch,
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=None,
             mandatory_attr_names=["color"],
@@ -112,9 +111,8 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="test_profile", color="blue", profile_priority=1000)
         await profile.save(db=db)
 
-        provided_attrs, provided_rels = await get_mandatory_fields_from_profiles(
-            db=db,
-            branch=default_branch,
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile.id}],
             mandatory_attr_names=["color"],
@@ -135,9 +133,8 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="test_profile", profile_priority=1000)
         await profile.save(db=db)
 
-        provided_attrs, provided_rels = await get_mandatory_fields_from_profiles(
-            db=db,
-            branch=default_branch,
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile.id}],
             mandatory_attr_names=["color"],
@@ -162,9 +159,8 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="test_profile", profile_priority=1000, owner=child.id)
         await profile.save(db=db)
 
-        provided_attrs, provided_rels = await get_mandatory_fields_from_profiles(
-            db=db,
-            branch=default_branch,
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile.id}],
             mandatory_attr_names=[],
@@ -180,26 +176,30 @@ class TestGetMandatoryFieldsFromProfiles:
         """Multiple profiles should aggregate their provided fields"""
         thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
         profile_schema = registry.schema.get_profile_schema(f"Profile{TestKind.THING}", branch=default_branch)
+        child_schema = registry.schema.get_node_schema(name=TestKind.CHILD, branch=default_branch)
+
+        child = await Node.init(db=db, branch=default_branch, schema=child_schema)
+        await child.new(db=db, name="child_owner")
+        await child.save(db=db)
 
         profile1 = await Node.init(db=db, branch=default_branch, schema=profile_schema)
-        await profile1.new(db=db, profile_name="profile1", color="red", profile_priority=1000)
+        await profile1.new(db=db, profile_name="profile1", color="red", profile_priority=1000, owner=child.id)
         await profile1.save(db=db)
 
         profile2 = await Node.init(db=db, branch=default_branch, schema=profile_schema)
-        await profile2.new(db=db, profile_name="profile2", profile_priority=2000)
+        await profile2.new(db=db, profile_name="profile2", profile_priority=2000, owner=child.id)
         await profile2.save(db=db)
 
-        provided_attrs, provided_rels = await get_mandatory_fields_from_profiles(
-            db=db,
-            branch=default_branch,
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"id": profile1.id}, {"id": profile2.id}],
             mandatory_attr_names=["color"],
-            mandatory_rel_names=[],
+            mandatory_rel_names=["owner"],
         )
 
         assert provided_attrs == {"color"}
-        assert not provided_rels
+        assert provided_rels == {"owner"}
 
     async def test_profile_lookup_by_hfid(self, db: InfrahubDatabase, default_branch: Branch, schema: None) -> None:
         """Profile can be looked up by HFID"""
@@ -209,9 +209,8 @@ class TestGetMandatoryFieldsFromProfiles:
         await profile.new(db=db, profile_name="my_profile", color="green", profile_priority=1000)
         await profile.save(db=db)
 
-        provided_attrs, provided_rels = await get_mandatory_fields_from_profiles(
-            db=db,
-            branch=default_branch,
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=default_branch)
+        provided_attrs, provided_rels = await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=thing_schema,
             profiles_data=[{"hfid": ["my_profile"]}],
             mandatory_attr_names=["color"],

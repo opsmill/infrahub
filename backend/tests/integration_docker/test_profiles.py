@@ -107,12 +107,15 @@ class TestProfiles(TestInfrahubDockerClient):
         device_initial = await client.get(kind="TestingDevice", id=device.id)
         assert device_initial.height.value is None
         assert not device_initial.height.is_from_profile
+        assert device_initial.part_number.value == "MF-PN-001"
+        assert not device_initial.part_number.is_from_profile
 
         profile = await client.create(
             kind="ProfileTestingDevice",
             profile_name="test-profile",
             profile_priority=1000,
             height=42,
+            part_number="PN-001",
             related_nodes=[device.id],
         )
         await profile.save()
@@ -124,9 +127,12 @@ class TestProfiles(TestInfrahubDockerClient):
         device_with_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
         assert device_with_profile.height.value == 42
         assert device_with_profile.height.is_from_profile
+        assert device_with_profile.part_number.value == "PN-001"
+        assert device_with_profile.part_number.is_from_profile
 
         profile_to_update = await client.get(kind="ProfileTestingDevice", id=profile.id)
         profile_to_update.height.value = 100
+        profile_to_update.part_number.value = "PN-002-UPDATED"
         await profile_to_update.save()
 
         await self.wait_for_attribute_value(
@@ -136,6 +142,8 @@ class TestProfiles(TestInfrahubDockerClient):
         device_with_updated_profile = await client.get(kind="TestingDevice", id=device.id, property=True)
         assert device_with_updated_profile.height.value == 100
         assert device_with_updated_profile.height.is_from_profile
+        assert device_with_updated_profile.part_number.value == "PN-002-UPDATED"
+        assert device_with_updated_profile.part_number.is_from_profile
 
     async def test_profile_priority_change_triggers_refresh(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-priority")
@@ -278,7 +286,7 @@ class TestProfiles(TestInfrahubDockerClient):
         device_after_profile = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
-        assert device_after_profile.manufacturer.id == manufacturer_initial.id
+        assert device_after_profile.manufacturer.id == manufacturer1.id
 
         profile_to_update = await client.get(kind="ProfileTestingDevice", id=profile.id, include=["manufacturer"])
         profile_to_update.manufacturer = manufacturer2
@@ -287,7 +295,7 @@ class TestProfiles(TestInfrahubDockerClient):
         device_after_update = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
-        assert device_after_update.manufacturer.id == manufacturer_initial.id
+        assert device_after_update.manufacturer.id == manufacturer2.id
 
     async def test_profile_relationship_cardinality_many_update(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-many")
@@ -374,7 +382,7 @@ class TestProfiles(TestInfrahubDockerClient):
         device_with_profiles = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
-        assert device_with_profiles.manufacturer.id == manufacturer_initial.id
+        assert device_with_profiles.manufacturer.id == manufacturer_high.id
 
     async def test_cannot_delete_profile_when_device_inherits_required_attribute(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-constraint-attr")

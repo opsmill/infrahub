@@ -40,7 +40,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.models import NumberPoolLockDefinition
-from infrahub.profiles.mandatory_fields_checker import get_mandatory_fields_from_profiles
+from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
@@ -533,9 +533,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if not mandatory_attrs_to_check and not mandatory_rels_to_check:
             return set(), set()
 
-        return await get_mandatory_fields_from_profiles(
-            db=db,
-            branch=self._branch,
+        profiles_mandatory_field_getter = ProfilesMandatoryFieldGetter(db=db, branch=self._branch)
+        return await profiles_mandatory_field_getter.get_mandatory_fields_from_profiles(
             schema=self._schema,
             profiles_data=fields.get("profiles"),
             mandatory_attr_names=mandatory_attrs_to_check,
