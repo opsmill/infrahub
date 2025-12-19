@@ -164,7 +164,7 @@ function EditingMode({
       <Button
         variant="primary"
         size="square"
-        className="size-8"
+        className="shrink-0"
         disabled={isPending}
         isLoading={isPending}
         onClick={handleSave}
@@ -174,7 +174,7 @@ function EditingMode({
       <Button
         variant="outline"
         size="square"
-        className="size-8"
+        className="shrink-0"
         disabled={isPending}
         onClick={onCancel}
       >
