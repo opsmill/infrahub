@@ -30,7 +30,7 @@ from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_cache, build_client, build_message_bus, build_workflow
+from infrahub.workers.dependencies import build_cache, build_client, build_database, build_message_bus, build_workflow
 from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
@@ -138,15 +138,24 @@ class TestInfrahubApp(TestInfrahub):
 
     @pytest.fixture(scope="class")
     async def test_client(
-        self, initialize_registry: None, redis: dict[int, int] | None, nats: dict[int, int] | None
+        self,
+        dependency_provider: Provider,
+        db: InfrahubDatabase,
+        initialize_registry: None,
+        redis: dict[int, int] | None,
+        nats: dict[int, int] | None,
     ) -> AsyncGenerator[InfrahubTestClient, None]:
         # NOTE 1: lifespan call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
         # while services.service.client is not set. There might be a design issue here: a client is needed while
         # the app is being initialized.
         # NOTE 2: FastAPI does not have an asynchronous TestClient, thus we rely on httpx.AsyncClient which does not trigger
         # lifespan events (see https://fastapi.tiangolo.com/advanced/async-tests/#in-detail).
-        async with lifespan(app):
-            yield InfrahubTestClient(app=app, base_url="http://testserver")
+        async def _db(singleton: bool = True) -> InfrahubDatabase:
+            return await build_database(singleton=False)
+
+        with dependency_provider.scope(build_database, _db):
+            async with lifespan(app):
+                yield InfrahubTestClient(app=app, base_url="http://testserver")
 
     @pytest.fixture(scope="class")
     async def client(

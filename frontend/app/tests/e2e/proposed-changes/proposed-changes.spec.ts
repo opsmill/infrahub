@@ -69,19 +69,23 @@ test.describe("/proposed-changes", () => {
         await expect(page.getByText("Proposed change created")).toBeVisible();
       });
 
-      test.fixme("display and edit proposed change", async ({ page }) => {
+      test("display and edit proposed change", async ({ page }) => {
         await page.goto("/proposed-changes");
-        test.slow();
 
         await test.step("display created proposed change details", async () => {
           await page.getByText(pcName, { exact: true }).click();
           await expect(page.getByText("Source branch" + pcBranchName)).toBeVisible();
           await expect(page.getByText("Stateopen")).toBeVisible();
+          await expect(page.getByRole("cell", { name: "Created by" })).toBeVisible();
+          await expect(page.getByRole("cell", { name: "Created at" })).toBeVisible();
+          await expect(page.getByRole("cell", { name: "Updated by" })).toBeVisible();
+          await expect(page.getByRole("cell", { name: "Updated at" })).toBeVisible();
           // Validate the buttons are showing as intended
           await expect(page.getByRole("button", { name: "Approve" })).not.toBeDisabled();
-          await page.getByTestId("proposed-change-action-button-select").click();
+          await page.getByTestId("proposed-change-action-button-select").nth(1).click();
           await expect(page.getByRole("option", { name: "Merge" })).not.toBeDisabled();
-          await expect(page.getByRole("option", { name: "Reject" })).not.toBeDisabled();
+          await expect(page.getByRole("option", { name: "Close" })).not.toBeDisabled();
+          await expect(page.getByRole("option", { name: "Move to draft" })).not.toBeDisabled();
         });
 
         await test.step("edit proposed change reviewers", async () => {

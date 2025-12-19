@@ -234,7 +234,7 @@ class GraphRelationshipDefault(BaseModel):
     hierarchy: Optional[str] = Field(None, description="Name of the hierarchy this relationship is part of")
 
 
-def get_graph_schema() -> dict[str, dict[str, Any]]:
+def get_graph_schema() -> dict[str, dict[str, type[Any]]]:
     """Generate the graph schema dictionary containing nodes and relationships."""
     graph_node_list: list[type[GraphVertex]] = [
         GraphNodeNode,
@@ -261,4 +261,4 @@ def get_graph_schema() -> dict[str, dict[str, Any]]:
     }
 
 
-GRAPH_SCHEMA: dict[str, dict[str, Any]] = get_graph_schema()
+GRAPH_SCHEMA: dict[str, dict[str, type[Any]]] = get_graph_schema()

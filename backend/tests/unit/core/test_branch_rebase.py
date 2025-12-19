@@ -100,7 +100,7 @@ async def test_branch_rebase_diff_conflict(
     car_camry_main,
 ) -> None:
     # NOTE: Ideally, this should be somewhere else for all tests to benefit from it
-    with dependency_provider.scope(build_database, lambda: db):
+    with dependency_provider.scope(build_database, lambda singleton=True: db):  # noqa: ARG005
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
         car_main.name.value += "-main"

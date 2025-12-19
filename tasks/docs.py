@@ -204,7 +204,7 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
         if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
             params = {
                 param: info
-                for param, info in init_schema.parameters.model_fields.items()
+                for param, info in init_schema.parameters.__class__.model_fields.items()
                 if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
             }
             kind_ap_parameters[kind] = params
@@ -498,7 +498,7 @@ def _get_env_vars() -> dict[str, str]:
     settings = ConfigBase()
     env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
 
-    for field_name, model_field in settings.model_fields.items():
+    for field_name, model_field in settings.__class__.model_fields.items():
         for field_key, field_env_name, _ in env_settings._extract_field_info(model_field, field_name):
             env_vars[field_key].append(field_env_name.upper())
 

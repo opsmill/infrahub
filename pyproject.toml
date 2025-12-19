@@ -3,7 +3,7 @@ name = "infrahub-server"
 version = "1.6.1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 readme = "README.md"
 license = "Apache-2.0"
 
@@ -11,14 +11,15 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
-    "neo4j>=5.28,<5.29",
-    "neo4j-rust-ext>=5.28,<5.29",
-    "pydantic>=2.10,<2.11",
+    "neo4j==6.0.3",
+    "neo4j-rust-ext==6.0.3.0",
+    "pydantic>=2.12,<2.13",
     "pydantic-settings>=2.8,<2.9",
-    "pytest>=7.4,<7.5",
+    "pytest>=9.0,<9.1",
     "aio-pika>=9.4,<9.5",
     "structlog==24.1.0",
     "boto3==1.34.129",
@@ -27,14 +28,13 @@ dependencies = [
     "typer==0.19.2",
     "click==8.1.7",
     "prefect==3.5.0",
-    "prefect-redis==0.2.6",
+    "prefect-redis==0.2.7",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3,<4",
     "pyyaml>=6,<7",
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.1",
-
     # Dependencies specific to the API Server
     "fastapi==0.121.1",
     "fastapi-storages>=0.3,<0.4",
@@ -42,26 +42,25 @@ dependencies = [
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
-    "python-multipart==0.0.18",                            # Required by FastAPI to upload large files
-    "asgi-correlation-id==4.2.0",                          # Middleware for FastAPI to generate ID per request
-    "bcrypt>=4.1,<4.2",                                    # Used to hash and validate password
-    "pyjwt>=2.8,<2.9",                                     # Used to manage JWT tokens
+    "python-multipart==0.0.18", # Required by FastAPI to upload large files
+    "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
+    "bcrypt>=4.1,<4.2", # Used to hash and validate password
+    "pyjwt>=2.8,<2.9", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
-    "opentelemetry-instrumentation-aio-pika==0.49b1",
-    "opentelemetry-instrumentation-fastapi==0.49b1",
-    "opentelemetry-exporter-otlp-proto-grpc==1.28.1",
-    "opentelemetry-exporter-otlp-proto-http==1.28.1",
+    "opentelemetry-instrumentation-aio-pika==0.60b0",
+    "opentelemetry-instrumentation-fastapi==0.60b0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+    "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
     "authlib==1.6.5",
-    "aiodataloader==0.4.0",
-    "fast-depends==2.4.12",
+    "aiodataloader==0.4.3",
+    "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
-
     # Dependencies specific to the SDK
     "rich>=13,<14",
-    "pyarrow>=14,<15",
-    "numpy==1.26.2",
+    "pyarrow>=14",
+    "numpy>=1.26.2",
     "dulwich==0.22.7",
     "whenever==0.9.3",
     "netutils==1.12.0",
@@ -83,7 +82,7 @@ dev = [
     "yamllint",
     "mypy>=1.15,<1.16",
     "ipython>=8,<9",
-    "pytest-asyncio>=0.21.1,<0.22",
+    "pytest-asyncio>=1.3,<1.4",
     "pytest-clarity>=1.0,<1.1",
     "pytest-cov==7.0.0",
     "pytest-xdist>=3.4,<3.5",
@@ -101,8 +100,8 @@ dev = [
     "pytest-env>=1.1.3,<2",
     "testcontainers==4.8.1",
     "pytest-timeout==2.3.1",
-    "matplotlib==3.9.2",
-    "pandas==2.2.3",
+    "matplotlib==3.10.7",
+    "pandas==2.3.3",
     "semver>=3.0.2,<4",
     "ruamel-yaml==0.18.6",
     "pytest-httpx>=0.30",
@@ -139,6 +138,7 @@ exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 timeout = 300 # 5 minutes
 session_timeout = 1800 # 30 minutes
 testpaths = ["tests"]

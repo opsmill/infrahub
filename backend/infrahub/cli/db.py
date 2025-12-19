@@ -603,17 +603,17 @@ RETURN vertices, edges
     edge_path = export_dir / Path("edges.csv")
     edge_path.touch(exist_ok=True)
 
-    graph_node_schemas = [GraphNodeProperties, GraphRelationshipProperties, GraphAttributeProperties]
+    graph_node_schemas = (GraphNodeProperties, GraphRelationshipProperties, GraphAttributeProperties)
     graph_vertex_properties = set()
-    for graph_schema in graph_node_schemas:
-        for field_name, field_info in graph_schema.model_fields.items():
+    for graph_node_schema in graph_node_schemas:
+        for field_name, field_info in graph_node_schema.model_fields.items():
             property_name = field_info.alias or field_name
             graph_vertex_properties.add(property_name)
 
-    graph_edge_schemas = [GraphRelationshipIsPartOf, GraphRelationshipDefault]
+    graph_edge_schemas = (GraphRelationshipIsPartOf, GraphRelationshipDefault)
     graph_edge_properties = set()
-    for graph_schema in graph_edge_schemas:
-        for field_name, field_info in graph_schema.model_fields.items():
+    for graph_edge_schema in graph_edge_schemas:
+        for field_name, field_info in graph_edge_schema.model_fields.items():
             property_name = field_info.alias or field_name
             graph_edge_properties.add(property_name)
 

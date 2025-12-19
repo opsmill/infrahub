@@ -21,6 +21,7 @@ from infrahub.core.schema import (
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.profile import InfrahubProfileMutation
+from infrahub.graphql.types.metadata import OrderInput
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
@@ -84,10 +85,6 @@ class DeleteInput(graphene.InputObjectType):
 
 
 GraphQLTypes = type[InfrahubMutation] | type[BaseAttributeType] | type[graphene.Interface] | type[graphene.ObjectType]
-
-
-class OrderInput(graphene.InputObjectType):
-    disable = graphene.Boolean(required=False)
 
 
 @dataclass
@@ -1078,14 +1075,14 @@ class GraphQLSchemaManager:
 
         main_attrs: dict[str, Any] = {
             "node": graphene.Field(node.reference, required=False),
-            "node_metadata": graphene.Field(node_metadata, required=True),
+            "node_metadata": graphene.Field(node_metadata, required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
         if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         graphql_edged_object = registry.get_edge_type(reference_hash=edge_hash, schema_hash=self.schema_hash)
         if not graphql_edged_object:
@@ -1168,7 +1165,7 @@ class GraphQLSchemaManager:
         if relation_property:
             main_attrs["properties"] = graphene.Field(relation_property, required=False)
         if relationship_metadata:
-            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=True)
+            main_attrs["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
 
         object_name = f"NestedEdged{schema.kind}"
         md5hash = hashlib.md5(usedforsecurity=False)

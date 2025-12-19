@@ -26,7 +26,7 @@ export const ProposedChangesItem = ({ node }: ProposedChangesItemProps) => {
 
   return (
     <ListBoxItem className="flex items-center p-2">
-      <div className="grid flex-grow grid-cols-2 items-center">
+      <div className="grid grow grid-cols-2 items-center">
         <ProposedChangesInfo
           id={node.id}
           name={node.name.value}
