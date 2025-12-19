@@ -18,6 +18,8 @@ export const BRANCH_CREATE = gql`
         created_at
         sync_with_git
         is_default
+        status
+        has_schema_changes
       }
     }
   }
