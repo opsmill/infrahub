@@ -75,6 +75,8 @@ export function ObjectDataDisplay({
               relationshipSchema={field}
               relationshipData={fieldData as NodeRelationshipWithMetadata}
               permission={permission}
+              objectKind={objectData.__typename}
+              objectId={objectData.id}
               onClickMetadata={onClickRelationshipMetadata}
             />
           );
@@ -86,6 +88,8 @@ export function ObjectDataDisplay({
             attributeSchema={field}
             attributeData={fieldData as NodeAttributeWithMetadata}
             permission={permission}
+            objectKind={objectData.__typename}
+            objectId={objectData.id}
             onClickMetadata={onClickAttributeMetadata}
           />
         );
