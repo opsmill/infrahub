@@ -196,7 +196,8 @@ class NodeProfilesApplier:
 
         if len_rels_to_remove and not len_rels_to_insert:
             for rel_to_remove in rels_to_remove:
-                await node_rel.remove_locally(peer_id=rel_to_remove.peer_id, db=self.db)
+                if rel_to_remove.peer_id:
+                    await node_rel.remove_locally(peer_id=rel_to_remove.peer_id, db=self.db)
             is_changed = True
         elif len_rels_to_insert and not len_rels_to_remove:
             for rel_to_insert in rels_to_insert:
@@ -210,7 +211,8 @@ class NodeProfilesApplier:
             for rel_to_remove, rel_to_insert in zip(rels_to_remove[:len_rels_to_insert], rels_to_insert, strict=True):
                 node_rel._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
             for rel_to_remove in rels_to_remove[len_rels_to_insert:]:
-                await node_rel.remove_locally(peer_id=rel_to_remove.peer_id, db=self.db)
+                if rel_to_remove.peer_id:
+                    await node_rel.remove_locally(peer_id=rel_to_remove.peer_id, db=self.db)
             is_changed = True
         elif len_rels_to_insert > len_rels_to_remove:
             for rel_to_insert, rel_to_remove in zip(rels_to_insert[:len_rels_to_remove], rels_to_remove, strict=True):
