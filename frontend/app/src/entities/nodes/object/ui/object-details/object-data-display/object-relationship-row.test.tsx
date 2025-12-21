@@ -302,10 +302,7 @@ describe("ObjectRelationshipRow", () => {
         />
       );
 
-      // WHEN - click the first metadata button to open the tooltip
-      const metadataButtons = component.container.querySelectorAll(
-        '[data-testid="view-metadata-button"]'
-      );
+      // WHEN
       await component.getByTestId("view-metadata-button").first().click();
 
       // THEN
