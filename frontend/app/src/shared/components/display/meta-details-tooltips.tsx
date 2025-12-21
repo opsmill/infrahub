@@ -84,12 +84,13 @@ export default function MetaDetailsTooltip({
           className="text-gray-500 focus-visible:ring-0"
           data-cy="metadata-button"
           data-testid="view-metadata-button"
+          onClick={(e) => e.stopPropagation()}
         >
           <Icon icon="mdi:information-slab-circle-outline" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent data-testid="metadata-tooltip" data-cy="metadata-tooltip">
+      <PopoverContent data-testid="metadata-tooltip" onClick={(e) => e.stopPropagation()}>
         {!!header && header}
 
         <PropertyList properties={items} valueClassName="text-right" />
