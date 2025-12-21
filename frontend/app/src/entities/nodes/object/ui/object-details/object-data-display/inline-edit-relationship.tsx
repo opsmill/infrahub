@@ -123,7 +123,7 @@ function InlineEditRelationshipAllowed({
 
   return (
     <Row
-      className="group grow cursor-pointer rounded-lg py-3 px-2 hover:bg-neutral-100"
+      className="group grow cursor-pointer rounded-lg px-2 py-3 hover:bg-neutral-100"
       onClick={() => setIsEditing(true)}
     >
       {children}
@@ -231,4 +231,3 @@ function RelationshipEditingMode({
     </Row>
   );
 }
-

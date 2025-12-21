@@ -109,6 +109,10 @@ function RelationshipOneRow({
 
           {relationshipProperties && (
             <>
+              {relationshipProperties.is_protected && (
+                <LockIcon className="size-3.5 text-gray-600" />
+              )}
+
               <MetaDetailsTooltip
                 updatedAt={relationshipProperties.updated_at}
                 source={relationshipProperties.source}
@@ -134,9 +138,6 @@ function RelationshipOneRow({
                   )
                 }
               />
-              {relationshipProperties.is_protected && (
-                <LockIcon className="size-3.5 text-gray-600" />
-              )}
             </>
           )}
         </>
