@@ -183,6 +183,8 @@ jobs:
         run: "uv run ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
         run: "uv run ruff format --check --diff --exclude python_sdk ."
+      - name: "Linting: ty check"
+        run: "uv run ty check ."
 
   markdown-lint:
     if: |
