@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
-import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
+import { BookTextIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Pressable } from "react-aria-components";
 import { useNavigate } from "react-router";
@@ -32,7 +32,6 @@ import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface ObjectDetailsMenuProps extends ButtonProps {
   objectSchema: ModelSchema;
