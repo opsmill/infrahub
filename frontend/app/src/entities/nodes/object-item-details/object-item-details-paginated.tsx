@@ -32,6 +32,11 @@ import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.
 import type { NodeObject } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
+import { usePanelPlugins, useTabPlugins } from "@/entities/plugins/hooks/use-plugins";
+import { getPluginById } from "@/entities/plugins/registry";
+import { PluginPanel } from "@/entities/plugins/ui/plugin-panel";
+import { PluginRenderer } from "@/entities/plugins/ui/plugin-renderer";
+import { getPluginIdFromTab, isPluginTab, PluginTab } from "@/entities/plugins/ui/plugin-tab";
 import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -61,6 +66,18 @@ export default function ObjectItemDetails({
   const [genericList] = useAtom(genericSchemasAtom);
   const isTaskTarget = isOfKind(TASK_TARGET, schema);
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, schema);
+
+  // Get plugins for this kind
+  const schemaKind = schema.kind ?? undefined;
+  const tabPlugins = useTabPlugins(schemaKind);
+  const panelPlugins = usePanelPlugins(schemaKind);
+
+  // Prepare object data for plugins
+  const pluginObject = {
+    id: objectDetailsData?.id ?? "",
+    displayLabel: objectDetailsData ? getNodeLabel(objectDetailsData) : "",
+    kind: schema.kind ?? "",
+  };
 
   const handleMetadataClick = useCallback(
     (attribute: AttributeSchema) => {
@@ -118,6 +135,9 @@ export default function ObjectItemDetails({
               })}
               {isTaskTarget && <ObjectTaskTab objectId={objectDetailsData.id} />}
               {isRepository && <RepositoryObjectsTab objectId={objectDetailsData.id} />}
+              {tabPlugins.map((plugin) => (
+                <PluginTab key={plugin.manifest.id} plugin={plugin} />
+              ))}
             </div>
           </ScrollArea>
           <ActionButtons
@@ -143,18 +163,50 @@ export default function ObjectItemDetails({
             />
           </Card>
 
-          <Card className="overflow-x-hidden p-0" data-testid="activities-panel">
-            <CardWithBorder.Title className="border-gray-200 border-b">
-              Activities
-            </CardWithBorder.Title>
-            <NodeEvents objectId={objectId} objectKind={objectKind} />
-          </Card>
+          <div className="flex flex-col gap-2">
+            <Card className="overflow-x-hidden p-0" data-testid="activities-panel">
+              <CardWithBorder.Title className="border-gray-200 border-b">
+                Activities
+              </CardWithBorder.Title>
+              <NodeEvents objectId={objectId} objectKind={objectKind} />
+            </Card>
+
+            {/* Plugin panels */}
+            {panelPlugins.map((plugin) => (
+              <PluginPanel
+                key={plugin.manifest.id}
+                plugin={plugin}
+                object={pluginObject}
+                schema={schema}
+                objectData={objectDetailsData}
+              />
+            ))}
+          </div>
         </div>
       )}
 
-      {qspTab && (
+      {qspTab && !isPluginTab(qspTab) && (
         <ObjectDetailsTabContent objectSchema={schema} objectDetailsData={objectDetailsData} />
       )}
+
+      {/* Plugin tab content */}
+      {qspTab &&
+        isPluginTab(qspTab) &&
+        (() => {
+          const pluginId = getPluginIdFromTab(qspTab);
+          const plugin = pluginId ? getPluginById(pluginId) : undefined;
+          if (!plugin) return null;
+          return (
+            <div className="p-4">
+              <PluginRenderer
+                plugin={plugin}
+                object={pluginObject}
+                schema={schema}
+                objectData={objectDetailsData}
+              />
+            </div>
+          );
+        })()}
 
       <SlideOver
         title={

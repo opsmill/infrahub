@@ -99,6 +99,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@infrahub/plugin-example": "file:../packages/infrahub-plugin-example",
     "@biomejs/biome": "^2.3.8",
     "@graphql-codegen/cli": "^6.1.0",
     "@graphql-codegen/typescript": "^5.0.5",

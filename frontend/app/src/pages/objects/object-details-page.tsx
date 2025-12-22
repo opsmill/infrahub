@@ -9,11 +9,14 @@ import { GraphqlQueryDetails } from "@/entities/nodes/object/ui/CoreGraphQLQuery
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details";
 import { ObjectDetailsHeader } from "@/entities/nodes/object/ui/object-header";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
+import { usePagePlugin } from "@/entities/plugins/hooks/use-plugins";
+import { PluginRenderer } from "@/entities/plugins/ui/plugin-renderer";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 function ObjectDetailsPage() {
   const { objectKind, objectId } = useParams();
   const { schema } = useSchema(objectKind);
+  const pagePlugin = usePagePlugin(objectKind);
 
   if (!schema) {
     return <ErrorScreen message={`Schema ${objectKind} not found.`} />;
@@ -21,6 +24,31 @@ function ObjectDetailsPage() {
 
   if (!objectId) {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
+  }
+
+  // If a page plugin is registered for this kind, render it instead of the default view
+  if (pagePlugin) {
+    const pluginObject = {
+      id: objectId,
+      displayLabel: "",
+      kind: objectKind ?? "",
+    };
+
+    return (
+      <Content.Card className="flex flex-col">
+        <RequireObjectPermissions
+          objectKind={schema.kind as string}
+          loadingClassName="h-[calc(100vh-10.5rem)]"
+        >
+          {() => (
+            <>
+              <ObjectDetailsHeader schema={schema} objectId={objectId} />
+              <PluginRenderer plugin={pagePlugin} object={pluginObject} schema={schema} />
+            </>
+          )}
+        </RequireObjectPermissions>
+      </Content.Card>
+    );
   }
 
   return (

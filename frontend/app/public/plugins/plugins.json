@@ -1,0 +1,8 @@
+{
+  "plugins": [
+    {
+      "id": "example-device",
+      "enabled": true
+    }
+  ]
+}

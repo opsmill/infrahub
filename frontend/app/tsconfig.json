@@ -39,6 +39,7 @@
   },
   "include": [
     "src",
+    "plugins",
     "tests/mocks",
     "tests/unit/components",
     "tests/unit/utils",

@@ -1,0 +1,33 @@
+{
+  "name": "@infrahub/plugin-sdk",
+  "version": "0.1.0",
+  "description": "SDK for building Infrahub UI plugins",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./vite": {
+      "import": "./src/vite.ts",
+      "types": "./src/vite.ts"
+    }
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "vite": "^6.0.0 || ^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "infrahub",
+    "plugin",
+    "sdk"
+  ],
+  "license": "Apache-2.0"
+}
