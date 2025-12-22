@@ -152,9 +152,9 @@ class BackfillNodeMetadataQuery(Query):
         self.add_to_query(query)
 
 
-class Migration049(GraphMigration):
-    name: str = "049_backfill_vertex_metadata"
-    minimum_version: int = 48
+class Migration050(GraphMigration):
+    name: str = "050_backfill_vertex_metadata"
+    minimum_version: int = 49
     queries: Sequence[type[Query]] = [
         BackfillAttributeMetadataQuery,  # Run first
         BackfillRelationshipMetadataQuery,  # Run second
