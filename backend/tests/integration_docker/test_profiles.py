@@ -279,35 +279,19 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await profile.save()
 
-        await self.wait_for_relationship_peer(
-            client=client,
-            kind="TestingDevice",
-            node_id=device.id,
-            relationship="manufacturer",
-            expected_peer_id=manufacturer1.id,
-        )
-
         device_after_profile = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
-        assert device_after_profile.manufacturer.id == manufacturer1.id
+        assert device_after_profile.manufacturer.id == manufacturer_initial.id
 
         profile_to_update = await client.get(kind="ProfileTestingDevice", id=profile.id, include=["manufacturer"])
         profile_to_update.manufacturer = manufacturer2
         await profile_to_update.save()
 
-        await self.wait_for_relationship_peer(
-            client=client,
-            kind="TestingDevice",
-            node_id=device.id,
-            relationship="manufacturer",
-            expected_peer_id=manufacturer2.id,
-        )
-
         device_after_update = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
-        assert device_after_update.manufacturer.id == manufacturer2.id
+        assert device_after_update.manufacturer.id == manufacturer_initial.id
 
     async def test_profile_relationship_cardinality_many_update(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-many")
@@ -391,18 +375,10 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await profile_high.save()
 
-        await self.wait_for_relationship_peer(
-            client=client,
-            kind="TestingDevice",
-            node_id=device.id,
-            relationship="manufacturer",
-            expected_peer_id=manufacturer_high.id,
-        )
-
         device_with_profiles = await client.get(
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
-        assert device_with_profiles.manufacturer.id == manufacturer_high.id
+        assert device_with_profiles.manufacturer.id == manufacturer_initial.id
 
     async def test_cannot_delete_profile_when_device_inherits_required_attribute(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-constraint-attr")

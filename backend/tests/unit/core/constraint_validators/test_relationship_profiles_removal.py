@@ -66,10 +66,7 @@ async def test_constraint_allows_adding_profiles(db: InfrahubDatabase, branch: B
 async def test_constraint_blocks_removing_profile_with_inherited_required_relationship(
     db: InfrahubDatabase, branch: Branch
 ) -> None:
-    thing_optional = copy.deepcopy(THING)
-    thing_optional.relationships[0].optional = True
-
-    await load_schema(db=db, schema=SchemaRoot(nodes=[CHILD, thing_optional]), branch_name=branch.name)
+    await load_schema(db=db, schema=SchemaRoot(nodes=[CHILD, THING]), branch_name=branch.name)
 
     child_schema = registry.schema.get_node_schema(name=TestKind.CHILD, branch=branch, duplicate=False)
     thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=branch, duplicate=False)
