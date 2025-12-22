@@ -42,6 +42,7 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
       await expect(page.getByLabel("Prefix *")).toHaveValue("11.0.0.0/9");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IP Prefix 11.0.0.0/9 created")).toBeVisible();
+      await expect(page.getByLabel("Prefix *")).not.toBeVisible();
     });
 
     await test.step("Verify child prefix 11.0.0.0/9 details and available ip addresses", async () => {
