@@ -18,7 +18,7 @@ test.describe("/ipam - IP Namespace", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test("access ip namespace list page", async ({ page }) => {
+  test("navigate to IP namespace list page from IPAM tree", async ({ page }) => {
     await page.goto(`/ipam?branch=${BRANCH_NAME}`);
     await page.getByTestId("namespace-select").click();
     await page.getByRole("link", { name: "View all IP namespaces" }).click();
@@ -137,15 +137,15 @@ test.describe("/ipam - IP Namespace", () => {
     });
 
     await test.step("validate new top level tree", async () => {
+      await expect(ipamTree.getByText("11.0.0.0/8")).toBeVisible();
       expect(await ipamTree.getByRole("row").count()).toEqual(1);
       await ipamTree.getByRole("button", { name: "Expand 11.0.0.0/8" }).click();
       await expect(ipamTree.getByText("11.0.0.0/16")).toBeVisible();
       expect(await ipamTree.getByRole("row").count()).toEqual(2);
     });
 
-    await test.step("create a prefix between a parent and its children", async () => {
+    await test.step("create intermediate prefix between parent and child", async () => {
       await ipamTree.getByText("11.0.0.0/8").click();
-
       // validate breadcrumb
       const breadcrumb = page.getByTestId("breadcrumb-navigation");
       await expect(breadcrumb.getByRole("link", { name: "11.0.0.0/8" })).toBeVisible();
@@ -154,23 +154,27 @@ test.describe("/ipam - IP Namespace", () => {
       await page.getByPlaceholder("Search...").press("Escape");
 
       await page.getByRole("link", { name: "Children" }).click();
+      await expect(page.getByRole("link", { name: "11.0.0.0/16" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/10");
       await page.getByText("IP Namespace Kind").getByLabel("IPAM Namespace").click();
       await page.getByRole("option", { name: "test-namespace" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IP Prefix 11.0.0.0/10 created")).toBeVisible();
+      await expect(page.getByRole("link", { name: "11.0.0.0/10" })).toBeVisible();
     });
 
     await test.step("validate tree position", async () => {
+      await expect(page.getByRole("button", { name: "Collapse 11.0.0.0/8" })).toBeVisible();
       expect(await ipamTree.getByRole("row").count()).toEqual(2);
       await ipamTree.getByRole("button", { name: "Expand 11.0.0.0/10" }).click();
       await expect(ipamTree.getByText("11.0.0.0/16")).toBeVisible();
       expect(await ipamTree.getByRole("row").count()).toEqual(3);
     });
 
-    await test.step("delete a prefix between 2 other prefixes", async () => {
+    await test.step("edit and delete intermediate prefix", async () => {
       await ipamTree.getByText("11.0.0.0/10").click();
+      await expect(page.getByRole("heading", { name: "11.0.0.0/10" })).toBeVisible();
 
       // validate breadcrumb
       const breadcrumb = page.getByTestId("breadcrumb-navigation");
@@ -178,6 +182,14 @@ test.describe("/ipam - IP Namespace", () => {
       await breadcrumb.getByRole("button", { name: "Select a different IP Prefix" }).last().click();
       await expect(page.getByRole("option")).toHaveCount(1);
       await page.getByPlaceholder("Search...").press("Escape");
+
+      await page.getByTestId("object-details-menu").click();
+      await page.getByRole("menuitem", { name: "Edit" }).click();
+      await page.getByLabel("Prefix *").fill("11.0.0.0/11");
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("IPPrefix updated")).toBeVisible();
+      await expect(ipamTree.getByText("11.0.0.0/11")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "11.0.0.0/11", exact: true })).toBeVisible();
 
       await page.getByTestId("object-details-menu").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
@@ -189,14 +201,14 @@ test.describe("/ipam - IP Namespace", () => {
       await expect(page.getByText("Object 11.0.0.0/10 deleted")).toBeVisible();
     });
 
-    await test.step("validate deleted prefix is removed from tree", async () => {
+    await test.step("verify intermediate prefix removed from tree", async () => {
       await expect(ipamTree.getByText("11.0.0.0/8")).toBeVisible();
       await expect(ipamTree.getByText("11.0.0.0/16")).toBeVisible();
       await expect(ipamTree.getByText("11.0.0.0/10")).toBeHidden();
       expect(await ipamTree.getByRole("row").count()).toEqual(2);
     });
 
-    await test.step("delete a children prefix", async () => {
+    await test.step("delete child prefix", async () => {
       await page.getByRole("link", { name: "Children" }).click();
       await page.getByTestId("actions-cell-11.0.0.0/16").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
@@ -207,12 +219,12 @@ test.describe("/ipam - IP Namespace", () => {
       await expect(page.getByText("Object 11.0.0.0/16 deleted")).toBeVisible();
     });
 
-    await test.step("validate deleted prefix is removed from tree", async () => {
+    await test.step("verify child prefix removed from tree", async () => {
       await expect(ipamTree.getByText("11.0.0.0/16")).toBeHidden();
       expect(await ipamTree.getByRole("row").count()).toEqual(1);
     });
 
-    await test.step("delete top level prefix", async () => {
+    await test.step("delete top-level prefix", async () => {
       await page.getByTestId("object-details-menu").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByTestId("modal-delete")).toContainText(
@@ -222,7 +234,7 @@ test.describe("/ipam - IP Namespace", () => {
       await expect(page.getByText("Object 11.0.0.0/8 deleted")).toBeVisible();
     });
 
-    await test.step("validate deleted prefix is removed from tree", async () => {
+    await test.step("verify tree is empty after all prefixes deleted", async () => {
       await expect(ipamTree.getByText("11.0.0.0/8")).toBeHidden();
       await expect(ipamTree.getByText("No ip prefix", { exact: true })).toBeVisible();
     });

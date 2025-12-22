@@ -57,7 +57,6 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
 
   const items = data.pages.flat();
 
-  // Get ancestor IDs for expansion, excluding the current node
   const defaultExpandedKeys = ancestorsData
     ? ancestorsData
         .filter((ancestor) => ancestor.id !== currentNodeId)
@@ -78,6 +77,7 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
             node={node}
             namespaceId={currentIpNamespace.id}
             currentNodeId={currentNodeId}
+            defaultExpandedKeys={defaultExpandedKeys}
           />
         )}
       </Collection>
@@ -92,13 +92,22 @@ interface IpamTreeItemProps {
   node: IpamTreeNode;
   namespaceId: string;
   currentNodeId?: string;
+  defaultExpandedKeys?: string[];
 }
 
-function IpamTreeItem({ parentTreeNodeId, node, namespaceId, currentNodeId }: IpamTreeItemProps) {
+function IpamTreeItem({
+  parentTreeNodeId,
+  node,
+  namespaceId,
+  currentNodeId,
+  defaultExpandedKeys,
+}: IpamTreeItemProps) {
   const descendantsCount = node.descendants.count;
   const hasChildren = descendantsCount > 0;
-  const isExpandedRef = React.useRef(false);
-  let isExpanded = isExpandedRef.current;
+  const treeItemId = parentTreeNodeId + node.id;
+  const [isExpanded, setIsExpanded] = React.useState(
+    defaultExpandedKeys?.some((key) => key === treeItemId)
+  );
 
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
     useGetIpamTreeNodesByParent(
@@ -115,25 +124,15 @@ function IpamTreeItem({ parentTreeNodeId, node, namespaceId, currentNodeId }: Ip
 
   return (
     <TreeItem
-      id={parentTreeNodeId + node.id}
+      id={treeItemId}
       textValue={nodeLabel}
       href={getObjectDetailsUrl(node.__typename, node.id)}
       className={classNames(currentNodeId === node.id && "bg-neutral-100")}
     >
-      <TreeItemContent>
-        {({ isExpanded: isContentExpanded }) => {
-          if (isExpanded !== isContentExpanded) {
-            isExpanded = isContentExpanded;
-          }
-
-          return (
-            <>
-              <Icon icon={getSchemaIcon(nodeSchema)} className="mr-2" />
-              <span className="truncate">{nodeLabel}</span>
-              {descendantsCount > 0 && <Badge className="mr-1 ml-auto">{descendantsCount}</Badge>}
-            </>
-          );
-        }}
+      <TreeItemContent onExpandedChange={() => setIsExpanded((prev) => !prev)}>
+        <Icon icon={getSchemaIcon(nodeSchema)} className="mr-2" />
+        <span className="truncate">{nodeLabel}</span>
+        {descendantsCount > 0 && <Badge className="mr-1 ml-auto">{descendantsCount}</Badge>}
       </TreeItemContent>
 
       {hasChildren && (
@@ -145,6 +144,7 @@ function IpamTreeItem({ parentTreeNodeId, node, namespaceId, currentNodeId }: Ip
                 node={childNode}
                 namespaceId={namespaceId}
                 currentNodeId={currentNodeId}
+                defaultExpandedKeys={defaultExpandedKeys}
               />
             )}
           </Collection>
