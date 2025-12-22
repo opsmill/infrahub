@@ -47,17 +47,11 @@ export function IpamDetailsHeader({
 
   return (
     <Row className={classNames("relative", className)} {...props}>
-      <h2 className="font-semibold text-lg">{getNodeLabel(ipPrefixNode)}</h2>
-      <Row className="gap-0">
-        <NodeMetadataPopover objectId={ipPrefixNode.id} objectKind={ipPrefixNode.__typename} />
-        <ObjectDetailsMenu
-          objectSchema={ipPrefixSchema}
-          objectData={ipPrefixNode}
-          permission={permission}
-        />
-      </Row>
+      <h2 className="whitespace-nowrap font-semibold text-lg">{getNodeLabel(ipPrefixNode)}</h2>
 
-      <Row className="gap-2.5">
+      <NodeMetadataPopover objectId={ipPrefixNode.id} objectKind={ipPrefixNode.__typename} />
+
+      <Row className="relative grow gap-2.5 overflow-hidden">
         <Fade />
         {orderedFields.map((field, index) => {
           let displayValue: React.ReactNode = "-";
@@ -99,11 +93,18 @@ export function IpamDetailsHeader({
           );
         })}
       </Row>
+
+      <ObjectDetailsMenu
+        objectSchema={ipPrefixSchema}
+        objectData={ipPrefixNode}
+        permission={permission}
+        className="ml-auto"
+      />
     </Row>
   );
 }
 
-const Divider = () => <div className="h-5 w-px bg-gray-200" />;
+const Divider = () => <div className="h-5 w-px shrink-0 bg-gray-200" />;
 
 const Group = ({ className, children, ...props }: React.HTMLProps<HTMLDivElement>) => (
   <div className={classNames("not-last:max-w-50 text-xs", className)} {...props}>
