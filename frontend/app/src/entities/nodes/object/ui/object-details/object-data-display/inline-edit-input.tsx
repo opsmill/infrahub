@@ -154,7 +154,7 @@ export function InlineEditInput({
       );
 
     case ATTRIBUTE_KIND.COLOR:
-      return <ColorPicker value={value as string} onChange={onChange} disabled={disabled} />;
+      return <ColorPicker value={value} onChange={onChange} disabled={disabled} portal={false}/>;
 
     case ATTRIBUTE_KIND.PASSWORD:
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
