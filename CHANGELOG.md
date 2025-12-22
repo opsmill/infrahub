@@ -11,6 +11,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.5.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.5) - 2025-12-22
+
+### Fixed
+
+- Fix Migration041 to determine edge uniqueness correctly and  account for incoming Relationship edges. ([#7916](https://github.com/opsmill/infrahub/issues/7916))
+
 ## [Infrahub - v1.5.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.5.4) - 2025-12-16
 
 ### Fixed
