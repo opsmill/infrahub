@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
-import { BookTextIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
+import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Pressable } from "react-aria-components";
 import { useNavigate } from "react-router";
@@ -59,17 +59,12 @@ export function ObjectDetailsMenu({
     <>
       <MenuTrigger>
         <Pressable>
-          <Button
-            variant="ghost"
-            className="size-7 shrink-0 p-0"
-            data-testid="object-details-menu"
-            {...props}
-          >
-            <Icon icon="mdi:dots-vertical" />
+          <Button variant="outline" size="sm" data-testid="object-details-menu" {...props}>
+            Actions <ChevronDownIcon className="ml-2 size-3.5" />
           </Button>
         </Pressable>
 
-        <MenuPopover>
+        <MenuPopover placement="bottom end">
           <Menu>
             <MenuSection title="Actions">
               <CopyToClipboardMenuItem textToCopy={objectData.id}>Copy ID</CopyToClipboardMenuItem>
