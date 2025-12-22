@@ -1,62 +1,3 @@
-<<<<<<< HEAD
-from infrahub.core.migrations.graph import Migration048
-from infrahub.core.timestamp import current_timestamp
-from infrahub.database import InfrahubDatabase
-
-
-async def test_migration_048(db: InfrahubDatabase, default_branch, person_john_main, car_accord_main) -> None:
-    count_is_visible_relationship_query = """
-    MATCH ()-[rel:IS_VISIBLE]-()
-    RETURN count(*) AS is_visible_count;
-    """
-    is_visible_count = await db.execute_query(query=count_is_visible_relationship_query)
-    assert is_visible_count[0].get("is_visible_count") == 0
-
-    car_name_attr = car_accord_main.get_attribute("name")
-    person_name_attr = person_john_main.get_attribute("name")
-
-    add_is_visible_relationship_query = """
-    MERGE (bool_true:Boolean { value: true })
-
-    WITH bool_true
-    MATCH (attr:Attribute {uuid: $car_name_attr_uuid})
-    CREATE (attr)-[:IS_VISIBLE {
-      branch: $main_branch,
-      branch_level: 1,
-      status: "active",
-      from: $at
-    }]->(bool_true)
-
-    WITH bool_true
-    MATCH (attr:Attribute {uuid: $person_name_attr_uuid})
-    CREATE (attr)-[:IS_VISIBLE {
-      branch: $main_branch,
-      branch_level: 1,
-      status: "active",
-      from: $at
-    }]->(bool_true);
-    """
-    await db.execute_query(
-        query=add_is_visible_relationship_query,
-        params={
-            "main_branch": "main",
-            "at": current_timestamp(),
-            "car_name_attr_uuid": car_name_attr.id,
-            "person_name_attr_uuid": person_name_attr.id,
-        },
-    )
-
-    is_visible_count = await db.execute_query(query=count_is_visible_relationship_query)
-    assert is_visible_count[0].get("is_visible_count") == 4
-
-    migration = Migration048()
-    await migration.execute(db=db)
-    result = await migration.validate_migration(db=db)
-    assert result.success
-
-    is_visible_count = await db.execute_query(query=count_is_visible_relationship_query)
-    assert is_visible_count[0].get("is_visible_count") == 0
-=======
 import pytest
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -612,4 +553,3 @@ RETURN visible_edges, protected_edges
         assert protected_by_branch["main"]["from"] == multi_branch_relationship_dict["main_branch"]["from_time"]
         assert protected_by_branch["branch_a"]["status"] == "deleted"
         assert protected_by_branch["branch_a"]["from"] == multi_branch_relationship_dict["user_branch"]["from_time"]
->>>>>>> stable
