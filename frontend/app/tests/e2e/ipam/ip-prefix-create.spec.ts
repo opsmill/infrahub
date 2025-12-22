@@ -22,7 +22,9 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
   }) => {
     await test.step("Navigate to IPAM root and open create prefix form", async () => {
       await page.goto(`ipam?branch=${BRANCH_NAME}`);
-      await expect(page.getByRole("link", { name: "10.0.0.0/8" })).toBeVisible();
+      await expect(
+        page.getByTestId("identifier-cell").getByRole("link", { name: "11.0.0.0/8" })
+      ).toBeVisible();
       await page.getByTestId("create-object-button").click();
     });
 
@@ -32,6 +34,7 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
       await page.getByRole("option", { name: "Prefix Prefix serves as" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IP Prefix 11.0.0.0/8 created")).toBeVisible();
+      expect(page.getByLabel("Prefix *")).not.toBeVisible();
     });
 
     await test.step("Allocate the available child prefix 11.0.0.0/9 from the root prefix", async () => {
