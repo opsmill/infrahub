@@ -97,7 +97,8 @@ interface IpamTreeItemProps {
 function IpamTreeItem({ parentTreeNodeId, node, namespaceId, currentNodeId }: IpamTreeItemProps) {
   const descendantsCount = node.descendants.count;
   const hasChildren = descendantsCount > 0;
-  const isExpanded = React.useRef(false);
+  const isExpandedRef = React.useRef(false);
+  let isExpanded = isExpandedRef.current;
 
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
     useGetIpamTreeNodesByParent(
@@ -121,8 +122,8 @@ function IpamTreeItem({ parentTreeNodeId, node, namespaceId, currentNodeId }: Ip
     >
       <TreeItemContent>
         {({ isExpanded: isContentExpanded }) => {
-          if (isExpanded.current !== isContentExpanded) {
-            isExpanded.current = isContentExpanded;
+          if (isExpanded !== isContentExpanded) {
+            isExpanded = isContentExpanded;
           }
 
           return (
