@@ -22,11 +22,11 @@ from infrahub.workflows.models import WorkerPoolDefinition
 from tests.helpers.constants import (
     PORT_PREFECT,
 )
-from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.utils import start_prefect_server_container
 
 
-class TestWorkerInfrahubAsync(TestInfrahubApp):
+class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
     @classmethod
     async def wait_for_flow(
         cls, client: PrefectClient, work_pool_id: UUID, interval: int = 1, timeout: int = 10
