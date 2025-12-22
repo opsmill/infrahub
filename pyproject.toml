@@ -108,6 +108,7 @@ dev = [
     "docker==7.1.0",
     "psutil==6.1.0",
     "jwcrypto==1.5.6",
+    "ty==0.0.4",
 ]
 
 # test-scale = [
@@ -847,6 +848,520 @@ showcontent = true
 directory = "housekeeping"
 name = "Housekeeping"
 showcontent = true
+
+[tool.ty]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+exclude = [
+    "python_sdk/**",
+]
+
+[[tool.ty.overrides]]
+include = ["tasks/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unresolved-import = "ignore"
+unresolved-reference = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["utilities/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["models/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+missing-argument = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+too-many-positional-arguments = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["python_testcontainers/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+possibly-missing-attribute = "ignore"
+too-many-positional-arguments = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/core/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+call-non-callable = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-method-override = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/graphql/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+conflicting-declarations = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-context-manager = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+redundant-cast = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/database/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/services/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/proposed_change/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/generators/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-await = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git_credential/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/webhook/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/cli/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/telemetry/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/computed_attribute/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/workers/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/trigger/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/workflows/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/message_bus/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+call-non-callable = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/artifacts/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/tasks/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/transformations/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/profiles/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/api/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-return-type = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/actions/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/branch/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/schema/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/*.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/unit/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+invalid-type-arguments = "ignore"
+missing-argument = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/integration/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/functional/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/integration_docker/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/scale/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-assignment = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/fixtures/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/test_data/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/query_benchmark/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/conftest.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
 
 [tool.hatch.build.targets.sdist]
 include = [
