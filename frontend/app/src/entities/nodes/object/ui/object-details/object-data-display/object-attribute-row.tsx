@@ -45,7 +45,7 @@ export function ObjectAttributeRow({
             <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
           </InlineEdit>
 
-          {attributeData.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
+          {attributeData.is_protected && <LockIcon className="size-3.5 shrink-0 text-gray-600" />}
 
           <MetaDetailsTooltip
             updatedAt={attributeData.updated_at}

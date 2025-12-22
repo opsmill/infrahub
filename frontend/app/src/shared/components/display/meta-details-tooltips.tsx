@@ -81,7 +81,7 @@ export default function MetaDetailsTooltip({
         <Button
           size="icon"
           variant="ghost"
-          className="text-gray-500 focus-visible:ring-0"
+          className="shrink-0 text-gray-500 focus-visible:ring-0"
           data-cy="metadata-button"
           data-testid="view-metadata-button"
           onClick={(e) => e.stopPropagation()}

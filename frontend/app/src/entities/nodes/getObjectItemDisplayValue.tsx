@@ -197,7 +197,12 @@ export const ObjectAttributeValue = ({
       return <TextDisplay>{getTextValue(attributeData).toString()}</TextDisplay>;
     case ATTRIBUTE_KIND.URL:
       return (
-        <Link to={getTextValue(attributeData).toString()} target="_blank" rel="noreferrer">
+        <Link
+          to={getTextValue(attributeData).toString()}
+          target="_blank"
+          rel="noreferrer"
+          className="truncate"
+        >
           {getTextValue(attributeData).toString()}
         </Link>
       );

@@ -99,7 +99,10 @@ function RelationshipOneRow({
             objectId={objectId}
           >
             {relatedNode ? (
-              <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
+              <Link
+                to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {getNodeLabel(relatedNode)}
               </Link>
             ) : (
@@ -191,7 +194,10 @@ function RelationshipManyRow({
 
                   return (
                     <Row key={relatedNode.id}>
-                      <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
+                      <Link
+                        to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {getNodeLabel(relatedNode)}
                       </Link>
 

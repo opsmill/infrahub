@@ -108,11 +108,11 @@ function InlineEditAllowed({
 
   return (
     <Row
-      className="group grow cursor-pointer rounded-lg px-2 py-3 hover:bg-neutral-100"
+      className="group grow cursor-pointer overflow-hidden rounded-lg px-2 py-3 hover:bg-neutral-100"
       onClick={() => setIsEditing(true)}
     >
       {children}
-      <PenLineIcon className="ml-auto hidden size-3.5 text-neutral-400 group-hover:block" />
+      <PenLineIcon className="ml-auto hidden size-3.5 shrink-0 text-neutral-400 group-hover:block" />
     </Row>
   );
 }
