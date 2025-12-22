@@ -7,6 +7,7 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 test.describe("/ipam - IP Namespace", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.slow();
 
   const BRANCH_NAME = generateRandomBranchName("ip-namespace");
 
