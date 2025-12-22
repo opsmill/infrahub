@@ -172,17 +172,18 @@ test.describe("/ipam - IP Namespace", () => {
       expect(await ipamTree.getByRole("row").count()).toEqual(3);
     });
 
-    await test.step("edit and delete intermediate prefix", async () => {
+    await test.step("validate breadcrumb navigation for intermediate prefix", async () => {
       await ipamTree.getByText("11.0.0.0/10").click();
       await expect(page.getByRole("heading", { name: "11.0.0.0/10" })).toBeVisible();
 
-      // validate breadcrumb
       const breadcrumb = page.getByTestId("breadcrumb-navigation");
       await expect(breadcrumb.getByRole("link", { name: "11.0.0.0/10" })).toBeVisible();
       await breadcrumb.getByRole("button", { name: "Select a different IP Prefix" }).last().click();
       await expect(page.getByRole("option")).toHaveCount(1);
       await page.getByPlaceholder("Search...").press("Escape");
+    });
 
+    await test.step("edit intermediate prefix", async () => {
       await page.getByTestId("object-details-menu").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
       await page.getByLabel("Prefix *").fill("11.0.0.0/11");
@@ -190,21 +191,23 @@ test.describe("/ipam - IP Namespace", () => {
       await expect(page.getByText("IPPrefix updated")).toBeVisible();
       await expect(ipamTree.getByText("11.0.0.0/11")).toBeVisible();
       await expect(page.getByRole("heading", { name: "11.0.0.0/11", exact: true })).toBeVisible();
+    });
 
+    await test.step("delete intermediate prefix", async () => {
       await page.getByTestId("object-details-menu").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByTestId("modal-delete")).toContainText(
-        'Are you sure you want to remove the IP Prefix"11.0.0.0/10"?'
+        'Are you sure you want to remove the IP Prefix"11.0.0.0/11"?'
       );
       await page.getByTestId("modal-delete-confirm").click();
 
-      await expect(page.getByText("Object 11.0.0.0/10 deleted")).toBeVisible();
+      await expect(page.getByText("Object 11.0.0.0/11 deleted")).toBeVisible();
     });
 
     await test.step("verify intermediate prefix removed from tree", async () => {
       await expect(ipamTree.getByText("11.0.0.0/8")).toBeVisible();
       await expect(ipamTree.getByText("11.0.0.0/16")).toBeVisible();
-      await expect(ipamTree.getByText("11.0.0.0/10")).toBeHidden();
+      await expect(ipamTree.getByText("11.0.0.0/11")).toBeHidden();
       expect(await ipamTree.getByRole("row").count()).toEqual(2);
     });
 
