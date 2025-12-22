@@ -22,6 +22,7 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
   }) => {
     await test.step("Navigate to IPAM root and open create prefix form", async () => {
       await page.goto(`ipam?branch=${BRANCH_NAME}`);
+      await expect(page.getByRole("link", { name: "10.0.0.0/8" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
     });
 
