@@ -35,7 +35,7 @@ test.describe("/ipam - Allocate an ip prefix with pool", () => {
       await page.getByRole("option", { name: "Prefix Prefix serves as" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("IP Prefix 11.0.0.0/8 created")).toBeVisible();
-      expect(page.getByLabel("Prefix *")).not.toBeVisible();
+      await expect(page.getByLabel("Prefix *")).not.toBeVisible();
     });
 
     await test.step("Allocate the available child prefix 11.0.0.0/9 from the root prefix", async () => {
