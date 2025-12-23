@@ -175,7 +175,7 @@ class NodeProfilesApplier:
                 new_rel.set_source(value=profile_id)
                 relationships_to_replace["insert"].append(new_rel)
 
-        is_changed |= await node_rel.update_relationships_to_replace(
+        is_changed |= await node_rel.update_relationships(
             db=self.db,
             relationships_to_remove=relationships_to_replace["remove"],
             relationships_to_insert=relationships_to_replace["insert"],

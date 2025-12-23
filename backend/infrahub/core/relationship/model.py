@@ -1415,7 +1415,7 @@ class RelationshipManager:
         if self.name == "children" and not schema.children:  # type: ignore[union-attr]
             raise ValidationError({self.name: f"Not supported to assign some children for {schema.kind}"})
 
-    async def update_relationships_to_replace(
+    async def update_relationships(
         self,
         db: InfrahubDatabase,
         relationships_to_remove: list[Relationship],
