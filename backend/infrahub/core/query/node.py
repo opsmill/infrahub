@@ -1703,8 +1703,6 @@ WITH %(tracked_vars)s, head(collect(updated_at_val)) AS order_updated_at
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
 
-        self._add_final_filter(field_attribute_requirements=field_attribute_requirements)
-
     async def _add_node_filter_attributes(
         self,
         db: InfrahubDatabase,
@@ -1746,6 +1744,11 @@ WITH %(tracked_vars)s, head(collect(updated_at_val)) AS order_updated_at
             filter_query.append(subquery)
             filter_query.append("}")
             filter_query.append(f"WITH {with_str}")
+
+            # Add WHERE clause immediately after the filter subquery for better performance
+            where_clause = self._build_filter_where_clause(far)
+            if where_clause:
+                filter_query.append(where_clause)
 
         if filter_query:
             self.add_to_query(filter_query)
@@ -1796,39 +1799,32 @@ WITH %(tracked_vars)s, head(collect(updated_at_val)) AS order_updated_at
             self.add_to_query(["CALL (n) {", subquery, "}", f"WITH {with_str}"])
             self.order_by.append(far.node_value_query_variable)
 
-    def _add_final_filter(self, field_attribute_requirements: list[FieldAttributeRequirement]) -> None:
-        where_parts = []
-        where_str = ""
-        for far in field_attribute_requirements:
-            if not far.is_filter or not far.is_attribute_value:
-                continue
-            var_name = f"final_attr_value{far.index}"
-            self.params[var_name] = far.field_attr_comparison_value
-            if self.partial_match:
-                if isinstance(far.field_attr_comparison_value, list):
-                    # If the any filter is an array/list
-                    var_array = f"{var_name}_array"
-                    where_parts.append(
-                        f"any({var_array} IN ${var_name} WHERE toLower(toString({far.node_value_query_variable})) CONTAINS toLower({var_array}))"
-                    )
-                else:
-                    where_parts.append(
-                        f"toLower(toString({far.node_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
-                    )
-                continue
-            if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
-                if isinstance(far.field_attr_comparison_value, list):
-                    self.params[var_name] = build_regex_attrs(values=far.field_attr_comparison_value)
-                else:
-                    self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
+    def _build_filter_where_clause(self, far: FieldAttributeRequirement) -> str | None:
+        """Build a WHERE clause for a single filter requirement.
 
-                where_parts.append(f"toString({far.node_value_query_variable}) =~ ${var_name}")
-                continue
+        Returns the WHERE clause string, or None if no clause is needed.
+        """
+        if not far.is_filter or not far.is_attribute_value:
+            return None
 
-            where_parts.append(f"{far.node_value_query_variable} {far.comparison_operator} ${var_name}")
-        if where_parts:
-            where_str = "WHERE " + " AND ".join(where_parts)
-        self.add_to_query(where_str)
+        var_name = f"final_attr_value{far.index}"
+        self.params[var_name] = far.field_attr_comparison_value
+
+        if self.partial_match:
+            if isinstance(far.field_attr_comparison_value, list):
+                # If the any filter is an array/list
+                var_array = f"{var_name}_array"
+                return f"WHERE any({var_array} IN ${var_name} WHERE toLower(toString({far.node_value_query_variable})) CONTAINS toLower({var_array}))"
+            return f"WHERE toLower(toString({far.node_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
+
+        if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
+            if isinstance(far.field_attr_comparison_value, list):
+                self.params[var_name] = build_regex_attrs(values=far.field_attr_comparison_value)
+            else:
+                self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
+            return f"WHERE toString({far.node_value_query_variable}) =~ ${var_name}"
+
+        return f"WHERE {far.node_value_query_variable} {far.comparison_operator} ${var_name}"
 
     def _get_field_requirements(self, disable_order: bool = False) -> list[FieldAttributeRequirement]:
         internal_filters = ["any", "attribute", "relationship"]
@@ -1837,7 +1833,9 @@ WITH %(tracked_vars)s, head(collect(updated_at_val)) AS order_updated_at
 
         # Add filter requirements
         if self.filters:
-            for field_name in self.filters:
+            for full_field in self.filters:
+                # "height__value" -> "height"
+                field_name = full_field.split("__", maxsplit=1)[0]
                 if field_name not in self.schema.valid_input_names + internal_filters:
                     continue
                 attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)

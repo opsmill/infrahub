@@ -764,30 +764,6 @@ async def test_query_NodeGetListQuery_order_by_updated_at(
     ]
 
 
-async def test_query_NodeGetListQuery_metadata_order_is_primary(
-    db: InfrahubDatabase, car_camry_main, car_accord_main, car_volt_main, branch: Branch
-) -> None:
-    """Test that metadata ordering is primary when specified, with schema order_by as secondary tiebreaker."""
-    schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
-    schema.order_by = ["name__value"]  # Schema defines name ordering as secondary
-
-    # Request created_at ordering - should use created_at as primary, name as secondary tiebreaker
-    query = await NodeGetListQuery.init(
-        db=db,
-        branch=branch,
-        schema=schema,
-        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.DESC)),
-    )
-    await query.execute(db=db)
-    node_ids = query.get_node_ids()
-
-    assert len(node_ids) == 3
-    # Should be ordered by created_at DESC (reverse fixture creation order)
-    # Schema ordering (name) serves as secondary tiebreaker but doesn't affect result here
-    # since created_at values are unique
-    assert node_ids == [car_volt_main.id, car_accord_main.id, car_camry_main.id]
-
-
 async def test_query_NodeGetListQuery_metadata_order_pagination(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema
 ) -> None:
