@@ -6,6 +6,7 @@ import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/ipam - Allocate an ip prefix with pool", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.slow();
 
   const BRANCH_NAME = generateRandomBranchName("ip-prefix-create");
 
