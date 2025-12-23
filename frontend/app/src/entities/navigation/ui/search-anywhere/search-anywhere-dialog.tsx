@@ -21,7 +21,7 @@ export function SearchAnywhereDialog({ children, className, ...props }: DialogPr
     >
       <Modal
         className={classNames(
-          "-translate-x-1/2 fixed top-1 left-1/2 z-50 grid w-full max-w-(--breakpoint-md) gap-4 rounded-xl border border-gray-200 bg-stone-100 p-2 shadow-lg duration-200",
+          "fixed top-1 left-1/2 z-50 grid w-full max-w-(--breakpoint-md) -translate-x-1/2 gap-4 rounded-xl border border-gray-200 bg-stone-100 p-2 shadow-lg duration-200",
           "data-entering:fade-in-0 data-entering:zoom-in-95 data-entering:slide-in-from-top-1/2 data-entering:animate-in",
           "data-exiting:fade-out-0 data-exiting:zoom-out-95 data-exiting:slide-out-to-top-1/2 data-exiting:animate-out data-exiting:duration-300",
           className

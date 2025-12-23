@@ -28,8 +28,8 @@ const ObjectPageLayout = () => {
   }
 
   return (
-    <ResizablePanelGroup direction="horizontal" className="items-stretch">
-      <ResizablePanel defaultSize={20} minSize={10} maxSize={50} className="flex grow flex-col">
+    <ResizablePanelGroup className="items-stretch overflow-hidden">
+      <ResizablePanel defaultSize={300} minSize={40} maxSize="90%" className="flex grow flex-col">
         <Content.Card className="flex grow flex-col">
           <ScrollArea scrollX className="h-full p-1">
             <ObjectHierarchyTreeWrapper

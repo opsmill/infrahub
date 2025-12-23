@@ -103,7 +103,7 @@ export function DiffSummaryIcon({
 }
 
 const diffSummaryCloseStyles = cva(
-  "-top-2 -right-2 absolute flex items-center justify-center rounded-full border-2 border-white",
+  "absolute -top-2 -right-2 flex items-center justify-center rounded-full border-2 border-white",
   {
     variants: {
       variant: {

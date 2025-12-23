@@ -340,7 +340,7 @@ export const FileContentDiff = (props: any) => {
 
         {inHoverState && (
           <Button
-            className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10 transform"
+            className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
             onClick={handleClick}
           >
             <PencilIcon className="h-3 w-3" />
