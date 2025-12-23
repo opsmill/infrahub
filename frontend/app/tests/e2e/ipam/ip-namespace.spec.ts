@@ -226,6 +226,7 @@ test.describe("/ipam - IP Namespace", () => {
     await test.step("verify child prefix removed from tree", async () => {
       await expect(ipamTree.getByText("11.0.0.0/16")).toBeHidden();
       expect(await ipamTree.getByRole("row").count()).toEqual(1);
+      await expect(ipamTree.getByRole("link", { name: "11.0.0.0/16" })).toBeHidden();
     });
 
     await test.step("delete top-level prefix", async () => {
