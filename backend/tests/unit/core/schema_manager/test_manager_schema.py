@@ -723,11 +723,26 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one) -> None:
     node_profile = schema.get(name="ProfileBuiltinCriticality", duplicate=False)
     assert node_profile.get_attribute("profile_name").branch == BranchSupportType.AGNOSTIC.value
     assert node_profile.get_attribute("profile_priority").branch == BranchSupportType.AGNOSTIC.value
-    assert set(node_profile.attribute_names) == {"profile_name", "profile_priority", "description", "mybool"}
-    assert set(node_profile.relationship_names) == {"badges", "related_nodes", "status", "tags"}
+    assert set(node_profile.attribute_names) == {
+        "profile_name",
+        "profile_priority",
+        "level",
+        "color",
+        "description",
+        "my_generic_name",
+        "mybool",
+        "local_attr",
+    }
+    assert set(node_profile.relationship_names) == {"badges", "primary_tag", "related_nodes", "status", "tags"}
     generic_profile = schema.get(name="ProfileInfraGenericInterface", duplicate=False)
-    assert set(generic_profile.attribute_names) == {"profile_name", "profile_priority", "mybool"}
-    assert set(generic_profile.relationship_names) == {"badges", "related_nodes", "status"}
+    assert set(generic_profile.attribute_names) == {
+        "profile_name",
+        "profile_priority",
+        "my_generic_name",
+        "mybool",
+        "local_attr",
+    }
+    assert set(generic_profile.relationship_names) == {"badges", "primary_tag", "related_nodes", "status"}
     core_profile_schema = schema.get("CoreProfile")
     core_node_schema = schema.get("CoreNode")
     assert set(core_profile_schema.used_by) == {

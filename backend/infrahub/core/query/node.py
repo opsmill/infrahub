@@ -8,6 +8,8 @@ from dataclasses import field as dataclass_field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
+import ujson
+
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -1418,6 +1420,57 @@ WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(upda
                 updated_at=updated_at or created_at,
                 updated_by=updated_by or created_by,
             )
+
+
+class NodeGetByHFIDQuery(Query):
+    """Query to lookup nodes by their HFID.
+
+    This query uses the stored `human_friendly_id` attribute on nodes.
+    """
+
+    name = "node_get_by_hfid"
+    type = QueryType.READ
+
+    def __init__(self, node_kind: str, hfids: list[list[str]], **kwargs: Any) -> None:
+        self.node_kind = node_kind
+        self.hfids = hfids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+        # The list is stored as a string in the database
+        self.params["hfid_values"] = [ujson.dumps(hfid) for hfid in self.hfids]
+
+        query = """
+        MATCH (n:%(node_kind)s)
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r AS r_part_of
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, r_part_of
+        WHERE r_part_of.status = "active"
+        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "human_friendly_id"})
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            RETURN av, r AS r_attr
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r_attr
+        WHERE r_attr.status = "active" AND av.value IN $hfid_values
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_kind}
+
+        self.add_to_query(query)
+        self.return_labels = ["n.uuid AS node_uuid", "av.value AS hfid"]
+
+    def get_node_uuids(self) -> list[str]:
+        """Get the list of node UUIDs from the query results."""
+        return [result.get_as_type(label="node_uuid", return_type=str) for result in self.get_results()]
 
 
 class FieldAttributeRequirementType(Enum):

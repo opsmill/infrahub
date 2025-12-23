@@ -70,7 +70,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @property
     def support_profiles(self) -> bool:
-        return self.read_only is False and self.optional is True
+        return self.read_only is False and self.unique is False
 
     def get_id(self) -> str:
         if self.id is None:
