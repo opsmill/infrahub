@@ -25,7 +25,7 @@ import {
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
@@ -38,7 +38,7 @@ interface AccountGroupFormProps {
 }
 
 export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: AccountGroupFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
   const createObject = useCreateObjectMutation();
@@ -86,7 +86,7 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
             })
           ),
           context: {
-            branch: branch?.name,
+            branch: currentBranch.name,
             date,
           },
         });
