@@ -30,7 +30,7 @@ import { NUMBER_POOL_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
 import {
@@ -48,7 +48,7 @@ interface NumberPoolFormProps {
 }
 
 export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoolFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const createObject = useCreateObjectMutation();
 
@@ -86,7 +86,7 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
             })
           ),
           context: {
-            branch: branch?.name,
+            branch: currentBranch.name,
             date,
           },
         });
