@@ -1416,7 +1416,10 @@ class RelationshipManager:
             raise ValidationError({self.name: f"Not supported to assign some children for {schema.kind}"})
 
     async def update_relationships_to_replace(
-        self, relationships_to_remove: list[Relationship], relationships_to_insert: list[Relationship]
+        self,
+        db: InfrahubDatabase,
+        relationships_to_remove: list[Relationship],
+        relationships_to_insert: list[Relationship],
     ) -> bool:
         is_changed = False
         len_rels_to_remove = len(relationships_to_remove)
@@ -1425,7 +1428,7 @@ class RelationshipManager:
         if len_rels_to_remove and not len_rels_to_insert:
             for rel_to_remove in relationships_to_remove:
                 if rel_to_remove.peer_id:
-                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=self.db)
+                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=db)
             is_changed = True
         elif len_rels_to_insert and not len_rels_to_remove:
             for rel_to_insert in relationships_to_insert:
@@ -1442,7 +1445,7 @@ class RelationshipManager:
                 self._relationships.replace(rel_to_insert=rel_to_insert, rel_to_remove=rel_to_remove)
             for rel_to_remove in relationships_to_remove[len_rels_to_insert:]:
                 if rel_to_remove.peer_id:
-                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=self.db)
+                    await self.remove_locally(peer_id=rel_to_remove.peer_id, db=db)
             is_changed = True
         elif len_rels_to_insert > len_rels_to_remove:
             for rel_to_insert, rel_to_remove in zip(

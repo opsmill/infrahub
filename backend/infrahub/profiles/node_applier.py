@@ -176,6 +176,7 @@ class NodeProfilesApplier:
                 relationships_to_replace["insert"].append(new_rel)
 
         is_changed |= await node_rel.update_relationships_to_replace(
+            db=self.db,
             relationships_to_remove=relationships_to_replace["remove"],
             relationships_to_insert=relationships_to_replace["insert"],
         )
