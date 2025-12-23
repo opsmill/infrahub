@@ -19,8 +19,7 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 class TestProfiles(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def schema_device(self) -> dict:
-        with Path(CURRENT_DIRECTORY / "test_files/profile_device.yml").open(encoding="utf-8") as file:
-            return yaml.safe_load(file.read())
+        return yaml.safe_load(Path(CURRENT_DIRECTORY / "test_files/profile_device.yml").read_text(encoding="utf-8"))
 
     async def wait_for_attribute_value(
         self,
@@ -257,7 +256,7 @@ class TestProfiles(TestInfrahubDockerClient):
         assert device_after_removal.height.value is None
         assert not device_after_removal.height.is_from_profile
 
-    async def test_profile_relationship_cardinality_one_update(self, client: InfrahubClient) -> None:
+    async def test_profile_relationship_cardinality_one_update_does_not_override(self, client: InfrahubClient) -> None:
         manufacturer_initial = await self._create_manufacturer(client=client, name="Manufacturer-initial")
         manufacturer1 = await self._create_manufacturer(client=client, name="Manufacturer-rel-1", country="France")
         manufacturer2 = await self._create_manufacturer(client=client, name="Manufacturer-rel-2", country="Germany")
@@ -292,6 +291,25 @@ class TestProfiles(TestInfrahubDockerClient):
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
         assert device_after_update.manufacturer.id == manufacturer_initial.id
+
+    async def test_profile_relationship_cardinality_one_update(self, client: InfrahubClient) -> None:
+        manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-cardin-one", country="France")
+
+        profile = await client.create(
+            kind="ProfileTestingDevice",
+            profile_name="manufacturer-cardin-one",
+            profile_priority=1000,
+            manufacturer=manufacturer,
+        )
+        await profile.save()
+
+        device = await client.create(
+            kind="TestingDevice", name="device-cardin-one", part_number="MF-PN-REL-1", profiles=[profile]
+        )
+        await device.save()
+
+        device_initial = await client.get(kind="TestingDevice", id=device.id, property=True, include=["manufacturer"])
+        assert device_initial.manufacturer.id == manufacturer.id
 
     async def test_profile_relationship_cardinality_many_update(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-many")
@@ -344,7 +362,7 @@ class TestProfiles(TestInfrahubDockerClient):
             expected_peer_ids={tenant2.id, tenant3.id},
         )
 
-    async def test_profile_relationship_priority(self, client: InfrahubClient) -> None:
+    async def test_profile_relationship_priority_does_not_override(self, client: InfrahubClient) -> None:
         manufacturer_initial = await self._create_manufacturer(client=client, name="Manufacturer-prio-initial")
         manufacturer_low = await self._create_manufacturer(client=client, name="Manufacturer-Low", country="Japan")
         manufacturer_high = await self._create_manufacturer(client=client, name="Manufacturer-High", country="Korea")
@@ -379,6 +397,39 @@ class TestProfiles(TestInfrahubDockerClient):
             kind="TestingDevice", id=device.id, property=True, include=["manufacturer"]
         )
         assert device_with_profiles.manufacturer.id == manufacturer_initial.id
+
+    async def test_profile_relationship_priority(self, client: InfrahubClient) -> None:
+        manufacturer_low = await self._create_manufacturer(client=client, name="Low-priority-override", country="Japan")
+        manufacturer_high = await self._create_manufacturer(
+            client=client, name="High-priority-override", country="Korea"
+        )
+
+        profile_low = await client.create(
+            kind="ProfileTestingDevice",
+            profile_name="low-priority-override",
+            profile_priority=900,
+            manufacturer=manufacturer_low,
+        )
+        await profile_low.save()
+
+        profile_high = await client.create(
+            kind="ProfileTestingDevice",
+            profile_name="high-priority-override",
+            profile_priority=800,
+            manufacturer=manufacturer_high,
+        )
+        await profile_high.save()
+
+        device = await client.create(
+            kind="TestingDevice",
+            name="device-priority-override",
+            part_number="MF-PN-PRIO",
+            profiles=[profile_low, profile_high],
+        )
+        await device.save()
+
+        device_initial = await client.get(kind="TestingDevice", id=device.id, property=True, include=["manufacturer"])
+        assert device_initial.manufacturer.id == manufacturer_high.id
 
     async def test_cannot_delete_profile_when_device_inherits_required_attribute(self, client: InfrahubClient) -> None:
         manufacturer = await self._create_manufacturer(client=client, name="Manufacturer-constraint-attr")
