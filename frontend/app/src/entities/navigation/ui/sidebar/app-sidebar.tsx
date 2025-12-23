@@ -45,7 +45,7 @@ export function AppSidebar() {
           <Button
             variant="outline"
             size="icon"
-            className="-right-3.5 absolute top-11 hidden transition-all group-hover/sidebar:inline-flex"
+            className="absolute top-11 -right-3.5 hidden transition-all group-hover/sidebar:inline-flex"
             onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftOpenIcon className="size-4 text-neutral-600" />

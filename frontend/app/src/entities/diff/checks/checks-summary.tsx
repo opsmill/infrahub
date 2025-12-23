@@ -79,7 +79,7 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
   return (
     <div className="m-4 flex justify-center" data-testid="checks-summary">
       <div className="relative flex flex-col-reverse items-center">
-        <div className="lg:-left-28 lg:-translate-y-1/2 flex items-center justify-between p-2 lg:absolute lg:top-1/2 lg:transform">
+        <div className="flex items-center justify-between p-2 lg:absolute lg:top-1/2 lg:-left-28 lg:-translate-y-1/2 lg:transform">
           <Button
             onClick={() => handleRetry("all")}
             disabled={!isAuthenticated}
