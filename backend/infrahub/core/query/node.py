@@ -19,6 +19,7 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
+from infrahub.core.order import OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -26,11 +27,11 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
-from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
 
+    from infrahub.constants.enums import OrderDirection
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node

@@ -15,6 +15,7 @@ from infrahub.core.constants import (
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
+from infrahub.core.order import OrderModel
 from infrahub.core.query.node import (
     AttributeFromDB,
     GroupedPeerNodes,
@@ -39,7 +40,6 @@ from infrahub.core.schema import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
-from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

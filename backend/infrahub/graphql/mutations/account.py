@@ -9,13 +9,13 @@ from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.order import OrderModel
 from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 
-from ..models import OrderModel
 from ..types import InfrahubObjectType
 
 if TYPE_CHECKING:
