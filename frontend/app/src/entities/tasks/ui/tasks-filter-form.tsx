@@ -2,15 +2,14 @@ import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
+import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
 import { branchesState } from "@/entities/branches/stores";
 import { TASK_STATES } from "@/entities/tasks/constants";
-
-import { getObjectFromFilters } from "../../../shared/components/filters/utils/getObjectFromFilters";
-import DropdownField from "../../../shared/components/form/fields/dropdown.field";
 
 export interface FilterFormProps extends FormProps {
   filters: Array<Filter>;

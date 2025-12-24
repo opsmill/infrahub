@@ -1,9 +1,8 @@
 import type React from "react";
 import { Link, type LinkProps } from "react-router";
 
+import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
-
-import { Card } from "../../../shared/components/ui/card";
 
 interface HomeCardProps {
   className?: string;
