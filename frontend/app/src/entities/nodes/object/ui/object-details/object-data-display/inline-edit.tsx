@@ -1,4 +1,4 @@
-import { CheckIcon, PenLineIcon, XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 import React from "react";
 import { toast } from "react-toastify";
 
@@ -67,7 +67,7 @@ interface InlineEditDisabledProps {
 
 function InlineEditDisabled({ children, message }: InlineEditDisabledProps) {
   return (
-    <Row className="group grow p-2">
+    <Row className="group p-2">
       {children}
       {message && (
         <span className="ml-auto hidden text-neutral-400 group-hover:block">{message}</span>
@@ -108,11 +108,10 @@ function InlineEditAllowed({
 
   return (
     <Row
-      className="group grow cursor-pointer overflow-hidden rounded-lg px-2 py-3 hover:bg-neutral-100"
+      className="cursor-pointer overflow-hidden rounded-lg px-2 py-3 hover:bg-neutral-100"
       onClick={() => setIsEditing(true)}
     >
       {children}
-      <PenLineIcon className="ml-auto hidden size-3.5 shrink-0 text-neutral-400 group-hover:block" />
     </Row>
   );
 }
@@ -159,7 +158,7 @@ function EditingMode({
   };
 
   return (
-    <Row className="grow" ref={ref}>
+    <Row ref={ref}>
       <InlineEditInput attributeSchema={fieldSchema} value={value} onChange={setValue} />
       <Button
         variant="primary"
