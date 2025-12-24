@@ -134,7 +134,7 @@ function EditingMode({
   onCancel,
 }: EditingModeProps) {
   const [value, setValue] = React.useState(defaultValue);
-  const ref = React.useRef<HTMLDivElement>(null);
+  const ref = React.useRef<HTMLFormElement>(null);
   useOnClickOutside(ref, onCancel);
 
   const { mutate, isPending } = useUpdateObjectMutation({
@@ -158,27 +158,39 @@ function EditingMode({
   };
 
   return (
-    <Row ref={ref}>
-      <InlineEditInput attributeSchema={fieldSchema} value={value} onChange={setValue} />
-      <Button
-        variant="primary"
-        size="square"
-        className="shrink-0"
-        disabled={isPending}
-        isLoading={isPending}
-        onClick={handleSave}
-      >
-        {!isPending && <CheckIcon className="size-4" />}
-      </Button>
-      <Button
-        variant="outline"
-        size="square"
-        className="shrink-0"
-        disabled={isPending}
-        onClick={onCancel}
-      >
-        <XIcon className="size-4" />
-      </Button>
-    </Row>
+    <form
+      ref={ref}
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSave();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onCancel();
+      }}
+    >
+      <Row>
+        <InlineEditInput attributeSchema={fieldSchema} value={value} onChange={setValue} />
+        <Button
+          type="submit"
+          variant="primary"
+          size="square"
+          className="shrink-0"
+          disabled={isPending}
+          isLoading={isPending}
+        >
+          {!isPending && <CheckIcon className="size-4" />}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="square"
+          className="shrink-0"
+          disabled={isPending}
+          onClick={onCancel}
+        >
+          <XIcon className="size-4" />
+        </Button>
+      </Row>
+    </form>
   );
 }
