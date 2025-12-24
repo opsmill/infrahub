@@ -313,4 +313,3 @@ To validate schema, run the validation command. Schema validation is important.
 - `dev/guidelines/markdown.md` - Markdown formatting standards
 - `dev/guides/docs/writing-a-guide.md` - Guide for writing guides
 - `docs/docs/topics/AGENTS.md` - Agent instructions for writing topics
-

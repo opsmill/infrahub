@@ -57,11 +57,12 @@ git commit -m "resolve submodule conflict in python_sdk"
 
 Follow conventional commits format:
 
-```
+```text
 <type>: <short description> [<issue reference>]
 ```
 
 **Types:**
+
 - `feat` - new feature or enhancement
 - `fix` - bug fix
 - `docs` - documentation changes
@@ -70,11 +71,13 @@ Follow conventional commits format:
 - `chore` - maintenance tasks, dependencies, tooling
 
 **Issue references:**
+
 - GitHub issue: `#1234`
 - Jira ticket: `IFC-1234`
 
 **Examples:**
-```
+
+```text
 feat: add breadcrumb navigation for hierarchical schemas [#7549]
 fix: resolve sidebar collapse issue [IFC-2847]
 ```
@@ -88,6 +91,7 @@ Add changelog fragments to `changelog/` using Towncrier. See `dev/guidelines/cha
 **PR title pattern:** `<type>: <short description> [<issue reference>]`
 
 **PR description should include:**
+
 - What was changed and why
 - Any notable implementation details
 - Testing performed

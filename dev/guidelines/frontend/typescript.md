@@ -25,4 +25,3 @@ Follow React best practices and project conventions. See `frontend/app/AGENTS.md
 
 - `frontend/app/AGENTS.md` - Frontend-specific patterns and structure
 - `dev/knowledge/frontend/architecture.md` - Frontend architecture overview
-

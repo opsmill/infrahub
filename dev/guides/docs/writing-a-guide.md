@@ -64,6 +64,7 @@ Links to related guides, topics, or reference materials
 ### 1. Choose a Clear Title
 
 **Good guide titles:**
+
 - Installing Infrahub with Docker
 - Creating a custom schema
 - Configuring branch permissions
@@ -71,6 +72,7 @@ Links to related guides, topics, or reference materials
 - Setting up GraphQL authentication
 
 **Bad guide titles:**
+
 - Infrahub Installation (too vague)
 - Everything About Schemas (too broad, should be a topic)
 - How Branches Work (explanation, not a guide)
@@ -92,6 +94,7 @@ Links to related guides, topics, or reference materials
 ### 4. Break Down Steps
 
 Each step should:
+
 - Have a clear action verb in the heading
 - Provide actionable instructions
 - Include verification after major actions
@@ -102,6 +105,7 @@ Each step should:
 ### 5. Add Verification
 
 Include a verification section that shows:
+
 - Example outputs
 - Screenshots of expected results
 - Potential failure points and solutions
@@ -208,4 +212,3 @@ The repository URL configuration is done in the .infrahub.yml file.
 - `dev/guidelines/markdown.md` - Markdown formatting standards
 - `docs/docs/guides/AGENTS.md` - Agent instructions for writing guides
 - `dev/guides/docs/writing-a-topic.md` - Step-by-step guide for writing topics
-

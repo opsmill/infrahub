@@ -41,12 +41,14 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 100-300 lines
 
 **When to Use**:
+
 - Quick notes and spikes
 - "What if we tried X?" explorations
 - Early thinking before approval
 - Low ceremony, high velocity
 
 **Example Files**:
+
 - `caching-strategies.md`
 - `graphql-subscriptions.md`
 - `permission-model-ideas.md`
@@ -64,18 +66,21 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 200-500 lines
 
 **When to Use**:
+
 - Approved technical designs
 - Feature specifications with clear scope
 - Implementation plans
 - Documents that guide development work
 
 **Example Files**:
+
 - `2024-01-proposed-changes-api.md`
 - `2024-03-webhook-notifications.md`
 
 **Subdirectories**: None typically. Use date prefixes or feature names for organization.
 
 **Graduation**: After implementation, specs can be:
+
 - Archived (kept for historical reference)
 - Moved to `knowledge/` (if describing how something works)
 - Moved to `guidelines/` (if describing how to use something)
@@ -91,22 +96,26 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 100-400 lines
 
 **When to Use**:
+
 - Coding standards and conventions
 - Style guides
 - Best practices
 - Prescriptive rules ("do this, not that")
 
 **Example Files**:
+
 - `git-workflow.md` - Git commit conventions
 - `markdown.md` - Markdown formatting standards
 - `documentation.md` - Documentation writing guidelines
 - `changelog.md` - Changelog entry format
 
 **Subdirectories**: Use domain-based organization when needed:
+
 - `backend/` - Backend-specific standards (e.g., `python.md`)
 - `frontend/` - Frontend-specific standards (e.g., `typescript.md`)
 
 **When to Create Subdirectories**:
+
 - When you have multiple files for the same domain (3+ files)
 - When standards differ significantly between domains
 - When you want to group related guidelines together
@@ -124,6 +133,7 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 200-400 lines
 
 **When to Use**:
+
 - Architecture explanations
 - System design documentation
 - How components interact
@@ -132,15 +142,18 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 - Reference material (not step-by-step instructions)
 
 **Example Files**:
+
 - `architecture.md` - System overview
 - `deployment.md` - How we deploy
 - `data-model.md` - Database schema
 
 **Subdirectories**: Use domain-based organization:
+
 - `backend/` - Backend architecture (e.g., `data-model.md`, `query-engine.md`)
 - `frontend/` - Frontend architecture (e.g., `state-management.md`, `data-fetching.md`)
 
 **When to Create Subdirectories**:
+
 - When you have multiple knowledge files for the same domain
 - When architecture differs significantly between domains
 - When you want to group related knowledge together
@@ -158,22 +171,26 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 200-400 lines
 
 **When to Use**:
+
 - Step-by-step procedures
 - Task-specific instructions
 - "How to accomplish X" documentation
 - Practical, actionable content
 
 **Example Files**:
+
 - `add-graphql-endpoint.md`
 - `create-new-node-type.md`
 - `write-a-migration.md`
 - `debug-query-performance.md`
 
 **Subdirectories**: Use category-based or domain-based organization:
+
 - `docs/` - Documentation-specific guides (e.g., `writing-a-guide.md`, `writing-a-topic.md`)
 - `frontend/` - Frontend-specific guides (e.g., `writing-component-tests.md`, `writing-unit-tests.md`)
 
 **When to Create Subdirectories**:
+
 - When you have multiple guides for the same category/domain (3+ files)
 - When guides are specific to a particular technology or domain
 - When you want to group related guides together
@@ -191,17 +208,20 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 200-500 lines
 
 **When to Use**:
+
 - Significant architectural decisions
 - Technology choices
 - Design pattern selections
 - Trade-off documentation
 
 **Structure**:
+
 - `README.md` - Index of all ADRs
 - `template.md` - Template for creating new ADRs
 - `NNNN-short-title.md` - Individual ADRs with sequential numbering
 
 **Example Files**:
+
 - `0001-context-nuggets-pattern.md`
 - `0002-use-neo4j.md`
 - `0003-graphql-over-rest.md`
@@ -221,12 +241,14 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 50-200 lines
 
 **When to Use**:
+
 - Reusable workflows for AI agents
 - Standardized procedures
 - Command templates
 - Agent-executable instructions
 
 **Example Files**:
+
 - `_shared.md` - Shared instructions for all flows
 - `new-component.md` - React component creation flow
 - `fix-bug.md` - Bug fixing flow
@@ -235,6 +257,7 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **Subdirectories**: None. Keep flat for easy discovery by agents.
 
 **Tool Compatibility**: This is the canonical source. Tool-specific directories symlink here:
+
 - `.claude/commands` → `dev/commands`
 - `.cursor/commands` → `dev/commands`
 
@@ -251,12 +274,14 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 100-300 lines
 
 **When to Use**:
+
 - Thinking frameworks
 - Analysis templates
 - Problem-solving patterns
 - Reusable prompt structures
 
 **Example Files**:
+
 - `bug-analysis.md` - Framework for analyzing bugs
 - `design-review.md` - Template for reviewing designs
 - `performance-investigation.md` - Pattern for performance analysis
@@ -276,13 +301,15 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 **File Size Guidelines**: 200-500 lines for SKILL.md, 100-300 lines for reference files
 
 **When to Use**:
+
 - Domain-specific guidance that doesn't fit guidelines or knowledge
 - Tool-specific best practices
 - Language or framework-specific patterns
 - Specialized knowledge for AI agents working with specific technologies
 
 **Structure**: Each skill is a directory:
-```
+
+```text
 skills/
 └── {skill-name}/
     ├── SKILL.md          # Main skill documentation
@@ -292,7 +319,8 @@ skills/
 ```
 
 **Example**:
-```
+
+```text
 skills/
 └── neo4j-cypher-guide/
     ├── SKILL.md
@@ -303,12 +331,14 @@ skills/
 ```
 
 **When to Create**:
+
 - When you need specialized guidance for a specific tool or domain
 - When patterns are tool-specific and don't belong in general guidelines
 - When you want to provide comprehensive reference material for AI agents
 - When the knowledge is highly specialized and benefits from its own structure
 
 **SKILL.md Format**: Should include:
+
 - Quick compatibility checks or common pitfalls
 - Core principles
 - Pattern selection guides
@@ -325,7 +355,7 @@ skills/
 
 Documents evolve through a lifecycle from rough ideas to stable reference:
 
-```
+```text
 explorations/ → specs/ → knowledge/ or guidelines/
    (rough)     (approved)      (stable)
 ```
@@ -341,16 +371,19 @@ explorations/ → specs/ → knowledge/ or guidelines/
 ### Moving Documents
 
 **When to move from explorations to specs**:
+
 - Idea has been approved for implementation
 - Clear scope and requirements defined
 - Ready to guide development work
 
 **When to move from specs to knowledge/guidelines**:
+
 - Implementation is complete
 - Document describes how something works (→ knowledge/)
 - Document prescribes how to use something (→ guidelines/)
 
 **How to mark deprecated content**:
+
 - Add a note at the top: `> **Deprecated**: See [new-location](path/to/new-file.md) for current information.`
 - Don't delete immediately—update with pointers to replacements
 - Remove after a grace period (e.g., 3-6 months) if links are updated
@@ -371,12 +404,14 @@ explorations/ → specs/ → knowledge/ or guidelines/
 - **Minimum**: No strict minimum, but files under 50 lines might be better merged
 
 **When to split a file**:
+
 - File exceeds 500 lines
 - File covers multiple distinct concepts
 - Different sections have different audiences
 - File is difficult to navigate
 
 **How to split**:
+
 - Extract logical sections into separate files
 - Update original file with links to new files
 - Maintain cross-references between related files
@@ -393,11 +428,13 @@ explorations/ → specs/ → knowledge/ or guidelines/
 Each file should cover a single, focused topic. If you find yourself writing "and also..." frequently, consider splitting the file.
 
 **Good examples**:
+
 - `python.md` - Python coding standards
 - `typescript.md` - TypeScript coding standards
 - `git-workflow.md` - Git workflow and commits
 
 **Bad examples**:
+
 - `backend-standards.md` - Too broad (should be split into python.md, testing.md, etc.)
 - `everything-about-schemas.md` - Too broad (should be split by topic)
 
@@ -413,6 +450,7 @@ Each file should cover a single, focused topic. If you find yourself writing "an
 ### When to Create Subdirectories
 
 Create subdirectories when:
+
 - You have 3+ files for the same domain/category
 - Standards or patterns differ significantly between domains
 - You want to group related content together
@@ -423,12 +461,14 @@ Create subdirectories when:
 Use for technology or domain-specific content:
 
 **Examples**:
+
 - `guidelines/backend/` - Backend-specific standards
 - `guidelines/frontend/` - Frontend-specific standards
 - `knowledge/backend/` - Backend architecture
 - `knowledge/frontend/` - Frontend architecture
 
 **When to use**:
+
 - Clear separation between technologies (backend vs frontend)
 - Different standards or patterns for different domains
 - Team ownership aligns with domains
@@ -438,10 +478,12 @@ Use for technology or domain-specific content:
 Use for grouping related content by category:
 
 **Examples**:
+
 - `guides/docs/` - Documentation-specific guides
 - `guides/frontend/` - Frontend-specific guides
 
 **When to use**:
+
 - Content is related by category rather than domain
 - You want to group similar types of guides together
 - Category has clear boundaries
@@ -451,9 +493,11 @@ Use for grouping related content by category:
 Use for supporting materials within a larger structure:
 
 **Examples**:
+
 - `skills/neo4j-cypher-guide/references/` - Supporting reference materials for the skill
 
 **When to use**:
+
 - You have a main document with supporting references
 - References are only relevant in context of the main document
 - Breaking into references improves navigation
@@ -521,7 +565,7 @@ ln -s ../dev/commands .claude/commands
 
 ### Good Organization
 
-```
+```text
 dev/
 ├── guidelines/
 │   ├── git-workflow.md          # Shared guideline
@@ -548,7 +592,7 @@ dev/
 
 ### Bad Organization
 
-```
+```text
 dev/
 ├── guidelines/
 │   └── everything.md            # Too broad, should be split
@@ -563,4 +607,3 @@ dev/
 - `dev/adr/0001-context-nuggets-pattern.md` - Decision record for this pattern
 - `dev/README.md` - Quick navigation guide
 - `AGENTS.md` - Root-level map and glossary
-

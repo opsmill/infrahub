@@ -68,7 +68,7 @@ Git Repository, API Server, User Management
 - Use appropriate language tags: `python`, `bash`, `typescript`, `yaml`, `graphql`, `shell`, etc.
 - Never leave code blocks without language tags
 
-```markdown
+````markdown
 <!-- ✅ Good -->
 ```python
 from infrahub_sdk import InfrahubClient
@@ -78,7 +78,7 @@ from infrahub_sdk import InfrahubClient
 ```
 from infrahub_sdk import InfrahubClient
 ```
-```
+````
 
 ## Links
 
@@ -165,6 +165,7 @@ Irreversible or breaking actions that could affect data.
 ```
 
 **Usage guidelines:**
+
 - **Info blocks**: Use for additional context or helpful tips
 - **Success blocks**: Use in guides to highlight expected outcomes and progress checks
 - **Warning blocks**: Use for common errors, mistakes, or important distinctions

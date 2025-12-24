@@ -45,6 +45,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 ### Do
 
 **For Guides:**
+
 - Use conditional imperatives: "If you want X, do Y"
 - Focus on actions, not explanations
 - Provide multiple methods when applicable (UI, GraphQL, CLI)
@@ -55,6 +56,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Provide troubleshooting tips for common issues
 
 **For Topics:**
+
 - Explain the reasoning behind design decisions
 - Provide context and background information
 - Use analogies to connect to familiar concepts
@@ -66,6 +68,7 @@ Infrahub documentation follows the [Diataxis framework](https://diataxis.fr/), s
 - Use consistent terminology throughout
 
 **For All Documentation:**
+
 - Include code examples with proper syntax highlighting
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
@@ -119,4 +122,3 @@ uv run invoke docs.format        # Auto-format markdown files
 - `dev/guides/docs/writing-a-topic.md` - Step-by-step guide for writing topics
 - `docs/AGENTS.md` - Main documentation guidelines
 - [Diataxis Framework](https://diataxis.fr/) - Documentation framework
-

@@ -110,4 +110,3 @@ We adopt the **Context Nuggets** pattern for organizing our repository, based on
 - Repository Organization for AI-Assisted Development @ OpsMill
 - `dev/guidelines/repository-organization.md` - Detailed guidelines for organizing content
 - `dev/README.md` - Quick navigation guide
-

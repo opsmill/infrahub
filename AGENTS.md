@@ -2,7 +2,6 @@
 
 Infrahub is a graph-based infrastructure data management platform by OpsMill. It combines Git-like branching and version control with a flexible graph database (Neo4j) and a modern UI/API layer.
 
-
 ## Tech Stack
 
 - **Backend:** Python 3.12, FastAPI 0.121.1, Neo4j 5.28, Pydantic 2.10

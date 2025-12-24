@@ -384,4 +384,3 @@ Before submitting your unit tests:
 - `dev/guidelines/frontend/typescript.md` - TypeScript coding standards
 - `frontend/app/tests/fake/` - Test data factories
 - Vitest documentation - [vitest.dev](https://vitest.dev)
-

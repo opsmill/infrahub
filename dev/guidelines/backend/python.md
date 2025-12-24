@@ -43,6 +43,7 @@ class BranchResponse(BaseModel):
 ```
 
 Pydantic is appropriate when you need:
+
 - Input validation and serialization
 - OpenAPI/JSON schema generation
 - Data coming from or going to external systems
@@ -69,6 +70,7 @@ class NodeDiff:
 ```
 
 Dataclasses are appropriate when you need:
+
 - Simple internal data containers
 - Lightweight objects without validation overhead
 - Data passed between internal functions/classes
@@ -149,4 +151,3 @@ class MyQuery(Query):
 
 - `dev/knowledge/backend/architecture.md` - Backend architecture overview
 - `dev/guidelines/git-workflow.md` - Git workflow and commit conventions
-

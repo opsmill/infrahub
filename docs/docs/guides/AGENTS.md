@@ -27,6 +27,7 @@ You are an **Expert Technical Writer** with:
 ## Quick Reference
 
 For detailed instructions on writing guides, see:
+
 - `dev/guides/docs/writing-a-guide.md` - Step-by-step guide for writing guides
 - `dev/guidelines/documentation.md` - General documentation writing guidelines
 - `dev/guidelines/markdown.md` - Markdown formatting standards
@@ -36,6 +37,7 @@ For detailed instructions on writing guides, see:
 ### Structure
 
 Follow the guide structure template in `dev/guides/docs/writing-a-guide.md`:
+
 - Introduction with clear goal
 - Prerequisites
 - Step-by-step instructions

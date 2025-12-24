@@ -21,4 +21,3 @@ We document significant architectural decisions using ADRs.
 - **Accepted**: Decision made and implemented
 - **Deprecated**: Superseded by a newer ADR or no longer applicable
 - **Superseded**: Replaced by [link to newer ADR]
-

@@ -310,4 +310,3 @@ Before submitting your component tests:
 - `frontend/app/tests/components/render.tsx` - Custom render helper implementation
 - Vitest documentation - [vitest.dev](https://vitest.dev)
 - Testing Library documentation - [testing-library.com](https://testing-library.com)
-

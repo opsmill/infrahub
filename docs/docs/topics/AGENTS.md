@@ -28,6 +28,7 @@ You are an **Expert Technical Writer** with:
 ## Quick Reference
 
 For detailed instructions on writing topics, see:
+
 - `dev/guides/docs/writing-a-topic.md` - Step-by-step guide for writing topics
 - `dev/guidelines/documentation.md` - General documentation writing guidelines
 - `dev/guidelines/markdown.md` - Markdown formatting standards
@@ -37,6 +38,7 @@ For detailed instructions on writing topics, see:
 ### Structure
 
 Follow the topic structure template in `dev/guides/docs/writing-a-topic.md`:
+
 - Introduction explaining why the topic matters
 - Concepts & Definitions
 - How It Works (architecture, design decisions)
