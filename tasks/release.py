@@ -185,48 +185,46 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
 
 @task
 def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:  # noqa: ARG001
-    """Update docker-compose.yml with the current version from pyproject.toml."""
+    """Update docker-compose.yml with the current version from pyproject.toml.
+
+    Uses text-based substitution to preserve YAML anchors and aliases.
+    """
     print(" - [release] Update docker-compose.yml")
 
     # Get the version directly from pyproject.toml
     version = get_version_from_pyproject()  # Returns a string like '1.1.0a0'
 
-    # Initialize YAML and load the docker-compose file
-    yaml: YAML = init_yaml_obj(line_length=4096)
     docker_path = Path(docker_file)
-    docker_yaml: dict = yaml.load(docker_path)
+    content = docker_path.read_text(encoding="utf-8")
 
-    # Define services to update
-    services_to_update = ["infrahub-server", "task-worker", "task-manager"]
+    # Pattern to match the infrahub_image anchor definition line only
+    # This targets: image: &infrahub_image "...registry.opsmill.io/opsmill/infrahub...:${VERSION:-X.X.X}"
+    # We only update the anchor definition, not the alias references (*infrahub_image)
+    version_pattern = r"(\d+\.\d+\.\d+[-a-zA-Z0-9]*)"
+    anchor_line_pattern = re.compile(r"^(\s*image:\s*&infrahub_image\s+.*?)" + version_pattern + r"(.*)$")
+
     updates_made = False
+    new_lines = []
 
-    # Iterate over the services and update their image versions
-    for service in services_to_update:
-        service_config = docker_yaml["services"].get(service)
-        if not service_config or "image" not in service_config:
-            print(f"Service {service} or its image field is missing; skipping.")
-            continue
-
-        image = service_config["image"]
-        # Match semantic versions, including pre-release versions
-        version_pattern = r"\d+\.\d+\.\d+[-a-zA-Z0-9]*"
-        old_version_match = re.search(version_pattern, image)
-        if old_version_match:
-            old_version = old_version_match[0]
+    for line in content.splitlines():
+        match = anchor_line_pattern.match(line)
+        if match:
+            old_version = match.group(2)
             if old_version != version:
-                # Replace old version with the new version in the image field
-                new_image = re.sub(version_pattern, version, image)
-                service_config["image"] = new_image
+                new_line = match.group(1) + version + match.group(3)
+                new_lines.append(new_line)
                 updates_made = True
-                print(f"Updated {service} image from {old_version} to {version}")
+                print(f"Updated infrahub_image from {old_version} to {version}")
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
 
-    # Check if any updates were made
     if not updates_made:
         print(f"{docker_file} updates not required, all images are already up-to-date.")
         return
 
-    # Write the updated YAML back to file
-    yaml.dump(docker_yaml, docker_path)
+    docker_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
 
 @task
