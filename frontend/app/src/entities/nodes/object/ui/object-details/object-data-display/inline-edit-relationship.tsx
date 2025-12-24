@@ -124,7 +124,7 @@ function InlineEditRelationshipAllowed({
   return (
     <Row
       className="cursor-pointer rounded-lg px-2 py-3 hover:bg-neutral-100"
-      onClick={() => setIsEditing(true)}
+      onDoubleClick={() => setIsEditing(true)}
     >
       {children}
     </Row>
