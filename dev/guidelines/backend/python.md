@@ -20,20 +20,69 @@ def get_node(db, node_id):
     return db.get(node_id)
 ```
 
-## Pydantic Models
+## Data Structures
 
-Use Pydantic models for all data structures:
+Use the appropriate data structure based on context. Do not use Pydantic everywhere.
+
+### Pydantic Models (External APIs)
+
+Use Pydantic for data structures that cross system boundaries (REST/GraphQL APIs, configuration files, external integrations):
 
 ```python
-# ✅ Good
+# ✅ Good - API input/output models
 from pydantic import BaseModel, Field
 
 class BranchCreateInput(BaseModel):
     name: str = Field(..., min_length=1, max_length=250, description="name of the branch")
     description: str | None = Field(default=None, description="Description of the branch")
 
-# ❌ Bad
+class BranchResponse(BaseModel):
+    id: str
+    name: str
+    is_default: bool
+```
+
+Pydantic is appropriate when you need:
+- Input validation and serialization
+- OpenAPI/JSON schema generation
+- Data coming from or going to external systems
+
+### Dataclasses (Internal Structures)
+
+Use dataclasses for internal data structures that don't require validation or serialization:
+
+```python
+# ✅ Good - Internal data transfer
+from dataclasses import dataclass
+
+@dataclass
+class QueryContext:
+    branch_name: str
+    at_time: str | None = None
+    include_deleted: bool = False
+
+@dataclass
+class NodeDiff:
+    node_id: str
+    changed_attributes: list[str]
+    previous_values: dict[str, any]
+```
+
+Dataclasses are appropriate when you need:
+- Simple internal data containers
+- Lightweight objects without validation overhead
+- Data passed between internal functions/classes
+
+### Avoid Plain Dictionaries
+
+Regardless of which approach you use, avoid untyped dictionaries for structured data:
+
+```python
+# ❌ Bad - no type safety
 branch_data = {"name": "feature-x", "description": None}
+
+# ✅ Good - use dataclass or Pydantic depending on context
+branch_data = BranchCreateInput(name="feature-x")
 ```
 
 ## Docstrings (Google-style)
