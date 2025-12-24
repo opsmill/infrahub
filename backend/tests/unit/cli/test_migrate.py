@@ -97,10 +97,7 @@ class TestDoMigrate:
         # Reload root node to check if version changed
         root_node = await get_root_node(db=db)
 
-        if test_case.expected_version_number:
-            assert root_node.graph_version == 1  # Migration001.minimum_version + 1
-        else:
-            assert root_node.graph_version == 0
+        assert root_node.graph_version == test_case.expected_version_number
 
         # Restore original version for other tests
         root_node.graph_version = initial_version
