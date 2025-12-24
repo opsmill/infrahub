@@ -6,6 +6,7 @@ import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ColorPicker } from "@/shared/components/inputs/color-picker";
 import { DatePicker } from "@/shared/components/inputs/date-picker";
 import { Dropdown } from "@/shared/components/inputs/dropdown";
+import { Enum } from "@/shared/components/inputs/enum";
 import { List } from "@/shared/components/list";
 import { Input } from "@/shared/components/ui/input";
 
@@ -40,6 +41,16 @@ export function InlineEditInput({
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
     case ATTRIBUTE_KIND.ANY:
+      if (attributeSchema.enum && attributeSchema.enum.length > 0) {
+        return (
+          <Enum
+            items={attributeSchema.enum as Array<string>}
+            value={value as string | null}
+            onChange={(newValue) => onChange(newValue)}
+          />
+        );
+      }
+
       return (
         <Input
           value={(value as string) ?? ""}

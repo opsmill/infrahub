@@ -106,6 +106,7 @@ export const RelationshipInput = React.forwardRef<
       </ComboboxTrigger>
 
       <ComboboxContent
+        fitTriggerWidth={false}
         onOpenAutoFocus={() => {
           setOffset(0);
           setShouldAggregate(false);
