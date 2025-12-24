@@ -504,7 +504,7 @@ Use for supporting materials within a larger structure:
 
 ## Tool Compatibility with Claude Code
 
-Maintain a single source of truth with symlinks for tool compatibility, since most tools are able to read the Claude code structure, we'll focus on having simlinks for Claude Code only.
+Maintain a single source of truth with symlinks for tool compatibility, since most tools can read the Claude code structure, we'll focus on having symlinks for Claude Code only.
 
 ### Symlink Strategy
 
