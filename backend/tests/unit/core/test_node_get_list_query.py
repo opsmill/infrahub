@@ -743,7 +743,7 @@ async def test_query_NodeGetListQuery_order_by_updated_at(
     await query_desc.execute(db=db)
     node_ids_desc = query_desc.get_node_ids()
 
-    # Accord was updated last, so it should be first; camry and volt retain original order (volt newer)
+    # Camry was updated last, so it should be first; camry and volt retain original order (volt newer)
     assert node_ids_desc == [car_camry_main.id, car_volt_main.id, car_accord_main.id]
 
     # Test ASC order
