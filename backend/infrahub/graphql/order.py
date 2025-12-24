@@ -11,5 +11,4 @@ def deserialize_order_input(input_data: dict[str, Any] | None) -> OrderModel | N
         return None
 
     order_model = OrderModel(**input_data)
-    order_model.validate()
     return order_model
