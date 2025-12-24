@@ -160,7 +160,7 @@ function RelationshipEditingMode({
   };
 
   const [value, setValue] = React.useState<NodeCore | NodeCore[] | null>(getInitialValue);
-  const ref = React.useRef<HTMLDivElement>(null);
+  const ref = React.useRef<HTMLFormElement>(null);
   useOnClickOutside(ref, onCancel);
 
   const { mutate, isPending } = useUpdateObjectMutation({
@@ -194,39 +194,51 @@ function RelationshipEditingMode({
   };
 
   return (
-    <Row ref={ref}>
-      {isMany ? (
-        <RelationshipManyInput
-          peer={relationshipSchema.peer}
-          value={(value as NodeCore[]) ?? []}
-          onChange={(newValue) => setValue(newValue)}
-        />
-      ) : (
-        <RelationshipInput
-          peer={relationshipSchema.peer}
-          value={value as NodeCore | null}
-          onChange={(newValue) => setValue(newValue as NodeCore | null)}
-        />
-      )}
-      <Button
-        variant="primary"
-        size="square"
-        className="size-8"
-        disabled={isPending}
-        isLoading={isPending}
-        onClick={handleSave}
-      >
-        {!isPending && <CheckIcon className="size-4" />}
-      </Button>
-      <Button
-        variant="outline"
-        size="square"
-        className="size-8"
-        disabled={isPending}
-        onClick={onCancel}
-      >
-        <XIcon className="size-4" />
-      </Button>
-    </Row>
+    <form
+      ref={ref}
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSave();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onCancel();
+      }}
+    >
+      <Row>
+        {isMany ? (
+          <RelationshipManyInput
+            peer={relationshipSchema.peer}
+            value={(value as NodeCore[]) ?? []}
+            onChange={(newValue) => setValue(newValue)}
+          />
+        ) : (
+          <RelationshipInput
+            peer={relationshipSchema.peer}
+            value={value as NodeCore | null}
+            onChange={(newValue) => setValue(newValue as NodeCore | null)}
+          />
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          size="square"
+          className="size-8"
+          disabled={isPending}
+          isLoading={isPending}
+        >
+          {!isPending && <CheckIcon className="size-4" />}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="square"
+          className="size-8"
+          disabled={isPending}
+          onClick={onCancel}
+        >
+          <XIcon className="size-4" />
+        </Button>
+      </Row>
+    </form>
   );
 }
