@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self
+from typing import Self
 
 from pydantic import BaseModel, model_validator
 
+from infrahub.constants.enums import OrderDirection  # noqa: TC001
 from infrahub.exceptions import ValidationError
-
-if TYPE_CHECKING:
-    from infrahub.constants.enums import OrderDirection
 
 
 class NodeMetaOrder(BaseModel):
