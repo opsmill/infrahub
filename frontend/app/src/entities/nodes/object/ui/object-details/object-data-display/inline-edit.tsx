@@ -109,7 +109,7 @@ function InlineEditAllowed({
   return (
     <Row
       className="cursor-pointer overflow-hidden rounded-lg px-2 py-3 hover:bg-neutral-100"
-      onClick={() => setIsEditing(true)}
+      onDoubleClick={() => setIsEditing(true)}
     >
       {children}
     </Row>
