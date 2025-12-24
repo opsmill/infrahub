@@ -3,18 +3,6 @@
 Infrahub is a graph-based infrastructure data management platform by OpsMill. It combines Git-like branching and version control with a flexible graph database (Neo4j) and a modern UI/API layer.
 
 
-## Key Concepts
-
-- **Branch**: Git-like version control for infrastructure data → `dev/knowledge/backend/architecture.md` (to be created)
-- **Node**: Core data model representing infrastructure entities → `dev/knowledge/backend/architecture.md` (to be created)
-- **Schema**: Flexible graph schema definition → `dev/knowledge/backend/architecture.md` (to be created)
-
-## Architecture
-
-Infrahub consists of a Python FastAPI backend with GraphQL API, Neo4j database, and a React TypeScript frontend. The backend uses async-first architecture with Pydantic models and a query pattern for database operations.
-
-For details: `dev/knowledge/backend/architecture.md` (to be created)
-
 ## Tech Stack
 
 - **Backend:** Python 3.12, FastAPI 0.121.1, Neo4j 5.28, Pydantic 2.10
