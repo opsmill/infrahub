@@ -3,7 +3,7 @@ import { Link, type LinkProps } from "react-router";
 
 import { classNames } from "@/shared/utils/common";
 
-import { Card } from "./card";
+import { Card } from "../../../shared/components/ui/card";
 
 interface HomeCardProps {
   className?: string;

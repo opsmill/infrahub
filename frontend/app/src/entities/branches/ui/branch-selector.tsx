@@ -5,6 +5,11 @@ import { useState } from "react";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
+import {
+  Button,
+  ButtonWithTooltip,
+  LinkButton,
+} from "@/shared/components/buttons/button-primitive";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
   Command,
@@ -18,11 +23,9 @@ import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
+import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
-
-import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
-import BranchCreateForm from "./form/branch-create-form";
 
 type DisplayForm = {
   open: boolean;

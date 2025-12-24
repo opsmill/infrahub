@@ -9,8 +9,8 @@ import { classNames } from "@/shared/utils/common";
 import { branchesState } from "@/entities/branches/stores";
 import { TASK_STATES } from "@/entities/tasks/constants";
 
-import DropdownField from "../form/fields/dropdown.field";
-import { getObjectFromFilters } from "./utils/getObjectFromFilters";
+import { getObjectFromFilters } from "../../../shared/components/filters/utils/getObjectFromFilters";
+import DropdownField from "../../../shared/components/form/fields/dropdown.field";
 
 export interface FilterFormProps extends FormProps {
   filters: Array<Filter>;

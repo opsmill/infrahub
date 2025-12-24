@@ -2,8 +2,8 @@ import { Icon } from "@iconify-icon/react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
-import { HomeCard } from "@/shared/components/ui/home-card";
 
+import { HomeCard } from "@/entities/homepage/ui/home-card";
 import {
   MORE_TASKS_STATES,
   TASK_STATE_COMPLETED,

@@ -6,11 +6,10 @@ import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { QSP } from "@/shared/config/qsp";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-
-import { Button } from "./buttons/button-primitive";
 
 import "react-datepicker/dist/react-datepicker.css";
 
