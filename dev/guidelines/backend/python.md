@@ -66,7 +66,7 @@ class QueryContext:
 class NodeDiff:
     node_id: str
     changed_attributes: list[str]
-    previous_values: dict[str, any]
+    previous_values: dict[str, Any]
 ```
 
 Dataclasses are appropriate when you need:
