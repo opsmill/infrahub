@@ -319,11 +319,12 @@ async def detect_migration_to_run(
             get_migration_console().log(
                 f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
             )
-    else:
-        migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
-        if not migrations:
-            get_migration_console().log(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
-            return []
+            return migrations
+
+    migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
+    if not migrations:
+        get_migration_console().log(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
+        return []
 
     get_migration_console().log(
         f"Database needs to be updated (v{current_graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
