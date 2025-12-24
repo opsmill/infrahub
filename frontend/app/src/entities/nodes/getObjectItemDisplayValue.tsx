@@ -231,7 +231,9 @@ export const ObjectAttributeValue = ({
       return (
         <div className="flex flex-wrap items-center gap-1">
           {items?.map((item: string, index: number) => (
-            <Badge key={index} className="font-normal">{item}</Badge>
+            <Badge key={index} className="font-normal">
+              {item}
+            </Badge>
           ))}
 
           {items?.length !== attributeData.value?.length && <i>{`(${rest} more)`}</i>}

@@ -12,10 +12,10 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
+import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { ArtifactContentDiff } from "./artifact-content-diff";
-import {Row} from "@/shared/components/container";
 
 export const ArtifactRepoDiff = (props: any) => {
   const { diff } = props;
