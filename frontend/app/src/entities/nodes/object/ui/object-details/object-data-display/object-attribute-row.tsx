@@ -36,6 +36,7 @@ export function ObjectAttributeRow({
       value={
         <>
           <InlineEdit
+            type="attribute"
             fieldSchema={attributeSchema}
             fieldData={attributeData}
             permission={permission}
