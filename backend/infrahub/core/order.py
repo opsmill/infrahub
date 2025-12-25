@@ -7,6 +7,12 @@ from pydantic import BaseModel, model_validator
 from infrahub.constants.enums import OrderDirection  # noqa: TC001
 from infrahub.exceptions import ValidationError
 
+# Metadata field name constants
+METADATA_CREATED_AT = "created_at"
+METADATA_CREATED_BY = "created_by"
+METADATA_UPDATED_AT = "updated_at"
+METADATA_UPDATED_BY = "updated_by"
+
 
 class NodeMetaOrder(BaseModel):
     created_at: OrderDirection | None = None
