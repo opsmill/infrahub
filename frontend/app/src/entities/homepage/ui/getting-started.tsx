@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 
 import { Separator } from "@/shared/components/aria/separator";
 import { LinkButton, type LinkButtonProps } from "@/shared/components/buttons/button-primitive";
-import { HomeCard } from "@/shared/components/ui/home-card";
+
+import { HomeCard } from "@/entities/homepage/ui/home-card";
 
 export const GettingStarted = ({ className }: { className?: string }) => {
   return (

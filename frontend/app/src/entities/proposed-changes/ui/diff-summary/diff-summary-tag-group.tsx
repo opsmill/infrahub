@@ -10,7 +10,7 @@ import {
   type TagProps,
 } from "react-aria-components";
 
-import { disabledStyle, focusVisibleStyle } from "@/shared/components/style-rac";
+import { disabledStyle, focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 export interface DiffSummaryProps<T>

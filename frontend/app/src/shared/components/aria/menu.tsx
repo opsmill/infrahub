@@ -14,7 +14,7 @@ import {
 } from "react-aria-components";
 
 import { Popover } from "@/shared/components/aria/popover";
-import { disabledStyle } from "@/shared/components/style-rac";
+import { disabledStyle } from "@/shared/components/aria/style-rac";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
