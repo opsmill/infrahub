@@ -6,7 +6,7 @@ import { Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { Link } from "@/shared/components/ui/link";
 
-import { InlineEditRelationship } from "@/entities/nodes/object/ui/object-details/object-data-display/inline-edit-relationship";
+import { InlineEdit } from "@/entities/nodes/object/ui/object-details/object-data-display/inline-edit";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
@@ -91,9 +91,10 @@ function RelationshipOneRow({
       name={relationshipLabel}
       value={
         <>
-          <InlineEditRelationship
-            relationshipSchema={relationshipSchema}
-            relationshipData={relationshipData}
+          <InlineEdit
+            type="relationship"
+            fieldSchema={relationshipSchema}
+            fieldData={relationshipData}
             permission={permission}
             objectKind={objectKind}
             objectId={objectId}
@@ -108,7 +109,7 @@ function RelationshipOneRow({
             ) : (
               "-"
             )}
-          </InlineEditRelationship>
+          </InlineEdit>
 
           {relationshipProperties && (
             <>
@@ -175,9 +176,10 @@ function RelationshipManyRow({
       name={relationshipLabel}
       value={
         <>
-          <InlineEditRelationship
-            relationshipSchema={relationshipSchema}
-            relationshipData={relationshipData}
+          <InlineEdit
+            type="relationship"
+            fieldSchema={relationshipSchema}
+            fieldData={relationshipData}
             permission={permission}
             objectKind={objectKind}
             objectId={objectId}
@@ -238,7 +240,7 @@ function RelationshipManyRow({
                 })}
               </dl>
             )}
-          </InlineEditRelationship>
+          </InlineEdit>
         </>
       }
     />
