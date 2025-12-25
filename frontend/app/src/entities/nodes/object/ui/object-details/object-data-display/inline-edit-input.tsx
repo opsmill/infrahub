@@ -7,7 +7,7 @@ import { ColorPicker } from "@/shared/components/inputs/color-picker";
 import { DatePicker } from "@/shared/components/inputs/date-picker";
 import { Dropdown } from "@/shared/components/inputs/dropdown";
 import { Enum } from "@/shared/components/inputs/enum";
-import { List } from "@/shared/components/list";
+import { List } from "@/shared/components/inputs/list";
 import { Input } from "@/shared/components/ui/input";
 
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
