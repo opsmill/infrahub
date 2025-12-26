@@ -14,7 +14,7 @@ export const getProposedChangeThread = async (params: GetProposedChangeThreadPar
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const node = data?.[PROPOSED_CHANGES_THREAD_OBJECT]?.edges?.[0];
+  const node = data?.[PROPOSED_CHANGES_THREAD_OBJECT]?.edges?.[0]?.node;
 
   if (!node) {
     throw new Error("No thread data found");
