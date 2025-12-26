@@ -9,12 +9,12 @@ interface GetEventsQueryOptions extends GetEventsParams {
   config?: InfiniteQueryConfig<typeof getEventsQueryOptions>;
 }
 
-export function getEventsQueryOptions({ filters }: GetEventsParams) {
+export function getEventsQueryOptions(filters: GetEventsParams) {
   return infiniteQueryOptions({
     queryKey: ["events", filters],
     queryFn: ({ pageParam }) =>
       getEvents({
-        filters,
+        ...filters,
         offset: pageParam,
       }),
     initialPageParam: 0,
@@ -27,9 +27,9 @@ export function getEventsQueryOptions({ filters }: GetEventsParams) {
   });
 }
 
-export function useGetEvents({ filters, config }: GetEventsQueryOptions) {
+export function useGetEvents({ config, ...filters }: GetEventsQueryOptions) {
   return useInfiniteQuery({
-    ...getEventsQueryOptions({ filters }),
+    ...getEventsQueryOptions(filters),
     ...config,
   });
 }
