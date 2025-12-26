@@ -1,4 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
@@ -60,7 +60,7 @@ export function GetIpamTreeNodesByParentFromApi({
         : parentObjectId
           ? { parentIds: [parentObjectId] }
           : { isTopLevel: true }),
-    } satisfies VariablesOf<typeof GET_IPAM_TREE_NODES>,
+    },
     context: {
       branch: branchName,
       date: atDate,

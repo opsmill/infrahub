@@ -1,4 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
@@ -24,7 +24,7 @@ export interface SearchAnywhereFromApiParams extends ContextParams {
 export function searchAnywhereFromApi({ search, branchName, atDate }: SearchAnywhereFromApiParams) {
   return graphqlClient.query({
     query: SEARCH,
-    variables: { search } satisfies VariablesOf<typeof SEARCH>,
+    variables: { search },
     context: {
       branch: branchName,
       date: atDate,

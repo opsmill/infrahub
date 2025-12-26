@@ -22,7 +22,7 @@ export const getNextIpAddressAvailableFromApi = ({
 }: GetNextIPAddressAvailableFromApiParams) => {
   return graphqlClient.query({
     query: NEXT_IP_ADDRESS_QUERY,
-    variables: variables satisfies QueryVariables,
+    variables,
     context: {
       branch: branchName,
       date: atDate,

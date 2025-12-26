@@ -11,12 +11,9 @@ const GET_FIELDS_MAPPING = graphql(`
   }
 `);
 
-type QueryVariables = VariablesOf<typeof GET_FIELDS_MAPPING>;
-
-export interface GetObjectConvertFieldsMappingFromApiParams extends ContextParams {
-  sourceKind: string;
-  targetKind: string;
-}
+export interface GetObjectConvertFieldsMappingFromApiParams
+  extends ContextParams,
+    VariablesOf<typeof GET_FIELDS_MAPPING> {}
 
 export function getObjectConvertFieldsMappingFromApi({
   sourceKind,
@@ -29,7 +26,7 @@ export function getObjectConvertFieldsMappingFromApi({
     variables: {
       sourceKind,
       targetKind,
-    } satisfies QueryVariables,
+    },
     context: {
       branch: branchName,
       date: atDate,

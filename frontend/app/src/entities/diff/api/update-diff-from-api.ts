@@ -1,4 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
@@ -21,6 +21,6 @@ export const updateDiffFromApi = ({ branchName, waitUntilCompletion }: UpdateDif
     variables: {
       branchName,
       waitUntilCompletion,
-    } satisfies VariablesOf<typeof DIFF_UPDATE>,
+    },
   });
 };

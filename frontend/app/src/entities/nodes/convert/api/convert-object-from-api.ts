@@ -13,13 +13,9 @@ const CONVERT_OBJECT_MUTATION = graphql(`
   }
 `);
 
-type MutationVariables = VariablesOf<typeof CONVERT_OBJECT_MUTATION>;
-
-export interface ConvertObjectFromApiApiParams extends BranchContextParams {
-  nodeId: string;
-  targetKind: string;
-  fieldsMapping: Record<string, any>;
-}
+export interface ConvertObjectFromApiApiParams
+  extends BranchContextParams,
+    VariablesOf<typeof CONVERT_OBJECT_MUTATION> {}
 
 export function convertObjectFromApi({
   fieldsMapping,
@@ -37,6 +33,6 @@ export function convertObjectFromApi({
       nodeId,
       targetKind,
       fieldsMapping,
-    } satisfies MutationVariables,
+    },
   });
 }

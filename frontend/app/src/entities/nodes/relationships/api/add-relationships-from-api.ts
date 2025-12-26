@@ -15,13 +15,9 @@ const ADD_RELATIONSHIP = graphql(`
   }
 `);
 
-type MutationVariables = VariablesOf<typeof ADD_RELATIONSHIP>;
-
-export type AddRelationshipsToApiParams = BranchContextParams & {
-  objectId: string;
-  relationshipName: string;
-  relationshipIds: Array<{ id: string }>;
-};
+export interface AddRelationshipsToApiParams
+  extends BranchContextParams,
+    VariablesOf<typeof ADD_RELATIONSHIP> {}
 
 export const addRelationshipsToApi = async ({
   objectId,
@@ -35,7 +31,7 @@ export const addRelationshipsToApi = async ({
       objectId,
       relationshipName,
       relationshipIds,
-    } satisfies MutationVariables,
+    },
     context: {
       branch: branchName,
     },

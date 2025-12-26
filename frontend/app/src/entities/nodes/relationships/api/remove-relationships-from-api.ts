@@ -15,13 +15,9 @@ const REMOVE_RELATIONSHIP = graphql(`
   }
 `);
 
-type MutationVariables = VariablesOf<typeof REMOVE_RELATIONSHIP>;
-
-export type RemoveRelationshipFromApiParams = BranchContextParams & {
-  objectId: string;
-  relationshipName: string;
-  relationshipIds: Array<{ id: string }>;
-};
+export interface RemoveRelationshipFromApiParams
+  extends BranchContextParams,
+    VariablesOf<typeof REMOVE_RELATIONSHIP> {}
 
 export const removeRelationshipsFromApi = ({
   objectId,
@@ -35,7 +31,7 @@ export const removeRelationshipsFromApi = ({
       objectId,
       relationshipName,
       relationshipIds,
-    } satisfies MutationVariables,
+    },
     context: { branch: branchName },
   });
 };

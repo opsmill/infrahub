@@ -10,7 +10,7 @@ const RUN_CHECK = graphql(`
   }
 `);
 
-export type RunCheckFromApiParams = VariablesOf<typeof RUN_CHECK>;
+export interface RunCheckFromApiParams extends VariablesOf<typeof RUN_CHECK> {}
 
 export const runCheckFromApi = ({ proposedChangeId, checkType }: RunCheckFromApiParams) => {
   return graphqlClient.mutate({
@@ -18,6 +18,6 @@ export const runCheckFromApi = ({ proposedChangeId, checkType }: RunCheckFromApi
     variables: {
       proposedChangeId,
       checkType,
-    } satisfies VariablesOf<typeof RUN_CHECK>,
+    },
   });
 };

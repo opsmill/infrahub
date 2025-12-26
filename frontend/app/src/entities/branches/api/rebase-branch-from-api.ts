@@ -1,4 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
@@ -13,6 +13,7 @@ const BRANCH_REBASE = graphql(`
         origin_branch
         branched_from
         created_at
+        status
         sync_with_git
         is_default
         has_schema_changes
@@ -35,8 +36,6 @@ export const rebaseBranchFromApi = ({
 }: RebaseBranchFromApiParams) => {
   return graphqlClient.mutate({
     mutation: BRANCH_REBASE,
-    variables: { name: branchName, waitUntilCompletion } satisfies VariablesOf<
-      typeof BRANCH_REBASE
-    >,
+    variables: { name: branchName, waitUntilCompletion },
   });
 };

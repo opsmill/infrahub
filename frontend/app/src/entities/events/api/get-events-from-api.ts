@@ -1,23 +1,6 @@
 import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import type { PaginationParams } from "@/shared/api/types";
-
-export type GlobalEventsFilters = {
-  ids?: Array<string>;
-  hasChildren?: boolean;
-  eventType?: Array<string>;
-  primaryNodeIds?: Array<string>;
-  relatedNodeIds?: Array<string>;
-  parentIds?: Array<string>;
-  accountIds?: Array<string>;
-  level?: number;
-  since?: Date;
-  until?: Date;
-  offset?: number;
-  limit?: number;
-  order?: string;
-};
 
 export const OBJECTS_PER_PAGE = 40;
 
@@ -131,14 +114,12 @@ const EVENTS_QUERY = graphql(`
   }
 `);
 
-export interface GetEventsFromApiParams extends PaginationParams {
-  filters: GlobalEventsFilters;
-}
+export interface GetEventsFromApiParams extends VariablesOf<typeof EVENTS_QUERY> {}
 
 export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
   offset,
-  filters,
+  ...filters
 }: GetEventsFromApiParams) {
   return graphqlClient.query({
     query: EVENTS_QUERY,
@@ -146,6 +127,6 @@ export async function getEventsFromApi({
       limit,
       offset,
       ...filters,
-    } satisfies VariablesOf<typeof EVENTS_QUERY>,
+    },
   });
 }

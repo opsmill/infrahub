@@ -26,7 +26,7 @@ export const getNextIpPrefixAvailableFromApi = ({
     query: NEXT_IP_PREFIX_QUERY,
     variables: {
       parentPrefixId,
-    } satisfies QueryVariables,
+    },
     context: {
       branch: branchName,
       date: atDate,

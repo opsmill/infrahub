@@ -40,6 +40,8 @@ const GET_VALIDATORS = graphql(`
   }
 `);
 
-export const getValidatorsFromApi = async (variables: VariablesOf<typeof GET_VALIDATORS>) => {
+interface getValidatorsFromApiParams extends VariablesOf<typeof GET_VALIDATORS> {}
+
+export const getValidatorsFromApi = async (variables: getValidatorsFromApiParams) => {
   return graphqlClient.query({ query: GET_VALIDATORS, variables });
 };

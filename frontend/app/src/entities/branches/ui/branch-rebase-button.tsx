@@ -60,7 +60,12 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
 
   return (
     <Button
-      disabled={!isAuthenticated || loading || branch.is_default || taskData?.count > 0}
+      disabled={
+        !isAuthenticated ||
+        loading ||
+        branch.is_default ||
+        (!!taskData?.count && taskData.count > 0)
+      }
       onClick={handleRebase}
       variant={"outline"}
       className="flex items-center gap-2"
