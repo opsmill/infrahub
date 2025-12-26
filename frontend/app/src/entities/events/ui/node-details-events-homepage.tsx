@@ -11,9 +11,7 @@ const MAX_EVENTS = 10;
 
 export const HomeEvents = ({ maxEvent = MAX_EVENTS }: { maxEvent?: number }) => {
   const { isPending, data, error } = useGetEvents({
-    filters: {
-      limit: maxEvent,
-    },
+    limit: maxEvent,
   });
 
   if (isPending) {
