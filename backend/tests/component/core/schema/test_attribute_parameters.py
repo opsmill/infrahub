@@ -422,3 +422,39 @@ def test_list_attribute_regex_reconciliation() -> None:
     assert isinstance(protocols_attribute.parameters, TextAttributeParameters)
     assert protocols_attribute.regex == "ssh|ping|telnet"
     assert protocols_attribute.parameters.regex == "ssh|ping|telnet"
+
+
+async def test_list_attribute_regex_parameter_validation(
+    db: InfrahubDatabase, default_branch, register_core_models_schema
+) -> None:
+    """Test that list values are validated against regex defined in parameters."""
+    node_schema: dict[str, Any] = {
+        "name": "Node",
+        "namespace": "Testing",
+        "attributes": [
+            {"name": "name", "kind": "Text"},
+            {
+                "name": "protocols",
+                "kind": "List",
+                "optional": True,
+                "parameters": {"regex": "^(ssh|ping|telnet)$"},
+            },
+        ],
+    }
+
+    schema = NodeSchema(**node_schema)
+
+    # Valid values should work
+    node = await Node.init(db=db, schema=schema)
+    await node.new(db=db, name="test-node", protocols=["ssh", "ping"])
+    assert node.protocols.value == ["ssh", "ping"]
+
+    # Invalid value should raise ValidationError
+    invalid_node = await Node.init(db=db, schema=schema)
+    with pytest.raises(ValidationError, match=r"http must conform with the regex"):
+        await invalid_node.new(db=db, name="test-invalid", protocols=["ssh", "http"])
+
+    # Single invalid value should also fail
+    another_node = await Node.init(db=db, schema=schema)
+    with pytest.raises(ValidationError, match=r"ftp must conform with the regex"):
+        await another_node.new(db=db, name="test-single", protocols=["ftp"])
