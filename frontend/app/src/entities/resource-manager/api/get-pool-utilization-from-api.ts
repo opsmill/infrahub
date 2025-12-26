@@ -24,15 +24,13 @@ const GET_POOL_UTILIZATION = graphql(`
   }
 `);
 
-type QueryVariables = VariablesOf<typeof GET_POOL_UTILIZATION>;
-
-export interface GetPoolUtilizationFromApiParams extends QueryVariables {}
+export interface GetPoolUtilizationFromApiParams extends VariablesOf<typeof GET_POOL_UTILIZATION> {}
 
 export function getPoolUtilizationFromApi({ poolId }: GetPoolUtilizationFromApiParams) {
   return graphqlClient.query({
     query: GET_POOL_UTILIZATION,
     variables: {
       poolId,
-    } satisfies QueryVariables,
+    },
   });
 }

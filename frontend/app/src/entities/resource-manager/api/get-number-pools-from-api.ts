@@ -25,11 +25,9 @@ const GET_NUMBER_POOLS = graphql(`
   }
 `);
 
-type QueryVariables = VariablesOf<typeof GET_NUMBER_POOLS>;
-
-export interface GetNumberPoolsFromApiParams extends ContextParams {
-  objectKinds: Array<string>;
-}
+export interface GetNumberPoolsFromApiParams
+  extends ContextParams,
+    VariablesOf<typeof GET_NUMBER_POOLS> {}
 
 export function getNumberPoolsFromApi({
   objectKinds,
@@ -40,7 +38,7 @@ export function getNumberPoolsFromApi({
     query: GET_NUMBER_POOLS,
     variables: {
       objectKinds,
-    } satisfies QueryVariables,
+    },
     context: {
       branch: branchName,
       date: atDate,

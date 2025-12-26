@@ -26,13 +26,12 @@ const GET_TASKS_HOMEPAGE = graphql(`
 
 export interface GetTasksHomepageFromApiParams
   extends Omit<PaginationParams, "offset">,
-    BranchContextParams {
-  states?: string[];
-}
+    BranchContextParams,
+    VariablesOf<typeof GET_TASKS_HOMEPAGE> {}
 
 export const getTasksHomepageFromApi = (params: GetTasksHomepageFromApiParams) => {
   return graphqlClient.query({
     query: GET_TASKS_HOMEPAGE,
-    variables: params satisfies VariablesOf<typeof GET_TASKS_HOMEPAGE>,
+    variables: params,
   });
 };

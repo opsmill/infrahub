@@ -1,4 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
@@ -30,6 +30,6 @@ export function createAccountTokenFromApi({
     variables: {
       name: tokenName,
       expiration: tokenExpirationDate,
-    } satisfies VariablesOf<typeof CREATE_ACCOUNT_TOKEN>,
+    },
   });
 }

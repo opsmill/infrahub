@@ -17,9 +17,7 @@ const QUERY = graphql(`
   }
 `);
 
-export interface GetProposedChangeActionFromApiParams {
-  proposedChangeId: string;
-}
+export interface GetProposedChangeActionFromApiParams extends VariablesOf<typeof QUERY> {}
 
 export const getProposedChangeAvailableActionFromApi = async ({
   proposedChangeId,
@@ -28,6 +26,6 @@ export const getProposedChangeAvailableActionFromApi = async ({
     query: QUERY,
     variables: {
       proposedChangeId,
-    } satisfies VariablesOf<typeof QUERY>,
+    },
   });
 };

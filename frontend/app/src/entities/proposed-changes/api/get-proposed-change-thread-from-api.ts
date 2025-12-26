@@ -1,4 +1,4 @@
-import { graphql, type VariablesOf } from "gql.tada";
+import { graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
@@ -84,6 +84,6 @@ export const getProposedChangeThreadFromApi = async ({
     query: GET_THREAD,
     variables: {
       ids: [threadId],
-    } satisfies VariablesOf<typeof GET_THREAD>,
+    },
   });
 };

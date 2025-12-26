@@ -15,9 +15,9 @@ const REPOSITORY_GROUP = graphql(`
   }
 `);
 
-export interface GetRepositoryGroupFromApiParams extends BranchContextParams {
-  nodeIds: Array<string>;
-}
+export interface GetRepositoryGroupFromApiParams
+  extends BranchContextParams,
+    VariablesOf<typeof REPOSITORY_GROUP> {}
 
 export function getRepositoryGroupFromApi({
   nodeIds,
@@ -27,7 +27,7 @@ export function getRepositoryGroupFromApi({
     query: REPOSITORY_GROUP,
     variables: {
       nodeIds,
-    } satisfies VariablesOf<typeof REPOSITORY_GROUP>,
+    },
     context: {
       branch: branchName,
     },

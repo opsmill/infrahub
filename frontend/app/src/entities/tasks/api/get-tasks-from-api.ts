@@ -42,15 +42,14 @@ const GET_TASKS = graphql(`
   }
 `);
 
-export interface GetTasksFromApiParams extends PaginationParams, BranchContextParams {
-  search?: string;
-  states?: string[];
-  relatedNodes?: string[];
-}
+export interface GetTasksFromApiParams
+  extends PaginationParams,
+    BranchContextParams,
+    VariablesOf<typeof GET_TASKS> {}
 
 export const getTasksFromApi = (params: GetTasksFromApiParams) => {
   return graphqlClient.query({
     query: GET_TASKS,
-    variables: params satisfies VariablesOf<typeof GET_TASKS>,
+    variables: params,
   });
 };

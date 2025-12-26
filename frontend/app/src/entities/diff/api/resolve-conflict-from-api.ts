@@ -10,10 +10,7 @@ const RESOLVE_CONFLICT = graphql(`
   }
 `);
 
-export type ResolveConflictFromApiParams = {
-  id: string;
-  selection: VariablesOf<typeof RESOLVE_CONFLICT>["selection"];
-};
+export type ResolveConflictFromApiParams = VariablesOf<typeof RESOLVE_CONFLICT>;
 
 export const resolveConflictFromApi = async ({ id, selection }: ResolveConflictFromApiParams) => {
   return graphqlClient.mutate({
@@ -21,6 +18,6 @@ export const resolveConflictFromApi = async ({ id, selection }: ResolveConflictF
     variables: {
       id,
       selection,
-    } satisfies VariablesOf<typeof RESOLVE_CONFLICT>,
+    },
   });
 };

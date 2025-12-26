@@ -12,16 +12,16 @@ const TASK_COUNT = graphql(`
   }
 `);
 
-export interface GetTaskCountFromApiParams extends BranchContextParams {
-  nodeIds: Array<string>;
-}
+export interface GetTaskCountFromApiParams
+  extends BranchContextParams,
+    VariablesOf<typeof TASK_COUNT> {}
 
 export function getTaskCountFromApi({ nodeIds, branchName }: GetTaskCountFromApiParams) {
   return graphqlClient.query({
     query: TASK_COUNT,
     variables: {
       nodeIds,
-    } satisfies VariablesOf<typeof TASK_COUNT>,
+    },
     context: {
       branch: branchName,
     },

@@ -42,9 +42,9 @@ const GET_BRANCHES = graphql(`
 
 export const BRANCHES_PER_PAGE = 40;
 
-export interface GetBranchesFromApiParams extends PaginationParams {
-  branchSearch?: string;
-}
+export interface GetBranchesFromApiParams
+  extends PaginationParams,
+    VariablesOf<typeof GET_BRANCHES> {}
 
 export const getBranchesFromApi = async ({
   branchSearch,
@@ -57,6 +57,6 @@ export const getBranchesFromApi = async ({
       branchSearch,
       limit,
       offset,
-    } satisfies VariablesOf<typeof GET_BRANCHES>,
+    },
   });
 };
