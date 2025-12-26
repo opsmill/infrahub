@@ -25,6 +25,7 @@ Internal documentation for contributors. For user-facing docs, see `/docs/`.
   - `backend/` - Backend architecture and patterns
   - `frontend/` - Frontend architecture and patterns
 - **guides/**: Step-by-step procedures for specific tasks.
+  - `backend/` - Backend-specific guides (events, tasks, messages)
   - `docs/` - Documentation-specific guides
   - `frontend/` - Frontend-specific guides
 - **adr/**: Architecture Decision Records. Why we chose what we chose.
@@ -49,6 +50,24 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 - **Git Workflow**: `guidelines/git-workflow.md`
 - **Markdown Formatting**: `guidelines/markdown.md`
 - **Writing Documentation**: `guidelines/documentation.md` - How to write user-facing documentation
+
+## Current Knowledge
+
+Backend architecture documentation in `knowledge/backend/`:
+
+- `architecture.md` - Backend architecture overview
+- `testing.md` - Testing infrastructure and patterns
+- `events.md` - Events system
+- `async-tasks.md` - Asynchronous tasks (Prefect)
+- `message-bus.md` - Message bus system
+
+## Current Guides
+
+Backend guides in `guides/backend/`:
+
+- `creating-events.md` - How to create new events
+- `creating-async-tasks.md` - How to create async tasks
+- `creating-messages.md` - How to create message bus messages
 
 ## Current Commands
 
