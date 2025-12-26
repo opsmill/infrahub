@@ -135,7 +135,7 @@ def markdownlint(context: Context) -> None:
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
         return
-    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} '#**/node_modules/**'"
+    exec_cmd = "markdownlint-cli2 '**/*.{md,mdx}' '#**/node_modules/**' '#.venv/**'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -146,7 +146,7 @@ def format_markdownlint(context: Context) -> None:
     """Run markdownlint-cli2 to format all .md/mdx files."""
 
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} --fix"
+    exec_cmd = "markdownlint-cli2 '**/*.{md,mdx}' '#**/node_modules/**' '#.venv/**' --fix"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
