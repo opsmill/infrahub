@@ -1,32 +1,23 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type {
-  Run_CheckMutation,
-  Run_CheckMutationVariables,
-} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const RUN_CHECK = gql`
+const RUN_CHECK = graphql(`
   mutation RUN_CHECK($proposedChangeId: String!, $checkType: CheckType) {
-    CoreProposedChangeRunCheck (
-      data: {
-        id: $proposedChangeId,
-        check_type: $checkType
-      }
-    ) {
+    CoreProposedChangeRunCheck(data: { id: $proposedChangeId, check_type: $checkType }) {
       ok
     }
   }
-`;
+`);
 
-export interface RunCheckFromApiParams extends Run_CheckMutationVariables {}
+export type RunCheckFromApiParams = VariablesOf<typeof RUN_CHECK>;
 
 export const runCheckFromApi = ({ proposedChangeId, checkType }: RunCheckFromApiParams) => {
-  return graphqlClient.mutate<Run_CheckMutation, Run_CheckMutationVariables>({
+  return graphqlClient.mutate({
     mutation: RUN_CHECK,
     variables: {
       proposedChangeId,
       checkType,
-    },
+    } satisfies VariablesOf<typeof RUN_CHECK>,
   });
 };

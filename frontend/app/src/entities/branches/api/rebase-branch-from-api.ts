@@ -1,15 +1,10 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const BRANCH_REBASE = gql`
+const BRANCH_REBASE = graphql(`
   mutation BRANCH_REBASE($name: String, $waitUntilCompletion: Boolean!) {
-    BranchRebase (
-      wait_until_completion: $waitUntilCompletion
-      data: {
-        name: $name
-      }
-    ) {
+    BranchRebase(wait_until_completion: $waitUntilCompletion, data: { name: $name }) {
       ok
       object {
         id
@@ -27,7 +22,7 @@ export const BRANCH_REBASE = gql`
       }
     }
   }
-`;
+`);
 
 export type RebaseBranchFromApiParams = {
   branchName: string;
@@ -40,6 +35,8 @@ export const rebaseBranchFromApi = ({
 }: RebaseBranchFromApiParams) => {
   return graphqlClient.mutate({
     mutation: BRANCH_REBASE,
-    variables: { name: branchName, waitUntilCompletion },
+    variables: { name: branchName, waitUntilCompletion } satisfies VariablesOf<
+      typeof BRANCH_REBASE
+    >,
   });
 };

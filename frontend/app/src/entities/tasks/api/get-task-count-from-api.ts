@@ -1,16 +1,16 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
-const TASK_COUNT = gql`
+const TASK_COUNT = graphql(`
   query TASK_COUNT($nodeIds: [String]) {
     InfrahubTask(related_node__ids: $nodeIds) {
       count
       __typename
     }
   }
-`;
+`);
 
 export interface GetTaskCountFromApiParams extends BranchContextParams {
   nodeIds: Array<string>;
@@ -21,7 +21,7 @@ export function getTaskCountFromApi({ nodeIds, branchName }: GetTaskCountFromApi
     query: TASK_COUNT,
     variables: {
       nodeIds,
-    },
+    } satisfies VariablesOf<typeof TASK_COUNT>,
     context: {
       branch: branchName,
     },

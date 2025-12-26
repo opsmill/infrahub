@@ -1,9 +1,9 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
 
-export const ADD_RELATIONSHIP = gql`
+const ADD_RELATIONSHIP = graphql(`
   mutation RelationshipAdd(
     $objectId: String!
     $relationshipName: String!
@@ -13,7 +13,9 @@ export const ADD_RELATIONSHIP = gql`
       ok
     }
   }
-`;
+`);
+
+type MutationVariables = VariablesOf<typeof ADD_RELATIONSHIP>;
 
 export type AddRelationshipsToApiParams = BranchContextParams & {
   objectId: string;
@@ -33,7 +35,7 @@ export const addRelationshipsToApi = async ({
       objectId,
       relationshipName,
       relationshipIds,
-    },
+    } satisfies MutationVariables,
     context: {
       branch: branchName,
     },

@@ -1,20 +1,20 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-const generatorRunMutation = gql`
+const generatorRunMutation = graphql(`
   mutation CoreGeneratorDefinitionRun($generatorId: String!, $waitUntilCompletion: Boolean, $targetNodeIds: [String!]) {
     CoreGeneratorDefinitionRun(
       wait_until_completion: $waitUntilCompletion
-      data: {id: $generatorId, nodes: $targetNodeIds}
+      data: { id: $generatorId, nodes: $targetNodeIds }
     ) {
       task {
         id
       }
     }
   }
-`;
+`);
 
 export type RunGeneratorFromApiParams = Pick<ContextParams, "branchName"> & {
   generatorId: string;
@@ -34,7 +34,7 @@ export const runGeneratorFromApi = async ({
       generatorId,
       targetNodeIds,
       waitUntilCompletion,
-    },
+    } satisfies VariablesOf<typeof generatorRunMutation>,
     context: {
       branch: branchName,
     },

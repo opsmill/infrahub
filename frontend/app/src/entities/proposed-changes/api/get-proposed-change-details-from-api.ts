@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
@@ -8,7 +8,7 @@ import type {
   NodeRelationshipOne,
 } from "@/entities/nodes/types";
 
-const GET_PROPOSED_CHANGE_DETAILS = gql`
+const GET_PROPOSED_CHANGE_DETAILS = graphql(`
   query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID, $taskNodeId: String) {
     CoreProposedChange(ids: [$proposedChangeId]) {
       count
@@ -92,7 +92,7 @@ const GET_PROPOSED_CHANGE_DETAILS = gql`
       count
     }
   }
-`;
+`);
 
 export interface ProposedChangeDetailsFromApiParams {
   proposedChangeId: string;
@@ -136,6 +136,6 @@ export const getProposedChangeDetailsFromApi = async ({
     variables: {
       proposedChangeId,
       taskNodeId: proposedChangeId,
-    },
+    } satisfies VariablesOf<typeof GET_PROPOSED_CHANGE_DETAILS>,
   });
 };

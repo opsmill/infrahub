@@ -1,6 +1,5 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type { Get_Infrahub_EventsQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { PaginationParams } from "@/shared/api/types";
 
@@ -22,7 +21,7 @@ export type GlobalEventsFilters = {
 
 export const OBJECTS_PER_PAGE = 40;
 
-export const EVENTS_QUERY = gql`
+const EVENTS_QUERY = graphql(`
   query GET_INFRAHUB_EVENTS(
     $ids: [String!]
     $hasChildren: Boolean
@@ -94,7 +93,7 @@ export const EVENTS_QUERY = gql`
           ... on StandardEvent {
             payload
           }
-            ... on BranchCreatedEvent {
+          ... on BranchCreatedEvent {
             payload
             created_branch
           }
@@ -106,18 +105,8 @@ export const EVENTS_QUERY = gql`
             payload
             rebased_branch
           }
-            ... on BranchMergedEvent {
+          ... on BranchMergedEvent {
             source_branch
-          }
-          ... on GroupEvent {
-            ancestors {
-              id
-              kind
-            }
-            members {
-              id
-              kind
-            }
           }
           ... on GroupEvent {
             ancestors {
@@ -140,7 +129,7 @@ export const EVENTS_QUERY = gql`
       }
     }
   }
-`;
+`);
 
 export interface GetEventsFromApiParams extends PaginationParams {
   filters: GlobalEventsFilters;
@@ -151,12 +140,12 @@ export async function getEventsFromApi({
   offset,
   filters,
 }: GetEventsFromApiParams) {
-  return graphqlClient.query<Get_Infrahub_EventsQuery>({
+  return graphqlClient.query({
     query: EVENTS_QUERY,
     variables: {
       limit,
       offset,
       ...filters,
-    },
+    } satisfies VariablesOf<typeof EVENTS_QUERY>,
   });
 }

@@ -1,19 +1,18 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const RESOLVE_CONFLICT = gql`
-  mutation RESOLVE_CONFLICT ($id: String, $selection: ConflictSelection) {
-    ResolveDiffConflict(data:{conflict_id: $id, selected_branch: $selection}){
+const RESOLVE_CONFLICT = graphql(`
+  mutation RESOLVE_CONFLICT($id: String, $selection: ConflictSelection) {
+    ResolveDiffConflict(data: { conflict_id: $id, selected_branch: $selection }) {
       ok
     }
   }
-`;
+`);
 
 export type ResolveConflictFromApiParams = {
   id: string;
-  selection: ConflictSelection | null;
+  selection: VariablesOf<typeof RESOLVE_CONFLICT>["selection"];
 };
 
 export const resolveConflictFromApi = async ({ id, selection }: ResolveConflictFromApiParams) => {
@@ -22,6 +21,6 @@ export const resolveConflictFromApi = async ({ id, selection }: ResolveConflictF
     variables: {
       id,
       selection,
-    },
+    } satisfies VariablesOf<typeof RESOLVE_CONFLICT>,
   });
 };

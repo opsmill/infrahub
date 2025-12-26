@@ -1,19 +1,18 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type { Tasks_Branch_Status_CountQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const TASKS_BRANCH_STATUS_COUNT = gql`
+const TASKS_BRANCH_STATUS_COUNT = graphql(`
   query TASKS_BRANCH_STATUS_COUNT($branch: String!) {
-    InfrahubTaskBranchStatus(branch: $branch){
+    InfrahubTaskBranchStatus(branch: $branch) {
       count
     }
   }
-`;
+`);
 
 export const getBranchTaskStatusFromApi = (branch: string) => {
-  return graphqlClient.query<Tasks_Branch_Status_CountQuery>({
+  return graphqlClient.query({
     query: TASKS_BRANCH_STATUS_COUNT,
-    variables: { branch },
+    variables: { branch } satisfies VariablesOf<typeof TASKS_BRANCH_STATUS_COUNT>,
   });
 };

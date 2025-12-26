@@ -1,7 +1,19 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
+
+const CONVERT_OBJECT_MUTATION = graphql(`
+  mutation ($nodeId: String!, $targetKind: String!, $fieldsMapping: GenericScalar!) {
+    ConvertObjectType(
+      data: { node_id: $nodeId, target_kind: $targetKind, fields_mapping: $fieldsMapping }
+    ) {
+      node
+    }
+  }
+`);
+
+type MutationVariables = VariablesOf<typeof CONVERT_OBJECT_MUTATION>;
 
 export interface ConvertObjectFromApiApiParams extends BranchContextParams {
   nodeId: string;
@@ -15,22 +27,8 @@ export function convertObjectFromApi({
   targetKind,
   branchName,
 }: ConvertObjectFromApiApiParams) {
-  const mutation = gql`
-    mutation ($nodeId: String!, $targetKind: String!, $fieldsMapping: GenericScalar!) {
-      ConvertObjectType(
-        data: {
-          node_id: $nodeId
-          target_kind: $targetKind
-          fields_mapping: $fieldsMapping
-        }
-      ) {
-        node
-      }
-    }
-  `;
-
   return graphqlClient.mutate({
-    mutation,
+    mutation: CONVERT_OBJECT_MUTATION,
     context: {
       branch: branchName,
       processErrorMessage: () => {},
@@ -39,6 +37,6 @@ export function convertObjectFromApi({
       nodeId,
       targetKind,
       fieldsMapping,
-    },
+    } satisfies MutationVariables,
   });
 }

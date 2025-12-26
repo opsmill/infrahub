@@ -1,9 +1,9 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-export const GET_NUMBER_POOLS = gql`
+const GET_NUMBER_POOLS = graphql(`
   query GET_NUMBER_POOLS($objectKinds: [String]) {
     CoreNumberPool(node__values: $objectKinds) {
       edges {
@@ -23,7 +23,9 @@ export const GET_NUMBER_POOLS = gql`
       }
     }
   }
-`;
+`);
+
+type QueryVariables = VariablesOf<typeof GET_NUMBER_POOLS>;
 
 export interface GetNumberPoolsFromApiParams extends ContextParams {
   objectKinds: Array<string>;
@@ -38,7 +40,7 @@ export function getNumberPoolsFromApi({
     query: GET_NUMBER_POOLS,
     variables: {
       objectKinds,
-    },
+    } satisfies QueryVariables,
     context: {
       branch: branchName,
       date: atDate,

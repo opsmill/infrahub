@@ -1,28 +1,20 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-export const NEXT_IP_PREFIX_QUERY = gql`
+const NEXT_IP_PREFIX_QUERY = graphql(`
   query getNextIPPrefixAvailable($parentPrefixId: String!) {
     InfrahubIPPrefixGetNextAvailable(prefix_id: $parentPrefixId) {
       prefix
     }
   }
-`;
+`);
 
-export interface NextIPPrefixAvailableData {
-  InfrahubIPPrefixGetNextAvailable: {
-    prefix: string;
-  };
-}
-
-export interface NextIPPrefixAvailableQueryVars {
-  parentPrefixId: string;
-}
+type QueryVariables = VariablesOf<typeof NEXT_IP_PREFIX_QUERY>;
 
 export interface GetNextIPPrefixGetNextAvailableFromApiParams
-  extends NextIPPrefixAvailableQueryVars,
+  extends QueryVariables,
     ContextParams {}
 
 export const getNextIpPrefixAvailableFromApi = ({
@@ -30,11 +22,11 @@ export const getNextIpPrefixAvailableFromApi = ({
   branchName,
   atDate,
 }: GetNextIPPrefixGetNextAvailableFromApiParams) => {
-  return graphqlClient.query<NextIPPrefixAvailableData, NextIPPrefixAvailableQueryVars>({
+  return graphqlClient.query({
     query: NEXT_IP_PREFIX_QUERY,
     variables: {
       parentPrefixId,
-    },
+    } satisfies QueryVariables,
     context: {
       branch: branchName,
       date: atDate,

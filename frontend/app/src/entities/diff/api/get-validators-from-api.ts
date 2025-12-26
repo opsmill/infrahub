@@ -1,12 +1,8 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type {
-  Get_Check_DetailsQueryVariables,
-  Get_Core_ValidatorsQuery,
-} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-const GET_VALIDATORS = gql`
+const GET_VALIDATORS = graphql(`
   query GET_CORE_VALIDATORS($id: ID!) {
     CoreValidator(proposed_change__ids: [$id]) {
       edges {
@@ -42,13 +38,8 @@ const GET_VALIDATORS = gql`
       }
     }
   }
-`;
+`);
 
-export interface GetValidatorsFromApiParams extends Get_Check_DetailsQueryVariables {}
-
-export const getValidatorsFromApi = async (variables: GetValidatorsFromApiParams) => {
-  return graphqlClient.query<Get_Core_ValidatorsQuery, Get_Check_DetailsQueryVariables>({
-    query: GET_VALIDATORS,
-    variables,
-  });
+export const getValidatorsFromApi = async (variables: VariablesOf<typeof GET_VALIDATORS>) => {
+  return graphqlClient.query({ query: GET_VALIDATORS, variables });
 };

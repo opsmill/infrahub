@@ -1,14 +1,14 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const DIFF_UPDATE = gql`
+const DIFF_UPDATE = graphql(`
   mutation DIFF_UPDATE($branchName: String!, $waitUntilCompletion: Boolean) {
     DiffUpdate(data: { branch: $branchName }, wait_until_completion: $waitUntilCompletion) {
       ok
     }
   }
-`;
+`);
 
 export type UpdateDiffFromApiParams = {
   branchName: string;
@@ -21,6 +21,6 @@ export const updateDiffFromApi = ({ branchName, waitUntilCompletion }: UpdateDif
     variables: {
       branchName,
       waitUntilCompletion,
-    },
+    } satisfies VariablesOf<typeof DIFF_UPDATE>,
   });
 };

@@ -1,10 +1,9 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type { SearchQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-export const SEARCH = gql`
+const SEARCH = graphql(`
   query Search($search: String!) {
     InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true) {
       count
@@ -16,16 +15,16 @@ export const SEARCH = gql`
       }
     }
   }
-`;
+`);
 
 export interface SearchAnywhereFromApiParams extends ContextParams {
   search: string;
 }
 
 export function searchAnywhereFromApi({ search, branchName, atDate }: SearchAnywhereFromApiParams) {
-  return graphqlClient.query<SearchQuery>({
+  return graphqlClient.query({
     query: SEARCH,
-    variables: { search },
+    variables: { search } satisfies VariablesOf<typeof SEARCH>,
     context: {
       branch: branchName,
       date: atDate,
