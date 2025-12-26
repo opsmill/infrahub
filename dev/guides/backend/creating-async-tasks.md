@@ -63,6 +63,7 @@ async def my_workflow(resource_id: str, context: InfrahubContext) -> None:
 ```
 
 Key requirements:
+
 - Use `@flow` decorator with `name` matching the `WorkflowDefinition.name`
 - Names must be **lowercase with dashes** (e.g., `my-workflow`, not `my_workflow`)
 - Use `flow_run_name` for human-readable run names (see naming guidelines below)

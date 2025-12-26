@@ -59,6 +59,7 @@ class MyDomainActionEvent(InfrahubEvent):
 ```
 
 Key requirements:
+
 - Extend `InfrahubEvent`
 - Set `event_name` as a `ClassVar[str]` following the pattern `infrahub.<domain>.<action>`
 - Add fields using Pydantic `Field()` with descriptions
@@ -78,6 +79,7 @@ def get_resource(self) -> dict[str, str]:
 ```
 
 Requirements:
+
 - Must include `prefect.resource.id` as a unique identifier
 - Add any domain-specific attributes needed for filtering
 - All values must be strings
@@ -101,6 +103,7 @@ def get_related(self) -> list[dict[str, str]]:
 ```
 
 Common patterns:
+
 - Always call `super().get_related()` first to include account, branch, and event metadata
 - Use `prefect.resource.role` to categorize the relationship
 - Add domain-specific attributes for filtering
@@ -124,6 +127,7 @@ def get_messages(self) -> list[InfrahubMessage]:
 ```
 
 Use this when the event should trigger:
+
 - Registry refreshes
 - Git synchronization
 - Cache invalidation

@@ -29,7 +29,6 @@ The task system consists of:
 - **Flow Functions**: Async business logic decorated with `@flow`
 - **Task Functions**: Discrete work units decorated with `@task`
 
-
 ### Declarative Workflow Catalogue
 
 We adopt a declarative model where all workflows are centralized in a single catalogue. Every flow must be declared as a `WorkflowDefinition` in this registry, specifying its name, type, module path, and optional scheduling/concurrency configuration.

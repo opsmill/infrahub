@@ -26,7 +26,7 @@ Most asynchronous operations should use Prefect workflows (see [Async Tasks](asy
 
 One-to-many distribution where all workers process the message:
 
-```
+```text
 Sender ──► Message Bus ──► Worker 1
                       ├──► Worker 2
                       └──► Worker 3
@@ -40,7 +40,7 @@ Workers ignore messages they originated (via `initiator_id` check) to prevent lo
 
 Synchronous-style calls where a response is expected:
 
-```
+```text
 Sender ──► Message Bus ──► Worker
    ▲                         │
    └─── Response ◄───────────┘
@@ -137,6 +137,7 @@ async def branches(message: messages.RefreshRegistryBranches) -> None:
 ```
 
 Handlers:
+
 - Check `initiator_id` for broadcast messages (loop prevention)
 - Use dependency injection for services
 - Return nothing for broadcasts, or response object for RPC

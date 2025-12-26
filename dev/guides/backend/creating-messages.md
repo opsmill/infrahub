@@ -57,6 +57,7 @@ class MyDomainAction(InfrahubMessage):
 ```
 
 **Naming conventions:**
+
 - Routing key: `<domain>.<subdomain>.<action>` using lowercase with dots
 - Class name: PascalCase matching the action (e.g., `GitFileGet`, `RefreshRegistryBranches`)
 - Include a docstring describing when the message is sent

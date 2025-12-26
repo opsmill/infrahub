@@ -6,7 +6,7 @@ Infrahub uses Prefect as its asynchronous task orchestration framework for workf
 
 ## Architecture Overview
 
-```
+```text
 Application Code
        │
        ▼
@@ -111,11 +111,13 @@ The `flow_run_name` is visible to users in the Infrahub UI and should be:
 - **Non-redundant**: Do not include information already available in the flow context
 
 **Do not include in `flow_run_name`:**
+
 - Branch name (except for branch creation workflows)
 - Node IDs of related objects
 - Information already visible in the UI context
 
 **Good examples:**
+
 ```python
 @flow(name="branch-create", flow_run_name="Create branch {branch}")  # Branch name OK here
 @flow(name="artifact-generate", flow_run_name="Generate artifact {artifact_name}")
@@ -123,6 +125,7 @@ The `flow_run_name` is visible to users in the Infrahub UI and should be:
 ```
 
 **Bad examples:**
+
 ```python
 # Too much context duplication
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} (id: {branch_id}) into main")
@@ -173,6 +176,7 @@ workflow = await get_workflow()
 ```
 
 Available dependencies:
+
 - `get_database()`: Database connection
 - `get_workflow()`: Workflow service for submitting child flows
 - `get_event_service()`: Event emission service

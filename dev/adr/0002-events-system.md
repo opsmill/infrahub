@@ -54,6 +54,7 @@ async def send(self, event: InfrahubEvent) -> None:
 ```
 
 Events inherit from `InfrahubEvent` and implement:
+
 - `event_name`: Class variable defining the event namespace
 - `get_resource()`: Returns primary resource metadata
 - `get_related()`: Returns additional context (optional override)
@@ -86,6 +87,7 @@ Events inherit from `InfrahubEvent` and implement:
 ## Implementation Notes
 
 Key implementation locations:
+
 - Event definitions: `backend/infrahub/events/`
 - Service adapter: `backend/infrahub/services/adapters/event/`
 - Trigger models: `backend/infrahub/trigger/models.py`
@@ -93,5 +95,6 @@ Key implementation locations:
 - GraphQL queries: `backend/infrahub/graphql/queries/event.py`
 
 See also:
+
 - `dev/knowledge/backend/events.md` - How the event system works
 - `dev/guides/backend/creating-events.md` - How to create a new event

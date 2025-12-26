@@ -42,7 +42,7 @@ Events are organized by domain in `backend/infrahub/events/`:
 
 ## Event Flow
 
-```
+```text
 Application Code
        │
        ▼
