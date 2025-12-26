@@ -1,7 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
-import type { TaskNode } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
@@ -11,8 +10,15 @@ import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
+import type { TaskHomepageNode } from "@/entities/tasks/domain/get-tasks/get-tasks-homepage";
 
-export const TaskHomepageItem = ({ id, title, branch, updated_at, related_nodes }: TaskNode) => {
+export const TaskHomepageItem = ({
+  id,
+  title,
+  branch,
+  updated_at,
+  related_nodes,
+}: TaskHomepageNode) => {
   return (
     <div className="flex w-full flex-col gap-1.5 rounded-md border border-transparent bg-white p-2 text-xs shadow-sm">
       <Link

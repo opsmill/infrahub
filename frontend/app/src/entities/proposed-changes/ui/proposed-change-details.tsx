@@ -49,9 +49,9 @@ export const ProposedChangeDetails = ({
     pollInterval: 10_000,
   });
 
-  const rejectedBy = proposedChangeData?.rejected_by?.edges.map((edge: any) => edge.node) ?? [];
-  const approvedBy = proposedChangeData?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
-  const reviewers = proposedChangeData?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
+  const rejectedBy = proposedChangeData?.rejected_by?.edges?.map((edge) => edge.node) ?? [];
+  const approvedBy = proposedChangeData?.approved_by?.edges?.map((edge) => edge.node) ?? [];
+  const reviewers = proposedChangeData?.reviewers?.edges?.map((edge) => edge.node) ?? [];
 
   const path = constructPath("/proposed-changes");
   const state = proposedChangeData?.state?.value;

@@ -1,10 +1,9 @@
 import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import type { BranchContextParams, PaginationParams } from "@/shared/api/types";
 
 const GET_TASKS_HOMEPAGE = graphql(`
-  query GET_TASKS_HOMEPAGE($limit: Int, $branchName: String, $states: [StateType]) {
+  query GET_TASKS_HOMEPAGE($limit: Int, $branchName: String!, $states: [StateType]) {
     InfrahubTask(limit: $limit, branch: $branchName, state: $states) {
       count
       edges {
@@ -24,10 +23,7 @@ const GET_TASKS_HOMEPAGE = graphql(`
   }
 `);
 
-export interface GetTasksHomepageFromApiParams
-  extends Omit<PaginationParams, "offset">,
-    BranchContextParams,
-    VariablesOf<typeof GET_TASKS_HOMEPAGE> {}
+export interface GetTasksHomepageFromApiParams extends VariablesOf<typeof GET_TASKS_HOMEPAGE> {}
 
 export const getTasksHomepageFromApi = (params: GetTasksHomepageFromApiParams) => {
   return graphqlClient.query({
