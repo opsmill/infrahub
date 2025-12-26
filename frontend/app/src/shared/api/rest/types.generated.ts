@@ -1111,7 +1111,7 @@ export interface components {
              * Parameters
              * @description Extra parameters specific to this kind of attribute
              */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1222,7 +1222,7 @@ export interface components {
              * Parameters
              * @description Extra parameters specific to this kind of attribute
              */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1562,6 +1562,21 @@ export interface components {
             additionalProperties?: boolean | {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * ListAttributeParameters
+         * @description Parameters for List attributes supporting regex validation on list items.
+         */
+        ListAttributeParameters: {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            /**
+             * Regex
+             * @description Regular expression that each list item value must match if defined
+             */
+            regex?: string | null;
         };
         /** LoggingSettings */
         LoggingSettings: {
