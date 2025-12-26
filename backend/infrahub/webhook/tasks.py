@@ -123,7 +123,7 @@ async def configure_webhook_all() -> None:
 
 @flow(name="webhook-setup-automation-one", flow_run_name="Configurate webhook for {webhook_name}")
 async def configure_webhook_one(
-    webhook_name: str,  # noqa: ARG001
+    webhook_name: str,
     event_data: dict,
 ) -> None:
     log = get_run_logger()
