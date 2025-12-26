@@ -27,11 +27,9 @@ export const NodeEvents = ({
   maxEvent?: number;
 }) => {
   const { isPending, data, error } = useGetEvents({
-    filters: {
-      parentIds: parentId ? [parentId] : undefined,
-      relatedNodeIds: objectId ? [objectId] : undefined,
-      limit: parentId ? 0 : maxEvent,
-    },
+    parentIds: parentId ? [parentId] : undefined,
+    relatedNodeIds: objectId ? [objectId] : undefined,
+    limit: parentId ? 0 : maxEvent,
   });
 
   const {
