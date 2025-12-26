@@ -15,6 +15,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .attribute_parameters import (
     AttributeParameters,
+    ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
     TextAttributeParameters,
@@ -135,8 +136,11 @@ class AttributeSchema(GeneratedAttributeSchema):
         if isinstance(self.parameters, NumberPoolParameters) and not self.kind == "NumberPool":
             raise ValueError(f"NumberPoolParameters can't be used as parameters for {self.kind}")
 
-        if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea", "List"]:
+        if isinstance(self.parameters, TextAttributeParameters) and self.kind not in ["Text", "TextArea"]:
             raise ValueError(f"TextAttributeParameters can't be used as parameters for {self.kind}")
+
+        if isinstance(self.parameters, ListAttributeParameters) and self.kind != "List":
+            raise ValueError(f"ListAttributeParameters can't be used as parameters for {self.kind}")
 
         return self
 
@@ -264,8 +268,14 @@ class NumberAttributeSchema(AttributeSchema):
 
 
 class ListAttributeSchema(AttributeSchema):
-    parameters: TextAttributeParameters = Field(
-        default_factory=TextAttributeParameters,
+    """Schema for List attributes with regex validation support.
+
+    Note: Only regex validation is supported for List attributes.
+    Unlike Text/TextArea attributes, min_length and max_length are not supported.
+    """
+
+    parameters: ListAttributeParameters = Field(
+        default_factory=ListAttributeParameters,
         description="Extra parameters specific to list attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
