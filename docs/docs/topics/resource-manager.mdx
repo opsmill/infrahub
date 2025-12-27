@@ -46,7 +46,7 @@ Resource managers support idempotent allocation through the use of identifiers. 
 
 ```graphql
 mutation {
-  IPAddressPoolGetResource(data: {
+  InfrahubIPAddressPoolGetResource(data: {
     id: "<pool-id>",
     identifier: "web-server-primary-ip",
   })
@@ -123,7 +123,7 @@ Example: Allocating an IP address for future assignment:
 
 ```graphql
 mutation {
-  IPAddressPoolGetResource(data: {
+  InfrahubIPAddressPoolGetResource(data: {
     id: "<pool-id>",
     data: {
       description: "Reserved for new web server"

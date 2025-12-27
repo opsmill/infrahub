@@ -414,7 +414,7 @@ Allocate an IP address directly from the pool:
 
   ```graphql
   mutation {
-    IPAddressPoolGetResource(
+    InfrahubIPAddressPoolGetResource(
       data: {
         hfid: ["My IP address pool"]
         data: {description: "my first allocated ip"}
@@ -435,7 +435,7 @@ Allocate an IP address directly from the pool:
 
   ```graphql
   mutation {
-    IPAddressPoolGetResource(
+    InfrahubIPAddressPoolGetResource(
       data: {
         hfid: ["My IP address pool"]
         data: {description: "my first allocated ip"}
@@ -624,7 +624,7 @@ Allocate an IP prefix directly from the pool:
 
   ```graphql
   mutation {
-    IPPrefixPoolGetResource(data: {
+    InfrahubIPPrefixPoolGetResource(data: {
       hfid: ["My IP address pool"]
       data: {
         description: "prefix allocated to point to point connection"
@@ -1060,7 +1060,7 @@ mutation {
 
 ```graphql
 mutation {
-  IPAddressPoolGetResource(
+  InfrahubIPAddressPoolGetResource(
     data: {
       hfid: ["My Weighted IP address pool"]
       data: {description: "my first allocated ip"}
@@ -1095,7 +1095,7 @@ infrahubctl branch create test
 
 ```graphql
 mutation {
-  IPAddressPoolGetResource(
+  InfrahubIPAddressPoolGetResource(
     data: {
       hfid: ["My IP address pool"]
       data: {description: "my IP allocated on branch test"}
