@@ -1,0 +1,24 @@
+# markdownlint-cli2 configuration
+# https://github.com/DavidAnson/markdownlint-cli2
+
+# Use the existing markdownlint configuration
+config:
+  extends: .markdownlint.yaml
+
+# Files to ignore (replaces .markdownlintignore)
+ignores:
+  - ".claude/**"
+  - ".git/**"
+  - ".kiro/**"
+  - ".mypy_cache/**"
+  - ".ruff_cache/**"
+  - ".venv/**"
+  - "CLAUDE.md"
+  - "docs/.docusaurus/**"
+  - "docs/build/**"
+  - "docs/docs/reference/**"
+  - "docs/node_modules/**"
+  - "docs/README.md"
+  - "frontend/app/CLAUDE.md"
+  - "node_modules/**"
+  - "python_sdk/**"
