@@ -284,7 +284,7 @@ You can review the result on each schema node’s detail page (Menu > Object Man
 
 Update your schema files to use the new `display_label` property and remove deprecated `display_labels` after verifying the automatic migration.
 
-In the documentation you can find specific instructions to migrate existing schema nodes to the new `display_label`. https://docs.infrahub.app/release-notes/deprecation-guides/display_labels/
+In the documentation you can find specific instructions to migrate existing schema nodes to the new `display_label`: <https://docs.infrahub.app/release-notes/deprecation-guides/display_labels/>
 
 Today, in some places in the UI, we are using the HFID of objects to display them with useful context. This was mostly done to overcome the restriction of not supporting relationships in the `display_label`. In a future release we will use the `display_label` for this instead.
 
@@ -570,7 +570,7 @@ git checkout infrahub-v1.5.0
 invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
-The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
+The repository <https://github.com/opsmill/infrahub-demo-edge> has also been updated, it's recommended to pull the latest changes into your fork.
 
 ## [Infrahub - v1.4.13](https://github.com/opsmill/infrahub/tree/infrahub-v1.4.13) - 2025-11-06
 
@@ -820,7 +820,7 @@ With this change multiple improvements have been made to the overall proposed ch
 - Added the ability to set a proposed change to be a draft, allowing you to more easily indicate the state of a certain change
 - The overview tab of a proposed change now contains a more detailed timeline of all the actions/state changes that happened in a proposed change.
 
-Please refer to the documentation for a guide that explains how to setup a change approval workflow: https://develop.infrahub.pages.dev/guides/change-approval-workflow
+Please refer to the documentation for a guide that explains how to setup a change approval workflow: <https://develop.infrahub.pages.dev/guides/change-approval-workflow>
 
 #### Bulk edit capabilities
 

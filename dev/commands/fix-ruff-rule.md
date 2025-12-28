@@ -4,6 +4,8 @@ allowed-tools: Bash(ruff check:*), Bash(ruff rule:*), Bash(uv run invoke backend
 argument-hint: <rule-code e.g., PLR0915 or SIM108>
 ---
 
+# Fix Ruff Rule
+
 Fix the ruff linting rule: $ARGUMENTS
 
 **Important**: First validate that `$ARGUMENTS` matches a valid ruff rule code pattern (e.g., `PLR0915`, `SIM108`, `E501`). If it doesn't look like a valid rule code, ask for clarification before proceeding.
