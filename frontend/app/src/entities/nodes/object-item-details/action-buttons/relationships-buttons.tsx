@@ -116,6 +116,7 @@ export function RelationshipsButtons({
         tooltipContent={permission.create.message ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
         data-testid="open-relationship-form-button"
+        size="sm"
       >
         <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
         {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
