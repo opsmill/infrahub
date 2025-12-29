@@ -5,6 +5,7 @@ export function isRelationshipVisibleInDetailedView(
 ): boolean {
   switch (relationshipSchema.kind) {
     case "Attribute":
+    case "Profile":
     case "Parent": {
       return true;
     }
@@ -12,6 +13,9 @@ export function isRelationshipVisibleInDetailedView(
     case "Generic":
     case "Hierarchy": {
       return relationshipSchema.cardinality === "one";
+    }
+    case "Group": {
+      return relationshipSchema.name === "member_of_groups";
     }
     default: {
       return false;
