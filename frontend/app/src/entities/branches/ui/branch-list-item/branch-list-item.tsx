@@ -1,9 +1,9 @@
 import { ListBoxItem, type ListBoxItemProps } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem as BranchListItemType } from "@/entities/branches/domain/branch.mappers";

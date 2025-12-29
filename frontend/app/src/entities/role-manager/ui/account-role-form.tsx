@@ -21,7 +21,7 @@ import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/shared/config/const
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
@@ -34,7 +34,7 @@ interface AccountRoleFormProps {
 }
 
 export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountRoleFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const createObject = useCreateObjectMutation();
 
@@ -78,7 +78,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
             })
           ),
           context: {
-            branch: branch?.name,
+            branch: currentBranch.name,
             date,
           },
         });

@@ -18,7 +18,7 @@ import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getThreadTitle } from "@/entities/diff/utils";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
@@ -26,7 +26,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 
-import { Button } from "../buttons/button-primitive";
+import { Button } from "../../../../shared/components/buttons/button-primitive";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -41,7 +41,7 @@ export const Thread = (props: tThread) => {
 
   const auth = useAuth();
 
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
@@ -136,7 +136,7 @@ export const Thread = (props: tThread) => {
 
     await graphqlClient.mutate({
       mutation,
-      context: { branch: branch?.name, date },
+      context: { branch: currentBranch.name, date },
     });
 
     if (refetch) {

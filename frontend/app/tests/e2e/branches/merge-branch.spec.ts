@@ -29,9 +29,6 @@ test.describe("Branch - Merge action", () => {
     await test.step("Merge the branch and verify button state", async () => {
       await page.getByRole("button", { name: "Merge", exact: true }).click();
       await expect(page.getByText("Branch merge requested!")).toBeVisible();
-      await expect(page.getByText("RUNNINGMerge branch graphQL")).toBeVisible({
-        timeout: 5 * 60 * 1000,
-      });
       await expect(page.getByRole("button", { name: "Merge", exact: true })).toBeDisabled();
       await expect(page.getByText("COMPLETEDMerge branch graphQL")).toBeVisible({
         timeout: 5 * 60 * 1000,

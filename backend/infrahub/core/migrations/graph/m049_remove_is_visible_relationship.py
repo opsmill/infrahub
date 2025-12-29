@@ -26,9 +26,9 @@ class RemoveIsVisibleRelationshipQuery(Query):
         self.add_to_query(query)
 
 
-class Migration048(GraphMigration):
-    name: str = "048_remove_is_visible_relationship"
-    minimum_version: int = 47
+class Migration049(GraphMigration):
+    name: str = "049_remove_is_visible_relationship"
+    minimum_version: int = 48
     queries: Sequence[type[Query]] = [RemoveIsVisibleRelationshipQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

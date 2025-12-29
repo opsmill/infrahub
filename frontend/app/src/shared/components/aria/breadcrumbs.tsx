@@ -11,7 +11,7 @@ import {
   composeRenderProps,
 } from "react-aria-components";
 
-import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 

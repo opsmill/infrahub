@@ -1,10 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
-import { GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
+import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Pressable } from "react-aria-components";
 import { useNavigate } from "react-router";
 
+import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
+
+import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import {
@@ -17,10 +20,12 @@ import {
 } from "@/shared/components/aria/menu";
 import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
+import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
+import { QSP } from "@/shared/config/qsp";
 
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -54,17 +59,12 @@ export function ObjectDetailsMenu({
     <>
       <MenuTrigger>
         <Pressable>
-          <Button
-            variant="ghost"
-            className="size-7 shrink-0 p-0"
-            data-testid="object-details-menu"
-            {...props}
-          >
-            <Icon icon="mdi:dots-vertical" />
+          <Button variant="outline" size="sm" data-testid="object-details-menu" {...props}>
+            Actions <ChevronDownIcon className="ml-2 size-3.5" />
           </Button>
         </Pressable>
 
-        <MenuPopover>
+        <MenuPopover placement="bottom end">
           <Menu>
             <MenuSection title="Actions">
               <CopyToClipboardMenuItem textToCopy={objectData.id}>Copy ID</CopyToClipboardMenuItem>
@@ -75,10 +75,19 @@ export function ObjectDetailsMenu({
               )}
             </MenuSection>
 
-            <MenuSection title="Explore">
+            <MenuSection title="Go to">
+              <MenuItem
+                href={constructPath(
+                  `/tasks?${QSP.FILTER}=[{"name":"node__value","value":"${objectData.id}"}]`
+                )}
+              >
+                <TasksStatusIcon width="12" height="12" className="ml-0.5" />
+                Tasks
+              </MenuItem>
               <MenuItem
                 href={constructPath("/schema", [{ name: "kind", value: objectSchema.kind }])}
               >
+                <Icon icon="mdi:code-json" />
                 View schema
               </MenuItem>
               <MenuItem
@@ -88,12 +97,12 @@ export function ObjectDetailsMenu({
                     value: jsonToGraphQLQuery(
                       {
                         query: {
-                          [objectSchema.kind as string]: {
+                          [objectData.__typename]: {
+                            __args: {
+                              ids: [objectData.id],
+                            },
                             edges: {
-                              node: {
-                                id: true,
-                                hfid: true,
-                              },
+                              node: nodeCoreFragment,
                             },
                           },
                         },
@@ -105,10 +114,22 @@ export function ObjectDetailsMenu({
                   },
                 ])}
               >
+                <Icon icon="mdi:graphql" />
                 GraphQL sandbox
               </MenuItem>
               {objectSchema.documentation && (
-                <MenuItem href={objectSchema.documentation}>Documentation</MenuItem>
+                <MenuItem
+                  href={
+                    objectSchema.documentation.startsWith("http")
+                      ? objectSchema.documentation
+                      : `${INFRAHUB_DOC_LOCAL}${objectSchema.documentation}`
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <BookTextIcon className="size-3.5" />
+                  Documentation
+                </MenuItem>
               )}
             </MenuSection>
 
@@ -124,6 +145,14 @@ export function ObjectDetailsMenu({
               >
                 <GroupIcon className="size-3.5" />
                 <span>Groups</span>
+              </MenuItem>
+
+              <MenuItem
+                href={constructPath(`/objects/${objectData.__typename}/${objectData.id}/convert`)}
+                isDisabled={!isEditAllowed}
+              >
+                <Icon icon="mdi:swap-horizontal" className="size-3" />
+                Convert object type
               </MenuItem>
 
               <MenuItem

@@ -5,7 +5,6 @@ import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
 import InfrahubLogo from "@/assets/infrahub-logo.svg";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { AccountMenu } from "@/shared/components/account-menu";
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Card } from "@/shared/components/ui/card";
@@ -16,6 +15,7 @@ import { classNames } from "@/shared/utils/common";
 import { SIDEBAR_COLLAPSED_KEY } from "@/entities/navigation/constants";
 import { SearchAnywhere } from "@/entities/navigation/ui/search-anywhere/search-anywhere";
 import SidebarMenu from "@/entities/navigation/ui/sidebar/sidebar-menu";
+import { AccountMenu } from "@/entities/user-profile/ui/account-menu";
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);
@@ -45,7 +45,7 @@ export function AppSidebar() {
           <Button
             variant="outline"
             size="icon"
-            className="-right-3.5 absolute top-11 hidden transition-all group-hover/sidebar:inline-flex"
+            className="absolute top-11 -right-3.5 hidden transition-all group-hover/sidebar:inline-flex"
             onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftOpenIcon className="size-4 text-neutral-600" />
