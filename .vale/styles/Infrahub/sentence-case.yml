@@ -11,262 +11,91 @@ scope:
   - heading.h6
 match: $sentence
 exceptions:
-  - "Method 1: Direct in Settings (Not Recommended)"
-  - "Method 2: Environment Variables (Recommended)"
-  - "Method 3: VSCode Secrets (Future)"
-  - Activation Events
-  - Adding Custom Shortcuts
-  - Advanced Validation Concepts
-  - AI
-  - Allocate VLAN ID
-  - Alpha
-  - Ansible
-  - API
-  - API Token Management
-  - Arista AVD
-  - Attribute Validation
-  - Attributes
-  - Auto-Completion
-  - Available Commands
-  - AWS S3
-  - Beta
-  - BGP
-  - CA certificates
-  - CI
-  - CI/CD
-  - Circular Dependencies
-  - CLI
-  - Codespaces
-  - Command Execution
-  - Common Issues and Solutions
-  - Common Tasks
-  - Common Validation Errors
-  - Computed Attribute
-  - Computed Attributes
-  - Configuration Properties
-  - Configure Infrahub
-  - Containerlab
-  - Context Menu Integration
-  - Context Menus
-  - CoreArtifactTarget
-  - CoreGroup
-  - CoreRepository
-  - Create an application in Entra ID
-  - Cross-File Validation
-  - CSS-like cascading
-  - Customizing Validation
-  - DC
-  - DC-2
-  - DC-3
-  - Debug Output
-  - Definition Provider
-  - Determine your redirect URI
-  - Direct in Settings
-  - Disabling Validation
-  - Docker Compose
-  - Document Symbol Provider
-  - Document Symbols
-  - E2E
-  - Emma
-  - Environment Variable Substitution
-  - Environment Variables
-  - Error Categories
-  - Example
-  - Example Configuration
-  - Extension Dependencies
-  - Extension Metadata
-  - Extension Settings
-  - External Resources
-  - False Positives
-  - File Associations
-  - First Time Setup
-  - From Command Palette
-  - From Context Menus
-  - Further Information
-  - Further Reading
-  - Gallery Banner
-  - Generics
-  - Getting Help
+  # Product and company names
+  - Infrahub
+  - OpsMill
+  - Neo4j
+  - GraphQL
+  - RabbitMQ
+  - Kubernetes
+  - Helm
+  - Terraform
+  - Jinja2
   - Git
   - GitHub
-  - GitHub Codespaces
   - GitLab
-  - GitPod
-  - Go-to-Definition
-  - GraphQL
-  - GraphQLQuery
-  - HAProxy
-  - Helm
-  - High Availability
-  - How Schema Validation Works
-  - How-to Guides
-  - How-to guides
-  - Human Friendly Identifier
-  - IDE
-  - include_in_menu & menu_placement
-  - Incremental Validation
-  - Infrahub
-  - Infrahub Enterprise
-  - Infrahub Server Version
-  - Infrahub Servers Tree View
-  - Infrahub YAML Tree View
-  - infrahubctl
-  - Integration with Other Tools
-  - Intelligent YAML Editing
-  - Intelligent YAML editing
-  - Intelligent Yaml editing
-  - Invalid Attribute Kind
-  - IP
   - IP Fabric
-  - IPAM
-  - IPHost
-  - IPNetwork
-  - Item Types
-  - JavaScript
-  - JetStream
-  - Jinja
-  - Jinja2
-  - JWT
-  - Key Features at a Glance
-  - Key features at a glance
-  - Keyboard Shortcuts
-  - Kubernetes
-  - L2
-  - L3
-  - Language Features
-  - Large File Handling
-  - Layer 2
-  - Layer 3
-  - LibreNMS
-  - Linting Integration
-  - Message Structure
-  - Method 1
-  - Method 2
-  - Method 3
-  - Missing Required Fields
-  - Multi-Server Management
-  - Multi-server management
-  - Namespace
-  - NATS
-  - Nautobot
-  - Neo4j
-  - NetBox
-  - Netbox
-  - Netpicker
-  - NetPicker
-  - Next Steps
-  - Next steps
-  - NGINX
-  - Node
-  - Node.js Runtime
-  - NumberPool
-  - OAuth 2.0
-  - OAuth 2.0 configuration example
-  - OAuth 2.0 parameters
-  - OAuth 2.0 vs OpenID Connect
-  - OAuth2
-  - Observium
-  - OIDC
-  - On macOS and Linux
-  - Open ID Connect
-  - OpenID Connect
-  - OpenID Connect (OIDC)
-  - OpsMill
-  - Option A
-  - Option B
-  - Peering Manager
-  - Performance Considerations
-  - Performance Issues
-  - Performance Settings
-  - Programmatic Execution
-  - Prometheus
-  - Publisher Information
-  - Pydantic
-  - Python
-  - Quick Start
-  - Quick start
-  - RabbitMQ
-  - Real-Time Validation
-  - Real-time Status
-  - Real-time status
-  - Redirect URI formats
-  - Refresh Intervals
-  - Relationship Validation
-  - Required Extensions
-  - Resource Limits
+
+  # Acronyms and abbreviations
+  - API
+  - APIs
   - REST
-  - RFile
-  - Schema
-  - Schema Inheritance
-  - Schema Validation Rules
   - SDK
-  - Separate proxies for HTTP and HTTPS
-  - Server Configuration Schema
-  - Single sign-on
-  - Slurp'it
   - SSO
-  - Status Bar
-  - Status Bar Item
-  - Status States
-  - Structural Validation
-  - Suggested Shortcuts
-  - Syntax Highlighting
-  - Terraform
-  - Testing Queries
-  - TLS
-  - Token Configuration Methods
-  - Token Format
-  - Token Security Best Practices
-  - Tony Stark
-  - TransformPython
-  - Tree Structure
-  - Tree View Components
-  - Troubleshooting Reference
-  - Troubleshooting Tips
-  - Troubleshooting tips
-  - Troubleshooting Validation Issues
-  - TruffleHog
-  - Trusted Root Certificate Store
+  - IPAM
+  - IP
+  - CI
+  - CD
   - UI
-  - Understanding How It Works
-  - Understanding how it works
-  - Understanding Validation Messages
-  - Update Interval
-  - Use Cases
-  - Use cases
-  - Using
-  - Vale
-  - Validation Not Working
-  - Validation Pipeline
-  - Validation Scope
-  - Validation Settings
-  - Version Compatibility
-  - Version Information
-  - Version information
-  - View Item Context Menus
-  - Visual Tree Views
-  - Visual tree views
-  - VS Code
-  - VS Code extensions
-  - VSCode
-  - VSCode Extension API
-  - VSCode extension API
-  - VSCode marketplace
-  - VSCode Secrets
-  - VSCode Version
-  - VSIX
-  - VSIX file
+  - OIDC
+  - OAuth
+  - AWS
+  - S3
+  - E2E
+  - URI
+  - HFID
+  - NATS
+  - JetStream
+  - CSS
+  - VLAN
   - WebUI
-  - What You'll Learn
-  - What you'll learn
-  - Why Validation Matters
-  - Within the Extension
-  - Within the extension
-  - Working with Branches
-  - Working with branches
-  - Working with Multiple Environments
-  - Working with multiple environments
-  - YAML
-  - YAML Intelligence Features
-  - YAML Language Server
-  - YAML Validation
+  - IDE
+
+  # Technical terms that should keep their case
+  - Python
+  - CoreArtifactTarget
+  - CoreGroup
+  - TransformPython
+  - infrahubctl
+  - Namespace
+  - Generics
+  - Docker
+  - Profiles
+  - Display
+  - Label
+  - Enterprise
+  - Alpha
+  - Beta
+  - Release
+  - OpenID
+  - Connect
+  - CA
+  - Object
+  - Schema
+  - Attributes
+  - Relationships
+  - Node
+  - Scalability
+  - High
+  - Availability
+  - Friendly
+  - Identifier
+  - NumberPool
+  - Human
+  - Tony
+  - Stark
+  - include_in_menu
+  - menu_placement
+
+  # Configuration/environment variables
+  - INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
+  - INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS
+  - INFRAHUB_STORAGE_LOCAL
+  - INFRAHUB_STORAGE_S3
+
+  # Roman numerals
+  - I
+  - II
+  - III
+  - IV
+  - V

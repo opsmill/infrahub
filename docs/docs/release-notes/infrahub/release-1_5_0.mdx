@@ -42,7 +42,7 @@ Benefit: Eliminates redundant generator runs
 
 Requirement: This feature requires using version 1.15.0 or newer of the Infrahub Python SDK.
 
-## New Infrahub Backup and Restore tool
+## New Infrahub backup and restore tool
 
 We are introducing a new tool to ease the backup and restore process of Infrahub.
 
@@ -71,7 +71,7 @@ What’s new:
 
 - Computed at write time: display_label is now computed on create/update and stored, improving read performance.
 - Templating with Jinja2: define display_label using the same Jinja2 syntax available for computed attributes, including first-level relationships.
-- Simple single-attribute shorthand remains supported, e.g. `attribute__value`
+- Single-attribute shorthand remains supported, i.e. `attribute__value`
 - For multi-field labels, use Jinja2: `{{ relationship__attribute__value }}-{{ attribute__value }}`
 
 Deprecation and migration:
@@ -203,7 +203,7 @@ You can clear the value of an optional attribute and a cardinality one relations
 
 ### Support for object file range expansion
 
-Object templates support range expansion on string attributes to generate multiple similar objects more easily (e.g., device interfaces).
+Object templates support range expansion on string attributes to generate multiple similar objects more easily (i.e., device interfaces).
 
 # Deprecations
 
