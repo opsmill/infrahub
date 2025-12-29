@@ -1501,7 +1501,7 @@ class NodeGetListQuery(Query):
                 order = copy(order)
                 order.disable = True
 
-        self.order = order
+        self.requested_order = order
 
         super().__init__(**kwargs)
 
@@ -1517,20 +1517,12 @@ class NodeGetListQuery(Query):
             return True
         return False
 
-    @property
-    def _has_metadata_order(self) -> bool:
-        """Check if metadata ordering is requested."""
-        if self.order is None or self.order.node_metadata is None:
-            return False
-        return bool(self.order.node_metadata.created_at or self.order.node_metadata.updated_at)
-
-    @property
-    def _metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
+    def _get_metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
         """Return the metadata field and direction to order by, or None."""
-        if not self._has_metadata_order:
+        if not self.requested_order or not self.requested_order.node_metadata:
             return []
         fields: list[tuple[str, OrderDirection]] = []
-        nm = self.order.node_metadata  # type: ignore[union-attr]
+        nm = self.requested_order.node_metadata
         if nm.created_at:
             fields.append(("created_at", nm.created_at))
         if nm.updated_at:
@@ -1675,8 +1667,8 @@ WITH %(tracked_vars)s, head(collect(updated_at_val)) AS order_updated_at
             return
 
         # Determine ordering behavior
-        disable_order = self.order is not None and self.order.disable
-        has_any_order = bool(self.schema.order_by) or self._has_metadata_order
+        disable_order = self.requested_order is not None and self.requested_order.disable
+        has_any_order = bool(self.schema.order_by) or self._get_metadata_order_fields()
 
         if not self.has_filters and (disable_order or not has_any_order):
             # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
@@ -1859,50 +1851,46 @@ WITH %(tracked_vars)s, head(collect(updated_at_val)) AS order_updated_at
             return list(field_requirements_map.values())
 
         # Add metadata ordering requirements first (highest priority)
-        if self._has_metadata_order:
-            for metadata_field, direction in self._metadata_order_fields:
-                existing_req = field_requirements_map.get((None, metadata_field))
-                if existing_req:
-                    # Field already used for filtering, add ORDER type
-                    existing_req.types.append(FieldAttributeRequirementType.METADATA_ORDER)
-                    existing_req.order_direction = direction
-                else:
-                    field_requirements_map[None, metadata_field] = FieldAttributeRequirement(
-                        field_name=metadata_field,
-                        field=None,
-                        field_attr_name=metadata_field,
-                        field_attr_value=None,
-                        index=index,
-                        types=[FieldAttributeRequirementType.METADATA_ORDER],
-                        order_direction=direction,
-                    )
-                index += 1
+        for metadata_field, direction in self._get_metadata_order_fields():
+            existing_req = field_requirements_map.get((None, metadata_field))
+            if existing_req:
+                # Field already used for filtering, add ORDER type
+                existing_req.types.append(FieldAttributeRequirementType.METADATA_ORDER)
+                existing_req.order_direction = direction
+            else:
+                field_requirements_map[None, metadata_field] = FieldAttributeRequirement(
+                    field_name=metadata_field,
+                    field=None,
+                    field_attr_name=metadata_field,
+                    field_attr_value=None,
+                    index=index,
+                    types=[FieldAttributeRequirementType.METADATA_ORDER],
+                    order_direction=direction,
+                )
+            index += 1
 
         # Add schema order_by requirements
-        elif self.schema.order_by:
-            for order_by_path in self.schema.order_by:
-                order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
+        for order_by_path in self.schema.order_by or []:
+            order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
 
-                field = self.schema.get_field(order_by_field_name)
-                existing_req = field_requirements_map.get((order_by_field_name, order_by_attr_property_name))
-                if existing_req:
-                    # Field already used for filtering, add ORDER type
-                    existing_req.types.append(FieldAttributeRequirementType.ORDER)
-                    existing_req.order_direction = OrderDirection.ASC
-                else:
-                    # New field requirement for ordering only
-                    field_requirements_map[order_by_field_name, order_by_attr_property_name] = (
-                        FieldAttributeRequirement(
-                            field_name=order_by_field_name,
-                            field=field,
-                            field_attr_name=order_by_attr_property_name,
-                            field_attr_value=None,
-                            index=index,
-                            types=[FieldAttributeRequirementType.ORDER],
-                            order_direction=OrderDirection.ASC,
-                        )
-                    )
-                    index += 1
+            field = self.schema.get_field(order_by_field_name)
+            existing_req = field_requirements_map.get((order_by_field_name, order_by_attr_property_name))
+            if existing_req:
+                # Field already used for filtering, add ORDER type
+                existing_req.types.append(FieldAttributeRequirementType.ORDER)
+                existing_req.order_direction = OrderDirection.ASC
+            else:
+                # New field requirement for ordering only
+                field_requirements_map[order_by_field_name, order_by_attr_property_name] = FieldAttributeRequirement(
+                    field_name=order_by_field_name,
+                    field=field,
+                    field_attr_name=order_by_attr_property_name,
+                    field_attr_value=None,
+                    index=index,
+                    types=[FieldAttributeRequirementType.ORDER],
+                    order_direction=OrderDirection.ASC,
+                )
+                index += 1
 
         return list(field_requirements_map.values())
 
