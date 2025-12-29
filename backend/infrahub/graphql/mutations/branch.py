@@ -9,6 +9,7 @@ from typing_extensions import Self
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
@@ -97,7 +98,11 @@ class BranchCreate(Mutation):
         # Retrieve created branch
         obj = await Branch.get_by_name(db=graphql_context.db, name=model.name)
         fields = extract_graphql_fields(info=info)
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
+        return cls(
+            object=await obj.to_graphql_flat(fields=fields.get("object", {})),
+            ok=True,
+            task=task,
+        )
 
 
 class BranchNameInput(InputObjectType):
@@ -171,7 +176,7 @@ class BranchUpdate(Mutation):
                 setattr(obj, field_name, data[field_name])
 
         async with graphql_context.db.start_transaction() as db:
-            await obj.save(db=db)
+            await obj.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
         return cls(ok=True)
 
@@ -217,7 +222,7 @@ class BranchRebase(Mutation):
         fields = extract_graphql_fields(info=info)
         ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchValidate(Mutation):
@@ -259,7 +264,7 @@ class BranchValidate(Mutation):
 
         fields = extract_graphql_fields(info=info)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchMerge(Mutation):
@@ -290,6 +295,10 @@ class BranchMerge(Mutation):
             db=graphql_context.db, account_session=graphql_context.active_account_session
         )
 
+        obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
+        if obj.status == BranchStatus.NEED_UPGRADE_REBASE:
+            raise ValidationError(f"Cannot merge branch '{branch_name}' with status '{obj.status.name}'")
+
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
                 workflow=BRANCH_MERGE_MUTATION,
@@ -310,4 +319,4 @@ class BranchMerge(Mutation):
         fields = extract_graphql_fields(info=info)
         ok = True
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
+        return cls(object=await obj.to_graphql_flat(fields=fields.get("object", {})), ok=ok, task=task)

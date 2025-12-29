@@ -55,7 +55,6 @@ export const ContentCard = ({ className, ...props }: CardProps) => {
 
 export type ContentCardTitleProps = {
   title?: ReactNode;
-  subtitle?: ReactNode;
   description?: ReactNode;
   end?: ReactNode;
   badgeContent?: ReactNode;
@@ -91,16 +90,11 @@ export const ContentCardTitle = ({
   );
 };
 
-export const ContentCardContent = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {
-  return <div className={classNames("p-5 pt-0", className)} {...props} />;
-};
-
 export const Content = Object.assign(ContentRoot, {
   Title: ContentTitle,
   Root: ContentRoot,
   Card: ContentCard,
   CardTitle: ContentCardTitle,
-  CardContent: ContentCardContent,
 });
 
 export default Content;

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
@@ -39,13 +39,12 @@ describe("RelationshipMany - Field", () => {
     name: "testField",
     label: "Test Field",
     peer: "TestNode",
-    schema: objectSchema,
     relationship: relationshipSchema,
   };
 
   test("renders with default props", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <TestForm>
         <RelationshipManyField {...defaultProps} />
       </TestForm>
@@ -59,7 +58,7 @@ describe("RelationshipMany - Field", () => {
 
   test("renders with description", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <TestForm>
         <RelationshipManyField {...defaultProps} description="Test description" />
       </TestForm>
@@ -71,7 +70,7 @@ describe("RelationshipMany - Field", () => {
 
   test("renders with unique indicator when unique is true", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <TestForm>
         <RelationshipManyField {...defaultProps} unique />
       </TestForm>
@@ -83,7 +82,7 @@ describe("RelationshipMany - Field", () => {
 
   test("renders with required indicator and required the value", async () => {
     // GIVEN
-    const component = render(
+    const component = await render(
       <TestForm>
         <RelationshipManyField {...defaultProps} rules={{ required: true }} />
       </TestForm>

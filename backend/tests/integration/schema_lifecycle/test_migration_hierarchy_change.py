@@ -120,7 +120,9 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         assert rels_by_name["parent"].peer == "LocationCountry"
         assert rels_by_name["children"].peer == "LocationGeneric"
 
-    async def test_check_schema_02(self, client: InfrahubClient, branch_1: Branch, location_schema_02: SchemaRoot):
+    async def test_check_schema_02(
+        self, client: InfrahubClient, branch_1: Branch, location_schema_02: SchemaRoot
+    ) -> None:
         success, response = await client.schema.check(
             schemas=[location_schema_02.model_dump(mode="json")], branch=branch_1.name
         )
@@ -156,11 +158,12 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                     },
                 },
             },
+            "warnings": [],
         }
 
     async def test_load_schema_02(
         self, db: InfrahubDatabase, client: InfrahubClient, branch_1: Branch, location_schema_02: SchemaRoot
-    ):
+    ) -> None:
         response = await client.schema.load(schemas=[location_schema_02.model_dump(mode="json")], branch=branch_1.name)
         assert not response.errors
 
@@ -187,6 +190,6 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         assert site_schema.parent == "LocationMetro"
         assert site_schema.children == ""  # noqa: PLC1901
 
-    async def test_final_validate(self, db: InfrahubDatabase):
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)

@@ -1,0 +1,106 @@
+---
+title: Object conversion
+---
+
+# Object conversion
+
+Object conversion in Infrahub provides a powerful mechanism to transform existing objects from one schema type to another without losing data or breaking relationships. This capability addresses the common infrastructure management challenge of evolving data models while preserving existing configurations and connections.
+
+## Introduction
+
+In dynamic infrastructure environments, the need to change an object's type often arises as requirements evolve. Traditional approaches typically require deleting the original object and manually recreating it with the new type, leading to data loss and broken relationships. Infrahub's object conversion feature eliminates this friction by providing a seamless transformation process.
+
+## How object conversion works
+
+### Field mapping and equivalence
+
+Object conversion operates on the principle of field equivalence between source and destination schema types. The system automatically identifies compatible fields using specific criteria:
+
+**Attribute field equivalence:**
+
+- Fields must have identical names
+- Fields must have compatible value types
+- Data validation rules are preserved during conversion
+
+**Relationship field equivalence:**
+
+- Fields must have identical names
+- Fields must reference the same peer schema type
+- Cardinality constraints (one-to-one, one-to-many) must match
+
+### Automatic mapping process
+
+When initiating a conversion, Infrahub performs these steps:
+
+1. **Schema analysis**: Compares source and destination schema definitions to identify equivalent fields
+2. **Compatibility check**: Validates that the conversion is technically feasible
+3. **Mandatory field identification**: Highlights destination fields that require explicit values
+4. **Data transformation**: Executes the conversion while preserving data integrity
+
+### Handling non-equivalent fields
+
+Not all fields between schema types will have direct equivalents. The conversion process handles these scenarios:
+
+**Missing source fields:**
+
+- Destination fields without source equivalents must be manually specified
+- Mandatory destination fields require explicit values or use of defaults
+- Optional fields can leverage schema-defined default values
+
+**Surplus source fields:**
+
+- Source fields without destination equivalents are gracefully ignored
+- Data from these fields is not transferred but doesn't impede conversion
+- Historical data remains accessible through version control
+
+## Design considerations and constraints
+
+### Version control integration
+
+Object conversion integrates deeply with Infrahub's Git-like branching model, but this creates important constraints:
+
+**Branch-aware attributes:**
+
+Objects containing branch-aware attributes (fields that can have different values across branches) require special handling. These conversions:
+
+- Must occur on the default branch to maintain data consistency
+- Trigger automatic rebase requirements for other branches
+- May result in data loss on non-conversion branches
+
+**Commit preservation:**
+The conversion process maintains object history and commit lineage, ensuring auditability and rollback capabilities.
+
+### Data integrity safeguards
+
+Several mechanisms protect data integrity during conversion:
+
+**Validation enforcement:**
+
+- All destination schema constraints are validated before conversion
+- Referential integrity for relationships is maintained
+- Data type compatibility is strictly enforced
+
+**Atomic operations:**
+
+- Conversions execute as atomic transactions
+- Failures result in complete rollback with no partial state
+- Concurrent modifications are handled through Infrahub's conflict resolution
+
+## Common use cases
+
+### Infrastructure evolution
+
+**Network interface type changes:**
+Converting between Layer 2 and Layer 3 interfaces as network designs evolve, preserving device associations and configuration parameters while adapting to new operational requirements.
+
+**Repository access model changes:**
+Transforming read-only repositories to read-write repositories when teams gain modification privileges, maintaining Git integration while expanding access controls.
+
+## Related concepts
+
+Object conversion intersects with several other Infrahub concepts:
+
+- **[Schema management](./schema)**: Understanding how schema types define conversion possibilities
+- **[Version control](./version-control)**: How conversions interact with branch and merge operations
+- **[Metadata](./metadata)**: How object metadata is preserved during conversion
+- **[GraphQL](./graphql)**: The API mechanisms that enable conversion operations

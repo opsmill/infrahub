@@ -2,30 +2,39 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from enum import Enum
-from typing import TYPE_CHECKING
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 
 import bcrypt
 import jwt
 from pydantic import BaseModel
 
 from infrahub import config, models
-from infrahub.config import SecurityOAuth2Google, SecurityOAuth2Settings, SecurityOIDCGoogle, SecurityOIDCSettings
+from infrahub.config import (
+    SecurityOAuth2Google,
+    SecurityOAuth2Settings,
+    SecurityOIDCGoogle,
+    SecurityOIDCSettings,
+)
 from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreAccount, CoreAccountGroup
+from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreGenericAccount
 from infrahub.core.registry import registry
-from infrahub.exceptions import AuthorizationError, NodeNotFoundError
+from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreGenericAccount
+    import httpx
+
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
+log = get_logger()
 
-class AuthType(str, Enum):
+
+class AuthType(StrEnum):
     NONE = "none"
     JWT = "jwt"
     API = "api"
@@ -42,8 +51,19 @@ class AccountSession(BaseModel):
         return self.auth_type == AuthType.JWT
 
 
+class SSOStateCache(BaseModel):
+    """Cache data stored during OAuth2/OIDC authorization flow.
+
+    This model is used to store state information between the authorization
+    request and the token exchange, including PKCE code_verifier when enabled.
+    """
+
+    final_url: str
+    code_verifier: str | None = None
+
+
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
-    account: CoreGenericAccount = await NodeManager.get_one(db=db, id=account_id, raise_on_error=True)
+    account = await NodeManager.get_one(db=db, kind=CoreGenericAccount, id=account_id, raise_on_error=True)
     if account.status.value != AccountStatus.ACTIVE.value:
         raise AuthorizationError("This account has been deactivated")
 
@@ -53,8 +73,8 @@ async def authenticate_with_password(
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
 
-    response: list[CoreGenericAccount] = await NodeManager.query(
-        schema=InfrahubKind.GENERICACCOUNT,
+    response = await NodeManager.query(
+        schema=CoreGenericAccount,
         db=db,
         branch=selected_branch,
         filters={"name__value": credentials.username},
@@ -104,7 +124,7 @@ async def create_fresh_access_token(
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
-    account: CoreGenericAccount | None = await NodeManager.get_one(id=refresh_data.account_id, db=db)
+    account = await NodeManager.get_one(id=refresh_data.account_id, kind=CoreGenericAccount, db=db)
     if not account:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
@@ -256,3 +276,127 @@ async def get_groups_from_provider(
                 return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
 
     return []
+
+
+def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: bool = True) -> str | dict[str, Any]:
+    """Safely extract response body from HTTP response. If the response body cannot be JSON parsed or is empty,
+    it raises a GatewayError.
+
+    Args:
+        response: The HTTP response object
+        raise_error_on_empty_body: Whether to raise an error if the response body is empty
+
+    Returns:
+        The response body as JSON dict if possible, otherwise as text
+
+    Raises:
+        GatewayError: When the response body cannot be parsed or is empty
+    """
+    # Try to parse as JSON first
+    try:
+        return response.json()
+    except Exception as json_error:
+        try:
+            # Try to get as text
+            text_body = response.text
+            if not text_body.strip() and raise_error_on_empty_body:  # Check for empty or whitespace-only response
+                log.error(
+                    "Empty response body from authentication provider",
+                    url=str(response.url),
+                    status_code=response.status_code,
+                )
+                raise GatewayError(message="Authentication provider returned an empty response") from json_error
+        except Exception:
+            log.error(
+                "Unable to read response body from authentication provider",
+                url=str(response.url),
+                status_code=response.status_code,
+            )
+            raise GatewayError(message="Unable to read response from authentication provider") from json_error
+
+    # Here it means we got a text response but not JSON
+    return text_body
+
+
+def extract_auth_error_message(response_body: str | dict[str, Any], base_message: str) -> str:
+    """Extract error message from OAuth 2.0/OIDC provider response following RFC 6749.
+
+    Args:
+        response_body: The response body from the authentication provider
+        base_message: Base error message to use if no specific error is found
+
+    Returns:
+        Formatted error message with provider details if available
+    """
+    if not isinstance(response_body, dict):
+        return base_message
+
+    # RFC 6749 standard error response format
+    error_description = response_body.get("error_description")
+    error_code = response_body.get("error")
+
+    if error_description:
+        return f"{base_message}: {error_description}"
+    if error_code:
+        return f"{base_message}: {error_code}"
+
+    return base_message
+
+
+def validate_auth_response(response: httpx.Response, provider_type: str = "authentication") -> None:
+    """Validate HTTP response from OAuth 2.0/OIDC provider and raise appropriate errors.
+
+    Args:
+        response: The HTTP response from the authentication provider
+        provider_type: Type of provider for logging (e.g., "OAuth 2.0", "OIDC")
+
+    Raises:
+        GatewayError: When the response indicates an error or invalid state
+    """
+    # If the status code is successful, simply return
+    if 200 <= response.status_code <= 299:
+        # Verify that we can read the response body safely and it is not empty
+        safe_get_response_body(response)
+        return
+
+    # Prepare variables with default values for logging
+    response_body = safe_get_response_body(response, raise_error_on_empty_body=False)
+    log_message: str = f"Unexpected response from {provider_type} provider"
+    base_msg: str = "Unexpected response from authentication provider."
+
+    # Handle specific HTTP status codes with appropriate error messages
+    match response.status_code:
+        case 400:
+            log_message = f"Bad request to {provider_type} provider"
+            base_msg = "Bad request to authentication provider. Please try again later or contact your administrator."
+
+        case 401:
+            log_message = f"Unauthorized request to {provider_type} provider"
+            base_msg = (
+                "Unauthorized request to authentication provider. Please try again later or contact your administrator."
+            )
+
+        case 403:
+            log_message = f"Forbidden request to {provider_type} provider"
+            base_msg = (
+                "Access forbidden by authentication provider. Please try again later or contact your administrator."
+            )
+
+        case 404:
+            log_message = f"Resource not found for {provider_type} provider"
+            base_msg = (
+                "Authentication provider endpoint not found. Please try again later or contact your administrator."
+            )
+
+        case 429:
+            log_message = f"Rate limited by {provider_type} provider"
+            base_msg = "Rate limited by authentication provider. Please try again later."
+
+        case status_code if 500 <= status_code <= 599:
+            log_message = f"Server error from {provider_type} provider"
+            base_msg = "Authentication provider is experiencing server issues. Please try again later or contact your administrator."
+
+    # Print proper log and raise gateway error
+    log.error(log_message, url=str(response.url), status_code=response.status_code, body=response_body)
+    error_msg = extract_auth_error_message(response_body, base_msg)
+    raise GatewayError(message=error_msg)

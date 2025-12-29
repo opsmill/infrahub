@@ -1,22 +1,24 @@
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { Navigate, useParams } from "react-router";
-import { StringParam, useQueryParam } from "use-query-params";
-
-import { DIFF_TABS } from "@/config/constants";
-import { QSP } from "@/config/qsp";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { Tabs } from "@/shared/components/tabs";
-import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { DIFF_TABS } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { branchesState } from "@/entities/branches/stores";
 import { BranchDetails } from "@/entities/branches/ui/branch-details";
+import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
+import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
+import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 
 const BRANCH_TABS = {
   DETAILS: "details",
@@ -48,16 +50,24 @@ function BranchDetailsPage() {
 
   return (
     <Content.Card>
-      <header className="flex items-center gap-2 p-5 font-bold">
-        <h1 className="text-xl">{branch.name}</h1>
-        {branch.is_default && <Badge variant="blue-outline">default</Badge>}
+      <header className="p-5 pb-2">
+        <Row>
+          <h1 className="font-bold text-xl">{branch.name}</h1>
+          <NodeMetadataPopover objectKind="InfrahubBranch" objectId={branch.id} />
+          {branch.is_default ? (
+            <BranchDefaultBadge className="text-sm" />
+          ) : (
+            <BranchStatusBadge status={branch.status} className="text-sm" />
+          )}
+        </Row>
+        {branch.description && <p className="text-sm">{branch.description}</p>}
       </header>
 
       <BranchTab />
 
-      <Content.CardContent>
+      <div className="p-2">
         <BranchContent branchName={branchName} />
-      </Content.CardContent>
+      </div>
     </Content.Card>
   );
 }
@@ -87,7 +97,7 @@ const BranchTab = () => {
 };
 
 const BranchContent = ({ branchName }: { branchName: string }) => {
-  const [currentTab] = useQueryParam(QSP.BRANCH_TAB, StringParam);
+  const [currentTab] = useQueryState(QSP.BRANCH_TAB);
 
   switch (currentTab) {
     case DIFF_TABS.FILES: {
@@ -99,7 +109,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
     case DIFF_TABS.SCHEMA: {
       return (
         <NodeDiff
-          branchName={branchName}
+          branch={branchName}
           filters={{
             namespace: { includes: ["Schema"], excludes: ["Profile"] },
             status: { excludes: ["UNCHANGED"] },
@@ -110,7 +120,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
     case DIFF_TABS.DATA: {
       return (
         <NodeDiff
-          branchName={branchName}
+          branch={branchName}
           filters={{
             namespace: { excludes: ["Schema", "Profile"] },
             status: { excludes: ["UNCHANGED"] },
@@ -119,7 +129,7 @@ const BranchContent = ({ branchName }: { branchName: string }) => {
       );
     }
     default: {
-      return <BranchDetails />;
+      return <BranchDetails branchName={branchName} />;
     }
   }
 };

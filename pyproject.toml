@@ -1,125 +1,134 @@
-[tool.poetry]
+[project]
 name = "infrahub-server"
-version = "1.4.9"
+version = "1.7.0b0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
-authors = ["OpsMill <info@opsmill.com>"]
+authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
+requires-python = ">=3.12,<3.14"
 readme = "README.md"
 license = "Apache-2.0"
-homepage = "https://opsmill.com"
-repository = "https://github.com/opsmill/infrahub"
-documentation = "https://docs.infrahub.app/"
+
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
-packages = [
-    { include = "infrahub", from = "backend" },
-    { include = "infrahub_sdk", from = "python_sdk" },
-    { include = "infrahub_testcontainers", from = "python_testcontainers" },
+dependencies = [
+    "neo4j==6.0.3",
+    "neo4j-rust-ext==6.0.3.0",
+    "pydantic>=2.12,<2.13",
+    "pydantic-settings>=2.8,<2.9",
+    "pytest>=9.0,<9.1",
+    "aio-pika>=9.4,<9.5",
+    "structlog==24.1.0",
+    "boto3==1.34.129",
+    "email-validator>=2.1,<2.2",
+    "redis[hiredis]==6.0.0",
+    "typer==0.19.2",
+    "click==8.1.7",
+    "prefect==3.6.7",
+    "prefect-redis==0.2.8",
+    "ujson>=5,<6",
+    "Jinja2>=3,<4",
+    "gitpython>=3,<4",
+    "pyyaml>=6,<7",
+    "tomli>=1.1.0; python_version<='3.11'",
+    "deepdiff==8.6.1",
+    # Dependencies specific to the API Server
+    "fastapi==0.121.1",
+    "fastapi-storages>=0.3,<0.4",
+    "graphene>=3.4,<3.5",
+    "gunicorn>=23.0.0,<24",
+    "lunr>=0.7.0.post1,<0.8",
+    "starlette-exporter>=0.23,<0.24",
+    "python-multipart==0.0.18", # Required by FastAPI to upload large files
+    "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
+    "bcrypt>=4.1,<4.2", # Used to hash and validate password
+    "pyjwt>=2.8,<2.9", # Used to manage JWT tokens
+    "uvicorn[standard]>=0.32,<0.33",
+    "opentelemetry-instrumentation-aio-pika==0.60b0",
+    "opentelemetry-instrumentation-fastapi==0.60b0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+    "opentelemetry-exporter-otlp-proto-http==1.39.0",
+    "nats-py==2.7.2",
+    "netaddr==1.3.0",
+    "authlib==1.6.5",
+    "aiodataloader==0.4.3",
+    "fast-depends==3.0.5",
+    "cachetools-async==0.0.5",
+    # Dependencies specific to the SDK
+    "rich>=13,<14",
+    "pyarrow>=14",
+    "numpy>=1.26.2",
+    "dulwich==0.22.7",
+    "whenever==0.9.3",
+    "netutils==1.12.0",
+    "ariadne-codegen==0.15.3",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.12, < 3.13"
-neo4j = "~5.28"
-neo4j-rust-ext = "~5.28"
-pydantic = "~2.10"
-pydantic-settings = "~2.8"
-pytest = "~7.4"
-aio-pika = "~9.4"
-structlog = "24.1.0"
-boto3 = "1.34.129"
-email-validator = "~2.1"
-redis = { version = "^6.0.0", extras = ["hiredis"] }
-typer = "0.12.5"
-prefect = "3.4.19"
-prefect-redis = "0.2.4"
-ujson = "^5"
-Jinja2 = "^3"
-gitpython = "^3"
-pyyaml = "^6"
-tomli = { version = ">=1.1.0", python = "<3.11" }
+[project.urls]
+Homepage = "https://opsmill.com"
+Repository = "https://github.com/opsmill/infrahub"
+Documentation = "https://docs.infrahub.app/"
 
-# Dependencies specific to the API Server
-fastapi = "0.116.1"
-fastapi-storages = "~0.3"
-graphene = "~3.4"
-gunicorn = "^23.0.0"
-lunr = "^0.7.0.post1"
-starlette-exporter = "~0.23"
-python-multipart = "0.0.18"                            # Required by FastAPI to upload large files
-asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
-bcrypt = "~4.1"                                        # Used to hash and validate password
-pyjwt = "~2.8"                                         # Used to manage JWT tokens
-uvicorn = { version = "~0.32", extras = ["standard"] }
-opentelemetry-instrumentation-aio-pika = "0.49b1"
-opentelemetry-instrumentation-fastapi = "0.49b1"
-opentelemetry-exporter-otlp-proto-grpc = "1.28.1"
-opentelemetry-exporter-otlp-proto-http = "1.28.1"
-nats-py = "^2.7.2"
-netaddr = "1.3.0"
-authlib = "1.3.2"
-aiodataloader = "0.4.0"
-fast-depends = "^2.4.12"
+[tool.uv.sources]
+infrahub-server = { workspace = true }
+infrahub-sdk = { path = "python_sdk", editable = true }
+infrahub-testcontainers = { path = "python_testcontainers", editable = true }
 
-# Dependencies specific to the SDK
-rich = "^13"
-pyarrow = ">=14"
-numpy = "^1.26.2"
-dulwich = "^0.22.7"
-whenever = "0.7.3"
-netutils = "1.12.0"
-copier = "^9.8.0"
+[dependency-groups]
+dev = [
+    "yamllint",
+    "mypy>=1.15,<1.16",
+    "ipython>=8,<9",
+    "pytest-asyncio>=1.3,<1.4",
+    "pytest-clarity>=1.0,<1.1",
+    "pytest-cov==7.0.0",
+    "pytest-xdist>=3.4,<3.5",
+    "types-python-slugify>=8.0.0.3,<9",
+    "pre-commit>=2.20.0,<3",
+    "types-ujson",
+    "types-pyyaml",
+    "types-cachetools==6.2.0.20250827",
+    "ruff==0.14.5",
+    "invoke==2.2.0",
+    "pytest-benchmark>=4.0.0,<5",
+    "pytest-codspeed>=4.2.0,<5",
+    "polyfactory==2.16.2",
+    "towncrier>=24.8,<25",
+    "pytest-env>=1.1.3,<2",
+    "testcontainers==4.8.1",
+    "pytest-timeout==2.3.1",
+    "matplotlib==3.10.7",
+    "pandas==2.3.3",
+    "semver>=3.0.2,<4",
+    "ruamel-yaml==0.18.6",
+    "pytest-httpx>=0.30",
+    "docker==7.1.0",
+    "psutil==6.1.0",
+    "jwcrypto==1.5.6",
+    "ty==0.0.4",
+]
 
-[tool.poetry.group.dev.dependencies]
-yamllint = "*"
-mypy = "*"
-ipython = "~8"
-pytest-asyncio = "^0.21.1"
-pytest-clarity = "~1.0"
-pytest-cov = "~4.1"
-pytest-xdist = "~3.4"
-types-python-slugify = "^8.0.0.3"
-pre-commit = "^2.20.0"
-types-ujson = "*"
-types-pyyaml = "*"
-ruff = "0.11.9"
-invoke = "2.2.0"
-pytest-benchmark = "^4.0.0"
-pytest-codspeed = "^2.2.0"
-deepdiff = "8.6.1"
-polyfactory = "^2.16.2"
-towncrier = "^24.8"
-pytest-env = "^1.1.3"
-testcontainers = "^4.8.1"
-pytest-timeout = "^2.3.1"
-matplotlib = "^3.9.2"
-pandas = "^2.2.3"
-semver = "^3.0.2"
-ruamel-yaml = "^0.18.6"
+# test-scale = [
+# "locust==2.20.1",
+# "docker==7.0.0",
+# "matplotlib>=3.8,<4",
+# "pandas>=2.2,<3",
+# ]
 
-# [tool.poetry.group.test-scale.dependencies]
-# locust = "^2.20.1"
-# docker = "^7.0.0"
-# matplotlib = "^3.8"
-# pandas = "^2.2"
-pytest-httpx = ">=0.30"
-docker = "^7.1.0"
-psutil = "^6.1.0"
-jwcrypto = "1.5.6"
-
-[tool.poetry.scripts]
+[project.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahubctl = "infrahub_sdk.ctl.cli:app"
 
-[tool.poetry.plugins."pytest11"]
+[project.entry-points.pytest11]
 "pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
 "pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
 
-[tool.poetry.plugins."prefect.collections"]
+[project.entry-points."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"
 
 [tool.coverage.run]
@@ -130,6 +139,7 @@ exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 timeout = 300 # 5 minutes
 session_timeout = 1800 # 30 minutes
 testpaths = ["tests"]
@@ -155,17 +165,13 @@ exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
     "^backend/tests/unit",
-    "^backend/tests/test_data",
+    "^backend/tests/test_data/dataset03.py",
     "^backend/tests/query_benchmark"
 ]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
 disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = "tests.benchmark.*"
-disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "tests.conftest"
@@ -182,6 +188,18 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = "tests.functional.*"
 disallow_untyped_defs = false
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+]
+
+[[tool.mypy.overrides]]
+module = "tests.integration.*"
+disable_error_code = [
+    "assignment",
+    "attr-defined",
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.attribute"
@@ -205,7 +223,6 @@ disable_error_code = [
     "no-untyped-def",
     "return-value",
     "union-attr",
-    "var-annotated",
 ]
 
 [[tool.mypy.overrides]]
@@ -315,7 +332,6 @@ disable_error_code = [
     "operator",
     "union-attr",
     "valid-type",
-    "var-annotated",
 ]
 
 [[tool.mypy.overrides]]
@@ -368,7 +384,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.ipam"
 disable_error_code = [
-    "arg-type",
     "attr-defined",
     "list-item",
     "union-attr",
@@ -398,8 +413,6 @@ module = "infrahub.graphql.mutations.repository"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "no-redef",
-    "no-untyped-def",
     "union-attr",
 ]
 
@@ -442,7 +455,6 @@ module = "infrahub.lock"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "no-untyped-def",
     "operator",
     "return-value",
 ]
@@ -456,7 +468,7 @@ disable_error_code = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 exclude = [
     ".git",
@@ -488,7 +500,6 @@ ignore = [
     ##################################################################################################
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
-    "FA",       # flake8-future-annotations
     "PGH",      # pygrep-hooks
     "ERA",      # eradicate commented-out code
     "SLF001",   # flake8-self
@@ -509,10 +520,10 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
+    "ASYNC240", # Async functions should not use pathlib.Path methods, use trio.Path or anyio.path
     "FURB113", # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB118", # Use `operator.itemgetter(1)` instead of defining a lambda
     "FURB140", # Use `itertools.starmap` instead of the generator
-    "FURB171", # Membership test against single-item container
     "FURB192", # Prefer `min` over `sorted()` to compute the minimum value in a sequence
     "INP001",  # File declares a package, but is nested under an implicit namespace package.
     "LOG015",  # `info()` call on root logger
@@ -521,7 +532,6 @@ ignore = [
     "N806",    # Variable in function should be lowercase
     "PERF203", # `try`-`except` within a loop incurs performance overhead
     "PERF401", # Use a list comprehension to create a transformed list
-    "PERF402", # Use `list` or `list.copy` to create a copy of a list
     "PERF403", # Use a dictionary comprehension instead of a for-loop
     "PLC0415", # `import` should be at the top-level of a file
     "PLC2701", # Private name import from external module
@@ -535,31 +545,28 @@ ignore = [
     "PLR6201", # Use a `set` literal when testing for membership
     "PLR6301", # Method could be a function, class method, or static method
     "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
-    "PLW1508", # Invalid type for environment variable default; expected `str` or `None`
+    "PLW1514", # `pathlib.Path(...).open` in text mode without explicit `encoding` argument
     "RET504",  # Unnecessary assignment before `return` statement
     "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
     "RUF010",  # Use explicit conversion flag
     "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF015",  # Prefer `next(...)` over single element slice
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
-    "RUF043",  # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
     "RUF052",  # Local dummy variable `_meta` is accessed
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
     "S108",    # Probable insecure usage of temporary file or directory
-    "S202",    # Uses of `tarfile.extractall()`
     "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
     "S701",    # By default, jinja2 sets `autoescape` to `False`. Consider using `autoescape=True`
     "SIM108",  # Use ternary operator `markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"` instead of `if`-`else`-block
     "SIM102",  # Use a single `if` statement instead of nested `if` statements
     "SIM103",  # Return the condition `identifier in self.sub_by_id.keys()` directly
-    "SIM105",  # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
     "SIM110",  # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
+    "SIM113",  # Use `enumerate()` for index variable `color` in `for` loop
     "SIM114",  # Combine `if` branches using logical `or` operator
     "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SIM401",  # Use `property["items"].get("format", None)` instead of an `if` block
-    "TC006",   # [*] Add quotes to type expression in `typing.cast()`
     "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
     "UP035",   # `typing.List` is deprecated, use `list` instead
@@ -728,21 +735,22 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN001",  # Missing type annotation for function argument
-    "ANN002",  # Missing type annotation for `*args`
-    "ANN003",  # Missing type annotation for `**kwargs`
-    "ANN201",  # Missing return type annotation for public function
-    "ANN202",  # Missing return type annotation for private function
-    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
-    "PLR0915", # Too many statements
-    "PT003",   # `scope='function'` is implied in `@pytest.fixture()`
-    "PT007",   # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
-    "PT006",   # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
-    "PT011",   # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
-    "PT012",   # `pytest.raises()` block should contain a single simple statement
-    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
-    "PT018",   # Assertion should be broken down into multiple parts
-    "PT021",   # Use `yield` instead of `request.addfinalizer`
+    "ANN001",   # Missing type annotation for function argument
+    "ANN002",   # Missing type annotation for `*args`
+    "ANN003",   # Missing type annotation for `**kwargs`
+    "ANN201",   # Missing return type annotation for public function
+    "ANN202",   # Missing return type annotation for private function
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
+    "ASYNC109", # Async function definition with a `timeout` parameter
+    "PLR0915",  # Too many statements
+    "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
+    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT012",    # `pytest.raises()` block should contain a single simple statement
+    "PT013",    # Incorrect import of `pytest`; use `import pytest` instead
+    "PT018",    # Assertion should be broken down into multiple parts
+    "PT021",    # Use `yield` instead of `request.addfinalizer`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -752,6 +760,9 @@ allow-dunder-method-names = [
     "ASYNC230", # Async functions should not open files with blocking methods like `open`
 ]
 
+"backend/tests/unit/graphql/test_schema_sort.py" = [
+    "W293", # Blank line contains whitespace
+]
 
 "models/infrastructure_edge.py" = [
     "S106", # Hardcoded password
@@ -838,6 +849,541 @@ directory = "housekeeping"
 name = "Housekeeping"
 showcontent = true
 
+[tool.ty]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+exclude = [
+    "python_sdk/**",
+]
+
+[[tool.ty.overrides]]
+include = ["tasks/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unresolved-import = "ignore"
+unresolved-reference = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["utilities/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["models/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+missing-argument = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+too-many-positional-arguments = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["python_testcontainers/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+possibly-missing-attribute = "ignore"
+too-many-positional-arguments = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/core/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+call-non-callable = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-method-override = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/graphql/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+conflicting-declarations = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-context-manager = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+redundant-cast = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/database/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+possibly-missing-attribute = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+invalid-type-form = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/services/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+deprecated = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/proposed_change/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/generators/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-await = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/git_credential/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/webhook/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/cli/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/telemetry/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/computed_attribute/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/workers/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/trigger/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/workflows/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/message_bus/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+call-non-callable = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/artifacts/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/tasks/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/transformations/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/profiles/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/api/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-return-type = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/actions/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/branch/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/schema/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/*.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/unit/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+invalid-type-arguments = "ignore"
+missing-argument = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/integration/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-await = "ignore"
+invalid-method-override = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/functional/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unknown-argument = "ignore"
+unresolved-attribute = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/integration_docker/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/scale/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-assignment = "ignore"
+not-iterable = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+unsupported-operator = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/fixtures/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+no-matching-overload = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/test_data/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/query_benchmark/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/tests/conftest.py"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "backend/infrahub",
+    "python_sdk/infrahub_sdk",
+    "python_testcontainers/infrahub_testcontainers",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "backend/infrahub",
+    "python_sdk/infrahub_sdk",
+    "python_testcontainers/infrahub_testcontainers",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"backend/infrahub" = "infrahub"
+"python_sdk/infrahub_sdk" = "infrahub_sdk"
+"python_testcontainers/infrahub_testcontainers" = "infrahub_testcontainers"
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

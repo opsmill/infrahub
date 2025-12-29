@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from aiodataloader import DataLoader
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.relationship.model import Relationship
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -22,6 +23,7 @@ class QueryPeerParams:
     fields: dict | None = None
     at: Timestamp | str | None = None
     branch_agnostic: bool = False
+    include_metadata: MetadataQueryOptions = field(default_factory=MetadataQueryOptions)
 
     def __hash__(self) -> int:
         frozen_fields: frozenset | None = None
@@ -39,6 +41,7 @@ class QueryPeerParams:
                 self.schema.name,
                 str(self.source_kind),
                 str(self.branch_agnostic),
+                str(hash(self.include_metadata)),
             ]
         )
         return hash(hash_str)
@@ -62,6 +65,7 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
                 at=self.query_params.at,
                 branch=self.query_params.branch,
                 branch_agnostic=self.query_params.branch_agnostic,
+                include_metadata=self.query_params.include_metadata,
                 fetch_peers=True,
             )
         peer_rels_by_node_id: dict[str, list[Relationship]] = {}

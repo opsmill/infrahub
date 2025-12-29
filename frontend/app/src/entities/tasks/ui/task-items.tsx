@@ -1,9 +1,6 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { useLocation, useParams } from "react-router";
 
-import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -16,11 +13,18 @@ import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput, type SearchInputProps } from "@/shared/components/ui/search-input";
+import {
+  SEARCH_ANY_FILTER,
+  SEARCH_FILTERS,
+  TASK_OBJECT,
+  TASK_TAB,
+} from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 import { debounce } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";
+import { GET_TASK_ITEMS } from "@/entities/tasks/api/getTasksItems";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 
 import { getStateBadge } from "./task-item-details";
@@ -30,7 +34,7 @@ interface TaskItemsProps {
 }
 
 export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) => {
-  const { objectid, proposedChangeId } = useParams();
+  const { objectId, proposedChangeId } = useParams();
   const location = useLocation();
   const [filters, setFilters] = useFilters();
 
@@ -41,14 +45,14 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
   const { pathname } = location;
 
-  const relatedNode = node || objectid || proposedChangeId;
+  const relatedNode = node || objectId || proposedChangeId;
 
   const {
     loading,
     error,
     data = {},
     refetch,
-  } = useQuery(GET_TASKS, {
+  } = useQuery(GET_TASK_ITEMS, {
     variables: {
       search,
       branch,
@@ -124,7 +128,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
   ].filter((v): v is tColumn => !!v);
 
   const getUrl = (id: string) => {
-    if (!objectid && !proposedChangeId) {
+    if (!objectId && !proposedChangeId) {
       return constructPath(`/tasks/${id}`);
     }
 

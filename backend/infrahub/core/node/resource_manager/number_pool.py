@@ -9,6 +9,7 @@ from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.exceptions import PoolExhaustedError
 
 from .. import Node
+from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -63,7 +64,7 @@ class CoreNumberPool(Node):
         identifier: str | None = None,
         at: Timestamp | None = None,
     ) -> int:
-        async with lock.registry.get(name=self.get_id(), namespace="resource_pool"):
+        async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # NOTE: ideally we should use the HFID as the identifier (if available)
             # one of the challenge with using the HFID is that it might change over time
             # so we need to ensure that the identifier is stable, or we need to handle the case where the identifier changes

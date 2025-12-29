@@ -1,46 +1,54 @@
-# Getting Started with Create React App
+# Infrahub - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the frontend app for Infrahub. React SPA written in TypeScript with React Router for routing, TanStack Query for server state management and Tailwind CSS for styling.
 
-## Available Scripts
+## Commands in Infrahub UI
 
-In the project directory, you can run:
+```bash
+npm start               # Start dev server
+npm run dev             # Start dev server with devtools
+npm run build           # Production build
+npm run test            # Unit tests (Vitest)
+npm run test:e2e        # E2E tests (Playwright)
+npm run biome:fix       # Format and lint
+```
 
-### `npm start`
+## Architecture
 
-Runs the app in the development mode.\
-Open [http://localhost:8000](http://localhost:8000) to view it in the browser.
+Feature-Sliced architecture using DDD/Hexagonal principles, where each feature keeps domain logic, data access, and UI strictly separated:
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+- **app/** - Application core (providers, routing, styles)
+- **pages/** - Route-based page components
+- **entities/** - Business domain modules (features)
+- **shared/** - Shared utilities, components, APIs
 
-### `npm test`
+Dependency rule: `app → pages → entities → shared` (unidirectional)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## File Structure
 
-### `npm run build`
+```text
+src/
+├── app/              # App setup: providers, router, styles
+├── pages/            # Route handlers (one per page/route)
+├── entities/         # Feature modules (DDD/Hexagonal inspired)
+│   └── {feature}/    # Each entity follows DDD/Hexagonal principles:
+│       ├── api/      # GraphQL/REST calls, data fetching (infrastructure layer)
+│       ├── domain/   # Business logic, models, types (no React, no fetch, no external dependencies)
+│       ├── ui/       # React components knows domain, not api (presentation layer)
+│       ├── utils/    # Feature-specific utilities
+│       └── stores.ts # Jotai state atoms
+├── shared/
+│   ├── api/          # GraphQL/REST clients
+│   ├── components/   # Reusable UI components
+│   ├── hooks/        # Shared React hooks
+│   ├── stores/       # Global state atoms
+│   └── utils/        # Utility functions
+└── assets/           # Static files
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Generated Files (Do Not Edit)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- `src/shared/api/graphql/generated/` - GraphQL types
+- `src/shared/api/rest/types.generated.ts` - REST types
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+Regenerate with `npm run codegen` or `npm run codegen:openapi`.

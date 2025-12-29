@@ -136,7 +136,7 @@ async def test_query_endpoint_group_params(
 
 async def test_query_endpoint_get_default_branch(
     db: InfrahubDatabase, client: TestClient, admin_headers, default_branch, create_test_admin, car_person_data
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get("/api/query/query01", headers=admin_headers)
@@ -159,7 +159,7 @@ async def test_query_endpoint_post_no_payload(
     default_branch,
     car_person_data,
     base_authentication,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
@@ -185,7 +185,7 @@ async def test_query_endpoint_post_with_params(
     default_branch,
     car_person_data,
     base_authentication,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post("/api/query/query02", headers=admin_headers, json={"variables": {"person": "John"}})
@@ -207,7 +207,7 @@ async def test_query_endpoint_branch1(
     create_test_admin,
     car_person_data,
     authentication_base,
-):
+) -> None:
     await create_branch(branch_name="branch1", db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
@@ -232,7 +232,7 @@ async def test_query_endpoint_wrong_query(
     default_branch,
     car_person_schema,
     register_core_models_schema,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -250,7 +250,7 @@ async def test_query_endpoint_wrong_branch(
     default_branch,
     car_person_schema,
     register_core_models_schema,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -290,7 +290,7 @@ async def test_query_endpoint_missing_privs(
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_query_endpoint_anonymous_account(
     db: InfrahubDatabase, client: TestClient, default_branch, car_person_data, allow_anonymous_access: bool
-):
+) -> None:
     config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
 
     with client:

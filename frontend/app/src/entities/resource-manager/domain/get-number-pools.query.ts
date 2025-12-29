@@ -1,17 +1,19 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
 
 import type { ContextParams } from "@/shared/api/types";
-import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
-import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
-import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
-
-import { type GetNumberPoolsParams, getNumberPools } from "./get-number-pools";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import {
+  type GetNumberPoolsParams,
+  getNumberPools,
+} from "@/entities/resource-manager/domain/get-number-pools";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
 
 export function getNumberPoolsQueryOptions(params: GetNumberPoolsParams) {
   return queryOptions({
-    queryKey: [params.branchName, params.atDate, NUMBER_POOL_KIND, params.objectKinds],
+    queryKey: resourceManagerQueryKeys.numberPools(params),
     queryFn: () => getNumberPools(params),
   });
 }
@@ -19,12 +21,12 @@ export function getNumberPoolsQueryOptions(params: GetNumberPoolsParams) {
 export function useGetNumberPools({
   objectKinds,
 }: Omit<GetNumberPoolsParams, keyof ContextParams>) {
-  const currentBranchName = getCurrentBranchName();
-  const timeMachineDate = store.get(datetimeAtom);
+  const { currentBranch } = useCurrentBranch();
+  const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
     getNumberPoolsQueryOptions({
-      branchName: currentBranchName,
+      branchName: currentBranch.name,
       atDate: timeMachineDate,
       objectKinds,
     })

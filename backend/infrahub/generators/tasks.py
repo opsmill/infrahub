@@ -14,13 +14,16 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
+    GeneratorDefinitionModel,
     ProposedChangeGeneratorDefinition,
     RequestGeneratorDefinitionRun,
     RequestGeneratorRun,
 )
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
+from infrahub.git.utils import fetch_proposed_change_generator_definition_targets
 from infrahub.workers.dependencies import get_client, get_workflow
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN, REQUEST_GENERATOR_RUN
 from infrahub.workflows.utils import add_tags
@@ -52,9 +55,12 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         name=model.generator_definition.definition_name,
         class_name=model.generator_definition.class_name,
         file_path=model.generator_definition.file_path,
+        parameters=model.generator_definition.parameters,
         query=model.generator_definition.query_name,
         targets=model.generator_definition.group_id,
         convert_query_response=model.generator_definition.convert_query_response,
+        execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
+        execute_after_merge=model.generator_definition.execute_after_merge,
     )
 
     commit_worktree = repository.get_commit_worktree(commit=model.commit)
@@ -78,6 +84,8 @@ async def run_generator(model: RequestGeneratorRun) -> None:
             params=model.variables,
             generator_instance=generator_instance.id,
             convert_query_response=generator_definition.convert_query_response,
+            execute_in_proposed_change=generator_definition.execute_in_proposed_change,
+            execute_after_merge=generator_definition.execute_after_merge,
             infrahub_node=InfrahubNode,
         )
         await generator.run(identifier=generator_definition.name)
@@ -127,28 +135,39 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
 
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
-async def run_generator_definition(branch: str, context: InfrahubContext) -> None:
+async def run_generator_definition(
+    branch: str, context: InfrahubContext, source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN
+) -> None:
     await add_tags(branches=[branch])
 
     generators = await get_client().filters(
         kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
-    generator_definitions = [
-        ProposedChangeGeneratorDefinition(
-            definition_id=generator.id,
-            definition_name=generator.name.value,
-            class_name=generator.class_name.value,
-            file_path=generator.file_path.value,
-            query_name=generator.query.peer.name.value,
-            query_models=generator.query.peer.models.value,
-            repository_id=generator.repository.peer.id,
-            parameters=generator.parameters.value,
-            group_id=generator.targets.peer.id,
-            convert_query_response=generator.convert_query_response.value,
+    generator_definitions: list[ProposedChangeGeneratorDefinition] = []
+
+    for generator in generators:
+        if (
+            source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value
+        ) or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value):
+            continue
+
+        generator_definitions.append(
+            ProposedChangeGeneratorDefinition(
+                definition_id=generator.id,
+                definition_name=generator.name.value,
+                class_name=generator.class_name.value,
+                file_path=generator.file_path.value,
+                query_name=generator.query.peer.name.value,
+                query_models=generator.query.peer.models.value,
+                repository_id=generator.repository.peer.id,
+                parameters=generator.parameters.value,
+                group_id=generator.targets.peer.id,
+                convert_query_response=generator.convert_query_response.value,
+                execute_in_proposed_change=generator.execute_in_proposed_change.value,
+                execute_after_merge=generator.execute_after_merge.value,
+            )
         )
-        for generator in generators
-    ]
 
     for generator_definition in generator_definitions:
         model = RequestGeneratorDefinitionRun(branch=branch, generator_definition=generator_definition)
@@ -177,14 +196,9 @@ async def request_generator_definition_run(
         branch=model.branch,
     )
 
-    group = await client.get(
-        kind=InfrahubKind.GENERICGROUP,
-        prefetch_relationships=True,
-        populate_store=True,
-        id=model.generator_definition.group_id,
-        branch=model.branch,
+    group = await fetch_proposed_change_generator_definition_targets(
+        client=client, branch=model.branch, definition=model.generator_definition
     )
-    await group.members.fetch()
 
     instance_by_member = {}
     for instance in existing_instances:
@@ -213,7 +227,7 @@ async def request_generator_definition_run(
 
         generator_instance = instance_by_member.get(member.id)
         request_generator_run_model = RequestGeneratorRun(
-            generator_definition=model.generator_definition,
+            generator_definition=GeneratorDefinitionModel.from_pc_generator_definition(model.generator_definition),
             commit=repository.commit.value,
             generator_instance=generator_instance,
             repository_id=repository.id,

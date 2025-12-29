@@ -4,7 +4,7 @@ import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
-type AddAttributesToRequestOptions = {
+export type AddAttributesToRequestOptions = {
   withMetadata?: boolean;
   withPermissions?: boolean;
   relationshipFragment?: Record<string, string>;
@@ -35,7 +35,6 @@ export const addAttributesToRequest = (
         is_default: true,
         is_from_profile: true,
         is_protected: true,
-        is_visible: true,
         source: {
           id: true,
           hfid: true,
@@ -80,7 +79,6 @@ export const addRelationshipsToRequest = (
     },
     ...(withMetadata && {
       properties: {
-        is_visible: true,
         is_protected: true,
         updated_at: true,
         source: {

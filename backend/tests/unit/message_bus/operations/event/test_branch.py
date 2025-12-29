@@ -10,8 +10,11 @@ from infrahub.core.branch.tasks import post_process_branch_merge
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.component.registry import ComponentDependencyRegistry
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
@@ -39,7 +42,9 @@ def context():
     )
 
 
-async def test_merged(default_branch: Branch, prefect_test_fixture, context: InfrahubContext, init_service):
+async def test_merged(
+    db: InfrahubDatabase, default_branch: Branch, prefect_test_fixture, context: InfrahubContext, init_service
+) -> None:
     """
     Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors
     as they are mocked.
@@ -48,8 +53,10 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
     source_branch_name = "cr1234"
     target_branch_name = "main"
     right_now = Timestamp()
-    tracked_diff_roots = [
-        EnrichedDiffRoot(
+    tracked_diff_roots = []
+
+    for _ in range(2):
+        tracked_diff_root = EnrichedDiffRoot(
             base_branch_name=target_branch_name,
             diff_branch_name=str(uuid4()),
             from_time=right_now,
@@ -58,10 +65,23 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
             partner_uuid=str(uuid4()),
             tracking_id=BranchTrackingId(name=str(uuid4())),
         )
-        for _ in range(2)
-    ]
-    untracked_diff_roots = [
-        EnrichedDiffRoot(
+        tracked_diff_roots.append(tracked_diff_root)
+        await create_branch(db=db, branch_name=tracked_diff_root.diff_branch_name)
+
+    # diff root for a deleted branch
+    tracked_deleted_root = EnrichedDiffRoot(
+        base_branch_name=target_branch_name,
+        diff_branch_name=str(uuid4()),
+        from_time=right_now,
+        to_time=right_now,
+        uuid=str(uuid4()),
+        partner_uuid=str(uuid4()),
+        tracking_id=BranchTrackingId(name=str(uuid4())),
+    )
+
+    untracked_diff_roots = []
+    for _ in range(2):
+        untracked_diff_root = EnrichedDiffRoot(
             base_branch_name=target_branch_name,
             diff_branch_name=str(uuid4()),
             from_time=right_now,
@@ -70,10 +90,11 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
             partner_uuid=str(uuid4()),
             tracking_id=NameTrackingId(name=str(uuid4())),
         )
-        for _ in range(2)
-    ]
+        await create_branch(db=db, branch_name=untracked_diff_root.diff_branch_name)
+        untracked_diff_roots.append(untracked_diff_root)
+
     diff_repo = AsyncMock(spec=DiffRepository)
-    diff_repo.get_roots_metadata.return_value = untracked_diff_roots + tracked_diff_roots
+    diff_repo.get_roots_metadata.return_value = untracked_diff_roots + tracked_diff_roots + [tracked_deleted_root]
     mock_component_registry = Mock(spec=ComponentDependencyRegistry)
     mock_get_component_registry = MagicMock(return_value=mock_component_registry)
     mock_component_registry.get_component.return_value = diff_repo
@@ -98,7 +119,7 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
             ),
             call(
                 workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
-                parameters={"branch": target_branch_name},
+                parameters={"branch": target_branch_name, "source": GeneratorDefinitionRunSource.MERGE},
                 context=context,
             ),
             call(

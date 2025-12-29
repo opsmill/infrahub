@@ -16,6 +16,8 @@ export const GET_ROLE_MANAGEMENT_ACCOUNTS = gql`
       edges {
         node {
           id
+          display_label
+          hfid
           name {
             value
           }

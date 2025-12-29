@@ -1,24 +1,22 @@
-import { ChevronDownIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
   ListBox as AriaListBox,
+  ListBoxItem as AriaListBoxItem,
+  type ListBoxItemProps as AriaListBoxItemProps,
   type ListBoxProps as AriaListBoxProps,
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
   composeRenderProps,
 } from "react-aria-components";
 
-import { ListBoxItem } from "@/shared/components/aria/list-box";
-import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { Popover, type PopoverProps } from "@/shared/components/aria/popover";
+import { disabledStyle, focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-import { Popover, type PopoverProps } from "./popover";
-
 export const Select = AriaSelect;
-
-export const SelectItem = ListBoxItem;
 
 export const SelectTrigger = ({ className, children, ...props }: AriaButtonProps) => (
   <AriaButton
@@ -54,3 +52,33 @@ export const SelectList = <T extends object>({ className, ...props }: AriaListBo
     />
   </SelectPopover>
 );
+
+export const SelectItem = <T extends object>({
+  children,
+  className,
+  textValue,
+  ...props
+}: AriaListBoxItemProps<T>) => {
+  return (
+    <AriaListBoxItem
+      textValue={textValue ?? (typeof children === "string" ? children : undefined)}
+      className={composeRenderProps(className, (className) =>
+        classNames(
+          disabledStyle,
+          "relative flex w-full select-none items-center rounded-lg px-2 py-1.5 text-sm outline-hidden",
+          "data-focused:bg-stone-100",
+          "data-selection-mode:pl-8",
+          className
+        )
+      )}
+      {...props}
+    >
+      {composeRenderProps(children, (children, { isSelected }) => (
+        <>
+          {isSelected && <CheckIcon className="absolute left-2 size-4" />}
+          {children}
+        </>
+      ))}
+    </AriaListBoxItem>
+  );
+};

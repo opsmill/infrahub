@@ -180,31 +180,31 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self.create_commit_worktree(commit)
         await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
 
-        config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[misc]
+        config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
         sync_status = RepositorySyncStatus.IN_SYNC if config_file else RepositorySyncStatus.ERROR_IMPORT
 
         error: Exception | None = None
 
         try:
             if config_file:
-                await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
+                await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
                 await self.import_all_graphql_query(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
                 await self.import_objects(
                     branch_name=infrahub_branch_name,
                     commit=commit,
                     config_file=config_file,
-                )  # type: ignore[misc]
-                await self.import_all_python_files(  # type: ignore[call-overload]
+                )  # type: ignore[call-overload]
+                await self.import_all_python_files(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
                 await self.import_jinja2_transforms(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
                 await self.import_artifact_definitions(
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
 
         except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
@@ -226,7 +226,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
         )
 
-    @task(name="import-jinja2-tansforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-jinja2-transforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)
     async def import_jinja2_transforms(
         self,
         branch_name: str,
@@ -331,7 +331,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         await existing_transform.save()
 
-    @task(name="import-artifact-definitions", task_run_name="Import Artifact Definitions", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-artifact-definitions", task_run_name="Import Artifact Definitions", cache_policy=NONE)
     async def import_artifact_definitions(
         self,
         branch_name: str,
@@ -432,7 +432,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         await existing_artifact_definition.save()
 
-    @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)
     async def get_repository_config(self, branch_name: str, commit: str) -> InfrahubRepositoryConfig | None:
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
@@ -469,7 +469,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}")
             return None
 
-    @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
         log = get_run_logger()
         branch_wt = self.get_worktree(identifier=commit or branch_name)
@@ -541,7 +541,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for schema_file in schemas_data:
             log.info(f"schema '{schema_file.identifier}' loaded successfully!")
 
-    @task(name="import-graphql-queries", task_run_name="Import GraphQL Queries", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-graphql-queries", task_run_name="Import GraphQL Queries", cache_policy=NONE)
     async def import_all_graphql_query(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -599,7 +599,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await obj.save()
         return obj
 
-    @task(name="import-python-check-definitions", task_run_name="Import Python Check Definitions", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-python-check-definitions", task_run_name="Import Python Check Definitions", cache_policy=NONE)
     async def import_python_check_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -634,7 +634,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     module=module,
                     file_path=file_info.relative_path_file,
                     check_definition=check,
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
             )
 
         local_check_definitions = {check.name: check for check in checks}
@@ -670,7 +670,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"CheckDefinition '{check_name!r}' not found locally, deleting")
             await check_definition_in_graph[check_name].delete()
 
-    @task(name="import-generator-definitions", task_run_name="Import Generator Definitions", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-generator-definitions", task_run_name="Import Generator Definitions", cache_policy=NONE)
     async def import_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -756,11 +756,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             or existing_generator.parameters.value != generator.parameters
             or existing_generator.convert_query_response.value != generator.convert_query_response
             or existing_generator.targets.id != generator.targets
+            or existing_generator.execute_in_proposed_change.value != generator.execute_in_proposed_change
+            or existing_generator.execute_after_merge.value != generator.execute_after_merge
         ):
             return True
         return False
 
-    @task(name="import-python-transforms", task_run_name="Import Python Transforms", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-python-transforms", task_run_name="Import Python Transforms", cache_policy=NONE)
     async def import_python_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -795,7 +797,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     module=module,
                     file_path=file_info.relative_path_file,
                     transform=transform,
-                )  # type: ignore[misc]
+                )  # type: ignore[call-overload]
             )
 
         local_transform_definitions = {transform.name: transform for transform in transforms}
@@ -885,7 +887,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 file_type=file_type,
             )
 
-    @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)
     async def import_objects(
         self,
         branch_name: str,
@@ -905,7 +907,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             object_type=RepositoryObjects.MENU,
         )
 
-    @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
     async def get_check_definition(
         self,
         branch_name: str,
@@ -945,7 +947,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             raise
         return checks
 
-    @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
         self, branch_name: str, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
     ) -> list[TransformPythonInformation]:
@@ -1022,6 +1024,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if existing_generator.targets.id != generator.targets:
             existing_generator.targets = {"id": generator.targets, "source": str(self.id), "is_protected": True}
+
+        if existing_generator.execute_in_proposed_change.value != generator.execute_in_proposed_change:
+            existing_generator.execute_in_proposed_change.value = generator.execute_in_proposed_change
+
+        if existing_generator.execute_after_merge.value != generator.execute_after_merge:
+            existing_generator.execute_after_merge.value = generator.execute_after_merge
 
         await existing_generator.save()
 
@@ -1148,11 +1156,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     ) -> None:
         await add_tags(branches=[branch_name], nodes=[str(self.id)])
 
-        await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
-        await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
-        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[misc]
+        await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+        await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
-    @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
         log = get_run_logger()
         commit_worktree = self.get_commit_worktree(commit=commit)
@@ -1168,7 +1176,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 repository_name=self.name, commit=commit, location=location, message=exc.message
             ) from exc
 
-    @task(name="python-check-execute", task_run_name="Execute Python Check", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="python-check-execute", task_run_name="Execute Python Check", cache_policy=NONE)
     async def execute_python_check(
         self,
         branch_name: str,
@@ -1227,7 +1235,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
             ) from exc
 
-    @task(name="python-transform-execute", task_run_name="Execute Python Transform", cache_policy=NONE)  # type: ignore[arg-type]
+    @task(name="python-transform-execute", task_run_name="Execute Python Transform", cache_policy=NONE)
     async def execute_python_transform(
         self,
         branch_name: str,
@@ -1316,7 +1324,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(
                 timeout_seconds=transformation.timeout.value
-            )(commit=commit, location=transformation.template_path.value, data=response)  # type: ignore[misc]
+            )(commit=commit, location=transformation.template_path.value, data=response)  # type: ignore[call-overload]
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform.with_options(
@@ -1328,7 +1336,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 location=transformation_location,
                 data=response,
                 convert_query_response=transformation.convert_query_response.value,
-            )  # type: ignore[misc]
+            )  # type: ignore[call-overload]
 
         if definition.content_type.value == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
@@ -1363,7 +1371,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         message: CheckArtifactCreate | RequestArtifactGenerate,
     ) -> ArtifactGenerateResult:
         response = await self.sdk.query_gql_query(
-            name=message.query,
+            name=message.query_id,
             variables=message.variables,
             update_group=True,
             subscribers=[artifact.id],
@@ -1379,7 +1387,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
                 commit=message.commit, location=message.transform_location, data=response
-            )  # type: ignore[misc]
+            )  # type: ignore[call-overload]
         elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform.with_options(timeout_seconds=message.timeout)(
                 client=self.sdk,
@@ -1388,7 +1396,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 location=message.transform_location,
                 data=response,
                 convert_query_response=message.convert_query_response,
-            )  # type: ignore[misc]
+            )  # type: ignore[call-overload]
 
         if message.content_type == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
@@ -1413,7 +1421,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         artifact.status.value = ArtifactStatus.READY.value
         if artifact.name.value != message.artifact_name:
             artifact.name.value = message.artifact_name
-        await artifact.save()
+        await artifact.save(request_context=message.context.to_request_context())
 
         event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
 

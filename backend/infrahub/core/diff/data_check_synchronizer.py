@@ -1,10 +1,11 @@
 from enum import Enum
 
-from infrahub.core.constants import BranchConflictKeep, InfrahubKind
+from infrahub.core.constants import BranchConflictKeep
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.proposed_change.constants import ProposedChangeState
@@ -52,7 +53,7 @@ class DiffDataCheckSynchronizer:
         try:
             proposed_changes = await NodeManager.query(
                 db=self.db,
-                schema=InfrahubKind.PROPOSEDCHANGE,
+                schema=CoreProposedChange,
                 filters={"source_branch": enriched_diff.diff_branch_name, "state": ProposedChangeState.OPEN},
             )
         except SchemaNotFoundError:

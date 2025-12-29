@@ -61,7 +61,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
       await page.getByRole("menuitem", { name: "Tenant" }).click();
 
-      const myFirstOrgLink = page.getByRole("link", { name: "my-first-tenant" });
+      const myFirstOrgLink = page
+        .getByTestId("object-items")
+        .getByRole("link", { name: "my-first-tenant" });
       await expect(myFirstOrgLink).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organizations");
       await myFirstOrgLink.click();
@@ -98,8 +100,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByTestId("branch-selector-trigger").click();
       await page.getByRole("link", { name: "View all branches" }).click();
       await saveScreenshotForDocs(page, "tutorial_1_branch_list");
-      await page.getByTestId("branches-items").getByText("cr1234").click();
-      await expect(page.getByRole("definition").filter({ hasText: "cr1234" })).toBeVisible();
+      await page.getByLabel("Branches list").getByText("cr1234").click();
+      await expect(page.getByRole("heading", { name: "cr1234" })).toBeVisible();
     });
 
     await test.step("trigger the diff update", async () => {

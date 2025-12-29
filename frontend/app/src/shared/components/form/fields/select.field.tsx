@@ -25,6 +25,7 @@ export function SelectField({
   rules,
   unique,
   items,
+  shouldUnregister,
   ...props
 }: SelectFieldProps) {
   return (
@@ -33,22 +34,26 @@ export function SelectField({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
-        const currentSelectedKey = (fieldData?.value as string | undefined) ?? null;
+        const currentSelected = (fieldData?.value as string | undefined) ?? null;
 
         return (
           <div className="space-y-2">
             <FormInput>
               <Select
-                selectedKey={currentSelectedKey}
-                onSelectionChange={(key) =>
-                  field.onChange(
-                    updateFormFieldValue(currentSelectedKey === key ? null : key, defaultValue)
-                  )
-                }
-                placeholder=""
                 {...props}
+                value={currentSelected}
+                onChange={(newSelected) => {
+                  field.onChange(
+                    updateFormFieldValue(
+                      currentSelected === newSelected ? null : newSelected,
+                      defaultValue
+                    )
+                  );
+                }}
+                placeholder=""
               >
                 <Label>{label}</Label>
                 <SelectTrigger />
@@ -63,11 +68,9 @@ export function SelectField({
               </Select>
             </FormInput>
 
-            {!props.disabled &&
-              !props.disabled &&
-              canDisplayResetActions(attribute, isBulkUpdate) && (
-                <ResetAction field={field} defaultValue={defaultValue} />
-              )}
+            {!props.disabled && canDisplayResetActions(attribute, isBulkUpdate) && (
+              <ResetAction field={field} defaultValue={defaultValue} />
+            )}
 
             <FormMessage />
           </div>

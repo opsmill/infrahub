@@ -1,66 +1,91 @@
+import { useAtom, useAtomValue } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import { SidebarIcon } from "lucide-react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router";
 
-import { IPAM_TREE_KEY } from "@/config/localStorage";
-
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import { Col, Row } from "@/shared/components/container";
+import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { Card } from "@/shared/components/ui/card";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
+import Content from "@/shared/components/layout/content";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/shared/components/ui/resizable";
+import { classNames } from "@/shared/utils/common";
 
+import { IPAM_TREE_KEY } from "@/entities/ipam/constants";
 import IpNamespaceSelector from "@/entities/ipam/ip-namespaces/ip-namespace-selector";
 import { IpNamespaceProvider } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
-import { IpamBreadcrumb } from "@/entities/ipam/ipam-breadcrumb";
-import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
+import { IpamTreeWithSearch } from "@/entities/ipam/ipam-tree/ui/ipam-tree-with-search";
+
+const ipamTreeCollapsedAtom = atomWithStorage(IPAM_TREE_KEY, false);
 
 export const Component = () => {
-  const [collapsed, setCollapsed] = useLocalStorage(IPAM_TREE_KEY);
-
-  const booleanCollapsed = collapsed === "true";
+  const ipamTreeCollapsed = useAtomValue(ipamTreeCollapsedAtom);
 
   return (
     <IpNamespaceProvider>
-      <Card className="flex size-full flex-col overflow-hidden p-0">
-        <Row className="h-11 gap-0 *:shrink-0">
-          <Button
-            variant="ghost"
-            size="square"
-            aria-label="toggle IPAM tree"
-            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
-            className="m-1 text-gray-400 hover:text-neutral-600"
-          >
-            <SidebarIcon className="size-4" />
-          </Button>
-          <Separator orientation="vertical" />
-          <IpNamespaceSelector className="m-0.75 w-47" />
-          <Separator orientation="vertical" />
-          <IpamBreadcrumb className="grow px-2" />
-        </Row>
+      <ResizablePanelGroup orientation="horizontal" className="overflow-hidden">
+        {!ipamTreeCollapsed && (
+          <>
+            <ResizablePanel
+              id="tree-panel"
+              defaultSize={300}
+              minSize={40}
+              maxSize="90%"
+              className="flex grow flex-col"
+            >
+              <Content.Card className="flex grow flex-col">
+                <IpamToolbar />
 
-        <Separator />
+                <ErrorBoundary
+                  fallbackRender={({ error }) => <ErrorScreen message={error.message} />}
+                >
+                  <IpamTreeWithSearch />
+                </ErrorBoundary>
+              </Content.Card>
+            </ResizablePanel>
 
-        <Row className="grow items-stretch gap-0 overflow-hidden">
-          {!booleanCollapsed && (
-            <Col className="w-60 shrink-0 gap-0 border-gray-200 border-r">
-              <ErrorBoundary
-                fallbackRender={({ error }) => <ErrorScreen message={error.message} />}
-              >
-                <ScrollArea scrollX>
-                  <IpamTree className="w-full px-2" />
-                </ScrollArea>
-              </ErrorBoundary>
-            </Col>
-          )}
+            <ResizableHandle />
+          </>
+        )}
 
-          <Col className="grow gap-0 overflow-hidden">
+        <ResizablePanel id="main-panel" className="flex grow flex-col">
+          <Content.Card className="flex grow flex-col">
+            {ipamTreeCollapsed && <IpamToolbar className="max-w-74.5" />}
             <Outlet />
-          </Col>
-        </Row>
-      </Card>
+          </Content.Card>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </IpNamespaceProvider>
   );
 };
+
+function IpamToolbar({ className }: { className?: string }) {
+  const [collapsed, setCollapsed] = useAtom(ipamTreeCollapsedAtom);
+
+  return (
+    <>
+      <Row className={classNames("h-11 gap-0", className)}>
+        <Button
+          variant="ghost"
+          size="square"
+          aria-label="toggle IPAM tree"
+          onClick={() => setCollapsed(!collapsed)}
+          className="m-1 shrink-0 rounded-lg text-gray-400 hover:text-neutral-600"
+        >
+          <SidebarIcon className="size-4" />
+        </Button>
+
+        <Separator orientation="vertical" />
+
+        <IpNamespaceSelector className="m-0.5 grow" />
+      </Row>
+
+      <Separator />
+    </>
+  );
+}

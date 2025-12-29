@@ -4,7 +4,6 @@ PARENT_CHILD_IDENTIFIER = "parent__child"
 
 
 class FlagProperty(Enum):
-    IS_VISIBLE = "is_visible"
     IS_PROTECTED = "is_protected"
 
 

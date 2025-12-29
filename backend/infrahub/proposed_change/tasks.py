@@ -8,9 +8,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import ModuleImportError
+from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
+    CoreArtifactDefinition,
     CoreArtifactValidator,
     CoreGeneratorDefinition,
     CoreGeneratorValidator,
@@ -58,6 +59,9 @@ from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
+from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
@@ -307,6 +311,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
         populate_store=True,
         branch=model.source_branch,
     )
+
     generator_definitions = [
         ProposedChangeGeneratorDefinition(
             definition_id=generator.id,
@@ -319,8 +324,11 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             parameters=generator.parameters.value,
             group_id=generator.targets.peer.id,
             convert_query_response=generator.convert_query_response.value,
+            execute_in_proposed_change=generator.execute_in_proposed_change.value,
+            execute_after_merge=generator.execute_after_merge.value,
         )
         for generator in generators
+        if generator.execute_in_proposed_change.value
     ]
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
@@ -472,7 +480,7 @@ async def _get_proposed_change_schema_integrity_constraints(
                 DiffElementType.RELATIONSHIP_ONE.value.lower(),
             ):
                 field_summary.relationship_names.add(element_name)
-            elif element_type.lower() in (DiffElementType.ATTRIBUTE.value.lower(),):
+            elif element_type.lower() == DiffElementType.ATTRIBUTE.value.lower():
                 field_summary.attribute_names.add(element_name)
 
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
@@ -524,7 +532,11 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
     log = get_run_logger()
     client = get_client()
 
-    proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    try:
+        proposed_change = await client.get(kind=CoreProposedChange, id=model.proposed_change)
+    except NodeNotFoundError:
+        log.warning(f"Proposed change ({model.proposed_change}) not found, skipping user tests execution")
+        return
 
     def _execute(
         directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
@@ -610,9 +622,10 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     artifact_definition = await client.get(
-        kind=InfrahubKind.ARTIFACTDEFINITION,
+        kind=CoreArtifactDefinition,
         id=model.artifact_definition.definition_id,
         branch=model.source_branch,
     )
@@ -652,9 +665,9 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         branch=model.source_branch,
     )
 
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
+    group = await fetch_artifact_definition_targets(
+        client=client, branch=model.source_branch, definition=artifact_definition
+    )
 
     artifacts_by_member = {}
     for artifact in existing_artifacts:
@@ -663,6 +676,27 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
     impacted_artifacts = model.branch_diff.get_subscribers_ids(kind=InfrahubKind.ARTIFACT)
 
+    source_schema_branch = registry.schema.get_schema_branch(name=model.source_branch)
+    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
+
+    graphql_params = await prepare_graphql_params(db=await get_database(), branch=model.source_branch)
+    query_analyzer = InfrahubGraphQLQueryAnalyzer(
+        query=model.artifact_definition.query_payload,
+        branch=source_branch,
+        schema_branch=source_schema_branch,
+        schema=graphql_params.schema,
+    )
+
+    only_has_unique_targets = query_analyzer.query_report.only_has_unique_targets
+    if not only_has_unique_targets:
+        log.warning(
+            f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
+        )
+
+    managed_branch = model.source_branch_sync_with_git and model.branch_diff.has_file_modifications
+    if managed_branch:
+        log.info("Source branch is synced with Git repositories with updates, all artifacts will be processed")
+
     checks = []
 
     for relationship in group.members.peers:
@@ -670,8 +704,9 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         artifact_id = artifacts_by_member.get(member.id)
         if _should_render_artifact(
             artifact_id=artifact_id,
-            managed_branch=model.source_branch_sync_with_git,
+            managed_branch=managed_branch,
             impacted_artifacts=impacted_artifacts,
+            only_has_unique_targets=only_has_unique_targets,
         ):
             log.info(f"Trigger Artifact processing for {member.display_label}")
 
@@ -691,6 +726,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 repository_kind=repository.kind,
                 branch_name=model.source_branch,
                 query=model.artifact_definition.query_name,
+                query_id=model.artifact_definition.query_id,
                 variables=await member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
                 target_kind=member.get_kind(),
@@ -716,21 +752,26 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     )
 
 
-def _should_render_artifact(artifact_id: str | None, managed_branch: bool, impacted_artifacts: list[str]) -> bool:  # noqa: ARG001
+def _should_render_artifact(
+    artifact_id: str | None,
+    managed_branch: bool,
+    impacted_artifacts: list[str],
+    only_has_unique_targets: bool,
+) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
-        * The source brance is not data only which would indicate that it could contain updates in git to the transform
+        * The source branch is not data only which would indicate that it could contain updates in git to the transform
         * The artifact_id exists in the impacted_artifacts list
+        * The query failes the only_has_unique_targets check
     Will return false if:
         * The source branch is a data only branch and the artifact_id exists and is not in the impacted list
     """
 
-    # if not artifact_id or managed_branch:
-    #    return True
-    # return artifact_id in impacted_artifacts
-    # Temporary workaround tracked in https://github.com/opsmill/infrahub/issues/4991
-    return True
+    if not only_has_unique_targets or not artifact_id or managed_branch:
+        return True
+
+    return artifact_id in impacted_artifacts
 
 
 @flow(
@@ -741,6 +782,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)
 
     client = get_client()
+    client.request_context = context.to_request_context()
     log = get_run_logger()
 
     repository = await get_initialized_repo(
@@ -760,6 +802,8 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
         query=model.generator_definition.query_name,
         targets=model.generator_definition.group_id,
         convert_query_response=model.generator_definition.convert_query_response,
+        execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
+        execute_after_merge=model.generator_definition.execute_after_merge,
     )
 
     commit_worktree = repository.get_commit_worktree(commit=model.commit)
@@ -786,6 +830,8 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
             params=model.variables,
             generator_instance=generator_instance.id,
             convert_query_response=generator_definition.convert_query_response,
+            execute_after_merge=generator_definition.execute_after_merge,
+            execute_in_proposed_change=generator_definition.execute_in_proposed_change,
             infrahub_node=InfrahubNode,
         )
         generator._init_client.request_context = context.to_request_context()
@@ -815,7 +861,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     if check:
         check.created_at.value = Timestamp().to_string()
         check.conclusion.value = conclusion.value
-        await check.save()
+        await check.save(request_context=context.to_request_context())
     else:
         check = await client.create(
             kind=InfrahubKind.GENERATORCHECK,
@@ -881,6 +927,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
     log = get_run_logger()
     client = get_client()
+    client.request_context = context.to_request_context()
 
     proposed_change = await client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
@@ -917,14 +964,9 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
         branch=model.source_branch,
     )
 
-    group = await client.get(
-        kind=InfrahubKind.GENERICGROUP,
-        prefetch_relationships=True,
-        populate_store=True,
-        id=model.generator_definition.group_id,
-        branch=model.source_branch,
+    group = await fetch_proposed_change_generator_definition_targets(
+        client=client, branch=model.source_branch, definition=model.generator_definition
     )
-    await group.members.fetch()
 
     instance_by_member = {}
     for instance in existing_instances:
@@ -934,7 +976,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
     requested_instances = 0
     impacted_instances = model.branch_diff.get_subscribers_ids(kind=InfrahubKind.GENERATORINSTANCE)
 
-    check_generator_run_models = []
+    check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
         member = relationship.peer
         generator_instance = instance_by_member.get(member.id)
@@ -970,6 +1012,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
             context=context,
         )
         for check_generator_run_model in check_generator_run_models
+        if check_generator_run_model.generator_definition.execute_in_proposed_change
     ]
 
     await run_checks_and_update_validator(
@@ -1245,10 +1288,14 @@ query GatherArtifactDefinitions {
             }
             query {
               node {
+                id
                 models {
                   value
                 }
                 name {
+                  value
+                }
+                query {
                   value
                 }
               }
@@ -1466,7 +1513,9 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
             content_type=definition["node"]["content_type"]["value"],
             timeout=definition["node"]["transformation"]["node"]["timeout"]["value"],
             query_name=definition["node"]["transformation"]["node"]["query"]["node"]["name"]["value"],
+            query_id=definition["node"]["transformation"]["node"]["query"]["node"]["id"],
             query_models=definition["node"]["transformation"]["node"]["query"]["node"]["models"]["value"] or [],
+            query_payload=definition["node"]["transformation"]["node"]["query"]["node"]["query"]["value"],
             repository_id=definition["node"]["transformation"]["node"]["repository"]["node"]["id"],
             transform_kind=definition["node"]["transformation"]["node"]["__typename"],
         )
@@ -1490,8 +1539,14 @@ async def _get_proposed_change_repositories(
     destination_all = await client.execute_graphql(
         query=DESTINATION_ALLREPOSITORIES, branch_name=model.destination_branch
     )
-    source_managed = await client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
-    source_readonly = await client.execute_graphql(query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch)
+    try:
+        source_managed = await client.execute_graphql(query=SOURCE_REPOSITORIES, branch_name=model.source_branch)
+        source_readonly = await client.execute_graphql(
+            query=SOURCE_READONLY_REPOSITORIES, branch_name=model.source_branch
+        )
+    except URLNotFoundError:
+        # If the URL is not found it means that the source branch has been deleted after the proposed change was created
+        return []
 
     destination_all = destination_all[InfrahubKind.GENERICREPOSITORY]["edges"]
     source_all = (

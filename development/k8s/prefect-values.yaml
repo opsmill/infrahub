@@ -3,32 +3,49 @@ global:
   prefect:
     image:
       repository: registry.opsmill.io/opsmill/infrahub-enterprise
-      prefectTag: 1.2.5
+      prefectTag: 1.4.10
 server:
-  replicaCount: 1
+  replicaCount: 3
   command:
     - /usr/bin/tini
     - -g
     - --
   args:
-    - uvicorn
-    - --host
-    - "0.0.0.0"
-    - --port
-    - "4200"
-    - --factory
-    - infrahub.prefect_server.app:create_infrahub_prefect
+    - gunicorn
+    - -k
+    - uvicorn.workers.UvicornWorker
+    - -b
+    - 0.0.0.0:4200
+    - 'infrahub.prefect_server.app:create_infrahub_prefect()'
   env:
+    - name: INFRAHUB_CACHE_ADDRESS
+      value: redis-sentinel-proxy
     - name: PREFECT_UI_SERVE_BASE
       value: /
+    - name: PREFECT__SERVER_WEBSERVER_ONLY
+      value: "true"
     - name: PREFECT_MESSAGING_BROKER
       value: prefect_redis.messaging
     - name: PREFECT_MESSAGING_CACHE
       value: prefect_redis.messaging
+    - name: PREFECT_SERVER_EVENTS_CAUSAL_ORDERING
+      value: prefect_redis.ordering
+    - name: PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE
+      value: prefect_redis.lease_storage
     - name: PREFECT_REDIS_MESSAGING_HOST
       value: redis-sentinel-proxy
     - name: PREFECT_REDIS_MESSAGING_DB
       value: "1"
+    - name: PREFECT_API_DATABASE_MIGRATE_ON_START
+      value: "false"
+    - name: PREFECT_API_BLOCKS_REGISTER_ON_START
+      value: "false"
+  podSecurityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    runAsUser: 1000
+    readOnlyRootFilesystem: false
 secret:
   create: true
   name: ""

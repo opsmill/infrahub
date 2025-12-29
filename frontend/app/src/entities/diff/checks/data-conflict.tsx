@@ -2,10 +2,9 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Link } from "react-router";
 
-import { QSP } from "@/config/qsp";
-
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";

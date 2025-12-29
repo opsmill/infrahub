@@ -73,7 +73,6 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
 
         self.params["current_time"] = self.at.to_string()
         self.params["is_protected_default"] = False
-        self.params["is_visible_default"] = True
         self.params["branch_support"] = BranchSupportType.AGNOSTIC.value
 
         self.params["rel_identifier"] = "gitrepository__credential"
@@ -91,8 +90,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
         // Prepare some nodes we'll need later
         // --------------------------------
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
-        MERGE (is_visible_value:Boolean { value: $is_visible_default })
-        WITH git_repo, root, is_protected_value, is_visible_value
+        WITH git_repo, root, is_protected_value
         // --------------------------------
         // Retrieve the name of the current repository
         // --------------------------------
@@ -106,9 +104,9 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
             ORDER BY r1.branch_level DESC, r1.from DESC
             LIMIT 1
         }
-        WITH  n1 as git_repo, r11 as r1, r22 as r2, av1 as git_name_value, root, is_protected_value, is_visible_value
+        WITH  n1 as git_repo, r11 as r1, r22 as r2, av1 as git_name_value, root, is_protected_value
         WHERE r1.status = "active" AND r2.status = "active"
-        WITH DISTINCT(git_repo) as git_repo, root, is_protected_value, is_visible_value, git_name_value
+        WITH DISTINCT(git_repo) as git_repo, root, is_protected_value, git_name_value
         // --------------------------------
         // Create new CorePasswordCredential node
         // --------------------------------
@@ -119,20 +117,17 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
         CREATE (attr_name)<-[:HAS_ATTRIBUTE $rel_props_new ]-(cred)
         CREATE (attr_name)-[:HAS_VALUE $rel_props_new ]->(git_name_value)
         CREATE (attr_name)-[:IS_PROTECTED $rel_props_new]->(is_protected_value)
-        CREATE (attr_name)-[:IS_VISIBLE $rel_props_new]->(is_visible_value)
         // attribute: label
         CREATE (attr_lbl:Attribute { name: "label", branch_support: $branch_support })
         CREATE (attr_lbl)<-[:HAS_ATTRIBUTE $rel_props_new ]-(cred)
         CREATE (attr_lbl)-[:HAS_VALUE $rel_props_new ]->(git_name_value)
         CREATE (attr_lbl)-[:IS_PROTECTED $rel_props_new]->(is_protected_value)
-        CREATE (attr_lbl)-[:IS_VISIBLE $rel_props_new]->(is_visible_value)
         // attribute: description
         CREATE (attr_desc:Attribute { name: "description", branch_support: $branch_support })
         MERGE (av_desc:AttributeValue { value: "Credential for " + git_name_value.value, is_default: true })
         CREATE (attr_desc)<-[:HAS_ATTRIBUTE $rel_props_new ]-(cred)
         CREATE (attr_desc)-[:HAS_VALUE $rel_props_new ]->(av_desc)
         CREATE (attr_desc)-[:IS_PROTECTED $rel_props_new]->(is_protected_value)
-        CREATE (attr_desc)-[:IS_VISIBLE $rel_props_new]->(is_visible_value)
         %(attr_name_guid)s
         %(attr_label_guid)s
         %(attr_desc_guid)s
@@ -286,7 +281,7 @@ class Migration013AddInternalStatusData(AttributeAddQuery):
         kwargs.pop("branch", None)
 
         super().__init__(
-            node_kind="CoreGenericRepository",
+            node_kinds=["CoreGenericRepository"],
             attribute_name="internal_status",
             attribute_kind="Dropdown",
             branch_support=BranchSupportType.LOCAL.value,

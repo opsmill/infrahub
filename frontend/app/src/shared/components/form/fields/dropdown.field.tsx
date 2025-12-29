@@ -20,6 +20,7 @@ const DropdownField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: DropdownFieldProps) => {
   return (
@@ -28,6 +29,7 @@ const DropdownField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
 

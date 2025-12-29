@@ -3,7 +3,7 @@ import pytest
 from infrahub import exceptions as infra_execs
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
@@ -16,11 +16,11 @@ from infrahub.database import InfrahubDatabase
 
 async def test_relationship_init(
     db: InfrahubDatabase, default_branch: Branch, tag_blue_main: Node, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
 
     assert rel.schema == rel_schema
     assert rel.name == rel_schema.name
@@ -28,7 +28,9 @@ async def test_relationship_init(
     assert rel.node_id == person_jack_main.id
     assert await rel.get_node(db=db) == person_jack_main
 
-    rel = Relationship(schema=rel_schema, branch=branch, node_id=person_jack_main.id)
+    rel = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node_id=person_jack_main.id
+    )
 
     assert rel.schema == rel_schema
     assert rel.name == rel_schema.name
@@ -48,12 +50,17 @@ async def test_relationship_init_w_node_property(
     tag_blue_main: Node,
     person_jack_main: Node,
     branch: Branch,
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(
-        schema=rel_schema, branch=branch, node=person_jack_main, source=first_account, owner=second_account
+        schema=rel_schema,
+        branch=branch,
+        source_kind=person_jack_main.get_kind(),
+        node=person_jack_main,
+        source=first_account,
+        owner=second_account,
     )
 
     assert rel.schema == rel_schema
@@ -73,7 +80,7 @@ async def car_smart_properties_main(db: InfrahubDatabase, default_branch: Branch
         name="smart",
         nbr_seats=2,
         is_electric=True,
-        owner={"id": person_john_main.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        owner={"id": person_john_main.id, "_relation__is_protected": True},
     )
     await car.save(db=db)
 
@@ -82,11 +89,16 @@ async def car_smart_properties_main(db: InfrahubDatabase, default_branch: Branch
 
 async def test_relationship_load_existing(
     db: InfrahubDatabase, person_john_main: Node, car_smart_properties_main: Node, branch: Branch
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship("owner")
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=car_smart_properties_main)
+    rel = Relationship(
+        schema=rel_schema,
+        branch=branch,
+        source_kind=car_smart_properties_main.get_kind(),
+        node=car_smart_properties_main,
+    )
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
@@ -94,6 +106,7 @@ async def test_relationship_load_existing(
         branch=branch,
         at=Timestamp(),
         rel=rel,
+        include_metadata=MetadataOptions.IS_PROTECTED,
     )
     await query.execute(db=db)
 
@@ -107,14 +120,15 @@ async def test_relationship_load_existing(
     assert rel.db_id == peers[0].rel_node_db_id
 
     assert rel.is_protected is True
-    assert rel.is_visible is False
 
 
-async def test_relationship_peer(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
+async def test_relationship_peer(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
     rel.set_peer(value=tag_blue_main)
 
     assert rel.schema == rel_schema
@@ -126,11 +140,13 @@ async def test_relationship_peer(db: InfrahubDatabase, tag_blue_main: Node, pers
     assert await rel.get_peer(db=db) == tag_blue_main
 
 
-async def test_relationship_save(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
+async def test_relationship_save(
+    db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
     rel.set_peer(value=tag_blue_main)
     await rel.save(db=db)
 
@@ -142,11 +158,11 @@ async def test_relationship_save(db: InfrahubDatabase, tag_blue_main: Node, pers
 
 async def test_relationship_hash(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch, first_account
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
     rel.set_peer(value=tag_blue_main)
     await rel.save(db=db)
     hash1 = hash(rel)
@@ -175,7 +191,7 @@ async def test_relationship_hash(
     assert hash4 != hash5
 
 
-async def test_relationship_validate_one_init_empty_success():
+async def test_relationship_validate_one_init_empty_success() -> None:
     result = RelationshipValidatorList(name="name", min_count=1, max_count=1)
 
     # Assert that the list is empty
@@ -185,7 +201,7 @@ async def test_relationship_validate_one_init_empty_success():
     assert isinstance(result, RelationshipValidatorList)
 
 
-async def test_relationship_validate_many_init_empty_success():
+async def test_relationship_validate_many_init_empty_success() -> None:
     result = RelationshipValidatorList(name="name", min_count=100, max_count=100)
 
     # Assert that the list is empty
@@ -194,7 +210,7 @@ async def test_relationship_validate_many_init_empty_success():
     assert result.max_count == 100
 
 
-async def test_relationship_validate_empty_init_success():
+async def test_relationship_validate_empty_init_success() -> None:
     result = RelationshipValidatorList(name="name")
 
     # Assert that the list is empty
@@ -204,38 +220,52 @@ async def test_relationship_validate_empty_init_success():
     assert isinstance(result, RelationshipValidatorList)
 
 
-async def test_relationship_validate_many_init_empty_raise_min_ge_max():
+async def test_relationship_validate_many_init_empty_raise_min_ge_max() -> None:
     with pytest.raises(infra_execs.ValidationError):
         RelationshipValidatorList(name="name", min_count=200, max_count=100)
 
 
-async def test_relationship_validate_init_below_min_raise(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
+async def test_relationship_validate_init_below_min_raise(
+    db: InfrahubDatabase, person_jack_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
 
     with pytest.raises(infra_execs.ValidationError, match="max_count must be greater than min_count"):
         RelationshipValidatorList(rel_jack, name="name", min_count=3, max_count=0)
 
 
-async def test_relationship_validate_init_above_max_raise(db: InfrahubDatabase, person_jack_main: None, branch: Branch):
+async def test_relationship_validate_init_above_max_raise(
+    db: InfrahubDatabase, person_jack_main: None, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_1 = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    rel_2 = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
-    rel_3 = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+    rel_1 = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
+    rel_2 = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
+    rel_3 = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
 
     with pytest.raises(infra_execs.ValidationError, match="Too many relationships, max 2"):
         RelationshipValidatorList(rel_1, rel_2, rel_3, name="name", min_count=0, max_count=2)
 
 
-async def test_relationship_validate_one_success(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
+async def test_relationship_validate_one_success(db: InfrahubDatabase, person_jack_main: Node, branch: Branch) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
 
     result = RelationshipValidatorList(rel_jack, name="name", min_count=1, max_count=1)
 
@@ -249,13 +279,19 @@ async def test_relationship_validate_one_success(db: InfrahubDatabase, person_ja
     assert result.max_count == 1
 
 
-async def test_relationship_validate_one_append_raise(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
+async def test_relationship_validate_one_append_raise(
+    db: InfrahubDatabase, person_jack_main: Node, branch: Branch
+) -> None:
     """Validate that it raises when appending a second relationship onto cardinality of one."""
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    rel_doe = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
+    rel_doe = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
     result = RelationshipValidatorList(name="name", min_count=1, max_count=1)
 
     assert len(result) == 0
@@ -271,12 +307,14 @@ async def test_relationship_validate_one_append_raise(db: InfrahubDatabase, pers
 
 async def test_relationship_validate_one_append_extend_duplicate(
     db: InfrahubDatabase, person_jack_main: Node, branch: Branch
-):
+) -> None:
     """Attempting to use the methods that would insert over the max_count but are duplicates."""
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
     result = RelationshipValidatorList(rel_jack, name="name", min_count=1, max_count=1)
 
     # RelationshipValidatorList should not append/extend a duplicate relationship
@@ -291,24 +329,34 @@ async def test_relationship_validate_one_append_extend_duplicate(
     assert result.get(0) == rel_jack
 
 
-async def test_relationship_validate_one_extend_raise(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
+async def test_relationship_validate_one_extend_raise(
+    db: InfrahubDatabase, person_jack_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
 
     result = RelationshipValidatorList(rel_jack, name="name", min_count=1, max_count=1)
 
     with pytest.raises(infra_execs.ValidationError, match="Too many relationships, max 1"):
-        rel_albert = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+        rel_albert = Relationship(
+            schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+        )
         result.extend([rel_albert])
 
 
-async def test_relationship_validate_one_remove_raise(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
+async def test_relationship_validate_one_remove_raise(
+    db: InfrahubDatabase, person_jack_main: Node, branch: Branch
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
 
     result = RelationshipValidatorList(rel_jack, name="name", min_count=1, max_count=1)
 
@@ -325,13 +373,19 @@ async def test_relationship_validate_one_remove_raise(db: InfrahubDatabase, pers
 
 async def test_relationship_validate_many_no_limit_success(
     db: InfrahubDatabase, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    rel_doe_one = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
-    rel_doe_two = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
+    rel_doe_one = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
+    rel_doe_two = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
 
     result = RelationshipValidatorList(rel_jack, rel_doe_one, rel_doe_two, name="name", min_count=0, max_count=0)
 
@@ -342,11 +396,11 @@ async def test_relationship_validate_many_no_limit_success(
 
 async def test_relationship_validate_many_no_limit_duplicate_success(
     db: InfrahubDatabase, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel = Relationship(schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main)
 
     result = RelationshipValidatorList(rel, name="name", min_count=rel_schema.min_count, max_count=rel_schema.max_count)
 
@@ -358,13 +412,19 @@ async def test_relationship_validate_many_no_limit_duplicate_success(
 
 async def test_relationship_validate_many_above_max_count_raise(
     db: InfrahubDatabase, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    rel_doe_one = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
-    rel_doe_two = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
+    rel_doe_one = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
+    rel_doe_two = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
 
     result = RelationshipValidatorList(name="name", min_count=2, max_count=2)
     result.extend([rel_jack, rel_doe_one])
@@ -384,12 +444,16 @@ async def test_relationship_validate_many_above_max_count_raise(
 
 async def test_relationship_validate_many_less_than_min_raise(
     db: InfrahubDatabase, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    rel_doe_one = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
+    rel_doe_one = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
 
     result = RelationshipValidatorList(rel_jack, rel_doe_one, name="name", min_count=2, max_count=2)
 
@@ -414,7 +478,7 @@ async def test_relationship_assign_from_pool(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -441,7 +505,7 @@ async def test_relationship_assign_from_pool(
 
 async def test_relationship_timestamp_changes(
     db: InfrahubDatabase, person_jack_main: Node, tag_blue_main: Node, tag_red_main: Node, branch: Branch
-):
+) -> None:
     # test going back in time after adding a relationship
     before_add = Timestamp()
     person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
@@ -487,7 +551,7 @@ async def test_relationship_timestamp_changes(
 
 async def test_relationship_second_delete_is_ignored(
     db: InfrahubDatabase, person_jack_main: Node, tag_blue_main: Node, branch: Branch
-):
+) -> None:
     person_jack = await NodeManager.get_one(db=db, branch=branch, id=person_jack_main.id)
     await person_jack.tags.update(db=db, data=[tag_blue_main.id])
     await person_jack.save(db=db)
@@ -499,11 +563,10 @@ async def test_relationship_second_delete_is_ignored(
 
     # verify that only 1 delete path exists
     query = """
-MATCH (s:Node {uuid: $source_id})-[r1:IS_RELATED {status: "deleted", branch: $branch}]-(:Relationship {name: $rel_name})
-    -[r2:IS_RELATED {status: "deleted", branch: $branch}]-(d:Node {uuid: $dest_id})
-RETURN count(*) AS num_paths
+MATCH (s:Node {uuid: $source_id})-[r1:IS_RELATED]-(:Relationship {name: $rel_name})-[r2:IS_RELATED]-(d:Node {uuid: $dest_id})
+RETURN r1, r2
     """
-    result = await db.execute_query(
+    results = await db.execute_query(
         query=query,
         params={
             "source_id": person_jack_main.id,
@@ -512,17 +575,25 @@ RETURN count(*) AS num_paths
             "dest_id": tag_blue_main.id,
         },
     )
-    assert result[0].get("num_paths") == 1
+    assert len(results) == 1
+    r1 = results[0].get("r1")
+    r2 = results[0].get("r2")
+    assert r1.get("status") == "active" and r1.get("branch") == branch.name and r1.get("to") is not None
+    assert r2.get("status") == "active" and r2.get("branch") == branch.name and r2.get("to") is not None
 
 
 async def test_can_create_relationship_with_min_count_only(
     db: InfrahubDatabase, person_jack_main: Node, branch: Branch
-):
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
-    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
-    rel_doe_one = Relationship(schema=rel_schema, branch=branch, node=Node(person_schema, branch, at="now"))
+    rel_jack = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_jack_main.get_kind(), node=person_jack_main
+    )
+    rel_doe_one = Relationship(
+        schema=rel_schema, branch=branch, source_kind=person_schema.kind, node=Node(person_schema, branch, at="now")
+    )
 
     result = RelationshipValidatorList(rel_jack, rel_doe_one, name="name", min_count=1, max_count=None)
 

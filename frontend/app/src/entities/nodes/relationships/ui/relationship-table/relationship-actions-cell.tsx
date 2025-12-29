@@ -63,8 +63,8 @@ export function RelationshipActionsCell({
 
   return (
     <Popover open={showPropertiesModal} onOpenChange={setShowPropertiesModal}>
-      <TableCell className="-ml-px sticky right-0 size-10 items-center justify-center border-gray-200 border-l bg-white">
-        <div className="-left-4 pointer-events-none absolute top-0 bottom-0 w-4 bg-linear-to-r from-transparent to-gray-300/30" />
+      <TableCell className="sticky right-0 -ml-px size-10 items-center justify-center border-gray-200 border-l bg-white">
+        <div className="pointer-events-none absolute top-0 bottom-0 -left-4 w-4 bg-linear-to-r from-transparent to-gray-300/30" />
         <DropdownMenu>
           <PopoverAnchor>
             <DropdownMenuTrigger asChild>
@@ -141,7 +141,7 @@ export function RelationshipActionsCell({
               await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
               setShowEditForm(false);
             }}
-            objectid={relationshipId}
+            objectId={relationshipId}
             objectname={relationshipKind}
           />
         </SlideOver>

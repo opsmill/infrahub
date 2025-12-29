@@ -5,31 +5,30 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
 
-import { CONFIG } from "@/config/config";
-import {
-  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/config/constants";
-import { QSP } from "@/config/qsp";
-
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
-import { AddComment } from "@/shared/components/conversations/add-comment";
-import { Thread } from "@/shared/components/conversations/thread";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { CONFIG } from "@/shared/config/config";
+import {
+  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
+  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+} from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
+import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
+import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
+import { useQueryState } from "nuqs";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
@@ -102,9 +101,9 @@ export const FileContentDiff = (props: any) => {
   const { repositoryId, repositoryDisplayName, file, commitFrom, commitTo } = props;
 
   const { proposedChangeId } = useParams();
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const [branchOnly] = useQueryState(QSP.BRANCH_FILTER_BRANCH_ONLY);
+  const [timeFrom] = useQueryState(QSP.BRANCH_FILTER_TIME_FROM);
+  const [timeTo] = useQueryState(QSP.BRANCH_FILTER_TIME_TO);
   const auth = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [isLoading, setIsLoading] = useState(false);
@@ -341,7 +340,7 @@ export const FileContentDiff = (props: any) => {
 
         {inHoverState && (
           <Button
-            className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10 transform"
+            className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 transform"
             onClick={handleClick}
           >
             <PencilIcon className="h-3 w-3" />

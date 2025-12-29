@@ -2,12 +2,11 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useUpdateObjectMutation } from "@/entities/nodes/object/domain/update-object.mutation";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";

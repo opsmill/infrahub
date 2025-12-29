@@ -1,14 +1,57 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  queryOptions,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 
-import { getBranches } from "./get-branches";
+import type { PaginationParams } from "@/shared/api/types";
 
-export function getBranchesQueryOptions() {
+import { BRANCHES_PER_PAGE } from "@/entities/branches/api/get-branches-from-api";
+import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
+import {
+  type GetBranchesParams,
+  getAllBranches,
+  getBranches,
+} from "@/entities/branches/domain/get-branches";
+
+type GetBranchesInfiniteQueryOptionsParams = Omit<GetBranchesParams, keyof PaginationParams>;
+
+// Paginated query for branches list view
+export function getBranchesInfiniteQueryOptions(
+  params: GetBranchesInfiniteQueryOptionsParams = {}
+) {
+  return infiniteQueryOptions({
+    queryKey: branchesQueryKeys.list(params),
+    queryFn: ({ pageParam }) => {
+      return getBranches({
+        ...params,
+        offset: pageParam,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (lastPage.length < BRANCHES_PER_PAGE) {
+        return;
+      }
+      return lastPageParam + BRANCHES_PER_PAGE;
+    },
+  });
+}
+
+export function useGetBranchesPaginated(params: GetBranchesInfiniteQueryOptionsParams = {}) {
+  return useInfiniteQuery(getBranchesInfiniteQueryOptions(params));
+}
+
+// Non-paginated query for branch selector and provider (fetches all branches)
+// TODO: can be removed once we remove branchesState atom to use pagination within selectors
+export function getAllBranchesQueryOptions() {
   return queryOptions({
-    queryKey: ["branches"],
-    queryFn: getBranches,
+    queryKey: branchesQueryKeys.all,
+    queryFn: getAllBranches,
   });
 }
 
 export function useGetBranches() {
-  return useQuery(getBranchesQueryOptions());
+  return useQuery(getAllBranchesQueryOptions());
 }

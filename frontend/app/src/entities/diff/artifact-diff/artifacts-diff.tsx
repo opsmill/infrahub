@@ -1,19 +1,18 @@
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 
-import { CONFIG } from "@/config/config";
-import { QSP } from "@/config/qsp";
-
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { CONFIG } from "@/shared/config/config";
+import { QSP } from "@/shared/config/qsp";
 
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import "react-diff-view/style/index.css";
 
+import { useQueryState } from "nuqs";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
 
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
@@ -22,9 +21,9 @@ import { ArtifactRepoDiff } from "./artifact-repo-diff";
 export const ArtifactsDiff = forwardRef((_, ref) => {
   const [artifactsDiff, setArtifactsDiff] = useState({});
   const { "*": branchName } = useParams();
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
-  const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
+  const [branchOnly] = useQueryState(QSP.BRANCH_FILTER_BRANCH_ONLY);
+  const [timeFrom] = useQueryState(QSP.BRANCH_FILTER_TIME_FROM);
+  const [timeTo] = useQueryState(QSP.BRANCH_FILTER_TIME_TO);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const [isLoading, setIsLoading] = useState(false);
 

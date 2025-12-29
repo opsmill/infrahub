@@ -1,3 +1,4 @@
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipKind, SchemaPathType
@@ -10,6 +11,7 @@ from infrahub.core.schema.attribute_parameters import AttributeParameters
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -81,7 +83,13 @@ class ConstraintValidatorDeterminer:
 
     async def _get_all_property_constraints(self) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
-        for schema in self.schema_branch.get_all().values():
+        schemas = list(self.schema_branch.get_all(duplicate=False).values())
+        # added here to check their uniqueness constraints
+        with contextlib.suppress(SchemaNotFoundError):
+            schemas.append(self.schema_branch.get_node(name="SchemaAttribute", duplicate=False))
+        with contextlib.suppress(SchemaNotFoundError):
+            schemas.append(self.schema_branch.get_node(name="SchemaRelationship", duplicate=False))
+        for schema in schemas:
             constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         return constraints
 
@@ -89,7 +97,7 @@ class ConstraintValidatorDeterminer:
         self, schema: MainSchemaTypes
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
-        for prop_name, prop_field_info in schema.model_fields.items():
+        for prop_name, prop_field_info in schema.__class__.model_fields.items():
             if (
                 prop_name in ["attributes", "relationships"]
                 or not prop_field_info.json_schema_extra
@@ -150,10 +158,10 @@ class ConstraintValidatorDeterminer:
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         prop_details_list: list[tuple[str, FieldInfo, Any]] = []
-        for p_name, p_info in field.model_fields.items():
+        for p_name, p_info in field.__class__.model_fields.items():
             p_value = getattr(field, p_name)
             if isinstance(p_value, AttributeParameters):
-                for parameter_name, parameter_field_info in p_value.model_fields.items():
+                for parameter_name, parameter_field_info in p_value.__class__.model_fields.items():
                     parameter_value = getattr(p_value, parameter_name)
                     prop_details_list.append((f"{p_name}.{parameter_name}", parameter_field_info, parameter_value))
             else:

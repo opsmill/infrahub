@@ -98,7 +98,7 @@ class IPPrefixPoolGetResource(Mutation):
                 "id": resource.id,
                 "kind": resource.get_kind(),
                 "identifier": data.get("identifier", None),
-                "display_label": await resource.render_display_label(db=graphql_context.db),
+                "display_label": await resource.get_display_label(db=graphql_context.db),
                 "branch": graphql_context.branch.name,
             },
         }
@@ -122,7 +122,7 @@ class IPAddressPoolGetResource(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
-        obj: CoreIPAddressPool = await registry.manager.find_object(
+        obj: CoreIPAddressPool = await registry.manager.find_object(  # type: ignore[assignment]
             db=graphql_context.db,
             kind=InfrahubKind.IPADDRESSPOOL,
             id=data.get("id"),
@@ -144,7 +144,7 @@ class IPAddressPoolGetResource(Mutation):
                 "id": resource.id,
                 "kind": resource.get_kind(),
                 "identifier": data.get("identifier"),
-                "display_label": await resource.render_display_label(db=graphql_context.db),
+                "display_label": await resource.get_display_label(db=graphql_context.db),
                 "branch": graphql_context.branch.name,
             },
         }

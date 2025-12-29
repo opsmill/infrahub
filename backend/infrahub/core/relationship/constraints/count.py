@@ -40,7 +40,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         # peer_ids_present_database_only:
         #    relationship to be deleted, need to check if the schema on the other side has a min_count defined
         # TODO see how to manage Generic node
-        peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch)
+        peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
         peer_rels = peer_schema.get_relationships_by_identifier(id=relm.schema.get_identifier())
         if not peer_rels:
             return

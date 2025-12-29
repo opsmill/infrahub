@@ -70,12 +70,12 @@ mutation($branch: String!) {
 
 class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
-    def configure_settings(self):
+    def configure_settings(self) -> None:
         config.SETTINGS.broker.enable = True
         config.SETTINGS.cache.enable = False
 
     @pytest.fixture(scope="class", autouse=True)
-    def initialize_lock(self):
+    def initialize_lock(self) -> None:
         lock.initialize_lock(local_only=True)
 
     @pytest.fixture(scope="class")
@@ -199,7 +199,7 @@ class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def add_branch_1_changes(
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_1: Branch
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_1 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_1)
         kara_branch_1.description.value = "branch-1-description"
@@ -216,7 +216,7 @@ class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def add_branch_2_changes(
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_2: Branch
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         kara_branch_2 = await NodeManager.get_one(db=db, id=kara_id, branch=branch_2)
         kara_branch_2.description.value = "branch-2-description"
@@ -233,7 +233,7 @@ class TestDiffRebase(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def add_branch_3_changes(
         self, db: InfrahubDatabase, client: InfrahubClient, default_branch: Branch, initial_dataset, branch_3: Branch
-    ):
+    ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
         antarctica_branch_1 = await NodeManager.get_one(db=db, id=antarctica_id, branch=branch_3)
         await antarctica_branch_1.delete(db=db)
@@ -265,7 +265,7 @@ class TestDiffRebase(TestInfrahubApp):
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
         koenigsegg_id = initial_dataset["koenigsegg"].id
@@ -308,7 +308,6 @@ class TestDiffRebase(TestInfrahubApp):
             properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
-                DatabaseEdgeType.IS_VISIBLE,
                 DatabaseEdgeType.IS_PROTECTED,
             }
             related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -316,10 +315,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert related_prop.previous_value == koenigsegg_id
             assert related_prop.new_value == new_peer_id
             assert related_prop.conflict is None
-            for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
-                diff_prop = properties_by_type[prop_type]
-                assert diff_prop.action is DiffAction.UNCHANGED
-                assert diff_prop.previous_value == diff_prop.new_value == value
+            prop_type, value = (DatabaseEdgeType.IS_PROTECTED, "False")
+            diff_prop = properties_by_type[prop_type]
+            assert diff_prop.action is DiffAction.UNCHANGED
+            assert diff_prop.previous_value == diff_prop.new_value == value
             for manufacturer_id, expected_action in (
                 (koenigsegg_id, DiffAction.REMOVED),
                 (new_peer_id, DiffAction.ADDED),
@@ -338,12 +337,10 @@ class TestDiffRebase(TestInfrahubApp):
                 assert set(properties_by_type.keys()) == {
                     DatabaseEdgeType.IS_RELATED,
                     DatabaseEdgeType.IS_PROTECTED,
-                    DatabaseEdgeType.IS_VISIBLE,
                 }
                 for property_type, check_value in (
                     (DatabaseEdgeType.IS_RELATED, jesko_id),
                     (DatabaseEdgeType.IS_PROTECTED, "False"),
-                    (DatabaseEdgeType.IS_VISIBLE, "True"),
                 ):
                     prop_diff = properties_by_type[property_type]
                     assert prop_diff.action is expected_action
@@ -360,7 +357,7 @@ class TestDiffRebase(TestInfrahubApp):
         branch_1: Branch,
         branch_2: Branch,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
         koenigsegg_id = initial_dataset["koenigsegg"].id
@@ -408,7 +405,6 @@ class TestDiffRebase(TestInfrahubApp):
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
-            DatabaseEdgeType.IS_VISIBLE,
             DatabaseEdgeType.IS_PROTECTED,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -417,7 +413,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == omnicorp_id
         assert related_prop.conflict is None
-        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+        for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
             diff_prop = properties_by_type[prop_type]
             assert diff_prop.action is DiffAction.UNCHANGED
             assert diff_prop.previous_value == diff_prop.new_value == value
@@ -436,12 +432,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for property_type, check_value in (
                 (DatabaseEdgeType.IS_RELATED, jesko_id),
                 (DatabaseEdgeType.IS_PROTECTED, "False"),
-                (DatabaseEdgeType.IS_VISIBLE, "True"),
             ):
                 prop_diff = properties_by_type[property_type]
                 assert prop_diff.action is expected_action
@@ -454,7 +448,7 @@ class TestDiffRebase(TestInfrahubApp):
         db: InfrahubDatabase,
         branch_2: Branch,
         initial_dataset,
-    ):
+    ) -> None:
         kara_id = initial_dataset["kara"].id
         jesko_id = initial_dataset["jesko"].id
         cyberdyne_id = initial_dataset["cyberdyne"].id
@@ -474,7 +468,7 @@ class TestDiffRebase(TestInfrahubApp):
         initial_dataset,
         branch_2: Branch,
         diff_repository: DiffRepository,
-    ):
+    ) -> None:
         jesko_id = initial_dataset["jesko"].id
         koenigsegg_id = initial_dataset["koenigsegg"].id
         cyberdyne_id = initial_dataset["cyberdyne"].id
@@ -503,7 +497,6 @@ class TestDiffRebase(TestInfrahubApp):
         properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
-            DatabaseEdgeType.IS_VISIBLE,
             DatabaseEdgeType.IS_PROTECTED,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
@@ -512,7 +505,7 @@ class TestDiffRebase(TestInfrahubApp):
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == cyberdyne_id
         assert related_prop.conflict is None
-        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+        for prop_type, value in ((DatabaseEdgeType.IS_PROTECTED, "False"),):
             diff_prop = properties_by_type[prop_type]
             assert diff_prop.action is DiffAction.UNCHANGED
             assert diff_prop.previous_value == diff_prop.new_value == value
@@ -531,12 +524,10 @@ class TestDiffRebase(TestInfrahubApp):
             assert set(properties_by_type.keys()) == {
                 DatabaseEdgeType.IS_RELATED,
                 DatabaseEdgeType.IS_PROTECTED,
-                DatabaseEdgeType.IS_VISIBLE,
             }
             for property_type, check_value in (
                 (DatabaseEdgeType.IS_RELATED, jesko_id),
                 (DatabaseEdgeType.IS_PROTECTED, "False"),
-                (DatabaseEdgeType.IS_VISIBLE, "True"),
             ):
                 prop_diff = properties_by_type[property_type]
                 assert prop_diff.action is expected_action
@@ -552,7 +543,7 @@ class TestDiffRebase(TestInfrahubApp):
         client: InfrahubClient,
         branch_3: Branch,
         add_branch_3_changes,
-    ):
+    ) -> None:
         antarctica_id = initial_dataset["antarctica"].id
 
         # add a node on main

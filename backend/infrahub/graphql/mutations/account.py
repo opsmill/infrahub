@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
@@ -36,7 +36,7 @@ class InfrahubAccountUpdateSelfInput(InputObjectType):
     description = InputField(String(required=False), description="Description to use instead of the current one")
 
 
-class ValueType(InfrahubObjectType):
+class ValueType(ObjectType):
     value = String(required=True)
 
 
@@ -99,7 +99,7 @@ class AccountMixin:
         )
 
         async with db.start_transaction() as dbt:
-            await obj.save(db=dbt)
+            await obj.save(db=dbt, user_id=account.id)
 
         fields = extract_graphql_fields(info=info)
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
@@ -126,7 +126,7 @@ class AccountMixin:
             raise NodeNotFoundError(node_type="AccountToken", identifier=token_id)
 
         async with db.start_transaction() as dbt:
-            await results[0].delete(db=dbt)
+            await results[0].delete(db=dbt, user_id=account.id)
 
         return cls(ok=True)  # type: ignore[call-arg]
 
@@ -144,7 +144,7 @@ class AccountMixin:
                 getattr(account, field).value = value
 
         async with db.start_transaction() as dbt:
-            await account.save(db=dbt)
+            await account.save(db=dbt, user_id=account.id)
 
         return cls(ok=True)  # type: ignore[call-arg]
 

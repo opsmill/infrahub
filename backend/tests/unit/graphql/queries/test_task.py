@@ -144,7 +144,7 @@ async def prefect_client(prefect_test_fixture):
 
 
 @pytest.fixture
-async def delete_flow_runs(prefect_client: PrefectClient):
+async def delete_flow_runs(prefect_client: PrefectClient) -> None:
     flows = await prefect_client.read_flow_runs()
     for flow in flows:
         await prefect_client.delete_flow_run(flow_run_id=flow.id)
@@ -230,7 +230,8 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, tag_red, accou
 
 
 async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any]) -> ExecutionResult:
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
     return await graphql(
         schema=gql_params.schema,
         source=query,
@@ -246,7 +247,7 @@ async def test_task_query_prefect(
     register_core_models_schema: None,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     result = await run_query(
         db=db,
         branch=default_branch,
@@ -275,7 +276,7 @@ async def test_task_query_filter_workflow(
     register_core_models_schema: None,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     QUERY = """
     query {
         InfrahubTask(workflow: ["dummy-flow"]) {
@@ -312,7 +313,7 @@ async def test_task_query_filter_workflow(
 
 async def test_task_query_filter_workflow_state(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
-):
+) -> None:
     QUERY = """
     query {
         InfrahubTask(workflow: ["dummy-flow"], state: [RUNNING, SCHEDULED]) {
@@ -343,7 +344,7 @@ async def test_task_query_filter_workflow_state(
 
 async def test_task_query_filter_id(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
-):
+) -> None:
     dummy_completed_br1_db = flow_runs_data["dummy-completed-br1-db"]
     dummy_running_br1 = flow_runs_data["dummy-running-br1"]
 
@@ -376,7 +377,7 @@ async def test_task_query_filter_id(
 
 async def test_task_query_filter_branch(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
-):
+) -> None:
     QUERY = """
     query TaskQuery(
         $branch_name: String!
@@ -414,7 +415,7 @@ async def test_task_query_filter_branch(
 
 async def test_task_query_filter_state(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
-):
+) -> None:
     QUERY = """
     query {
         InfrahubTask(state: [RUNNING, COMPLETED]) {
@@ -450,7 +451,7 @@ async def test_task_query_filter_state(
 
 async def test_task_query_partial_text(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
-):
+) -> None:
     QUERY = """
     query {
         InfrahubTask(q: "br1") {
@@ -494,7 +495,7 @@ async def test_task_query_filter_node(
     account_bill,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     result = await run_query(
         db=db,
         branch=default_branch,
@@ -508,7 +509,7 @@ async def test_task_query_filter_node(
     assert result.data["InfrahubTask"]["edges"][0] == {
         "node": {
             "conclusion": "unknown",
-            "created_at": flow.created.to_iso8601_string(),
+            "created_at": flow.created.isoformat(),
             "id": str(flow.id),
             "state": "SCHEDULED",
             "progress": None,
@@ -524,7 +525,7 @@ async def test_task_query_filter_node(
                 },
             ],
             "title": flow.name,
-            "updated_at": flow.updated.to_iso8601_string(),
+            "updated_at": flow.updated.isoformat(),
             "start_time": None,
             "workflow": "dummy-flow",
         }
@@ -544,7 +545,7 @@ async def test_task_query_filter_node(
     assert result.data["InfrahubTask"]["edges"][0] == {
         "node": {
             "conclusion": "success",
-            "created_at": flow.created.to_iso8601_string(),
+            "created_at": flow.created.isoformat(),
             "id": str(flow.id),
             "state": "COMPLETED",
             "progress": None,
@@ -570,7 +571,7 @@ async def test_task_query_filter_node(
                 },
             ],
             "title": flow.name,
-            "updated_at": flow.updated.to_iso8601_string(),
+            "updated_at": flow.updated.isoformat(),
             "start_time": None,
             "workflow": "dummy-flow-broken",
         }
@@ -601,7 +602,7 @@ async def test_task_query_both(
     account_bob,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     result = await run_query(
         db=db,
         branch=default_branch,
@@ -632,7 +633,7 @@ async def test_task_query_with_log_offset(
     account_bob,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     """
     In unit tests logs are not forwarded to the Prefect server for unknown reasons.
     Therefore this test mainly tests log_offset and log_limit do not break the query when they are specified,
@@ -669,7 +670,7 @@ async def test_task_branch_status(
     account_bob,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     QUERY = """
     query TaskQuery(
         $branch_name: String!
@@ -705,7 +706,7 @@ async def test_task_query_progress(
     prefect_client: PrefectClient,
     register_core_models_schema: None,
     tag_red,
-):
+) -> None:
     flow = await prefect_client.create_flow_run(
         flow=dummy_flow,
         name="dummy-running-red_tag",
@@ -737,7 +738,7 @@ async def test_task_query_progress(
     assert result.data["InfrahubTask"]["edges"][0] == {
         "node": {
             "conclusion": "unknown",
-            "created_at": flow.created.to_iso8601_string(),
+            "created_at": flow.created.isoformat(),
             "id": str(flow.id),
             "state": "RUNNING",
             "progress": 33.33,
@@ -753,8 +754,8 @@ async def test_task_query_progress(
                 },
             ],
             "title": flow.name,
-            "updated_at": flow.updated.to_iso8601_string(),
-            "start_time": flow.start_time.to_iso8601_string(),
+            "updated_at": flow.updated.isoformat(),
+            "start_time": flow.start_time.isoformat(),
             "workflow": "dummy-flow",
         }
     }
@@ -768,7 +769,7 @@ async def test_task_no_count(
     account_bob,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     QUERY = """
     query TaskQuery {
         InfrahubTask {
@@ -811,7 +812,7 @@ async def test_task_only_count(
     account_bob,
     delete_flow_runs,
     flow_runs_data: dict[str, FlowRun],
-):
+) -> None:
     QUERY = """
     query TaskQuery {
         InfrahubTask {

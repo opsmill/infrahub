@@ -35,12 +35,12 @@ if TYPE_CHECKING:
 
 
 class TestCreateReadOnlyRepository(TestInfrahubApp):
-    def setup_method(self):
+    def setup_method(self) -> None:
         lock_patcher = patch("infrahub.git.tasks.lock")
         self.mock_infra_lock = lock_patcher.start()
         self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         patch.stopall()
 
     @pytest.fixture(scope="class")
@@ -48,10 +48,14 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         await load_schema(db=db, schema=CAR_SCHEMA)
 
     @pytest.fixture(scope="class")
-    async def context(self) -> InfrahubContext:
+    async def context(self, db: InfrahubDatabase) -> InfrahubContext:
         """Placeholder context for now, would be good to implement some auth and permissions here"""
+        admin_account = await NodeManager.get_one_by_hfid(
+            db=db, kind=InfrahubKind.ACCOUNT, hfid=["admin"], raise_on_error=True
+        )
+
         return InfrahubContext(
-            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            account=AccountSession(authenticated=True, account_id=admin_account.id, auth_type=AuthType.API),
             branch=BranchContext(name="main", id="d18808fe-70c8-4782-bd55-144d6980036f"),
         )
 
@@ -108,7 +112,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
 
     async def test_step02_validate_generated_artifacts(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient, person_john: Node
-    ):
+    ) -> None:
         artifacts = await client.all(kind=CoreArtifact, branch="ro_repository")
         artifacts_dict = {item.name.value: item for item in artifacts}
         assert sorted(artifacts_dict.keys()) == [
@@ -118,7 +122,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
             "car-owner-yaml",
             "car-spec-markdown",
         ]
-        john_display_label = await person_john.render_display_label(db=db)
+        john_display_label = await person_john.get_display_label(db=db)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         branch = await registry.get_branch(db=db, branch="ro_repository")
@@ -151,7 +155,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         helper: TestHelper,
         context: InfrahubContext,
         service: InfrahubServices,
-    ):
+    ) -> None:
         await client.branch.merge(branch_name="ro_repository")
 
         check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
@@ -189,7 +193,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         person_john: Node,
         context: InfrahubContext,
         service: InfrahubServices,
-    ):
+    ) -> None:
         from infrahub.core import registry
         from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 
@@ -202,7 +206,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john.id)
         john_branch.name.value = "John2"
         await john_branch.save(db=db)
-        john_display_label = await john_branch.render_display_label(db=db)
+        john_display_label = await john_branch.get_display_label(db=db)
 
         artifact_definitions = await client.all(kind=CoreArtifactDefinition)
 

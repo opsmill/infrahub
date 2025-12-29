@@ -1,5 +1,7 @@
 ---
 replicaCount: 3
+image:
+  repository: bitnamilegacy/rabbitmq
 auth:
   username: infrahub
   password: infrahub

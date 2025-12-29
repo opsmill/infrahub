@@ -1,0 +1,62 @@
+import { useQueryState } from "nuqs";
+
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { GENERIC_REPOSITORY_KIND, TASK_TARGET } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
+
+import { ObjectDetailsTab, RelationshipTab } from "@/entities/nodes/object/ui/object-tabs";
+import { getRelationshipsVisibleInTab } from "@/entities/nodes/object/utils/get-relationships-visible-in-tab";
+import { ActionButtons } from "@/entities/nodes/object-item-details/action-buttons";
+import type { NodeObject } from "@/entities/nodes/types";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import type { Permission } from "@/entities/permission/types";
+import { RepositoryObjectsTab } from "@/entities/repository/ui/repository-objects-tab";
+import type { ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
+import { ObjectTaskTab } from "@/entities/tasks/ui/task-tab";
+
+interface ObjectDetailsTabsProps {
+  objectSchema: ModelSchema;
+  objectData: NodeObject;
+  permission: Permission;
+}
+
+export function ObjectDetailsTabs({
+  objectSchema,
+  objectData,
+  permission,
+}: ObjectDetailsTabsProps) {
+  const [qspTab] = useQueryState(QSP.TAB);
+
+  const objectId = objectData.id;
+  const objectKind = objectData.__typename;
+  const relationshipsTabs = getRelationshipsVisibleInTab(objectSchema.relationships ?? []);
+
+  return (
+    <header className="flex items-center border-gray-200 border-b px-2">
+      <ScrollArea scrollX scrollBarClassName="hidden" className="grow">
+        <div className="flex grow gap-8 px-4" data-testid="object-details-tabs">
+          <ObjectDetailsTab isActive={!qspTab} to={getObjectDetailsUrl(objectKind, objectData.id)}>
+            {objectSchema.label}
+          </ObjectDetailsTab>
+          {relationshipsTabs.map((tab) => {
+            return (
+              <RelationshipTab
+                key={tab.name}
+                objectKind={objectKind}
+                objectId={objectId}
+                relationshipSchema={tab}
+              />
+            );
+          })}
+          {isOfKind(TASK_TARGET, objectSchema) && <ObjectTaskTab objectId={objectId} />}
+          {isOfKind(GENERIC_REPOSITORY_KIND, objectSchema) && (
+            <RepositoryObjectsTab objectId={objectId} />
+          )}
+        </div>
+      </ScrollArea>
+
+      <ActionButtons schema={objectSchema} objectDetailsData={objectData} permission={permission} />
+    </header>
+  );
+}

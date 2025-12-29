@@ -5,17 +5,19 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
+from infrahub.graphql.types.node import InfrahubObjectWithoutMeta
 
 
-async def test_input_type_registration():
+async def test_input_type_registration() -> None:
     assert registry.input_type is not {}  # noqa
 
 
-async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
+async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -26,7 +28,12 @@ async def test_generate_interface_object(db: InfrahubDatabase, default_branch: B
     assert sorted(result.reference._meta.fields.keys()) == ["description", "display_label", "hfid", "id", "name"]
 
 
-async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_object(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    reset_graphql_schema_between_tests: None,
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -58,7 +65,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
 
 async def test_generate_graphql_object_with_interface(
     db: InfrahubDatabase, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema
-):
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
     gqlm.generate_interface_object(schema=generic_vehicule_schema, populate_cache=True)
@@ -78,7 +85,9 @@ async def test_generate_graphql_object_with_interface(
     ]
 
 
-async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_mutation_create(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -90,7 +99,9 @@ async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_br
     assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
-async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_generate_graphql_mutation_update(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -102,7 +113,9 @@ async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_br
     assert sorted(result._meta.fields.keys()) == ["object", "ok"]
 
 
-async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema):
+async def test_generate_object_types(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
@@ -117,11 +130,11 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
     relationship_property = gqlm.get_type(name="RelationshipProperty")
 
     assert issubclass(car, InfrahubObject)
-    assert issubclass(edged_car, InfrahubObject)
-    assert issubclass(nested_edged_car, InfrahubObject)
+    assert issubclass(edged_car, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_car, InfrahubObjectWithoutMeta)
     assert issubclass(person, InfrahubObject)
-    assert issubclass(edged_person, InfrahubObject)
-    assert issubclass(nested_edged_person, InfrahubObject)
+    assert issubclass(edged_person, InfrahubObjectWithoutMeta)
+    assert issubclass(nested_edged_person, InfrahubObjectWithoutMeta)
     assert issubclass(relationship_property, graphene.ObjectType)
 
     assert sorted(car._meta.fields.keys()) == [
@@ -141,9 +154,14 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "transmission",
     ]
 
-    assert sorted(edged_car._meta.fields.keys()) == ["node"]
+    assert sorted(edged_car._meta.fields.keys()) == ["node", "node_metadata"]
     assert str(edged_car._meta.fields["node"].type) == "TestCar"
-    assert sorted(nested_edged_car._meta.fields.keys()) == ["node", "properties"]
+    assert sorted(nested_edged_car._meta.fields.keys()) == [
+        "node",
+        "node_metadata",
+        "properties",
+        "relationship_metadata",
+    ]
     assert str(nested_edged_car._meta.fields["node"].type) == "TestCar"
     assert str(nested_edged_car._meta.fields["properties"].type) == "RelationshipProperty"
 
@@ -160,40 +178,54 @@ async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branc
         "profiles",
         "subscriber_of_groups",
     ]
-    assert sorted(edged_person._meta.fields.keys()) == ["node"]
+    assert sorted(edged_person._meta.fields.keys()) == ["node", "node_metadata"]
     assert str(edged_person._meta.fields["node"].type) == "TestPerson"
-    assert sorted(nested_edged_person._meta.fields.keys()) == ["node", "properties"]
+    assert sorted(nested_edged_person._meta.fields.keys()) == [
+        "node",
+        "node_metadata",
+        "properties",
+        "relationship_metadata",
+    ]
     assert str(nested_edged_person._meta.fields["node"].type) == "TestPerson"
     assert str(nested_edged_person._meta.fields["properties"].type) == "RelationshipProperty"
     assert sorted(relationship_property._meta.fields.keys()) == [
         "is_protected",
-        "is_visible",
         "owner",
         "source",
         "updated_at",
     ]
 
 
-async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics):
+async def test_generate_filters(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     gqlm = GraphQLSchemaManager(schema=schema)
 
     person = schema.get(name="TestPerson")
     filters = gqlm.generate_filters(schema=person, top_level=True)
     expected_filters = [
+        "node_metadata__created_at",
+        "node_metadata__created_at__after",
+        "node_metadata__created_at__before",
+        "node_metadata__created_by__id",
+        "node_metadata__created_by__ids",
+        "node_metadata__updated_at",
+        "node_metadata__updated_at__after",
+        "node_metadata__updated_at__before",
+        "node_metadata__updated_by__id",
+        "node_metadata__updated_by__ids",
         "offset",
         "limit",
         "order",
         "partial_match",
         "ids",
         "any__is_protected",
-        "any__is_visible",
         "any__owner__id",
         "any__source__id",
         "any__value",
         "any__values",
         "cars__color__is_protected",
-        "cars__color__is_visible",
         "cars__color__owner__id",
         "cars__color__source__id",
         "cars__color__value",
@@ -201,19 +233,16 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "cars__ids",
         "cars__isnull",
         "cars__name__is_protected",
-        "cars__name__is_visible",
         "cars__name__owner__id",
         "cars__name__source__id",
         "cars__name__value",
         "cars__name__values",
         "cars__nbr_seats__is_protected",
-        "cars__nbr_seats__is_visible",
         "cars__nbr_seats__owner__id",
         "cars__nbr_seats__source__id",
         "cars__nbr_seats__value",
         "cars__nbr_seats__values",
         "height__is_protected",
-        "height__is_visible",
         "height__isnull",
         "height__owner__id",
         "height__source__id",
@@ -231,7 +260,6 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "member_of_groups__name__value",
         "member_of_groups__name__values",
         "name__is_protected",
-        "name__is_visible",
         "name__isnull",
         "name__owner__id",
         "name__source__id",
@@ -240,13 +268,11 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
         "profiles__ids",
         "profiles__isnull",
         "profiles__profile_name__is_protected",
-        "profiles__profile_name__is_visible",
         "profiles__profile_name__owner__id",
         "profiles__profile_name__source__id",
         "profiles__profile_name__value",
         "profiles__profile_name__values",
         "profiles__profile_priority__is_protected",
-        "profiles__profile_priority__is_visible",
         "profiles__profile_priority__owner__id",
         "profiles__profile_priority__source__id",
         "profiles__profile_priority__value",
@@ -275,7 +301,7 @@ async def test_branch_caching_hit(
     car_person_schema_generics,
     schema_changed_at_null: bool,
     schema_hash_null: bool,
-):
+) -> None:
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
     if schema_changed_at_null:
@@ -295,7 +321,7 @@ async def test_branch_caching_miss(
     default_branch: Branch,
     data_schema,
     car_person_schema_generics,
-):
+) -> None:
     default_branch.update_schema_hash()
     same_branch = default_branch.model_copy()
     schema_branch = registry.schema.get_schema_branch(default_branch.name)

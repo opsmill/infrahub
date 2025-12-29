@@ -200,7 +200,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         schema_step_02: dict[str, Any],
-    ):
+    ) -> None:
         success, response = await client.schema.check(schemas=[schema_step_02], branch=default_branch.name)
         assert success
         assert response == {
@@ -297,7 +297,29 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
                     },
                 },
                 "removed": {},
-            }
+            },
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThingLegacy", "field": "value"}],
+                    "message": "Use of 'max_length' on attributes is deprecated, use parameters instead",
+                },
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThingLegacy", "field": "value"}],
+                    "message": "Use of 'min_length' on attributes is deprecated, use parameters instead",
+                },
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThing", "field": "value"}],
+                    "message": "Use of 'max_length' on attributes is deprecated, use parameters instead",
+                },
+                {
+                    "type": "deprecation",
+                    "kinds": [{"kind": "TestingThing", "field": "value"}],
+                    "message": "Use of 'min_length' on attributes is deprecated, use parameters instead",
+                },
+            ],
         }
 
     async def test_step02_load_schema_with_overrides(
@@ -309,7 +331,7 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         regex_02,
         min_length_02,
         max_length_02,
-    ):
+    ) -> None:
         # Load the new schema and apply the migrations
         response = await client.schema.load(schemas=[schema_step_02], branch=default_branch.name)
         assert not response.errors

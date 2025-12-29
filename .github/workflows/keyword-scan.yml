@@ -14,12 +14,12 @@ jobs:
        github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
+          python-version: 3.13
       - name: "Setup Python environment"
-        run: "pip install invoke"
+        run: "pip install invoke toml pydantic-settings"
       - name: Scan for prohibited keywords
         run: "invoke main.scan"

@@ -6,11 +6,11 @@ import TabItem from '@theme/TabItem';
 
 # How to create a check in Infrahub
 
-Checks in Infrahub allow you to validate data based on custom business logic. They are defined in [external repositories](../topics/repository) and can be developed and tested locally using [infrahubctl check]($(base_url)infrahubctl/infrahubctl-check).
+Checks in Infrahub allow you to validate data based on custom business logic. They are defined in [external repositories](../topics/repository.mdx) and can be developed and tested locally using [infrahubctl check]($(base_url)infrahubctl/infrahubctl-check).
 
 :::info Global vs. Targeted Checks
 
-If you want to know more about the differences between these two types, refer to the topic on [Global vs. Targeted Checks](../topics/check).
+If you want to know more about the differences between these two types, refer to the topic on [Global vs. Targeted Checks](../topics/check.mdx).
 
 **TL;DR:**
 
@@ -42,9 +42,9 @@ In this guide, you'll build a check that:
 Before you begin, you'll need:
 
 - Basic knowledge of Infrahub, Python, GraphQL, YAML, and Git
-- Familiarity with Checks and how they work in Infrahub (see [Checks topic](../topics/check))
+- Familiarity with Checks and how they work in Infrahub (see [Checks topic](../topics/check.mdx))
 - An Infrahub instance running locally or remotely
-- A Git repository connected to Infrahub (see [Adding an External Repository guide](./repository))
+- A Git repository connected to Infrahub (see [Adding an External Repository guide](./repository.mdx))
 - [infrahubctl]($(base_url)infrahubctl/infrahubctl) installed and configured locally
 - The repository cloned where you'll develop the check
 
@@ -381,7 +381,7 @@ class ColorTagsCheck(InfrahubCheck):
 
 ## Step 4: Configure the check in the .infrahub.yml file
 
-Now that you have your GraphQL query and Python check, edit your [.infrahub.yml](../topics/infrahub-yml) file to tie everything together.
+Now that you have your GraphQL query and Python check, edit your [.infrahub.yml](../topics/infrahub-yml.mdx) file to tie everything together.
 
 1. Add the following configuration to the file `.infrahub.yml`:
 
@@ -421,7 +421,7 @@ check_definitions:
 </TabItem>
 </Tabs>
 
-For a complete explanation of the `.infrahub.yml` file format, see the [infrahub.yml topic](../topics/infrahub-yml).
+For a complete explanation of the `.infrahub.yml` file format, see the [infrahub.yml topic](../topics/infrahub-yml.mdx).
 
 2. Verify the configuration
 

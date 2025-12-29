@@ -8,7 +8,7 @@ test.describe("Verifies the object creation", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.describe.configure({ mode: "serial" });
 
-  const BRANCH_NAME = generateRandomBranchName();
+  const BRANCH_NAME = generateRandomBranchName("select-2-steps");
 
   test.beforeAll(async ({ request }) => {
     await createBranchAPI(request, BRANCH_NAME);
@@ -18,17 +18,9 @@ test.describe("Verifies the object creation", () => {
     await deleteBranchAPI(request, BRANCH_NAME);
   });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("creates and verifies the nodes values", async ({ page }) => {
     await test.step("create the object", async () => {
-      await page.goto("/objects/InfraVLAN");
+      await page.goto(`/objects/InfraVLAN?branch=${BRANCH_NAME}`);
       await page.getByTestId("create-object-button").click();
       await page.getByRole("combobox", { name: "Site" }).click();
       await page.getByRole("option", { name: "atl1" }).click();
@@ -43,7 +35,7 @@ test.describe("Verifies the object creation", () => {
     });
 
     await test.step("verify object details", async () => {
-      await page.getByRole("link", { name: "vlan-test," }).click();
+      await page.getByRole("link", { name: "vlan-test" }).click();
       await expect(page.getByText("Namevlan-test")).toBeVisible();
       await expect(page.getByText("Vlan Id600")).toBeVisible();
       await expect(page.getByText("L3 GatewayMGMT")).toBeVisible();
@@ -70,7 +62,8 @@ test.describe("Verifies the object creation", () => {
       await page.goto(`/objects/InfraInterfaceL3?branch=${BRANCH_NAME}`);
       await page
         .getByTestId("identifier-cell")
-        .getByRole("link", { name: "dfw1-edge1, Ethernet1", exact: true })
+        .getByRole("link", { name: "Ethernet1", exact: true })
+        .first()
         .click();
       await page.getByTestId("edit-button").click();
     });
@@ -78,7 +71,7 @@ test.describe("Verifies the object creation", () => {
     await test.step("check inputs values", async () => {
       await expect(page.getByLabel("Kind")).toContainText("Interface L3 Infra");
       await expect(page.locator('button[name="connected_endpoint_parent"]')).toContainText(
-        "dfw1-edge2"
+        "atl1-edge2"
       );
       await expect(
         page.getByTestId("side-panel-container").getByLabel("Interface L3")

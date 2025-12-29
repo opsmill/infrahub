@@ -1,12 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { useQueryState } from "nuqs";
 import { useRef } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
-
-import { TASK_TAB } from "@/config/constants";
-import { QSP } from "@/config/qsp";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
+import { TASK_TAB } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -26,8 +25,8 @@ export function ObjectDetailsTabContent({
 }: ObjectDetailsTabContentProps) {
   const { pathname } = location;
 
-  const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const [qspTaskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [qspTab] = useQueryState(QSP.TAB);
+  const [qspTaskId] = useQueryState(QSP.TASK_ID);
   const refetchRef = useRef(null);
 
   if (!qspTab) {

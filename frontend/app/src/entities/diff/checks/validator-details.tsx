@@ -56,7 +56,6 @@ export const ValidatorDetails = ({ id }: tValidatorDetails) => {
 
         {!validator?.checks?.edges?.length && <NoDataFound message="No checks found." />}
       </div>
-
       {!!validator?.checks?.edges?.length && <Pagination count={validator?.checks?.count} />}
     </div>
   );

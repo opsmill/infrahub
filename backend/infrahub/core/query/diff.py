@@ -77,7 +77,7 @@ class DiffCountChanges(Query):
         AND diff_rel.branch in $branch_names
         AND (
             (diff_rel.from >= $from_time AND diff_rel.from < $to_time)
-            OR (diff_rel.to >= $to_time AND diff_rel.to < $to_time)
+            OR (diff_rel.to >= $from_time AND diff_rel.to < $to_time)
         )
         AND (p.branch_support = "aware" OR q.branch_support = "aware")
         WITH diff_rel.branch AS branch_name, count(*) AS num_changes
@@ -301,13 +301,15 @@ WITH p, q, diff_rel, CASE
     ELSE $from_time
 END AS row_from_time
 ORDER BY %(id_func)s(p) DESC
-SKIP $offset
-LIMIT $limit
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([p, q, diff_rel, row_from_time]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
+WITH limited_results + [[NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS p, one_result[1] AS q, one_result[2] AS diff_rel, one_result[3] AS row_from_time, has_more_data
 // -------------------------------------
@@ -333,7 +335,7 @@ CALL (p, q, diff_rel, row_from_time) {
     AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
     AND any(l in labels(node) WHERE l in ["Attribute", "Relationship"])
     AND node.branch_support IN [$branch_aware, $branch_agnostic]
-    AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+    AND type(r_prop) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
     AND (top_diff_rel.to IS NULL OR top_diff_rel.to >= r_node.from)
     AND (r_node.to IS NULL OR r_node.to >= r_prop.from)
@@ -470,14 +472,16 @@ AND (
 // Limit the number of paths
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q
-ORDER BY r_root.from, p.uuid, q.uuid, diff_rel.branch, diff_rel.from
-SKIP $offset
-LIMIT $limit
+ORDER BY r_root.from, p.uuid, q.uuid, q.name, diff_rel.branch, diff_rel.from
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([root, r_root, p, diff_rel, q]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
+WITH limited_results + [[NULL, NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS root, one_result[1] AS r_root, one_result[2] AS p, one_result[3] AS diff_rel, one_result[4] AS q, has_more_data
 // -------------------------------------
@@ -528,7 +532,7 @@ CALL (root, r_root, p, diff_rel, q) {
     )
     WHERE %(id_func)s(mid_r_root) =  %(id_func)s(r_root)
     AND %(id_func)s(mid_diff_rel) =  %(id_func)s(diff_rel)
-    AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
+    AND type(r_prop) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
     AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
     AND r_prop.from < $to_time AND r_prop.branch = mid_diff_rel.branch
     AND (mid_diff_rel.to IS NULL OR mid_diff_rel.to >= r_prop.from)
@@ -605,7 +609,7 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
 MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(p)-[diff_rel {branch: $branch_name}]->(q)
 WHERE p.branch_support = $branch_aware
 AND any(l in labels(p) WHERE l in ["Attribute", "Relationship"])
-AND type(diff_rel) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
+AND type(diff_rel) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
 AND any(l in labels(q) WHERE l in ["Boolean", "Node", "AttributeValue"])
 AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
 // node ID and field name filtering first pass
@@ -641,8 +645,28 @@ AND (
         )
         // skip paths where nodes/attrs/rels are updated after $from_time, those are handled in other queries
         AND (
-            r_root.from <= $from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $from_time)
-            AND r_node.from <= $from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $from_time)
+            (
+                r_root.branch = diff_rel.branch
+                AND r_root.from <= $from_time
+                AND (r_root.to IS NULL OR r_root.to >= $to_time)
+            )
+            OR (
+                r_root.branch <> diff_rel.branch
+                AND r_root.from <= $from_time
+                AND (r_root.to IS NULL OR r_root.to >= $branch_from_time)
+            )
+        )
+        AND (
+            (
+                r_node.branch = diff_rel.branch
+                AND r_node.from <= $from_time
+                AND (r_node.to IS NULL OR r_node.to >= $to_time)
+            )
+            OR (
+                r_node.branch <> diff_rel.branch
+                AND r_node.from <= $from_time
+                AND (r_node.to IS NULL OR r_node.to >= $branch_from_time)
+            )
         )
     )
     // time-based filters for new nodes
@@ -658,8 +682,27 @@ AND (
         )
         // skip paths where nodes/attrs/rels are updated after $branch_from_time, those are handled in other queries
         AND (
-            r_root.from <= $branch_from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $branch_from_time)
-            AND r_node.from <= $branch_from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $branch_from_time)
+            (
+                r_root.branch = diff_rel.branch
+                AND (r_root.to IS NULL OR r_root.to >= $to_time)
+            )
+            OR (
+                r_root.branch <> diff_rel.branch
+                AND r_root.from <= $branch_from_time
+                AND (r_root.to IS NULL OR r_root.to >= $branch_from_time)
+            )
+        )
+        AND (
+            (
+                r_node.branch = diff_rel.branch
+                AND r_node.from <= $branch_from_time
+                AND (r_node.to IS NULL OR r_node.to >= $to_time)
+            )
+            OR (
+                r_node.branch <> diff_rel.branch
+                AND r_node.from <= $branch_from_time
+                AND (r_node.to IS NULL OR r_node.to >= $branch_from_time)
+            )
         )
     )
 )
@@ -701,13 +744,15 @@ AND [%(id_func)s(n), type(r_node)] <> [%(id_func)s(q), type(diff_rel)]
 // -------------------------------------
 WITH diff_rel_path, r_root, n, r_node, p, diff_rel
 ORDER BY r_root.from, n.uuid, p.uuid, type(diff_rel), diff_rel.branch, diff_rel.from
-SKIP $offset
-LIMIT $limit
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 // -------------------------------------
 // Add flag to indicate if there is more data after this
 // -------------------------------------
 WITH collect([diff_rel_path, r_root, n, r_node, p, diff_rel]) AS limited_results
-WITH limited_results, size(limited_results) = $limit AS has_more_data
+// extra NULL row ensures that has_more_data is always returned, even if all results are filtered out below
+WITH limited_results + [[NULL, NULL, NULL, NULL, NULL, NULL]] AS limited_results
+WITH limited_results, size(limited_results) = ($limit + 1) AS has_more_data
 UNWIND limited_results AS one_result
 WITH one_result[0] AS diff_rel_path, one_result[1] AS r_root, one_result[2] AS n,
     one_result[3] AS r_node, one_result[4] AS p, one_result[5] AS diff_rel, has_more_data
@@ -803,8 +848,8 @@ WHERE num_nodes_with_uuid > 1
 // -------------------------------------
 WITH node_uuid
 ORDER BY node_uuid
-SKIP $offset
-LIMIT $limit
+SKIP toInteger($offset)
+LIMIT toInteger($limit)
 WITH collect(node_uuid) AS node_uuids
 WITH node_uuids, size(node_uuids) = $limit AS has_more_data
 MATCH (:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(n:Node)

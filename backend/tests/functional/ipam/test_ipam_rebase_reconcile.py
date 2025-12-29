@@ -89,7 +89,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
     ) -> None:
         branch = await create_branch(db=db, branch_name="delete_prefix")
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        gql_params = await prepare_graphql_params(db=db, branch=registry.default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPPREFIX,
@@ -145,8 +145,9 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         client: InfrahubClient,
     ) -> None:
         branch = await create_branch(db=db, branch_name="interlinked")
+        branch.update_schema_hash()
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        gql_params = await prepare_graphql_params(db=db, branch=registry.default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPPREFIX,
@@ -160,7 +161,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         assert result.data["IpamIPPrefixCreate"]["object"]["id"]
         net_10_0_0_0_7_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+        gql_params = await prepare_graphql_params(db=db, branch=branch)
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPPREFIX,
@@ -177,7 +178,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         assert result.data["IpamIPPrefixCreate"]["object"]["id"]
         net_10_0_0_0_15_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        gql_params = await prepare_graphql_params(db=db, branch=registry.default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPPREFIX,
@@ -194,7 +195,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         assert result.data["IpamIPPrefixCreate"]["object"]["id"]
         net_10_10_8_0_22_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+        gql_params = await prepare_graphql_params(db=db, branch=branch)
         result = await graphql(
             schema=gql_params.schema,
             source=CREATE_IPADDRESS,

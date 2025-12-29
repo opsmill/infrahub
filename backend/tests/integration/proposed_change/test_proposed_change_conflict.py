@@ -199,7 +199,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_default_filter(db=db, id="John", kind=TestKind.PERSON)
         # The value of the description should match that of the source branch that was selected
         # as the branch to keep in the data conflict
-        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
+        assert john.description.value == "Oh boy"  # type: ignore[attr-defined, union-attr]
 
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
         proposed_change_user = await create_account(db=db, name="jimmy-change-user", password="Password123")
@@ -342,8 +342,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
             query=QUERY_EVENT,
             variables={"related_node__ids": [proposed_change_after.id], "event_type": ["infrahub.validator.passed"]},
         )
-        assert validator_started_events["InfrahubEvent"]["count"] == 10
-        assert validator_passed_events["InfrahubEvent"]["count"] == 10
+        assert validator_started_events["InfrahubEvent"]["count"] == 11
+        assert validator_passed_events["InfrahubEvent"]["count"] == 11
         started_validators = [
             event["node"]["primary_node"]["kind"] for event in validator_started_events["InfrahubEvent"]["edges"]
         ]
@@ -377,7 +377,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         pr_account_events = await client.execute_graphql(
             query=QUERY_EVENT,
-            variables={"account__ids": [proposed_change_user.id]},
+            variables={"account__ids": [proposed_change_user.id], "limit": 50},
         )
         pr_account_events_types = {event["node"]["event"] for event in pr_account_events["InfrahubEvent"]["edges"]}
         assert "infrahub.validator.passed" in pr_account_events_types
@@ -427,6 +427,7 @@ query(
     $account__ids: [String!],
     $related_node__ids: [String!],
     $event_type_filter: EventTypeFilter
+    $limit: Int
 ) {
   InfrahubEvent(
     branches: $branch,
@@ -435,6 +436,7 @@ query(
     event_type_filter: $event_type_filter
     account__ids: $account__ids
     related_node__ids: $related_node__ids
+    limit: $limit
   ) {
     count
     edges {

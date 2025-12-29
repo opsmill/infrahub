@@ -467,6 +467,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/schema.graphql": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Graphql Schema */
+        get: operations["get_graphql_schema_schema_graphql_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -519,8 +536,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -639,8 +661,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -768,8 +795,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -870,8 +902,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1266,7 +1303,9 @@ export interface components {
              */
             transform?: string | null;
         } & (unknown & unknown);
-        "ComputedAttribute-Output": Record<string, never>;
+        "ComputedAttribute-Output": {
+            [key: string]: unknown;
+        };
         /**
          * ComputedAttributeKind
          * @enum {string}
@@ -1368,8 +1407,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1489,12 +1533,18 @@ export interface components {
              * Properties
              * @description Properties of the object if type is 'object'
              */
-            properties?: Record<string, never> | null;
+            properties?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Items
              * @description Items of the array if type is 'array'
              */
-            items?: Record<string, never> | Record<string, never>[] | null;
+            items?: {
+                [key: string]: unknown;
+            } | {
+                [key: string]: unknown;
+            }[] | null;
             /**
              * Required
              * @description List of required properties if type is 'object'
@@ -1509,13 +1559,17 @@ export interface components {
              * Additionalproperties
              * @description Specifies whether additional properties are allowed
              */
-            additionalProperties?: boolean | Record<string, never> | null;
+            additionalProperties?: boolean | {
+                [key: string]: unknown;
+            } | null;
         };
         /** LoggingSettings */
         LoggingSettings: {
-            /** @default {
+            /**
+             * @default {
              *       "enable": false
-             *     } */
+             *     }
+             */
             remote: components["schemas"]["RemoteLoggingSettings"];
         };
         /** MainSettings */
@@ -1711,8 +1765,13 @@ export interface components {
              */
             human_friendly_id?: string[] | null;
             /**
+             * Display Label
+             * @description Attribute or Jinja2 template to use to generate the display label
+             */
+            display_label?: string | null;
+            /**
              * Display Labels
-             * @description List of attributes to use to generate the display label
+             * @description List of attributes to use to generate the display label (deprecated)
              */
             display_labels?: string[] | null;
             /**
@@ -1866,7 +1925,7 @@ export interface components {
         QueryPayload: {
             /** Variables */
             variables?: {
-                [key: string]: string;
+                [key: string]: unknown;
             };
         };
         /**
@@ -2091,10 +2150,12 @@ export interface components {
             generics?: components["schemas"]["GenericSchema"][];
             /** Nodes */
             nodes?: components["schemas"]["NodeSchema"][];
-            /** @default {
+            /**
+             * @default {
              *       "state": "present",
              *       "nodes": []
-             *     } */
+             *     }
+             */
             extensions: components["schemas"]["SchemaExtension"];
         };
         /** SchemaNamespace */
@@ -2137,11 +2198,49 @@ export interface components {
             /** @description The modifications to the schema */
             diff: components["schemas"]["SchemaDiff"];
             /**
+             * Warnings
+             * @description Warnings encountered while loading the schema
+             */
+            warnings?: components["schemas"]["SchemaWarning"][];
+            /**
              * Schema Updated
              * @description Indicates if the loading of the schema changed the existing schema
              */
             readonly schema_updated: boolean;
         };
+        /** SchemaWarning */
+        SchemaWarning: {
+            /** @description The type of warning */
+            type: components["schemas"]["SchemaWarningType"];
+            /**
+             * Kinds
+             * @description The kinds impacted by the warning
+             */
+            kinds?: components["schemas"]["SchemaWarningKind"][];
+            /**
+             * Message
+             * @description The message that describes the warning
+             */
+            message: string;
+        };
+        /** SchemaWarningKind */
+        SchemaWarningKind: {
+            /**
+             * Kind
+             * @description The kind impacted by the warning
+             */
+            kind: string;
+            /**
+             * Field
+             * @description The attribute or relationship impacted by the warning
+             */
+            field?: string | null;
+        };
+        /**
+         * SchemaWarningType
+         * @enum {string}
+         */
+        SchemaWarningType: "deprecation";
         /** SchemasLoadAPI */
         SchemasLoadAPI: {
             /** Schemas */
@@ -2292,7 +2391,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": null;
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2374,7 +2473,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": null;
+                    "application/json": unknown;
                 };
             };
         };
@@ -2725,7 +2824,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -2770,7 +2871,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -3148,6 +3251,40 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_graphql_schema_schema_graphql_get: {
+        parameters: {
+            query?: {
+                /** @description Whether to sort the schema alphabetically. */
+                sorted?: boolean;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

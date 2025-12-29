@@ -161,7 +161,7 @@ fi
 
 # Complete the command
 DOCKER_CMD="$DOCKER_CMD \
-  registry.opsmill.io/opsmill/infrahub:${VERSION} invoke bundle.collect $EXTRA_OPTS"
+  registry.opsmill.io/opsmill/infrahub:${VERSION} uv run invoke bundle.collect $EXTRA_OPTS"
 
 if [ $RUN_BENCHMARK -eq 1 ]; then
     echo "Performance benchmark will be run (use --no-benchmark to skip)"

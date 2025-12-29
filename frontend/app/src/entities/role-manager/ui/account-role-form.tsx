@@ -3,8 +3,6 @@ import { useAtomValue } from "jotai";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/config/constants";
-
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -19,10 +17,11 @@ import { updateRelationshipFieldValue } from "@/shared/components/form/utils/upd
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
+import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
@@ -35,7 +34,7 @@ interface AccountRoleFormProps {
 }
 
 export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountRoleFormProps) => {
-  const branch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const createObject = useCreateObjectMutation();
 
@@ -79,7 +78,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
             })
           ),
           context: {
-            branch: branch?.name,
+            branch: currentBranch.name,
             date,
           },
         });

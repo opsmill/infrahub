@@ -1,9 +1,6 @@
-export type NumberPool = {
-  id: string;
-  label: string;
-  kind: string;
-  nodeAttribute: {
-    id: string;
-    name: string;
-  };
-};
+import type { NodeCore } from "@/entities/nodes/types";
+
+export interface NumberPool extends NodeCore {
+  schemaKind: string;
+  attributeName: string;
+}

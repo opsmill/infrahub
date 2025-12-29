@@ -23,7 +23,7 @@ class TestDiffConflictsTransferer:
     async def conflict_transferer(self):
         return DiffConflictTransferer(diff_combiner=DiffCombiner())
 
-    async def test_node_conflicts(self, conflict_transferer: DiffConflictTransferer):
+    async def test_node_conflicts(self, conflict_transferer: DiffConflictTransferer) -> None:
         conflict_early_only = EnrichedConflictFactory.build()
         node_early_only_1 = EnrichedNodeFactory.build(conflict=conflict_early_only)
         node_early_only_2 = EnrichedNodeFactory.build(
@@ -51,24 +51,24 @@ class TestDiffConflictsTransferer:
         assert node_later_only_2.conflict == conflict_later_only
         assert node_transfer_2.conflict == conflict_transfer_1
 
-    async def test_attr_conflicts(self, conflict_transferer: DiffConflictTransferer):
+    async def test_attr_conflicts(self, conflict_transferer: DiffConflictTransferer) -> None:
         conflict_early_only = EnrichedConflictFactory.build()
         prop_early_only_1 = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_RELATED, conflict=conflict_early_only
         )
         prop_early_only_2 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_RELATED, conflict=None)
         conflict_later_only = EnrichedConflictFactory.build()
-        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_PROTECTED, conflict=None)
+        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE, conflict=None)
         prop_later_only_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_later_only
+            property_type=DatabaseEdgeType.HAS_VALUE, conflict=conflict_later_only
         )
         conflict_transfer_1 = EnrichedConflictFactory.build(selected_branch=ConflictSelection.DIFF_BRANCH)
         conflict_transfer_2 = replace(conflict_transfer_1, selected_branch=None)
         prop_transfer_1 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_1
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_1
         )
         prop_transfer_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_2
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_2
         )
 
         attr_early = EnrichedAttributeFactory.build(properties={prop_early_only_1, prop_later_only_1, prop_transfer_1})
@@ -86,7 +86,7 @@ class TestDiffConflictsTransferer:
         assert prop_later_only_2.conflict == conflict_later_only
         assert prop_transfer_2.conflict == conflict_transfer_1
 
-    async def test_rel_conflicts(self, conflict_transferer: DiffConflictTransferer):
+    async def test_rel_conflicts(self, conflict_transferer: DiffConflictTransferer) -> None:
         conflict_early_only = EnrichedConflictFactory.build()
         element_early_only_1 = EnrichedRelationshipElementFactory.build(conflict=conflict_early_only)
         element_early_only_2 = EnrichedRelationshipElementFactory.build(
@@ -121,24 +121,24 @@ class TestDiffConflictsTransferer:
         assert element_later_only_2.conflict == conflict_later_only
         assert element_transfer_2.conflict == conflict_transfer_1
 
-    async def test_rel_prop_conflicts(self, conflict_transferer: DiffConflictTransferer):
+    async def test_rel_prop_conflicts(self, conflict_transferer: DiffConflictTransferer) -> None:
         conflict_early_only = EnrichedConflictFactory.build()
         prop_early_only_1 = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.IS_RELATED, conflict=conflict_early_only
         )
         prop_early_only_2 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_RELATED, conflict=None)
         conflict_later_only = EnrichedConflictFactory.build()
-        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_PROTECTED, conflict=None)
+        prop_later_only_1 = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE, conflict=None)
         prop_later_only_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_later_only
+            property_type=DatabaseEdgeType.HAS_VALUE, conflict=conflict_later_only
         )
         conflict_transfer_1 = EnrichedConflictFactory.build(selected_branch=ConflictSelection.DIFF_BRANCH)
         conflict_transfer_2 = replace(conflict_transfer_1, selected_branch=None)
         prop_transfer_1 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_1
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_1
         )
         prop_transfer_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.IS_VISIBLE, conflict=conflict_transfer_2
+            property_type=DatabaseEdgeType.IS_PROTECTED, conflict=conflict_transfer_2
         )
 
         element_early = EnrichedRelationshipElementFactory.build(

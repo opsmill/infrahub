@@ -8,10 +8,12 @@ from graphql import GraphQLResolveInfo
 from infrahub import lock
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import (
     CheckType,
     GlobalPermissions,
     InfrahubKind,
+    MetadataOptions,
     PermissionDecision,
 )
 from infrahub.core.manager import NodeManager
@@ -127,8 +129,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            include_owner=True,
-            include_source=True,
+            include_metadata=MetadataOptions.LINKED_NODES,
         )
         state = ProposedChangeState(obj.state.value.value)
         state.validate_updatable()
@@ -156,6 +157,11 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         if updated_state == ProposedChangeState.MERGED:
             if will_be_draft:
                 raise ValidationError("A draft proposed change is not allowed to be merged")
+
+            source_branch = await Branch.get_by_name(db=graphql_context.db, name=obj.source_branch.value)
+            if source_branch.status == BranchStatus.NEED_UPGRADE_REBASE:
+                raise ValidationError("The branch must be upgraded and rebased prior to merging the proposed change")
+
             data["state"]["value"] = ProposedChangeState.MERGING.value
 
         proposed_change, result = await super().mutate_update(
@@ -286,7 +292,7 @@ class ProposedChangeReview(Mutation):
                     current_user=current_user,
                     context=graphql_context,
                 )
-                await proposed_change.save(db=db)
+                await proposed_change.save(db=db, user_id=graphql_context.active_account_session.account_id)
 
                 if event:
                     event_service = await get_event_service()
@@ -420,7 +426,7 @@ class ProposedChangeMerge(Mutation):
 
         async with graphql_context.db.start_session() as db:
             proposed_change.state.value = ProposedChangeState.MERGING.value
-            await proposed_change.save(db=db)
+            await proposed_change.save(db=db, user_id=graphql_context.assigned_user_id)
 
         if wait_until_completion:
             await graphql_context.service.workflow.execute_workflow(

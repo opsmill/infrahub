@@ -80,7 +80,7 @@ def build_changelog(context: Context) -> None:
     # Ensure local environment is up to date
     print(" - [release] Update local environment")
     with context.cd(ESCAPED_REPO_PATH):
-        context.run("poetry install --sync")
+        context.run("uv sync --all-groups")
 
     print(" - [release] Build changelog")
     exec_cmd = "towncrier build --draft 2> /dev/null"
@@ -409,7 +409,7 @@ def gen_config_env(
             subset.__class__,
             env_prefix=subset.model_config.get("env_prefix"),
         )
-        for field_name, field in subset.model_fields.items():
+        for field_name, field in subset.__class__.model_fields.items():
             field_inst = getattr(subset, field_name)
             if issubclass(field_inst.__class__, BaseSettings):
                 fetch_fields(field_inst)

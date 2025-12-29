@@ -26,7 +26,15 @@ from infrahub.core.models import (  # noqa: TC001
     SchemaDiff,
     SchemaUpdateValidationResult,
 )
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot, TemplateSchema
+from infrahub.core.schema import (
+    GenericSchema,
+    MainSchemaTypes,
+    NodeSchema,
+    ProfileSchema,
+    SchemaRoot,
+    SchemaWarning,
+    TemplateSchema,
+)
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
@@ -130,6 +138,9 @@ class SchemaUpdate(BaseModel):
     hash: str = Field(..., description="The new hash for the entire schema")
     previous_hash: str = Field(..., description="The previous hash for the entire schema")
     diff: SchemaDiff = Field(..., description="The modifications to the schema")
+    warnings: list[SchemaWarning] = Field(
+        default_factory=list, description="Warnings encountered while loading the schema"
+    )
 
     @computed_field
     def schema_updated(self) -> bool:
@@ -307,8 +318,10 @@ async def load_schema(
     log.info("schema_load_request", branch=branch.name)
 
     errors: list[str] = []
+    warnings: list[SchemaWarning] = []
     for schema in schemas.schemas:
         errors += schema.validate_namespaces()
+        warnings += schema.gather_warnings()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
@@ -353,6 +366,7 @@ async def load_schema(
                 diff=result.diff,
                 limit=result.diff.all,
                 update_db=True,
+                user_id=account_session.account_id,
             )
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
@@ -362,7 +376,7 @@ async def load_schema(
                 branch.is_isolated = True
                 log.info("Branch converted to isolated mode because the schema has changed", branch=branch.name)
 
-            await branch.save(db=dbt)
+            await branch.save(db=dbt, user_id=account_session.account_id)
             updated_branch = registry.schema.get_schema_branch(name=branch.name)
             updated_hash = updated_branch.get_hash()
 
@@ -374,6 +388,7 @@ async def load_schema(
             new_schema=candidate_schema,
             previous_schema=origin_schema,
             migrations=result.migrations,
+            user_id=account_session.account_id,
         )
         migration_error_msgs = await service.workflow.execute_workflow(
             workflow=SCHEMA_APPLY_MIGRATION,
@@ -402,7 +417,7 @@ async def load_schema(
     )
     await service.event.send(event=event)
 
-    return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff)
+    return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff, warnings=warnings)
 
 
 @router.post("/check")
@@ -417,8 +432,10 @@ async def check_schema(
     log.info("schema_check_request", branch=branch.name)
 
     errors: list[str] = []
+    warnings: list[SchemaWarning] = []
     for schema in schemas.schemas:
         errors += schema.validate_namespaces()
+        warnings += schema.gather_warnings()
 
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
@@ -445,4 +462,10 @@ async def check_schema(
     if error_messages:
         raise SchemaNotValidError(message=",\n".join(error_messages))
 
-    return JSONResponse(status_code=202, content={"diff": result.diff.model_dump()})
+    return JSONResponse(
+        status_code=202,
+        content={
+            "diff": result.diff.model_dump(),
+            "warnings": [warning.model_dump(mode="json") for warning in warnings],
+        },
+    )

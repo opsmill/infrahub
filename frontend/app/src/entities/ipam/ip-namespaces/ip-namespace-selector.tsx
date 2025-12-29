@@ -36,20 +36,20 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         data-testid="namespace-select"
         className={classNames(
           focusVisibleStyle,
-          "flex h-10 w-full flex-col rounded px-1.5 py-0.5",
+          "flex flex-col justify-center rounded-lg px-2 py-1",
           "border border-transparent",
           "hover:bg-gray-100",
           className
         )}
       >
-        <Row className="text-gray-600 text-xs">IP Namespace</Row>
-        <Row className="gap-1.5 text-sm">
+        <Row className="truncate text-gray-600 text-xs">IP Namespace</Row>
+        <Row className="gap-1.5 text-sm leading-3.5">
           <span className="truncate">{getNodeLabel(currentIpNamespace)}</span>
           <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-gray-600" />
         </Row>
       </AriaButton>
 
-      <Popover placement="bottom start" style={{ width: "var(--trigger-width)" }}>
+      <Popover placement="bottom start" className="w-(--trigger-width)">
         <IpNamespaceComboboxList
           onNamespaceSelection={(value) => {
             setCurrentIpNamespace(value);
@@ -57,12 +57,12 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
           }}
         />
 
-        <Col className="border-neutral-200 border-t">
+        <Col className="border-neutral-200 border-t p-2">
           <LinkButton
             to={constructPath("/ipam/namespaces")}
             variant="ghost"
             size="sm"
-            className="m-2 justify-start text-xs"
+            className="justify-start text-xs"
           >
             View all IP namespaces
           </LinkButton>

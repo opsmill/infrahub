@@ -1,42 +1,41 @@
 <h1 align="center">
   <a href=""><img src="docs/static/img/infrahub-hori.svg" alt="Infrahub" width="350"></a>
 </h1>
-<h3 align="center">Simplify Infrastructure Automation</h2>
 
 <p align="center">
 <a href="https://www.linkedin.com/company/opsmill">
-<img src="https://img.shields.io/badge/linkedin-blue?logo=linkedin"/>
+<img src="https://img.shields.io/badge/linkedin-blue?logo=LinkedIn"/>
 </a>
 <a href="https://discord.gg/opsmill">
 <img src="https://img.shields.io/badge/Discord-7289DA?&logo=discord&logoColor=white"/>
 </a>
 </p>
 
-Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run. Infrahub offers a central hub to manage the data, templates and playbooks that powers your infrastructure by combining the version control and branch management capabilities similar to Git with the flexible data model and UI of a graph database.
+Infrahub is a graph-based data management platform with built-in version control, CI workflows, peer review, and API access. It's purpose-built to power network, data center, and cloud automation.
 
-If you just want to try Infrahub out, you can use our [Infrahub Sandbox](https://sandbox.infrahub.app/) to get started.
+## The data foundation for modern automation
 
-![infrahub screenshot](docs/docs/media/infrahub-readme.gif)
+Infrahub provides a single platform that unifies infrastructure data with business logic, enforces consistency, and integrates with automation tools and AI workflows.
 
-## Why Use Infrahub?
+With Infrahub as the data foundation in your automation stack, you can move faster, reduce risk, and deliver infrastructure as a reliable service.
 
-**Unified Source of Truth** - Infrahub is a single source of truth for all your infrastructure and network data. It provides a unified view of your infrastructure, allowing you to manage your infrastructure in a more efficient and effective way. Infrahub allows unidirectional and bi-directional [data synchronization](https://docs.infrahub.app/sync/sync/) between other internal systems and Infrahub. The data can be accessed via WebUI, API and SDK, along with SSO and RBAC for access control.
+## Top ways to use Infrahub
 
-**Flexible Schema** - Infrahub provides a flexible schema for your infrastructure data and related business information, allowing you to define your own data model and customize it to your needs. Get started quickly with our [schema library](https://github.com/opsmill/schema-library) or build your own.
+### Unify infrastructure data
 
-**Version Control** - Infrahub provides a version control system for your infrastructure data, allowing you to track changes and revert to previous versions if needed. Immutable history of all changes to the data and artifacts is maintained, allowing you to audit and review changes to your infrastructure.
+Sync network and infrastructure device, service, and policy data into a unified source of truth, with rich metadata and robust UI and API access.
 
-**CI Pipeline and Validation** - Infrahub provides a CI pipeline and validation system for your infrastructure data, allowing you to ensure that your infrastructure is always in a valid state. Infrahub was designed with infrastructure-as-code workflows in mind, removing fragility and complexity of combining together multiple tools and projects to achieve the same goal.
+### Automate at scale
 
-## Infrahub Use Cases
+Generate, validate, and deploy configurations with unified data. Support full lifecycle management—provisioning, upgrades, decommissioning—across vendors and sites.
 
-**Service Catalog** - Infrahub acts as the underlying system to provide infrastructure-as-a-service, allowing you to manage your services and lifecycle them as the services evolve.
+### Enable self-service
 
-**Infrastructure Automation** - Provide infrastructure and network automation workflows with Infrahub rendering configurations and artifacts via Jinja2 and python,then passing to deployment tools such as [Nornir](https://www.opsmill.com/simplifying-network-automation-workflows-with-infrahub-nornir-and-jinja2/), [Ansible](https://docs.infrahub.app/ansible), Terraform, or vendor-specific tools.
+Expose automation through catalogs and APIs so application, platform, and ops teams can request infrastructure directly. Speed time to delivery, reduce errors, and make infrastructure more responsive to the business.
 
-**Inventory Management** - Infrahub serves as a centralized inventory system for your infrastructure, allowing you to manage your inventory and track changes to your infrastructure. It provides a WebUI and API for other teams to self-service the information needed to allow the organization to operate.
+### Build an AIOps knowledge graph
 
-**DCIM and IPAM** - Infrahub provides centralized DCIM and IPAM systems for your infrastructure, capable of handling complex cases such as overlapping IP addresses and VLANs, automation-friendly, branch-aware allocation of resources via Infrahub's [Resource Manager](https://docs.infrahub.app/python-sdk/guides/resource-manager), and more.
+Model dependencies and relationships across infrastructure. Provide the data foundation for AI-driven reasoning, troubleshooting, and predictive operations.
 
 ## Quick Start
 

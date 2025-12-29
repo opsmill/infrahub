@@ -6,7 +6,7 @@ import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
 
 This page outlines the hardware requirements for running Infrahub, including minimum and recommended specifications, enterprise sizing, cloud provider machine types, and a utility for benchmarking your system's performance.
 
-If you only want to try Infrahub, follow the [quick start](../getting-started/quick-start).
+If you only want to try Infrahub, follow the [quick start](../getting-started/quick-start.mdx).
 
 ## General hardware requirements
 
@@ -21,11 +21,11 @@ For cloud deployments, use at least the following machine types:
 
 | Cloud provider              | Machine type       |
 |-----------------------------|--------------------|
-| Google Cloud Platform       | c3d-standard-4     |
-| Amazon Web Services         | m7a.xlarge         |
-| Microsoft Azure             | Standard_D4as_v5   |
-| Oracle Cloud Infrastructure | VM.Standard.E5     |
-| Alibaba Cloud               | ecs.g8a.xlarge     |
+| Google Cloud Platform       | c4d-standard-4     |
+| Amazon Web Services         | m8a.xlarge         |
+| Microsoft Azure             | Standard_D4as_v7   |
+| Oracle Cloud Infrastructure | VM.Standard.E6     |
+| Alibaba Cloud               | ecs.g9a.xlarge     |
 
 ## Enterprise sizing <EnterpriseBadge />
 
@@ -38,6 +38,8 @@ For enterprise deployments, use these guidelines:
 | Medium Action      | 16        | 32GB | SSD and/or >= 5000 IOPS    |
 | Large Data         | 32        | 64GB | SSD and/or >= 5000 IOPS    |
 | Large Action       | 32        | 64GB | SSD and/or >= 5000 IOPS    |
+
+For detailed information about enterprise products and their features, see the [OpsMill pricing page](https://opsmill.com/pricing/).
 
 ## Performance benchmark utility
 

@@ -14,7 +14,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
 
 
-async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_schema):
+async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
     obj1 = await Node.init(db=db, schema="TestPerson")
     await obj1.new(db=db, name="John", height=180)
     await obj1.save(db=db)
@@ -35,7 +35,8 @@ async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_sc
     """
         % obj1.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -53,7 +54,7 @@ async def test_delete_object(db: InfrahubDatabase, default_branch, car_person_sc
 
 async def test_delete_prevented(
     db: InfrahubDatabase, default_branch, car_person_schema, car_camry_main, person_jane_main
-):
+) -> None:
     query = (
         """
     mutation {
@@ -64,7 +65,8 @@ async def test_delete_prevented(
     """
         % person_jane_main.id
     )
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -88,7 +90,7 @@ async def test_delete_prevented(
 
 async def test_delete_allowed_when_peer_rel_optional_on_generic(
     db: InfrahubDatabase, default_branch, animal_person_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -110,7 +112,8 @@ async def test_delete_allowed_when_peer_rel_optional_on_generic(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -130,7 +133,7 @@ async def test_delete_allowed_when_peer_rel_optional_on_generic(
 
 async def test_delete_prevented_when_peer_rel_required_on_generic(
     db: InfrahubDatabase, default_branch, animal_person_schema
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -149,7 +152,8 @@ async def test_delete_prevented_when_peer_rel_required_on_generic(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -187,8 +191,9 @@ async def test_delete_events_with_cascade(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+        db=db, branch=default_branch, service=service, account_session=session_first_account
     )
     query = """
     mutation DeletePerson($human_id: String!){

@@ -1,13 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
-import { ArrayParam, useQueryParam } from "use-query-params";
-
-import { QSP } from "@/config/qsp";
 
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import {
@@ -28,7 +27,7 @@ import { SchemaHelpMenu } from "./schema-help-menu";
 import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
-  const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
+  const [selectedKind, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
@@ -51,8 +50,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
             className="absolute top-0 max-h-full w-full"
             schema={schema}
             onClose={() => {
-              const nextKinds = [...selectedKind];
-              delete nextKinds[index];
+              const nextKinds = selectedKind.filter((_, i) => i !== index);
               setKinds(nextKinds);
             }}
             style={{
@@ -172,7 +170,8 @@ const Properties = ({ schema }: { schema: ModelSchema }) => {
         <PropertyRow title="Label" value={schema.label} />
         <PropertyRow title="Kind" value={schema.kind} />
         <PropertyRow title="Human Friendly ID" value={schema.human_friendly_id} />
-        <PropertyRow title="Display labels" value={schema.display_labels} />
+        <PropertyRow title="Display label" value={schema.display_label} />
+        <PropertyRow title="Display labels (deprecated)" value={schema.display_labels} />
         <PropertyRow title="Description" value={schema.description} />
       </div>
 

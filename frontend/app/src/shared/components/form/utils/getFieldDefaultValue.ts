@@ -1,4 +1,4 @@
-import * as R from "ramda";
+import * as R from "remeda";
 
 import type { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
@@ -40,9 +40,9 @@ export const getFieldDefaultValue = ({
 
   return (
     getCurrentFieldValue(fieldSchema.name, initialObject) ??
+    getDefaultValueFromTemplate(fieldSchema.name, objectTemplate) ??
     getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
     getDefaultValueFromPool(fieldSchema.name, initialObject) ??
-    getDefaultValueFromTemplate(fieldSchema.name, objectTemplate) ??
     getDefaultValueFromSchema(fieldSchema) ??
     DEFAULT_FORM_FIELD_VALUE
   );
@@ -105,12 +105,13 @@ const getDefaultValueFromProfiles = (
   profiles: Array<ProfileData>
 ): AttributeValueFromProfile | null => {
   // Get value from profiles depending on the priority
-  const orderedProfiles = R.sortWith<ProfileData>([
-    R.ascend(R.path(["profile_priority", "value"])),
-    R.ascend(R.prop("id")),
-  ])(profiles);
+  const orderedProfiles = R.sortBy(
+    profiles,
+    (profile) => profile.profile_priority?.value ?? 0,
+    (profile) => profile.id
+  );
 
-  const profileWithDefaultValueForField = orderedProfiles.find((profile) => {
+  const profileWithDefaultValueForField = R.find(orderedProfiles, (profile) => {
     const profileFieldData = profile[fieldName] as
       | Pick<AttributeType, "value" | "__typename">
       | undefined;
@@ -170,9 +171,12 @@ export const getDefaultValueFromTemplate = (
   if (!objectTemplate) return null;
 
   const currentField = objectTemplate[fieldName] as NodeAttribute | undefined;
+
   if (!currentField) return null;
 
   if (currentField.value === null) return null;
+
+  if (currentField.is_from_profile === true) return null;
 
   return {
     source: {

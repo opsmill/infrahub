@@ -6,16 +6,20 @@ import {
   TreeItemContent as AriaTreeItemContent,
   type TreeItemContentProps as AriaTreeItemContentProps,
   type TreeItemProps as AriaTreeItemProps,
+  TreeLoadMoreItem as AriaTreeLoadMoreItem,
+  type TreeLoadMoreItemProps as AriaTreeLoadMoreItemProps,
   Button,
 } from "react-aria-components";
 
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { Row } from "@/shared/components/container";
-import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
 
 export const Tree = AriaTree;
 
-export const TreeItem = ({ className, ...props }: AriaTreeItemProps) => {
+export interface TreeItemProps extends AriaTreeItemProps {}
+export const TreeItem = ({ className, ...props }: TreeItemProps) => {
   return (
     <AriaTreeItem
       className={classNames(
@@ -28,7 +32,10 @@ export const TreeItem = ({ className, ...props }: AriaTreeItemProps) => {
   );
 };
 
-export const TreeItemContent = ({ children, ...props }: AriaTreeItemContentProps) => {
+export interface TreeItemContentProps extends AriaTreeItemContentProps {
+  onExpandedChange?: () => void;
+}
+export const TreeItemContent = ({ onExpandedChange, children, ...props }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent {...props}>
       {(contentProps) => {
@@ -38,6 +45,7 @@ export const TreeItemContent = ({ children, ...props }: AriaTreeItemContentProps
             {hasChildItems ? (
               <Button
                 slot="chevron"
+                onPress={onExpandedChange}
                 className={classNames(
                   "inline-flex size-8 shrink-0 items-center justify-center duration-200",
                   isExpanded && "rotate-90"
@@ -58,6 +66,19 @@ export const TreeItemContent = ({ children, ...props }: AriaTreeItemContentProps
     </AriaTreeItemContent>
   );
 };
+
+export function TreeItemLoader(props: AriaTreeLoadMoreItemProps) {
+  return (
+    <AriaTreeLoadMoreItem {...props}>
+      {({ level }) => (
+        <LoadingIndicator
+          className="h-8 justify-start text-sm"
+          style={{ paddingLeft: level * 32 }}
+        />
+      )}
+    </AriaTreeLoadMoreItem>
+  );
+}
 
 const DotIcon = (props: React.HTMLAttributes<SVGSVGElement>) => (
   <svg

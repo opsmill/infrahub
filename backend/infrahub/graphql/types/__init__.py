@@ -21,7 +21,7 @@ from .attribute import (
     StrAttributeType,
     TextAttributeType,
 )
-from .branch import BranchType
+from .branch import BranchType, InfrahubBranch, InfrahubBranchType
 from .interface import InfrahubInterface
 from .node import InfrahubObject
 from .permission import PaginatedObjectPermission
@@ -41,6 +41,8 @@ __all__ = [
     "DropdownType",
     "IPHostType",
     "IPNetworkType",
+    "InfrahubBranch",
+    "InfrahubBranchType",
     "InfrahubInterface",
     "InfrahubObject",
     "InfrahubObjectType",
@@ -64,7 +66,6 @@ __all__ = [
 
 
 RELATIONS_PROPERTY_MAP: dict[str, str] = {
-    "is_visible": "_relation__is_visible",
     "is_protected": "_relation__is_protected",
     "owner": "_relation__owner",
     "source": "_relation__source",

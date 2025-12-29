@@ -4,6 +4,7 @@ import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
@@ -19,7 +20,7 @@ from tests.constants import TestKind
 from tests.helpers.schema import DEVICE_SCHEMA
 
 
-async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -56,7 +57,7 @@ async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, c
 
 async def test_get_one_attribute_with_node_property(
     db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
-):
+) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4, _source=first_account)
     await obj1.save(db=db)
@@ -71,7 +72,7 @@ async def test_get_one_attribute_with_node_property(
     )
     await obj2.save(db=db)
 
-    obj = await NodeManager.get_one(db=db, id=obj2.id, include_source=True)
+    obj = await NodeManager.get_one(db=db, id=obj2.id, include_metadata=MetadataOptions.SOURCE)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -91,9 +92,9 @@ async def test_get_one_attribute_with_node_property(
 
 async def test_get_one_attribute_with_flag_property(
     db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
-):
+) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
-    await obj1.new(db=db, name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False})
+    await obj1.new(db=db, name={"value": "low", "is_protected": True}, level={"value": 4})
     await obj1.save(db=db)
 
     obj = await NodeManager.get_one(db=db, id=obj1.id, fields={"name": True, "level": True, "color": True})
@@ -102,21 +103,18 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.db_id == obj1.db_id
     assert obj.name.value == "low"
     assert obj.name.id
-    assert obj.name.is_visible is True
     assert obj.name.is_protected is True
 
     assert obj.level.value == 4
     assert obj.level.id
-    assert obj.level.is_visible is False
     assert obj.level.is_protected is False
 
     assert obj.color.value == "#444444"
     assert obj.color.id
-    assert obj.color.is_visible is True
     assert obj.color.is_protected is False
 
 
-async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> None:
     car = registry.schema.get(name="TestCar")
     person = registry.schema.get(name="TestPerson")
 
@@ -151,7 +149,9 @@ async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch
         await NodeManager.get_one(db=db, id="e57fef37-d9eb-4548-b890-b5e31d76f56b", raise_on_error=True)
 
 
-async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+async def test_get_one_relationship_with_flag_property(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+) -> None:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -162,7 +162,7 @@ async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, def
         name="volt",
         nbr_seats=4,
         is_electric=True,
-        owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
+        owner={"id": p1.id, "_relation__is_protected": True},
     )
     await c1.save(db=db)
 
@@ -172,7 +172,7 @@ async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, def
         name="accord",
         nbr_seats=5,
         is_electric=False,
-        owner={"id": p1.id, "_relation__is_visible": False},
+        owner={"id": p1.id},
     )
     await c2.save(db=db)
 
@@ -184,7 +184,6 @@ async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, def
     c11_peer = await c11.owner.get_peer(db=db)
     assert c11_peer.id == p1.id
     rel = await c11.owner.get(db=db)
-    assert rel.is_visible is False
     assert rel.is_protected is True
 
     p11 = await NodeManager.get_one(db=db, id=p1.id)
@@ -193,8 +192,6 @@ async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, def
 
     rels = await p11.cars.get(db=db)
     assert len(rels) == 2
-    assert rels[0].is_visible is False
-    assert rels[1].is_visible is False
 
 
 async def test_get_one_by_id_or_default_filter(
@@ -203,7 +200,7 @@ async def test_get_one_by_id_or_default_filter(
     criticality_schema: SchemaBranch,
     criticality_low: Node,
     criticality_medium: Node,
-):
+) -> None:
     node1 = await NodeManager.get_one_by_id_or_default_filter(
         db=db, id=criticality_low.id, kind=criticality_schema.kind
     )
@@ -221,7 +218,7 @@ async def test_get_one_by_hfid(
     db: InfrahubDatabase,
     default_branch: Branch,
     animal_person_schema: SchemaBranch,
-):
+) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
 
@@ -252,7 +249,7 @@ async def test_get_one_by_hfid(
         await NodeManager.get_one_by_hfid(db=db, hfid=["Not", "Dog"], kind=dog_schema.kind, raise_on_error=True)
 
 
-async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branch):
+async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branch) -> None:
     schema = copy.deepcopy(DEVICE_SCHEMA)
     # Change device schema to add a HFID
     schema.nodes[0].human_friendly_id = ["name__value"]
@@ -272,14 +269,39 @@ async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branc
         await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.DEVICE, hfid=device_hfid + ["foo"])
 
 
-async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
+async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium) -> None:
     nodes = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
     assert len(nodes) == 2
 
 
+async def test_get_many_with_pagination(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
+    criticality_high: Node,
+    query_limit_of_one: None,
+    neo4j_runtime_parallel: None,
+) -> None:
+    new_node_ids: list[str] = []
+    for index in range(10):
+        bulk_node = await Node.init(db=db, schema=criticality_schema, branch=default_branch)
+        await bulk_node.new(db=db, name=f"bulk-{index}", level=index)
+        await bulk_node.save(db=db)
+        new_node_ids.append(bulk_node.id)
+
+    target_ids = [criticality_low.id, criticality_medium.id, criticality_high.id, *new_node_ids]
+    nodes = await NodeManager.get_many(db=db, ids=target_ids)
+
+    assert set(nodes) == set(target_ids)
+    assert len(nodes) == len(target_ids)
+    assert all(isinstance(nodes[node_id], Node) for node_id in target_ids)
+
+
 async def test_get_many_prefetch(
     db: InfrahubDatabase, person_jack_tags_main, tag_blue_main, tag_red_main, branch: Branch
-):
+) -> None:
     nodes = await NodeManager.get_many(
         db=db, branch=branch, ids=[person_jack_tags_main.id], prefetch_relationships=True
     )
@@ -314,7 +336,7 @@ async def test_get_many_prefetch(
 
 async def test_get_many_prefetch_hierarchical(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
-):
+) -> None:
     nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
     node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
     nodes = await NodeManager.get_many(db=db, ids=node_ids, prefetch_relationships=True)
@@ -338,72 +360,9 @@ async def test_get_many_prefetch_hierarchical(
     assert parent_europe is None
 
 
-async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profile_1 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_1.new(db=db, profile_name="crit_profile_1", color="green", profile_priority=1001)
-    await crit_profile_1.save(db=db)
-    crit_profile_2 = await Node.init(db=db, schema=profile_schema)
-    await crit_profile_2.new(db=db, profile_name="crit_profile_2", color="blue", profile_priority=1002)
-    await crit_profile_2.save(db=db)
-    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
-    await crit_low.profiles.update(db=db, data=[crit_profile_1, crit_profile_2])
-    await crit_low.save(db=db)
-
-    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
-    assert len(node_map) == 2
-    assert node_map[criticality_low.id].color.value == "green"
-    source = await node_map[criticality_low.id].color.get_source(db=db)
-    assert source.id == crit_profile_1.id
-
-
-async def test_get_many_with_profile_generic(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
-):
-    generic_profile_schema = registry.schema.get("ProfileTestGenericCriticality", branch=default_branch)
-    generic_profile = await Node.init(db=db, schema=generic_profile_schema)
-    await generic_profile.new(db=db, profile_name="generic_profile", color="green", profile_priority=1001)
-    await generic_profile.save(db=db)
-    crit_profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profile = await Node.init(db=db, schema=crit_profile_schema)
-    await crit_profile.new(db=db, profile_name="crit_profile", color="blue", profile_priority=1002)
-    await crit_profile.save(db=db)
-    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
-    await crit_low.profiles.update(db=db, data=[crit_profile, generic_profile])
-    await crit_low.save(db=db)
-
-    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
-    assert len(node_map) == 2
-    assert node_map[criticality_low.id].color.value == "green"
-    source = await node_map[criticality_low.id].color.get_source(db=db)
-    assert source.id == generic_profile.id
-
-
-async def test_get_many_with_multiple_profiles_same_priority(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
-):
-    profile_schema = registry.schema.get("ProfileTestCriticality", branch=default_branch)
-    crit_profiles = []
-    for i in range(1, 10):
-        crit_profile = await Node.init(db=db, schema=profile_schema)
-        await crit_profile.new(db=db, profile_name=f"crit_profile_{i}", color=f"green{i}", profile_priority=1000)
-        await crit_profile.save(db=db)
-        crit_profiles.append(crit_profile)
-    crit_low = await NodeManager.get_one(db=db, id=criticality_low.id, branch=default_branch)
-    await crit_low.profiles.update(db=db, data=crit_profiles)
-    await crit_low.save(db=db)
-
-    lowest_uuid_profile = sorted(crit_profiles, key=lambda p: p.id)[0]
-    node_map = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
-    assert len(node_map) == 2
-    assert node_map[criticality_low.id].color.value == lowest_uuid_profile.color.value
-    source = await node_map[criticality_low.id].color.get_source(db=db)
-    assert source.id == lowest_uuid_profile.id
-
-
 async def test_get_many_branch_agnostic(
     db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
-):
+) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     crit_schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
     new_crit = await Node.init(schema=crit_schema, db=db, branch=branch)
@@ -436,7 +395,7 @@ async def test_get_many_branch_agnostic(
 
 async def test_get_many_relationship_fields(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
-):
+) -> None:
     nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
     node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
     fields = {"parent": None}
@@ -480,7 +439,7 @@ async def test_query_no_filter(
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
-):
+) -> None:
     nodes = await NodeManager.query(db=db, schema=criticality_schema)
     assert len(nodes) == 3
 
@@ -492,7 +451,7 @@ async def test_query_protocol(
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
-):
+) -> None:
     nodes = await NodeManager.query(db=db, schema=criticality_protocol)
     assert len(nodes) == 3
 
@@ -504,7 +463,7 @@ async def test_query_with_filter_string_int(
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
-):
+) -> None:
     nodes = await NodeManager.query(db=db, schema=criticality_schema, filters={"color__value": "#333333"})
     assert len(nodes) == 2
 
@@ -524,7 +483,7 @@ async def test_query_filter_with_multiple_values_string_int(
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
-):
+) -> None:
     nodes = await NodeManager.query(db=db, schema=criticality_schema, filters={"level__values": [2, 3]})
     assert len(nodes) == 2
 
@@ -541,7 +500,7 @@ async def test_query_with_filter_bool_rel(
     car_yaris_main,
     car_camry_main,
     branch: Branch,
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
 
     # Check filter with a boolean
@@ -562,7 +521,7 @@ async def test_query_filter_with_multiple_values_rel(
     car_yaris_main,
     car_camry_main,
     branch: Branch,
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
 
     nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": ["John", "Jane"]})
@@ -578,7 +537,7 @@ async def test_qeury_with_multiple_values_invalid_type(
     car_yaris_main,
     car_camry_main,
     branch: Branch,
-):
+) -> None:
     car = registry.schema.get(name="TestCar")
 
     with pytest.raises(TypeError):
@@ -594,7 +553,7 @@ async def test_query_non_default_class(
     criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
-):
+) -> None:
     class TestCriticality(Node):
         def always_true(self):
             return True
@@ -613,17 +572,16 @@ async def test_query_class_name(
     criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
-):
+) -> None:
     nodes = await NodeManager.query(db=db, schema="TestCriticality")
     assert len(nodes) == 2
 
 
-async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_branch):
+async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_branch) -> None:
     node = NodeToProcess(
         schema=car_schema,
         node_id=33,
         node_uuid=str(UUIDT()),
-        profile_uuids=[],
         updated_at=Timestamp().to_string(),
         branch=default_branch,
         labels=["Node", "TestCar"],
@@ -649,7 +607,9 @@ async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_bra
 # ------------------------------------------------------------------------
 
 
-async def test_get_one_local_attribute_with_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+async def test_get_one_local_attribute_with_branch(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema
+) -> None:
     obj1 = await Node.init(db=db, schema=criticality_schema)
     await obj1.new(db=db, name="low", level=4)
     await obj1.save(db=db)
@@ -692,7 +652,7 @@ async def test_get_one_local_attribute_with_branch(db: InfrahubDatabase, default
 # ------------------------------------------------------------------------
 
 
-async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base_dataset_12):
+async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base_dataset_12) -> None:
     branch1 = await registry.get_branch(db=db, branch="branch1")
 
     obj1 = await NodeManager.get_one(db=db, id="p1", branch=branch1)

@@ -3,7 +3,7 @@ import { LabelFormField, ResetAction } from "@/shared/components/form/fields/com
 import type { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { List } from "@/shared/components/list";
+import { List } from "@/shared/components/inputs/list";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 const ListField = ({
@@ -15,6 +15,7 @@ const ListField = ({
   name,
   rules,
   unique,
+  shouldUnregister,
   ...props
 }: FormFieldProps) => {
   return (
@@ -34,6 +35,7 @@ const ListField = ({
         },
       }}
       defaultValue={defaultValue}
+      shouldUnregister={shouldUnregister}
       render={({ field }) => {
         const fieldData = field.value;
 

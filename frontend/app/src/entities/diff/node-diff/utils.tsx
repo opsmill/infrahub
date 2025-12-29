@@ -6,8 +6,6 @@ import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 
 import { DIFF_STATUS, type DiffProperty, type DiffStatus } from "@/entities/diff/node-diff/types";
-import type { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
-
 import {
   BadgeAdded,
   BadgeConflict,
@@ -16,7 +14,8 @@ import {
   BadgeUnchanged,
   BadgeUpdated,
   type DiffBadgeProps,
-} from "../ui/diff-badge";
+} from "@/entities/diff/ui/diff-badge";
+import type { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,
@@ -138,8 +137,6 @@ export const formatPropertyName = (name: DiffProperty["property_type"]) => {
       return "value";
     case "IS_PROTECTED":
       return "protected";
-    case "IS_VISIBLE":
-      return "visible";
     case "IS_RELATED":
       return "ID";
     default: {

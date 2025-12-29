@@ -142,7 +142,7 @@ ATTRIBUTE_SCHEMA = NodeSchema(
 @pytest.fixture
 async def migration_013_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
-):
+) -> None:
     repo1 = await Node.init(db=db, schema=GIT_SCHEMA)
     await repo1.new(db=db, name="repo1 initial", username="user1 initial", password="pwd1 initial")
     await repo1.save(db=db)
@@ -165,7 +165,7 @@ async def migration_013_data(
 @pytest.fixture
 async def migration_013_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, register_core_models_schema
-):
+) -> None:
     node1 = await Node.init(db=db, schema=NODE_SCHEMA)
     await node1.new(db=db, name="GenericRepository", namespace="Core")
     await node1.save(db=db)
@@ -189,7 +189,7 @@ async def migration_013_schema(
 
 async def test_migration_013_query_01(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
-):
+) -> None:
     registry.branch[default_branch.name] = default_branch
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
@@ -203,7 +203,7 @@ async def test_migration_013_query_01(
     assert query.stats.get_counter(name="nodes_created") == 6 * 2
 
     nbr_rels_after = await count_relationships(db=db)
-    assert nbr_rels_after == nbr_rels_before + (19 * 2)
+    assert nbr_rels_after == nbr_rels_before + (16 * 2)
 
     creds = await NodeManager.query(db=db, schema=PASSWORD_CRED, branch=default_branch)
 
@@ -225,7 +225,7 @@ async def test_migration_013_query_01(
 
 async def test_migration_013_query_02(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
-):
+) -> None:
     registry.branch[default_branch.name] = default_branch
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
@@ -253,7 +253,7 @@ async def test_migration_013_query_02(
 
 async def test_migration_013_delete_username_password_schema(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_schema
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
     query = await Migration013DeleteUsernamePasswordGenericSchema.init(db=db)
@@ -269,7 +269,7 @@ async def test_migration_013_delete_username_password_schema(
 
 async def test_migration_013_add_internal_status_data(
     db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_013_data
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
     query = await Migration013AddInternalStatusData.init(db=db)
@@ -282,7 +282,7 @@ async def test_migration_013_add_internal_status_data(
 
     nbr_rels_after = await count_relationships(db=db)
 
-    assert nbr_rels_after == nbr_rels_before + (3 * 4)
+    assert nbr_rels_after == nbr_rels_before + (3 * 3)
 
 
 async def test_migration_013(
@@ -292,7 +292,7 @@ async def test_migration_013(
     delete_all_nodes_in_db,
     migration_013_data,
     migration_013_schema,
-):
+) -> None:
     nbr_rels_before = await count_relationships(db=db)
     nbr_nodes_before = await count_nodes(db=db)
 
@@ -307,4 +307,4 @@ async def test_migration_013(
     nbr_nodes_after = await count_nodes(db=db)
 
     assert nbr_nodes_after == nbr_nodes_before + (6 * 2) + (3 + 1)
-    assert nbr_rels_after == nbr_rels_before + (19 * 2) + (2 * 3) + (3 * 4) + 2
+    assert nbr_rels_after == nbr_rels_before + (16 * 2) + (2 * 3) + (3 * 3) + 2

@@ -1,13 +1,12 @@
-import * as R from "ramda";
-
 import {
   attributesKindForDetailsViewExclude,
+  relationshipKindForForm,
   relationshipsForDetailsView,
   relationshipsForListView,
-} from "@/config/constants";
-
+} from "@/shared/config/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
+import type { RelationshipKind } from "@/entities/nodes/types";
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
 import type { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
@@ -50,12 +49,14 @@ type tgetObjectRelationships = {
   schema?: ModelSchema;
   forListView?: boolean;
   forQuery?: boolean;
+  forProfiles?: boolean;
 };
 
 export const getObjectRelationships = ({
   schema,
   forListView,
   forQuery,
+  forProfiles,
 }: tgetObjectRelationships) => {
   if (!schema) {
     return [];
@@ -64,12 +65,20 @@ export const getObjectRelationships = ({
   const kinds = forListView ? relationshipsForListView : relationshipsForDetailsView;
 
   const relationships = (schema.relationships || [])
-    .filter(
-      (relationship) =>
+    .filter((relationship) => {
+      if (forProfiles) {
+        // For profiles, include optional relationships that are form-eligible
+        return (
+          relationship.optional &&
+          relationshipKindForForm.includes(relationship.kind as RelationshipKind)
+        );
+      }
+      return (
         (forQuery ? relationship.read_only : true) &&
         relationship.cardinality &&
         kinds[relationship.cardinality].includes(relationship.kind ?? "")
-    )
+      );
+    })
     .map((relationship) => ({
       isRelationship: true,
       paginated: relationship.cardinality === "many",
@@ -100,7 +109,7 @@ export const getSchemaObjectColumns = ({
   const attributes = getObjectAttributes({ schema, forListView, forQuery });
   const relationships = getObjectRelationships({ schema, forListView });
 
-  const columns = sortByOrderWeight(R.concat(attributes, relationships));
+  const columns = sortByOrderWeight([...attributes, ...relationships]);
 
   if (limit) {
     return columns.slice(0, limit);
@@ -114,11 +123,4 @@ export const getSchemaObjectColumns = ({
   // columns.length > 0 needed because of relationship-details-paginated.tsx
   // Relationship needs refactoring to handle this better
   return isGenericSchema(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
-};
-
-export const getObjectTabs = (tabs: any[], data: any) => {
-  return tabs.map((tab: any) => ({
-    ...tab,
-    count: data[tab.name]?.count,
-  }));
 };

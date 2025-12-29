@@ -34,4 +34,17 @@ Here are a few common methods of setting environmental variables:
 {% for parameter in section.parameters %}
 | `{{ parameter.env }}` | {{ parameter.description }} | {{ parameter.type }} | {{ parameter.default }} |
 {% endfor %}
-{% endfor %}
+
+{%- for parameter in section.parameters %}
+{% if parameter.nested_parameters %}
+
+### {{ parameter.env or parameter.name | upper }}
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+{% for nested in parameter.nested_parameters %}
+| `{{ nested.env or nested.name | upper | replace(" ", "_") }}` | {{ nested.description }} | {{ nested.type }} | {{ nested.default }} |
+{% endfor -%}
+  {% endif -%}
+{% endfor -%}
+{% endfor -%}

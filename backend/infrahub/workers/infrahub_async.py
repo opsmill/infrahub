@@ -1,5 +1,8 @@
+import asyncio
+import contextlib
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -8,6 +11,7 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
 from prefect import settings as prefect_settings
 from prefect.client.schemas.objects import FlowRun
+from prefect.context import AsyncClientContext
 from prefect.flow_engine import run_flow_async
 from prefect.logging.handlers import APILogHandler
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
@@ -18,7 +22,9 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.initialization import initialization
+from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
+from infrahub.exceptions import InitializationError
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
@@ -27,6 +33,7 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_http,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -102,7 +109,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         # Start metric endpoint
         if metric_port is None or metric_port != 0:
-            metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", 8000))
+            metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", "8000"))
             self._logger.info(f"Starting metric endpoint on port {metric_port}")
             start_http_server(metric_port)
 
@@ -119,6 +126,7 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         set_component_type(component_type=self.component_type)
+        await self.set_git_global_config()
         await self._init_services(client=client)
 
         if not registry.schema_has_been_initialized():
@@ -129,6 +137,9 @@ class InfrahubWorkerAsync(BaseWorker):
 
             await self.service.component.refresh_schema_hash()
 
+        async with self.service.database.start_session() as dbs:
+            await validate_graph_version(db=dbs)
+
         initialize_repositories_directory()
         build_component_registry()
         await self.service.scheduler.start_schedule()
@@ -138,7 +149,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         flow_run: FlowRun,
         configuration: BaseJobConfiguration,
-        task_status: TaskStatus | None = None,
+        task_status: TaskStatus[int] | None = None,
     ) -> BaseWorkerResult:
         flow_run_logger = self.get_flow_run_logger(flow_run)
 
@@ -154,7 +165,9 @@ class InfrahubWorkerAsync(BaseWorker):
         if task_status:
             task_status.started(True)
 
-        await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
+        async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
+            ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
+            await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 
@@ -170,9 +183,17 @@ class InfrahubWorkerAsync(BaseWorker):
     async def _init_infrahub_client(self, client: InfrahubClient | None = None) -> InfrahubClient:
         if not client:
             self._logger.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
-            client = InfrahubClient(
-                config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=self._logger)
-            )
+            try:
+                client = InfrahubClient(
+                    config=Config(
+                        address=config.SETTINGS.main.infrahub_address, retry_on_failure=True, log=self._logger
+                    )
+                )
+            except InitializationError as err:
+                self._logger.error(
+                    "Infrahub client initialization failed due to missing configuration for internal_address."
+                )
+                raise typer.Exit(1) from err
 
         try:
             await client.branch.all()
@@ -182,7 +203,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         return client
 
-    async def _init_services(self, client: InfrahubClient) -> None:
+    async def _init_services(self, client: InfrahubClient | None) -> None:
         client = await self._init_infrahub_client(client=client)
 
         service = await InfrahubServices.new(
@@ -196,3 +217,37 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         self.service = service
+
+    async def set_git_global_config(self) -> None:
+        global_config_file = config.SETTINGS.git.global_config_file
+        if not os.getenv("GIT_CONFIG_GLOBAL") and global_config_file:
+            config_dir = Path(global_config_file).parent
+            with contextlib.suppress(FileExistsError):
+                config_dir.mkdir(exist_ok=True, parents=True)
+            os.environ["GIT_CONFIG_GLOBAL"] = global_config_file
+            self._logger.info(f"Set git config file to {global_config_file}")
+
+        await self._run_git_config_global(config.SETTINGS.git.user_name, setting_name="user.name")
+        await self._run_git_config_global(config.SETTINGS.git.user_email, setting_name="user.email")
+        await self._run_git_config_global("*", "--replace-all", setting_name="safe.directory")
+        await self._run_git_config_global("true", setting_name="credential.usehttppath")
+        await self._run_git_config_global(
+            f"/usr/bin/env {config.SETTINGS.dev.git_credential_helper}", setting_name="credential.helper"
+        )
+
+    async def _run_git_config_global(self, *args: str, setting_name: str) -> None:
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "config",
+            "--global",
+            setting_name,
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            error_msg = stderr.decode("utf-8", errors="ignore").strip() or "unknown error"
+            self._logger.error(f"Failed to set git {setting_name}: %s", error_msg)
+        else:
+            self._logger.info(f"Git {setting_name} set")

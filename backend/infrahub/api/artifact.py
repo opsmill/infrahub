@@ -17,7 +17,7 @@ from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
-from infrahub.core.protocols import CoreArtifactDefinition
+from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
@@ -50,14 +50,16 @@ async def get_artifact(
     branch_params: BranchParams = Depends(get_branch_params),
     _: AccountSession = Depends(get_current_user),
 ) -> Response:
-    artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at)
+    artifact = await registry.manager.get_one(
+        db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at, kind=CoreArtifact
+    )
     if not artifact:
         raise NodeNotFoundError(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
     return Response(
-        content=registry.storage.retrieve(identifier=artifact.storage_id.value),
+        content=registry.storage.retrieve(identifier=str(artifact.storage_id.value)),
         headers={"Content-Type": artifact.content_type.value.value},
     )
 

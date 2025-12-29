@@ -45,7 +45,7 @@ export const getFormFieldsFromSchema = ({
     ...(schema.attributes ?? []).filter((attribute) => !isBulkUpdate || !attribute.unique),
     ...getRelationshipsForForm(schema.relationships ?? [], isUpdate || isBulkUpdate, schema),
   ].filter((attribute) => !attribute.read_only);
-  const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
+  const orderedFields = sortByOrderWeight(unorderedFields);
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
     if ("peer" in field) {
@@ -59,6 +59,7 @@ export const getFormFieldsFromSchema = ({
             relationshipSchema: field,
             relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
             objectTemplate,
+            profiles,
             isFilterForm: !!isFilterForm,
             isBulkUpdate: !!isBulkUpdate,
             schema,
@@ -72,6 +73,7 @@ export const getFormFieldsFromSchema = ({
             relationshipSchema: field,
             relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
             objectTemplate,
+            profiles,
             isFilterForm: !!isFilterForm,
             isBulkUpdate: !!isBulkUpdate,
             schema,
@@ -88,6 +90,7 @@ export const getFormFieldsFromSchema = ({
           relationshipSchema: field,
           relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
           objectTemplate,
+          profiles,
           isFilterForm: !!isFilterForm,
           isBulkUpdate: !!isBulkUpdate,
           schema,

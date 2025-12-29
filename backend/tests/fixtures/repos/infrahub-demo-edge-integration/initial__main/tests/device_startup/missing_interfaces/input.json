@@ -1,0 +1,439 @@
+{
+    "data": {
+      "InfraDevice": {
+        "edges": [
+          {
+            "node": {
+              "id": "17a49cb4-f436-4208-45b0-2fc3e8a69b5e",
+              "name": {
+                "value": "atl-spine1"
+              },
+              "asn": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "interfaces": {
+                "edges": []
+              }
+            }
+          }
+        ]
+      },
+      "InfraBGPPeerGroup": {
+        "edges": [
+          {
+            "node": {
+              "name": {
+                "value": "IX_DEFAULT"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": null
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "POP_GLOBAL"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": null
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "POP_INTERNAL"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "TRANSIT_DEFAULT"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": null
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "TRANSIT_TELIA"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": {
+                  "asn": {
+                    "value": 1299
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "InfraTopology": {
+        "edges": [
+          {
+            "node": {
+              "dns": {
+                "value": "8.8.8.8"
+              },
+              "ntp": {
+                "value": "pool.ntp.org"
+              }
+            }
+          },
+          {
+            "node": {
+              "dns": {
+                "value": "8.8.8.8"
+              },
+              "ntp": {
+                "value": "pool.ntp.org"
+              }
+            }
+          }
+        ]
+      },
+      "InfraBGPSession": {
+        "edges": [
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf3"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf3"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf4"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf4"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.3/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.4/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.5/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.6/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.3/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.4/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.5/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.6/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }

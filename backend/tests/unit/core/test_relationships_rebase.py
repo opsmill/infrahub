@@ -75,7 +75,7 @@ class TestRelationshipsWithRebase:
         branch_peer_id: str,
         branch_name: str,
         rebase_time: Timestamp,
-    ):
+    ) -> None:
         database_paths = await get_database_edges_state(
             db=db, node_uuids=[car_uuid], rel_identiers=["testcar__testperson"]
         )
@@ -105,36 +105,6 @@ class TestRelationshipsWithRebase:
         expected_path_tuples = {
             (
                 car_uuid,
-                ("IS_RELATED", "main", "active", False, False),
-                ("IS_RELATED", "main", "active", False, False),
-                main_peer_id,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", "main", "active", False, False),
-                ("IS_VISIBLE", "main", "active", False, False),
-                True,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", "main", "active", False, False),
-                ("IS_PROTECTED", "main", "active", False, False),
-                False,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", branch_name, "deleted", True, False),
-                ("IS_RELATED", branch_name, "deleted", True, False),
-                main_peer_id,
-            ),
-            (
-                car_uuid,
-                ("IS_RELATED", branch_name, "deleted", True, False),
-                ("IS_VISIBLE", branch_name, "deleted", True, False),
-                True,
-            ),
-            (
-                car_uuid,
                 ("IS_RELATED", branch_name, "deleted", True, False),
                 ("IS_PROTECTED", branch_name, "deleted", True, False),
                 False,
@@ -148,14 +118,26 @@ class TestRelationshipsWithRebase:
             (
                 car_uuid,
                 ("IS_RELATED", branch_name, "active", True, False),
-                ("IS_VISIBLE", branch_name, "active", True, False),
-                True,
+                ("IS_PROTECTED", branch_name, "active", True, False),
+                False,
             ),
             (
                 car_uuid,
-                ("IS_RELATED", branch_name, "active", True, False),
-                ("IS_PROTECTED", branch_name, "active", True, False),
+                ("IS_RELATED", branch_name, "deleted", True, False),
+                ("IS_RELATED", branch_name, "deleted", True, False),
+                main_peer_id,
+            ),
+            (
+                car_uuid,
+                ("IS_RELATED", "main", "active", False, False),
+                ("IS_PROTECTED", "main", "active", False, False),
                 False,
+            ),
+            (
+                car_uuid,
+                ("IS_RELATED", "main", "active", False, False),
+                ("IS_RELATED", "main", "active", False, False),
+                main_peer_id,
             ),
         }
 
@@ -173,7 +155,7 @@ class TestRelationshipsWithRebase:
         person_jim_main: Node,
         car_accord_main: Node,
         num_updates: int,
-    ):
+    ) -> None:
         branch_2 = await create_branch(db=db, branch_name="branch_2")
         car_branch = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch_2)
         await car_branch.owner.update(db=db, data=person_alfred_main)
@@ -186,8 +168,9 @@ class TestRelationshipsWithRebase:
         await car_branch.owner.update(db=db, data=person_jane_main)
         await car_branch.save(db=db)
 
-        rebase_time = Timestamp()
-        await branch_2.rebase(db=db, at=rebase_time)
+        await branch_2.rebase(db=db)
+        updated_branch2 = await Branch.get_by_name(db=db, name=branch_2.name)
+        rebase_time = Timestamp(updated_branch2.get_branched_from())
 
         rebased_car = await NodeManager.get_one(db=db, branch=branch_2, id=car_branch.id)
         owner_peer = await rebased_car.owner.get_peer(db=db)
@@ -212,7 +195,7 @@ class TestRelationshipsWithRebase:
         car_person_id_map_branch: dict[str, str],
         branch_name: str,
         rebase_time: Timestamp,
-    ):
+    ) -> None:
         database_paths = await get_database_edges_state(
             db=db, node_uuids=person_uuids, rel_identiers=["testcar__testperson"]
         )
@@ -251,7 +234,6 @@ class TestRelationshipsWithRebase:
                     )
                     for edge_type, peer_or_value in (
                         ("IS_RELATED", car_id),
-                        ("IS_VISIBLE", True),
                         ("IS_PROTECTED", False),
                     )
                 )
@@ -264,7 +246,6 @@ class TestRelationshipsWithRebase:
                     )
                     for edge_type, peer_or_value in (
                         ("IS_RELATED", car_id),
-                        ("IS_VISIBLE", True),
                         ("IS_PROTECTED", False),
                     )
                 )
@@ -280,7 +261,6 @@ class TestRelationshipsWithRebase:
                     )
                     for edge_type, peer_or_value in (
                         ("IS_RELATED", car_id),
-                        ("IS_VISIBLE", True),
                         ("IS_PROTECTED", False),
                     )
                 )
@@ -295,7 +275,7 @@ class TestRelationshipsWithRebase:
         db: InfrahubDatabase,
         default_branch: Branch,
         car_person_schema: SchemaBranch,
-    ):
+    ) -> None:
         people = []
         cars = []
         car_person_id_map_main = {}
@@ -322,8 +302,9 @@ class TestRelationshipsWithRebase:
                 await branch_car.save(db=db)
                 car_person_id_map_branch[car.id] = random_person.id
 
-        rebase_time = Timestamp()
-        await branch_2.rebase(db=db, at=rebase_time)
+        await branch_2.rebase(db=db)
+        updated_branch2 = await Branch.get_by_name(db=db, name=branch_2.name)
+        rebase_time = Timestamp(updated_branch2.get_branched_from())
 
         for person in people:
             main_person = await NodeManager.get_one(db=db, branch=default_branch, id=person.id)

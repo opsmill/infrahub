@@ -12,7 +12,7 @@ with patch("sys.stdin"):
 runner = CliRunner(mix_stderr=False)
 
 
-def test_parse_helper_get_input():
+def test_parse_helper_get_input() -> None:
     data_in = "protocol=https\nhost=github.com\npath=opsmill/infrahub-demo-edge.git"
     assert parse_helper_get_input(text=data_in) == "https://github.com/opsmill/infrahub-demo-edge.git"
 
@@ -25,7 +25,7 @@ def test_parse_helper_get_input():
         parse_helper_get_input(text=data_in)
 
 
-def test_get_with_path(mock_core_schema_01, mock_repositories_query, mock_credential_query):
+def test_get_with_path(mock_core_schema_01, mock_repositories_query, mock_credential_query) -> None:
     input_data = "protocol=https\nhost=github.com\npath=opsmill/infrahub-demo-edge.git"
 
     result = runner.invoke(
@@ -36,7 +36,7 @@ def test_get_with_path(mock_core_schema_01, mock_repositories_query, mock_creden
     assert result.exit_code == 0
 
 
-def test_get_no_path():
+def test_get_no_path() -> None:
     input_data = "protocol=https\nhost=github.com"
 
     result = runner.invoke(app=app, args=["get", input_data])

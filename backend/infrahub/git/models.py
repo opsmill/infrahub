@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.context import InfrahubContext
+from infrahub.core.node import Node
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 
 
@@ -38,7 +40,8 @@ class RequestArtifactGenerate(BaseModel):
     target_kind: str = Field(..., description="The kind of the target object for this artifact")
     target_name: str = Field(..., description="Name of the artifact target")
     artifact_id: str | None = Field(default=None, description="The id of the artifact if it previously existed")
-    query: str = Field(..., description="The name of the query to use when collecting data")
+    query: str = Field(..., description="The name of the query to use when collecting data")  # Deprecated
+    query_id: str = Field(..., description="The id of the query to use when collecting data")
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")
     context: InfrahubContext = Field(..., description="The context of the task")
@@ -91,7 +94,8 @@ class GitRepositoryMerge(BaseModel):
     source_branch: str = Field(..., description="The source branch")
     destination_branch: str = Field(..., description="The destination branch")
     destination_branch_id: str = Field(..., description="The ID of the destination branch")
-    default_branch: str = Field(..., description="The default branch in Git")
+    default_branch: str | None = Field(default=None, description="The default branch in Git")
+    repository_kind: str = Field(..., description="The kind of the repository.")
 
 
 class GitRepositoryImportObjects(BaseModel):
@@ -199,11 +203,22 @@ class RepositoryBranchInfo(BaseModel):
 
 
 class RepositoryData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     repository_id: str = Field(..., description="Id of the repository")
     repository_name: str = Field(..., description="Name of the repository")
+    repository: CoreRepository | CoreReadOnlyRepository | Node = Field(
+        ..., description="InfrahubNode representing a Repository"
+    )
     branches: dict[str, str] = Field(
         ...,
         description="Dictionary with the name of the branch as the key and the active commit id as the value",
     )
 
     branch_info: dict[str, RepositoryBranchInfo] = Field(default_factory=dict)
+
+    def get_staging_branch(self) -> str | None:
+        for branch, info in self.branch_info.items():
+            if info.internal_status == "staging":
+                return branch
+        return None

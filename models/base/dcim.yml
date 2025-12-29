@@ -8,8 +8,7 @@ generics:
     label: "Interface"
     include_in_menu: true
     icon: "mdi:ethernet"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     uniqueness_constraints:
@@ -176,8 +175,8 @@ nodes:
       - "CoreArtifactTarget"
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
+    generate_template: true
     attributes:
       - name: name
         kind: Text
@@ -295,8 +294,7 @@ nodes:
     description: "Network Layer 3 Interface"
     label: "Interface L3"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -332,8 +330,7 @@ nodes:
     description: "Network Layer 3 Lag Interface"
     label: "Lag Interface L3"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -358,8 +355,7 @@ nodes:
     description: "Network Layer 2 Interface"
     label: "Interface L2"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -409,8 +405,7 @@ nodes:
     label: "Lag Interface L2"
     icon: "mdi:ethernet"
     include_in_menu: false
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -453,8 +448,7 @@ nodes:
     human_friendly_id: ["name__value"]
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -489,8 +483,7 @@ nodes:
     human_friendly_id: ["circuit_id__value"]
     order_by:
       - circuit_id__value
-    display_labels:
-      - circuit_id__value
+    display_label: "{{ circuit_id__value }}"
     attributes:
       - name: circuit_id
         kind: Text
@@ -600,8 +593,7 @@ nodes:
     description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
     label: "MLAG Domain"
     include_in_menu: true
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         label: Name
@@ -631,8 +623,7 @@ nodes:
     label: "MLAG Interface L2"
     icon: "mdi:ethernet"
     include_in_menu: false
-    display_labels:
-      - mlag_id__value
+    display_label: "{{ mlag_id__value }}"
     inherit_from:
       - InfraMlagInterface
     relationships:
@@ -649,8 +640,7 @@ nodes:
     label: "MLAG Interface L3"
     icon: "mdi:ethernet"
     include_in_menu: false
-    display_labels:
-      - mlag_id__value
+    display_label: "{{ mlag_id__value }}"
     inherit_from:
       - InfraMlagInterface
     relationships:
@@ -672,8 +662,7 @@ nodes:
       - name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -709,8 +698,7 @@ nodes:
     human_friendly_id:
       - patch_panel__name__value
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     uniqueness_constraints:

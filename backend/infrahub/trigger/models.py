@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from enum import Enum
-from typing import TYPE_CHECKING, Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from prefect.events.actions import RunDeployment
 from prefect.events.schemas.automations import Automation, Posture
@@ -18,26 +18,101 @@ from .constants import NAME_SEPARATOR
 if TYPE_CHECKING:
     from uuid import UUID
 
+T = TypeVar("T", bound="TriggerDefinition")
+
+
+class TriggerComparison(StrEnum):
+    MATCH = "match"  # Expected trigger and actual trigger is identical
+    REFRESH = "refresh"  # The branch parameters doesn't match, the hash does, refresh in Prefect but don't run triggers
+    UPDATE = "update"  # Neither branch or other data points match, update in Prefect and run triggers
+
+    @property
+    def update_prefect(self) -> bool:
+        return self in {TriggerComparison.REFRESH, TriggerComparison.UPDATE}
+
 
 class TriggerSetupReport(BaseModel):
     created: list[TriggerDefinition] = Field(default_factory=list)
+    refreshed: list[TriggerDefinition] = Field(default_factory=list)
     updated: list[TriggerDefinition] = Field(default_factory=list)
     deleted: list[Automation] = Field(default_factory=list)
     unchanged: list[TriggerDefinition] = Field(default_factory=list)
 
     @property
     def in_use_count(self) -> int:
-        return len(self.created + self.updated + self.unchanged)
+        return len(self.created + self.updated + self.unchanged + self.refreshed)
+
+    def add_with_comparison(self, trigger: TriggerDefinition, comparison: TriggerComparison) -> None:
+        match comparison:
+            case TriggerComparison.UPDATE:
+                self.updated.append(trigger)
+            case TriggerComparison.REFRESH:
+                self.refreshed.append(trigger)
+            case TriggerComparison.MATCH:
+                self.unchanged.append(trigger)
+
+    def _created_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        return [trigger for trigger in self.created if isinstance(trigger, trigger_type)]
+
+    def _refreshed_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        return [trigger for trigger in self.refreshed if isinstance(trigger, trigger_type)]
+
+    def _unchanged_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        return [trigger for trigger in self.unchanged if isinstance(trigger, trigger_type)]
+
+    def _updated_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        return [trigger for trigger in self.updated if isinstance(trigger, trigger_type)]
+
+    def triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        """Return all triggers that match the specified type.
+
+        Args:
+            trigger_type: A TriggerDefinition class or subclass to filter by
+
+        Returns:
+            List of triggers of the specified type from all categories
+        """
+        created = self._created_triggers_with_type(trigger_type=trigger_type)
+        updated = self._updated_triggers_with_type(trigger_type=trigger_type)
+        refreshed = self._refreshed_triggers_with_type(trigger_type=trigger_type)
+        unchanged = self._unchanged_triggers_with_type(trigger_type=trigger_type)
+        return created + updated + refreshed + unchanged
+
+    def modified_triggers_with_type(self, trigger_type: type[T]) -> list[T]:
+        """Return all created and updated triggers that match the specified type.
+
+        Args:
+            trigger_type: A TriggerDefinition class or subclass to filter by
+
+        Returns:
+            List of triggers of the specified type from both created and updated lists
+        """
+        created = self._created_triggers_with_type(trigger_type=trigger_type)
+        updated = self._updated_triggers_with_type(trigger_type=trigger_type)
+        return created + updated
 
 
-class TriggerType(str, Enum):
+class TriggerType(StrEnum):
     ACTION_TRIGGER_RULE = "action_trigger_rule"
     BUILTIN = "builtin"
     WEBHOOK = "webhook"
     COMPUTED_ATTR_JINJA2 = "computed_attr_jinja2"
     COMPUTED_ATTR_PYTHON = "computed_attr_python"
     COMPUTED_ATTR_PYTHON_QUERY = "computed_attr_python_query"
+    DISPLAY_LABEL_JINJA2 = "display_label_jinja2"
+    HUMAN_FRIENDLY_ID = "human_friendly_id"
+    PROFILE = "profile"
     # OBJECT = "object"
+
+    @property
+    def is_branch_specific(self) -> bool:
+        return self in {
+            TriggerType.COMPUTED_ATTR_JINJA2,
+            TriggerType.COMPUTED_ATTR_PYTHON,
+            TriggerType.COMPUTED_ATTR_PYTHON_QUERY,
+            TriggerType.DISPLAY_LABEL_JINJA2,
+            TriggerType.HUMAN_FRIENDLY_ID,
+        }
 
 
 def _match_related_dict() -> dict:

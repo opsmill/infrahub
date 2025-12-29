@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from typing_extensions import Self
 
+from infrahub.core.constants import SYSTEM_USER_ID
+
 if TYPE_CHECKING:
     from neo4j import AsyncResult, AsyncSession, AsyncTransaction, Record
 
@@ -82,8 +84,10 @@ class CoreNode(Protocol):
         at: Timestamp | str | None = None,
     ) -> Self: ...
     async def new(self, db: InfrahubDatabase, id: str | None = None, **kwargs: Any) -> Self: ...
-    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None) -> Self: ...
-    async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None) -> None: ...
+    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self: ...
+    async def delete(
+        self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None: ...
     async def load(
         self,
         db: InfrahubDatabase,

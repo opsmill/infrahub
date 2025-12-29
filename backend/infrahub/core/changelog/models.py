@@ -186,9 +186,6 @@ class RelationshipCardinalityManyChangelog(BaseModel):
         properties["is_protected"] = PropertyChangelog(
             name="is_protected", value=relationship.is_protected, value_previous=None
         )
-        properties["is_visible"] = PropertyChangelog(
-            name="is_visible", value=relationship.is_protected, value_previous=None
-        )
         if owner := getattr(relationship, "owner_id", None):
             properties["owner"] = PropertyChangelog(name="owner", value=owner, value_previous=None)
         if source := getattr(relationship, "source_id", None):
@@ -280,9 +277,6 @@ class NodeChangelog(BaseModel):
             changelog_relationship.add_property(
                 name="is_protected", value_current=relationship.is_protected, value_previous=None
             )
-            changelog_relationship.add_property(
-                name="is_visible", value_current=relationship.is_visible, value_previous=None
-            )
             self.relationships[changelog_relationship.name] = changelog_relationship
         elif relationship.schema.cardinality == RelationshipCardinality.MANY:
             if relationship.schema.name not in self.relationships:
@@ -290,7 +284,7 @@ class NodeChangelog(BaseModel):
                     name=relationship.schema.name
                 )
             relationship_container = cast(
-                RelationshipCardinalityManyChangelog, self.relationships[relationship.schema.name]
+                "RelationshipCardinalityManyChangelog", self.relationships[relationship.schema.name]
             )
 
             relationship_container.add_new_peer(relationship=relationship)
@@ -311,7 +305,7 @@ class NodeChangelog(BaseModel):
                     name=relationship.schema.name
                 )
             relationship_container = cast(
-                RelationshipCardinalityManyChangelog, self.relationships[relationship.schema.name]
+                "RelationshipCardinalityManyChangelog", self.relationships[relationship.schema.name]
             )
             relationship_container.remove_peer(
                 peer_id=relationship.get_peer_id(), peer_kind=relationship.get_peer_kind()
@@ -340,7 +334,6 @@ class NodeChangelog(BaseModel):
         if owner_id := getattr(attribute, "owner_id", None):
             changelog_attribute.add_property(name="owner", value_current=owner_id, value_previous=None)
         changelog_attribute.add_property(name="is_protected", value_current=attribute.is_protected, value_previous=None)
-        changelog_attribute.add_property(name="is_visible", value_current=attribute.is_visible, value_previous=None)
         self.attributes[changelog_attribute.name] = changelog_attribute
 
     def get_related_nodes(self) -> list[ChangelogRelatedNode]:
@@ -560,7 +553,7 @@ class RelationshipChangelogGetter:
 
         for peer in relationship.peers:
             if peer.peer_status == DiffAction.ADDED:
-                peer_schema = schema_branch.get(name=peer.peer_kind)
+                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
                     self._process_added_peers(
                         peer_id=peer.peer_id,
@@ -572,7 +565,7 @@ class RelationshipChangelogGetter:
                 )
 
             elif peer.peer_status == DiffAction.REMOVED:
-                peer_schema = schema_branch.get(name=peer.peer_kind)
+                peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
                 secondaries.extend(
                     self._process_removed_peers(
                         peer_id=peer.peer_id,
@@ -596,11 +589,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(
-                node_id=peer_id,
-                node_kind=peer_kind,
-                display_label="n/a",
-            )
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,
@@ -634,11 +623,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         peer_relation = peer_schema.get_relationship_by_identifier(id=str(rel_schema.identifier), raise_on_error=False)
         if peer_relation:
-            node_changelog = NodeChangelog(
-                node_id=peer_id,
-                node_kind=peer_kind,
-                display_label="n/a",
-            )
+            node_changelog = NodeChangelog(node_id=peer_id, node_kind=peer_kind, display_label="n/a")
             if peer_relation.cardinality == RelationshipCardinality.ONE:
                 node_changelog.relationships[peer_relation.name] = RelationshipCardinalityOneChangelog(
                     name=peer_relation.name,

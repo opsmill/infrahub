@@ -32,7 +32,7 @@ async def test_events_from_diff(
     diff = await diff_merger.merge_graph(at=at)
     diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch1)
     changelogs = diff_events.collect_changelogs()
-    assert len(changelogs) == 3
+    assert len(changelogs) == 2
 
 
 async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_person_schema: None) -> None:
@@ -113,17 +113,24 @@ async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_p
     assert len(p2_changelog.relationships["cars"].peers) == 1
     assert p2_changelog.relationships["cars"].peers[0].peer_id == car1.id
 
-    assert len(p4_changelog.attributes.keys()) == 2
+    assert len(p4_changelog.attributes.keys()) == 4
     assert p4_changelog.attributes["name"].value_update_status == DiffAction.ADDED
     assert p4_changelog.attributes["height"].value_update_status == DiffAction.ADDED
+    assert p4_changelog.attributes["display_label"].value_update_status == DiffAction.ADDED
     assert not p4_changelog.relationships
 
-    assert len(c1_changelog.attributes.keys()) == 1
+    assert len(c1_changelog.attributes.keys()) == 3
     assert c1_changelog.attributes["name"].value_update_status == DiffAction.UPDATED
     assert c1_changelog.attributes["name"].value == "Volvo 240"
     assert c1_changelog.attributes["name"].value_previous == "Volvo"
+    assert c1_changelog.attributes["display_label"].value_update_status == DiffAction.UPDATED
+    assert c1_changelog.attributes["display_label"].value == "Volvo 240 #444444"
+    assert c1_changelog.attributes["display_label"].value_previous == "Volvo #444444"
     assert c1_changelog.attributes["name"].properties["owner"].value == p2.id
     assert c1_changelog.attributes["name"].properties["owner"].value_previous == p1.id
+    assert c1_changelog.attributes["human_friendly_id"].value_update_status == DiffAction.UPDATED
+    assert c1_changelog.attributes["human_friendly_id"].value == '["Volvo 240"]'
+    assert c1_changelog.attributes["human_friendly_id"].value_previous == '["Volvo"]'
     assert len(c1_changelog.relationships.keys()) == 1
     assert isinstance(c1_changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
     assert c1_changelog.relationships["owner"].peer_kind == "TestPerson"
@@ -134,7 +141,15 @@ async def test_merge_diff_changelogs(db: InfrahubDatabase, default_branch, car_p
     assert c1_changelog.relationships["owner"].properties["source"].value == p3.id
     assert c1_changelog.relationships["owner"].properties["source"].value_previous == p2.id
 
-    assert sorted(c2_changelog.attributes.keys()) == ["color", "is_electric", "name", "nbr_seats", "transmission"]
+    assert sorted(c2_changelog.attributes.keys()) == [
+        "color",
+        "display_label",
+        "human_friendly_id",
+        "is_electric",
+        "name",
+        "nbr_seats",
+        "transmission",
+    ]
     assert len(c2_changelog.relationships.keys()) == 1
     assert isinstance(c2_changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
     assert c2_changelog.relationships["owner"].properties["owner"].value == p1.id
@@ -174,7 +189,7 @@ class TestConflict:
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
         expected_value: Literal["John-main", "John-branch"],
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.value = "John-main"
@@ -192,9 +207,9 @@ class TestConflict:
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
-        assert len(conflicts_map) == 1
-        conflict = next(iter(conflicts_map.values()))
-        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        assert len(conflicts_map) == 3
+        for conflict in conflicts_map.values():
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         diff = await diff_merger.merge_graph(at=at)
         diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch2)
@@ -212,6 +227,10 @@ class TestConflict:
                 assert action == DiffAction.UPDATED
                 assert node_changelog.attributes["name"].value == "John-branch"
                 assert node_changelog.attributes["name"].value_previous == "John"
+                assert node_changelog.attributes["human_friendly_id"].value == '["John-branch"]'
+                assert node_changelog.attributes["human_friendly_id"].value_previous == '["John"]'
+                assert node_changelog.attributes["display_label"].value == "John-branch"
+                assert node_changelog.attributes["display_label"].value_previous == "John"
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -227,7 +246,7 @@ class TestConflict:
         person_alfred_main: Node,
         car_accord_main: Node,
         conflict_selection: ConflictSelection,
-    ):
+    ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.source = person_alfred_main

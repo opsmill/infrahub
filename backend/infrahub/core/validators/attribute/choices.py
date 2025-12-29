@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING, Any, cast
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
-from infrahub.core.schema.generic_schema import GenericSchema
 
 from ..interface import ConstraintCheckerInterface
 from ..shared import AttributeSchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.generic_schema import GenericSchema
     from infrahub.database import InfrahubDatabase
 
     from ..model import SchemaConstraintValidatorRequest
@@ -106,7 +106,7 @@ class AttributeChoicesChecker(ConstraintCheckerInterface):
         # skip inheriting schemas that override the attribute being checked
         excluded_kinds: list[str] = []
         if request.node_schema.is_generic_schema:
-            request.node_schema = cast(GenericSchema, request.node_schema)
+            request.node_schema = cast("GenericSchema", request.node_schema)
             for inheriting_kind in request.node_schema.used_by:
                 inheriting_schema = request.schema_branch.get_node(name=inheriting_kind, duplicate=False)
                 inheriting_schema_attribute = inheriting_schema.get_attribute(name=request.schema_path.field_name)

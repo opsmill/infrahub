@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from invoke import Context, task
+from pydantic_settings import EnvSettingsSource
 
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
@@ -169,13 +170,14 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
     CLI_COMMANDS = (
         ("infrahub.cli.db", "infrahub db", "infrahub-db"),
         ("infrahub.cli.server", "infrahub server", "infrahub-server"),
-        ("infrahub.cli.git_agent", "infrahub git-agent", "infrahub-git-agent"),
+        ("infrahub.cli.dev", "infrahub dev", "infrahub-dev"),
+        ("infrahub.cli.upgrade", "infrahub upgrade", "infrahub-upgrade"),
     )
 
     print(" - Generate Infrahub CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'poetry run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
+            exec_cmd = f'uv run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
             context.run(exec_cmd)
 
 
@@ -202,7 +204,7 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
         if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
             params = {
                 param: info
-                for param, info in init_schema.parameters.model_fields.items()
+                for param, info in init_schema.parameters.__class__.model_fields.items()
                 if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
             }
             kind_ap_parameters[kind] = params
@@ -259,51 +261,219 @@ def _generate_infrahub_schema_documentation() -> None:
         print(f"Docs saved to: {output_label}")
 
 
+def _extract_nested_parameters(
+    prop_schema: dict,
+    model_fields: dict,
+    env_source: EnvSettingsSource,
+    defs: dict[str, object],
+    parent_default: dict | None = None,
+    env_prefix: str | None = None,
+) -> list["ConfigurationSectionParameter"]:
+    """
+    Recursively extract nested parameters for object-type config fields.
+
+    Args:
+        prop_schema: The property schema dictionary.
+        model_fields: The model fields for the parent section.
+        env_source: The environment settings source.
+        defs: The schema definitions.
+        parent_default: The default value for the parent property, if any.
+        env_prefix: The environment variable prefix.
+
+    Returns:
+        List of ConfigurationSectionParameter objects for nested fields.
+    """
+    from infrahub import config
+
+    nested_params: list[ConfigurationSectionParameter] = []
+
+    # Resolve $ref at the top level if present
+    if "$ref" in prop_schema:
+        ref_name = prop_schema["$ref"].split("/")[-1]
+        prop_schema = defs[ref_name]
+
+    for nested_name, orig_nested_schema in prop_schema.get("properties", {}).items():
+        nested_schema = orig_nested_schema
+
+        # Handle anyOf for optional nested objects
+        if "anyOf" in nested_schema:
+            for option in nested_schema["anyOf"]:
+                if "$ref" in option:
+                    ref_name = option["$ref"].split("/")[-1]
+                    ref_schema = defs[ref_name]
+                    section_class = getattr(config, ref_name)
+                    env_prefix = section_class.model_config.get("env_prefix")
+                    env_source = EnvSettingsSource(section_class, env_prefix=env_prefix)
+                    nested_schema = ref_schema
+                    break
+            else:
+                continue
+
+        # Resolve $ref inside the property if present
+        nested_type = nested_schema.get("type")
+        if "$ref" in nested_schema:
+            ref_name = nested_schema["$ref"].split("/")[-1]
+            nested_schema = defs[ref_name]
+            nested_type = nested_schema.get("type")
+
+        # If the nested type is object, flatten by recursing into _process_section_parameters
+        if nested_type == "object":
+            nested_params.extend(
+                _process_section_parameters(
+                    section_schema=nested_schema,
+                    model_fields={},
+                    env_source=env_source,
+                    defs=defs,
+                    env_prefix=env_prefix,
+                )
+            )
+            continue
+
+        # Determine environment variable(s) for this field
+        env = None
+        if nested_name in model_fields:
+            env_names = [
+                e.upper() for _, e, _ in env_source._extract_field_info(model_fields[nested_name], nested_name)
+            ]
+            if env_names:
+                env = " | ".join(sorted(set(env_names)))
+
+        # Determine default value for this field
+        if parent_default and nested_name in parent_default:
+            default_value = parent_default[nested_name]
+        else:
+            default_value = nested_schema.get("default")
+
+        param = ConfigurationSectionParameter(
+            name=nested_schema.get("title", nested_name).lower(),
+            description=nested_schema.get("description"),
+            default=default_value,
+            type=nested_type,
+            env=env,
+        )
+
+        # Recursively extract deeper nesting for arrays of objects
+        if nested_type == "array" and nested_schema.get("items", {}).get("type") == "object":
+            param.nested_parameters = _process_section_parameters(
+                section_schema=nested_schema["items"],
+                model_fields={},
+                env_source=env_source,
+                defs=defs,
+                env_prefix=None,
+            )
+
+        nested_params.append(param)
+    return nested_params
+
+
+def _process_section_parameters(
+    section_schema: dict,
+    model_fields: dict,
+    env_source: EnvSettingsSource,
+    defs: dict[str, Any],
+    env_prefix: str | None,
+) -> list["ConfigurationSectionParameter"]:
+    """Process and extract parameters for a configuration section.
+
+    Args:
+        section_schema: The JSON schema for the section.
+        model_fields: The model fields for the section class.
+        env_source: The environment settings source.
+        defs: The schema definitions.
+        env_prefix: The environment variable prefix.
+
+    Returns:
+        List of ConfigurationSectionParameter objects.
+    """
+    parameters = []
+    for param_name, param_schema in section_schema["properties"].items():
+        param_type = param_schema.get("type")
+        if param_type == "array":
+            array_type = param_schema.get("items", {}).get("type")
+            if array_type:
+                param_type = f"array[{array_type}]"
+
+        env = f"{env_prefix}{param_name}".upper() if env_prefix else None
+
+        nested_parameters = []
+        default = param_schema.get("default")
+        ref = param_schema.get("$ref")
+        definition = None
+
+        if "properties" in param_schema or ref:
+            if ref:
+                definition = defs.get(ref.split("/")[-1])
+            else:
+                definition = param_schema
+            if definition and definition.get("type") == "object":
+                param_type = "object"
+                default = "Check nested parameters"
+                nested_parameters = _extract_nested_parameters(
+                    definition, model_fields, env_source, defs, parent_default=definition.get("default")
+                )
+            elif definition:
+                param_type = definition.get("type")
+                if "enum" in definition:
+                    param_type += " (" + ", ".join([str(e) for e in definition["enum"]]) + ")"
+
+        parameters.append(
+            ConfigurationSectionParameter(
+                name=param_schema.get("title", param_name).lower(),
+                description=param_schema.get("description"),
+                default=default,
+                type=param_type,
+                env=env,
+                nested_parameters=nested_parameters,
+            )
+        )
+    return parameters
+
+
 def _generate_infrahub_config_documentation() -> None:
+    """Generate documentation for Infrahub configuration sections.
+
+    This function introspects the config.Settings model, extracts all configuration
+    sections and their parameters, and renders documentation using a Jinja2 template.
+    """
     import jinja2
+    from pydantic_settings import EnvSettingsSource
 
     from infrahub import config
 
     sections: list[ConfigurationSection] = []
     schema = config.Settings.model_json_schema()
+    defs = schema.get("$defs", {})
 
     print("Rendering doc for Infrahub config...")
 
-    # Compute the data from config.py
-    for prop in schema["properties"]:
-        if prop not in ["logging", "storage"]:  # TODO: Why would we remove logging and storage here?
-            section_ref = schema["properties"][prop]["$ref"]
-            section_class_name = section_ref.split("/")[-1]
-            section_class: BaseModel = getattr(config, section_class_name)
-            section = ConfigurationSection(
-                name=prop,
-                description=section_class.__doc__ or "",
-            )
-            section_schema = section_class.model_json_schema()
-            env_prefix = section_class.model_config.get("env_prefix")
-            for param in section_schema["properties"]:
-                param_type = section_schema["properties"][param].get("type")
-                if param_type == "array":
-                    array_type = section_schema["properties"][param].get("items", {}).get("type")
-                    if array_type:
-                        param_type = f"array[{array_type}]"
+    for section_name, section_prop in schema["properties"].items():
+        if section_name == "logging":
+            continue  # Skip logging as it is unused for remote logging to Sentry
 
-                env = None
-                if env_prefix:
-                    env = f"{env_prefix}{param}".upper()
+        section_ref = section_prop["$ref"]
+        section_class_name = section_ref.split("/")[-1]
+        section_class: type[BaseModel] = getattr(config, section_class_name)
+        section_schema = section_class.model_json_schema()
+        env_prefix = section_class.model_config.get("env_prefix")
+        env_source = EnvSettingsSource(section_class, env_prefix=env_prefix)
+        model_fields = getattr(section_class, "model_fields", {})
 
-                section_param = ConfigurationSectionParameter(
-                    name=section_schema["properties"][param].get("title", param).lower(),
-                    description=section_schema["properties"][param].get("description"),
-                    default=section_schema["properties"][param].get("default"),
-                    type=param_type,
-                    env=env,
-                )
-                section.parameters.append(section_param)
-            sections.append(section)
+        parameters = _process_section_parameters(
+            section_schema=section_schema,
+            model_fields=model_fields,
+            env_source=env_source,
+            defs=defs,
+            env_prefix=env_prefix,
+        )
+
+        section = ConfigurationSection(
+            name=section_name,
+            description=section_class.__doc__ or "",
+            parameters=parameters,
+        )
+        sections.append(section)
 
     # Render the template
-    # TODO: Create methods and so on to handle the template/jinja bits
     template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "infrahub_config.j2"
     output_label = "docs/reference/configuration.mdx"
     output_file = Path(DOCUMENTATION_DIRECTORY) / output_label
@@ -323,13 +493,12 @@ def _generate_infrahub_config_documentation() -> None:
 
 def _get_env_vars() -> dict[str, str]:
     from infrahub_sdk.config import ConfigBase
-    from pydantic_settings import EnvSettingsSource
 
     env_vars: dict[str, list[str]] = defaultdict(list[str])
     settings = ConfigBase()
     env_settings = EnvSettingsSource(settings.__class__, env_prefix=settings.model_config.get("env_prefix"))
 
-    for field_name, model_field in settings.model_fields.items():
+    for field_name, model_field in settings.__class__.model_fields.items():
         for field_key, field_env_name, _ in env_settings._extract_field_info(model_field, field_name):
             env_vars[field_key].append(field_env_name.upper())
 
@@ -537,13 +706,22 @@ class ConfigurationSectionParameter:
     default: Any | None = None
     type: str | None = None
     env: str | None = None
+    nested_parameters: list["ConfigurationSectionParameter"] = field(default_factory=list)
 
 
 @dataclass
 class ConfigurationSection:
+    """Represents a configuration section for documentation.
+
+    Args:
+        name: The name of the configuration section.
+        description: The section's description.
+        parameters: The list of parameters in this section.
+    """
+
     name: str
     description: str
-    parameters: list[ConfigurationSectionParameter] = field(default_factory=list)
+    parameters: list["ConfigurationSectionParameter"] = field(default_factory=list)
 
 
 def _generate_infrahub_events_documentation() -> None:

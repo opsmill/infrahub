@@ -18,14 +18,14 @@ ACTION_ADD_NODE_TO_GROUP = WorkflowDefinition(
 
 ACTION_RUN_GENERATOR = WorkflowDefinition(
     name="action-run-generator",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.actions.tasks",
     function="run_generator",
 )
 
 ACTION_RUN_GENERATOR_GROUP_EVENT = WorkflowDefinition(
     name="action-run-generator-group-event",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.actions.tasks",
     function="run_generator_group_event",
 )
@@ -84,7 +84,7 @@ TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
 
 TRIGGER_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="generator-definition-run",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     module="infrahub.generators.tasks",
     function="run_generator_definition",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -230,6 +230,13 @@ BRANCH_REBASE = WorkflowDefinition(
     function="rebase_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
+BRANCH_MIGRATE = WorkflowDefinition(
+    name="branch-migrate",
+    type=WorkflowType.CORE,
+    module="infrahub.core.branch.tasks",
+    function="migrate_branch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
 
 BRANCH_CREATE = WorkflowDefinition(
     name="create-branch",
@@ -323,6 +330,62 @@ COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+DISPLAY_LABELS_PROCESS_JINJA2 = WorkflowDefinition(
+    name="display-label-process-jinja2",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="process_display_label",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+DISPLAY_LABEL_JINJA2_UPDATE_VALUE = WorkflowDefinition(
+    name="display-label-jinja2-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="display_label_jinja2_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+HFID_PROCESS = WorkflowDefinition(
+    name="hfid-process",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="process_hfid",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+HFID_SETUP = WorkflowDefinition(
+    name="hfid-setup",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="hfid_setup",
+)
+
+
+HFID_UPDATE_VALUE = WorkflowDefinition(
+    name="hfid-update-value",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="hfid_update_value",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+TRIGGER_UPDATE_DISPLAY_LABELS = WorkflowDefinition(
+    name="trigger-update-display-labels",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="trigger_update_display_labels",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+TRIGGER_UPDATE_HFID = WorkflowDefinition(
+    name="trigger-update-hfid",
+    type=WorkflowType.CORE,
+    module="infrahub.hfid.tasks",
+    function="trigger_update_hfid",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     name="trigger_update_jinja2_computed_attributes",
     type=WorkflowType.CORE,
@@ -358,6 +421,14 @@ COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM = WorkflowDefinition(
     function="process_transform",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
+
+DISPLAY_LABELS_SETUP_JINJA2 = WorkflowDefinition(
+    name="display-labels-setup-jinja2",
+    type=WorkflowType.CORE,
+    module="infrahub.display_labels.tasks",
+    function="display_labels_setup_jinja2",
+)
+
 
 QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS = WorkflowDefinition(
     name="query-computed-attribute-transform-targets",
@@ -533,6 +604,42 @@ VALIDATE_SCHEMA_NUMBER_POOLS = WorkflowDefinition(
     function="validate_schema_number_pools",
 )
 
+
+PROFILE_REFRESH_MULTIPLE = WorkflowDefinition(
+    name="objects-profiles-refresh-multiple",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="objects_profiles_refresh_multiple",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
+PROFILE_REFRESH = WorkflowDefinition(
+    name="object-profiles-refresh",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="object_profiles_refresh",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
+PROFILE_REFRESH_SETUP = WorkflowDefinition(
+    name="profile-refresh-setup",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="profile_refresh_setup",
+)
+
+
+PROFILE_REFRESH_PROCESS = WorkflowDefinition(
+    name="profile-refresh-process",
+    type=WorkflowType.CORE,
+    module="infrahub.profiles.tasks",
+    function="profile_refresh_process",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+
 CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     name="clean-up-deadlocks",
     type=WorkflowType.INTERNAL,
@@ -558,6 +665,7 @@ WORKFLOWS = [
     BRANCH_MERGED,
     BRANCH_MERGE_MUTATION,
     BRANCH_MERGE_POST_PROCESS,
+    BRANCH_MIGRATE,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
     CLEAN_UP_DEADLOCKS,
@@ -570,6 +678,9 @@ WORKFLOWS = [
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
+    DISPLAY_LABELS_PROCESS_JINJA2,
+    DISPLAY_LABELS_SETUP_JINJA2,
+    DISPLAY_LABEL_JINJA2_UPDATE_VALUE,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
@@ -585,7 +696,14 @@ WORKFLOWS = [
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
+    HFID_PROCESS,
+    HFID_SETUP,
+    HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
+    PROFILE_REFRESH,
+    PROFILE_REFRESH_MULTIPLE,
+    PROFILE_REFRESH_PROCESS,
+    PROFILE_REFRESH_SETUP,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
     REMOVE_ADD_NODE_FROM_GROUP,
@@ -611,6 +729,8 @@ WORKFLOWS = [
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_CONFIGURE_ALL,
     TRIGGER_GENERATOR_DEFINITION_RUN,
+    TRIGGER_UPDATE_DISPLAY_LABELS,
+    TRIGGER_UPDATE_HFID,
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     VALIDATE_SCHEMA_NUMBER_POOLS,

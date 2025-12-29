@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, assert_never
 
+from infrahub.constants.enums import OrderByField
 from infrahub.core.query import Query, QueryType
 from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from infrahub.core.node.standard import StandardNode
+    from infrahub.core.node.standard import StandardNode, StandardNodeOrdering
     from infrahub.database import InfrahubDatabase
 
 
@@ -132,13 +133,22 @@ class StandardNodeGetItemQuery(Query):
 class StandardNodeGetListQuery(Query):
     name = "standard_node_list"
     type = QueryType.READ
+    raw_filter: str | None = None
 
     def __init__(
-        self, node_class: StandardNode, ids: list[str] | None = None, node_name: str | None = None, **kwargs: Any
+        self,
+        node_class: StandardNode,
+        node_ordering: StandardNodeOrdering,
+        ids: list[str] | None = None,
+        node_name: str | None = None,
+        partial_match: bool = False,
+        **kwargs: Any,
     ) -> None:
         self.ids = ids
         self.node_name = node_name
         self.node_class = node_class
+        self.partial_match = partial_match
+        self.node_ordering = node_ordering
 
         super().__init__(**kwargs)
 
@@ -147,9 +157,14 @@ class StandardNodeGetListQuery(Query):
         if self.ids:
             filters.append("n.uuid in $ids_value")
             self.params["ids_value"] = self.ids
-        if self.node_name:
+        if self.node_name and not self.partial_match:
             filters.append("n.name = $name")
             self.params["name"] = self.node_name
+        if self.node_name and self.partial_match:
+            filters.append("toLower(toString(n.name)) CONTAINS toLower(toString($name))")
+            self.params["name"] = self.node_name
+        if self.raw_filter:
+            filters.append(self.raw_filter)
 
         where = ""
         if filters:
@@ -166,4 +181,12 @@ class StandardNodeGetListQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-        self.order_by = [f"{db.get_id_function_name()}(n)"]
+        match self.node_ordering.order_by:
+            case OrderByField.ID:
+                self.order_by = [f"{db.get_id_function_name()}(n)"]
+            case OrderByField.CREATED_AT:
+                self.order_by = [f"n.created_at {self.node_ordering.direction.value}"]
+            case OrderByField.UPDATED_AT:
+                self.order_by = [f"n.updated_at {self.node_ordering.direction.value}"]
+            case _:
+                assert_never(self.node_ordering.order_by)

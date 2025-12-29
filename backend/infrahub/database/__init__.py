@@ -13,7 +13,7 @@ from neo4j import (
     AsyncResult,
     AsyncSession,
     AsyncTransaction,
-    NotificationDisabledCategory,
+    NotificationDisabledClassification,
     NotificationMinimumSeverity,
     Query,
     Record,
@@ -172,19 +172,6 @@ class InfrahubDatabase:
             self.db_type = db_type
         else:
             self.db_type = config.SETTINGS.database.db_type
-
-    def __del__(self) -> None:
-        if not self._session or not self._is_session_local or self._session.closed():
-            return
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-        if loop and loop.is_running():
-            loop.create_task(self._session.close())
-        else:
-            asyncio.run(self._session.close())
 
     @property
     def is_session(self) -> bool:
@@ -369,7 +356,7 @@ class InfrahubDatabase:
                     type
                     and type == QueryType.READ
                     and runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]
-                    and not (self.is_transaction and runtime in [Neo4jRuntime.PARALLEL])
+                    and not (self.is_transaction and runtime == Neo4jRuntime.PARALLEL)
                 ):
                     query = f"CYPHER runtime = {runtime.value}\n" + query
                 else:
@@ -505,8 +492,8 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
-        notifications_disabled_categories=[
-            NotificationDisabledCategory.UNRECOGNIZED,
+        notifications_disabled_classifications=[
+            NotificationDisabledClassification.UNRECOGNIZED,
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )

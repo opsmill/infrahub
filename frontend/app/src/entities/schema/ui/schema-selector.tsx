@@ -1,14 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import * as R from "ramda";
+import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
-import { ArrayParam, useQueryParam } from "use-query-params";
-
-import { QSP } from "@/config/qsp";
+import * as R from "remeda";
 
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import {
@@ -24,7 +23,7 @@ type SchemaSelectorProps = {
   className?: string;
 };
 export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
-  const [selectedKind, setKind] = useQueryParam(QSP.KIND, ArrayParam);
+  const [selectedKind, setKind] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
@@ -43,9 +42,10 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   );
 
   const schemasPerNamespace = R.pipe(
-    R.sortBy<ModelSchema>(R.prop("name")),
-    R.groupBy(R.prop("namespace"))
-  )(schemas);
+    schemas,
+    R.sortBy((schema) => schema.name),
+    R.groupBy((schema) => schema.namespace)
+  );
 
   return (
     <section className={classNames("space-y-2 bg-white p-4", className)}>

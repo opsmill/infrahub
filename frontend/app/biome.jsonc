@@ -8,10 +8,8 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
-      "**",
       "!coverage",
       "!dist",
-      "!package.json",
       "!playwright-report",
       "!test-results",
       "!tests/e2e/.auth",
@@ -87,6 +85,7 @@
         "noArguments": "off"
       },
       "correctness": {
+        "useImageSize": "off",
         "noUndeclaredDependencies": "error",
         "noUndeclaredVariables": "off",
         "noUnusedFunctionParameters": "error",
@@ -105,12 +104,12 @@
         "useUniqueElementIds": "off"
       },
       "nursery": {
-        "useConsistentTypeDefinitions": "off",
+        "useFind": "error",
+        "useConsistentArrowReturn": "off",
         "useExhaustiveSwitchCases": "off",
-        "useImageSize": "off",
         "noUnnecessaryConditions": "off",
         "useMaxParams": "off",
-        "noNonNullAssertedOptionalChain": "off",
+        "noReactForwardRef": "off",
         "noShadow": "off"
       },
       "performance": {
@@ -133,6 +132,7 @@
         "useBlockStatements": "off",
         "useConsistentArrayType": "off",
         "useConsistentBuiltinInstantiation": "off",
+        "useConsistentTypeDefinitions": "off",
         "useConst": "off",
         "useDefaultSwitchClause": "off",
         "useEnumInitializers": "off",
@@ -156,6 +156,7 @@
         },
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",
+        "noNonNullAssertedOptionalChain": "off",
         "noUnknownAtRules": "off",
         "noEvolvingTypes": "off",
         "noExplicitAny": "off",
@@ -188,5 +189,10 @@
       "enabled": true
     }
   },
-  "extends": ["ultracite"]
+  "html": {
+    "formatter": {
+      "enabled": true
+    }
+  },
+  "extends": ["ultracite/core", "ultracite/react"]
 }

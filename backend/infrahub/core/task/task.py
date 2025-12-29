@@ -1,9 +1,11 @@
+# This entire file and possibly everything in this module should be deleted. - Patrick (2025-12-11)
+
 from typing import Any
 
 from pydantic import ConfigDict, Field
 
 from infrahub.core.constants import TaskConclusion
-from infrahub.core.node.standard import StandardNode
+from infrahub.core.node.standard import StandardNode, StandardNodeQueryFields
 from infrahub.core.protocols import CoreNode
 from infrahub.core.query.standard_node import StandardNodeQuery
 from infrahub.core.query.task import TaskNodeCreateQuery, TaskNodeQuery, TaskNodeQueryWithLogs
@@ -70,7 +72,7 @@ class Task(StandardNode):
                 logs = [
                     {
                         "node": await TaskLog.from_db(result, extras={"task_id": task_result.get("uuid")}).to_graphql(
-                            fields=log_fields
+                            fields=StandardNodeQueryFields(node=log_fields)
                         )
                     }
                     for result in logs_results

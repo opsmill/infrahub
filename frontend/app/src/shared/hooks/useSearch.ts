@@ -1,4 +1,4 @@
-import { SEARCH_ANY_FILTER } from "@/config/constants";
+import { SEARCH_ANY_FILTER } from "@/shared/config/constants";
 
 import useFilters from "./useFilters";
 

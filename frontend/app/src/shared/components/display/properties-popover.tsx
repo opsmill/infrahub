@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai/index";
+import { useAtom } from "jotai";
 import { useState } from "react";
 
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import type { Permission } from "@/entities/permission/types";
@@ -15,7 +16,6 @@ interface PropertiesEditTriggerProps {
   type: "attribute" | "relationship";
   properties: any;
   attributeSchema: any;
-  refetch?: () => Promise<unknown>;
   data: any;
   schema: any;
   hideHeader?: boolean;
@@ -26,7 +26,6 @@ const PropertiesPopover = ({
   type,
   properties,
   attributeSchema,
-  refetch,
   data,
   schema,
   hideHeader,
@@ -41,7 +40,6 @@ const PropertiesPopover = ({
         updatedAt={properties.updated_at}
         source={properties.source}
         owner={properties.owner}
-        isFromProfile={properties.is_from_profile}
         isProtected={properties.is_protected}
         header={
           !hideHeader &&
@@ -76,7 +74,7 @@ const PropertiesPopover = ({
         title={
           <SlideOverTitle
             schema={schema}
-            currentObjectLabel={data?.display_label}
+            currentObjectLabel={data ? getNodeLabel(data) : ""}
             title={`${metaEditFieldDetails?.label} properties`}
             subtitle={`Update the properties of ${metaEditFieldDetails?.label}`}
           />
@@ -85,8 +83,8 @@ const PropertiesPopover = ({
         setOpen={setShowMetaEditModal}
       >
         <ObjectItemMetaEdit
-          closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => refetch && refetch()}
+          onCancel={() => setShowMetaEditModal(false)}
+          onSuccess={() => setShowMetaEditModal(false)}
           attributeOrRelationshipToEdit={
             (data as any)[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             (data as any)[metaEditFieldDetails?.attributeOrRelationshipName]

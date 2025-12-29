@@ -106,6 +106,16 @@ export type RelationshipValueFromPool = {
   value: Node | { from_pool: { id: string } };
 };
 
+export type RelationshipOneValueFromProfile = {
+  source: ProfileSource;
+  value: Node | null;
+};
+
+export type RelationshipManyValueFromProfile = {
+  source: ProfileSource;
+  value: Array<Node> | null;
+};
+
 export type RelationshipValueFromUser =
   | RelationshipOneValueFromUser
   | RelationshipManyValueFromUser;
@@ -114,10 +124,15 @@ export type RelationshipValueFromTemplate =
   | RelationshipOneValueFromTemplate
   | RelationshipManyValueFromTemplate;
 
+export type RelationshipValueFromProfile =
+  | RelationshipOneValueFromProfile
+  | RelationshipManyValueFromProfile;
+
 export type FormRelationshipValue =
   | RelationshipValueFromUser
   | RelationshipValueFromPool
   | RelationshipValueFromTemplate
+  | RelationshipValueFromProfile
   | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
@@ -139,6 +154,7 @@ export type FormFieldProps = {
     kind: string;
     defaultAllocatedObjectKind: string;
   };
+  shouldUnregister?: boolean;
 };
 
 export type DynamicInputFieldProps = FormFieldProps & {
@@ -189,7 +205,6 @@ export interface DynamicRelationshipFieldProps
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  schema: ModelSchema;
   peerField?: string;
 }
 

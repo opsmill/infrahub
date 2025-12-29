@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 generics:
   - name: Interface
     namespace: Infra
@@ -8,8 +8,7 @@ generics:
     label: "Interface"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__hostname__value
       - name__value
@@ -49,8 +48,7 @@ generics:
     include_in_menu: false
     label: "Choice"
     default_filter: name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     attributes:
@@ -76,12 +74,12 @@ generics:
         kind: Attribute
         identifier: connected__endpoint
 nodes:
-  - name: Generic  # Organization
+  - name: Generic # Organization
     namespace: Organization
     label: Organization
     description: An organization represent a legal entity, a company.
     default_filter: name__value
-    display_labels: [label__value]
+    display_label: "{{ label__value }}"
     order_by: [name__value]
     icon: mdi:domain
     include_in_menu: true
@@ -105,12 +103,12 @@ nodes:
         optional: true
         cardinality: one
         kind: Generic
-  - name: Generic  # Location
+  - name: Generic # Location
     namespace: Location
     label: Location
-    description: 'A location represent a physical element: a building, a site, a city'
+    description: "A location represent a physical element: a building, a site, a city"
     default_filter: name__value
-    display_labels: [name__value]
+    display_label: "{{ name__value }}"
     order_by: [name__value]
     icon: mdi:map-marker-radius-outline
     include_in_menu: true
@@ -139,13 +137,12 @@ nodes:
     namespace: Infra
     description: "A Platform represent the type of software running on a device"
     label: "Platform"
-    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    icon: "mdi:application-cog-outline" # mdi:application-brackets-outline
     menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -177,8 +174,7 @@ nodes:
     icon: "mdi:poll"
     menu_placement: "InfraDevice"
     default_filter: name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - name__value
     inherit_from:
@@ -217,8 +213,7 @@ nodes:
       - "CoreArtifactTarget"
     order_by:
       - hostname__value
-    display_labels:
-      - hostname__value
+    display_label: "{{ hostname__value }}"
     attributes:
       - name: hostname
         kind: Text
@@ -278,8 +273,7 @@ nodes:
     icon: "mdi:format-list-bulleted"
     uniqueness_constraints:
       - ["device", "name__value"]
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__hostname__value
       - name__value
@@ -328,8 +322,7 @@ nodes:
     #   - ["manufacturer", "model", "version__value"]
     order_by:
       - version__value
-    display_labels:
-      - version__value
+    display_label: "{{ version__value }}"
     attributes:
       - name: version
         kind: Text
@@ -357,13 +350,11 @@ nodes:
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
-    icon: "mdi:lan-pending"   # mdi:lan
+    icon: "mdi:lan-pending" # mdi:lan
     menu_placement: "InfraIPAddress"
     order_by:
       - vlan_id__value
-    display_labels:
-      - name__value
-      - vlan_id__value
+    display_label: "{{ name__value }} {{ vlan_id__value }}"
     uniqueness_constraints:
       - ["location", "vlan_id__value"]
     attributes:
@@ -390,8 +381,7 @@ nodes:
     menu_placement: "InfraIPAddress"
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -416,8 +406,7 @@ nodes:
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
     include_in_menu: true
-    display_labels:
-      - name__value
+    display_label: "{{ name__value }}"
     order_by:
       - device__hostname__value
       - name__value
@@ -442,8 +431,7 @@ nodes:
     default_filter: address__value
     order_by:
       - "address__value"
-    display_labels:
-      - address__value
+    display_label: "{{ address__value }}"
     attributes:
       - name: address
         kind: IPHost
@@ -469,8 +457,7 @@ nodes:
     order_by:
       - vrf__name__value
       - prefix__value
-    display_labels:
-      - prefix__value
+    display_label: "{{ prefix__value }}"
     attributes:
       - name: prefix
         kind: IPNetwork

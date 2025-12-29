@@ -37,6 +37,7 @@ RESERVED_ATTR_REL_NAMES = [
     "rels",
     "save",
     "hfid",
+    "process_pools",
 ]
 
 RESERVED_ATTR_REL_HIERARCHICAL_NAMES = [
@@ -52,11 +53,14 @@ NULL_VALUE = "NULL"
 
 EVENT_NAMESPACE = "infrahub"
 
+SYSTEM_USER_ID = "__system__"
+
 
 class EventType(InfrahubStringEnum):
     BRANCH_CREATED = f"{EVENT_NAMESPACE}.branch.created"
     BRANCH_DELETED = f"{EVENT_NAMESPACE}.branch.deleted"
     BRANCH_MERGED = f"{EVENT_NAMESPACE}.branch.merged"
+    BRANCH_MIGRATED = f"{EVENT_NAMESPACE}.branch.migrated"
     BRANCH_REBASED = f"{EVENT_NAMESPACE}.branch.rebased"
 
     SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.updated"
@@ -106,6 +110,7 @@ class GlobalPermissions(InfrahubStringEnum):
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
     OVERRIDE_CONTEXT = "override_context"
+    UPDATE_OBJECT_HFID_DISPLAY_LABEL = "update_object_hfid_display_label"
 
 
 class PermissionAction(InfrahubStringEnum):
@@ -363,6 +368,21 @@ class AttributeDBNodeType(Flag):
     IPNETWORK = DEFAULT | INDEX_ONLY | IPNETWORK_ONLY
 
 
+class MetadataOptions(Flag):
+    NONE = 0
+    SOURCE = auto()
+    OWNER = auto()
+    LINKED_NODES = SOURCE | OWNER
+    IS_PROTECTED = auto()
+    CREATED_BY = auto()
+    CREATED_AT = auto()
+    UPDATED_BY = auto()
+    UPDATED_AT = auto()
+    TIMESTAMPS = CREATED_AT | UPDATED_AT
+    USERS = CREATED_BY | UPDATED_BY
+    USER_TIMESTAMPS = TIMESTAMPS | USERS
+
+
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",
@@ -394,3 +414,5 @@ DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
 OBJECT_TEMPLATE_NAME_ATTR = "template_name"
+PROFILE_NODE_RELATIONSHIP_IDENTIFIER = "node__profile"
+PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER = "template__profile"

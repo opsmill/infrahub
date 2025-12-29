@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub import config
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.standard_node import StandardNodeGetListQuery
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -68,81 +69,79 @@ CALL (vertex_id) {
         self.add_to_query(query)
 
 
-class GetAllBranchInternalRelationshipQuery(Query):
-    name: str = "get_internal_relationship"
+class RebaseBranchQuery(Query):
+    """Rebase a branch onto the default branch by updating edge timestamps
 
-    type: QueryType = QueryType.READ
+    For every edge on this branch
+        if it has a from time before $at and no to time, update it to $at
+        if it has a to time before $at, delete the edge
+        if it has a to time after $at, update the from time to $at
+    Then delete any orphaned vertices
+    """
+
+    name: str = "rebase_branch"
+    type: QueryType = QueryType.WRITE
     insert_return: bool = False
+    raise_error_if_empty: bool = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["branch_name"] = self.branch.name
+        self.params["at"] = self.at.to_string()
+
         query = """
-        MATCH p = ()-[r]-()
-        WHERE r.branch = $branch_name
-        RETURN DISTINCT r
+// --------------
+// Get all edges on this branch with their source and destination vertices
+// --------------
+MATCH (s)-[r]-(d)
+WHERE r.branch = $branch_name
+WITH DISTINCT r, s, d
+WITH r, s, d,
+    CASE
+        // No `to` and `from` <= at: update
+        WHEN r.to IS NULL AND r.from <= $at THEN TRUE
+        // Has `to` and `to` < at: delete
+        WHEN r.to IS NOT NULL AND r.to < $at THEN FALSE
+        // Has `to` and `to` >= at: update
+        ELSE TRUE
+    END AS do_update
+
+// --------------
+// Process updates: set from = at for relationships we're keeping
+// --------------
+CALL (r, do_update) {
+    WITH r, do_update
+    WHERE do_update = TRUE
+    SET r.from = $at
+}
+
+// --------------
+// Delete the edges
+// --------------
+WITH r, s, d, do_update
+WHERE do_update = FALSE
+CALL (r, s, d) {
+    DELETE r
+}
+// --------------
+// Clean up any orpahned nodes edges
+// --------------
+WITH DISTINCT s, d
+UNWIND [s, d] AS n
+WITH DISTINCT n
+CALL (n) {
+    MATCH (n)
+    WHERE NOT exists((n)--())
+    DELETE n
+}
         """
         self.add_to_query(query=query)
-        self.params["branch_name"] = self.branch.name
-        self.return_labels = ["r"]
 
 
-class RebaseBranchUpdateRelationshipQuery(Query):
-    name: str = "rebase_branch_update"
+class BranchNodeGetListQuery(StandardNodeGetListQuery):
+    def __init__(self, exclude_global: bool = False, **kwargs: Any) -> None:
+        self.raw_filter = f"n.status <> '{BranchStatus.DELETING.value}'"
 
-    type: QueryType = QueryType.WRITE
+        if exclude_global:
+            self.raw_filter += f" AND n.name <> '{GLOBAL_BRANCH_NAME}'"
 
-    def __init__(self, ids: list[str], **kwargs: Any) -> None:
-        self.ids = ids
         super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        query = """
-        MATCH ()-[r]->()
-        WHERE %(id_func)s(r) IN $ids
-        SET r.from = $at
-        SET r.conflict = NULL
-        """ % {
-            "id_func": db.get_id_function_name(),
-        }
-
-        self.add_to_query(query=query)
-
-        self.params["at"] = self.at.to_string()
-        self.params["ids"] = [db.to_database_id(id) for id in self.ids]
-        self.return_labels = [f"{db.get_id_function_name()}(r)"]
-
-
-class RebaseBranchDeleteRelationshipQuery(Query):
-    name: str = "rebase_branch_delete"
-
-    type: QueryType = QueryType.WRITE
-    insert_return: bool = False
-
-    def __init__(self, ids: list[str], **kwargs: Any) -> None:
-        self.ids = ids
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE %(id_func)s(r) IN $ids
-            DELETE r
-            """
-        else:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE %(id_func)s(r) IN $ids
-            DELETE r
-            WITH *
-            UNWIND nodes(p) AS n
-            MATCH (n)
-            WHERE NOT exists((n)--())
-            DELETE n
-            """
-        query %= {
-            "id_func": db.get_id_function_name(),
-        }
-
-        self.add_to_query(query=query)
-
-        self.params["ids"] = [db.to_database_id(id) for id in self.ids]

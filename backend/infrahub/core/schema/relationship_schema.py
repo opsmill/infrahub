@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, PrivateAttr
 
 from infrahub import config
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipDirection, RelationshipKind
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.exceptions import InitializationError
@@ -44,6 +44,14 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     @property
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
+
+    @property
+    def support_profiles(self) -> bool:
+        return (
+            self.read_only is False
+            and self.optional is True
+            and self.kind in {RelationshipKind.GENERIC, RelationshipKind.ATTRIBUTE}
+        )
 
     def to_dict(self) -> dict:
         data = self.model_dump(exclude_unset=True, exclude_none=True)
@@ -84,7 +92,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
     def update_from_generic(self, other: RelationshipSchema) -> None:
         fields_to_exclude = ("id", "order_weight", "branch", "inherited", "filters")
-        for name in self.model_fields:
+        for name in self.__class__.model_fields:
             if name in fields_to_exclude:
                 continue
             if getattr(self, name) != getattr(other, name):
@@ -100,7 +108,6 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         include_match: bool = True,
         param_prefix: str | None = None,
         partial_match: bool = False,
-        support_profiles: bool = False,  # noqa: ARG002
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         """Generate Query String Snippet to filter the right node."""
 

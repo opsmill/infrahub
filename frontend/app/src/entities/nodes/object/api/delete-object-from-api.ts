@@ -4,12 +4,12 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-const getDeleteObjectQuery = (kind: string, objectid: string) => {
+const getDeleteObjectQuery = (kind: string, objectId: string) => {
   const query = {
     mutation: {
       [`${kind}Delete`]: {
         __args: {
-          data: { id: objectid },
+          data: { id: objectId },
         },
         ok: true,
       },

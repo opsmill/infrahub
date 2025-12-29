@@ -120,7 +120,7 @@ async def test_query(
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"
@@ -161,7 +161,7 @@ async def test_query(
 
 async def test_query_no_relationships(
     db: InfrahubDatabase, branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
-):
+) -> None:
     await branch.rebase(db=db)
     car_schema = registry.schema.get(name="TestCar", duplicate=False)
     owner_rel = car_schema.get_relationship(name="owner")
@@ -185,7 +185,9 @@ async def test_query_no_relationships(
     assert len(all_paths) == 0
 
 
-async def test_query_switch_from_generic_to_node_success(db: InfrahubDatabase, branch: Branch, car_person_generic_data):
+async def test_query_switch_from_generic_to_node_success(
+    db: InfrahubDatabase, branch: Branch, car_person_generic_data
+) -> None:
     person_schema = registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
     cars_rel.peer = "TestElectricCar"
@@ -202,7 +204,9 @@ async def test_query_switch_from_generic_to_node_success(db: InfrahubDatabase, b
     assert len(all_paths) == 0
 
 
-async def test_query_switch_from_generic_to_node_failure(db: InfrahubDatabase, branch: Branch, car_person_generic_data):
+async def test_query_switch_from_generic_to_node_failure(
+    db: InfrahubDatabase, branch: Branch, car_person_generic_data
+) -> None:
     p_1 = car_person_generic_data["p_1"]
     g_car = await Node.init(db=db, schema="TestGazCar", branch=branch)
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=23, owner=p_1)
@@ -233,7 +237,9 @@ async def test_query_switch_from_generic_to_node_failure(db: InfrahubDatabase, b
     ]
 
 
-async def test_query_switch_from_node_to_generic_success(db: InfrahubDatabase, branch: Branch, car_person_generic_data):
+async def test_query_switch_from_node_to_generic_success(
+    db: InfrahubDatabase, branch: Branch, car_person_generic_data
+) -> None:
     p_1 = car_person_generic_data["p_1"]
     e_car = car_person_generic_data["e_car"]
     g_car = await Node.init(db=db, schema="TestGazCar", branch=branch)
@@ -260,7 +266,9 @@ async def test_query_switch_from_node_to_generic_success(db: InfrahubDatabase, b
     assert len(all_paths) == 0
 
 
-async def test_query_switch_from_node_to_generic_failure(db: InfrahubDatabase, branch: Branch, car_person_generic_data):
+async def test_query_switch_from_node_to_generic_failure(
+    db: InfrahubDatabase, branch: Branch, car_person_generic_data
+) -> None:
     await branch.rebase(db=db)
     p_1 = await NodeManager.get_one(db=db, id=car_person_generic_data["p_1"].id, branch=branch)
     e_car = await NodeManager.get_one(db=db, id=car_person_generic_data["e_car"].id, branch=branch)
@@ -312,7 +320,7 @@ async def test_query_switch_from_node_to_generic_failure(db: InfrahubDatabase, b
 
 async def test_query_update_on_branch_success(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, car_person_generic_data
-):
+) -> None:
     p_1 = car_person_generic_data["p_1"]
     g_car = await Node.init(db=db, schema="TestGazCar", branch=default_branch)
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=29, owner=p_1)
@@ -342,7 +350,7 @@ async def test_query_update_on_branch_success(
 
 async def test_query_update_on_branch_failure(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, car_person_generic_data
-):
+) -> None:
     p_2 = car_person_generic_data["p_2"]
     g_car = await Node.init(db=db, schema="TestGazCar", branch=default_branch)
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=29, owner=p_2)
@@ -394,7 +402,7 @@ async def test_query_update_on_branch_failure(
 
 async def test_query_delete_on_branch(
     db: InfrahubDatabase, branch: Branch, default_branch: Branch, car_person_generic_data
-):
+) -> None:
     p_1 = car_person_generic_data["p_1"]
     g_car = await Node.init(db=db, schema="TestGazCar", branch=default_branch)
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=29, owner=p_1)
@@ -430,7 +438,7 @@ async def test_validator(
     car_accord_main: Node,
     car_volt_main: Node,
     person_john_main,
-):
+) -> None:
     car_schema = registry.schema.get(name="TestCar")
     owner_rel = car_schema.get_relationship(name="owner")
     owner_rel.peer = "TestCar"

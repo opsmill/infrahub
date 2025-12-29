@@ -14,6 +14,7 @@ from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
+from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
@@ -33,7 +34,7 @@ class TestDefaultBranchPermission:
         first_account: CoreAccount,
         second_account: CoreAccount,
         permissions_helper: PermissionsHelper,
-    ):
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -65,7 +66,7 @@ class TestDefaultBranchPermission:
     )
     async def test_supports_default_branch_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = DefaultBranchPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -82,7 +83,7 @@ class TestDefaultBranchPermission:
         permissions_helper: PermissionsHelper,
         contains_mutation: bool,
         branch_name: str,
-    ):
+    ) -> None:
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -102,6 +103,7 @@ class TestDefaultBranchPermission:
             types=MagicMock(),
             single_relationship_resolver=MagicMock(),
             many_relationship_resolver=MagicMock(),
+            account_metadata_resolver=AccountMetadataResolver(),
             account_session=session,
             permissions=permission_manager,
         )
@@ -127,7 +129,7 @@ class TestDefaultBranchPermission:
         permissions_helper: PermissionsHelper,
         contains_mutation: bool,
         branch_name: str,
-    ):
+    ) -> None:
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -147,6 +149,7 @@ class TestDefaultBranchPermission:
             types=MagicMock(),
             single_relationship_resolver=MagicMock(),
             many_relationship_resolver=MagicMock(),
+            account_metadata_resolver=AccountMetadataResolver(),
             account_session=session,
             permissions=permission_manager,
         )

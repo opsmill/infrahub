@@ -49,7 +49,7 @@ async def test_run_generator_definition(
     car_person_data_generic,
     create_test_admin: Node,
     definition1: Node,
-):
+) -> None:
     query = """
     mutation {
         CoreGeneratorDefinitionRun(data: { id: "%s" }, wait_until_completion: false) {
@@ -65,7 +65,7 @@ async def test_run_generator_definition(
     )
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, service=service, account_session=account_session
+        db=db, branch=default_branch, service=service, account_session=account_session
     )
 
     with patch(
@@ -103,6 +103,8 @@ async def test_run_generator_definition(
                             parameters=definition1.parameters.value,
                             group_id=group.id,
                             convert_query_response=definition1.convert_query_response.value,
+                            execute_in_proposed_change=definition1.execute_in_proposed_change.value,
+                            execute_after_merge=definition1.execute_after_merge.value,
                         ),
                         branch=context.branch.name,
                     )

@@ -24,7 +24,7 @@ schema = {
 
 
 class TestUpsertWithBothHfidAndDefaulFilter(TestInfrahubApp):
-    async def test_multiple_upsert(self, client: InfrahubClient):
+    async def test_multiple_upsert(self, client: InfrahubClient) -> None:
         res = await client.schema.load([schema])
         assert len(res.errors) == 0, res.errors
 

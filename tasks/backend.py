@@ -25,8 +25,8 @@ def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
-    exec_cmd = f"ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml && "
-    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml && "
+    exec_cmd += f"uv run ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -48,7 +48,7 @@ def ruff(context: Context) -> None:
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"poetry run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -59,7 +59,7 @@ def mypy(context: Context) -> None:
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
-    exec_cmd = f"poetry run mypy --show-error-codes {MAIN_DIRECTORY}"
+    exec_cmd = f"uv run mypy --show-error-codes {MAIN_DIRECTORY}"
 
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -77,7 +77,7 @@ def lint(context: Context) -> None:
 @task(optional=["database"])
 def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -87,7 +87,7 @@ def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 @task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -97,7 +97,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
@@ -107,7 +107,7 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Res
 @task(optional=["database"])
 def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
@@ -182,7 +182,7 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
         context.run(exec_cmd)
 
     _generate_protocols(context=context)
-    exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py"
+    exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py backend/tests/protocols.py"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -279,9 +279,17 @@ def _sort_and_filter_models(
 
 
 def _generate_protocols(context: Context) -> None:
+    import sys
+
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.schema.definitions.core import core_models
+
+    # We need to insert this folder in the search order to ensure
+    # that it appears before the python_sdk folder since that folder also has
+    # a 'tests' module and the sys.path seems to be random between runs.
+    sys.path.insert(0, f"{ESCAPED_REPO_PATH}/backend")
+    from tests.helpers.schema import test_models
 
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
     env.filters["inheritance"] = _jinja2_filter_inheritance
@@ -293,6 +301,20 @@ def _generate_protocols(context: Context) -> None:
 
     protocols_rendered = template.render(
         generics=_sort_and_filter_models(core_models["generics"]), models=_sort_and_filter_models(core_models["nodes"])
+    )
+    protocols_output = f"{generated}/protocols.py"
+    Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")
+
+    execute_command(context=context, command=f"ruff format {protocols_output}")
+    execute_command(context=context, command=f"ruff check --fix {protocols_output}")
+
+    # Export test protocols for backend code use
+    generated = f"{ESCAPED_REPO_PATH}/backend/tests/"
+
+    test_models["nodes"].extend(core_models["nodes"])
+    test_models["generics"].extend(core_models["generics"])
+    protocols_rendered = template.render(
+        generics=_sort_and_filter_models(test_models["generics"]), models=_sort_and_filter_models(test_models["nodes"])
     )
     protocols_output = f"{generated}/protocols.py"
     Path(protocols_output).write_text(protocols_rendered, encoding="utf-8")

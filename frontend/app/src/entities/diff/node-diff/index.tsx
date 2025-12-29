@@ -1,15 +1,16 @@
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { createContext, useEffect } from "react";
-import { StringParam, useQueryParam } from "use-query-params";
-
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { QSP } from "@/config/qsp";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
+import type { GetDiffSummaryParams } from "@/entities/diff/domain/get-diff-summary";
 import { useDiffTreeInfiniteQuery } from "@/entities/diff/domain/get-diff-tree";
+import { DiffNode } from "@/entities/diff/node-diff/node";
 import { DIFF_STATUS, type DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { buildFilters } from "@/entities/diff/node-diff/utils";
 import { DiffComputing } from "@/entities/diff/ui/diff-computing";
@@ -19,29 +20,24 @@ import { DiffRebaseButton } from "@/entities/diff/ui/diff-rebase-button";
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 import DiffTree from "@/entities/diff/ui/diff-tree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-
-import { type DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/ui/diff-filter";
-import { DiffNode } from "./node";
+import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
 export const DiffContext = createContext({});
 
-type NodeDiffProps = {
-  filters: DiffFilter;
-  branchName: string;
-};
+type NodeDiffProps = GetDiffSummaryParams;
 
-export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
-  const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
+export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
+  const [qspStatus] = useQueryState(QSP.STATUS);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
-  const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
+  const branchName: string = proposedChangesDetails?.source_branch?.value || branch; // Used in proposed changes view and branch view
 
   // Get filters merged with status filter
   const finalFilters = buildFilters(filters, qspStatus);
 
   const { data, isPending, error, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useDiffTreeInfiniteQuery({
-      branchName: branch,
+      branchName,
       filters: finalFilters,
     });
 
@@ -66,14 +62,14 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   if (!firstPageNodes) {
     return (
       <DiffComputing
-        sourceBranch={branch}
+        sourceBranch={branchName}
         destinationBranch={proposedChangesDetails.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
       />
     );
   }
 
   if (!qspStatus && firstPageNodes.nodes?.length === 0) {
-    return <DiffEmpty branchName={branch} lastRefreshedAt={firstPageNodes.to_time} />;
+    return <DiffEmpty branchName={branchName} lastRefreshedAt={firstPageNodes.to_time} />;
   }
 
   const nodes =
@@ -89,12 +85,12 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   return (
     <div className="flex h-[calc(100vh-14rem)] flex-col overflow-hidden">
       <header className="flex items-center gap-2 border-gray-200 border-b px-4 py-2">
-        <ProposedChangeDiffFilter branch={branch} filters={filters} />
+        <DiffFilter branch={branchName} filters={filters} />
         <span className="ml-auto inline-flex gap-1 text-xs">
           Updated <DateDisplay date={firstPageNodes?.to_time} />
         </span>
-        <DiffRefreshButton size="sm" variant="primary" branchName={branch} />
-        <DiffRebaseButton branchName={branch} />
+        <DiffRefreshButton size="sm" variant="primary" branchName={branchName} />
+        <DiffRebaseButton branchName={branchName} />
       </header>
 
       <div className="grid grow grid-cols-4 overflow-hidden">

@@ -1,12 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
+import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
-import { StringParam, useQueryParam } from "use-query-params";
-
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -26,6 +23,8 @@ import {
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
+import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
+import { QSP } from "@/shared/config/qsp";
 
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
@@ -37,7 +36,7 @@ import { DRAFT_STATE, OPEN_STATE } from "../constants";
 import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {
-  const [sourceBranch] = useQueryParam(QSP.SOURCE_BRANCH, StringParam);
+  const [sourceBranch] = useQueryState(QSP.SOURCE_BRANCH);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
@@ -122,7 +121,7 @@ export const ProposedChangeCreateForm = () => {
 
         <Icon
           icon="mdi:arrow-bottom"
-          className="md:-rotate-90 shrink-0 text-gray-500 text-xl md:mt-8"
+          className="shrink-0 text-gray-500 text-xl md:mt-8 md:-rotate-90"
         />
 
         <FormField

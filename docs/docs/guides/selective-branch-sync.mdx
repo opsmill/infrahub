@@ -1,0 +1,293 @@
+---
+title: Configure selective branch synchronization
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Configure selective branch synchronization
+
+This guide walks you through setting up branch name filtering rules to control which Git branches are imported and synchronized into Infrahub. Use this when your Git repository contains many branches unrelated to infrastructure management, and you want to reduce noise in your Infrahub branch list.
+
+For background on how selective branch synchronization works, see [Selective branch synchronization](../topics/branch-synchronization.mdx).
+
+## Prerequisites
+
+Before configuring selective branch synchronization, ensure you have:
+
+- Access to your Infrahub configuration file (`infrahub.toml`) or environment variables
+- Ability to restart Infrahub services
+
+:::info Understanding selective synchronization
+
+To learn more about how selective branch synchronization works, see the [Selective branch synchronization topic](../topics/branch-synchronization.mdx).
+
+:::
+
+## Step 1: Define your branch naming rules
+
+Decide which Git branches should be imported into Infrahub. Branch naming rules use regular expressions to match branch names.
+
+Common patterns:
+
+- All infrastructure-related branches: `^infra/.*$`
+- Team-specific prefixes: `^(infra|network|config)/.*$`
+- Feature branches with issue numbers: `^feature/infrahub-[0-9]+.*$`
+- Specific branch names: `^(main|production|staging)$`
+
+See the [Regular expression patterns](../topics/branch-synchronization.mdx#regular-expression-patterns) section for more examples.
+
+## Step 2: Configure the synchronization rules
+
+You can configure selective branch synchronization using either a configuration file or environment variables.
+
+<Tabs>
+<TabItem value="config-file" label="Configuration file" default>
+
+Add the `sync_branch_names` setting to your `infrahub.toml` configuration file:
+
+```toml
+[git]
+repositories_directory = "/opt/infrahub/git"
+sync_branch_names = [
+  "^infra/.*$",
+  "^feature/infrahub-.*$"
+]
+```
+
+Where to find the configuration file:
+
+- Default location: `/opt/infrahub/infrahub.toml`
+- Development installations may use a different path
+- Check your deployment documentation for the correct location
+
+</TabItem>
+<TabItem value="env-var" label="Environment variable">
+
+Set the `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` environment variable:
+
+```shell
+export INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES='["^infra/.*$","^feature/infrahub-.*$"]'
+```
+
+For Docker deployments, add to your `docker-compose.yml` file:
+
+```yaml
+services:
+  infrahub-server:
+    environment:
+      - INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES=["^infra/.*$","^feature/infrahub-.*$"]
+```
+
+For Kubernetes deployments, add to your deployment configuration:
+
+```yaml
+env:
+  - name: INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES
+    value: '["^infra/.*$","^feature/infrahub-.*$"]'
+```
+
+</TabItem>
+</Tabs>
+
+:::warning Environment variable precedence
+
+Environment variables take precedence over configuration file settings. If both are defined, the environment variable value will be used.
+
+:::
+
+## Step 3: Start or restart Infrahub
+
+If Infrahub is already running, restart the services to apply the configuration changes. If this is your first time starting Infrahub, the configuration will be applied automatically.
+
+**For Docker deployments:**
+
+```shell
+docker-compose restart infrahub-server
+```
+
+**For Kubernetes deployments:**
+
+```shell
+kubectl rollout restart deployment/infrahub-server
+```
+
+**For systemd-managed installations:**
+
+```shell
+sudo systemctl restart infrahub
+```
+
+## Step 4: Verify the configuration
+
+To verify that the selective synchronization rules are working correctly, you'll need a Git repository connected to Infrahub. If you haven't connected a repository yet, see [How to connect external Git repositories](./repository.mdx).
+
+Once you have a connected repository:
+
+### Test with Git branches that should NOT be imported
+
+1. Create a branch in your Git repository that doesn't match your rules:
+
+```shell
+git checkout -b docs/update-readme
+git push origin docs/update-readme
+```
+
+2. Wait a few seconds for the synchronization cycle to complete
+3. Check the Infrahub UI or API - this branch should **not** appear in Infrahub
+
+### Test with Git branches that SHOULD be imported
+
+1. Create a branch in your Git repository that matches your rules:
+
+```shell
+git checkout -b infra/network-update
+git push origin infra/network-update
+```
+
+2. Wait a few seconds for the synchronization cycle to complete
+3. Check the Infrahub UI or API - this branch **should** appear in Infrahub
+
+### Verify using the Infrahub UI
+
+1. Navigate to the **Branches** section in the Infrahub UI
+2. Look for the branches you just created
+3. Confirm that only branches matching your rules are displayed
+
+### Verify using the API
+
+Query the GraphQL API to list all branches:
+
+```graphql
+query {
+  Branch {
+    edges {
+      node {
+        name
+      }
+    }
+  }
+}
+```
+
+Only branches matching your configured rules should appear in the results.
+
+## Updating synchronization rules
+
+If you need to change your branch naming rules after the initial configuration:
+
+### Add new patterns to expand scope
+
+When you add new patterns to your rules, Git branches that were previously ignored will be automatically imported during the next synchronization cycle if they now match the updated rules.
+
+**Example:**
+
+You currently have:
+
+```toml
+sync_branch_names = ["^infra/.*$"]
+```
+
+You add a new pattern:
+
+```toml
+sync_branch_names = [
+  "^infra/.*$",
+  "^network/.*$"  # New pattern
+]
+```
+
+Result: Existing Git branches like `network/topology` that were previously ignored will now be imported into Infrahub on the next sync.
+
+### Remove patterns to restrict scope
+
+When you remove patterns from your rules, existing Infrahub branches with the "sync with Git" flag enabled will continue to synchronize even if they no longer match the updated rules.
+
+**Example:**
+
+You currently have:
+
+```toml
+sync_branch_names = [
+  "^infra/.*$",
+  "^feature/.*$"
+]
+```
+
+You remove a pattern:
+
+```toml
+sync_branch_names = ["^infra/.*$"]
+```
+
+Result: Existing Infrahub branches like `feature/api-update` will continue syncing because they're already established in Infrahub. The naming rules only control initial import, not ongoing synchronization.
+
+### Clean up branches manually
+
+If you want to stop synchronizing branches that no longer match your updated rules:
+
+1. Identify branches in Infrahub that no longer align with your rules
+2. Delete them manually through the Infrahub UI:
+   - Navigate to **Branches**
+   - Find the branch you want to remove
+   - Click the delete option
+3. Or use the API to delete branches programmatically
+
+:::warning Permanent deletion
+
+Manually deleting branches in Infrahub is a permanent action. The deletion will not affect the corresponding Git branches, and they will not be re-imported because they don't match your current rules.
+
+:::
+
+## Troubleshooting
+
+### Branches not appearing after configuration
+
+**Possible causes:**
+
+- Infrahub services haven't been restarted after configuration changes
+- Regular expression pattern doesn't match the branch name
+- Synchronization cycle hasn't completed yet
+
+**Solutions:**
+
+1. Verify the configuration is correct
+2. Restart Infrahub services
+3. Wait 10-15 seconds for the next synchronization cycle
+4. Test your regex pattern using an online regex tester
+
+### Branches still appearing after adding rules
+
+**Possible causes:**
+
+- The branches were already imported before you configured the rules
+- Branches have the "sync with Git" flag enabled
+- Environment variable is overriding configuration file
+
+**Solutions:**
+
+1. Check if an environment variable is set and taking precedence
+2. For existing branches, delete them manually if needed
+3. The rules only control new imports, not existing branches
+
+### All branches are being imported despite rules
+
+**Possible causes:**
+
+- Configuration not loaded correctly
+- Services not restarted
+- Syntax error in the configuration
+
+**Solutions:**
+
+1. Check Infrahub logs for configuration errors
+2. Verify the TOML syntax is correct
+3. Verify the JSON syntax is correct for environment variables
+4. Restart services after any configuration change
+
+## Further reading
+
+- [Selective branch synchronization topic](../topics/branch-synchronization.mdx) - Understanding how the feature works
+- [Regular expression patterns](../topics/branch-synchronization.mdx#regular-expression-patterns) - Pattern syntax and examples
+- [Configuration reference](../reference/configuration.mdx) - Complete configuration options
+- [How to connect external Git repositories](./repository.mdx) - Repository setup guide

@@ -6,12 +6,13 @@ coverage.xml
 script.py
 **/*.local.*
 local/*
-.vscode/settings.json
+**/.vscode/settings.json
 node_modules/*
 development/docker-compose.override.yml
 development/docker-compose.dev-override.yml
 .DS_Store
 .python-version
+.venv/*
 .ruff_cache
 **/.ruff_cache
 **/.idea/**
@@ -45,3 +46,5 @@ helm/Chart.lock
 
 python_testcontainers/dist/*
 python_testcontainers/infrahub_testcontainers.egg-info/*
+
+schema/node_modules/*

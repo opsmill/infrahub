@@ -7,6 +7,7 @@ from infrahub_sdk.config import Config
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
+from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
@@ -34,7 +35,15 @@ def get_component_type() -> ComponentType:
 
 
 def build_client() -> InfrahubClient:
-    return InfrahubClient(config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True))
+    client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
+    client_config.set_ssl_context(context=get_http().verify_tls())
+    client = InfrahubClient(config=client_config)
+    # Populate client schema cache using our internal schema cache
+    if registry.schema:
+        for branch in registry.schema.get_branches():
+            client.schema.set_cache(schema=registry.schema.get_sdk_schema_branch(name=branch), branch=branch)
+
+    return client
 
 
 @inject
@@ -51,9 +60,15 @@ def get_installation_type(installation_type: str = Depends(build_installation_ty
     return installation_type
 
 
-async def build_database() -> InfrahubDatabase:
-    if "database" not in _singletons:
-        _singletons["database"] = InfrahubDatabase(driver=await get_db(retry=5))
+async def build_database(singleton: bool = True) -> InfrahubDatabase:
+    if not singleton or "database" not in _singletons:
+        db = InfrahubDatabase(driver=await get_db(retry=5))
+
+        if singleton:
+            _singletons["database"] = db
+
+        return db
+
     return _singletons["database"]
 
 

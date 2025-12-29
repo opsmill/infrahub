@@ -1,14 +1,13 @@
-import { StringParam, useQueryParam } from "use-query-params";
-
-import { QSP } from "@/config/qsp";
+import { parseAsString, useQueryState } from "nuqs";
 
 import { Pill } from "@/shared/components/display/pill";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { ScrollArea } from "./ui/scroll-area";
 
 type Tab = {
-  name?: string;
+  name: string;
   label?: string;
   count?: number;
   onClick?: Function;
@@ -24,14 +23,17 @@ type TabsProps = {
 export const Tabs = (props: TabsProps) => {
   const { qsp, tabs, rightItems, className } = props;
 
-  const [qspTab, setQspTab] = useQueryParam(qsp ?? QSP.TAB, StringParam);
+  const [qspTab, setQspTab] = useQueryState(
+    qsp ?? QSP.TAB,
+    parseAsString.withOptions({ history: "push", shallow: false })
+  );
 
   const handleClick = (tab: Tab, index: number) => {
     if (tab.onClick) {
       return tab.onClick();
     }
 
-    setQspTab(index === 0 ? undefined : tab.name);
+    setQspTab(index === 0 ? null : tab.name);
   };
 
   return (

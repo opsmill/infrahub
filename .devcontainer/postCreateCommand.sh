@@ -2,4 +2,4 @@
 
 git pull
 git submodule update
-invoke demo.start --wait
+uv run invoke demo.start --wait

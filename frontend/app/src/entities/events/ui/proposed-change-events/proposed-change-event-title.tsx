@@ -43,7 +43,7 @@ export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) =
 
   if (event === PROPOSED_CHANGE_APPROVALS_REVOKED) {
     return (
-      <div className="text-gray-600">Changes occured in the source branch, approval revoked</div>
+      <div className="text-gray-600">Changes occurred in the source branch, approval revoked</div>
     );
   }
 

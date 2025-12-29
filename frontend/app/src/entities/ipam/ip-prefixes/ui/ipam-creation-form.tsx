@@ -10,6 +10,7 @@ import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants
 import { useGetNextIpAddressAvailable } from "@/entities/ipam/ip-addresses/domain/get-next-ip-address-available.query";
 import { useGetNextIpPrefixAvailable } from "@/entities/ipam/ip-prefixes/domain/get-next-ip-prefix-available.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { useAllocateResourceMutation } from "@/entities/resource-manager/domain/allocate-resource.mutation";
 import { getAllocateMutationNameFromSchema } from "@/entities/resource-manager/utils/get-allocate-mutation-name-from-schema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -54,7 +55,7 @@ function IpamCreationForm(props: IpamCreationFormProps) {
       () => (
         <Alert
           type={ALERT_TYPES.SUCCESS}
-          message={`${props.schema.label} ${newNode.display_label} created`}
+          message={`${props.schema.label} ${getNodeLabel(newNode)} created`}
         />
       ),
       {

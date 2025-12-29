@@ -1,16 +1,16 @@
-import asyncio
 import importlib
 import logging
 import os
 import sys
+import tempfile
 import time
 from contextlib import ExitStack
-from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
+import pytest_asyncio
 import ujson
 from fast_depends import Provider
 from fast_depends import dependency_provider as provider
@@ -22,6 +22,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config
 from infrahub.config import load_and_exit
+from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
@@ -36,13 +37,17 @@ from infrahub.core.initialization import (
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
-from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.definitions.core import (
+    core_account_token,
+    core_generic_account,
+    core_profile_schema_definition,
+)
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
@@ -50,6 +55,7 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.permissions import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
+from infrahub.workers.dependencies import build_database, get_database
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.constants import (
@@ -74,11 +80,11 @@ pytest.register_assert_rewrite("tests.db_snapshot")
 graphql_registry.clear_cache()
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--neo4j", action="store_true", dest="neo4j", default=False, help="enable neo4j tests")
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     markexpr = getattr(config.option, "markexpr", "")
 
     if not markexpr:
@@ -100,17 +106,15 @@ def pytest_configure(config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def add_tracker():
+def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
+def pytest_collection_modifyitems(items):
+    pytest_asyncio_tests = (item for item in items if pytest_asyncio.is_async_test(item))
+    session_scope_marker = pytest.mark.asyncio(loop_scope="session")
+    for async_test in pytest_asyncio_tests:
+        async_test.add_marker(session_scope_marker, append=False)
 
 
 @pytest.fixture
@@ -130,12 +134,16 @@ async def db(
             assert memgraph is not None
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
-    driver = InfrahubDatabase(driver=await get_db(retry=5))
-    await add_indexes(db=driver)
+    async def _db(singleton: bool = True) -> InfrahubDatabase:
+        return await build_database(singleton=False)
 
-    yield driver
+    with provider.scope(build_database, _db):
+        driver = await get_database()
+        await add_indexes(db=driver)
 
-    await driver.close()
+        yield driver
+
+        await driver.close()
 
 
 @pytest.fixture
@@ -167,6 +175,22 @@ async def do_default_branch(db: InfrahubDatabase) -> Branch:
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
     return branch
+
+
+@pytest.fixture
+def query_limit_of_one() -> Generator[None, None, None]:
+    original_query_size_limit = config.SETTINGS.database.query_size_limit
+    config.SETTINGS.database.query_size_limit = 1
+    yield
+    config.SETTINGS.database.query_size_limit = original_query_size_limit
+
+
+@pytest.fixture
+def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
+    original_neo4j_runtime = db.default_neo4j_runtime
+    db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
+    yield
+    db.default_neo4j_runtime = original_neo4j_runtime
 
 
 @pytest.fixture
@@ -245,7 +269,7 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
         return None
 
     container = (
-        DockerContainer(image="rabbitmq:3.13.1-management")
+        DockerContainer(image="rabbitmq:4.2.1-management")
         .with_env("RABBITMQ_DEFAULT_USER", "infrahub")
         .with_env("RABBITMQ_DEFAULT_PASS", "infrahub")
         .with_exposed_ports(PORT_CLIENT_RABBITMQ, PORT_HTTP_RABBITMQ)
@@ -282,7 +306,7 @@ def redis_container(request: pytest.FixtureRequest, load_settings_before_session
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.Redis:
         return None
 
-    container = DockerContainer(image="redis:7.2.4").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
@@ -304,7 +328,7 @@ def redis(redis_container: dict[int, int] | None, reload_settings_before_each_mo
     return None
 
 
-def wait_for_memgraph_ready(host, port, timeout=15):
+def wait_for_memgraph_ready(host, port, timeout=15) -> bool:
     # Not retrieving host/port from config.SETTINGS here as they are set later in `db`fixture.
     URI = f"{config.SETTINGS.database.protocol}://{host}:{port}"
 
@@ -401,12 +425,12 @@ def prefect(prefect_container: dict[int, int] | None, reload_settings_before_eac
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_settings_before_session():
+def load_settings_before_session() -> None:
     load_and_exit()
 
 
 @pytest.fixture(scope="module", autouse=True)
-def reload_settings_before_each_module(tmpdir_factory):
+def reload_settings_before_each_module(tmpdir_factory) -> None:
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
     load_and_exit()
 
@@ -452,7 +476,9 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
                 "namespace": "Lineage",
             },
             core_profile_schema_definition,
-        ]
+            core_generic_account,
+        ],
+        "nodes": [core_account_token],
     }
 
     schema = SchemaRoot(**SCHEMA)
@@ -746,15 +772,6 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
 
 
 @pytest.fixture
-async def animal_person_schema_person_no_default_filter(
-    db: InfrahubDatabase, default_branch, node_group_schema, data_schema, animal_person_schema_unregistered
-) -> SchemaBranch:
-    schema_dict = deepcopy(animal_person_schema_unregistered)
-    del schema_dict["nodes"][2]["default_filter"]
-    return registry.schema.register_schema(schema=SchemaRoot(**schema_dict), branch=default_branch.name)
-
-
-@pytest.fixture
 async def person_schema_unique_attr_non_hfid_unregistered(
     db: InfrahubDatabase, node_group_schema, data_schema
 ) -> SchemaRoot:
@@ -1043,7 +1060,7 @@ class BusRPCMock(InfrahubMessageBus):
     ) -> None:
         self.messages.append(message)
 
-    def add_mock_reply(self, response: InfrahubResponse):
+    def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.response.append(response)
 
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
@@ -1616,3 +1633,39 @@ async def schema_conversion_unidirectional_relationships(db: InfrahubDatabase, n
     }
 
     return schema
+
+
+@pytest.fixture(scope="class")
+def git_global_config_env_setting() -> Generator[Any, None, None]:
+    previous_git_config_global = os.getenv("GIT_CONFIG_GLOBAL")
+    previous_git_global_config_file = config.SETTINGS.git.global_config_file
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+        tmp_git_config = tmpfile.name
+
+    os.environ["GIT_CONFIG_GLOBAL"] = tmp_git_config
+    assert os.getenv("GIT_CONFIG_GLOBAL") is not None and os.getenv("GIT_CONFIG_GLOBAL") == tmp_git_config
+    config.SETTINGS.git.global_config_file = tmp_git_config
+
+    yield tmp_git_config
+
+    if previous_git_config_global:
+        os.environ["GIT_CONFIG_GLOBAL"] = previous_git_config_global
+        assert os.getenv("GIT_CONFIG_GLOBAL") and os.getenv("GIT_CONFIG_GLOBAL") == previous_git_config_global
+    else:
+        os.environ.pop("GIT_CONFIG_GLOBAL", None)
+        assert os.getenv("GIT_CONFIG_GLOBAL") is None
+
+    config.SETTINGS.git.global_config_file = previous_git_global_config_file
+    Path(tmp_git_config).unlink()
+
+
+@pytest.fixture
+def git_user_config():
+    initial_user_name = config.SETTINGS.git.user_name
+    initial_user_email = config.SETTINGS.git.user_email
+    config.SETTINGS.git.user_email = "test@email.com"
+    config.SETTINGS.git.user_name = "Test User"
+    yield
+    config.SETTINGS.git.user_email = initial_user_email
+    config.SETTINGS.git.user_name = initial_user_name

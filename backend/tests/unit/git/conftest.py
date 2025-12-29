@@ -2,6 +2,7 @@ import re
 import shutil
 import tarfile
 from pathlib import Path
+from typing import Generator
 
 import anyio
 import pytest
@@ -14,12 +15,15 @@ from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
 
+from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.schema import SchemaRoot, core_models
+from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
-from tests.conftest import TestHelper
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -114,19 +118,6 @@ def git_upstream_repo_03(git_upstream_repo_01: dict[str, str | Path]) -> dict[st
 
 
 @pytest.fixture
-def git_upstream_repo_10(helper: TestHelper, git_sources_dir: Path) -> dict[str, str | Path]:
-    """Git Repository used as part of the  demo-edge tutorial."""
-
-    name = "infrahub-demo-edge"
-
-    # Extract the fixture package in the source directory
-    with tarfile.open(helper.get_fixtures_dir() / "infrahub-demo-edge-d309567.tar.gz") as file:
-        file.extractall(git_sources_dir)
-
-    return {"name": name, "path": git_sources_dir / name}
-
-
-@pytest.fixture
 async def git_repo_01(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
@@ -179,14 +170,6 @@ async def git_repo_02(git_upstream_repo_02: dict[str, str | Path], git_repos_dir
     )
 
     return repo
-
-
-@pytest.fixture
-async def git_repo_02_w_client(git_repo_02: InfrahubRepository, client: InfrahubClient) -> InfrahubRepository:
-    """Same as fixture git_repo_02 but with a Infrahub client initialized."""
-
-    git_repo_02.client = client
-    return git_repo_02
 
 
 @pytest.fixture
@@ -472,24 +455,6 @@ async def git_repo_transforms_w_client(
 
 
 @pytest.fixture
-async def git_repo_10(
-    client: InfrahubClient, git_upstream_repo_10: dict[str, str | Path], git_repos_dir: Path
-) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_10 as remote"""
-
-    repo = await InfrahubRepository.new(
-        id=UUIDT.new(),
-        name=git_upstream_repo_10["name"],
-        location=str(git_upstream_repo_10["path"]),
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-    )
-
-    repo.client = client
-
-    return repo
-
-
-@pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
@@ -593,20 +558,6 @@ async def mock_add_branch01_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
-async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {
-        "data": {
-            "BranchCreate": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66", "name": "branch01"}}
-        }
-    }
-
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-branch-create"}
-    )
-    return httpx_mock
-
-
-@pytest.fixture
 async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"mock": []}}
 
@@ -622,11 +573,10 @@ async def gql_query_data_01() -> dict:
         "node": {
             "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
             "display_label": "MyQuery",
-            "name": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": "MyQuery"},
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "name": {"is_protected": False, "owner": None, "source": None, "value": "MyQuery"},
+            "description": {"is_protected": False, "owner": None, "source": None, "value": None},
             "query": {
                 "is_protected": False,
-                "is_visible": True,
                 "owner": None,
                 "source": None,
                 "value": "query MyQuery { location { edges { node { name { value }}}}}",
@@ -642,11 +592,10 @@ async def gql_query_data_02() -> dict:
         "node": {
             "id": "mmmmmmmm-nnnn-bbbb-vvvv-cccccccccccc",
             "display_label": "MyOtherQuery",
-            "name": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": "MyQuery"},
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "name": {"is_protected": False, "owner": None, "source": None, "value": "MyQuery"},
+            "description": {"is_protected": False, "owner": None, "source": None, "value": None},
             "query": {
                 "is_protected": False,
-                "is_visible": True,
                 "owner": None,
                 "source": None,
                 "value": "query MyOtherQuery { location { edges { node { name { value }}}}}",
@@ -661,7 +610,10 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = (helper.get_fixtures_dir() / "schemas" / "schema_01.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
-        method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
+        method="GET",
+        url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"),
+        json=ujson.loads(response_text),
+        is_reusable=True,
     )
     return httpx_mock
 
@@ -698,7 +650,6 @@ async def check_definition_data_01() -> dict:
             "name": {
                 "value": "Check01",
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -709,14 +660,12 @@ async def check_definition_data_01() -> dict:
             "description": {
                 "value": None,
                 "is_protected": False,
-                "is_visible": True,
                 "source": None,
                 "owner": None,
             },
             "file_path": {
                 "value": "checks/check01/check.py",
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -727,7 +676,6 @@ async def check_definition_data_01() -> dict:
             "class_name": {
                 "value": "Check01",
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -736,9 +684,8 @@ async def check_definition_data_01() -> dict:
                 "owner": None,
             },
             "timeout": {
-                "value": 10,
+                "value": 60,
                 "is_protected": True,
-                "is_visible": True,
                 "source": {
                     "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                     "display_label": "infrahub-demo-edge",
@@ -754,7 +701,6 @@ async def check_definition_data_01() -> dict:
                 },
                 "properties": {
                     "is_protected": True,
-                    "is_visible": True,
                     "source": {
                         "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                         "display_label": "infrahub-demo-edge",
@@ -771,7 +717,6 @@ async def check_definition_data_01() -> dict:
                 },
                 "properties": {
                     "is_protected": True,
-                    "is_visible": True,
                     "source": {
                         "id": "0b843de7-9a5e-4330-acee-9991c359f40a",
                         "display_label": "infrahub-demo-edge",
@@ -823,7 +768,6 @@ async def gql_query_data_03():
             "value": "query01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "description": {
@@ -831,7 +775,6 @@ async def gql_query_data_03():
             "__typename": "Text",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "query": {
@@ -840,7 +783,6 @@ async def gql_query_data_03():
             "value": query_string,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "__typename": InfrahubKind.GRAPHQLQUERY,
@@ -877,111 +819,6 @@ async def mock_gql_query_04(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"items": ["consilium", "potum", "album", "magnum"]}}
     httpx_mock.add_response(
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "artifact-query-graphql-data"}
-    )
-    return httpx_mock
-
-
-@pytest.fixture
-async def mock_missing_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {"data": {InfrahubKind.ARTIFACT: {"edges": []}}}
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-coreartifact-page1"}
-    )
-    return httpx_mock
-
-
-@pytest.fixture
-async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {
-        "data": {
-            InfrahubKind.ARTIFACT: {
-                "edges": [
-                    {
-                        "node": {
-                            "id": "0d9a10bd-77f3-4388-a2fb-3cff9586cbb8",
-                            "display_label": "openconfig-interfaces",
-                            "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
-                            "content_type": {"value": "application/json", "__typename": "TextAttribute"},
-                            "checksum": {"value": "e889b9fab24aab3b23ea01d5342b514a", "__typename": "TextAttribute"},
-                            "storage_id": {
-                                "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
-                                "__typename": "TextAttribute",
-                            },
-                            "created_at": {"value": None, "__typename": "TextAttribute"},
-                            "parameters": {"value": None, "__typename": "JSONAttribute"},
-                            "object": {
-                                "node": {
-                                    "id": "56b6e5a8-2ca2-4b0d-aa07-806fcf8181b0",
-                                    "display_label": "ord1-edge1",
-                                    "__typename": "InfraDevice",
-                                },
-                                "__typename": "NestedEdgedCoreNode",
-                            },
-                            "definition": {
-                                "node": {
-                                    "id": "683afb8d-b5cf-4585-b864-d1426e13c2dc",
-                                    "display_label": "Open Config Interfaces for Edge devices",
-                                    "__typename": InfrahubKind.ARTIFACTDEFINITION,
-                                },
-                                "__typename": f"NestedEdged{InfrahubKind.ARTIFACTDEFINITION}",
-                            },
-                            "__typename": InfrahubKind.ARTIFACT,
-                        },
-                    }
-                ],
-            }
-        }
-    }
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-coreartifact-page1"}
-    )
-    return httpx_mock
-
-
-@pytest.fixture
-async def mock_existing_artifact_different(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {
-        "data": {
-            InfrahubKind.ARTIFACT: {
-                "edges": [
-                    {
-                        "node": {
-                            "id": "0d9a10bd-77f3-4388-a2fb-3cff9586cbb8",
-                            "display_label": "openconfig-interfaces",
-                            "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
-                            "content_type": {"value": "application/json", "__typename": "TextAttribute"},
-                            "checksum": {"value": "aaaa40b1dd39530d1a502e017e0feff5", "__typename": "TextAttribute"},
-                            "storage_id": {
-                                "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
-                                "__typename": "TextAttribute",
-                            },
-                            "created_at": {"value": None, "__typename": "TextAttribute"},
-                            "parameters": {"value": None, "__typename": "JSONAttribute"},
-                            "object": {
-                                "node": {
-                                    "id": "56b6e5a8-2ca2-4b0d-aa07-806fcf8181b0",
-                                    "display_label": "ord1-edge1",
-                                    "__typename": "InfraDevice",
-                                },
-                                "__typename": "NestedEdgedCoreNode",
-                            },
-                            "definition": {
-                                "node": {
-                                    "id": "683afb8d-b5cf-4585-b864-d1426e13c2dc",
-                                    "display_label": "Open Config Interfaces for Edge devices",
-                                    "__typename": InfrahubKind.ARTIFACTDEFINITION,
-                                },
-                                "__typename": f"NestedEdged{InfrahubKind.ARTIFACTDEFINITION}",
-                            },
-                            "__typename": InfrahubKind.ARTIFACT,
-                        },
-                    }
-                ],
-            }
-        }
-    }
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-coreartifact-page1"}
     )
     return httpx_mock
 
@@ -1158,7 +995,6 @@ async def transformation_data_01() -> dict:
             "value": "transform01.py",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "class_name": {
@@ -1167,7 +1003,6 @@ async def transformation_data_01() -> dict:
             "value": "Transform01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "url": {
@@ -1176,7 +1011,6 @@ async def transformation_data_01() -> dict:
             "value": "mytransform",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "name": {
@@ -1185,7 +1019,6 @@ async def transformation_data_01() -> dict:
             "value": "transform01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "label": {
@@ -1194,7 +1027,6 @@ async def transformation_data_01() -> dict:
             "value": "Transform01",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "description": {
@@ -1202,7 +1034,6 @@ async def transformation_data_01() -> dict:
             "__typename": "Text",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "timeout": {
@@ -1211,7 +1042,6 @@ async def transformation_data_01() -> dict:
             "value": 10,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "convert_query_response": {
@@ -1220,7 +1050,6 @@ async def transformation_data_01() -> dict:
             "value": False,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "__typename": "CoreTransformPython",
@@ -1285,7 +1114,6 @@ async def car_data_01() -> dict:
             "value": 2,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "name": {
@@ -1294,7 +1122,6 @@ async def car_data_01() -> dict:
             "value": "bolt",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "nbr_seats": {
@@ -1303,7 +1130,6 @@ async def car_data_01() -> dict:
             "value": 2,
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "color": {
@@ -1312,7 +1138,6 @@ async def car_data_01() -> dict:
             "value": "#444444",
             "source": None,
             "owner": None,
-            "is_visible": True,
             "is_protected": False,
         },
         "__typename": "TestElectricCar",
@@ -1329,16 +1154,6 @@ async def car_node_01(client, schema_02, car_data_01) -> InfrahubNode:
 
 
 @pytest.fixture
-async def mock_create_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {"data": {"CoreArtifactCreate": {"ok": True, "object": {"id": "8927425e-fd89-482a-bcec-aad267eb2c66"}}}}
-
-    httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-create"}
-    )
-    return httpx_mock
-
-
-@pytest.fixture
 async def mock_update_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"CoreArtifactUpdate": {"ok": True, "object": {"id": "0d9a10bd-77f3-4388-a2fb-3cff9586cbb8"}}}}
 
@@ -1346,3 +1161,31 @@ async def mock_update_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
     )
     return httpx_mock
+
+
+@pytest.fixture
+def import_sync_branch_names() -> Generator[None, None, None]:
+    initial_import_sync_branch_names = config.SETTINGS.git.import_sync_branch_names
+    config.SETTINGS.git.import_sync_branch_names = ["branch.*"]
+    yield
+    config.SETTINGS.git.import_sync_branch_names = initial_import_sync_branch_names
+
+
+@pytest.fixture
+async def mock_create_branch_git_repo_01(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await create_branch(branch_name="branch01", db=db)
+    await create_branch(branch_name="branch02", db=db)
+    await create_branch(branch_name="clean-branch", db=db)
+
+
+@pytest.fixture
+async def mock_create_branch_git_repo_03(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await create_branch(branch_name="branch01", db=db)
+
+
+@pytest.fixture
+def git_use_explicit_merge_commit_config():
+    initial_use_explicit_merge_commit = config.SETTINGS.git.use_explicit_merge_commit
+    config.SETTINGS.git.use_explicit_merge_commit = True
+    yield
+    config.SETTINGS.git.use_explicit_merge_commit = initial_use_explicit_merge_commit

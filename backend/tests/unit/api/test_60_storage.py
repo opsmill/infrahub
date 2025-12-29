@@ -15,7 +15,7 @@ async def test_file_upload(
     admin_headers,
     default_branch: Branch,
     authentication_base,
-):
+) -> None:
     files_dir = helper.get_fixtures_dir() / "schemas"
     filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
     file_path = files_dir / filenames[0]
@@ -44,7 +44,7 @@ async def test_content_upload(
     admin_headers,
     default_branch: Branch,
     authentication_base,
-):
+) -> None:
     files_dir = helper.get_fixtures_dir() / "schemas"
     filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
 

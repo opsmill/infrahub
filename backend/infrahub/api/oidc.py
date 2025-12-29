@@ -13,14 +13,18 @@ from pydantic import BaseModel, HttpUrl
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
-from infrahub.auth import get_groups_from_provider, signin_sso_account
-from infrahub.exceptions import GatewayError, ProcessingError
+from infrahub.auth import (
+    SSOStateCache,
+    get_groups_from_provider,
+    signin_sso_account,
+    validate_auth_response,
+)
+from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
+from infrahub.exceptions import ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
 if TYPE_CHECKING:
-    import httpx
-
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -56,6 +60,10 @@ class OIDCDiscoveryConfig(BaseModel):
     tls_client_certificate_bound_access_tokens: bool | None = None
     mtls_endpoint_aliases: dict[str, HttpUrl] | None = None
 
+    @property
+    def supports_pkce(self) -> bool:
+        return "S256" in (self.code_challenge_methods_supported or [])
+
 
 def _get_redirect_url(request: Request, provider_name: str) -> str:
     """Return public redirect URL."""
@@ -69,13 +77,17 @@ async def authorize(request: Request, provider_name: str, final_url: str | None 
     service: InfrahubServices = request.app.state.service
 
     response = await service.http.get(url=provider.discovery_url)
-    _validate_response(response=response)
+    validate_auth_response(response=response, provider_type="OIDC")
     oidc_config = OIDCDiscoveryConfig(**response.json())
+
+    pkce_supported = oidc_config.supports_pkce
 
     with trace.get_tracer(__name__).start_as_current_span("sso_oauth2_client_configuration") as span:
         span.set_attribute("provider_name", provider_name)
         span.set_attribute("scopes", provider.scopes)
         span.set_attribute("discovery_url", provider.discovery_url)
+        span.set_attribute("pkce_enabled", provider.pkce_enabled)
+        span.set_attribute("pkce_supported", pkce_supported)
 
         client = AsyncOAuth2Client(
             client_id=provider.client_id,
@@ -86,12 +98,26 @@ async def authorize(request: Request, provider_name: str, final_url: str | None 
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
     final_url = final_url or config.SETTINGS.main.public_url or str(request.base_url)
 
+    # Generate PKCE parameters if enabled and supported by provider
+    code_verifier = None
+    pkce_params: dict[str, str] = {}
+    if provider.pkce_enabled and pkce_supported:
+        code_verifier = generate_code_verifier()
+        code_challenge = compute_code_challenge(code_verifier)
+        pkce_params = {
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        }
+
     authorization_uri, state = client.create_authorization_url(
-        url=str(oidc_config.authorization_endpoint), redirect_uri=redirect_uri, scope=provider.scopes
+        url=str(oidc_config.authorization_endpoint), redirect_uri=redirect_uri, scope=provider.scopes, **pkce_params
     )
 
+    cache_data = SSOStateCache(final_url=final_url, code_verifier=code_verifier)
     await service.cache.set(
-        key=f"security:oidc:provider:{provider_name}:state:{state}", value=final_url, expires=KVTTL.TWO_HOURS
+        key=f"security:oidc:provider:{provider_name}:state:{state}",
+        value=cache_data.model_dump_json(),
+        expires=KVTTL.TWO_HOURS,
     )
 
     if config.SETTINGS.dev.frontend_redirect_sso:
@@ -114,13 +140,15 @@ async def token(
     service: InfrahubServices = request.app.state.service
 
     cache_key = f"security:oidc:provider:{provider_name}:state:{state}"
-    stored_final_url = await service.cache.get(key=cache_key)
+    cached_data = await service.cache.get(key=cache_key)
     await service.cache.delete(key=cache_key)
 
-    if not stored_final_url:
+    if not cached_data:
         raise ProcessingError(message="Invalid 'state' parameter")
 
-    token_data = {
+    sso_state = SSOStateCache.model_validate_json(cached_data)
+
+    token_data: dict[str, str | None] = {
         "code": code,
         "client_id": provider.client_id,
         "client_secret": provider.client_secret,
@@ -128,13 +156,17 @@ async def token(
         "grant_type": "authorization_code",
     }
 
+    # Add code_verifier if PKCE was used
+    if sso_state.code_verifier:
+        token_data["code_verifier"] = sso_state.code_verifier
+
     discovery_response = await service.http.get(url=provider.discovery_url)
-    _validate_response(response=discovery_response)
+    validate_auth_response(response=discovery_response, provider_type="OIDC")
 
     oidc_config = OIDCDiscoveryConfig(**discovery_response.json())
 
     token_response = await service.http.post(str(oidc_config.token_endpoint), data=token_data)
-    _validate_response(response=token_response)
+    validate_auth_response(response=token_response, provider_type="OIDC")
 
     with trace.get_tracer(__name__).start_as_current_span("sso_token_request") as span:
         span.set_attribute("token_request_data", ujson.dumps(token_response.json()))
@@ -147,7 +179,7 @@ async def token(
     else:
         userinfo_response = await service.http.post(str(oidc_config.userinfo_endpoint), headers=headers)
 
-    _validate_response(response=userinfo_response)
+    validate_auth_response(response=userinfo_response, provider_type="OIDC")
     user_info: dict[str, Any] = userinfo_response.json()
     sso_groups = (
         user_info.get("groups")
@@ -155,6 +187,11 @@ async def token(
             oidc_config=oidc_config, service=service, payload=payload, client_id=provider.client_id
         )
         or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
+    )
+
+    log.info(
+        "SSO user authenticated",
+        body={"user_name": user_info.get("name"), "groups": sso_groups},
     )
 
     if not sso_groups and config.SETTINGS.security.sso_user_default_group:
@@ -176,21 +213,8 @@ async def token(
     )
 
     return models.UserTokenWithUrl(
-        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=stored_final_url
+        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=sso_state.final_url
     )
-
-
-def _validate_response(response: httpx.Response) -> None:
-    if 200 <= response.status_code <= 299:
-        return
-
-    log.error(
-        "Invalid response from the OIDC provider",
-        url=response.url,
-        status_code=response.status_code,
-        body=response.json(),
-    )
-    raise GatewayError(message="Invalid response from Authentication provider")
 
 
 async def _get_id_token_groups(

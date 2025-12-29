@@ -34,7 +34,7 @@ from .factories import (
 
 
 class TestDiffCombiner:
-    def setup_method(self):
+    def setup_method(self) -> None:
         self.diff_from_1 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 11))
         self.diff_to_1 = Timestamp(Instant.from_utc(2024, 3, 5, 9, 11, 13))
         self.diff_from_2 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 14))
@@ -73,7 +73,7 @@ class TestDiffCombiner:
         self.combiner = DiffCombiner()
 
     @pytest.fixture
-    def with_schema_manager(self, car_person_schema_unregistered):
+    def with_schema_manager(self, car_person_schema_unregistered) -> None:
         for node_schema in car_person_schema_unregistered.nodes:
             if node_schema.kind == "TestCar":
                 car_schema = node_schema
@@ -114,7 +114,7 @@ class TestDiffCombiner:
             (DiffAction.UNCHANGED, DiffAction.UNCHANGED),
         ],
     )
-    async def test_add_and_remove_node_cancel_one_another(self, action_1, action_2):
+    async def test_add_and_remove_node_cancel_one_another(self, action_1, action_2) -> None:
         diff_node_1 = EnrichedNodeFactory.build(action=action_1, attributes=set(), relationships=set())
         diff_node_2 = EnrichedNodeFactory.build(
             identifier=diff_node_1.identifier, action=action_2, attributes=set(), relationships=set()
@@ -140,7 +140,7 @@ class TestDiffCombiner:
             (DiffAction.UNCHANGED, DiffAction.UPDATED, DiffAction.UPDATED),
         ],
     )
-    async def test_node_action_addition(self, action_1, action_2, expected_action):
+    async def test_node_action_addition(self, action_1, action_2, expected_action) -> None:
         node_1_conflict = EnrichedConflictFactory.build()
         node_2_conflict = replace(node_1_conflict, selected_branch=ConflictSelection.DIFF_BRANCH)
         diff_node_1_attr = EnrichedAttributeFactory.build(action=DiffAction.ADDED)
@@ -177,7 +177,7 @@ class TestDiffCombiner:
         }
         assert combined == self.expected_combined
 
-    async def test_stale_parent_node_removed(self):
+    async def test_stale_parent_node_removed(self) -> None:
         parent_node_1 = EnrichedNodeFactory.build(action=DiffAction.UNCHANGED, attributes=set(), relationships=set())
         element_1 = EnrichedRelationshipElementFactory.build(action=DiffAction.UPDATED)
         relationship_1 = EnrichedRelationshipGroupFactory.build(
@@ -226,7 +226,7 @@ class TestDiffCombiner:
         self.expected_combined.nodes = {expected_parent_node, expected_child_node}
         assert combined == self.expected_combined
 
-    async def test_attributes_combined(self):
+    async def test_attributes_combined(self) -> None:
         added_attr_name = "width"
         added_attr_owner_property_1 = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_OWNER,
@@ -359,7 +359,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_relationship_one_combined(self, with_schema_manager):
+    async def test_relationship_one_combined(self, with_schema_manager) -> None:
         relationship_name = "owner"
         old_peer_id = str(uuid4())
         intermediate_peer_id = str(uuid4())
@@ -394,7 +394,7 @@ class TestDiffCombiner:
         later_element = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED,
             peer_id=new_peer_id,
-            changed_at=early_element.changed_at.add_delta(minutes=1),
+            changed_at=early_element.changed_at.add(minutes=1),
             properties={later_only_property, later_peer_property},
             conflict=EnrichedConflictFactory.build(),
         )
@@ -473,7 +473,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_relationship_many_combined(self, with_schema_manager):
+    async def test_relationship_many_combined(self, with_schema_manager) -> None:
         rel_prop_types = [DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED]
         relationship_name = "cars"
         removed_element_peer_id = str(uuid4())
@@ -641,7 +641,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_relationship_with_only_nodes(self, with_schema_manager):
+    async def test_relationship_with_only_nodes(self, with_schema_manager) -> None:
         relationship_name = "owner"
         early_parent_node = EnrichedNodeFactory.build(
             action=DiffAction.UNCHANGED, relationships=set(), attributes=set()
@@ -706,7 +706,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_early_conflict_removed(self):
+    async def test_early_conflict_removed(self) -> None:
         node_uuid = str(uuid4())
         early_conflict = EnrichedConflictFactory.build()
         later_conflict = None
@@ -723,7 +723,7 @@ class TestDiffCombiner:
         assert combined_node.uuid == node_uuid
         assert combined_node.conflict is None
 
-    async def test_later_conflict_added(self):
+    async def test_later_conflict_added(self) -> None:
         node_uuid = str(uuid4())
         early_conflict = None
         later_conflict = EnrichedConflictFactory.build()
@@ -778,7 +778,7 @@ class TestDiffCombiner:
             ),
         ],
     )
-    async def test_conflict_value_and_selection_update(self, early_values, later_values, selections):
+    async def test_conflict_value_and_selection_update(self, early_values, later_values, selections) -> None:
         node_uuid = str(uuid4())
         early_conflict_uuid = str(uuid4())
         early_base_value, early_diff_value = early_values
@@ -811,7 +811,7 @@ class TestDiffCombiner:
             later_conflict, uuid=early_conflict_uuid, selected_branch=expected_selection
         )
 
-    async def test_unchanged_parents_correctly_updated(self):
+    async def test_unchanged_parents_correctly_updated(self) -> None:
         child_node_uuid = str(uuid4())
         relationship_name = "related-things"
         parent_node_1 = EnrichedNodeFactory.build(action=DiffAction.UNCHANGED, attributes=set(), relationships=set())
@@ -878,7 +878,7 @@ class TestDiffCombiner:
         self.expected_combined.nodes = {expected_parent_node, expected_child_node}
         assert combined == self.expected_combined
 
-    async def test_updated_parents_correctly_updated(self):
+    async def test_updated_parents_correctly_updated(self) -> None:
         child_node_uuid = str(uuid4())
         relationship_name = "related-things"
         parent_node_1 = EnrichedNodeFactory.build(
@@ -954,7 +954,7 @@ class TestDiffCombiner:
         self.expected_combined.nodes = {expected_parent_1, expected_parent_2, expected_child_node}
         assert combined == self.expected_combined
 
-    async def test_resetting_attr_makes_it_unchanged(self):
+    async def test_resetting_attr_makes_it_unchanged(self) -> None:
         updated_attr_name = "length"
         previous_value = str(uuid4())
         new_value = str(uuid4())
@@ -1015,7 +1015,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_resetting_relationship_one_makes_it_unchanged(self, with_schema_manager):
+    async def test_resetting_relationship_one_makes_it_unchanged(self, with_schema_manager) -> None:
         relationship_name = "owner"
         old_peer_id = str(uuid4())
         intermediate_peer_id = str(uuid4())
@@ -1045,7 +1045,7 @@ class TestDiffCombiner:
         later_element = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED,
             peer_id=old_peer_id,
-            changed_at=early_element.changed_at.add_delta(minutes=1),
+            changed_at=early_element.changed_at.add(minutes=1),
             properties={later_only_property, later_peer_property},
         )
         early_relationship = EnrichedRelationshipGroupFactory.build(
@@ -1118,7 +1118,7 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
-    async def test_resetting_relationship_many_makes_it_unchanged(self, with_schema_manager):
+    async def test_resetting_relationship_many_makes_it_unchanged(self, with_schema_manager) -> None:
         rel_prop_types = [DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED]
         relationship_name = "cars"
         peer_id_1 = str(uuid4())

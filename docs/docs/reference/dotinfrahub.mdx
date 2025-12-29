@@ -6,17 +6,17 @@ title: Repository configuration file
 
 The repository configuration file allows you to define multiple resources that need to be imported into Infrahub.
 
-The file should be formatted as a Yaml file, have the filename `.infrahub.yml` and should be stored at the root of the [repository](../topics/repository).
+The file should be formatted as a Yaml file, have the filename `.infrahub.yml` and should be stored at the root of the [repository](../topics/repository.mdx).
 
 :::info
 
-See [this topic](../topics/infrahub-yml) for more details on the available repository configuration options
+See [this topic](../topics/infrahub-yml.mdx) for more details on the available repository configuration options
 
 :::
 
 :::note
 
-To help with the development process of a repository configuration file, you can leverage the schemas we publish for validation within your [editor](../development/editor)
+To help with the development process of a repository configuration file, you can leverage the schemas we publish for validation within your [editor](../development/editor.mdx)
 
 :::
 
@@ -115,6 +115,8 @@ To help with the development process of a repository configuration file, you can
 | targets | string | The group to target when running this generator | True |
 | class_name | string | The name of the generator class to run. | False |
 | convert_query_response | boolean | Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects. | False |
+| execute_in_proposed_change | boolean | Decide if the generator should execute in a proposed change. | False |
+| execute_after_merge | boolean | Decide if the generator should execute after a merge. | False |
 
 <!-- vale off -->
 ## Queries

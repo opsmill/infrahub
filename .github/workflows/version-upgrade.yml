@@ -8,7 +8,7 @@ on:
       commit:
         type: string
         description: commit sha or branch name
-        default: ''
+        default: ""
         required: false
 
 env:
@@ -37,12 +37,13 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          # - name: From 1.1.0
-          #   source_version: 1.1.0
-          #   neo4j_image: "neo4j:5.20.0-enterprise"
-          - name: From 1.3.0
-            source_version: 1.3.0
+          - name: From 1.6.0
+            source_version: 1.6.0
             neo4j_image: "neo4j:2025.03.0-enterprise"
+            redis_image: "redis:7.2.11"
+            rabbitmq_image: "rabbitmq:3.13.7-management"
+            postgres_image: "postgres:16-alpine"
+            postgres_datadir: "/var/lib/postgresql/data"
     name: ${{ matrix.name }}
     runs-on:
       group: huge-runners
@@ -50,23 +51,22 @@ jobs:
     needs: prepare-environment
     env:
       INFRAHUB_DB_TYPE: neo4j
-      POETRY_VERSION: ${{ needs.prepare-environment.outputs.POETRY_VERSION }}
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.12
-      - name: "Setup python environment"
-        run: |
-          pipx install -f poetry==${{ env.POETRY_VERSION }}
-          poetry config virtualenvs.create true --local
-          pip install invoke
-      - name: "Install Package"
-        run: "poetry install"
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -76,35 +76,55 @@ jobs:
       - name: "Store start time"
         run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
 
-    # Initialize the demo environment with the Source Version
+      # Initialize the demo environment with the Source Version
       - name: Pull External Docker Images
-        run: invoke demo.pull
+        run: uv run invoke demo.pull
         env:
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+          MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
+          CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
+          POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Initialize Demo
         id: init-demo
-        run: invoke demo.start demo.load-infra-schema
+        run: uv run invoke demo.start demo.load-infra-schema
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+          MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
+          CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
+          POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Check Demo Status
-        run: invoke demo.status
+        run: uv run invoke demo.status
         env:
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+          MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
+          CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
+          POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Load Infra Data
-        run: invoke demo.load-infra-data
+        run: uv run invoke demo.load-infra-data
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+          MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
+          CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
+          POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Run infra data patch scripts
-        run: invoke demo.run-infra-patch-scripts
+        run: uv run invoke demo.run-infra-patch-scripts
         env:
           PREFECT_SERVER_COMMAND: "prefect server start --host 0.0.0.0 --ui"
           NEO4J_DOCKER_IMAGE: ${{ matrix.neo4j_image }}
+          MESSAGE_QUEUE_DOCKER_IMAGE: ${{ matrix.rabbitmq_image }}
+          CACHE_DOCKER_IMAGE: ${{ matrix.redis_image }}
+          POSTGRES_DOCKER_IMAGE: ${{ matrix.postgres_image }}
+          POSTGRES_DATADIR: ${{ matrix.postgres_datadir }}
 
       - name: Set infrahub address
         run: |
@@ -112,32 +132,32 @@ jobs:
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Load custom data
-        run: echo "DATA_NAME=$(poetry run invoke dev.test-add-dummy-data)" >> $GITHUB_ENV
+        run: echo "DATA_NAME=$(uv run invoke dev.test-add-dummy-data)" >> $GITHUB_ENV
 
       - name: Stop Demo
-        run: invoke demo.stop
+        run: uv run invoke demo.stop
 
-    # Build the local version and run the migrations
+      # Build the local version and run the migrations
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
 
       - name: Build Demo
-        run: invoke dev.build
+        run: uv run invoke dev.build
 
       - name: Upgrade Infrahub and apply the latest database migrations
-        run: invoke dev.upgrade
+        run: uv run invoke dev.upgrade --rebase-branches
 
       - name: Start Demo
-        run: invoke dev.start
+        run: uv run invoke dev.start
 
       - name: Set infrahub address
         run: |
           PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
           echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
-      - name: Test branch rebase
-        run: poetry run invoke dev.test-branch-rebase --branch atl1-delete-upstream --data-to-check $DATA_NAME
+      - name: Verify branch graph version
+        run: uv run invoke dev.test-branch-graph-version --branch atl1-delete-upstream
 
       - name: Containers after tests
         if: always()
@@ -145,27 +165,27 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1" || true
 
       - name: Display git 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1" || true
 
       - name: Display git 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2" || true
 
       - name: Display database logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1" || true
 
       - name: Display task-manager logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1" || true
 
       - name: Display server status
         if: always()
-        run: invoke demo.status
+        run: uv run invoke demo.status
 
       - name: "Clear docker environment and force vmagent to stop"
         if: always()

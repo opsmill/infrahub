@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -14,7 +16,12 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    ValidatorConclusion,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
@@ -53,6 +60,7 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
 @flow(
@@ -151,16 +159,53 @@ async def create_branch(branch: str, branch_id: str) -> None:
         pass
 
 
+@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
+async def sync_git_repo_with_origin_and_tag_on_failure(
+    client: InfrahubClient,
+    repository_id: str,
+    repository_name: str,
+    repository_location: str,
+    internal_status: str,
+    default_branch_name: str,
+    operational_status: str,
+    staging_branch: str | None = None,
+    infrahub_branch: str | None = None,
+) -> None:
+    repo = await InfrahubRepository.init(
+        id=repository_id,
+        name=repository_name,
+        location=repository_location,
+        client=client,
+        internal_status=internal_status,
+        default_branch_name=default_branch_name,
+    )
+
+    try:
+        await repo.sync(staging_branch=staging_branch)
+    except RepositoryError:
+        if operational_status == RepositoryOperationalStatus.ONLINE.value:
+            params: dict[str, Any] = {
+                "branches": [infrahub_branch] if infrahub_branch else [],
+                "nodes": [str(repository_id)],
+            }
+            await add_tags(**params)
+        raise
+
+
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
 async def sync_remote_repositories() -> None:
     log = get_run_logger()
+    db = await get_database()
 
     client = get_client()
 
     branches = await client.branch.all()
-    repositories = await client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
+    async with db.start_session() as dbs:
+        repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
+        repository: CoreRepository = repository_data.repository
+
         active_internal_status = RepositoryInternalStatus.ACTIVE.value
         default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
         staging_branch = None
@@ -174,12 +219,12 @@ async def sync_remote_repositories() -> None:
             init_failed = False
             try:
                 repo = await InfrahubRepository.init(
-                    id=repository_data.repository.id,
-                    name=repository_data.repository.name.value,
-                    location=repository_data.repository.location.value,
+                    id=repository.id,
+                    name=repository.name.value,
+                    location=repository.location.value,
                     client=client,
                     internal_status=active_internal_status,
-                    default_branch_name=repository_data.repository.default_branch.value,
+                    default_branch_name=repository.default_branch.value,
                 )
             except RepositoryError as exc:
                 get_logger().error(str(exc))
@@ -188,12 +233,12 @@ async def sync_remote_repositories() -> None:
             if init_failed:
                 try:
                     repo = await InfrahubRepository.new(
-                        id=repository_data.repository.id,
-                        name=repository_data.repository.name.value,
-                        location=repository_data.repository.location.value,
+                        id=repository.id,
+                        name=repository.name.value,
+                        location=repository.location.value,
                         client=client,
                         internal_status=active_internal_status,
-                        default_branch_name=repository_data.repository.default_branch.value,
+                        default_branch_name=repository.default_branch.value,
                     )
                     await repo.import_objects_from_files(  # type: ignore[call-overload]
                         git_branch_name=registry.default_branch, infrahub_branch_name=infrahub_branch
@@ -203,14 +248,24 @@ async def sync_remote_repositories() -> None:
                     continue
 
             try:
-                await repo.sync(staging_branch=staging_branch)
+                await sync_git_repo_with_origin_and_tag_on_failure(
+                    client=client,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    repository_location=repository.location.value,
+                    internal_status=active_internal_status,
+                    default_branch_name=repository.default_branch.value,
+                    operational_status=repository.operational_status.value,
+                    staging_branch=staging_branch,
+                    infrahub_branch=infrahub_branch,
+                )
                 # Tell workers to fetch to stay in sync
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-                    location=repository_data.repository.location.value,
-                    repository_id=repository_data.repository.id,
-                    repository_name=repository_data.repository.name.value,
-                    repository_kind=repository_data.repository.get_kind(),
+                    location=repository.location.value,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    repository_kind=repository.get_kind(),
                     infrahub_branch_name=infrahub_branch,
                     infrahub_branch_id=branches[infrahub_branch].id,
                 )
@@ -323,9 +378,8 @@ async def generate_request_artifact_definition(
         kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
     )
 
-    await artifact_definition.targets.fetch()
-    group = artifact_definition.targets.peer
-    await group.members.fetch()
+    group = await fetch_artifact_definition_targets(client=client, branch=model.branch, definition=artifact_definition)
+
     current_members = [member.id for member in group.members.peers]
 
     artifacts_by_member = {}
@@ -356,6 +410,7 @@ async def generate_request_artifact_definition(
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
         convert_query_response = transform.convert_query_response.value
 
+    batch = await client.create_batch()
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
@@ -376,6 +431,7 @@ async def generate_request_artifact_definition(
             repository_kind=repository.get_kind(),
             branch_name=model.branch,
             query=query.name.value,
+            query_id=query.id,
             variables=await member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
@@ -385,9 +441,15 @@ async def generate_request_artifact_definition(
             context=context,
         )
 
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_ARTIFACT_GENERATE, context=context, parameters={"model": request_artifact_generate_model}
+        batch.add(
+            task=get_workflow().submit_workflow,
+            workflow=REQUEST_ARTIFACT_GENERATE,
+            context=context,
+            parameters={"model": request_artifact_generate_model},
         )
+
+    async for _, _ in batch.execute():
+        pass
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
@@ -444,6 +506,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
 async def merge_git_repository(model: GitRepositoryMerge) -> None:
+    log = get_run_logger()
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
     client = get_client()
@@ -452,7 +515,11 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         id=model.repository_id, name=model.repository_name, client=client, default_branch_name=model.default_branch
     )
 
-    if model.internal_status == RepositoryInternalStatus.STAGING.value:
+    if (
+        model.internal_status == RepositoryInternalStatus.STAGING.value
+        and model.repository_kind == InfrahubKind.REPOSITORY
+    ):
+        log.info(f"Merging {model.repository_kind}")
         repo_source = await client.get(
             kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch
         )
@@ -464,6 +531,28 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         repo_main.commit.value = commit
 
         await repo_main.save()
+        log.info(f"Finished merging {model.repository_kind}")
+
+    elif model.repository_kind == InfrahubKind.READONLYREPOSITORY:
+        repo_source = await client.get(
+            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.source_branch
+        )
+        repo_destination = await client.get(
+            kind=InfrahubKind.READONLYREPOSITORY, id=model.repository_id, branch=model.destination_branch
+        )
+
+        if (
+            repo_destination.ref.value != repo_source.ref.value
+            or repo_destination.commit.value != repo_source.commit.value
+        ):
+            log.info(f"Merging {model.repository_kind}")
+
+            repo_destination.ref.value = repo_source.ref.value
+            repo_destination.commit.value = repo_source.commit.value
+            await repo_destination.save()
+
+            log.info(f"Finished merging {model.repository_kind}")
+
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
@@ -569,9 +658,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
 
     if definition.targets.id:
         # Check against a group of targets
-        await definition.targets.fetch()
-        group = definition.targets.peer
-        await group.members.fetch()
+        group = await fetch_check_definition_targets(client=client, branch=model.branch_name, definition=definition)
         check_models = []
         for relationship in group.members.peers:
             member = relationship.peer
@@ -863,7 +950,7 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
             client=client,
             commit=model.commit,
             params=model.variables,
-        )  # type: ignore[misc]
+        )  # type: ignore[call-overload]
         if check_run.passed:
             conclusion = ValidatorConclusion.SUCCESS
             severity = "info"

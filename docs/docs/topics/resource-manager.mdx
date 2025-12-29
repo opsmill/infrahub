@@ -1,6 +1,7 @@
 ---
 title: Resource manager
 ---
+import VideoPlayer from '../../src/components/VideoPlayer';
 
 Resource managers in Infrahub automate the allocation of network resources from predefined pools, eliminating manual assignment and preventing conflicts across your infrastructure. This system ensures consistent resource allocation while maintaining complete visibility and control over your available resources.
 
@@ -23,6 +24,10 @@ This is due the dynamic nature of using resource managers and the idempotence of
 :::
 
 ### Branch-agnostic allocation
+
+<center>
+  <VideoPlayer url='https://youtu.be/F7tvLRQULdg?si=S83VyA0xmXHQGQqV' light />
+</center>
 
 One of the most powerful features of Infrahub's resource managers is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
 

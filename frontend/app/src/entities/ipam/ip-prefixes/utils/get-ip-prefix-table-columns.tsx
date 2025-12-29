@@ -1,9 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { Row } from "@/shared/components/container";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
-import { cellHeaderStyle, cellMutedStyle, cellsStyle } from "@/shared/components/table/style";
+import { cellMutedStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
@@ -16,8 +15,11 @@ import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/st
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
+import { TableIdentifierHeader } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/get-object-table-columns";
+import { getObjectGenericColumns } from "@/entities/nodes/object/ui/object-table/utils/get-object-table-columns";
+import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -31,14 +33,18 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
   return [
     columnHelper.accessor("display_label", {
       id: "id",
-      header: () => (
-        <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
-          {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
-          <span className="truncate">{schema.label}</span>
-        </div>
-      ),
-      cell: ({ cell, row }) => {
-        const value: string = cell.getValue() ?? "-";
+      header: ({ table }) => {
+        return (
+          <TableIdentifierHeader
+            schema={schema}
+            isSelected={table.getIsAllRowsSelected()}
+            isIndeterminate={table.getIsSomePageRowsSelected()}
+            onChange={table.toggleAllRowsSelected}
+          />
+        );
+      },
+      cell: ({ row, table }) => {
+        const value: string = getNodeLabel(row.original) ?? "-";
         const ipPrefixNode = row.original;
 
         if (ipPrefixNode.__typename === IP_PREFIX_AVAILABLE_KIND) {
@@ -48,7 +54,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
                 <IpPrefixAvailableIdentifier ipPrefixNode={row.original} />
               </StickyLeftCell>
 
-              <TableCell className={classNames(cellMutedStyle, "-col-end-2 col-start-2")}>
+              <TableCell className={classNames(cellMutedStyle, "col-start-2 -col-end-2")}>
                 {schema.label} available
               </TableCell>
             </>
@@ -60,7 +66,7 @@ export const getIpPrefixTableColumns = (schema: ModelSchema): Array<ColumnDef<No
             objectKind={ipPrefixNode.__typename as string}
             objectId={ipPrefixNode.id as string}
             isSelected={row.getIsSelected()}
-            onSelectionChange={row.getToggleSelectedHandler()}
+            onClickCheckbox={getToggleSelectedRowHandler({ row, table })}
             label={
               <Row className="gap-2.5">
                 {[...Array(ipPrefixNode.ancestors.count)].map((_, i) => (

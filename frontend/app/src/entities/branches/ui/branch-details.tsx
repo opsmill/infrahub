@@ -1,85 +1,43 @@
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
-import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { toast } from "react-toastify";
+import { useNavigate } from "react-router";
 
-import { QSP } from "@/config/qsp";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";
-import { Badge } from "@/shared/components/display/badge";
-import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
-import { List } from "@/shared/components/table/list";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { datetimeAtom } from "@/shared/stores/time.atom";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
-import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
-import { branchesState } from "@/entities/branches/stores";
-
+import { useDeleteBranchMutation } from "@/entities/branches/domain/delete-branch.mutation";
+import { useGetBranchDetails } from "@/entities/branches/domain/get-branch-details.query";
+import { BranchAttributes } from "@/entities/branches/ui/branch-details/branch-attributes";
+import { BranchMergeButton } from "@/entities/branches/ui/branch-merge-button";
+import { BranchRebaseButton } from "@/entities/branches/ui/branch-rebase-button";
+import { BranchValidateButton } from "@/entities/branches/ui/branch-validate-button";
 import {
   BRANCH_MERGE_WORKFLOW,
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
-} from "../../tasks/constants";
-import { TaskDisplay } from "../../tasks/ui/task-display";
-import { BranchMergeButton } from "./branch-merge-button";
-import { BranchRebaseButton } from "./branch-rebase-button";
-import { BranchValidateButton } from "./branch-validate-button";
+} from "@/entities/tasks/constants";
+import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
-export const BranchDetails = () => {
-  const { "*": branchName } = useParams();
-  const date = useAtomValue(datetimeAtom);
+interface BranchDetailsProps {
+  branchName: string;
+}
+export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   const { isAuthenticated } = useAuth();
-  const [branches, setBranches] = useAtom(branchesState);
-
   const [displayModal, setDisplayModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
   const navigate = useNavigate();
 
-  const branchAction = async ({ successMessage, errorMessage, mutation }: any) => {
-    if (!branchName) return;
+  const { isPending, error, data: branch } = useGetBranchDetails({ branchName });
+  const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
-    try {
-      setIsLoading(true);
-
-      await graphqlClient.mutate({
-        mutation,
-        variables: {
-          name: branch.name,
-        },
-        context: {
-          branch: branchName,
-          date,
-        },
-      });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
-        toastId: "alert-success",
-      });
-      setIsLoading(false);
-    } catch (error) {
-      console.error(error);
-      toast(<Alert type={ALERT_TYPES.ERROR} message={errorMessage} />);
-      setIsLoading(false);
-    }
-  };
-
-  const { loading, error, data } = useQuery(getBranchDetailsQuery, { variables: { branchName } });
-
-  if (loading) {
+  if (isPending) {
     return <LoadingIndicator className="h-[239px]" />;
   }
 
@@ -87,45 +45,13 @@ export const BranchDetails = () => {
     return <ErrorScreen message="Something went wrong when fetching the branch details." />;
   }
 
-  const branchData = data?.Branch;
-
-  if (!branchData || branchData.length === 0) {
+  if (!branch) {
     return <NoDataFound message={`Branch ${branchName} does not exists.`} />;
   }
 
-  const branch = branchData[0];
-
-  const columns = [
-    {
-      name: "name",
-      label: "Name",
-    },
-    {
-      name: "origin_branch",
-      label: "Origin branch",
-    },
-    {
-      name: "branched_at",
-      label: "Started at",
-    },
-    {
-      name: "created_at",
-      label: "Completed at",
-    },
-  ];
-
-  const row = {
-    values: {
-      name: branch.name,
-      origin_branch: <Badge className="text-sm">{branch.origin_branch}</Badge>,
-      branched_at: <DateDisplay date={branch.branched_at} />,
-      created_at: <DateDisplay date={branch.created_at} />,
-    },
-  };
-
   return (
     <div className="flex flex-col gap-4">
-      <List columns={columns} row={row} />
+      <BranchAttributes branch={branch} />
 
       <div className="flex flex-col gap-4">
         <div>
@@ -156,7 +82,7 @@ export const BranchDetails = () => {
                 <BranchValidateButton branch={branch} />
 
                 <Button
-                  disabled={!isAuthenticated || branch.is_default}
+                  disabled={!isAuthenticated || !!branch.is_default}
                   onClick={() => setDisplayModal(true)}
                   variant={"danger"}
                 >
@@ -192,11 +118,7 @@ export const BranchDetails = () => {
           }
           onCancel={() => setDisplayModal(false)}
           onDelete={async () => {
-            await branchAction({
-              successMessage: "Branch deleted requested!",
-              errorMessage: "An error occurred while deleting the branch",
-              mutation: BRANCH_DELETE,
-            });
+            await deleteBranch({ name: branch.name });
 
             const queryStringParams = getCurrentQsp();
             const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;
@@ -206,12 +128,10 @@ export const BranchDetails = () => {
               : constructPath("/branches");
 
             navigate(path);
-            const nextBranches = branches.filter(({ name }) => name !== branch.name);
-            setBranches(nextBranches);
           }}
           open={displayModal}
           setOpen={() => setDisplayModal(false)}
-          isLoading={isLoading}
+          isLoading={isDeleting}
         />
       )}
     </div>

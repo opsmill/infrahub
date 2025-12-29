@@ -74,7 +74,7 @@ class FlowLogs(BaseModel):
                 "node": {
                     "message": log.message,
                     "severity": LOG_LEVEL_MAPPING.get(log.level, "error"),
-                    "timestamp": log.timestamp.to_iso8601_string(),
+                    "timestamp": log.timestamp.isoformat(),
                 }
             }
             for log in self.logs[flow_id]
@@ -138,6 +138,13 @@ class InfrahubEventFilter(EventFilter):
             branches: list[str] = branch_merged.get("branches") or []
             if "infrahub.branch.created" not in event_type:
                 event_type.append("infrahub.branch.merged")
+            if branches:
+                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+
+        if branch_migrated := event_type_filter.get("branch_migrated"):
+            branches = branch_migrated.get("branches") or []
+            if "infrahub.branch.created" not in event_type:
+                event_type.append("infrahub.branch.migrated")
             if branches:
                 self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
 

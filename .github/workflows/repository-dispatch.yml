@@ -36,6 +36,7 @@ jobs:
         # Either a literal path, or the name of a secret...
         repo:
           - "opsmill/infrahub-demo-dc-fabric"
+          - "opsmill/infrahub-bundle-dc"
           - "INFRAHUB_ENTERPRISE_REPOSITORY"
           - "INFRAHUB_CUSTOMER1_REPOSITORY"
           - "INFRAHUB_CUSTOMER2_REPOSITORY"
@@ -43,10 +44,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
           # if matrix.repo contains a slash, use it literally; otherwise look up the secret named by matrix.repo

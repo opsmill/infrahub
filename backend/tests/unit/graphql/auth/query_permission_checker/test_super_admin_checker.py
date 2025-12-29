@@ -13,6 +13,7 @@ from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
+from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
@@ -32,7 +33,7 @@ class TestSuperAdminPermission:
         first_account: CoreAccount,
         second_account: CoreAccount,
         permissions_helper: PermissionsHelper,
-    ):
+    ) -> None:
         permissions_helper._default_branch = default_branch
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
@@ -64,7 +65,7 @@ class TestSuperAdminPermission:
     )
     async def test_supports_super_admin_permission_accounts(
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = SuperAdminPermissionChecker()
         with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
             is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
@@ -72,7 +73,7 @@ class TestSuperAdminPermission:
 
     async def test_account_with_permission(
         self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = SuperAdminPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -96,7 +97,7 @@ class TestSuperAdminPermission:
 
     async def test_account_without_permission(
         self, db: InfrahubDatabase, default_permission_backend: None, permissions_helper: PermissionsHelper
-    ):
+    ) -> None:
         checker = SuperAdminPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -110,6 +111,7 @@ class TestSuperAdminPermission:
             types=MagicMock(),
             single_relationship_resolver=MagicMock(),
             many_relationship_resolver=MagicMock(),
+            account_metadata_resolver=AccountMetadataResolver(),
             account_session=session,
             permissions=permission_manager,
         )

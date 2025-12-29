@@ -209,12 +209,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
-        marty_label = await marty.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -241,18 +241,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert visible_prop.new_value == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert visible_prop.conflict is None
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert protected_prop.new_value == "False"
@@ -298,14 +292,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch: Branch,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         marty = initial_dataset["marty"]
         biff = initial_dataset["biff"]
-        marty_label = await marty.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
         delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean.get_id())
-        delorean_label = await delorean_main.render_display_label(db=db)
+        delorean_label = await delorean_main.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -329,22 +323,15 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.conflict.diff_branch_action is DiffAction.UPDATED
         assert rel_element.conflict.diff_branch_value == marty.get_id()
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert str(visible_prop.new_value) == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert not visible_prop.conflict
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert str(protected_prop.new_value) == "False"
@@ -389,13 +376,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         marty = initial_dataset["marty"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
-        marty_label = await marty.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        marty_label = await marty.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -422,18 +409,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        visible_prop = properties_by_type[DatabaseEdgeType.IS_VISIBLE]
-        assert visible_prop.previous_value == "True"
-        assert visible_prop.new_value == "True"
-        assert visible_prop.action is DiffAction.UNCHANGED
-        assert visible_prop.conflict is None
         protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
         assert protected_prop.previous_value == "True"
         assert protected_prop.new_value == "True"
@@ -474,12 +455,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
         biff = initial_dataset["biff"]
-        doc_brown_label = await doc_brown.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        doc_brown_label = await doc_brown.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -504,15 +485,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.conflict.diff_branch_action is DiffAction.REMOVED
         assert rel_element.conflict.diff_branch_value is None
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         for prop_type, previous_value in (
             (DatabaseEdgeType.IS_RELATED, doc_brown.get_id()),
-            (DatabaseEdgeType.IS_VISIBLE, "True"),
             (DatabaseEdgeType.IS_PROTECTED, "True"),
         ):
             diff_prop = properties_by_type[prop_type]
@@ -555,11 +533,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         db: InfrahubDatabase,
         enriched_diff: EnrichedDiffRoot,
         initial_dataset: dict[str, Node],
-    ):
+    ) -> None:
         delorean = initial_dataset["delorean"]
         doc_brown = initial_dataset["doc_brown"]
-        doc_brown_label = await doc_brown.render_display_label(db=db)
-        delorean_label = await delorean.render_display_label(db=db)
+        doc_brown_label = await doc_brown.get_display_label(db=db)
+        delorean_label = await delorean.get_display_label(db=db)
 
         assert len(enriched_diff.nodes) == 1
         node = enriched_diff.nodes.pop()
@@ -580,23 +558,21 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.action is DiffAction.REMOVED
         assert rel_element.conflict is None
         properties_by_type = {p.property_type: p for p in rel_element.properties}
-        # is_visible is still true, although on a different peeer
         assert set(properties_by_type.keys()) == {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.IS_PROTECTED,
-            DatabaseEdgeType.IS_VISIBLE,
         }
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value is None
         assert related_prop.action is DiffAction.REMOVED
         assert related_prop.conflict is None
-        for prop_type in (DatabaseEdgeType.IS_PROTECTED, DatabaseEdgeType.IS_VISIBLE):
-            protected_prop = properties_by_type[prop_type]
-            assert protected_prop.previous_value == "True"
-            assert protected_prop.new_value is None
-            assert protected_prop.action is DiffAction.REMOVED
-            assert protected_prop.conflict is None
+        prop_type = DatabaseEdgeType.IS_PROTECTED
+        protected_prop = properties_by_type[prop_type]
+        assert protected_prop.previous_value == "True"
+        assert protected_prop.new_value is None
+        assert protected_prop.action is DiffAction.REMOVED
+        assert protected_prop.conflict is None
 
     async def test_remove_previous_owner_on_main_again(
         self,

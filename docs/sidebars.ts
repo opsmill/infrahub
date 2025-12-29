@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
             'guides/database-backup',
             'guides/upgrade',
             'guides/repository',
+            'guides/selective-branch-sync',
           ],
         },
         {
@@ -178,6 +179,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/infrahub-yml',
                 'topics/repository',
+                'topics/branch-synchronization',
               ],
             },
             {
@@ -234,6 +236,7 @@ const sidebars: SidebarsConfig = {
                 'topics/order-weight',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
+                'topics/labels',
               ],
             },
             {
@@ -247,6 +250,7 @@ const sidebars: SidebarsConfig = {
                 'topics/metadata',
                 'topics/groups',
                 'topics/graphql',
+                'topics/object-conversion',
                 'topics/resource-manager',
                 'topics/object-template',
                 'topics/profiles',
@@ -342,8 +346,9 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'reference/infrahub-cli/infrahub-db',
-            'reference/infrahub-cli/infrahub-git-agent',
-            'reference/infrahub-cli/infrahub-server'
+            'reference/infrahub-cli/infrahub-server',
+            'reference/infrahub-cli/infrahub-dev',
+            'reference/infrahub-cli/infrahub-upgrade',
           ],
         },
         'reference/infrahub-events',
@@ -415,6 +420,16 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_6_1',
+            'release-notes/infrahub/release-1_6_0',
+            'release-notes/infrahub/release-1_5_3',
+            'release-notes/infrahub/release-1_5_2',
+            'release-notes/infrahub/release-1_5_1',
+            'release-notes/infrahub/release-1_5_0',
+            'release-notes/infrahub/release-1_4_13',
+            'release-notes/infrahub/release-1_4_12',
+            'release-notes/infrahub/release-1_4_11',
+            'release-notes/infrahub/release-1_4_10',
             'release-notes/infrahub/release-1_4_9',
             'release-notes/infrahub/release-1_4_8',
             'release-notes/infrahub/release-1_4_7',
@@ -484,6 +499,17 @@ const sidebars: SidebarsConfig = {
             'release-notes/infrahub/release-0_8',
             'release-notes/infrahub/release-0_7',
             'release-notes/infrahub/release-0_6'
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Deprecation Guides',
+          link: {
+            type: 'generated-index',
+            slug: 'release-notes/deprecation-guides',
+          },
+          items: [
+            'release-notes/deprecation-guides/display_labels',
           ],
         },
       ],

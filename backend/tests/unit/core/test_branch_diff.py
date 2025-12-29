@@ -21,7 +21,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
+async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -41,7 +41,7 @@ async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_02):
+async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_02) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     expected_paths_main = [
@@ -51,16 +51,12 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
         "data/c2",
         "data/c2/color/value",
         "data/c2/color/property/IS_PROTECTED",
-        "data/c2/color/property/IS_VISIBLE",
         "data/c2/is_electric/value",
         "data/c2/is_electric/property/IS_PROTECTED",
-        "data/c2/is_electric/property/IS_VISIBLE",
         "data/c2/name/value",
         "data/c2/name/property/IS_PROTECTED",
-        "data/c2/name/property/IS_VISIBLE",
         "data/c2/nbr_seats/value",
         "data/c2/nbr_seats/property/IS_PROTECTED",
-        "data/c2/nbr_seats/property/IS_VISIBLE",
         "data/p1/cars/c1/property/IS_PROTECTED",
     ]
 
@@ -68,26 +64,18 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
         "data/c1",
         "data/c1/nbr_seats/value",
         "data/c1/nbr_seats/property/IS_PROTECTED",
-        "data/c1/owner/p1/property/IS_VISIBLE",
         "data/c2/owner/p1/property/IS_PROTECTED",
-        "data/c2/owner/p1/property/IS_VISIBLE",
         "data/c2/owner/peer",
         "data/c3",
         "data/c3/color/value",
         "data/c3/color/property/IS_PROTECTED",
-        "data/c3/color/property/IS_VISIBLE",
         "data/c3/is_electric/value",
         "data/c3/is_electric/property/IS_PROTECTED",
-        "data/c3/is_electric/property/IS_VISIBLE",
         "data/c3/name/value",
         "data/c3/name/property/IS_PROTECTED",
-        "data/c3/name/property/IS_VISIBLE",
         "data/c3/nbr_seats/value",
         "data/c3/nbr_seats/property/IS_PROTECTED",
-        "data/c3/nbr_seats/property/IS_VISIBLE",
-        "data/p1/cars/c1/property/IS_VISIBLE",
         "data/p1/cars/c2/property/IS_PROTECTED",
-        "data/p1/cars/c2/property/IS_VISIBLE",
     ]
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -113,7 +101,7 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
     assert modified_branch1 == sorted(expected_paths_branch1)
 
 
-async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, base_dataset_02):
+async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, base_dataset_02) -> None:
     def execute_workflow_side_effect(workflow, parameters):
         model = GitDiffNamesOnlyResponse(
             files_changed=["readme.md", "mydir/myfile.py"],
@@ -152,7 +140,7 @@ async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, ba
 
 async def test_diff_get_files_repositories_for_branch_case01(
     db: InfrahubDatabase, default_branch: Branch, repos_in_main
-):
+) -> None:
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     but only one has a different commit value between 2 and from so we expect only 2 files"""
 
@@ -193,7 +181,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
     db: InfrahubDatabase,
     default_branch: Branch,
     repos_in_main,
-):
+) -> None:
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
@@ -241,7 +229,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
     assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main):
+async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main) -> None:
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
@@ -291,7 +279,7 @@ async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repo
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch, read_only_repos_in_main):
+async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch, read_only_repos_in_main) -> None:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     repo01b2 = await NodeManager.get_one(id=read_only_repos_in_main["repo01"].id, branch=branch2, db=db)
@@ -404,7 +392,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
 
 @pytest.mark.xfail(reason="Need to investigate, fails on every other run")
-async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_branch, repos_in_main):
+async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_branch, repos_in_main) -> None:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
     repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
@@ -460,7 +448,7 @@ async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_bra
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
+async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -565,7 +553,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_03):
+async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_03) -> None:
     branch2 = await Branch.get_by_name(name="branch2", db=db)
 
     # Calculate the diff with the default value
@@ -578,7 +566,7 @@ async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
+async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02) -> None:
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -602,12 +590,12 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
         "properties": {
-            "IS_VISIBLE": {
+            "IS_PROTECTED": {
                 "branch": "branch1",
-                "type": "IS_VISIBLE",
+                "type": "IS_PROTECTED",
                 "path": None,
                 "action": DiffAction.UPDATED,
-                "value": {"previous": True, "new": False},
+                "value": {"previous": False, "new": True},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
             }
         },
@@ -637,14 +625,6 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
         },
         "properties": {
-            "IS_VISIBLE": {
-                "branch": "branch1",
-                "type": "IS_VISIBLE",
-                "action": DiffAction.ADDED,
-                "path": None,
-                "value": {"previous": None, "new": True},
-                "changed_at": Timestamp(base_dataset_02["time_m20"]),
-            },
             "IS_PROTECTED": {
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
@@ -704,7 +684,9 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic):
+async def test_diff_relationship_one_conflict(
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic
+) -> None:
     c1_main = car_person_data_generic["c1"]
     p1_main = car_person_data_generic["p1"]
     p2_main = car_person_data_generic["p2"]
@@ -766,14 +748,6 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
-                "IS_VISIBLE": {
-                    "branch": "branch2",
-                    "type": "IS_VISIBLE",
-                    "path": None,
-                    "action": DiffAction.ADDED,
-                    "value": {"previous": None, "new": True},
-                    "changed_at": Timestamp(time11),
-                },
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
@@ -807,14 +781,6 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
-                "IS_VISIBLE": {
-                    "branch": "branch2",
-                    "type": "IS_VISIBLE",
-                    "path": None,
-                    "action": DiffAction.REMOVED,
-                    "value": {"previous": True, "new": True},
-                    "changed_at": Timestamp(time11),
-                },
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
@@ -870,14 +836,6 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
-                "IS_VISIBLE": {
-                    "branch": "main",
-                    "type": "IS_VISIBLE",
-                    "path": None,
-                    "action": DiffAction.REMOVED,
-                    "value": {"previous": True, "new": True},
-                    "changed_at": Timestamp(time12),
-                },
                 "IS_PROTECTED": {
                     "branch": "main",
                     "type": "IS_PROTECTED",
@@ -907,7 +865,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
-async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04):
+async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04) -> None:
     branch1 = await registry.get_branch(branch="branch1", db=db)
 
     diff = await BranchDiffer.init(branch=branch1, db=db)
@@ -943,14 +901,6 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
             },
         },
         "properties": {
-            "IS_VISIBLE": {
-                "branch": "branch1",
-                "type": "IS_VISIBLE",
-                "action": DiffAction.ADDED,
-                "path": None,
-                "value": {"previous": None, "new": True},
-                "changed_at": Timestamp(base_dataset_04["time_m5"]),
-            },
             "IS_PROTECTED": {
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
@@ -991,14 +941,6 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
             },
         },
         "properties": {
-            "IS_VISIBLE": {
-                "branch": "main",
-                "type": "IS_VISIBLE",
-                "path": None,
-                "action": DiffAction.ADDED,
-                "value": {"previous": None, "new": True},
-                "changed_at": Timestamp(base_dataset_04["time_m10"]),
-            },
             "IS_PROTECTED": {
                 "branch": "main",
                 "type": "IS_PROTECTED",
@@ -1024,7 +966,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
 @pytest.mark.skip(reason="Update for new diff logic")
 async def test_diff_schema_changes(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema
-):
+) -> None:
     schema_main = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.update_schema_branch(
         db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
@@ -1067,7 +1009,7 @@ async def test_diff_schema_changes(
     }
 
 
-async def test_base_diff_element():
+async def test_base_diff_element() -> None:
     class CL3(BaseDiffElement):
         name: str
 

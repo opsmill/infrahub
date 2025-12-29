@@ -44,7 +44,7 @@ CALL (source_artifact) {
     MATCH (source_artifact)-[r:IS_PART_OF]->(:Root)
     WHERE %(source_branch_filter)s
     RETURN r AS root_rel
-    ORDER BY r.branch_level DESC, r.from DESC
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
 }
 WITH source_artifact, root_rel
@@ -61,7 +61,7 @@ CALL (source_artifact) {
             target_node,
             (rrel1.status = "active" AND rrel2.status = "active") AS target_is_active,
             $source_branch_name IN [rrel1.branch, rrel2.branch] AS target_on_source_branch
-        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC
+        ORDER BY rrel1.branch_level DESC, rrel2.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
         LIMIT 1
     }
     // -----------------------
@@ -75,7 +75,7 @@ CALL (source_artifact) {
             definition_node,
             (rrel1.status = "active" AND rrel2.status = "active") AS definition_is_active,
             $source_branch_name IN [rrel1.branch, rrel2.branch] AS definition_on_source_branch
-        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC
+        ORDER BY rrel1.branch_level DESC, rrel2.branch_level DESC, rrel1.from DESC, rrel2.from DESC, rrel1.status ASC, rrel2.status ASC
         LIMIT 1
     }
     // -----------------------
@@ -89,7 +89,8 @@ CALL (source_artifact) {
             attr_val.value AS checksum,
             (attr_rel.status = "active" AND value_rel.status = "active") AS checksum_is_active,
             $source_branch_name IN [attr_rel.branch, value_rel.branch] AS checksum_on_source_branch
-        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC,
+            value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     // -----------------------
@@ -103,7 +104,8 @@ CALL (source_artifact) {
             attr_val.value AS storage_id,
             (attr_rel.status = "active" AND value_rel.status = "active") AS storage_id_is_active,
             $source_branch_name IN [attr_rel.branch, value_rel.branch] AS storage_id_on_source_branch
-        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC,
+            value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     WITH target_node, target_is_active, target_on_source_branch,
@@ -146,8 +148,9 @@ CALL (target_node, definition_node){
         )
         RETURN
             target_artifact,
-            (trel1.status = "active" AND trel2.status = "active" AND drel1.status = "active" AND drel1.status = "active") AS artifact_is_active
-        ORDER BY trel1.from DESC, trel2.from DESC, drel1.from DESC, drel2.from DESC
+            (trel1.status = "active" AND trel2.status = "active" AND drel1.status = "active" AND drel2.status = "active") AS artifact_is_active
+        ORDER BY trel1.from DESC, trel2.from DESC, drel1.from DESC, drel2.from DESC,
+            trel1.status ASC, trel2.status ASC, drel1.status ASC, drel2.status ASC
         LIMIT 1
     }
     WITH CASE
@@ -163,7 +166,7 @@ CALL (target_node, definition_node){
         AND attr_rel.branch = $target_branch_name
         AND value_rel.branch = $target_branch_name
         RETURN attr_val.value AS checksum, (attr_rel.status = "active" AND value_rel.status = "active") AS checksum_is_active
-        ORDER BY value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.from DESC, attr_rel.from DESC, value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     // -----------------------
@@ -175,7 +178,7 @@ CALL (target_node, definition_node){
         AND attr_rel.branch = $target_branch_name
         AND value_rel.branch = $target_branch_name
         RETURN attr_val.value AS storage_id, (attr_rel.status = "active" AND value_rel.status = "active") AS storage_id_is_active
-        ORDER BY value_rel.from DESC, attr_rel.from DESC
+        ORDER BY value_rel.from DESC, attr_rel.from DESC, value_rel.status ASC, attr_rel.status ASC
         LIMIT 1
     }
     RETURN target_artifact,
@@ -198,4 +201,5 @@ CALL (target_node, definition_node){
             "target_checksum",
             "target_storage_id",
         ]
+        self.order_by = ["source_artifact.uuid", "target_node.uuid", "definition_node.uuid"]
         self.add_to_query(query=query)

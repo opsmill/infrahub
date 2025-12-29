@@ -162,7 +162,7 @@ class TestProposedChange(TestInfrahubApp):
         test_client: InfrahubTestClient,
         client: InfrahubClient,
         context: InfrahubContext,
-    ):
+    ) -> None:
         model = RequestProposedChangePipeline(
             source_branch="change1",
             source_branch_sync_with_git=True,
@@ -227,7 +227,7 @@ class TestProposedChange(TestInfrahubApp):
         test_client: InfrahubTestClient,
         client: InfrahubClient,
         context: InfrahubContext,
-    ):
+    ) -> None:
         pipeline_id = uuid.uuid4()
         model = RequestProposedChangeRunGenerators(
             source_branch="change1",

@@ -14,6 +14,7 @@ import { getGroupsQuery } from "@/entities/groups/api/getGroups";
 import type { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupTriggerButton from "@/entities/groups/ui/add-group-trigger-button";
 import ObjectGroupsList from "@/entities/groups/ui/object-groups-list";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getPermission } from "@/entities/permission/utils";
 import type { ModelSchema } from "@/entities/schema/types";
 
@@ -77,7 +78,7 @@ export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProp
     query === ""
       ? currentObjectGroups
       : currentObjectGroups.filter((group) =>
-          group.display_label.toLowerCase().includes(query.toLowerCase())
+          getNodeLabel(group).toLowerCase().includes(query.toLowerCase())
         );
 
   const filteredVisibleGroups = groupsFilteredBySearch.filter(

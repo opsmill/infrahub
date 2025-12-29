@@ -46,7 +46,9 @@ async def prefix_pool_01(
     return ip_dataset_prefix_v4
 
 
-async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, default_branch: Branch, prefix_pool_01):
+async def test_create_object_and_assign_prefix_from_pool(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01
+) -> None:
     pool = prefix_pool_01["pool"]
 
     query = (
@@ -84,7 +86,8 @@ async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -107,7 +110,9 @@ async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
     }
 
 
-async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, default_branch: Branch, prefix_pool_01):
+async def test_update_object_and_assign_prefix_from_pool(
+    db: InfrahubDatabase, default_branch: Branch, prefix_pool_01
+) -> None:
     pool = prefix_pool_01["pool"]
     net142 = prefix_pool_01["net142"]
 
@@ -149,7 +154,8 @@ async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
     }
     """ % (obj.id, pool.id)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -179,7 +185,7 @@ async def test_create_object_and_assign_address_from_pool(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -230,7 +236,8 @@ async def test_create_object_and_assign_address_from_pool(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -260,7 +267,7 @@ async def test_prefix_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -294,7 +301,8 @@ async def test_prefix_pool_get_resource(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -319,7 +327,7 @@ async def test_prefix_pool_get_resource_with_identifier(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -358,7 +366,8 @@ async def test_prefix_pool_get_resource_with_identifier(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -385,7 +394,7 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net140 = ip_dataset_prefix_v4["net140"]
 
@@ -420,7 +429,8 @@ async def test_prefix_pool_get_resource_with_prefix_length(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -445,7 +455,7 @@ async def test_address_pool_get_resource(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -478,7 +488,8 @@ async def test_address_pool_get_resource(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -503,7 +514,7 @@ async def test_address_pool_get_resource_with_identifier(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -541,7 +552,8 @@ async def test_address_pool_get_resource_with_identifier(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -568,7 +580,7 @@ async def test_address_pool_get_resource_with_prefix_length(
     register_ipam_extended_schema: SchemaBranch,
     init_nodes_registry,
     ip_dataset_prefix_v4,
-):
+) -> None:
     ns1 = ip_dataset_prefix_v4["ns1"]
     net145 = ip_dataset_prefix_v4["net145"]
 
@@ -602,7 +614,8 @@ async def test_address_pool_get_resource_with_prefix_length(
         % pool.id
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -703,9 +716,10 @@ query NumberPool(
 
 async def test_test_number_pool_creation_errors(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-):
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     no_model = await graphql(
         schema=gql_params.schema,
@@ -787,9 +801,12 @@ async def test_test_number_pool_creation_errors(
     assert "start_range can't be larger than end_range" in str(invalid_range.errors[0])
 
 
-async def test_test_number_pool_update(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_test_number_pool_update(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
     create_ok = await graphql(
         schema=gql_params.schema,
@@ -884,7 +901,8 @@ async def test_delete_number_pool_in_use_by_numberpool_attribute(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
@@ -971,7 +989,8 @@ async def test_update_schema_number_pool_range(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
     number_pool_attribute = node_schema.get_attribute(name="number")
     assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)

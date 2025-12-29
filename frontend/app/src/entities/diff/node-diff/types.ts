@@ -1,3 +1,5 @@
+import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
+
 export const DIFF_STATUS = {
   ADDED: "ADDED",
   REMOVED: "REMOVED",
@@ -8,13 +10,7 @@ export const DIFF_STATUS = {
 
 export type DiffStatus = (typeof DIFF_STATUS)[keyof typeof DIFF_STATUS];
 
-export type PropertyType =
-  | "HAS_VALUE"
-  | "HAS_OWNER"
-  | "HAS_SOURCE"
-  | "IS_VISIBLE"
-  | "IS_PROTECTED"
-  | "IS_RELATED";
+export type PropertyType = "HAS_VALUE" | "HAS_OWNER" | "HAS_SOURCE" | "IS_PROTECTED" | "IS_RELATED";
 
 export type DiffConflict = {
   base_branch_action: DiffStatus;
@@ -24,6 +20,7 @@ export type DiffConflict = {
   diff_branch_changed_at: "2024-08-21T19:06:12.429813+00:00";
   diff_branch_value: any;
   uuid: string;
+  selected_branch?: ConflictSelection | null;
 };
 
 export type DiffProperty = {

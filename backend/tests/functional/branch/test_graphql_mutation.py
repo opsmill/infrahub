@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 import pytest
 from infrahub_sdk.exceptions import BranchNotFoundError, GraphQLError
 from infrahub_sdk.graphql import Mutation
 
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.node import Node
@@ -22,7 +24,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
 
@@ -106,8 +108,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        assert isinstance(branch_server_id, str)
-        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, UUID)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=str(branch_server_id))
 
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_delete_sync")
@@ -124,8 +126,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        assert isinstance(branch_server_id, str)
-        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, UUID)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=str(branch_server_id))
 
     async def test_branch_rebase_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_rebase")
@@ -143,21 +145,40 @@ class TestBranchMutations(TestInfrahubApp):
         branch_after = await client.branch.get(branch_name=branch.name)
         assert branch.branched_from != branch_after.branched_from
 
-    async def test_branch_rebase(self, initial_dataset: str, client: InfrahubClient) -> None:
-        branch = await client.branch.create(branch_name="branch_to_rebase_sync")
+    async def test_branch_rebase(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset: str,
+        client: InfrahubClient,
+        bot_client: InfrahubClient,
+        admin_account: CoreAccount,
+        bot_account: CoreAccount,
+    ) -> None:
+        branch_name = "branch_to_rebase_sync"
+        branch = await client.branch.create(branch_name=branch_name)
+
+        async with db.start_session() as dbs:
+            rebase_branch_pre = await Branch.get_by_name(db=dbs, name=branch_name)
 
         query = Mutation(
             mutation="BranchRebase",
             input_data={"data": {"name": branch.name}},
             query={"ok": None, "task": {"id": None}, "object": {"id": None}},
         )
-        result = await client.execute_graphql(query=query.render())
+        result = await bot_client.execute_graphql(query=query.render())
         assert result["BranchRebase"]["ok"] is True
         assert result["BranchRebase"]["object"]["id"] == branch.id
         assert result["BranchRebase"]["task"] is None
 
         branch_after = await client.branch.get(branch_name=branch.name)
         assert branch.branched_from != branch_after.branched_from
+
+        # Validate updated_by field is correctly set until this can be queried via GraphQL and the metadata fields
+        async with db.start_session() as dbs:
+            rebase_branch = await Branch.get_by_name(db=dbs, name=branch_name)
+        assert rebase_branch.created_by == admin_account.id
+        assert rebase_branch.updated_by == bot_account.id
+        assert rebase_branch_pre.updated_by != rebase_branch.updated_by
 
     async def test_branch_validate_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_validate_async")
@@ -253,7 +274,9 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchMerge"]["object"]["id"] == branch.id
         assert result["BranchMerge"]["task"]["id"]
 
-    async def test_branch_create(self, initial_dataset: str, client: InfrahubClient) -> None:
+    async def test_branch_create(
+        self, initial_dataset: str, client: InfrahubClient, admin_account: CoreAccount, db: InfrahubDatabase
+    ) -> None:
         query = Mutation(
             mutation="BranchCreate",
             input_data={"data": {"name": "branch-2"}},
@@ -263,6 +286,11 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchCreate"]["ok"] is True
         assert result["BranchCreate"]["object"]["id"] is not None
         assert result["BranchCreate"]["task"] is None
+
+        # Validate created_by field is correctly set until this can be queried via GraphQL and the metadata fields
+        async with db.start_session() as dbs:
+            branch2 = await Branch.get_by_name(db=dbs, name="branch-2")
+        assert branch2.created_by == admin_account.id
 
     async def test_branch_create_duplicate_branch_failed(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch_to_duplicate = await client.branch.create(branch_name="branch_to_duplicate")

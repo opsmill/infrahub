@@ -15,7 +15,7 @@ from infrahub.core.graph.schema import GRAPH_SCHEMA
 from infrahub.database import InfrahubDatabase
 
 
-def test_item_node_neo4j():
+def test_item_node_neo4j() -> None:
     item = ConstraintNodeNeo4j(item_name="node", item_label="CoreNode", property="uuid", type="STRING")
     assert item.name_main == "node_node_uuid_type"
     assert item.name_exist == "node_node_uuid_exist"
@@ -31,7 +31,7 @@ def test_item_node_neo4j():
     assert item.get_query_main_drop() == "DROP CONSTRAINT node_node_uuid_type IF EXISTS"
 
 
-def test_item_rel_neo4j():
+def test_item_rel_neo4j() -> None:
     item = ConstraintRelNeo4j(item_name="attr_value", item_label="HAS_VALUE", property="from", type="STRING")
     assert item.name_main == "rel_attr_value_from_type"
     assert item.name_exist == "rel_attr_value_from_exist"
@@ -47,7 +47,7 @@ def test_item_rel_neo4j():
     assert item.get_query_main_drop() == "DROP CONSTRAINT rel_attr_value_from_type IF EXISTS"
 
 
-def test_item_node_memgraph():
+def test_item_node_memgraph() -> None:
     item = ConstraintNodeMemgraph(item_name="node", item_label="CoreNode", property="uuid", type="STRING")
     assert item.get_query_exist_add() == "CREATE CONSTRAINT ON (n:CoreNode) ASSERT EXISTS (n.uuid)"
     assert item.get_query_exist_drop() == "DROP CONSTRAINT ON (n:CoreNode) ASSERT EXISTS (n.uuid)"
@@ -57,7 +57,7 @@ def test_item_node_memgraph():
     os.getenv("INFRAHUB_DB_TYPE") != "neo4j",
     reason="Must use Neo4j to run this test",
 )
-def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase):
+def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase) -> None:
     gm = ConstraintManagerNeo4j.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     assert gm.nodes == [
@@ -388,48 +388,6 @@ def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase):
             mandatory=False,
         ),
         ConstraintRelNeo4j(
-            item_name="is_visible",
-            item_label="IS_VISIBLE",
-            property="branch",
-            type=GraphPropertyType.STRING,
-            mandatory=True,
-        ),
-        ConstraintRelNeo4j(
-            item_name="is_visible",
-            item_label="IS_VISIBLE",
-            property="branch_level",
-            type=GraphPropertyType.INTEGER,
-            mandatory=True,
-        ),
-        ConstraintRelNeo4j(
-            item_name="is_visible",
-            item_label="IS_VISIBLE",
-            property="from",
-            type=GraphPropertyType.STRING,
-            mandatory=True,
-        ),
-        ConstraintRelNeo4j(
-            item_name="is_visible",
-            item_label="IS_VISIBLE",
-            property="to",
-            type=GraphPropertyType.STRING,
-            mandatory=False,
-        ),
-        ConstraintRelNeo4j(
-            item_name="is_visible",
-            item_label="IS_VISIBLE",
-            property="status",
-            type=GraphPropertyType.STRING,
-            mandatory=True,
-        ),
-        ConstraintRelNeo4j(
-            item_name="is_visible",
-            item_label="IS_VISIBLE",
-            property="hierarchy",
-            type=GraphPropertyType.STRING,
-            mandatory=False,
-        ),
-        ConstraintRelNeo4j(
             item_name="is_protected",
             item_label="IS_PROTECTED",
             property="branch",
@@ -478,7 +436,7 @@ def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase):
     os.getenv("INFRAHUB_DB_TYPE") != "memgraph",
     reason="Must use Memgraph to run this test",
 )
-def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase):
+def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase) -> None:
     gm = ConstraintManagerMemgraph.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     assert gm.nodes == [
@@ -610,7 +568,7 @@ def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase):
     os.getenv("INFRAHUB_DB_TYPE") != "neo4j",
     reason="Must use Neo4j to run this test",
 )
-async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_branch):
+async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_branch) -> None:
     gm = ConstraintManagerNeo4j.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     previous_constraints = await gm.list()
@@ -767,16 +725,6 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ConstraintInfo(item_name="rel_is_related_status_exist", item_label="IS_RELATED", property="status"),
         ConstraintInfo(item_name="rel_is_related_status_type", item_label="IS_RELATED", property="status"),
         ConstraintInfo(item_name="rel_is_related_to_type", item_label="IS_RELATED", property="to"),
-        ConstraintInfo(item_name="rel_is_visible_branch_exist", item_label="IS_VISIBLE", property="branch"),
-        ConstraintInfo(item_name="rel_is_visible_branch_level_exist", item_label="IS_VISIBLE", property="branch_level"),
-        ConstraintInfo(item_name="rel_is_visible_branch_level_type", item_label="IS_VISIBLE", property="branch_level"),
-        ConstraintInfo(item_name="rel_is_visible_branch_type", item_label="IS_VISIBLE", property="branch"),
-        ConstraintInfo(item_name="rel_is_visible_from_exist", item_label="IS_VISIBLE", property="from"),
-        ConstraintInfo(item_name="rel_is_visible_from_type", item_label="IS_VISIBLE", property="from"),
-        ConstraintInfo(item_name="rel_is_visible_hierarchy_type", item_label="IS_VISIBLE", property="hierarchy"),
-        ConstraintInfo(item_name="rel_is_visible_status_exist", item_label="IS_VISIBLE", property="status"),
-        ConstraintInfo(item_name="rel_is_visible_status_type", item_label="IS_VISIBLE", property="status"),
-        ConstraintInfo(item_name="rel_is_visible_to_type", item_label="IS_VISIBLE", property="to"),
     ]
 
     await gm.drop()
@@ -789,7 +737,7 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
     os.getenv("INFRAHUB_DB_TYPE") != "memgraph",
     reason="Must use Memgraph to run this test",
 )
-async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, default_branch):
+async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, default_branch) -> None:
     gm = ConstraintManagerMemgraph.from_graph_schema(db=db, schema=GRAPH_SCHEMA)
 
     previous_constraints = await gm.list()

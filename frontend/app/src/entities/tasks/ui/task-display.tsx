@@ -1,11 +1,10 @@
-import { TASK_OBJECT } from "@/config/constants";
-
 import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
+import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
@@ -101,10 +100,18 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
     return <LoadingIndicator className="p-4" />;
   }
 
+  const tasks = data[TASK_OBJECT].edges?.map(({ node }) => node) ?? [];
+
+  if (tasks.length === 0) {
+    return (
+      <span className="m-auto flex flex-col gap-4 rounded-md bg-gray-100 p-4 text-sm">No task</span>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 overflow-scroll">
-      {data[TASK_OBJECT].edges?.map((edge, index) => (
-        <Task key={index} task={edge.node} />
+      {tasks.map((task, index) => (
+        <Task key={index} task={task} />
       ))}
     </div>
   );
