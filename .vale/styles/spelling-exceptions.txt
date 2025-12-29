@@ -18,6 +18,7 @@ backends
 Biome
 bool
 boolean
+booleans
 Buildkite
 changelog
 check_color_tags_name
@@ -71,11 +72,11 @@ GraphQL
 GraphQL's
 grpc
 HAProxy
-Http
 hardcoding
 hfid
 HFIDs
 hostname
+Http
 human_friendly_id
 id_token
 idempotency
@@ -107,8 +108,8 @@ Loopback
 Loopbacks
 markdownlint
 Markdownlint
-Mbps
 max_concurrent_queries
+Mbps
 memgraph
 Memgraph
 menu_placement
@@ -133,9 +134,9 @@ Observium
 Okta
 Onboarding
 OpenAPI
-otlp
 order_by
 order_weight
+otlp
 overridable
 parameterized
 performant
@@ -175,6 +176,7 @@ serializable
 Slurp'it
 snapshotting
 Streamlit
+string_type
 subcommand
 submodule
 subnet
@@ -212,8 +214,8 @@ VSCode
 walkthrough
 walkthroughs
 whitespace
-Widget's
 widget's
+Widget's
 worktrees
 Yaml
 YAML
