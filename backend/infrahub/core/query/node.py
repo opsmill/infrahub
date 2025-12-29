@@ -54,6 +54,7 @@ if TYPE_CHECKING:
 # Grouped constants for validation/iteration
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
+NODE_METADATA_PREFIX = "node_metadata__"
 
 
 @dataclass
@@ -1604,7 +1605,7 @@ class NodeGetListQuery(Query):
         """Check if any metadata filters are requested."""
         if not self.filters:
             return False
-        return any(key.startswith("node_metadata__") for key in self.filters)
+        return any(key.startswith(NODE_METADATA_PREFIX) for key in self.filters)
 
     def _validate_filters(self) -> None:
         if not self.filters:
@@ -1724,57 +1725,30 @@ WITH %(tracked_vars)s,
         _at and _by values, since they come from the same source. This is more efficient
         than separate subqueries for filtering and ordering.
         """
-        # Separate requirements by metadata type
-        created_requirements = [
-            far for far in field_requirements if far.is_metadata and far.field_name in METADATA_CREATED_FIELDS
-        ]
-        updated_requirements = [
-            far for far in field_requirements if far.is_metadata and far.field_name in METADATA_UPDATED_FIELDS
+        # Configuration for each metadata type: (allowed_fields, at_field, by_field, subquery_method)
+        metadata_configs = [
+            (METADATA_CREATED_FIELDS, METADATA_CREATED_AT, METADATA_CREATED_BY, self._add_created_metadata_subquery),
+            (METADATA_UPDATED_FIELDS, METADATA_UPDATED_AT, METADATA_UPDATED_BY, self._add_updated_metadata_subquery),
         ]
 
-        # Handle created_at/created_by metadata
-        if created_requirements:
-            # Add single subquery that returns both created_at and created_by
-            self._add_created_metadata_subquery(branch_filter)
+        for allowed_fields, at_field, by_field, add_subquery in metadata_configs:
+            requirements = [far for far in field_requirements if far.is_metadata and far.field_name in allowed_fields]
+            if not requirements:
+                continue
 
-            # Apply WHERE clauses for filters
-            for far in created_requirements:
-                if not far.is_metadata_filter:
-                    continue
-                param_name = f"metadata_filter_{far.field_name}_{far.field_attr_name}_{far.index}"
-                filter_field = METADATA_CREATED_AT if far.field_name == METADATA_CREATED_AT else METADATA_CREATED_BY
-                self.add_to_query(f"WHERE {filter_field} {far.comparison_operator} ${param_name}")
-                self.params[param_name] = far.field_attr_value
+            add_subquery(branch_filter)
 
-            # Set up ORDER BY for ordering requirements
-            for far in created_requirements:
-                if not far.is_metadata_order:
-                    continue
-                direction = far.order_direction or OrderDirection.ASC
-                order_field = METADATA_CREATED_AT if far.field_name == METADATA_CREATED_AT else METADATA_CREATED_BY
-                self.order_by.append(f"{order_field} {direction.value}")
+            for far in requirements:
+                field = at_field if far.field_name == at_field else by_field
 
-        # Handle updated_at/updated_by metadata
-        if updated_requirements:
-            # Add single subquery that returns both updated_at and updated_by
-            self._add_updated_metadata_subquery(branch_filter)
+                if far.is_metadata_filter:
+                    param_name = f"metadata_filter_{far.field_name}_{far.field_attr_name}_{far.index}"
+                    self.add_to_query(f"WHERE {field} {far.comparison_operator} ${param_name}")
+                    self.params[param_name] = far.field_attr_value
 
-            # Apply WHERE clauses for filters
-            for far in updated_requirements:
-                if not far.is_metadata_filter:
-                    continue
-                param_name = f"metadata_filter_{far.field_name}_{far.field_attr_name}_{far.index}"
-                filter_field = METADATA_UPDATED_AT if far.field_name == METADATA_UPDATED_AT else METADATA_UPDATED_BY
-                self.add_to_query(f"WHERE {filter_field} {far.comparison_operator} ${param_name}")
-                self.params[param_name] = far.field_attr_value
-
-            # Set up ORDER BY for ordering requirements
-            for far in updated_requirements:
-                if not far.is_metadata_order:
-                    continue
-                direction = far.order_direction or OrderDirection.ASC
-                order_field = METADATA_UPDATED_AT if far.field_name == METADATA_UPDATED_AT else METADATA_UPDATED_BY
-                self.order_by.append(f"{order_field} {direction.value}")
+                if far.is_metadata_order:
+                    direction = far.order_direction or OrderDirection.ASC
+                    self.order_by.append(f"{field} {direction.value}")
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
@@ -1997,7 +1971,7 @@ WITH %(tracked_vars)s,
         Returns:
             Tuple of (field_name, operator) like ("created_at", "before"), or None if not a metadata filter.
         """
-        if not filter_key.startswith("node_metadata__"):
+        if not filter_key.startswith(NODE_METADATA_PREFIX):
             return None
         parts = filter_key.split("__")
         metadata_field_name = parts[1]  # created_at, updated_at, created_by, updated_by
@@ -2146,7 +2120,7 @@ WITH %(tracked_vars)s,
                 )
             index += 1
 
-        # Add schema order_by requirements (only if no metadata ordering)
+        # Add schema order_by requirements
         for order_by_path in self.schema.order_by or []:
             order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
 
