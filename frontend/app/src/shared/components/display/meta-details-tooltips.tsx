@@ -77,7 +77,7 @@ export default function MetaDetailsTooltip({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
+      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
         <Button
           size="icon"
           variant="ghost"
