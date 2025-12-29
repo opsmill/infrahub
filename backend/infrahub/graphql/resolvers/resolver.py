@@ -7,11 +7,12 @@ from opentelemetry import trace
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
+from infrahub.core.order import OrderModel
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options
 
-from ..models import OrderModel
+from ..order import deserialize_order_input
 from ..parser import extract_selection
 from ..permissions import get_permissions
 
@@ -156,7 +157,7 @@ async def default_paginated_list_resolver(
         else info.return_type.graphene_type._meta.schema
     )
 
-    order_model = OrderModel.from_input(input_data=order)
+    order_model = deserialize_order_input(input_data=order)
 
     fields = await extract_selection(info=info, schema=schema)
 

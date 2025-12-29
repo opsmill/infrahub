@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub.constants.enums import OrderDirection
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     BranchSupportType,
@@ -7,16 +8,18 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipDirection,
 )
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.order import NodeMetaOrder, OrderModel
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.models import OrderModel
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from tests.helpers.schema import WIDGET
+from tests.node_creation import create_and_save
 
 
 async def test_query_NodeGetListQuery(
@@ -674,3 +677,245 @@ async def test_query_NodeGetListQuery_pagination_order_by(
     assert len(node_ids) == 20
     # Validate that the order_by clause hasn't changed on the test schema which would defeat the purpose of this test
     assert widget_schema.order_by == ["name__value"]
+
+
+async def test_query_NodeGetListQuery_order_by_created_at(
+    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, person_alfred_main, branch: Branch
+) -> None:
+    """Test ordering by created_at ASC and DESC."""
+    schema = registry.schema.get(name="TestCar", branch=branch)
+
+    new_car = await create_and_save(
+        db=db,
+        schema="TestCar",
+        branch=branch,
+        name="batmobile",
+        nbr_seats=5,
+        is_electric=False,
+        owner=person_alfred_main.id,
+    )
+
+    # Test ASC order
+    query_asc = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+    )
+    await query_asc.execute(db=db)
+    node_ids_asc = query_asc.get_node_ids()
+
+    # ASC order should match fixture creation order
+    assert node_ids_asc == [car_accord_main.id, car_camry_main.id, car_volt_main.id, new_car.id]
+
+    # Test DESC order
+    query_desc = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.DESC)),
+    )
+    await query_desc.execute(db=db)
+    node_ids_desc = query_desc.get_node_ids()
+
+    # DESC order should be reverse of fixture creation order
+    assert node_ids_desc == [new_car.id, car_volt_main.id, car_camry_main.id, car_accord_main.id]
+
+
+async def test_query_NodeGetListQuery_order_by_updated_at(
+    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, branch: Branch
+) -> None:
+    """Test ordering by updated_at ASC and DESC."""
+    # Modify camry to make it the most recently updated
+    camry = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
+    camry.name.value = "Updated Camry"
+    await camry.save(db=db)
+
+    schema = registry.schema.get(name="TestCar", branch=branch)
+
+    # Test DESC order
+    query_desc = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.DESC)),
+    )
+    await query_desc.execute(db=db)
+    node_ids_desc = query_desc.get_node_ids()
+
+    # Camry was updated last, so it should be first; camry and volt retain original order (volt newer)
+    assert node_ids_desc == [car_camry_main.id, car_volt_main.id, car_accord_main.id]
+
+    # Test ASC order
+    query_asc = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.ASC)),
+    )
+    await query_asc.execute(db=db)
+    node_ids_asc = query_asc.get_node_ids()
+
+    # ASC order should be reverse of DESC
+    assert node_ids_asc == [
+        car_accord_main.id,
+        car_volt_main.id,
+        car_camry_main.id,
+    ]
+
+
+async def test_query_NodeGetListQuery_metadata_order_pagination(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema
+) -> None:
+    """Test that pagination works correctly with metadata ordering on default and user branches."""
+    schema_root = SchemaRoot(nodes=[WIDGET])
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    widget_schema = registry.schema.get_node_schema("TestingWidget", branch=default_branch, duplicate=False)
+
+    # Create nodes on default branch - track their IDs in creation order
+    main_created_ids = []
+    for i in range(10):
+        widget = await Node.init(db=db, schema=widget_schema, branch=default_branch)
+        await widget.new(db=db, name=f"widget-{i}", description=f"widget index {i}")
+        await widget.save(db=db)
+        main_created_ids.append(widget.id)
+
+    # Fetch all with created_at ASC ordering on default branch
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=default_branch,
+        schema=widget_schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+    )
+    await query.execute(db=db)
+    all_node_ids = query.get_node_ids()
+
+    # Verify order matches creation order
+    assert all_node_ids == main_created_ids
+
+    # Test pagination on default branch returns consistent results for created_at
+    paginated_ids = []
+    for offset in range(0, 10, 2):
+        query = await NodeGetListQuery.init(
+            db=db,
+            branch=default_branch,
+            schema=widget_schema,
+            limit=2,
+            offset=offset,
+            order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+        )
+        await query.execute(db=db)
+        result_ids = query.get_node_ids()
+        paginated_ids.extend(result_ids)
+
+    # Paginated results should match full results
+    assert paginated_ids == main_created_ids
+
+    # Update some nodes to change their updated_at order
+    # Update widget-2 (index 2) and widget-5 (index 5) in that order
+    node_2 = await NodeManager.get_one(id=main_created_ids[2], db=db, branch=default_branch)
+    node_2.description.value = "updated widget 2"
+    await node_2.save(db=db)
+
+    node_5 = await NodeManager.get_one(id=main_created_ids[5], db=db, branch=default_branch)
+    node_5.description.value = "updated widget 5"
+    await node_5.save(db=db)
+
+    # Expected updated_at DESC order: widget-5 (most recent), widget-2, then rest in reverse creation order
+    # Nodes not updated retain their original updated_at (same as created_at)
+    non_updated_ids = [id for i, id in enumerate(main_created_ids) if i not in (2, 5)]
+    expected_updated_order_desc = [main_created_ids[5], main_created_ids[2]] + list(reversed(non_updated_ids))
+
+    # Test pagination with updated_at DESC ordering on default branch
+    paginated_updated_ids = []
+    for offset in range(0, 10, 2):
+        query = await NodeGetListQuery.init(
+            db=db,
+            branch=default_branch,
+            schema=widget_schema,
+            limit=2,
+            offset=offset,
+            order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.DESC)),
+        )
+        await query.execute(db=db)
+        result_ids = query.get_node_ids()
+        paginated_updated_ids.extend(result_ids)
+
+    assert paginated_updated_ids == expected_updated_order_desc
+
+    # Create a user branch and additional nodes on it
+    user_branch = await create_branch(branch_name="pagination-test-branch", db=db)
+    branch_widget_schema = registry.schema.get_node_schema("TestingWidget", branch=user_branch, duplicate=False)
+    branch_created_ids = []
+    for i in range(5):
+        widget = await Node.init(db=db, schema=branch_widget_schema, branch=user_branch)
+        await widget.new(db=db, name=f"branch-widget-{i}", description=f"branch widget index {i}")
+        await widget.save(db=db)
+        branch_created_ids.append(widget.id)
+
+    # All IDs visible on user branch: main nodes first (older), then branch nodes (newer)
+    all_branch_ids = main_created_ids + branch_created_ids
+
+    # Fetch all with created_at ASC ordering on user branch
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=user_branch,
+        schema=branch_widget_schema,
+        order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+    )
+    await query.execute(db=db)
+    all_branch_node_ids = query.get_node_ids()
+
+    # Verify order: main nodes first, then branch nodes
+    assert all_branch_node_ids == all_branch_ids
+
+    # Test pagination on user branch returns consistent results for created_at
+    paginated_branch_ids = []
+    for offset in range(0, 15, 3):
+        query = await NodeGetListQuery.init(
+            db=db,
+            branch=user_branch,
+            schema=branch_widget_schema,
+            limit=3,
+            offset=offset,
+            order=OrderModel(node_metadata=NodeMetaOrder(created_at=OrderDirection.ASC)),
+        )
+        await query.execute(db=db)
+        result_ids = query.get_node_ids()
+        paginated_branch_ids.extend(result_ids)
+
+    # Paginated results should match full results
+    assert paginated_branch_ids == all_branch_ids
+
+    # Update a node on the user branch to test updated_at ordering
+    branch_node_1 = await NodeManager.get_one(id=branch_created_ids[1], db=db, branch=user_branch)
+    branch_node_1.description.value = "updated branch widget 1"
+    await branch_node_1.save(db=db)
+
+    # Expected updated_at DESC order on user branch:
+    # branch-widget-1 (just updated on branch), then branch widgets in reverse creation order (excluding 1),
+    # then main widgets: widget-5 (updated), widget-2 (updated), then rest in reverse creation order
+    branch_non_updated = [id for i, id in enumerate(branch_created_ids) if i != 1]
+    expected_branch_updated_desc = (
+        [branch_created_ids[1]]
+        + list(reversed(branch_non_updated))
+        + [main_created_ids[5], main_created_ids[2]]
+        + list(reversed(non_updated_ids))
+    )
+
+    # Test pagination with updated_at DESC ordering on user branch
+    paginated_branch_updated_ids = []
+    for offset in range(0, 15, 3):
+        query = await NodeGetListQuery.init(
+            db=db,
+            branch=user_branch,
+            schema=branch_widget_schema,
+            limit=3,
+            offset=offset,
+            order=OrderModel(node_metadata=NodeMetaOrder(updated_at=OrderDirection.DESC)),
+        )
+        await query.execute(db=db)
+        result_ids = query.get_node_ids()
+        paginated_branch_updated_ids.extend(result_ids)
+
+    assert paginated_branch_updated_ids == expected_branch_updated_desc
