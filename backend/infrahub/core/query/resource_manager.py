@@ -426,16 +426,21 @@ class NumberPoolGetFree(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
+        min_value: int | None = None,
+        max_value: int | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
         self.pool = pool
+        self.min_value = min_value
+        self.max_value = max_value
 
         super().__init__(**kwargs)  # type: ignore[arg-type]
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool.get_id()
-        self.params["start_range"] = self.pool.start_range.value
-        self.params["end_range"] = self.pool.end_range.value
+        # Use min_value/max_value if provided, otherwise use pool's start_range/end_range
+        self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
+        self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
         self.limit = 1  # Query only works at returning a single, free entry
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -481,16 +486,29 @@ class NumberPoolGetFree(Query):
         self.return_labels = ["free_number as value", "is_free", "is_last"]
         self.order_by = ["value"]
 
-    def iter_results(self) -> Generator[int]:
+    def get_result_value(self) -> int | None:
+        """Get the free number from query results, handling edge cases.
+
+        Returns:
+            The free number if found, None if pool is exhausted in queried range.
+        """
+        if not self.results:
+            # No reservations in range - return start_range
+            if self.params["start_range"] <= self.params["end_range"]:
+                return self.params["start_range"]
+            return None
+
         result = self.results[0]
         value = result.get_as_type("value", return_type=int)
         is_free = result.get_as_type("is_free", return_type=bool)
         is_last = result.get_as_type("is_last", return_type=bool)
-        if not is_free:
-            if is_last and value < self.pool.end_range.value:
-                yield value + 1
-        else:
-            yield value
+
+        if is_free:
+            return value
+        # is_last=True and is_free=False means all numbers up to value are used
+        if is_last and value < self.params["end_range"]:
+            return value + 1
+        return None
 
 
 class NumberPoolSetReserved(Query):

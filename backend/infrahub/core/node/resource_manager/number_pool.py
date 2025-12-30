@@ -58,14 +58,37 @@ class CoreNumberPool(Node):
         branch: Branch,
         limit: int | None = None,
         offset: int | None = None,
+        min_value: int | None = None,
+        max_value: int | None = None,
     ) -> list[int]:
-        """Returns a list of free numbers in the pool."""
+        """Returns a list of free numbers in the pool.
+
+        Args:
+            db: Database connection.
+            branch: Branch to query.
+            limit: Maximum number of results to return.
+            offset: Number of results to skip.
+            min_value: Minimum value to start searching from.
+            max_value: Maximum value to search up to.
+
+        Returns:
+            List of free numbers in the pool.
+        """
 
         query = await NumberPoolGetFree.init(
-            db=db, branch=branch, pool=self, branch_agnostic=True, limit=limit, offset=offset
+            db=db,
+            branch=branch,
+            pool=self,
+            branch_agnostic=True,
+            limit=limit,
+            offset=offset,
+            min_value=min_value,
+            max_value=max_value,
         )
         await query.execute(db=db)
-        return list(query.iter_results())
+
+        result = query.get_result_value()
+        return [result] if result is not None else []
 
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
         """Reserve a number in the pool for a specific identifier."""
@@ -105,14 +128,98 @@ class CoreNumberPool(Node):
             return number
 
     async def get_next(self, db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema) -> int:
+        """Get the next available number from the pool.
+
+        Args:
+            db: Database connection.
+            branch: Branch to query.
+            attribute: Attribute schema that may contain NumberAttributeParameters constraints.
+
+        Returns:
+            The next available number that satisfies all constraints.
+
+        Raises:
+            PoolExhaustedError: If no valid numbers are available in the pool.
+        """
         parameters = attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None
 
-        free = await self.get_free(db=db, branch=branch)
-        if not free:
+        # Extract exclusion constraints from the attribute parameters
+        excluded_values: set[int] = set()
+        excluded_ranges: list[tuple[int, int]] = []
+
+        if parameters:
+            excluded_values = set(parameters.get_excluded_single_values())
+            excluded_ranges = parameters.get_excluded_ranges()
+
+        # Compute effective range by combining pool range with min/max constraints
+        pool_start = self.start_range.value  # type: ignore[attr-defined]
+        pool_end = self.end_range.value  # type: ignore[attr-defined]
+
+        effective_start = pool_start
+        effective_end = pool_end
+
+        if parameters:
+            if parameters.min_value is not None:
+                effective_start = max(effective_start, parameters.min_value)
+            if parameters.max_value is not None:
+                effective_end = min(effective_end, parameters.max_value)
+
+        # Check if the effective range is valid
+        if effective_start > effective_end:
             raise PoolExhaustedError("There are no more values available in this pool.")
 
-        for num in free:
-            if parameters is None or parameters.is_valid_value(num):
-                return num
+        min_value: int = effective_start
 
-        raise PoolExhaustedError("There are no more values available in this pool.")
+        def skip_excluded(value: int) -> int | None:
+            """Skip past any excluded values/ranges starting from value.
+
+            Returns the next non-excluded value, or None if we exceed effective_end.
+            """
+            current = value
+            while current <= effective_end:
+                # Check if in an excluded range and skip past it
+                in_range = False
+                for range_start, range_end in excluded_ranges:
+                    if range_start <= current <= range_end:
+                        current = range_end + 1
+                        in_range = True
+                        break
+                if in_range:
+                    continue
+
+                # Check if it's an excluded single value
+                if current in excluded_values:
+                    current += 1
+                    continue
+
+                # Found a non-excluded value
+                return current
+
+            return None
+
+        # Skip any excluded values at the start
+        first_valid = skip_excluded(effective_start)
+        if first_valid is None:
+            raise PoolExhaustedError("There are no more values available in this pool.")
+        min_value = first_valid
+
+        # Re-run the query until we find a non-excluded value or exhaust the pool
+        while True:
+            free = await self.get_free(db=db, branch=branch, min_value=min_value, max_value=effective_end)
+            if not free:
+                raise PoolExhaustedError("There are no more values available in this pool.")
+
+            candidate = free[0]
+
+            # Check if candidate is excluded (single value or range)
+            next_valid = skip_excluded(candidate)
+            if next_valid is None:
+                raise PoolExhaustedError("There are no more values available in this pool.")
+
+            if next_valid != candidate:
+                # Candidate was excluded, re-query starting from next valid point
+                min_value = next_valid
+                continue
+
+            # Candidate passed all checks
+            return candidate
