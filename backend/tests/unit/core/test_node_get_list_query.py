@@ -930,6 +930,19 @@ async def test_query_NodeGetListQuery_metadata_filtering(
     await query.execute(db=db)
     assert set(query.get_node_ids()) == {node3.id}
 
+    # Test 7: Filter created_at__before + created_at__after
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        filters={
+            "node_metadata__created_at__after": timestamp_after_1,
+            "node_metadata__created_at__before": timestamp_after_3,
+        },
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {node2.id, node3.id}
+
 
 async def test_query_NodeGetListQuery_metadata_ordering(
     db: InfrahubDatabase, criticality_schema, branch: Branch
