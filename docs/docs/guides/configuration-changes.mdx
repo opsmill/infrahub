@@ -260,7 +260,7 @@ Or with inline values:
 
 ```bash
 helm upgrade infrahub opsmill/infrahub \
-  --set env.INFRAHUB_HTTP_TIMEOUT=20 \
+  --set infrahubServer.infrahubServer.env.INFRAHUB_HTTP_TIMEOUT=20 --set infrahubTaskWorker.infrahubTaskWorker.env.INFRAHUB_HTTP_TIMEOUT=20 \
   -n <your-namespace>
 ```
 
