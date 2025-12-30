@@ -36,7 +36,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
-  const hasOngoingTask = taskData?.count > 0;
+  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
 
   // Reset local state when server confirms no ongoing merge task
   useEffect(() => {

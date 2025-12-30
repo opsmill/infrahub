@@ -1,12 +1,20 @@
+import { graphql, type VariablesOf } from "gql.tada";
+
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import { GET_BRANCHES_COUNT } from "@/entities/branches/api/get-branches-count-query";
+const GET_BRANCHES_COUNT = graphql(`
+  query GetBranchesCount($branchSearch: String) {
+    InfrahubBranch(name__value: $branchSearch) {
+      count
+    }
+  }
+`);
 
-export const getBranchesCountFromApi = async (branchSearch?: string) => {
+interface GetBranchesCountFromApiParams extends VariablesOf<typeof GET_BRANCHES_COUNT> {}
+
+export const getBranchesCountFromApi = async (variables: GetBranchesCountFromApiParams) => {
   return graphqlClient.query({
     query: GET_BRANCHES_COUNT,
-    variables: {
-      branchSearch,
-    },
+    variables,
   });
 };

@@ -61,7 +61,12 @@ export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
 
   return (
     <Button
-      disabled={!isAuthenticated || loading || branch.is_default || taskData?.count > 0}
+      disabled={
+        !isAuthenticated ||
+        loading ||
+        branch.is_default ||
+        (!!taskData?.count && taskData.count > 0)
+      }
       onClick={handleSubmit}
       variant={"warning"}
       className="flex items-center gap-2"

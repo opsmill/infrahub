@@ -8,7 +8,10 @@ from dataclasses import field as dataclass_field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
+import ujson
+
 from infrahub import config
+from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
@@ -19,6 +22,7 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
+from infrahub.core.order import OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -26,7 +30,6 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
-from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
@@ -1420,9 +1423,61 @@ WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(upda
             )
 
 
+class NodeGetByHFIDQuery(Query):
+    """Query to lookup nodes by their HFID.
+
+    This query uses the stored `human_friendly_id` attribute on nodes.
+    """
+
+    name = "node_get_by_hfid"
+    type = QueryType.READ
+
+    def __init__(self, node_kind: str, hfids: list[list[str]], **kwargs: Any) -> None:
+        self.node_kind = node_kind
+        self.hfids = hfids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+        # The list is stored as a string in the database
+        self.params["hfid_values"] = [ujson.dumps(hfid) for hfid in self.hfids]
+
+        query = """
+        MATCH (n:%(node_kind)s)
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r AS r_part_of
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, r_part_of
+        WHERE r_part_of.status = "active"
+        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "human_friendly_id"})
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av)
+            WHERE %(branch_filter)s
+            RETURN av, r AS r_attr
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r_attr
+        WHERE r_attr.status = "active" AND av.value IN $hfid_values
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_kind}
+
+        self.add_to_query(query)
+        self.return_labels = ["n.uuid AS node_uuid", "av.value AS hfid"]
+
+    def get_node_uuids(self) -> list[str]:
+        """Get the list of node UUIDs from the query results."""
+        return [result.get_as_type(label="node_uuid", return_type=str) for result in self.get_results()]
+
+
 class FieldAttributeRequirementType(Enum):
     FILTER = "filter"
     ORDER = "order"
+    METADATA_ORDER = "metadata_order"
 
 
 @dataclass
@@ -1433,6 +1488,8 @@ class FieldAttributeRequirement:
     field_attr_value: Any
     index: int
     types: list[FieldAttributeRequirementType] = dataclass_field(default_factory=list)
+    # For ordering: direction to sort (ASC/DESC)
+    order_direction: OrderDirection | None = None
 
     @property
     def is_attribute_value(self) -> bool:
@@ -1447,7 +1504,13 @@ class FieldAttributeRequirement:
         return FieldAttributeRequirementType.ORDER in self.types
 
     @property
+    def is_metadata_order(self) -> bool:
+        return FieldAttributeRequirementType.METADATA_ORDER in self.types
+
+    @property
     def node_value_query_variable(self) -> str:
+        if self.is_metadata_order:
+            return f"order_{self.field_name}"
         return f"attr{self.index}_node_value"
 
     @property
@@ -1491,7 +1554,7 @@ class NodeGetListQuery(Query):
                 order = copy(order)
                 order.disable = True
 
-        self.order = order
+        self.requested_order = order
 
         super().__init__(**kwargs)
 
@@ -1506,6 +1569,18 @@ class NodeGetListQuery(Query):
         if self.filters and "id" in self.filters:
             return True
         return False
+
+    def _get_metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
+        """Return the metadata field and direction to order by, or None."""
+        if not self.requested_order or not self.requested_order.node_metadata:
+            return []
+        fields: list[tuple[str, OrderDirection]] = []
+        nm = self.requested_order.node_metadata
+        if nm.created_at:
+            fields.append(("created_at", nm.created_at))
+        if nm.updated_at:
+            fields.append(("updated_at", nm.updated_at))
+        return fields
 
     def _validate_filters(self) -> None:
         if not self.filters:
@@ -1530,6 +1605,78 @@ class NodeGetListQuery(Query):
 
     def _get_tracked_variables(self) -> list[str]:
         return self._variables_to_track
+
+    def _add_created_at_order_subquery(self, branch_filter: str) -> None:
+        """Add subquery to extract created_at timestamp for ordering."""
+        tracked_vars = ", ".join(self._get_tracked_variables())
+
+        if self.branch.is_default or self.branch.is_global:
+            created_at_query = f"WITH {tracked_vars}, n.created_at AS order_created_at"
+        else:
+            created_at_query = """
+CALL (n) {
+    MATCH (:Node {uuid: n.uuid})-[r:IS_PART_OF {status: "active"}]->(:Root)
+    WHERE %(branch_filter)s
+    RETURN r.from AS order_created_at
+    ORDER BY r.from ASC
+    LIMIT 1
+}
+WITH %(tracked_vars)s, order_created_at
+            """ % {"branch_filter": branch_filter, "tracked_vars": tracked_vars}
+
+        self.add_to_query(created_at_query)
+        self._track_variable("order_created_at")
+
+    def _add_updated_at_order_subquery(self, branch_filter: str) -> None:
+        """Add subquery to extract updated_at timestamp for ordering."""
+        tracked_vars = ", ".join(self._get_tracked_variables())
+
+        if self.branch.is_default or self.branch.is_global:
+            updated_at_query = f"WITH {tracked_vars}, n.updated_at AS order_updated_at"
+        else:
+            if self.branch_agnostic:
+                time_details = """
+    WITH [r.from] AS from_details, [r.to] AS to_details
+                """
+            else:
+                time_details = """
+    WITH CASE
+        WHEN r.branch IN $branch0 AND r.from < $time0 THEN [r.from]
+        WHEN r.branch IN $branch1 AND r.from < $time1 THEN [r.from]
+        ELSE [NULL]
+    END AS from_details,
+    CASE
+        WHEN r.branch IN $branch0 AND r.to < $time0 THEN [r.to]
+        WHEN r.branch IN $branch1 AND r.to < $time1 THEN [r.to]
+        ELSE [NULL]
+    END AS to_details
+                """
+
+            updated_at_query = """
+MATCH (n)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+WHERE %(branch_filter)s
+WITH DISTINCT %(tracked_vars)s, field
+CALL (field) {
+    MATCH (field)-[r]-(property)
+    WHERE %(branch_filter)s
+    %(time_details)s
+    WITH collect(from_details) AS from_details_list, collect(to_details) AS to_details_list
+    WITH from_details_list + to_details_list AS details_list
+    UNWIND details_list AS one_details
+    WITH one_details[0] AS updated_at_val
+    WHERE updated_at_val IS NOT NULL
+    WITH updated_at_val
+    ORDER BY updated_at_val DESC
+    LIMIT 1
+    RETURN updated_at_val
+}
+WITH %(tracked_vars)s, updated_at_val
+ORDER BY elementId(n), updated_at_val DESC
+WITH %(tracked_vars)s, head(collect(updated_at_val)) AS order_updated_at
+            """ % {"branch_filter": branch_filter, "time_details": time_details, "tracked_vars": tracked_vars}
+
+        self.add_to_query(updated_at_query)
+        self._track_variable("order_updated_at")
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
@@ -1572,8 +1719,11 @@ class NodeGetListQuery(Query):
             self.add_to_query(" AND n.uuid = $uuid")
             return
 
-        disable_order = not self.schema.order_by or (self.order is not None and self.order.disable)
-        if not self.has_filters and disable_order:
+        # Determine ordering behavior
+        disable_order = self.requested_order is not None and self.requested_order.disable
+        has_any_order = bool(self.schema.order_by) or self._get_metadata_order_fields()
+
+        if not self.has_filters and (disable_order or not has_any_order):
             # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
             self.order_by = ["n.uuid"]
             return
@@ -1582,24 +1732,21 @@ class NodeGetListQuery(Query):
             self.add_to_query("AND n.uuid IN $node_ids")
             self.params["node_ids"] = self.filters["ids"]
 
+        # Get unified field requirements for filtering and ordering
         field_attribute_requirements = self._get_field_requirements(disable_order=disable_order)
+
+        # Apply filter subqueries
         await self._add_node_filter_attributes(
             db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
         )
 
-        if not disable_order:
-            await self._add_node_order_attributes(
-                db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
-            )
-            for far in field_attribute_requirements:
-                if not far.is_order:
-                    continue
-                self.order_by.append(far.node_value_query_variable)
+        # Apply order subqueries
+        await self._add_node_order_attributes(
+            db=db, field_requirements=field_attribute_requirements, branch_filter=branch_filter
+        )
 
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
-
-        self._add_final_filter(field_attribute_requirements=field_attribute_requirements)
 
     async def _add_node_filter_attributes(
         self,
@@ -1643,6 +1790,11 @@ class NodeGetListQuery(Query):
             filter_query.append("}")
             filter_query.append(f"WITH {with_str}")
 
+            # Add WHERE clause immediately after the filter subquery for better performance
+            where_clause = self._build_filter_where_clause(far)
+            if where_clause:
+                filter_query.append(where_clause)
+
         if filter_query:
             self.add_to_query(filter_query)
         self.params.update(filter_params)
@@ -1650,20 +1802,29 @@ class NodeGetListQuery(Query):
     async def _add_node_order_attributes(
         self,
         db: InfrahubDatabase,
-        field_attribute_requirements: list[FieldAttributeRequirement],
+        field_requirements: list[FieldAttributeRequirement],
         branch_filter: str,
     ) -> None:
-        field_attribute_requirements = [
-            far for far in field_attribute_requirements if far.is_order and not far.is_filter
-        ]
-        if not field_attribute_requirements:
-            return
+        """Unified method to add ordering subqueries for both metadata and schema attributes."""
+        for far in field_requirements:
+            if far.is_metadata_order:
+                # Handle metadata ordering (created_at or updated_at)
+                if far.field_name == "created_at":
+                    self._add_created_at_order_subquery(branch_filter)
+                elif far.field_name == "updated_at":
+                    self._add_updated_at_order_subquery(branch_filter)
+                direction = far.order_direction or OrderDirection.ASC
+                self.order_by.append(f"{far.node_value_query_variable} {direction.value}")
+                continue
 
-        sort_query: list[str] = []
-        sort_params: dict[str, Any] = {}
-
-        for far in field_attribute_requirements:
+            # Handle schema attribute ordering
             if far.field is None:
+                continue
+
+            # If this field is also used for filtering, the filter subquery already
+            # extracted the value - just add it to order_by, don't create another subquery
+            if far.is_filter:
+                self.order_by.append(far.node_value_query_variable)
                 continue
 
             subquery, subquery_params, _ = await build_subquery_order(
@@ -1679,56 +1840,49 @@ class NodeGetListQuery(Query):
             self._track_variable(far.node_value_query_variable)
             with_str = ", ".join(self._get_tracked_variables())
 
-            sort_params.update(subquery_params)
-            sort_query.append("CALL (n) {")
-            sort_query.append(subquery)
-            sort_query.append("}")
-            sort_query.append(f"WITH {with_str}")
+            self.params.update(subquery_params)
+            self.add_to_query(["CALL (n) {", subquery, "}", f"WITH {with_str}"])
+            self.order_by.append(far.node_value_query_variable)
 
-        if sort_query:
-            self.add_to_query(sort_query)
-        self.params.update(sort_params)
+    def _build_filter_where_clause(self, far: FieldAttributeRequirement) -> str | None:
+        """Build a WHERE clause for a single filter requirement.
 
-    def _add_final_filter(self, field_attribute_requirements: list[FieldAttributeRequirement]) -> None:
-        where_parts = []
-        where_str = ""
-        for far in field_attribute_requirements:
-            if not far.is_filter or not far.is_attribute_value:
-                continue
-            var_name = f"final_attr_value{far.index}"
-            self.params[var_name] = far.field_attr_comparison_value
-            if self.partial_match:
-                if isinstance(far.field_attr_comparison_value, list):
-                    # If the any filter is an array/list
-                    var_array = f"{var_name}_array"
-                    where_parts.append(
-                        f"any({var_array} IN ${var_name} WHERE toLower(toString({far.node_value_query_variable})) CONTAINS toLower({var_array}))"
-                    )
-                else:
-                    where_parts.append(
-                        f"toLower(toString({far.node_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
-                    )
-                continue
-            if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
-                if isinstance(far.field_attr_comparison_value, list):
-                    self.params[var_name] = build_regex_attrs(values=far.field_attr_comparison_value)
-                else:
-                    self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
+        Returns the WHERE clause string, or None if no clause is needed.
+        """
+        if not far.is_filter or not far.is_attribute_value:
+            return None
 
-                where_parts.append(f"toString({far.node_value_query_variable}) =~ ${var_name}")
-                continue
+        var_name = f"final_attr_value{far.index}"
+        self.params[var_name] = far.field_attr_comparison_value
 
-            where_parts.append(f"{far.node_value_query_variable} {far.comparison_operator} ${var_name}")
-        if where_parts:
-            where_str = "WHERE " + " AND ".join(where_parts)
-        self.add_to_query(where_str)
+        if self.partial_match:
+            if isinstance(far.field_attr_comparison_value, list):
+                # If the any filter is an array/list
+                var_array = f"{var_name}_array"
+                return f"WHERE any({var_array} IN ${var_name} WHERE toLower(toString({far.node_value_query_variable})) CONTAINS toLower({var_array}))"
+            return f"WHERE toLower(toString({far.node_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
 
-    def _get_field_requirements(self, disable_order: bool) -> list[FieldAttributeRequirement]:
+        if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
+            if isinstance(far.field_attr_comparison_value, list):
+                self.params[var_name] = build_regex_attrs(values=far.field_attr_comparison_value)
+            else:
+                self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
+            return f"WHERE toString({far.node_value_query_variable}) =~ ${var_name}"
+
+        return f"WHERE {far.node_value_query_variable} {far.comparison_operator} ${var_name}"
+
+    def _get_field_requirements(self, disable_order: bool = False) -> list[FieldAttributeRequirement]:
         internal_filters = ["any", "attribute", "relationship"]
-        field_requirements_map: dict[tuple[str, str], FieldAttributeRequirement] = {}
+        field_requirements_map: dict[tuple[str | None, str], FieldAttributeRequirement] = {}
         index = 1
+
+        # Add filter requirements
         if self.filters:
-            for field_name in self.schema.valid_input_names + internal_filters:
+            for full_field in self.filters:
+                # "height__value" -> "height"
+                field_name = full_field.split("__", maxsplit=1)[0]
+                if field_name not in self.schema.valid_input_names + internal_filters:
+                    continue
                 attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
                 if not attr_filters:
                     continue
@@ -1749,24 +1903,47 @@ class NodeGetListQuery(Query):
         if disable_order:
             return list(field_requirements_map.values())
 
-        for order_by_path in self.schema.order_by:
+        # Add metadata ordering requirements first (highest priority)
+        for metadata_field, direction in self._get_metadata_order_fields():
+            existing_req = field_requirements_map.get((None, metadata_field))
+            if existing_req:
+                # Field already used for filtering, add ORDER type
+                existing_req.types.append(FieldAttributeRequirementType.METADATA_ORDER)
+                existing_req.order_direction = direction
+            else:
+                field_requirements_map[None, metadata_field] = FieldAttributeRequirement(
+                    field_name=metadata_field,
+                    field=None,
+                    field_attr_name=metadata_field,
+                    field_attr_value=None,
+                    index=index,
+                    types=[FieldAttributeRequirementType.METADATA_ORDER],
+                    order_direction=direction,
+                )
+            index += 1
+
+        # Add schema order_by requirements
+        for order_by_path in self.schema.order_by or []:
             order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
 
             field = self.schema.get_field(order_by_field_name)
-            field_req = field_requirements_map.get(
-                (order_by_field_name, order_by_attr_property_name),
-                FieldAttributeRequirement(
+            existing_req = field_requirements_map.get((order_by_field_name, order_by_attr_property_name))
+            if existing_req:
+                # Field already used for filtering, add ORDER type
+                existing_req.types.append(FieldAttributeRequirementType.ORDER)
+                existing_req.order_direction = OrderDirection.ASC
+            else:
+                # New field requirement for ordering only
+                field_requirements_map[order_by_field_name, order_by_attr_property_name] = FieldAttributeRequirement(
                     field_name=order_by_field_name,
                     field=field,
                     field_attr_name=order_by_attr_property_name,
                     field_attr_value=None,
                     index=index,
-                    types=[],
-                ),
-            )
-            field_req.types.append(FieldAttributeRequirementType.ORDER)
-            field_requirements_map[order_by_field_name, order_by_attr_property_name] = field_req
-            index += 1
+                    types=[FieldAttributeRequirementType.ORDER],
+                    order_direction=OrderDirection.ASC,
+                )
+                index += 1
 
         return list(field_requirements_map.values())
 

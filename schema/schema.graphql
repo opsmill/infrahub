@@ -10496,6 +10496,8 @@ type ProcessRepository {
 type ProfileBuiltinIPAddress implements CoreNode & CoreProfile & LineageSource {
   _updated_at: DateTime
   """None"""
+  address: IPHost
+  """None"""
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -10519,6 +10521,7 @@ type ProfileBuiltinIPAddressCreate {
 }
 
 input ProfileBuiltinIPAddressCreateInput {
+  address: TextAttributeCreate
   description: TextAttributeCreate
   id: String
   ip_namespace: RelatedNodeInput
@@ -10541,6 +10544,7 @@ type ProfileBuiltinIPAddressUpdate {
 }
 
 input ProfileBuiltinIPAddressUpdateInput {
+  address: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -10559,6 +10563,7 @@ type ProfileBuiltinIPAddressUpsert {
 }
 
 input ProfileBuiltinIPAddressUpsertInput {
+  address: TextAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -10586,6 +10591,8 @@ type ProfileBuiltinIPPrefix implements CoreNode & CoreProfile & LineageSource {
   member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """None"""
   member_type: Dropdown
+  """None"""
+  prefix: IPNetwork
   """None (required)"""
   profile_name: TextAttribute
   """None"""
@@ -10608,6 +10615,7 @@ input ProfileBuiltinIPPrefixCreateInput {
   is_pool: CheckboxAttributeCreate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeCreate
+  prefix: TextAttributeCreate
   profile_name: TextAttributeCreate
   profile_priority: NumberAttributeCreate
   related_nodes: [RelatedIPPrefixNodeInput]
@@ -10634,6 +10642,7 @@ input ProfileBuiltinIPPrefixUpdateInput {
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeUpdate
+  prefix: TextAttributeUpdate
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPPrefixNodeInput]
@@ -10655,6 +10664,7 @@ input ProfileBuiltinIPPrefixUpsertInput {
   is_pool: CheckboxAttributeUpdate
   member_of_groups: [RelatedNodeInput]
   member_type: TextAttributeUpdate
+  prefix: TextAttributeUpdate
   profile_name: TextAttributeUpdate
   profile_priority: NumberAttributeUpdate
   related_nodes: [RelatedIPPrefixNodeInput]
@@ -22067,6 +22077,12 @@ type Query {
     partial_match: Boolean
   ): PaginatedLineageSource!
   ProfileBuiltinIPAddress(
+    address__is_protected: Boolean
+    address__isnull: Boolean
+    address__owner__id: ID
+    address__source__id: ID
+    address__value: String
+    address__values: [String]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -22233,6 +22249,12 @@ type Query {
     offset: Int
     order: OrderInput
     partial_match: Boolean
+    prefix__is_protected: Boolean
+    prefix__isnull: Boolean
+    prefix__owner__id: ID
+    prefix__source__id: ID
+    prefix__value: String
+    prefix__values: [String]
     profile_name__is_protected: Boolean
     profile_name__isnull: Boolean
     profile_name__owner__id: ID

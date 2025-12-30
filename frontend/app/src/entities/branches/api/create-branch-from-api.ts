@@ -1,12 +1,8 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type {
-  Branch_CreateMutation,
-  Branch_CreateMutationVariables,
-} from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export const BRANCH_CREATE = gql`
+const BRANCH_CREATE = graphql(`
   mutation BRANCH_CREATE($name: String!, $description: String, $sync_with_git: Boolean) {
     BranchCreate(data: { name: $name, description: $description, sync_with_git: $sync_with_git }) {
       object {
@@ -16,6 +12,7 @@ export const BRANCH_CREATE = gql`
         origin_branch
         branched_from
         created_at
+        status
         sync_with_git
         is_default
         status
@@ -23,16 +20,12 @@ export const BRANCH_CREATE = gql`
       }
     }
   }
-`;
+`);
 
-export interface CreateBranchFromApiParams {
-  name: string;
-  description?: string | null;
-  sync_with_git?: boolean;
-}
+export type CreateBranchFromApiParams = VariablesOf<typeof BRANCH_CREATE>;
 
 export function createBranchFromApi(params: CreateBranchFromApiParams) {
-  return graphqlClient.mutate<Branch_CreateMutation, Branch_CreateMutationVariables>({
+  return graphqlClient.mutate({
     mutation: BRANCH_CREATE,
     variables: params,
   });

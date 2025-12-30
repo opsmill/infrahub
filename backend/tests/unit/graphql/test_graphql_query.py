@@ -7,6 +7,7 @@ from infrahub import __version__, config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
@@ -3504,3 +3505,347 @@ async def test_hierarchical_groups_descendants(
         "tag-13",
     ]
     assert grp1["members"]["count"] == 14
+
+
+async def test_graphql_order_by_created_at(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """Test ordering by created_at in ASC and DESC order via GraphQL."""
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="first", level=1)
+    await obj1.save(db=db)
+
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="second", level=2)
+    await obj2.save(db=db)
+
+    obj3 = await Node.init(db=db, schema=criticality_schema)
+    await obj3.new(db=db, name="third", level=3)
+    await obj3.save(db=db)
+
+    # Test ASC order
+    query_asc = """
+    query {
+        TestCriticality(order: {node_metadata: {created_at: ASC}}) {
+            edges {
+                node_metadata { created_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result_asc = await graphql(
+        schema=gql_params.schema,
+        source=query_asc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_asc.errors is None
+    assert result_asc.data
+    edges_asc = result_asc.data["TestCriticality"]["edges"]
+    names_asc = [e["node"]["name"]["value"] for e in edges_asc]
+    timestamps_asc = [e["node_metadata"]["created_at"] for e in edges_asc]
+
+    assert names_asc == ["first", "second", "third"]
+    assert timestamps_asc == sorted(timestamps_asc)
+
+    # Test DESC order
+    query_desc = """
+    query {
+        TestCriticality(order: {node_metadata: {created_at: DESC}}) {
+            edges {
+                node_metadata { created_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result_desc = await graphql(
+        schema=gql_params.schema,
+        source=query_desc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_desc.errors is None
+    assert result_desc.data
+    edges_desc = result_desc.data["TestCriticality"]["edges"]
+    names_desc = [e["node"]["name"]["value"] for e in edges_desc]
+    timestamps_desc = [e["node_metadata"]["created_at"] for e in edges_desc]
+
+    assert names_desc == ["third", "second", "first"]
+    assert timestamps_desc == sorted(timestamps_desc, reverse=True)
+
+
+async def test_graphql_order_by_updated_at(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """Test ordering by updated_at in ASC and DESC order via GraphQL."""
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="alpha", level=1)
+    await obj1.save(db=db)
+
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="beta", level=2)
+    await obj2.save(db=db)
+
+    obj3 = await Node.init(db=db, schema=criticality_schema)
+    await obj3.new(db=db, name="gamma", level=3)
+    await obj3.save(db=db)
+
+    # Update in different order: gamma first, then alpha
+    obj3_updated = await NodeManager.get_one(db=db, id=obj3.id)
+    obj3_updated.level.value = 30
+    await obj3_updated.save(db=db)
+
+    obj1_updated = await NodeManager.get_one(db=db, id=obj1.id)
+    obj1_updated.level.value = 10
+    await obj1_updated.save(db=db)
+
+    # Expected order by updated_at DESC: alpha (most recent), gamma, beta (never updated)
+    query_desc = """
+    query {
+        TestCriticality(order: {node_metadata: {updated_at: DESC}}) {
+            edges {
+                node_metadata { updated_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result_desc = await graphql(
+        schema=gql_params.schema,
+        source=query_desc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_desc.errors is None
+    assert result_desc.data
+    edges_desc = result_desc.data["TestCriticality"]["edges"]
+    names_desc = [e["node"]["name"]["value"] for e in edges_desc]
+    timestamps_desc = [e["node_metadata"]["updated_at"] for e in edges_desc]
+
+    assert names_desc == ["alpha", "gamma", "beta"]
+    assert timestamps_desc == sorted(timestamps_desc, reverse=True)
+
+    # Test ASC order
+    query_asc = """
+    query {
+        TestCriticality(order: {node_metadata: {updated_at: ASC}}) {
+            edges {
+                node_metadata { updated_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result_asc = await graphql(
+        schema=gql_params.schema,
+        source=query_asc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_asc.errors is None
+    assert result_asc.data
+    edges_asc = result_asc.data["TestCriticality"]["edges"]
+    names_asc = [e["node"]["name"]["value"] for e in edges_asc]
+    timestamps_asc = [e["node_metadata"]["updated_at"] for e in edges_asc]
+
+    assert names_asc == ["beta", "gamma", "alpha"]
+    assert timestamps_asc == sorted(timestamps_asc)
+
+
+async def test_graphql_order_by_metadata_on_user_branch(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """Test ordering by created_at and updated_at on a user branch with nodes from both branches."""
+    # Create nodes on default branch
+    main_obj1 = await Node.init(db=db, schema=criticality_schema)
+    await main_obj1.new(db=db, name="main-first", level=1)
+    await main_obj1.save(db=db)
+
+    main_obj2 = await Node.init(db=db, schema=criticality_schema)
+    await main_obj2.new(db=db, name="main-second", level=2)
+    await main_obj2.save(db=db)
+
+    # Create a user branch
+    user_branch = await create_branch(branch_name="test-metadata-order-branch", db=db)
+
+    # Create nodes on user branch (these will be created after main branch nodes)
+    branch_obj1 = await Node.init(db=db, schema=criticality_schema, branch=user_branch)
+    await branch_obj1.new(db=db, name="branch-first", level=10)
+    await branch_obj1.save(db=db)
+
+    branch_obj2 = await Node.init(db=db, schema=criticality_schema, branch=user_branch)
+    await branch_obj2.new(db=db, name="branch-second", level=20)
+    await branch_obj2.save(db=db)
+
+    # Test created_at ASC on user branch - should see main nodes first, then branch nodes
+    query_created_asc = """
+    query {
+        TestCriticality(order: {node_metadata: {created_at: ASC}}) {
+            edges {
+                node_metadata { created_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    user_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=user_branch)
+    result_created_asc = await graphql(
+        schema=gql_params.schema,
+        source=query_created_asc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_created_asc.errors is None
+    assert result_created_asc.data
+    edges_created_asc = result_created_asc.data["TestCriticality"]["edges"]
+    names_created_asc = [e["node"]["name"]["value"] for e in edges_created_asc]
+    timestamps_created_asc = [e["node_metadata"]["created_at"] for e in edges_created_asc]
+
+    # Main branch nodes should come first (created earlier), then branch nodes
+    assert names_created_asc == ["main-first", "main-second", "branch-first", "branch-second"]
+    assert timestamps_created_asc == sorted(timestamps_created_asc)
+
+    # Test created_at DESC on user branch
+    query_created_desc = """
+    query {
+        TestCriticality(order: {node_metadata: {created_at: DESC}}) {
+            edges {
+                node_metadata { created_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=user_branch)
+    result_created_desc = await graphql(
+        schema=gql_params.schema,
+        source=query_created_desc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_created_desc.errors is None
+    assert result_created_desc.data
+    edges_created_desc = result_created_desc.data["TestCriticality"]["edges"]
+    names_created_desc = [e["node"]["name"]["value"] for e in edges_created_desc]
+    timestamps_created_desc = [e["node_metadata"]["created_at"] for e in edges_created_desc]
+
+    assert names_created_desc == ["branch-second", "branch-first", "main-second", "main-first"]
+    assert timestamps_created_desc == sorted(timestamps_created_desc, reverse=True)
+
+    # Update a main node on the user branch to make it the most recently updated
+    main_obj1_on_branch = await NodeManager.get_one(db=db, id=main_obj1.id, branch=user_branch)
+    main_obj1_on_branch.level.value = 100
+    await main_obj1_on_branch.save(db=db)
+
+    # Test updated_at DESC on user branch
+    query_updated_desc = """
+    query {
+        TestCriticality(order: {node_metadata: {updated_at: DESC}}) {
+            edges {
+                node_metadata { updated_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=user_branch)
+    result_updated_desc = await graphql(
+        schema=gql_params.schema,
+        source=query_updated_desc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_updated_desc.errors is None
+    assert result_updated_desc.data
+    edges_updated_desc = result_updated_desc.data["TestCriticality"]["edges"]
+    names_updated_desc = [e["node"]["name"]["value"] for e in edges_updated_desc]
+    timestamps_updated_desc = [e["node_metadata"]["updated_at"] for e in edges_updated_desc]
+
+    # main-first should be first (most recently updated on branch)
+    assert names_updated_desc == ["main-first", "branch-second", "branch-first", "main-second"]
+    assert timestamps_updated_desc == sorted(timestamps_updated_desc, reverse=True)
+
+    # Test updated_at ASC on user branch
+    query_updated_asc = """
+    query {
+        TestCriticality(order: {node_metadata: {updated_at: ASC}}) {
+            edges {
+                node_metadata { updated_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=user_branch)
+    result_updated_asc = await graphql(
+        schema=gql_params.schema,
+        source=query_updated_asc,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result_updated_asc.errors is None
+    assert result_updated_asc.data
+    edges_updated_asc = result_updated_asc.data["TestCriticality"]["edges"]
+    names_updated_asc = [e["node"]["name"]["value"] for e in edges_updated_asc]
+    timestamps_updated_asc = [e["node_metadata"]["updated_at"] for e in edges_updated_asc]
+
+    # main-first should be last (most recently updated on branch)
+    assert names_updated_asc == ["main-second", "branch-first", "branch-second", "main-first"]
+    assert timestamps_updated_asc == sorted(timestamps_updated_asc)
+
+    # Test pagination with created_at ordering - retrieve in batches of 2
+    query_paginated = """
+    query($offset: Int!, $limit: Int!) {
+        TestCriticality(order: {node_metadata: {created_at: ASC}}, offset: $offset, limit: $limit) {
+            edges {
+                node_metadata { created_at }
+                node { name { value } }
+            }
+        }
+    }
+    """
+    paginated_names = []
+    paginated_timestamps = []
+    for offset in range(0, 4, 2):
+        gql_params = await prepare_graphql_params(db=db, branch=user_branch)
+        result_page = await graphql(
+            schema=gql_params.schema,
+            source=query_paginated,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"offset": offset, "limit": 2},
+        )
+        assert result_page.errors is None
+        assert result_page.data
+        edges_page = result_page.data["TestCriticality"]["edges"]
+        paginated_names.extend([e["node"]["name"]["value"] for e in edges_page])
+        paginated_timestamps.extend([e["node_metadata"]["created_at"] for e in edges_page])
+
+    # Paginated results should match full created_at ASC ordering
+    assert paginated_names == ["main-first", "main-second", "branch-first", "branch-second"]
+    assert paginated_timestamps == sorted(paginated_timestamps)

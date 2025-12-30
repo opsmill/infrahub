@@ -2,11 +2,7 @@ import {
   type GetBranchDetailsFromApiParams,
   getBranchDetailsFromApi,
 } from "@/entities/branches/api/get-branch-details-from-api";
-import {
-  type BranchDetail,
-  type InfrahubBranchResponse,
-  mapToBranchDetail,
-} from "@/entities/branches/domain/branch.mappers";
+import { type BranchDetail, mapToBranchDetail } from "@/entities/branches/domain/branch.mappers";
 
 export type GetBranchDetailsParams = GetBranchDetailsFromApiParams;
 
@@ -21,10 +17,9 @@ export const getBranchDetails: GetBranchDetails = async (params) => {
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const response = data as InfrahubBranchResponse;
-  const result = response?.InfrahubBranch?.edges[0];
+  const branch = data?.InfrahubBranch?.edges[0]?.node;
 
-  if (!result?.node) throw new Error(`Branch ${params.branchName} not found`);
+  if (!branch) throw new Error(`Branch ${params.branchName} not found`);
 
-  return mapToBranchDetail(result.node);
+  return mapToBranchDetail(branch);
 };

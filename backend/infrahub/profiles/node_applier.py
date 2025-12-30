@@ -155,12 +155,12 @@ class NodeProfilesApplier:
             return is_changed
 
         profile_set_peer_ids = {rel.peer_id for rel in profile_set_rels if rel.peer_id}
+        relationships_to_replace: dict[str, list[Relationship]] = {"insert": [], "remove": []}
 
         # Remove relationships that are from profile but not in the new profile value
         for rel in profile_set_rels:
             if rel.peer_id and rel.peer_id not in profile_peer_ids:
-                await node_rel.remove_locally(peer_id=rel.peer_id, db=self.db)
-                is_changed = True
+                relationships_to_replace["remove"].append(rel)
 
         # Add relationships that are in profile but not present
         for peer_id in profile_peer_ids:
@@ -173,8 +173,13 @@ class NodeProfilesApplier:
                 )
                 await new_rel.new(db=self.db, data=peer_id)
                 new_rel.set_source(value=profile_id)
-                node_rel._relationships.append(new_rel)
-                is_changed = True
+                relationships_to_replace["insert"].append(new_rel)
+
+        is_changed |= await node_rel.update_relationships(
+            db=self.db,
+            relationships_to_remove=relationships_to_replace["remove"],
+            relationships_to_insert=relationships_to_replace["insert"],
+        )
 
         if profile_peer_ids:
             node_rel.is_from_profile = True

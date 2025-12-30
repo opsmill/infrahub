@@ -1,10 +1,9 @@
-import { gql } from "@apollo/client";
+import { graphql, type VariablesOf } from "gql.tada";
 
-import type { DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import type { PaginationParams } from "@/shared/api/types";
+import type { BranchContextParams, PaginationParams } from "@/shared/api/types";
 
-export const DIFF_TREE_QUERY = gql`
+const DIFF_TREE_QUERY = graphql(`
   query GET_DIFF_TREE($branchName: String, $filters: DiffTreeQueryFilters, $limit: Int, $offset: Int) {
     DiffTree(branch: $branchName, filters: $filters, include_parents: true, limit: $limit, offset: $offset) {
       nodes {
@@ -127,12 +126,11 @@ export const DIFF_TREE_QUERY = gql`
       from_time
     }
   }
-`;
+`);
 
-export type GetDiffTreeFromApiParams = PaginationParams & {
-  branchName: string;
-  filters?: DiffTreeQueryFilters;
-};
+export interface GetDiffTreeFromApiParams extends BranchContextParams, PaginationParams {
+  filters?: VariablesOf<typeof DIFF_TREE_QUERY>["filters"];
+}
 
 export const getDiffTreeFromApi = async ({
   branchName,
