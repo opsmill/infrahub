@@ -19,7 +19,7 @@ Ask the user these questions **one at a time**, waiting for each answer:
 
 Present a summary:
 
-```
+```markdown
 ## Feature: [Name]
 
 ### Problem
@@ -53,7 +53,7 @@ Present the proposed tasks and ask for feedback before finalizing.
 
 For the epic:
 
-```
+```text
 EPIC
 Title: [Feature name]
 Description: [Problem + solution summary]
@@ -63,7 +63,7 @@ Labels: product-spec
 
 For each task:
 
-```
+```text
 TASK
 Title: [Actionable title]
 Description:
