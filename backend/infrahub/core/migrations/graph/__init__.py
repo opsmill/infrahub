@@ -48,6 +48,8 @@ from .m043_create_hfid_display_label_in_db import Migration043
 from .m044_backfill_hfid_display_label_in_db import Migration044
 from .m045_backfill_hfid_display_label_in_db_profile_template import Migration045
 from .m046_fill_agnostic_hfid_display_labels import Migration046
+from .m047_backfill_or_null_display_label import Migration047
+from .m048_undelete_rel_props import Migration048
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -100,6 +102,8 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration044,
     Migration045,
     Migration046,
+    Migration047,
+    Migration048,
 ]
 
 

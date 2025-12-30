@@ -585,11 +585,14 @@ class SecurityOIDCBaseSettings(BaseSettings):
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
+    pkce_enabled: bool = Field(
+        default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
+    )
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
-    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
     discovery_url: str = Field(..., description="The OIDC discovery URL xyz/.well-known/openid-configuration")
     scopes: list[str] = Field(default_factory=_default_scopes)
 
@@ -637,13 +640,16 @@ class SecurityOAuth2BaseSettings(BaseSettings):
 
     icon: str = Field(default="mdi:account-key")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
+    pkce_enabled: bool = Field(
+        default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
+    )
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
     """Common base for Oauth2 providers"""
 
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
-    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
     authorization_url: str = Field(...)
     token_url: str = Field(...)
     userinfo_url: str = Field(...)

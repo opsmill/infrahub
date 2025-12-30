@@ -4,24 +4,25 @@
 
 ## Overview
 
-React SPA with Apollo Client for GraphQL, Jotai for state management, and Tailwind CSS for styling.
+React TypeScript frontend built with Vite, using Tailwind CSS for styling.
 
-## File Structure
+## File Naming
 
-- `src/`
-  - `app/` – App configuration and providers
-  - `pages/` – Route-based page components
-  - `entities/` – Feature-specific components
-  - `shared/` – Shared utilities and API clients
-- `tests/e2e/` – Playwright E2E tests
+- Components: `kebab-case.tsx`
+- Atoms: `kebab-case.atom.ts`
+- Tests: `*.test.ts` or `*.test.tsx` (colocated)
+- Types: `types.ts` or inline
 
-## Commands
+## Coding Standards
 
-```bash
-npm run dev            # Start dev server
-npm run build          # Production build
-npm run test           # Unit tests (Vitest)
-npm run test:e2e       # E2E tests (Playwright)
-npm run biome:fix      # Format and lint
-npm run codegen        # Regenerate GraphQL types
-```
+See `dev/guidelines/frontend/typescript.md` for detailed TypeScript coding standards.
+
+## Guides
+
+- `dev/guides/frontend/writing-unit-tests.md` - How to write unit tests for TypeScript functions
+- `dev/guides/frontend/writing-component-tests.md` - How to write React component tests
+
+## See Also
+
+- `dev/guidelines/frontend/typescript.md` - Detailed TypeScript coding standards
+- `dev/knowledge/frontend/` - Frontend architecture documentation (to be created)

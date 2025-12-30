@@ -246,3 +246,5 @@ Yaml
 yamllint
 YouTube
 walkthroughs
+string_type
+booleans

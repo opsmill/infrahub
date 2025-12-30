@@ -157,7 +157,12 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             responses = await schema_validate_migrations(
                 message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
             )
-            error_messages = [violation.message for response in responses for violation in response.violations]
+            error_messages = [
+                f"{violation.message} for constraint {response.constraint_name} {response.schema_path.field_name} {response.schema_path.property_name} and node {violation.node_id} {violation.node_kind}"  # noqa: E501
+                for response in responses
+                for violation in response.violations
+            ]
+
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
