@@ -51,6 +51,22 @@ mutation ProposedChange(
 }
 """
 
+PROPOSED_CHANGE_REVIEW = """
+mutation CoreProposedChangeReview(
+    $proposed_change_id: String!,
+    $decision: ProposedChangeApprovalDecision!
+  ) {
+  CoreProposedChangeReview(data:
+    {
+      id: $proposed_change_id,
+      decision: $decision
+    }
+  ) {
+    ok
+  }
+}
+"""
+
 RUN_CHECK = """
 mutation RunCheck(
     $proposed_change: String!,
@@ -216,6 +232,51 @@ async def test_create_invalid_state_combinations(
     assert "A proposed change has to be in the open state during creation" in str(closed.errors)
     assert merged.errors
     assert "A proposed change has to be in the open state during creation" in str(merged.errors)
+
+
+async def test_cannot_approve_own_created_proposed_change(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    branch_name = str(uuid4().hex)
+    source_branch = Branch(name=branch_name)
+    await source_branch.save(db=db)
+
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user", password="password")
+    await account.save(db=db)
+
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
+    )
+    open_proposed_change = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "sample proposed change",
+            "state": "open",
+        },
+    )
+    assert not open_proposed_change.errors
+    proposed_change_id = open_proposed_change.data["CoreProposedChangeCreate"]["object"]["id"]
+
+    approve_proposed_change = await graphql(
+        schema=gql_params.schema,
+        source=PROPOSED_CHANGE_REVIEW,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "proposed_change_id": proposed_change_id,
+            "decision": "APPROVE",
+        },
+    )
+    assert approve_proposed_change.errors
+    assert "You are not allowed to review proposed changes" in str(approve_proposed_change.errors)
 
 
 class TestTriggerProposedChange(TestInfrahubApp):

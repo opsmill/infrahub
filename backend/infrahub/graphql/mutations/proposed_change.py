@@ -79,7 +79,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
-        override_data = {"created_by": {"id": graphql_context.active_account_session.account_id}}
         state = data.get("state", {}).get("value")
         if state and state != ProposedChangeState.OPEN.value:
             raise ValidationError(input_value="A proposed change has to be in the open state during creation")
@@ -273,10 +272,6 @@ class ProposedChangeReview(Mutation):
             )
             state = ProposedChangeState(proposed_change.state.value.value)
             state.validate_reviewable()
-
-            created_by = await proposed_change.created_by.get_peer(db=graphql_context.db)
-            if created_by and created_by.id == graphql_context.active_account_session.account_id:
-                raise ValidationError(input_value="You cannot review your own proposed changes")
 
             current_user = await NodeManager.get_one_by_id_or_default_filter(
                 id=graphql_context.active_account_session.account_id,
