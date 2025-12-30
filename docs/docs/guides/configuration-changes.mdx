@@ -99,71 +99,7 @@ TOML configuration files use lowercase with underscores for setting names (e.g.,
 
 <TabItem value="kubernetes" label="Kubernetes">
 
-:::note
-
-The method you choose depends on your Kubernetes deployment approach. ConfigMaps are recommended for non-sensitive configuration values.
-
-:::
-
-### Option A: Use a ConfigMap (recommended)
-
-Create or update a ConfigMap to store your configuration:
-
-```yaml title="infrahub-config.yaml"
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: infrahub-config
-  namespace: <your-namespace>
-data:
-  INFRAHUB_HTTP_TIMEOUT: "20"
-```
-
-Apply the ConfigMap:
-
-```bash
-kubectl apply -f infrahub-config.yaml -n <your-namespace>
-```
-
-Then reference it in your Deployment:
-
-```yaml title="deployment.yaml"
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: infrahub-server
-  namespace: <your-namespace>
-spec:
-  template:
-    spec:
-      containers:
-      - name: infrahub
-        envFrom:
-        - configMapRef:
-            name: infrahub-config
-```
-
-### Option B: Set directly in Deployment
-
-Add the environment variable directly in your Deployment manifest:
-
-```yaml title="deployment.yaml"
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: infrahub-server
-  namespace: <your-namespace>
-spec:
-  template:
-    spec:
-      containers:
-      - name: infrahub
-        env:
-        - name: INFRAHUB_HTTP_TIMEOUT
-          value: "20"
-```
-
-### Option C: Use Helm values (if using Helm)
+### Use Helm values
 
 Update your `values.yaml` or provide values during upgrade:
 
@@ -219,32 +155,6 @@ This command restarts all services defined in your `docker-compose.yml` file. Th
 </TabItem>
 
 <TabItem value="kubernetes" label="Kubernetes">
-
-:::note
-
-The restart method depends on whether you used ConfigMaps, direct Deployment edits, or Helm.
-
-:::
-
-### For ConfigMap or Deployment changes
-
-If you modified a ConfigMap or Deployment manifest, apply the changes:
-
-```bash
-kubectl apply -f deployment.yaml -n <your-namespace>
-```
-
-Then trigger a rollout restart to pick up the new configuration:
-
-```bash
-kubectl rollout restart deployment/infrahub-server -n <your-namespace>
-```
-
-Monitor the rollout status:
-
-```bash
-kubectl rollout status deployment/infrahub-server -n <your-namespace>
-```
 
 ### For Helm deployments
 
