@@ -1,0 +1,270 @@
+---
+title: How to configure Infrahub
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+This guide explains how to configure your Infrahub instance by setting environment variables that control various aspects of the system, including timeouts, security settings, and integration parameters.
+
+## What you'll accomplish
+
+By following this guide, you'll learn how to:
+
+- Identify available configuration options
+- Set environment variables in various deployment methods
+- Apply configuration changes to a running Infrahub instance
+- Verify that your changes have been applied correctly
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- A running Infrahub instance
+- Command-line access to the server running Infrahub
+- Basic understanding of environment variables
+- For production deployments, plan a maintenance window as services will be restarted
+
+## Step 1: Identify the configuration option
+
+Determine which configuration setting you want to change.
+
+1. Refer to the [configuration reference](../reference/configuration.mdx) to find available environment variables
+2. Note the exact variable name and its expected value type
+
+:::info
+
+For this guide, we'll use `INFRAHUB_HTTP_TIMEOUT` as an example. It affects how Infrahub interacts with external HTTP servers such as webhooks and OAuth2 providers. The default value is 10 seconds.
+
+:::
+
+## Step 2: Set the variable
+
+Configure the variable before starting or restarting your Infrahub containers.
+
+<Tabs groupId="installation-method">
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+:::note
+
+Using a `.env` file keeps your configuration organized and allows you to track changes with version control.
+
+:::
+
+:::warning
+
+Avoid hardcoding information directly in the `docker-compose.yml` file. Part of the upgrade process consists of replacing this file, which could lead to loss of your configuration.
+Avoid mixing multiple configuration methods as it can lead to confusion about which settings are applied.
+
+:::
+
+### Option A: Use a .env file (recommended)
+
+Create or edit a `.env` file in the same directory as your `docker-compose.yml` file:
+
+```bash title=".env"
+INFRAHUB_HTTP_TIMEOUT=20
+```
+
+This method is preferred for persistent configuration as Docker Compose automatically loads variables from the `.env` file.
+
+### Option B: Export in your shell
+
+Export the environment variable in your shell session:
+
+```bash
+export INFRAHUB_HTTP_TIMEOUT=20
+```
+
+This method works for temporary changes or testing, but the variable persists only for the current shell session.
+
+### Option C: Use a .toml file (not recommended)
+
+Create or edit an `infrahub.toml` file with your configuration:
+
+```toml title="infrahub.toml"
+[settings]
+http_timeout = 20
+```
+
+Then reference the TOML file when starting Infrahub. The application will automatically load configuration from the TOML file.
+
+:::note
+
+TOML configuration files use lowercase with underscores for setting names (e.g., `http_timeout`) rather than the uppercase environment variable format (e.g., `INFRAHUB_HTTP_TIMEOUT`).
+
+:::
+
+</TabItem>
+
+<TabItem value="kubernetes" label="Kubernetes">
+
+### Use Helm values
+
+Update your `values.yaml` or provide values during upgrade:
+
+```yaml title="values.yaml"
+infrahubServer:
+  infrahubServer:
+    env:
+      INFRAHUB_HTTP_TIMEOUT: "20"
+infrahubTaskWorker:
+  infrahubTaskWorker:
+    env:
+      INFRAHUB_HTTP_TIMEOUT: "20"
+```
+
+Or set directly via command line:
+
+```bash
+helm upgrade infrahub opsmill/infrahub \
+  --set infrahubServer.infrahubServer.env.INFRAHUB_HTTP_TIMEOUT=20 --set infrahubTaskWorker.infrahubTaskWorker.env.INFRAHUB_HTTP_TIMEOUT=20 \
+  -n <your-namespace>
+```
+
+</TabItem>
+</Tabs>
+
+## Step 3: Apply the configuration changes
+
+Restart your Infrahub containers to apply the new configuration.
+
+<Tabs groupId="installation-method">
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+:::note
+
+Depending on your setup, you might need to adjust the commands below to add options.
+
+:::
+
+Recreate and restart your Docker containers to apply the changes:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+The `--force-recreate` flag ensures that containers are recreated even if their configuration and images haven't changed, which is necessary for applying new environment variables.
+
+:::warning
+
+This command restarts all services defined in your `docker-compose.yml` file. There will be a brief service interruption during the restart.
+
+:::
+
+</TabItem>
+
+<TabItem value="kubernetes" label="Kubernetes">
+
+### For Helm deployments
+
+If you're using Helm, upgrade your release with the new values:
+
+```bash
+helm upgrade infrahub opsmill/infrahub \
+  -f values.yaml \
+  -n <your-namespace>
+```
+
+Or with inline values:
+
+```bash
+helm upgrade infrahub opsmill/infrahub \
+  --set infrahubServer.infrahubServer.env.INFRAHUB_HTTP_TIMEOUT=20 --set infrahubTaskWorker.infrahubTaskWorker.env.INFRAHUB_HTTP_TIMEOUT=20 \
+  -n <your-namespace>
+```
+
+:::warning
+
+Rolling out changes will trigger a pod restart. Depending on your deployment configuration (replicas, rolling update strategy), there may be a brief service interruption.
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Step 4: Verify the configuration
+
+Confirm that your configuration change has been applied successfully.
+
+<Tabs>
+<TabItem value="docker-compose" label="Docker Compose" default>
+
+:::note
+
+Depending on your setup, you might need to adjust the commands below to match your container names if you are using a different project name for instance.
+
+:::
+
+Check that the environment variable is set correctly inside the container:
+
+```bash
+docker exec infrahub-server-1 env | grep INFRAHUB_HTTP_TIMEOUT
+```
+
+You should see output similar to:
+
+```bash
+INFRAHUB_HTTP_TIMEOUT=20
+```
+
+:::success
+
+If you see the expected value in the output, your configuration change has been applied successfully.
+
+:::
+
+</TabItem>
+
+<TabItem value="kubernetes" label="Kubernetes">
+
+:::note
+
+Replace `<your-namespace>` and `infrahub-server-*` with your actual namespace and pod name.
+
+:::
+
+First, get the name of your Infrahub pod:
+
+```bash
+kubectl get pods -n <your-namespace> -l app=infrahub-server
+```
+
+Then check the environment variable inside the pod:
+
+```bash
+kubectl exec -n <your-namespace> <pod-name> -- env | grep INFRAHUB_HTTP_TIMEOUT
+```
+
+For example:
+
+```bash
+kubectl exec -n infrahub infrahub-server-7d8f9b5c6d-xyz12 -- env | grep INFRAHUB_HTTP_TIMEOUT
+```
+
+You should see output similar to:
+
+```bash
+INFRAHUB_HTTP_TIMEOUT=20
+```
+
+Alternatively, you can describe the pod to see all environment variables:
+
+```bash
+kubectl describe pod -n <your-namespace> <pod-name>
+```
+
+:::success
+
+If you see the expected value in the output, your configuration change has been applied successfully.
+
+:::
+
+</TabItem>
+</Tabs>
+
+## Related resources
+
+- [Configuration reference](../reference/configuration.mdx) - Complete list of available environment variables
+- [Production deployment](./production-deployment.mdx) - Best practices for deploying Infrahub
+- [Installing Infrahub](./installation.mdx) - Installation methods for Infrahub
