@@ -98,7 +98,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
         order: OrderModel | None = ...,
@@ -118,7 +117,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
         order: OrderModel | None = ...,
@@ -137,7 +135,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         partial_match: bool = False,
         branch_agnostic: bool = False,
         order: OrderModel | None = None,
@@ -171,7 +168,6 @@ class NodeManager:
                 branch=branch,
                 include_metadata=include_metadata,
                 prefetch_relationships=prefetch_relationships,
-                account=account,
                 branch_agnostic=branch_agnostic,
             )
             return [node] if node else []
@@ -230,7 +226,6 @@ class NodeManager:
         filters: dict | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        account=None,  # noqa: ARG003
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
@@ -534,7 +529,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -551,7 +545,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -568,7 +561,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -585,7 +577,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -602,7 +593,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -619,7 +609,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -635,7 +624,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -657,7 +645,6 @@ class NodeManager:
             at=at,
             include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
             order=OrderModel(disable=True),
         )
@@ -694,7 +681,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
     ) -> SchemaProtocol | None: ...
 
     @overload
@@ -710,7 +696,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -727,7 +712,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol | None: ...
 
@@ -744,7 +728,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node: ...
 
@@ -761,7 +744,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -778,7 +760,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Node | None: ...
 
@@ -794,7 +775,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -844,7 +824,6 @@ class NodeManager:
             at=at,
             include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
             order=OrderModel(disable=True),
         )
@@ -876,7 +855,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> SchemaProtocol: ...
 
@@ -892,7 +870,6 @@ class NodeManager:
         branch: Branch | str | None = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
-        account=...,
         branch_agnostic: bool = ...,
     ) -> Any: ...
 
@@ -907,7 +884,6 @@ class NodeManager:
         branch: Branch | str | None = None,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
-        account=None,
         branch_agnostic: bool = False,
     ) -> Any:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -935,7 +911,6 @@ class NodeManager:
             branch=branch,
             include_metadata=include_metadata,
             prefetch_relationships=prefetch_relationships,
-            account=account,
             branch_agnostic=branch_agnostic,
         )
         if not node:

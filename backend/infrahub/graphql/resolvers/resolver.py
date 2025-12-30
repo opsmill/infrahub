@@ -204,7 +204,6 @@ async def default_paginated_list_resolver(
                 branch=graphql_context.branch,
                 limit=limit,
                 offset=offset,
-                account=graphql_context.account_session,
                 partial_match=partial_match,
                 order=order_model,
             )

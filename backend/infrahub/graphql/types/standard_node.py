@@ -38,14 +38,12 @@ class InfrahubObjectType(ObjectType):
                     filters=filters,
                     at=graphql_context.at,
                     branch=graphql_context.branch,
-                    account=graphql_context.account_session,
                     db=db,
                 )
             else:
                 objs = await cls._meta.model.get_list(
                     at=graphql_context.at,
                     branch=graphql_context.branch,
-                    account=graphql_context.account_session,
                     db=db,
                 )
 
