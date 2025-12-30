@@ -625,7 +625,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ANN001", # Missing type annotation for function argument
     "ANN003", # Missing type annotation for `**kwargs`
-    "ANN204", # Missing return type annotation for special method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
 ]
 

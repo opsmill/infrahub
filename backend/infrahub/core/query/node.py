@@ -657,7 +657,7 @@ class NodeCheckIDQuery(Query):
         self,
         node_id: str,
         **kwargs,
-    ):
+    ) -> None:
         self.node_id = node_id
         super().__init__(**kwargs)
 
@@ -689,7 +689,7 @@ class NodeListGetAttributeQuery(Query):
         fields: dict | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
         **kwargs,
-    ):
+    ) -> None:
         self.ids = ids
         self.fields = fields
         self.include_metadata = include_metadata
@@ -955,7 +955,7 @@ CALL (a) {
 
 
 class GroupedPeerNodes:
-    def __init__(self):
+    def __init__(self) -> None:
         # {node_id: [rel_name, ...]}
         self._rel_names_by_node_id: dict[str, set[str]] = defaultdict(set)
         # {(node_id, rel_name): {RelationshipDirection: {peer_id, ...}}}
@@ -1025,7 +1025,7 @@ class NodeListGetRelationshipsQuery(Query):
         bidirectional_identifiers: list[str] | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
         **kwargs,
-    ):
+    ) -> None:
         self.ids = ids
         self.outbound_identifiers = outbound_identifiers
         self.inbound_identifiers = inbound_identifiers
