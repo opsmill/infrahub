@@ -5,10 +5,12 @@ from collections import defaultdict
 from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
+from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 import ujson
+from whenever import ZonedDateTime
 
 from infrahub import config
 from infrahub.constants.enums import OrderDirection
@@ -1738,12 +1740,17 @@ WITH %(tracked_vars)s,
 
             add_subquery(branch_filter)
 
+            is_first_filter = True
             for far in requirements:
                 field = at_field if far.field_name == at_field else by_field
 
                 if far.is_metadata_filter:
                     param_name = f"metadata_filter_{far.field_name}_{far.field_attr_name}_{far.index}"
-                    self.add_to_query(f"WHERE {field} {far.comparison_operator} ${param_name}")
+                    if is_first_filter:
+                        self.add_to_query(f"WHERE {field} {far.comparison_operator} ${param_name}")
+                        is_first_filter = False
+                    else:
+                        self.add_to_query(f"AND {field} {far.comparison_operator} ${param_name}")
                     self.params[param_name] = far.field_attr_value
 
                 if far.is_metadata_order:
@@ -1986,6 +1993,9 @@ WITH %(tracked_vars)s,
         index: int,
     ) -> FieldAttributeRequirement:
         """Build a FieldAttributeRequirement for a metadata filter."""
+        if isinstance(value, datetime):
+            timestamp = Timestamp(ZonedDateTime.from_py_datetime(value))
+            value = timestamp.to_string()
         return FieldAttributeRequirement(
             field_name=field_name,
             field=None,
