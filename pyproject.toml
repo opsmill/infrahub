@@ -746,7 +746,6 @@ allow-dunder-method-names = [
     "ANN201",   # Missing return type annotation for public function
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "PLR0915",  # Too many statements
-    "PT018",    # Assertion should be broken down into multiple parts
     "PT021",    # Use `yield` instead of `request.addfinalizer`
 ]
 
@@ -756,7 +755,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "ASYNC109", # Async function definition with a `timeout` parameter
-    "PT018",    # Assertion should be broken down into multiple parts
 ]
 
 "backend/tests/fixtures/**.py" = [
@@ -778,7 +776,6 @@ allow-dunder-method-names = [
     "PLR0915",  # Too many statements
     "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",    # `pytest.raises()` block should contain a single simple statement
-    "PT018",    # Assertion should be broken down into multiple parts
 ]
 
 "backend/tests/integration/**.py" = [
@@ -824,7 +821,6 @@ allow-dunder-method-names = [
     "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
     "PT011",    # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",    # `pytest.raises()` block should contain a single simple statement
-    "PT018",    # Assertion should be broken down into multiple parts
 ]
 
 "backend/tests/query_benchmark/**.py" = [
