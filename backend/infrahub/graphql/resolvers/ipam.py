@@ -399,7 +399,6 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
                 branch=graphql_context.branch,
                 limit=query_limit,
                 offset=offset,
-                account=graphql_context.account_session,
                 include_metadata=MetadataOptions.LINKED_NODES,
                 partial_match=partial_match,
                 order=order_model,
