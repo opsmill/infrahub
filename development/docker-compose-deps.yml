@@ -17,8 +17,9 @@ services:
   cache:
     profiles: [demo, dev]
     image: "${CACHE_DOCKER_IMAGE:-redis:7.2.11}"
+    command: redis-server ${INFRAHUB_CACHE_PASSWORD:+--requirepass $INFRAHUB_CACHE_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli ${INFRAHUB_CACHE_PASSWORD:+-a $INFRAHUB_CACHE_PASSWORD} ping 2>/dev/null | grep PONG"]
       interval: 5s
       timeout: 5s
       retries: 3

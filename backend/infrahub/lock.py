@@ -279,6 +279,7 @@ class InfrahubLockRegistry:
                     host=config.SETTINGS.cache.address,
                     port=config.SETTINGS.cache.service_port,
                     db=config.SETTINGS.cache.database,
+                    password=config.SETTINGS.cache.password,
                     ssl=config.SETTINGS.cache.tls_enabled,
                     ssl_cert_reqs="optional" if not config.SETTINGS.cache.tls_insecure else "none",
                     ssl_check_hostname=not config.SETTINGS.cache.tls_insecure,
