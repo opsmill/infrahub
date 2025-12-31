@@ -4,7 +4,7 @@ import enum
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Self
 
-from pydantic import Field, ValidationInfo, field_validator, model_validator
+from pydantic import Field, PrivateAttr, ValidationInfo, field_validator, model_validator
 
 from infrahub import config
 from infrahub.core.constants.schema import UpdateSupport
@@ -237,7 +237,7 @@ class TextAttributeSchema(AttributeSchema):
         description="Extra parameters specific to text attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
-    _deprecated_fields_used: set[str] = set()
+    _deprecated_fields_used: set[str] = PrivateAttr(default_factory=set)
 
     @model_validator(mode="after")
     def reconcile_parameters(self) -> Self:

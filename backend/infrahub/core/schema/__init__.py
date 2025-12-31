@@ -119,8 +119,8 @@ class SchemaRoot(BaseModel):
             for attribute in model.attributes:
                 # Check if the attribute has tracked any deprecated field usage
                 # This is set by reconcile_parameters when values are synced from top-level to parameters
-                deprecated_fields = getattr(attribute, "_deprecated_fields_used", set())
-                for field_name in deprecated_fields:
+                deprecated_fields: set[str] = getattr(attribute, "_deprecated_fields_used", set())
+                for field_name in sorted(deprecated_fields):
                     warnings.append(
                         SchemaWarning(
                             type=SchemaWarningType.DEPRECATION,
