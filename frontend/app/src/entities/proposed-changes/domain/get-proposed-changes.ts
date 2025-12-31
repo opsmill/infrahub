@@ -18,6 +18,7 @@ export type ProposedChangeNode = {
 };
 
 export type ProposedChangeItem = {
+  id: string;
   node: ProposedChangeNode;
   metadata: NodeMetadata;
 };
@@ -41,6 +42,7 @@ export const getProposedChanges: GetProposedChanges = async (params) => {
 
   return (
     data[schemaKindToQuery]?.edges?.map((edge: any) => ({
+      id: edge.node.id,
       node: edge.node,
       metadata: edge.node_metadata,
     })) ?? []

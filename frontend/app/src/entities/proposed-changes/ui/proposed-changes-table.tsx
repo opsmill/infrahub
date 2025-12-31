@@ -49,7 +49,7 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
         )}
       >
         {(proposedChange) => (
-          <ProposedChangesItem key={proposedChange.node.id} proposedChange={proposedChange} />
+          <ProposedChangesItem key={proposedChange.id} proposedChange={proposedChange} />
         )}
       </ListBox>
 

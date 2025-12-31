@@ -56,7 +56,9 @@ export function ProposedChangesTableHomepage({
         items={flatData}
         className={classNames("flex flex-col divide-y divide-gray-200", className)}
       >
-        {(proposedChange) => <ProposedChangesItemLight proposedChange={proposedChange} />}
+        {(proposedChange) => (
+          <ProposedChangesItemLight key={proposedChange.id} proposedChange={proposedChange} />
+        )}
       </ListBox>
 
       {isFetchingNextPage && <ProposedChangesTableSkeleton headerCount={flatData.length} />}
