@@ -48,7 +48,9 @@ export function ProposedChangesTable({ schema, className }: ProposedChangesTable
           className
         )}
       >
-        {(node) => <ProposedChangesItem key={node.id} node={node} />}
+        {(proposedChange) => (
+          <ProposedChangesItem key={proposedChange.node.id} proposedChange={proposedChange} />
+        )}
       </ListBox>
 
       {!isLoading && flatData.length === 0 && <ObjectTableEmpty schema={schema} />}
