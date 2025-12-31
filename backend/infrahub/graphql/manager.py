@@ -1021,6 +1021,13 @@ class GraphQLSchemaManager:
             filters.update(get_attribute_type().get_graphql_filters(name="any"))
             filters["partial_match"] = graphene.Boolean()
 
+            display_label_schema = schema.get_attribute("display_label")
+            filters.update(
+                get_attribute_type(kind=display_label_schema.kind).get_graphql_filters(
+                    name="display_label", include_properties=False, include_isnull=True
+                )
+            )
+
             # Add metadata filters for filtering by created_by, updated_by, created_at, updated_at
             filters.update(self._generate_metadata_filters())
 

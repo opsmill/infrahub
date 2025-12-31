@@ -4,12 +4,13 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipCardinality
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from tests.helpers.graphql import graphql
+from tests.helpers.graphql import graphql, graphql_query
+from tests.helpers.schema import COLOR, load_schema
 
 
 async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Branch, data_schema: None) -> None:
@@ -422,3 +423,122 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
     assert result.data
     assert len(result.data["TestObjectB"]["edges"]) == 1
     assert result.data["TestObjectB"]["edges"][0]["node"]["display_label"] == "first SECOND"
+
+
+async def test_filter_by_display_label_value(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Test filtering nodes by exact display_label value."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR]), branch_name=default_branch.name)
+    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
+
+    color1 = await Node.init(db=db, schema=color_schema)
+    await color1.new(db=db, name="Red", description="A red color")
+    await color1.save(db=db)
+
+    color2 = await Node.init(db=db, schema=color_schema)
+    await color2.new(db=db, name="Blue", description="A blue color")
+    await color2.save(db=db)
+
+    color3 = await Node.init(db=db, schema=color_schema)
+    await color3.new(db=db, name="Green", description="A green color")
+    await color3.save(db=db)
+
+    query = """
+    query {
+        TestingColor(display_label__value: "Red") {
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    result = await graphql_query(query=query, db=db, branch=default_branch)
+
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestingColor"]["edges"]) == 1
+    assert result.data["TestingColor"]["edges"][0]["node"]["display_label"] == "Red"
+
+
+async def test_filter_by_display_label_values(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Test filtering nodes by a list of display_label values."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR]), branch_name=default_branch.name)
+    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
+
+    color1 = await Node.init(db=db, schema=color_schema)
+    await color1.new(db=db, name="Red", description="A red color")
+    await color1.save(db=db)
+
+    color2 = await Node.init(db=db, schema=color_schema)
+    await color2.new(db=db, name="Blue", description="A blue color")
+    await color2.save(db=db)
+
+    color3 = await Node.init(db=db, schema=color_schema)
+    await color3.new(db=db, name="Green", description="A green color")
+    await color3.save(db=db)
+
+    query = """
+    query {
+        TestingColor(display_label__values: ["Red", "Green"]) {
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    result = await graphql_query(query=query, db=db, branch=default_branch)
+
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestingColor"]["edges"]) == 2
+    labels = sorted([edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]])
+    assert labels == ["Green", "Red"]
+
+
+async def test_filter_by_display_label_partial_match(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    """Test filtering nodes by display_label with partial_match enabled."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR]), branch_name=default_branch.name)
+    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
+
+    color1 = await Node.init(db=db, schema=color_schema)
+    await color1.new(db=db, name="Dark Red", description="A dark red color")
+    await color1.save(db=db)
+
+    color2 = await Node.init(db=db, schema=color_schema)
+    await color2.new(db=db, name="Blue", description="A blue color")
+    await color2.save(db=db)
+
+    color3 = await Node.init(db=db, schema=color_schema)
+    await color3.new(db=db, name="Light Red", description="A light red color")
+    await color3.save(db=db)
+
+    query = """
+    query {
+        TestingColor(display_label__value: "red", partial_match: true) {
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    result = await graphql_query(query=query, db=db, branch=default_branch)
+
+    assert result.errors is None
+    assert result.data
+    assert len(result.data["TestingColor"]["edges"]) == 2
+    labels = sorted([edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]])
+    assert labels == ["Dark Red", "Light Red"]
