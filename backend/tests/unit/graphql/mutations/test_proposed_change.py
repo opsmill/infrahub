@@ -6,15 +6,18 @@ from prefect.client.orchestration import get_client
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.components import ComponentType
+from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import CheckType, InfrahubKind
+from infrahub.core.constants import CheckType, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus.types import KVTTL
+from infrahub.permissions import AssignedPermissions, PermissionBackend
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -234,9 +237,26 @@ async def test_create_invalid_state_combinations(
     assert "A proposed change has to be in the open state during creation" in str(merged.errors)
 
 
+class DummyReviewProposedChangeAllow(PermissionBackend):
+    async def load_permissions(
+        self, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
+    ) -> AssignedPermissions:
+        return {
+            "global_permissions": [
+                GlobalPermission(
+                    action=GlobalPermissions.REVIEW_PROPOSED_CHANGE.value,
+                    decision=PermissionDecision.ALLOW_ALL.value,
+                )
+            ],
+            "object_permissions": [],
+        }
+
+
 async def test_cannot_approve_own_created_proposed_change(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
+    registry.permission_backends = [DummyReviewProposedChangeAllow()]
+
     branch_name = str(uuid4().hex)
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
@@ -276,7 +296,7 @@ async def test_cannot_approve_own_created_proposed_change(
         },
     )
     assert approve_proposed_change.errors
-    assert "You are not allowed to review proposed changes" in str(approve_proposed_change.errors)
+    assert "You cannot review your own proposed changes" in str(approve_proposed_change.errors)
 
 
 class TestTriggerProposedChange(TestInfrahubApp):
