@@ -124,6 +124,44 @@ SCHEMA_WARNING_TESTCASES: list[SchemaWarningTestCaseData] = [
             ),
         ],
     ),
+    SchemaWarningTestCaseData(
+        name="use_min_max_length_in_parameters_no_warning",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Ticket",
+                    attributes=[
+                        TextAttributeSchema(
+                            name="name",
+                            kind="Text",
+                            parameters=TextAttributeParameters(min_length=1, max_length=40),
+                        )
+                    ],
+                )
+            ]
+        ),
+        warnings=[],
+    ),
+    SchemaWarningTestCaseData(
+        name="use_regex_in_parameters_no_warning",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Device",
+                    attributes=[
+                        TextAttributeSchema(
+                            name="hostname",
+                            kind="Text",
+                            parameters=TextAttributeParameters(regex="^[a-zA-Z][a-zA-Z0-9._-]*$"),
+                        )
+                    ],
+                )
+            ]
+        ),
+        warnings=[],
+    ),
 ]
 
 

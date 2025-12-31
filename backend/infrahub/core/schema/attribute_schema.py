@@ -237,18 +237,28 @@ class TextAttributeSchema(AttributeSchema):
         description="Extra parameters specific to text attributes",
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
+    _deprecated_fields_used: set[str] = set()
 
     @model_validator(mode="after")
     def reconcile_parameters(self) -> Self:
+        deprecated_fields: set[str] = set()
         if self.regex != self.parameters.regex:
+            # If parameters.regex is None but self.regex is set, user used deprecated syntax
+            if self.parameters.regex is None and self.regex is not None:
+                deprecated_fields.add("regex")
             final_regex = self.parameters.regex if self.parameters.regex is not None else self.regex
             self.regex = self.parameters.regex = final_regex
         if self.min_length != self.parameters.min_length:
+            if self.parameters.min_length is None and self.min_length is not None:
+                deprecated_fields.add("min_length")
             final_min_length = self.parameters.min_length if self.parameters.min_length is not None else self.min_length
             self.min_length = self.parameters.min_length = final_min_length
         if self.max_length != self.parameters.max_length:
+            if self.parameters.max_length is None and self.max_length is not None:
+                deprecated_fields.add("max_length")
             final_max_length = self.parameters.max_length if self.parameters.max_length is not None else self.max_length
             self.max_length = self.parameters.max_length = final_max_length
+        self._deprecated_fields_used = deprecated_fields
         return self
 
     def get_regex(self) -> str | None:

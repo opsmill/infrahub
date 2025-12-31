@@ -117,20 +117,15 @@ class SchemaRoot(BaseModel):
                     )
                 )
             for attribute in model.attributes:
-                if attribute.max_length is not None:
+                # Check if the attribute has tracked any deprecated field usage
+                # This is set by reconcile_parameters when values are synced from top-level to parameters
+                deprecated_fields = getattr(attribute, "_deprecated_fields_used", set())
+                for field_name in deprecated_fields:
                     warnings.append(
                         SchemaWarning(
                             type=SchemaWarningType.DEPRECATION,
                             kinds=[SchemaWarningKind(kind=model.kind, field=attribute.name)],
-                            message="Use of 'max_length' on attributes is deprecated, use parameters instead",
-                        )
-                    )
-                if attribute.min_length is not None:
-                    warnings.append(
-                        SchemaWarning(
-                            type=SchemaWarningType.DEPRECATION,
-                            kinds=[SchemaWarningKind(kind=model.kind, field=attribute.name)],
-                            message="Use of 'min_length' on attributes is deprecated, use parameters instead",
+                            message=f"Use of '{field_name}' on attributes is deprecated, use parameters instead",
                         )
                     )
 
