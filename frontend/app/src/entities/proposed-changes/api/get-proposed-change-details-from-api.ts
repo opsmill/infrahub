@@ -2,11 +2,7 @@ import { gql } from "@apollo/client";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import type {
-  NodeMetadata,
-  NodeRelationshipMany,
-  NodeRelationshipOne,
-} from "@/entities/nodes/types";
+import type { NodeMetadata, NodeRelationshipMany } from "@/entities/nodes/types";
 
 const GET_PROPOSED_CHANGE_DETAILS = gql`
   query GET_PROPOSED_CHANGE_DETAILS($proposedChangeId: ID, $taskNodeId: String) {
@@ -76,12 +72,6 @@ const GET_PROPOSED_CHANGE_DETAILS = gql`
               }
             }
           }
-          created_by {
-            node {
-              id
-              display_label
-            }
-          }
           comments {
             count
           }
@@ -120,7 +110,6 @@ export interface ProposedChangeDetailsFromApiResponse {
         approved_by: NodeRelationshipMany;
         rejected_by: NodeRelationshipMany;
         reviewers: NodeRelationshipMany;
-        created_by: NodeRelationshipOne;
         comments: { count: number };
       };
     }>;
