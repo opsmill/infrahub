@@ -7,7 +7,7 @@ This module contains tests for:
 - Branch-specific metadata behavior
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -381,24 +381,24 @@ class MetadataFilterTestData:
     """Test data container for metadata filter tests."""
 
     # User IDs
-    user_alice: str = "user-alice-uuid"
-    user_bob: str = "user-bob-uuid"
-    user_charlie: str = "user-charlie-uuid"
-    user_diana: str = "user-diana-uuid"
+    user_alice: str
+    user_bob: str
+    user_charlie: str
+    user_diana: str
 
     # Timestamps captured after node creation/updates
-    ts_after_node1: Timestamp = field(default_factory=Timestamp)
-    ts_after_node2: Timestamp = field(default_factory=Timestamp)
-    ts_after_node4: Timestamp = field(default_factory=Timestamp)
-    ts_after_node1_update: Timestamp = field(default_factory=Timestamp)
+    ts_after_node1: Timestamp
+    ts_after_node2: Timestamp
+    ts_after_node4: Timestamp
+    ts_after_node1_update: Timestamp
 
     # Branches
-    user_branch: Branch | None = None
+    user_branch: Branch
 
 
-@pytest.fixture
+@pytest.fixture(scope="class")
 async def metadata_filter_data(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+    db: InfrahubDatabase, default_branch_scope_class: Branch, criticality_schema_scope_class: NodeSchema
 ) -> MetadataFilterTestData:
     """Set up test data for metadata filter tests.
 
@@ -407,65 +407,79 @@ async def metadata_filter_data(
     - Updates to some nodes by different users
     - A user branch with 2 new nodes and 1 updated node
     """
-    data = MetadataFilterTestData()
+    # User IDs for test data
+    user_alice = "user-alice-uuid"
+    user_bob = "user-bob-uuid"
+    user_charlie = "user-charlie-uuid"
+    user_diana = "user-diana-uuid"
 
     # ========== DATA SETUP ON DEFAULT BRANCH ==========
 
     # Node 1: created by Alice on default branch
-    node1 = await Node.init(db=db, schema=criticality_schema)
+    node1 = await Node.init(db=db, schema=criticality_schema_scope_class)
     await node1.new(db=db, name="node1", level=1)
-    await node1.save(db=db, user_id=data.user_alice)
-    data.ts_after_node1 = Timestamp()
+    await node1.save(db=db, user_id=user_alice)
+    ts_after_node1 = Timestamp()
 
     # Node 2: created by Bob on default branch
-    node2 = await Node.init(db=db, schema=criticality_schema)
+    node2 = await Node.init(db=db, schema=criticality_schema_scope_class)
     await node2.new(db=db, name="node2", level=2)
-    await node2.save(db=db, user_id=data.user_bob)
-    data.ts_after_node2 = Timestamp()
+    await node2.save(db=db, user_id=user_bob)
+    ts_after_node2 = Timestamp()
 
     # Node 3: created by Alice on default branch
-    node3 = await Node.init(db=db, schema=criticality_schema)
+    node3 = await Node.init(db=db, schema=criticality_schema_scope_class)
     await node3.new(db=db, name="node3", level=3)
-    await node3.save(db=db, user_id=data.user_alice)
+    await node3.save(db=db, user_id=user_alice)
 
     # Node 4: created by Charlie on default branch
-    node4 = await Node.init(db=db, schema=criticality_schema)
+    node4 = await Node.init(db=db, schema=criticality_schema_scope_class)
     await node4.new(db=db, name="node4", level=4)
-    await node4.save(db=db, user_id=data.user_charlie)
-    data.ts_after_node4 = Timestamp()
+    await node4.save(db=db, user_id=user_charlie)
+    ts_after_node4 = Timestamp()
 
     # Update node1 (by Bob) on default branch
     node1_refreshed = await NodeManager.get_one(db=db, id=node1.id)
     node1_refreshed.level.value = 10  # type: ignore[attr-defined]
-    await node1_refreshed.save(db=db, user_id=data.user_bob)
-    data.ts_after_node1_update = Timestamp()
+    await node1_refreshed.save(db=db, user_id=user_bob)
+    ts_after_node1_update = Timestamp()
 
     # Update node3 (by Charlie) on default branch
     node3_refreshed = await NodeManager.get_one(db=db, id=node3.id)
     node3_refreshed.level.value = 30  # type: ignore[attr-defined]
-    await node3_refreshed.save(db=db, user_id=data.user_charlie)
+    await node3_refreshed.save(db=db, user_id=user_charlie)
 
     # ========== CREATE USER BRANCH ==========
-    data.user_branch = await create_branch(branch_name="test-metadata-filters-branch", db=db)
+    user_branch = await create_branch(branch_name="test-metadata-filters-branch", db=db)
 
     # ========== DATA SETUP ON USER BRANCH ==========
 
     # Node 5: created by Diana on user branch
-    node5 = await Node.init(db=db, schema=criticality_schema, branch=data.user_branch)
+    node5 = await Node.init(db=db, schema=criticality_schema_scope_class, branch=user_branch)
     await node5.new(db=db, name="branch-node5", level=5)
-    await node5.save(db=db, user_id=data.user_diana)
+    await node5.save(db=db, user_id=user_diana)
 
     # Node 6: created by Alice on user branch
-    node6 = await Node.init(db=db, schema=criticality_schema, branch=data.user_branch)
+    node6 = await Node.init(db=db, schema=criticality_schema_scope_class, branch=user_branch)
     await node6.new(db=db, name="branch-node6", level=6)
-    await node6.save(db=db, user_id=data.user_alice)
+    await node6.save(db=db, user_id=user_alice)
 
     # Update node2 (by Diana) on user branch - modifies a main branch node on the branch
-    node2_branch = await NodeManager.get_one(db=db, id=node2.id, branch=data.user_branch)
+    node2_branch = await NodeManager.get_one(db=db, id=node2.id, branch=user_branch)
     node2_branch.level.value = 20  # type: ignore[attr-defined]
-    await node2_branch.save(db=db, user_id=data.user_diana)
+    await node2_branch.save(db=db, user_id=user_diana)
 
-    return data
+    return MetadataFilterTestData(
+        user_alice=user_alice,
+        user_bob=user_bob,
+        user_charlie=user_charlie,
+        user_diana=user_diana,
+        ts_after_node1=ts_after_node1,
+        ts_after_node2=ts_after_node2,
+        ts_after_node4=ts_after_node4,
+        ts_after_node1_update=ts_after_node1_update,
+        user_branch=user_branch,
+    )
 
 
 class TestMetadataFilters:
@@ -494,7 +508,7 @@ class TestMetadataFilters:
     # ========== DateTime Filter Tests on Default Branch ==========
 
     async def test_created_at_after_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_at__after filter on default branch."""
         query = """
@@ -507,13 +521,13 @@ class TestMetadataFilters:
         """
         # Nodes created after node1 should be node2, node3, node4
         data = await self._run_query(
-            db, query, default_branch, {"cutoff": metadata_filter_data.ts_after_node1.to_datetime()}
+            db, query, default_branch_scope_class, {"cutoff": metadata_filter_data.ts_after_node1.to_datetime()}
         )
         assert data["TestCriticality"]["count"] == 3
         assert self._get_names(data) == {"node2", "node3", "node4"}
 
     async def test_created_at_before_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_at__before filter on default branch."""
         query = """
@@ -526,13 +540,13 @@ class TestMetadataFilters:
         """
         # Nodes created before node3 should be node1, node2
         data = await self._run_query(
-            db, query, default_branch, {"cutoff": metadata_filter_data.ts_after_node2.to_datetime()}
+            db, query, default_branch_scope_class, {"cutoff": metadata_filter_data.ts_after_node2.to_datetime()}
         )
         assert data["TestCriticality"]["count"] == 2
         assert self._get_names(data) == {"node1", "node2"}
 
     async def test_updated_at_after_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test updated_at__after filter on default branch."""
         query = """
@@ -545,13 +559,13 @@ class TestMetadataFilters:
         """
         # Nodes updated after all initial creates (only node1 and node3 were updated later)
         data = await self._run_query(
-            db, query, default_branch, {"cutoff": metadata_filter_data.ts_after_node4.to_datetime()}
+            db, query, default_branch_scope_class, {"cutoff": metadata_filter_data.ts_after_node4.to_datetime()}
         )
         assert data["TestCriticality"]["count"] == 2
         assert self._get_names(data) == {"node1", "node3"}
 
     async def test_updated_at_before_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test updated_at__before filter on default branch."""
         query = """
@@ -566,7 +580,7 @@ class TestMetadataFilters:
         # - node1 (just updated), node2 (never updated), node4 (never updated)
         # - node3 was updated AFTER ts_after_node1_update so it's excluded
         data = await self._run_query(
-            db, query, default_branch, {"cutoff": metadata_filter_data.ts_after_node1_update.to_datetime()}
+            db, query, default_branch_scope_class, {"cutoff": metadata_filter_data.ts_after_node1_update.to_datetime()}
         )
         assert data["TestCriticality"]["count"] == 3
         assert self._get_names(data) == {"node1", "node2", "node4"}
@@ -574,7 +588,7 @@ class TestMetadataFilters:
     # ========== ID-based Filter Tests on Default Branch ==========
 
     async def test_created_by_id_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_by__id filter on default branch."""
         query = """
@@ -586,17 +600,17 @@ class TestMetadataFilters:
         }
         """
         # Nodes created by Alice should be node1, node3
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_alice})
+        data = await self._run_query(db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_alice})
         assert data["TestCriticality"]["count"] == 2
         assert self._get_names(data) == {"node1", "node3"}
 
         # Nodes created by Bob should be node2
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_bob})
+        data = await self._run_query(db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_bob})
         assert data["TestCriticality"]["count"] == 1
         assert self._get_names(data) == {"node2"}
 
     async def test_created_by_ids_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_by__ids filter on default branch."""
         query = """
@@ -609,13 +623,16 @@ class TestMetadataFilters:
         """
         # Nodes created by Alice or Bob should be node1, node2, node3
         data = await self._run_query(
-            db, query, default_branch, {"userIds": [metadata_filter_data.user_alice, metadata_filter_data.user_bob]}
+            db,
+            query,
+            default_branch_scope_class,
+            {"userIds": [metadata_filter_data.user_alice, metadata_filter_data.user_bob]},
         )
         assert data["TestCriticality"]["count"] == 3
         assert self._get_names(data) == {"node1", "node2", "node3"}
 
     async def test_updated_by_id_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test updated_by__id filter on default branch."""
         query = """
@@ -627,17 +644,19 @@ class TestMetadataFilters:
         }
         """
         # Nodes last updated by Bob should be node1 (updated), node2 (created by Bob)
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_bob})
+        data = await self._run_query(db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_bob})
         assert data["TestCriticality"]["count"] == 2
         assert self._get_names(data) == {"node1", "node2"}
 
         # Nodes last updated by Charlie should be node3 (updated), node4 (created by Charlie)
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_charlie})
+        data = await self._run_query(
+            db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_charlie}
+        )
         assert data["TestCriticality"]["count"] == 2
         assert self._get_names(data) == {"node3", "node4"}
 
     async def test_updated_by_ids_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test updated_by__ids filter on default branch."""
         query = """
@@ -650,7 +669,10 @@ class TestMetadataFilters:
         """
         # Nodes last updated by Bob or Charlie should be all 4 nodes
         data = await self._run_query(
-            db, query, default_branch, {"userIds": [metadata_filter_data.user_bob, metadata_filter_data.user_charlie]}
+            db,
+            query,
+            default_branch_scope_class,
+            {"userIds": [metadata_filter_data.user_bob, metadata_filter_data.user_charlie]},
         )
         assert data["TestCriticality"]["count"] == 4
         assert self._get_names(data) == {"node1", "node2", "node3", "node4"}
@@ -661,7 +683,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_by__id filter on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($userId: ID!) {
             TestCriticality(node_metadata__created_by__id: $userId) {
@@ -688,7 +709,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test updated_by__id filter on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($userId: ID!) {
             TestCriticality(node_metadata__updated_by__id: $userId) {
@@ -715,7 +735,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_by__ids filter on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($userIds: [ID]!) {
             TestCriticality(node_metadata__created_by__ids: $userIds) {
@@ -737,7 +756,7 @@ class TestMetadataFilters:
     # ========== Combined ID-based Filter Tests ==========
 
     async def test_combined_created_by_ids_and_updated_by_id_on_default_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test combining created_by__ids and updated_by__id on default branch."""
         query = """
@@ -752,7 +771,7 @@ class TestMetadataFilters:
         data = await self._run_query(
             db,
             query,
-            default_branch,
+            default_branch_scope_class,
             {
                 "createdByIds": [metadata_filter_data.user_alice, metadata_filter_data.user_bob],
                 "updatedById": metadata_filter_data.user_bob,
@@ -765,7 +784,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test combining created_by__ids and updated_by__id on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($createdByIds: [ID]!, $updatedById: ID!) {
             TestCriticality(node_metadata__created_by__ids: $createdByIds, node_metadata__updated_by__id: $updatedById) {
@@ -807,7 +825,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_at__after filter on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($cutoff: DateTime!) {
             TestCriticality(node_metadata__created_at__after: $cutoff) {
@@ -827,7 +844,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test updated_at__after filter on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($cutoff: DateTime!) {
             TestCriticality(node_metadata__updated_at__after: $cutoff) {
@@ -848,7 +864,7 @@ class TestMetadataFilters:
         assert self._get_names(data) == {"node3", "branch-node5", "branch-node6", "node2"}
 
     async def test_combined_created_by_and_created_at_after(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test combining created_by__id with created_at__after"""
         query = """
@@ -863,14 +879,14 @@ class TestMetadataFilters:
         data = await self._run_query(
             db,
             query,
-            default_branch,
+            default_branch_scope_class,
             {"userId": metadata_filter_data.user_alice, "cutoff": metadata_filter_data.ts_after_node1.to_datetime()},
         )
         assert data["TestCriticality"]["count"] == 1
         assert self._get_names(data) == {"node3"}
 
     async def test_combined_updated_by_and_updated_at_after(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test combining updated_by__id with updated_at__after"""
         query = """
@@ -885,14 +901,14 @@ class TestMetadataFilters:
         data = await self._run_query(
             db,
             query,
-            default_branch,
+            default_branch_scope_class,
             {"userId": metadata_filter_data.user_charlie, "cutoff": metadata_filter_data.ts_after_node4.to_datetime()},
         )
         assert data["TestCriticality"]["count"] == 1
         assert self._get_names(data) == {"node3"}
 
     async def test_created_at_range(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test created_at__after combined with created_at__before (date range)"""
         query = """
@@ -907,7 +923,7 @@ class TestMetadataFilters:
         data = await self._run_query(
             db,
             query,
-            default_branch,
+            default_branch_scope_class,
             {
                 "after": metadata_filter_data.ts_after_node1.to_datetime(),
                 "before": metadata_filter_data.ts_after_node4.to_datetime(),
@@ -919,7 +935,7 @@ class TestMetadataFilters:
     # ========== Combined Filter + Order Tests (Same Field) ==========
 
     async def test_filter_and_order_by_created_at(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by created_at__after and ordering by created_at ASC."""
         query = """
@@ -938,7 +954,7 @@ class TestMetadataFilters:
         """
         # Filter: nodes created after node1, Order: by created_at ASC
         data = await self._run_query(
-            db, query, default_branch, {"cutoff": metadata_filter_data.ts_after_node1.to_datetime()}
+            db, query, default_branch_scope_class, {"cutoff": metadata_filter_data.ts_after_node1.to_datetime()}
         )
         assert data["TestCriticality"]["count"] == 3
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
@@ -948,7 +964,7 @@ class TestMetadataFilters:
         assert timestamps == sorted(timestamps)
 
     async def test_filter_and_order_by_created_at_desc(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by created_at__before and ordering by created_at DESC."""
         query = """
@@ -967,7 +983,7 @@ class TestMetadataFilters:
         """
         # Filter: nodes created before node2, Order: by created_at DESC
         data = await self._run_query(
-            db, query, default_branch, {"cutoff": metadata_filter_data.ts_after_node2.to_datetime()}
+            db, query, default_branch_scope_class, {"cutoff": metadata_filter_data.ts_after_node2.to_datetime()}
         )
         assert data["TestCriticality"]["count"] == 2
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
@@ -977,7 +993,7 @@ class TestMetadataFilters:
         assert timestamps == sorted(timestamps, reverse=True)
 
     async def test_filter_and_order_by_updated_at(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by updated_at__after and ordering by updated_at DESC."""
         query = """
@@ -997,7 +1013,7 @@ class TestMetadataFilters:
         # Filter: nodes updated after node4 creation, Order: by updated_at DESC
         # node1 and node3 were updated after node4 was created
         data = await self._run_query(
-            db, query, default_branch, {"cutoff": metadata_filter_data.ts_after_node4.to_datetime()}
+            db, query, default_branch_scope_class, {"cutoff": metadata_filter_data.ts_after_node4.to_datetime()}
         )
         assert data["TestCriticality"]["count"] == 2
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
@@ -1007,7 +1023,7 @@ class TestMetadataFilters:
         assert timestamps == sorted(timestamps, reverse=True)
 
     async def test_filter_by_created_by_and_order_by_created_at(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by created_by__id and ordering by created_at ASC."""
         query = """
@@ -1025,7 +1041,7 @@ class TestMetadataFilters:
         }
         """
         # Filter: nodes created by Alice, Order: by created_at ASC
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_alice})
+        data = await self._run_query(db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_alice})
         assert data["TestCriticality"]["count"] == 2
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
         timestamps = [e["node_metadata"]["created_at"] for e in data["TestCriticality"]["edges"]]
@@ -1034,7 +1050,7 @@ class TestMetadataFilters:
         assert timestamps == sorted(timestamps)
 
     async def test_filter_by_updated_by_and_order_by_updated_at(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by updated_by__id and ordering by updated_at DESC."""
         query = """
@@ -1052,7 +1068,7 @@ class TestMetadataFilters:
         }
         """
         # Filter: nodes last updated by Bob (node1, node2), Order: by updated_at DESC
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_bob})
+        data = await self._run_query(db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_bob})
         assert data["TestCriticality"]["count"] == 2
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
         timestamps = [e["node_metadata"]["updated_at"] for e in data["TestCriticality"]["edges"]]
@@ -1063,7 +1079,7 @@ class TestMetadataFilters:
     # ========== Combined Filter + Order Tests (Different Fields) ==========
 
     async def test_filter_by_created_by_order_by_updated_at(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by created_by__id and ordering by updated_at DESC."""
         query = """
@@ -1082,7 +1098,7 @@ class TestMetadataFilters:
         """
         # Filter: nodes created by Alice (node1, node3), Order: by updated_at DESC
         # node3 was updated more recently than node1
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_alice})
+        data = await self._run_query(db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_alice})
         assert data["TestCriticality"]["count"] == 2
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
         timestamps = [e["node_metadata"]["updated_at"] for e in data["TestCriticality"]["edges"]]
@@ -1091,7 +1107,7 @@ class TestMetadataFilters:
         assert timestamps == sorted(timestamps, reverse=True)
 
     async def test_filter_by_updated_by_order_by_created_at(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by updated_by__id and ordering by created_at ASC."""
         query = """
@@ -1109,7 +1125,9 @@ class TestMetadataFilters:
         }
         """
         # Filter: nodes last updated by Charlie (node3, node4), Order: by created_at ASC
-        data = await self._run_query(db, query, default_branch, {"userId": metadata_filter_data.user_charlie})
+        data = await self._run_query(
+            db, query, default_branch_scope_class, {"userId": metadata_filter_data.user_charlie}
+        )
         assert data["TestCriticality"]["count"] == 2
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
         timestamps = [e["node_metadata"]["created_at"] for e in data["TestCriticality"]["edges"]]
@@ -1118,7 +1136,7 @@ class TestMetadataFilters:
         assert timestamps == sorted(timestamps)
 
     async def test_filter_by_created_by_ids_order_by_updated_at(
-        self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by created_by__ids and ordering by updated_at ASC."""
         query = """
@@ -1137,7 +1155,10 @@ class TestMetadataFilters:
         """
         # Filter: nodes created by Alice or Bob (node1, node2, node3), Order: by updated_at ASC
         data = await self._run_query(
-            db, query, default_branch, {"userIds": [metadata_filter_data.user_alice, metadata_filter_data.user_bob]}
+            db,
+            query,
+            default_branch_scope_class,
+            {"userIds": [metadata_filter_data.user_alice, metadata_filter_data.user_bob]},
         )
         assert data["TestCriticality"]["count"] == 3
         names = [e["node"]["name"]["value"] for e in data["TestCriticality"]["edges"]]
@@ -1150,7 +1171,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by created_at__after and ordering by updated_at DESC on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($cutoff: DateTime!) {
             TestCriticality(
@@ -1180,7 +1200,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by created_by__id and ordering by created_at ASC on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($userId: ID!) {
             TestCriticality(
@@ -1211,7 +1230,6 @@ class TestMetadataFilters:
         self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
     ) -> None:
         """Test filtering by updated_by__id and ordering by updated_at DESC on user branch."""
-        assert metadata_filter_data.user_branch is not None
         query = """
         query($userId: ID!) {
             TestCriticality(

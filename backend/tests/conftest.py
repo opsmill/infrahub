@@ -151,6 +151,11 @@ async def empty_database(db: InfrahubDatabase) -> None:
     await do_empty_database(db=db)
 
 
+@pytest.fixture(scope="class")
+async def empty_database_scope_class(db: InfrahubDatabase) -> None:
+    await do_empty_database(db=db)
+
+
 async def do_empty_database(db: InfrahubDatabase) -> None:
     await delete_all_nodes(db=db)
     await create_root_node(db=db)
@@ -161,12 +166,24 @@ async def reset_registry(db: InfrahubDatabase) -> None:
     await do_reset_registry(db=db)
 
 
+@pytest.fixture(scope="class")
+async def reset_registry_scope_class(db: InfrahubDatabase) -> None:
+    await do_reset_registry(db=db)
+
+
 async def do_reset_registry(db: InfrahubDatabase) -> None:
     registry.delete_all()
 
 
 @pytest.fixture
 async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+    return await do_default_branch(db=db)
+
+
+@pytest.fixture(scope="class")
+async def default_branch_scope_class(
+    reset_registry_scope_class, local_storage_dir_scope_class, empty_database_scope_class, db: InfrahubDatabase
+) -> Branch:
     return await do_default_branch(db=db)
 
 
@@ -215,6 +232,12 @@ def local_storage_dir(tmp_path: Path) -> Path:
     return do_local_storage_dir(tmp_path=tmp_path)
 
 
+@pytest.fixture(scope="class")
+def local_storage_dir_scope_class(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    tmp_path = tmp_path_factory.mktemp("storage_class")
+    return do_local_storage_dir(tmp_path=tmp_path)
+
+
 def do_local_storage_dir(tmp_path: Path) -> Path:
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir()
@@ -230,6 +253,11 @@ async def register_internal_models_schema(default_branch: Branch) -> SchemaBranc
     return await do_register_internal_models_schema(branch=default_branch)
 
 
+@pytest.fixture(scope="class")
+async def register_internal_models_schema_scope_class(default_branch_scope_class: Branch) -> SchemaBranch:
+    return await do_register_internal_models_schema(branch=default_branch_scope_class)
+
+
 async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
     schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
@@ -240,6 +268,13 @@ async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
 @pytest.fixture
 async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
     return await do_register_core_models_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def register_core_models_schema_scope_class(
+    default_branch_scope_class: Branch, register_internal_models_schema_scope_class
+) -> SchemaBranch:
+    return await do_register_core_models_schema(branch=default_branch_scope_class)
 
 
 async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
@@ -464,6 +499,15 @@ def enable_broker_config():
 
 @pytest.fixture
 async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+    do_data_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def data_schema_scope_class(db: InfrahubDatabase, default_branch_scope_class: Branch) -> None:
+    do_data_schema(branch=default_branch_scope_class)
+
+
+def do_data_schema(branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -482,11 +526,22 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
 
 
 @pytest.fixture
 async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+    do_group_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def group_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, data_schema_scope_class
+) -> None:
+    do_group_schema(branch=default_branch_scope_class)
+
+
+def do_group_schema(branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -519,7 +574,7 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
 
 
 @pytest.fixture
