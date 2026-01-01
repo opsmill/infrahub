@@ -148,6 +148,9 @@ def _transform_metadata_day_filters(filters: dict[str, Any]) -> dict[str, Any]:
     When a filter like `node_metadata__created_at="2025-02-03T00:00:00"` has a time
     of exactly midnight, transform it into __after and __before filters to match
     the entire day (inclusive of midnight).
+
+    If __after or __before filters are already explicitly defined, they will not be
+    overwritten by the generated day range filters.
     """
     result = dict(filters)
     metadata_datetime_fields = ("node_metadata__created_at", "node_metadata__updated_at")
@@ -163,12 +166,17 @@ def _transform_metadata_day_filters(filters: dict[str, Any]) -> dict[str, Any]:
             # Remove the exact match filter
             del result[field]
             # Add __after filter with one microsecond before midnight to include objects at exactly midnight
-            # Since __after uses >, we need (midnight - 1 microsecond) so that > includes midnight
-            one_microsecond_before = value - timedelta(microseconds=1)
-            result[f"{field}__after"] = one_microsecond_before
+            # Skip if __after is already explicitly defined
+            after_key = f"{field}__after"
+            if after_key not in result:
+                one_microsecond_before = value - timedelta(microseconds=1)
+                result[after_key] = one_microsecond_before
             # Add __before filter with next day (exclusive: <)
-            next_day = value + timedelta(days=1)
-            result[f"{field}__before"] = next_day
+            # Skip if __before is already explicitly defined
+            before_key = f"{field}__before"
+            if before_key not in result:
+                next_day = value + timedelta(days=1)
+                result[before_key] = next_day
 
     return result
 

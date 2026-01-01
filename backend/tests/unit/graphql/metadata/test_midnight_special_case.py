@@ -145,3 +145,80 @@ class TestMetadataDayFilterTransformation:
         assert before_value.second == 0
         assert before_value.microsecond == 0
         assert before_value.tzinfo == eastern_tz  # Timezone preserved
+
+    def test_existing_after_filter_not_overwritten(self) -> None:
+        """Test that explicitly defined __after filter is not overwritten by day range transformation."""
+        midnight = datetime(2025, 2, 3, 0, 0, 0, tzinfo=UTC)
+        explicit_after = datetime(2025, 2, 2, 12, 0, 0, tzinfo=UTC)
+        filters = {
+            "node_metadata__created_at": midnight,
+            "node_metadata__created_at__after": explicit_after,
+        }
+
+        result = _transform_metadata_day_filters(filters)
+
+        # Original exact match should be removed
+        assert "node_metadata__created_at" not in result
+        # __after should retain the explicit value
+        assert result["node_metadata__created_at__after"] == explicit_after
+        # __before should be generated since it wasn't explicitly defined
+        assert result["node_metadata__created_at__before"] == midnight + timedelta(days=1)
+
+    def test_existing_before_filter_not_overwritten(self) -> None:
+        """Test that explicitly defined __before filter is not overwritten by day range transformation."""
+        midnight = datetime(2025, 2, 3, 0, 0, 0, tzinfo=UTC)
+        explicit_before = datetime(2025, 2, 3, 18, 0, 0, tzinfo=UTC)
+        filters = {
+            "node_metadata__created_at": midnight,
+            "node_metadata__created_at__before": explicit_before,
+        }
+
+        result = _transform_metadata_day_filters(filters)
+
+        # Original exact match should be removed
+        assert "node_metadata__created_at" not in result
+        # __after should be generated since it wasn't explicitly defined
+        expected_after = midnight - timedelta(microseconds=1)
+        assert result["node_metadata__created_at__after"] == expected_after
+        # __before should retain the explicit value
+        assert result["node_metadata__created_at__before"] == explicit_before
+
+    def test_existing_both_filters_not_overwritten(self) -> None:
+        """Test that explicitly defined __after and __before filters are both preserved."""
+        midnight = datetime(2025, 2, 3, 0, 0, 0, tzinfo=UTC)
+        explicit_after = datetime(2025, 2, 2, 12, 0, 0, tzinfo=UTC)
+        explicit_before = datetime(2025, 2, 3, 18, 0, 0, tzinfo=UTC)
+        filters = {
+            "node_metadata__created_at": midnight,
+            "node_metadata__created_at__after": explicit_after,
+            "node_metadata__created_at__before": explicit_before,
+        }
+
+        result = _transform_metadata_day_filters(filters)
+
+        # Original exact match should be removed
+        assert "node_metadata__created_at" not in result
+        # Both __after and __before should retain their explicit values
+        assert result["node_metadata__created_at__after"] == explicit_after
+        assert result["node_metadata__created_at__before"] == explicit_before
+
+    def test_existing_filter_for_different_field_not_affected(self) -> None:
+        """Test that __after/__before for one field doesn't affect another field's transformation."""
+        midnight_created = datetime(2025, 2, 3, 0, 0, 0, tzinfo=UTC)
+        midnight_updated = datetime(2025, 2, 5, 0, 0, 0, tzinfo=UTC)
+        explicit_after = datetime(2025, 2, 2, 12, 0, 0, tzinfo=UTC)
+        filters = {
+            "node_metadata__created_at": midnight_created,
+            "node_metadata__created_at__after": explicit_after,
+            "node_metadata__updated_at": midnight_updated,
+        }
+
+        result = _transform_metadata_day_filters(filters)
+
+        # created_at should preserve explicit __after
+        assert result["node_metadata__created_at__after"] == explicit_after
+        assert result["node_metadata__created_at__before"] == midnight_created + timedelta(days=1)
+
+        # updated_at should generate both filters normally
+        assert result["node_metadata__updated_at__after"] == midnight_updated - timedelta(microseconds=1)
+        assert result["node_metadata__updated_at__before"] == midnight_updated + timedelta(days=1)
