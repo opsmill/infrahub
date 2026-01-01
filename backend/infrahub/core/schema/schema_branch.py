@@ -501,25 +501,67 @@ class SchemaBranch:
 
         return fields or None
 
-    def _reconcile_incoming_text_attribute_parameters(self, schema: SchemaRoot) -> None:
-        """Ensure deprecated Text attribute fields are copied to parameters in incoming schema.
+    def _text_attr_needs_reconciliation(self, attr: AttributeSchema) -> bool:
+        """Check if a Text attribute needs reconciliation between deprecated fields and parameters."""
+        if not isinstance(attr.parameters, TextAttributeParameters):
+            return False
+        return (
+            attr.regex != attr.parameters.regex
+            or attr.min_length != attr.parameters.min_length
+            or attr.max_length != attr.parameters.max_length
+        )
 
-        This handles the case where a schema update uses deprecated regex/min_length/max_length
-        fields instead of parameters. We need to copy those values to parameters so they will
-        be properly merged during update().
+    def _reconcile_text_attr(self, attr: AttributeSchema) -> None:
+        """Reconcile a single Text attribute's deprecated fields with parameters.
+
+        Parameters take precedence over deprecated top-level fields when both are set.
         """
-        for item in schema.nodes + schema.generics:
-            for attr in item.attributes:
-                if not isinstance(attr.parameters, TextAttributeParameters):
-                    continue
+        if not isinstance(attr.parameters, TextAttributeParameters):
+            return
 
-                # Copy deprecated field values to parameters if parameters are None
-                if attr.regex is not None and attr.parameters.regex is None:
-                    attr.parameters.regex = attr.regex
-                if attr.min_length is not None and attr.parameters.min_length is None:
-                    attr.parameters.min_length = attr.min_length
-                if attr.max_length is not None and attr.parameters.max_length is None:
-                    attr.parameters.max_length = attr.max_length
+        # Sync regex: parameters takes precedence
+        if attr.parameters.regex is not None:
+            attr.regex = attr.parameters.regex
+        elif attr.regex is not None:
+            attr.parameters.regex = attr.regex
+
+        # Sync min_length: parameters takes precedence
+        if attr.parameters.min_length is not None:
+            attr.min_length = attr.parameters.min_length
+        elif attr.min_length is not None:
+            attr.parameters.min_length = attr.min_length
+
+        # Sync max_length: parameters takes precedence
+        if attr.parameters.max_length is not None:
+            attr.max_length = attr.parameters.max_length
+        elif attr.max_length is not None:
+            attr.parameters.max_length = attr.max_length
+
+    def _reconcile_text_attribute_parameters(self, schema: SchemaRoot | None = None) -> None:
+        """Reconcile regex, min_length, max_length between deprecated fields and parameters for Text attributes.
+
+        Args:
+            schema: If provided, reconcile incoming schema data before merging.
+                   If None, reconcile already-loaded schemas (e.g., from database).
+        """
+        if schema:
+            # Incoming schema: modify in place
+            for item in schema.nodes + schema.generics:
+                for attr in item.attributes:
+                    self._reconcile_text_attr(attr)
+            return
+
+        # Loaded schemas: need to duplicate before modifying
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            if not any(self._text_attr_needs_reconciliation(attr) for attr in node.attributes):
+                continue
+
+            node = node.duplicate()
+            for attr in node.attributes:
+                self._reconcile_text_attr(attr)
+            self.set(name=name, schema=node)
 
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
@@ -527,7 +569,7 @@ class SchemaBranch:
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
         # Reconcile deprecated text attribute parameters before merging
-        self._reconcile_incoming_text_attribute_parameters(schema)
+        self._reconcile_text_attribute_parameters(schema)
 
         for item in schema.nodes + schema.generics:
             try:
@@ -568,7 +610,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
-        self.reconcile_text_attribute_parameters()
+        self._reconcile_text_attribute_parameters()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
@@ -1858,53 +1900,6 @@ class SchemaBranch:
             for item in node.attributes + node.relationships:
                 if item.is_deprecated and not item.optional:
                     item.optional = True
-
-            self.set(name=name, schema=node)
-
-    def reconcile_text_attribute_parameters(self) -> None:
-        """Reconcile regex, min_length, max_length between top-level fields and parameters for Text/TextArea attributes."""
-        for name in self.all_names:
-            node = self.get(name=name, duplicate=False)
-
-            # Check if any Text/TextArea attribute needs reconciliation
-            change_required = False
-            for attr in node.attributes:
-                if not isinstance(attr.parameters, TextAttributeParameters):
-                    continue
-                if (
-                    attr.regex != attr.parameters.regex
-                    or attr.min_length != attr.parameters.min_length
-                    or attr.max_length != attr.parameters.max_length
-                ):
-                    change_required = True
-                    break
-
-            if not change_required:
-                continue
-
-            node = node.duplicate()
-            for attr in node.attributes:
-                if not isinstance(attr.parameters, TextAttributeParameters):
-                    continue
-
-                # Reconcile regex
-                if attr.regex != attr.parameters.regex:
-                    final_regex = attr.parameters.regex if attr.parameters.regex is not None else attr.regex
-                    attr.regex = attr.parameters.regex = final_regex
-
-                # Reconcile min_length
-                if attr.min_length != attr.parameters.min_length:
-                    final_min_length = (
-                        attr.parameters.min_length if attr.parameters.min_length is not None else attr.min_length
-                    )
-                    attr.min_length = attr.parameters.min_length = final_min_length
-
-                # Reconcile max_length
-                if attr.max_length != attr.parameters.max_length:
-                    final_max_length = (
-                        attr.parameters.max_length if attr.parameters.max_length is not None else attr.max_length
-                    )
-                    attr.max_length = attr.parameters.max_length = final_max_length
 
             self.set(name=name, schema=node)
 

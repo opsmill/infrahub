@@ -382,12 +382,12 @@ async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
 
 
 async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
-    """Test that SchemaBranch.reconcile_text_attribute_parameters() syncs top-level and parameters fields."""
+    """Test that SchemaBranch.load_schema() syncs top-level and parameters fields for Text attributes."""
     regex = "abc"
     min_length = 3
     max_length = 5
 
-    # Test reconciliation when parameters are set
+    # Test reconciliation when parameters are set (new style)
     SCHEMA_WITH_PARAMS: dict[str, Any] = {
         "nodes": [
             {
@@ -411,15 +411,7 @@ async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema_root)
 
-    # Before reconciliation, top-level fields are not synced
-    node = schema_branch.get(name="TestDevice", duplicate=False)
-    desc_attr = node.get_attribute(name="description")
-    assert desc_attr.parameters.regex == regex
-    assert desc_attr.regex is None  # Not synced yet
-
-    # After reconciliation, both should be synced
-    schema_branch.reconcile_text_attribute_parameters()
-
+    # After load_schema, both deprecated fields and parameters should be synced
     node = schema_branch.get(name="TestDevice", duplicate=False)
     desc_attr = node.get_attribute(name="description")
     assert desc_attr.parameters.regex == desc_attr.regex == regex
@@ -452,15 +444,7 @@ async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema_root)
 
-    # Before reconciliation, parameters are not synced
-    node = schema_branch.get(name="TestRouter", duplicate=False)
-    hostname_attr = node.get_attribute(name="hostname")
-    assert hostname_attr.regex == regex
-    assert hostname_attr.parameters.regex is None  # Not synced yet
-
-    # After reconciliation, both should be synced
-    schema_branch.reconcile_text_attribute_parameters()
-
+    # After load_schema, both deprecated fields and parameters should be synced
     node = schema_branch.get(name="TestRouter", duplicate=False)
     hostname_attr = node.get_attribute(name="hostname")
     assert hostname_attr.parameters.regex == hostname_attr.regex == regex
