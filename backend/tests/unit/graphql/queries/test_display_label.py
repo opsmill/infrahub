@@ -425,129 +425,9 @@ async def test_display_label_computed_attr(db: InfrahubDatabase, default_branch:
     assert result.data["TestObjectB"]["edges"][0]["node"]["display_label"] == "first SECOND"
 
 
-async def test_filter_by_display_label_value(
+async def test_filter_by_display_label(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
-    """Test filtering nodes by exact display_label value."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR]), branch_name=default_branch.name)
-    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
-
-    color1 = await Node.init(db=db, schema=color_schema)
-    await color1.new(db=db, name="Red", description="A red color")
-    await color1.save(db=db)
-
-    color2 = await Node.init(db=db, schema=color_schema)
-    await color2.new(db=db, name="Blue", description="A blue color")
-    await color2.save(db=db)
-
-    color3 = await Node.init(db=db, schema=color_schema)
-    await color3.new(db=db, name="Green", description="A green color")
-    await color3.save(db=db)
-
-    query = """
-    query {
-        TestingColor(display_label__value: "Red") {
-            edges {
-                node {
-                    id
-                    display_label
-                }
-            }
-        }
-    }
-    """
-    result = await graphql_query(query=query, db=db, branch=default_branch)
-
-    assert result.errors is None
-    assert result.data
-    assert len(result.data["TestingColor"]["edges"]) == 1
-    assert result.data["TestingColor"]["edges"][0]["node"]["display_label"] == "Red"
-
-
-async def test_filter_by_display_label_values(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
-) -> None:
-    """Test filtering nodes by a list of display_label values."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR]), branch_name=default_branch.name)
-    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
-
-    color1 = await Node.init(db=db, schema=color_schema)
-    await color1.new(db=db, name="Red", description="A red color")
-    await color1.save(db=db)
-
-    color2 = await Node.init(db=db, schema=color_schema)
-    await color2.new(db=db, name="Blue", description="A blue color")
-    await color2.save(db=db)
-
-    color3 = await Node.init(db=db, schema=color_schema)
-    await color3.new(db=db, name="Green", description="A green color")
-    await color3.save(db=db)
-
-    query = """
-    query {
-        TestingColor(display_label__values: ["Red", "Green"]) {
-            edges {
-                node {
-                    id
-                    display_label
-                }
-            }
-        }
-    }
-    """
-    result = await graphql_query(query=query, db=db, branch=default_branch)
-
-    assert result.errors is None
-    assert result.data
-    assert len(result.data["TestingColor"]["edges"]) == 2
-    labels = sorted([edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]])
-    assert labels == ["Green", "Red"]
-
-
-async def test_filter_by_display_label_partial_match(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
-) -> None:
-    """Test filtering nodes by display_label with partial_match enabled."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR]), branch_name=default_branch.name)
-    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
-
-    color1 = await Node.init(db=db, schema=color_schema)
-    await color1.new(db=db, name="Dark Red", description="A dark red color")
-    await color1.save(db=db)
-
-    color2 = await Node.init(db=db, schema=color_schema)
-    await color2.new(db=db, name="Blue", description="A blue color")
-    await color2.save(db=db)
-
-    color3 = await Node.init(db=db, schema=color_schema)
-    await color3.new(db=db, name="Light Red", description="A light red color")
-    await color3.save(db=db)
-
-    query = """
-    query {
-        TestingColor(display_label__value: "red", partial_match: true) {
-            edges {
-                node {
-                    id
-                    display_label
-                }
-            }
-        }
-    }
-    """
-    result = await graphql_query(query=query, db=db, branch=default_branch)
-
-    assert result.errors is None
-    assert result.data
-    assert len(result.data["TestingColor"]["edges"]) == 2
-    labels = sorted([edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]])
-    assert labels == ["Dark Red", "Light Red"]
-
-
-async def test_filter_by_nested_relationship_display_label(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
-) -> None:
-    """Test filtering nodes by the display_label of a nested relationship."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), branch_name=default_branch.name)
     color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
     tshirt_schema = registry.schema.get_node_schema(name=TSHIRT.kind, branch=default_branch.name)
@@ -555,80 +435,58 @@ async def test_filter_by_nested_relationship_display_label(
     red = await Node.init(db=db, schema=color_schema)
     await red.new(db=db, name="Red", description="A red color")
     await red.save(db=db)
+
     blue = await Node.init(db=db, schema=color_schema)
     await blue.new(db=db, name="Blue", description="A blue color")
     await blue.save(db=db)
 
-    tshirt1 = await Node.init(db=db, schema=tshirt_schema)
-    await tshirt1.new(db=db, name="Classic", color=red)
-    await tshirt1.save(db=db)
-    tshirt2 = await Node.init(db=db, schema=tshirt_schema)
-    await tshirt2.new(db=db, name="Sport", color=red)
-    await tshirt2.save(db=db)
-    tshirt3 = await Node.init(db=db, schema=tshirt_schema)
-    await tshirt3.new(db=db, name="Casual", color=blue)
-    await tshirt3.save(db=db)
-
-    query = """
-    query {
-        TestingTShirt(color__display_label__value: "Red") {
-            edges {
-                node {
-                    id
-                    display_label
-                    color {
-                        node {
-                            display_label
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
-    result = await graphql_query(query=query, db=db, branch=default_branch)
-
-    assert result.errors is None
-    assert result.data
-    assert len(result.data["TestingTShirt"]["edges"]) == 2
-    assert sorted([edge["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]]) == [
-        "Classic Red",
-        "Sport Red",
-    ]
-    assert {edge["node"]["color"]["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]} == {"Red"}
-
-
-async def test_filter_by_nested_relationship_display_label_partial_match(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
-) -> None:
-    """Test filtering nodes by the display_label of a nested relationship with partial match."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), branch_name=default_branch.name)
-    color_schema = registry.schema.get_node_schema(name=COLOR.kind, branch=default_branch.name)
-    tshirt_schema = registry.schema.get_node_schema(name=TSHIRT.kind, branch=default_branch.name)
+    green = await Node.init(db=db, schema=color_schema)
+    await green.new(db=db, name="Green", description="A green color")
+    await green.save(db=db)
 
     dark_red = await Node.init(db=db, schema=color_schema)
     await dark_red.new(db=db, name="Dark Red", description="A dark red color")
     await dark_red.save(db=db)
-    blue = await Node.init(db=db, schema=color_schema)
-    await blue.new(db=db, name="Blue", description="A blue color")
-    await blue.save(db=db)
+
     light_red = await Node.init(db=db, schema=color_schema)
     await light_red.new(db=db, name="Light Red", description="A light red color")
     await light_red.save(db=db)
 
-    tshirt1 = await Node.init(db=db, schema=tshirt_schema)
-    await tshirt1.new(db=db, name="Classic", color=dark_red)
-    await tshirt1.save(db=db)
-    tshirt2 = await Node.init(db=db, schema=tshirt_schema)
-    await tshirt2.new(db=db, name="Sport", color=blue)
-    await tshirt2.save(db=db)
-    tshirt3 = await Node.init(db=db, schema=tshirt_schema)
-    await tshirt3.new(db=db, name="Casual", color=light_red)
-    await tshirt3.save(db=db)
+    tshirt_classic = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_classic.new(db=db, name="Classic", color=red)
+    await tshirt_classic.save(db=db)
 
-    query = """
-    query {
-        TestingTShirt(color__display_label__value: "Red", partial_match: true) {
+    tshirt_sport = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_sport.new(db=db, name="Sport", color=red)
+    await tshirt_sport.save(db=db)
+
+    tshirt_casual = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_casual.new(db=db, name="Casual", color=blue)
+    await tshirt_casual.save(db=db)
+
+    tshirt_vintage = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_vintage.new(db=db, name="Vintage", color=dark_red)
+    await tshirt_vintage.save(db=db)
+
+    tshirt_summer = await Node.init(db=db, schema=tshirt_schema)
+    await tshirt_summer.new(db=db, name="Summer", color=light_red)
+    await tshirt_summer.save(db=db)
+
+    query_color = """
+    query FilterColors($value: String, $values: [String!], $partial: Boolean) {
+        TestingColor(display_label__value: $value, display_label__values: $values, partial_match: $partial) {
+            edges {
+                node {
+                    id
+                    display_label
+                }
+            }
+        }
+    }
+    """
+    query_tshirt = """
+    query FilterTShirts($value: String, $partial: Boolean) {
+        TestingTShirt(color__display_label__value: $value, partial_match: $partial) {
             edges {
                 node {
                     id
@@ -643,11 +501,53 @@ async def test_filter_by_nested_relationship_display_label_partial_match(
         }
     }
     """
-    result = await graphql_query(query=query, db=db, branch=default_branch)
 
+    # Test 1: Filter by exact display_label value
+    result = await graphql_query(query=query_color, db=db, branch=default_branch, variables={"value": "Red"})
     assert result.errors is None
     assert result.data
-    assert len(result.data["TestingTShirt"]["edges"]) == 2
-    assert sorted(
-        [edge["node"]["color"]["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]]
-    ) == ["Dark Red", "Light Red"]
+    assert len(result.data["TestingColor"]["edges"]) == 1
+    assert result.data["TestingColor"]["edges"][0]["node"]["display_label"] == "Red"
+
+    # Test 2: Filter by multiple display_label values
+    result = await graphql_query(
+        query=query_color, db=db, branch=default_branch, variables={"values": ["Red", "Green"]}
+    )
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]} == {"Green", "Red"}
+
+    # Test 3: Filter by display_label with partial_match
+    result = await graphql_query(
+        query=query_color, db=db, branch=default_branch, variables={"value": "red", "partial": True}
+    )
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingColor"]["edges"]} == {
+        "Dark Red",
+        "Light Red",
+        "Red",
+    }
+
+    # Test 4: Filter by nested relationship display_label (exact match)
+    result = await graphql_query(query=query_tshirt, db=db, branch=default_branch, variables={"value": "Red"})
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]} == {
+        "Classic Red",
+        "Sport Red",
+    }
+    assert {edge["node"]["color"]["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]} == {"Red"}
+
+    # Test 5: Filter by nested relationship display_label with partial match
+    result = await graphql_query(
+        query=query_tshirt, db=db, branch=default_branch, variables={"value": "Red", "partial": True}
+    )
+    assert result.errors is None
+    assert result.data
+    assert {edge["node"]["display_label"] for edge in result.data["TestingTShirt"]["edges"]} == {
+        "Classic Red",
+        "Sport Red",
+        "Summer Light Red",
+        "Vintage Dark Red",
+    }
