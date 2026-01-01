@@ -8,11 +8,13 @@ This module contains tests for:
 """
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any
 
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -1254,3 +1256,202 @@ class TestMetadataFilters:
         # node2 was updated on the branch after branch-node5 was created
         assert names == ["node2", "branch-node5"]
         assert timestamps == sorted(timestamps, reverse=True)
+
+    # ========== Day Range Filter Tests ==========
+
+    async def test_created_at_day_filter_includes_all_nodes_created_today(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that day filter with today's midnight includes all nodes created today."""
+        # Get today's date at midnight (00:00:00) - this triggers day filter transformation
+        # Use Timestamp for proper ZoneInfo timezone handling
+        now = Timestamp()
+        today_midnight = now.to_datetime().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        query = """
+        query($dayFilter: DateTime!) {
+            TestCriticality(node_metadata__created_at: $dayFilter) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        # All 4 nodes were created today, so day filter should return all of them
+        data = await self._run_query(db, query, default_branch_scope_class, {"dayFilter": today_midnight})
+        assert data["TestCriticality"]["count"] == 4
+        assert self._get_names(data) == {"node1", "node2", "node3", "node4"}
+
+    async def test_created_at_day_filter_excludes_nodes_from_different_day(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that day filter with yesterday's midnight excludes nodes created today."""
+        # Get yesterday's date at midnight - no nodes should match
+        now = Timestamp()
+        yesterday_midnight = (now.to_datetime() - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        query = """
+        query($dayFilter: DateTime!) {
+            TestCriticality(node_metadata__created_at: $dayFilter) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        # No nodes were created yesterday
+        data = await self._run_query(db, query, default_branch_scope_class, {"dayFilter": yesterday_midnight})
+        assert data["TestCriticality"]["count"] == 0
+
+    async def test_updated_at_day_filter_includes_all_nodes_updated_today(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that day filter on updated_at with today's midnight includes all nodes updated today."""
+        now = Timestamp()
+        today_midnight = now.to_datetime().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        query = """
+        query($dayFilter: DateTime!) {
+            TestCriticality(node_metadata__updated_at: $dayFilter) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        # All 4 nodes have updated_at set to today (either from creation or explicit update)
+        data = await self._run_query(db, query, default_branch_scope_class, {"dayFilter": today_midnight})
+        assert data["TestCriticality"]["count"] == 4
+        assert self._get_names(data) == {"node1", "node2", "node3", "node4"}
+
+    async def test_updated_at_day_filter_excludes_nodes_from_different_day(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that day filter on updated_at with yesterday's midnight excludes nodes updated today."""
+        now = Timestamp()
+        yesterday_midnight = (now.to_datetime() - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        query = """
+        query($dayFilter: DateTime!) {
+            TestCriticality(node_metadata__updated_at: $dayFilter) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        # No nodes were updated yesterday
+        data = await self._run_query(db, query, default_branch_scope_class, {"dayFilter": yesterday_midnight})
+        assert data["TestCriticality"]["count"] == 0
+
+    async def test_day_filter_on_user_branch(
+        self, db: InfrahubDatabase, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that day filter works correctly on user branch."""
+        now = Timestamp()
+        today_midnight = now.to_datetime().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        query = """
+        query($dayFilter: DateTime!) {
+            TestCriticality(node_metadata__created_at: $dayFilter) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        # On user branch: 4 main branch nodes + 2 branch-specific nodes = 6 total
+        data = await self._run_query(db, query, metadata_filter_data.user_branch, {"dayFilter": today_midnight})
+        assert data["TestCriticality"]["count"] == 6
+        assert self._get_names(data) == {"node1", "node2", "node3", "node4", "branch-node5", "branch-node6"}
+
+    async def test_day_filter_combined_with_other_filters(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that day filter can be combined with other filters."""
+        now = Timestamp()
+        today_midnight = now.to_datetime().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        query = """
+        query($dayFilter: DateTime!, $userId: ID!) {
+            TestCriticality(
+                node_metadata__created_at: $dayFilter,
+                node_metadata__created_by__id: $userId
+            ) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        # Filter: created today AND created by Alice (node1, node3)
+        data = await self._run_query(
+            db,
+            query,
+            default_branch_scope_class,
+            {"dayFilter": today_midnight, "userId": metadata_filter_data.user_alice},
+        )
+        assert data["TestCriticality"]["count"] == 2
+        assert self._get_names(data) == {"node1", "node3"}
+
+    async def test_non_midnight_datetime_uses_exact_match(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that non-midnight datetime does exact match, not day range."""
+        # Use a specific time (not midnight) - this should NOT trigger day filter transformation
+        # and should use exact match instead, which won't match any nodes
+        now = Timestamp()
+        specific_time = now.to_datetime().replace(hour=14, minute=30, second=0, microsecond=0)
+
+        query = """
+        query($exactTime: DateTime!) {
+            TestCriticality(node_metadata__created_at: $exactTime) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        # Exact match with a specific time won't match any nodes (they have different microsecond timestamps)
+        data = await self._run_query(db, query, default_branch_scope_class, {"exactTime": specific_time})
+        assert data["TestCriticality"]["count"] == 0
+
+    async def test_exact_timestamp_match_returns_single_node(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
+    ) -> None:
+        """Test that using a node's exact created_at/updated_at timestamp returns only that node."""
+        # Get node1's exact timestamps using NodeManager.query
+        nodes = await NodeManager.query(
+            db=db,
+            branch=default_branch_scope_class,
+            schema="TestCriticality",
+            filters={"name__value": "node1"},
+            include_metadata=MetadataOptions.TIMESTAMPS,
+        )
+        assert len(nodes) == 1
+        node1 = nodes[0]
+        node1_created_at = node1._get_created_at().to_datetime()
+        node1_updated_at = node1._get_updated_at().to_datetime()
+
+        # Test exact match on created_at - should return only node1
+        created_at_query = """
+        query($exactTime: DateTime!) {
+            TestCriticality(node_metadata__created_at: $exactTime) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        created_data = await self._run_query(
+            db, created_at_query, default_branch_scope_class, {"exactTime": node1_created_at}
+        )
+        assert created_data["TestCriticality"]["count"] == 1
+        assert self._get_names(created_data) == {"node1"}
+
+        # Test exact match on updated_at - should return only node1
+        updated_at_query = """
+        query($exactTime: DateTime!) {
+            TestCriticality(node_metadata__updated_at: $exactTime) {
+                count
+                edges { node { name { value } } }
+            }
+        }
+        """
+        updated_data = await self._run_query(
+            db, updated_at_query, default_branch_scope_class, {"exactTime": node1_updated_at}
+        )
+        assert updated_data["TestCriticality"]["count"] == 1
+        assert self._get_names(updated_data) == {"node1"}
