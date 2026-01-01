@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 
 import { classNames } from "@/shared/utils/common";
 
-export const Skeleton = ({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) => {
+export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={classNames(
@@ -12,4 +12,4 @@ export const Skeleton = ({ className = "", ...props }: HTMLAttributes<HTMLDivEle
       {...props}
     />
   );
-};
+}

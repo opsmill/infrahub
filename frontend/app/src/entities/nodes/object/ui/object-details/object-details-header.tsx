@@ -1,7 +1,7 @@
 import { queryClient } from "@/shared/api/rest/client";
 import { Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
-import { Skeleton } from "@/shared/components/skeleton";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 
 import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";

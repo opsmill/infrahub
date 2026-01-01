@@ -5,7 +5,6 @@ import { useNavigate } from "react-router";
 import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
@@ -18,6 +17,7 @@ import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";

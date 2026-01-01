@@ -1,6 +1,6 @@
 import { composeRenderProps, ListBoxItem, type ListBoxItemProps } from "react-aria-components";
 
-import { focusVisibleStyle } from "@/shared/components/style-rac";
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
