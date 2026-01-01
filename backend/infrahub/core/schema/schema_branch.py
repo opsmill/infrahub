@@ -501,11 +501,34 @@ class SchemaBranch:
 
         return fields or None
 
+    def _reconcile_incoming_text_attribute_parameters(self, schema: SchemaRoot) -> None:
+        """Ensure deprecated Text attribute fields are copied to parameters in incoming schema.
+
+        This handles the case where a schema update uses deprecated regex/min_length/max_length
+        fields instead of parameters. We need to copy those values to parameters so they will
+        be properly merged during update().
+        """
+        for item in schema.nodes + schema.generics:
+            for attr in item.attributes:
+                if not isinstance(attr.parameters, TextAttributeParameters):
+                    continue
+
+                # Copy deprecated field values to parameters if parameters are None
+                if attr.regex is not None and attr.parameters.regex is None:
+                    attr.parameters.regex = attr.regex
+                if attr.min_length is not None and attr.parameters.min_length is None:
+                    attr.parameters.min_length = attr.min_length
+                if attr.max_length is not None and attr.parameters.max_length is None:
+                    attr.parameters.max_length = attr.max_length
+
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
+        # Reconcile deprecated text attribute parameters before merging
+        self._reconcile_incoming_text_attribute_parameters(schema)
+
         for item in schema.nodes + schema.generics:
             try:
                 if item.id:
