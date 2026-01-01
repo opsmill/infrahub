@@ -124,6 +124,44 @@ SCHEMA_WARNING_TESTCASES: list[SchemaWarningTestCaseData] = [
             ),
         ],
     ),
+    SchemaWarningTestCaseData(
+        name="use_min_max_length_in_parameters_no_warning",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Ticket",
+                    attributes=[
+                        TextAttributeSchema(
+                            name="name",
+                            kind="Text",
+                            parameters=TextAttributeParameters(min_length=1, max_length=40),
+                        )
+                    ],
+                )
+            ]
+        ),
+        warnings=[],
+    ),
+    SchemaWarningTestCaseData(
+        name="use_regex_in_parameters_no_warning",
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    namespace="Test",
+                    name="Device",
+                    attributes=[
+                        TextAttributeSchema(
+                            name="hostname",
+                            kind="Text",
+                            parameters=TextAttributeParameters(regex="^[a-zA-Z][a-zA-Z0-9._-]*$"),
+                        )
+                    ],
+                )
+            ]
+        ),
+        warnings=[],
+    ),
 ]
 
 
@@ -367,32 +405,6 @@ def test_core_models() -> None:
 
 def test_internal_schema() -> None:
     assert SchemaRoot(**internal_schema)
-
-
-async def test_attribute_schema_parameters() -> None:
-    regex = "abc"
-    min_length = 3
-    max_length = 5
-
-    attr_schema = TextAttributeSchema(
-        name="something", kind="Text", parameters={"regex": regex, "min_length": min_length, "max_length": max_length}
-    )
-    assert isinstance(attr_schema.parameters, TextAttributeParameters)
-    assert attr_schema.parameters.regex == attr_schema.regex == regex
-    assert attr_schema.parameters.min_length == attr_schema.min_length == min_length
-    assert attr_schema.parameters.max_length == attr_schema.max_length == max_length
-
-    attr_schema = TextAttributeSchema(
-        name="something", kind="Text", regex=regex, min_length=min_length, max_length=max_length
-    )
-    assert isinstance(attr_schema.parameters, TextAttributeParameters)
-    assert attr_schema.parameters.regex == attr_schema.regex == regex
-    assert attr_schema.parameters.min_length == attr_schema.min_length == min_length
-    assert attr_schema.parameters.max_length == attr_schema.max_length == max_length
-
-    # TODO: update text of error message in this situation
-    with pytest.raises(ValidationError):
-        attr_schema = AttributeSchema(name="something", kind="Number", parameters={"regex": "abc"})
 
 
 async def test_attribute_schema_choices_invalid_kind() -> None:

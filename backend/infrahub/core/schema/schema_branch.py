@@ -54,7 +54,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters, TextAttributeParameters
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -545,6 +545,7 @@ class SchemaBranch:
         self.generate_identifiers()
         self.process_default_values()
         self.process_deprecations()
+        self.reconcile_text_attribute_parameters()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
@@ -1834,6 +1835,53 @@ class SchemaBranch:
             for item in node.attributes + node.relationships:
                 if item.is_deprecated and not item.optional:
                     item.optional = True
+
+            self.set(name=name, schema=node)
+
+    def reconcile_text_attribute_parameters(self) -> None:
+        """Reconcile regex, min_length, max_length between top-level fields and parameters for Text/TextArea attributes."""
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            # Check if any Text/TextArea attribute needs reconciliation
+            change_required = False
+            for attr in node.attributes:
+                if not isinstance(attr.parameters, TextAttributeParameters):
+                    continue
+                if (
+                    attr.regex != attr.parameters.regex
+                    or attr.min_length != attr.parameters.min_length
+                    or attr.max_length != attr.parameters.max_length
+                ):
+                    change_required = True
+                    break
+
+            if not change_required:
+                continue
+
+            node = node.duplicate()
+            for attr in node.attributes:
+                if not isinstance(attr.parameters, TextAttributeParameters):
+                    continue
+
+                # Reconcile regex
+                if attr.regex != attr.parameters.regex:
+                    final_regex = attr.parameters.regex if attr.parameters.regex is not None else attr.regex
+                    attr.regex = attr.parameters.regex = final_regex
+
+                # Reconcile min_length
+                if attr.min_length != attr.parameters.min_length:
+                    final_min_length = (
+                        attr.parameters.min_length if attr.parameters.min_length is not None else attr.min_length
+                    )
+                    attr.min_length = attr.parameters.min_length = final_min_length
+
+                # Reconcile max_length
+                if attr.max_length != attr.parameters.max_length:
+                    final_max_length = (
+                        attr.parameters.max_length if attr.parameters.max_length is not None else attr.max_length
+                    )
+                    attr.max_length = attr.parameters.max_length = final_max_length
 
             self.set(name=name, schema=node)
 

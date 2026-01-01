@@ -381,6 +381,93 @@ async def test_schema_branch_process_default_values(schema_all_in_one) -> None:
     assert criticality.get_attribute(name="color").optional is True
 
 
+async def test_schema_branch_reconcile_text_attribute_parameters() -> None:
+    """Test that SchemaBranch.reconcile_text_attribute_parameters() syncs top-level and parameters fields."""
+    regex = "abc"
+    min_length = 3
+    max_length = 5
+
+    # Test reconciliation when parameters are set
+    SCHEMA_WITH_PARAMS: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "parameters": {"regex": regex, "min_length": min_length, "max_length": max_length},
+                    },
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_PARAMS)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # Before reconciliation, top-level fields are not synced
+    node = schema_branch.get(name="TestDevice", duplicate=False)
+    desc_attr = node.get_attribute(name="description")
+    assert desc_attr.parameters.regex == regex
+    assert desc_attr.regex is None  # Not synced yet
+
+    # After reconciliation, both should be synced
+    schema_branch.reconcile_text_attribute_parameters()
+
+    node = schema_branch.get(name="TestDevice", duplicate=False)
+    desc_attr = node.get_attribute(name="description")
+    assert desc_attr.parameters.regex == desc_attr.regex == regex
+    assert desc_attr.parameters.min_length == desc_attr.min_length == min_length
+    assert desc_attr.parameters.max_length == desc_attr.max_length == max_length
+
+    # Test reconciliation when top-level fields are set (deprecated style)
+    SCHEMA_WITH_TOP_LEVEL: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Router",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "hostname",
+                        "kind": "Text",
+                        "regex": regex,
+                        "min_length": min_length,
+                        "max_length": max_length,
+                    },
+                ],
+            }
+        ]
+    }
+
+    schema_root = SchemaRoot(**SCHEMA_WITH_TOP_LEVEL)
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema_root)
+
+    # Before reconciliation, parameters are not synced
+    node = schema_branch.get(name="TestRouter", duplicate=False)
+    hostname_attr = node.get_attribute(name="hostname")
+    assert hostname_attr.regex == regex
+    assert hostname_attr.parameters.regex is None  # Not synced yet
+
+    # After reconciliation, both should be synced
+    schema_branch.reconcile_text_attribute_parameters()
+
+    node = schema_branch.get(name="TestRouter", duplicate=False)
+    hostname_attr = node.get_attribute(name="hostname")
+    assert hostname_attr.parameters.regex == hostname_attr.regex == regex
+    assert hostname_attr.parameters.min_length == hostname_attr.min_length == min_length
+    assert hostname_attr.parameters.max_length == hostname_attr.max_length == max_length
+
+
 async def test_schema_branch_add_groups(schema_all_in_one) -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))

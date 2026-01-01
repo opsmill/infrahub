@@ -238,19 +238,6 @@ class TextAttributeSchema(AttributeSchema):
         json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
     )
 
-    @model_validator(mode="after")
-    def reconcile_parameters(self) -> Self:
-        if self.regex != self.parameters.regex:
-            final_regex = self.parameters.regex if self.parameters.regex is not None else self.regex
-            self.regex = self.parameters.regex = final_regex
-        if self.min_length != self.parameters.min_length:
-            final_min_length = self.parameters.min_length if self.parameters.min_length is not None else self.min_length
-            self.min_length = self.parameters.min_length = final_min_length
-        if self.max_length != self.parameters.max_length:
-            final_max_length = self.parameters.max_length if self.parameters.max_length is not None else self.max_length
-            self.max_length = self.parameters.max_length = final_max_length
-        return self
-
     def get_regex(self) -> str | None:
         return self.parameters.regex
 
