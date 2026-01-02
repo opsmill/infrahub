@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
-import type { ContextParams } from "@/shared/api/types";
+import type { ContextParams, QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -15,15 +15,19 @@ export function getProfilesQueryOptions(params: GetProfilesParams) {
   });
 }
 
-export const useGetProfiles = (params: Omit<GetProfilesParams, keyof ContextParams>) => {
+export const useGetProfiles = (
+  params: Omit<GetProfilesParams, keyof ContextParams>,
+  config?: QueryConfig<typeof getProfilesQueryOptions>
+) => {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
-  return useQuery(
-    getProfilesQueryOptions({
+  return useQuery({
+    ...getProfilesQueryOptions({
       branchName: currentBranch.name,
       atDate: timeMachineDate,
       ...params,
-    })
-  );
+    }),
+    ...config,
+  });
 };

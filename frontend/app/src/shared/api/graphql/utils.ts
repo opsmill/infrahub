@@ -102,10 +102,21 @@ export const addRelationshipsToRequest = (
       return acc;
     }
 
+    let fragment: object = baseFragment;
+
+    if (relationship.kind === "Group") {
+      fragment = {
+        ...baseFragment,
+        node: {
+          ...baseFragment.node,
+          group_type: { value: true },
+        },
+      };
+    }
+
     return {
       ...acc,
-      [relationship.name]:
-        relationship.cardinality === "one" ? baseFragment : { edges: baseFragment },
+      [relationship.name]: relationship.cardinality === "one" ? fragment : { edges: fragment },
     };
   }, {});
 };
