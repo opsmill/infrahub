@@ -11,6 +11,7 @@ import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelat
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import { isFileRelationship } from "@/entities/nodes/object/ui/object-details/object-data-display/utils/is-file-relationship";
 import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeObject } from "@/entities/nodes/types";
 import type { NumberPool } from "@/entities/resource-manager/domain/type";
@@ -49,6 +50,11 @@ export const getFormFieldsFromSchema = ({
 
   return orderedFields.reduce((acc: Array<DynamicFieldProps>, field) => {
     if ("peer" in field) {
+      // File relationships are handled separately via dedicated CoreFile form
+      if (isFileRelationship(field)) {
+        return acc;
+      }
+
       if (isBulkUpdate && field.cardinality === "many") {
         return [
           ...acc,

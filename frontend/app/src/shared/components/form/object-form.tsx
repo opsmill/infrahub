@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 
 import NoDataFound from "@/shared/components/errors/no-data-found";
+import { CoreFileForm } from "@/shared/components/form/core-file-form";
 import type { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, type NodeFormProps } from "@/shared/components/form/node-form";
@@ -10,6 +11,7 @@ import {
   ACCOUNT_GROUP_OBJECT,
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
+  FILE_GENERIC_KIND,
   GLOBAL_PERMISSION_OBJECT,
   NUMBER_POOL_OBJECT,
   OBJECT_PERMISSION_OBJECT,
@@ -32,6 +34,7 @@ import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissi
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { getTemplateRelationshipFromSchema } from "@/entities/schema/utils/get-template-relationship-from-schema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import {
   NODE_TRIGGER_ATTRIBUTE_MATCH,
   NODE_TRIGGER_RELATIONSHIP_MATCH,
@@ -129,6 +132,11 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (kind === NODE_TRIGGER_RELATIONSHIP_MATCH) {
     return <NodeRelationshipMatchForm schema={schema} {...props} />;
+  }
+
+  // Route CoreFile kinds to dedicated file form with dropzone
+  if (isOfKind(FILE_GENERIC_KIND, schema)) {
+    return <CoreFileForm schema={schema} profiles={currentProfiles} {...props} />;
   }
 
   if (isGeneric) {
