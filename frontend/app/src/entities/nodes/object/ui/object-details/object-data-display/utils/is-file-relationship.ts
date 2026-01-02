@@ -1,4 +1,4 @@
-import { FILE_GENERIC_KIND } from "@/shared/config/constants";
+import { FILE_ATTACHMENT_KIND } from "@/shared/config/constants";
 
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import type { RelationshipSchema } from "@/entities/schema/types";
@@ -11,5 +11,5 @@ export function isFileRelationship(relationshipSchema: RelationshipSchema): bool
     return false;
   }
 
-  return isOfKind(FILE_GENERIC_KIND, peerSchema);
+  return isOfKind(FILE_ATTACHMENT_KIND, peerSchema);
 }
