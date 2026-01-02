@@ -222,8 +222,7 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         )
         await thing_two.save(db=db)
 
-        profile_schema = registry.schema.get(name=PROFILE_THING_KIND, branch=default_branch)
-        profile_thing = await Node.init(db=db, schema=profile_schema, branch=default_branch)
+        profile_thing = await Node.init(db=db, schema=PROFILE_THING_KIND, branch=default_branch)
         await profile_thing.new(
             db=db,
             profile_name="test_profile",
